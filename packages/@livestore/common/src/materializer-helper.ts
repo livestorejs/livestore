@@ -1,7 +1,7 @@
+import { isReadonlyArray } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from './adapter-types.js'
-import type { QueryBuilder } from './query-builder/api.js'
 import { isQueryBuilder } from './query-builder/api.js'
 import type { EventDef, Materializer, MaterializerResult } from './schema/EventDef.js'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
@@ -32,43 +32,18 @@ export const getExecArgsFromEvent = ({
   bindValues: PreparedBindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  let statementRes: ReadonlyArray<
-    string | { sql: string; bindValues: Record<string, unknown>; writeTables?: ReadonlySet<string> }
-  >
+  const mutationArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
 
-  switch (typeof materializer) {
-    case 'function': {
-      const mutationArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
+  const res = materializer(mutationArgsDecoded, {
+    clientOnly: eventDef.options.clientOnly,
+    // TODO properly implement this
+    currentFacts: new Map(),
+  })
 
-      const res = materializer(mutationArgsDecoded, {
-        clientOnly: eventDef.options.clientOnly,
-        // TODO properly implement this
-        currentFacts: new Map(),
-      })
-
-      statementRes = (Array.isArray(res) ? res : [res]).map((_: QueryBuilder.Any | MaterializerResult) => {
-        if (isQueryBuilder(_)) {
-          const { query, bindValues } = _.asSql()
-          return { sql: query, bindValues: bindValues as BindValues }
-        }
-
-        return _
-      })
-
-      break
-    }
-    case 'string': {
-      statementRes = [materializer]
-      break
-    }
-    default: {
-      statementRes = materializer
-      break
-    }
-  }
+  const statementRes = mapMaterializerResult(res)
 
   return statementRes.map((statementRes) => {
-    const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
+    const statementSql = statementRes.sql
 
     const mutationArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
     const bindValues = typeof statementRes === 'string' ? mutationArgsEncoded : statementRes.bindValues
@@ -77,6 +52,32 @@ export const getExecArgsFromEvent = ({
 
     return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
   })
+}
+
+const mapMaterializerResult = (
+  materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
+): ReadonlyArray<{
+  sql: string
+  bindValues: BindValues
+  writeTables: ReadonlySet<string> | undefined
+}> => {
+  if (isReadonlyArray(materializerResult)) {
+    return materializerResult.flatMap(mapMaterializerResult)
+  }
+  if (isQueryBuilder(materializerResult)) {
+    const { query, bindValues } = materializerResult.asSql()
+    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: undefined }]
+  } else if (typeof materializerResult === 'string') {
+    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+  } else {
+    return [
+      {
+        sql: materializerResult.sql,
+        bindValues: materializerResult.bindValues,
+        writeTables: materializerResult.writeTables,
+      },
+    ]
+  }
 }
 
 // NOTE we should explore whether there is a more elegant solution

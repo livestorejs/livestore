@@ -1,4 +1,4 @@
-import type { GetValForKey } from '@livestore/utils'
+import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
 import type { SessionIdSymbol } from '../adapter-types.js'
@@ -57,7 +57,7 @@ export namespace QueryBuilderAst {
 
   export interface OnConflict {
     /** Conflicting column name */
-    readonly target: string
+    readonly targets: string[]
     readonly action:
       | { readonly _tag: 'ignore' }
       | { readonly _tag: 'replace' }
@@ -181,23 +181,20 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.select('id', 'text', 'completed')
-     * db.todos.select('id', { pluck: true })
+     * db.todos.select('id')
      * ```
      */
     readonly select: {
-      <TColumn extends keyof TTableDef['sqliteDef']['columns'] & string, TPluck extends boolean = false>(
-        column: TColumn,
-        options?: { pluck: TPluck },
+      /** Selects and plucks a single column */
+      <TColumn extends keyof TTableDef['sqliteDef']['columns'] & string>(
+        pluckColumn: TColumn,
       ): QueryBuilder<
-        TPluck extends true
-          ? ReadonlyArray<TTableDef['sqliteDef']['columns'][TColumn]['schema']['Type']>
-          : ReadonlyArray<{
-              readonly [K in TColumn]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
-            }>,
+        ReadonlyArray<TTableDef['sqliteDef']['columns'][TColumn]['schema']['Type']>,
         TTableDef,
         TWithout | 'row' | 'select' | 'returning' | 'onConflict',
         TQueryInfo
       >
+      /** Select multiple columns */
       <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
         ...columns: TColumns[]
         // TODO also support arbitrary SQL selects
@@ -356,8 +353,8 @@ export namespace QueryBuilder {
      * NOTE This API doesn't yet support composite primary keys.
      */
     readonly onConflict: {
-      (
-        target: string,
+      <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(
+        target: TTarget,
         action: 'ignore' | 'replace',
       ): QueryBuilder<
         TResult,
@@ -365,7 +362,7 @@ export namespace QueryBuilder {
         TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where',
         TQueryInfo
       >
-      <TTarget extends keyof TTableDef['sqliteDef']['columns'] & string>(
+      <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(
         target: TTarget,
         action: 'update',
         updateValues: Partial<TTableDef['rowSchema']['Type']>,

@@ -36,20 +36,13 @@ export type LiveStoreSchema<
 }
 
 export type State = {
-  readonly tables: Map<string, TableDef>
-  // readonly tables: Map<string, TableDef | AtomTableDef>
+  readonly tables: Map<string, TableDef.Any>
   readonly materializers: Map<string, Materializer>
 }
 
 export type InputSchema = {
-  // readonly tables?: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: State
-  /**
-   * Can be used to isolate multiple LiveStore apps running in the same origin
-   */
-  // TODO remove this in favour of storeId
-  readonly key?: string
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -108,8 +101,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const hash = SqliteAst.hash({
     _tag: 'dbSchema',
-    // @ts-expect-error TODO fix type level issue
-    tables: [...tables.values()].map((_) => _.sqliteDef.ast ?? _.table.sqliteDef.ast),
+    tables: [...tables.values()].map((_) => _.sqliteDef.ast),
   })
 
   return {

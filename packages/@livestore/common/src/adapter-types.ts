@@ -136,7 +136,7 @@ export type BootStatus = typeof BootStatus.Type
  *
  * Example:
  * ```ts
- * const query$ = queryDb(tables.app.query.row(SessionIdSymbol), SessionIdSymbol)
+ * const query$ = queryDb(tables.app.get(SessionIdSymbol), SessionIdSymbol)
  * ```
  */
 export const SessionIdSymbol = Symbol.for('@livestore/session-id')

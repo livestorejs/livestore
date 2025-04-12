@@ -6,6 +6,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  SessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
@@ -77,17 +78,16 @@ export const queryDb: {
     },
   ): LiveQueryDef<TResult, TQueryInfo>
 } = (queryInput, options) => {
-  const queryString = isQueryBuilder(queryInput)
-    ? queryInput.toString()
-    : isQueryInputRaw(queryInput)
-      ? queryInput.query
-      : typeof queryInput === 'function'
-        ? queryInput.toString()
-        : shouldNeverHappen(`Invalid query input: ${queryInput}`)
+  const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
-  const hash = options?.deps ? queryString + '-' + depsToString(options.deps) : queryString
+  const hash =
+    (options?.deps ? queryString + '-' + depsToString(options.deps) : queryString) + '-' + depsToString(extraDeps)
   if (isValidFunctionString(hash)._tag === 'invalid') {
     throw new Error(`On Expo/React Native, db queries must provide a \`deps\` option`)
+  }
+
+  if (hash.trim() === '') {
+    return shouldNeverHappen(`Invalid query hash for query: ${queryInput}`)
   }
 
   const label = options?.label ?? queryString
@@ -111,6 +111,35 @@ export const queryDb: {
     queryInfo:
       options?.queryInfo ?? (isQueryBuilder(queryInput) ? queryInfoFromQueryBuilder(queryInput) : { _tag: 'None' }),
   }
+}
+
+const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
+  if (bindValues === undefined) {
+    return []
+  }
+
+  return Object.entries(bindValues)
+    .map(([key, value]: [string, any]) => `${key}:${value === SessionIdSymbol ? 'SessionIdSymbol' : value}`)
+    .join(',')
+}
+
+const getQueryStringAndExtraDeps = (
+  queryInput: QueryInput<any, any, any> | ((get: GetAtomResult) => QueryInput<any, any, any>),
+): { queryString: string; extraDeps: DepKey } => {
+  if (isQueryBuilder(queryInput)) {
+    const { query, bindValues } = queryInput.asSql()
+    return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
+  }
+
+  if (isQueryInputRaw(queryInput)) {
+    return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
+  }
+
+  if (typeof queryInput === 'function') {
+    return { queryString: queryInput.toString(), extraDeps: [] }
+  }
+
+  return shouldNeverHappen(`Invalid query input: ${queryInput}`)
 }
 
 /* An object encapsulating a reactive SQL query */

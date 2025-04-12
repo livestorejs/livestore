@@ -1,19 +1,10 @@
 import { tables } from '@/lib/livestore/schema'
 import { queryDb, SessionIdSymbol } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
+import { useClientDocument } from '@livestore/react'
 
-export const useFilterState = () => {
-  const { store } = useStore()
-  return store.useClientDocument(tables.filterState, SessionIdSymbol)
-}
-export const useScrollState = () => {
-  const { store } = useStore()
-  return store.useClientDocument(tables.scrollState, SessionIdSymbol)
-}
-export const useFrontendState = () => {
-  const { store } = useStore()
-  return store.useClientDocument(tables.frontendState, 'default')
-}
+export const useFilterState = () => useClientDocument(tables.filterState, SessionIdSymbol)
+export const useScrollState = () => useClientDocument(tables.scrollState, SessionIdSymbol)
+export const useFrontendState = () => useClientDocument(tables.frontendState, 'default')
 
 export const issueCount$ = queryDb(tables.issue.count().where({ deleted: null }), { label: 'global.issueCount' })
 export const highestIssueId$ = queryDb(tables.issue.select('id').orderBy('id', 'desc').limit(1), {

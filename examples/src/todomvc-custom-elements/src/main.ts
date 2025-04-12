@@ -25,7 +25,7 @@ const store = await createStorePromise({
   storeId: 'todomvc',
 })
 
-const appState$ = queryDb(tables.app.query.row())
+const appState$ = queryDb(tables.app.get())
 const todos$ = queryDb(tables.todos.query.where({ deleted: null }))
 
 const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text }))

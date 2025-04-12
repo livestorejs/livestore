@@ -32,10 +32,10 @@ export const NewIssueModal = () => {
     if (!title) return
     const date = new Date()
     // TODO make this "merge safe"
-    const highestIssueId = store.query(highestIssueId$)[0]?.id ?? 0
+    const highestIssueId = store.query(highestIssueId$)[0] ?? 0
     const highestKanbanOrder = store.query(
       tables.issue
-        .select('kanbanorder', { pluck: true })
+        .select('kanbanorder')
         .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
         .orderBy('kanbanorder', 'desc')
         .first({ fallback: () => 'a1' }),

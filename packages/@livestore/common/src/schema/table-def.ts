@@ -57,6 +57,10 @@ export type TableOptionsInput = Partial<{
   indexes: SqliteDsl.Index[]
 }>
 
+export namespace TableDef {
+  export type Any = TableDef<any, any>
+}
+
 export type TableOptions = {
   /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
   readonly isClientDocumentTable: boolean

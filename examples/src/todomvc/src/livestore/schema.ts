@@ -26,8 +26,9 @@ const todos = State.SQLite.table({
   },
 })
 
-// LiveStore also offers a client-document concept which simplifies local-only state management
-// giving you the convenience of `React.useState` with a derived "setter" event / materializer.
+// LiveStore aims to provide a unified state management solution (for synced and client-only state),
+// so to simplify local-only state management, it also offers a client-only document concept
+// giving you the convenience of `React.useState` with a derived `.set` event and auto-registered materializer.
 const uiState = State.SQLite.clientDocument({
   name: 'uiState',
   schema: Schema.Struct({ newTodoText: Schema.String, filter: Filter }),

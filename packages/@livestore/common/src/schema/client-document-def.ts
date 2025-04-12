@@ -1,15 +1,15 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../adapter-types.js'
 import type { QueryBuilder, QueryBuilderAst } from '../query-builder/mod.js'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from '../query-builder/mod.js'
 import type { QueryInfo } from '../query-info.js'
+import { sql } from '../util.js'
 import { SqliteDsl } from './db-schema/mod.js'
 import type { EventDef, Materializer } from './EventDef.js'
 import { defineEvent, defineMaterializer } from './EventDef.js'
-import type * as LiveStoreEvent from './LiveStoreEvent.js'
 import type { TableDef, TableDefBase } from './table-def.js'
 import { table } from './table-def.js'
 
@@ -32,7 +32,7 @@ export const clientDocument = <
   const TOptions extends ClientDocumentTableOptions.Input<TType>,
 >({
   name,
-  schema: documentSchema,
+  schema: valueSchema,
   ...inputOptions
 }: {
   name: TName
@@ -53,7 +53,7 @@ export const clientDocument = <
 
   const columns = {
     id: SqliteDsl.text({ primaryKey: true }),
-    value: SqliteDsl.json({ schema: documentSchema }),
+    value: SqliteDsl.json({ schema: valueSchema }),
   }
 
   const tableDef = table({ name, columns })
@@ -61,48 +61,11 @@ export const clientDocument = <
   // @ts-expect-error TODO properly type this
   tableDef.options.isClientDocumentTable = true
 
-  const derivedSetEventDef = defineEvent({
-    name: `${name}Set`,
-    schema: Schema.Struct({
-      id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
-      value: options.partialSet ? Schema.partial(documentSchema) : documentSchema,
-    }).annotations({ title: `${name}Set:Args` }),
-    clientOnly: true,
-    derived: true,
-  })
-
-  const derivedSetMaterializer = defineMaterializer(derivedSetEventDef, ({ id, value }) => {
-    if (id === SessionIdSymbol) {
-      return shouldNeverHappen(`SessionIdSymbol needs to be replaced before materializing the set event`)
-    }
-
-    const valueColJsonSchema = Schema.parseJson(Schema.partial(documentSchema))
-
-    const encodedDefaultValueRes = Schema.encodeEither(valueColJsonSchema)(
-      mergeDefaultValues(options.default.value, value),
-    )
-    const encodedPatchValueRes = Schema.encodeEither(valueColJsonSchema)(value)
-
-    if (encodedDefaultValueRes._tag === 'Left') {
-      return shouldNeverHappen(`Failed to encode value for ${tableDef.sqliteDef.name}:`, encodedDefaultValueRes.left)
-    }
-
-    if (encodedPatchValueRes._tag === 'Left') {
-      return shouldNeverHappen(`Failed to encode value for ${tableDef.sqliteDef.name}:`, encodedPatchValueRes.left)
-    }
-
-    const encodedDefaultValue = encodedDefaultValueRes.right
-    const encodedPatchValue = encodedPatchValueRes.right
-    const sqlQuery = `
-      INSERT INTO '${tableDef.sqliteDef.name}' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET
-        value = json_patch(value, ?)
-    `
-
-    const bindValues = [id, encodedDefaultValue, encodedPatchValue]
-
-    return { sql: sqlQuery, bindValues, writeTables: new Set([tableDef.sqliteDef.name]) }
+  const { eventDef: derivedSetEventDef, materializer: derivedSetMaterializer } = deriveEventAndMaterializer({
+    name,
+    valueSchema,
+    defaultValue: options.default.value,
+    partialSet: options.partialSet,
   })
 
   const setEventDef = (...args: any[]) => {
@@ -114,7 +77,7 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet ? Schema.partial(documentSchema) : documentSchema,
+      value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
     }),
   })
   Object.defineProperty(setEventDef, 'options', { value: { derived: true, clientOnly: true, facts: undefined } })
@@ -128,12 +91,13 @@ export const clientDocument = <
     get: makeGetQueryBuilder(() => clientDocumentTableDef) as any,
     set: setEventDef as any,
     Value: 'only-for-type-inference' as any,
+    default: options.default,
+    valueSchema,
     [ClientDocumentTableDefSymbol]: {
       derived: {
-        setEventDef: derivedSetEventDef,
-        setMaterializer: derivedSetMaterializer,
+        setEventDef: derivedSetEventDef as any,
+        setMaterializer: derivedSetMaterializer as any,
       },
-      documentSchema,
       options,
       Type: 'only-for-type-inference' as any,
       Encoded: 'only-for-type-inference' as any,
@@ -164,6 +128,80 @@ const mergeDefaultValues = <T>(schemaDefaultValues: T, explicitDefaultValues: T)
   }, {} as any)
 }
 
+export const deriveEventAndMaterializer = ({
+  name,
+  valueSchema,
+  defaultValue,
+  partialSet,
+}: {
+  name: string
+  valueSchema: Schema.Schema<any, any>
+  defaultValue: any
+  partialSet: boolean
+}) => {
+  const derivedSetEventDef = defineEvent({
+    name: `${name}Set`,
+    schema: Schema.Struct({
+      id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
+      value: partialSet ? Schema.partial(valueSchema) : valueSchema,
+    }).annotations({ title: `${name}Set:Args` }),
+    clientOnly: true,
+    derived: true,
+  })
+
+  const derivedSetMaterializer = defineMaterializer(derivedSetEventDef, ({ id, value }) => {
+    if (id === SessionIdSymbol) {
+      return shouldNeverHappen(`SessionIdSymbol needs to be replaced before materializing the set event`)
+    }
+
+    // Override the full value if it's not an object or no partial set is allowed
+    const schemaProps = SchemaAST.getPropertySignatures(valueSchema.ast)
+    if (schemaProps.length === 0 || partialSet === false) {
+      const valueColJsonSchema = Schema.parseJson(valueSchema)
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
+      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
+
+      return {
+        sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
+        bindValues: [id, encodedInsertValue, encodedUpdateValue],
+        writeTables: new Set([name]),
+      }
+    } else {
+      const valueColJsonSchema = Schema.parseJson(Schema.partial(valueSchema))
+
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+
+      let jsonSetSql = 'value'
+      const setBindValues: unknown[] = []
+
+      const keys = Object.keys(value)
+      const partialUpdateSchema = valueSchema.pipe(Schema.pick(...keys))
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
+
+      for (const key in encodedPartialUpdate) {
+        const encodedValueForKey = encodedPartialUpdate[key]
+        jsonSetSql = `json_set(${jsonSetSql}, ?, json(?))`
+        setBindValues.push(`$.${key}`, JSON.stringify(encodedValueForKey))
+      }
+
+      const sqlQuery = `
+      INSERT INTO '${name}' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET
+        value = ${jsonSetSql}
+    `
+
+      return {
+        sql: sqlQuery,
+        bindValues: [id, encodedInsertValue, ...setBindValues],
+        writeTables: new Set([name]),
+      }
+    }
+  })
+
+  return { eventDef: derivedSetEventDef, materializer: derivedSetMaterializer }
+}
+
 export const tableIsClientDocumentTable = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & {
@@ -171,33 +209,9 @@ export const tableIsClientDocumentTable = <TTableDef extends TableDefBase>(
 } & ClientDocumentTableDef.Trait<TTableDef['sqliteDef']['name'], any, any, any> =>
   tableDef.options.isClientDocumentTable === true
 
-type MakeGetQueryBuilder<TTableDef extends ClientDocumentTableDef.TraitAny> =
-  TTableDef extends ClientDocumentTableDef.Trait<infer TName, infer TType, infer TEncoded, infer TOptions>
-    ? TOptions extends ClientDocumentTableOptions<TType> & { default: { id: string | SessionIdSymbol } }
-      ? (
-          id?: ClientDocumentTableDef.IdType<TTableDef> | SessionIdSymbol,
-          options?: { default: Partial<TType> },
-        ) => QueryBuilder<
-          TType,
-          ClientDocumentTableDef.TableDefBase_<TName, TType, TEncoded>,
-          QueryBuilder.ApiFeature,
-          QueryInfo.Row
-        >
-      : (
-          id: ClientDocumentTableDef.IdType<TTableDef> | SessionIdSymbol,
-          options?: { default: Partial<TType> },
-        ) => QueryBuilder<
-          TType,
-          ClientDocumentTableDef.TableDefBase_<TName, TType, TEncoded>,
-          QueryBuilder.ApiFeature,
-          QueryInfo.Row
-        >
-    : never
-
 const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, any, any>>(
   getTableDef: () => TTableDef,
-): MakeGetQueryBuilder<TTableDef> => {
-  // const makeGetQueryBuilder: MakeGetQueryBuilder_ = (getTableDef) => {
+): ClientDocumentTableDef.MakeGetQueryBuilder<any, any, any> => {
   return ((...args: any[]) => {
     const tableDef = getTableDef()
 
@@ -212,21 +226,19 @@ const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, 
       explicitDefaultValues,
     }
 
+    const query = sql`SELECT * FROM '${tableDef.sqliteDef.name}' WHERE id = ?`
+
     return {
       [QueryBuilderTypeId]: QueryBuilderTypeId,
       [QueryBuilderAstSymbol]: ast,
       ResultType: 'only-for-type-inference' as any,
-      asSql: () => {
-        return {
-          query: `SELECT * FROM '${tableDef.sqliteDef.name}' WHERE id = ?`,
-          bindValues: [id],
-        }
-      },
-      toString: () => '',
+      asSql: () => ({ query, bindValues: [id] }),
+      toString: () => query.toString(),
       ...({} as any), // Needed for type cast
     }
   }) as any
 }
+
 export type ClientDocumentTableOptions<TType> = {
   partialSet: boolean
   default: {
@@ -264,7 +276,7 @@ export type ClientDocumentTableDef<
   TEncoded,
   TOptions extends ClientDocumentTableOptions<TType>,
 > = TableDef<
-  ClientDocumentTableDef.SqliteDef<TName, TType, TEncoded>,
+  ClientDocumentTableDef.SqliteDef<TName, TType>,
   {
     isClientDocumentTable: true
   }
@@ -274,16 +286,16 @@ export type ClientDocumentTableDef<
 export namespace ClientDocumentTableDef {
   export type Any = ClientDocumentTableDef<any, any, any, any>
 
-  export type SqliteDef<TName extends string, TType, TEncoded> = SqliteDsl.TableDefinition<
+  export type SqliteDef<TName extends string, TType> = SqliteDsl.TableDefinition<
     TName,
     {
       id: SqliteDsl.ColumnDefinition<string, string> & { default: Option.Some<string> }
-      value: SqliteDsl.ColumnDefinition<TEncoded, TType> & { default: Option.Some<TType> }
+      value: SqliteDsl.ColumnDefinition<string, TType> & { default: Option.Some<TType> }
     }
   >
 
-  export type TableDefBase_<TName extends string, TType, TEncoded> = TableDefBase<
-    SqliteDef<TName, TType, TEncoded>,
+  export type TableDefBase_<TName extends string, TType> = TableDefBase<
+    SqliteDef<TName, TType>,
     {
       isClientDocumentTable: true
     }
@@ -291,34 +303,19 @@ export namespace ClientDocumentTableDef {
 
   export type Trait<TName extends string, TType, TEncoded, TOptions extends ClientDocumentTableOptions<TType>> = {
     // get: QueryBuilder<TType, ClientDocumentTableDef<TName, TType, TEncoded, TOptions>>['getOrCreate']
-    readonly get: MakeGetQueryBuilder<ClientDocumentTableDef.Trait<TName, TType, TEncoded, TOptions>>
+    readonly get: MakeGetQueryBuilder<TName, TType, TOptions>
     // readonly get: MakeGetQueryBuilder<ClientDocumentTableDef.Trait<TName, TType, TEncoded, TOptions>>
-    readonly set: (TOptions['default']['id'] extends undefined
-      ? (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id: string | SessionIdSymbol,
-        ) => LiveStoreEvent.PartialAnyDecoded
-      : (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id?: string | SessionIdSymbol,
-        ) => LiveStoreEvent.PartialAnyDecoded) & {
-      readonly name: `${TName}Set`
-      readonly schema: Schema.Schema<any>
-      readonly Event: {
-        readonly name: `${TName}Set`
-        readonly args: any
-      }
-      readonly options: { derived: true; clientOnly: true; facts: undefined }
-    }
+    readonly set: SetEventDefLike<TName, TType, TOptions>
     readonly Value: TType
+    readonly valueSchema: Schema.Schema<TType, TEncoded>
+    readonly default: TOptions['default']
     readonly [ClientDocumentTableDefSymbol]: {
-      readonly documentSchema: Schema.Schema<TType, TEncoded>
       readonly options: TOptions
       readonly Type: TType
       readonly Encoded: TEncoded
       readonly derived: {
-        readonly setEventDef: EventDef.Any
-        readonly setMaterializer: Materializer<EventDef.Any>
+        readonly setEventDef: SetEventDef<TName, TType, TOptions>
+        readonly setMaterializer: Materializer<SetEventDef<TName, TType, TOptions>>
       }
     }
   }
@@ -328,12 +325,63 @@ export namespace ClientDocumentTableDef {
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type IdType<TTableDef extends TraitAny> =
+  export type DefaultIdType<TTableDef extends TraitAny> =
     TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
       ? TOptions['default']['id'] extends SessionIdSymbol | string
         ? TOptions['default']['id']
         : never
       : never
+
+  export type SetEventDefLike<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> =
+    // Helper to create partial event
+    (TOptions['default']['id'] extends undefined
+      ? (
+          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+          id: string | SessionIdSymbol,
+        ) => { name: `${TName}Set`; args: { id: string; value: TType } }
+      : (
+          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+          id?: string | SessionIdSymbol,
+        ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+      readonly name: `${TName}Set`
+      readonly schema: Schema.Schema<any>
+      readonly Event: {
+        readonly name: `${TName}Set`
+        readonly args: { id: string; value: TType }
+      }
+      readonly options: { derived: true; clientOnly: true; facts: undefined }
+    }
+
+  export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<
+    TName,
+    TOptions['partialSet'] extends false ? { id: string; value: TType } : { id: string; value: Partial<TType> },
+    any,
+    true
+  >
+
+  export type MakeGetQueryBuilder<
+    TName extends string,
+    TType,
+    TOptions extends ClientDocumentTableOptions<TType>,
+  > = TOptions extends ClientDocumentTableOptions<TType> & { default: { id: string | SessionIdSymbol } }
+    ? (
+        id?: TOptions['default']['id'] | SessionIdSymbol,
+        options?: { default: Partial<TType> },
+      ) => QueryBuilder<
+        TType,
+        ClientDocumentTableDef.TableDefBase_<TName, TType>,
+        QueryBuilder.ApiFeature,
+        QueryInfo.Row
+      >
+    : (
+        id: string | SessionIdSymbol,
+        options?: { default: Partial<TType> },
+      ) => QueryBuilder<
+        TType,
+        ClientDocumentTableDef.TableDefBase_<TName, TType>,
+        QueryBuilder.ApiFeature,
+        QueryInfo.Row
+      >
 }
 
 export const ClientDocumentTableDefSymbol = Symbol('ClientDocumentTableDef')

@@ -123,9 +123,9 @@ export const makeTodoMvcReact = ({
 
     // TODO improve typing of `LiveStoreContext`
     const storeContext = {
-      stage: 'running',
+      stage: 'running' as const,
       store: storeWithReactApi,
-    } as any as LiveStoreContextRunning & LiveStoreReact.ReactApi
+    }
 
     const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 

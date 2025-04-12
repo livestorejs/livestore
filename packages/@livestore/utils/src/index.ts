@@ -38,6 +38,8 @@ export type LiteralUnion<LiteralType, BaseType extends Primitive> = LiteralType 
 
 export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
 
+export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
+
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const ref = <T>(val: T): { current: T } => ({ current: val })

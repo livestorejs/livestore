@@ -5,6 +5,7 @@ import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
+import { LiveStoreContext } from './LiveStoreContext.js'
 import { useRcResource } from './useRcResource.js'
 import { originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -43,7 +44,11 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>>
 } => {
-  const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
+  const store =
+    options?.store ??
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useContext(LiveStoreContext)?.store ??
+    shouldNeverHappen(`No store provided to useQuery`)
 
   const rcRefKey = `${store.storeId}_${queryDef.hash}`
 

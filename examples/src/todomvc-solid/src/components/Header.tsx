@@ -8,7 +8,7 @@ import { store } from '../livestore/store.jsx'
 const sessionId = store()?.sessionId ?? 'default'
 
 export const Header: Component = () => {
-  const newRow = query(queryDb(tables.app.query.row(sessionId)), {
+  const newRow = query(queryDb(tables.app.get(sessionId)), {
     filter: 'all',
     id: sessionId,
     newTodoText: '',

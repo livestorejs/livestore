@@ -2,7 +2,7 @@ import { type Store } from '@livestore/livestore'
 
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
-import { Issue, events } from '@/lib/livestore/schema'
+import { events } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { generateKeyBetween } from 'fractional-indexing'
@@ -16,7 +16,7 @@ export const seed = (store: Store, count: number) => {
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.commit(...Array.from(createIssues(count, highestId?.id, highestKanbanOrder?.kanbanorder)))
+    store.commit(...Array.from(createIssues(count, highestId, highestKanbanOrder)))
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')

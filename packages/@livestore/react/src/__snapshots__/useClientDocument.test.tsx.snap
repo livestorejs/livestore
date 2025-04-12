@@ -42,7 +42,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       INSERT INTO 'UserInfo' (id, value)
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET
-        value = json_patch(value, ?)
+        value = json_set(value, ?, json(?))
     ",
               },
             },
@@ -57,7 +57,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
             "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
-            "label": "",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
@@ -85,7 +85,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       INSERT INTO 'UserInfo' (id, value)
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET
-        value = json_patch(value, ?)
+        value = json_set(json_set(value, ?, json(?)), ?, json(?))
     ",
                   },
                 },
@@ -142,7 +142,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "_name": "LiveStore:useClientDocument:UserInfo:u2",
           "attributes": {
             "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
-            "label": "",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
@@ -248,7 +248,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       INSERT INTO 'UserInfo' (id, value)
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET
-        value = json_patch(value, ?)
+        value = json_set(value, ?, json(?))
     ",
               },
             },
@@ -263,7 +263,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
             "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
-            "label": "",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
@@ -291,7 +291,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       INSERT INTO 'UserInfo' (id, value)
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET
-        value = json_patch(value, ?)
+        value = json_set(json_set(value, ?, json(?)), ?, json(?))
     ",
                   },
                 },

@@ -6,6 +6,7 @@ import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
+import { LiveStoreContext } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 
 export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
@@ -16,16 +17,16 @@ export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.T
 ]
 
 /**
- * Similar to `React.useState` but returns a tuple of `[row, setRow, id, query$]` for a given table where ...
+ * Similar to `React.useState` but returns a tuple of `[state, setState, id, query$]` for a given table where ...
  *
- *   - `row` is the current value of the row (fully decoded according to the table schema)
- *   - `setRow` is a function that can be used to update the row (values will be encoded according to the table schema)
- *   - `id` is the id of the row
- *   - `query$` is a `LiveQuery` that e.g. can be used to subscribe to changes to the row
+ *   - `state` is the current value of the row (fully decoded according to the table schema)
+ *   - `setState` is a function that can be used to update the document
+ *   - `id` is the id of the document
+ *   - `query$` is a `LiveQuery` that e.g. can be used to subscribe to changes to the document
  *
  * `useClientDocument` only works for client-document tables:
  *
- * ```ts
+ * ```tsx
  * const MyState = State.SQLite.clientDocument({
  *   name: 'MyState',
  *   schema: Schema.Struct({
@@ -33,6 +34,15 @@ export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.T
  *   }),
  *   default: { id: SessionIdSymbol, value: { showSidebar: true } },
  * })
+ *
+ * const MyComponent = () => {
+ *   const [{ showSidebar }, setState] = useClientDocument(MyState)
+ *   return (
+ *     <div onClick={() => setState({ showSidebar: !showSidebar })}>
+ *       {showSidebar ? 'Sidebar is open' : 'Sidebar is closed'}
+ *     </div>
+ *   )
+ * }
  * ```
  *
  * If the table has a default id, `useClientDocument` can be called without an `id` argument. Otherwise, the `id` argument is required.
@@ -48,7 +58,7 @@ export const useClientDocument: {
     >,
   >(
     table: TTableDef,
-    id?: State.SQLite.ClientDocumentTableDef.IdType<TTableDef> | SessionIdSymbol,
+    id?: State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol,
     options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   ): UseRowResult<TTableDef>
 
@@ -63,8 +73,8 @@ export const useClientDocument: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: State.SQLite.ClientDocumentTableDef.IdType<TTableDef> | string | SessionIdSymbol,
-    options?: RowQuery.GetOrCreateOptions<TTableDef>,
+    id: State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | string | SessionIdSymbol,
+    options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   ): UseRowResult<TTableDef>
 } = <TTableDef extends State.SQLite.ClientDocumentTableDef.Any>(
   table: TTableDef,
@@ -86,7 +96,11 @@ export const useClientDocument: {
 
   const tableName = table.sqliteDef.name
 
-  const store = storeArg?.store ?? shouldNeverHappen(`No store provided to useClientDocument`)
+  const store =
+    storeArg?.store ??
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useContext(LiveStoreContext)?.store ??
+    shouldNeverHappen(`No store provided to useClientDocument`)
 
   // console.debug('useClientDocument', tableName, id)
 

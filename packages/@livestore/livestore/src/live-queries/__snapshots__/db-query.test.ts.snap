@@ -32,7 +32,7 @@ exports[`otel > otel 3`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:mutations",
+      "_name": "LiveStore:commits",
       "children": [
         {
           "_name": "LiveStore:commit",
@@ -300,7 +300,7 @@ exports[`otel > with thunks 7`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:mutations",
+      "_name": "LiveStore:commits",
       "children": [
         {
           "_name": "LiveStore:commit",
@@ -402,7 +402,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:mutations",
+      "_name": "LiveStore:commits",
       "children": [
         {
           "_name": "LiveStore:commit",

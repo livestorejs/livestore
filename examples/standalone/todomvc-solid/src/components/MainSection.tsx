@@ -9,7 +9,7 @@ const sessionId = store?.()?.sessionId ?? 'default'
 
 const visibleTodos$ = queryDb(
   (get) => {
-    const { filter } = get(queryDb(tables.app.query.row(sessionId)))
+    const { filter } = get(queryDb(tables.app.get(sessionId)))
     return tables.todos.query.where({
       deleted: null,
       completed: filter === 'all' ? undefined : filter === 'completed',

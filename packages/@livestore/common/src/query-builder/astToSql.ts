@@ -79,47 +79,59 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       bindValues.push(encodedValues[col] as SqlValue)
     })
 
-    let query = `INSERT INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
+    let insertVerb = 'INSERT'
+    let conflictClause = '' // Store the ON CONFLICT clause separately
 
     // Handle ON CONFLICT clause
     if (ast.onConflict) {
-      query += ` ON CONFLICT (${ast.onConflict.target}) `
-      if (ast.onConflict.action._tag === 'ignore') {
-        query += 'DO NOTHING'
-      } else if (ast.onConflict.action._tag === 'replace') {
-        query += 'DO REPLACE'
+      // Handle REPLACE specifically as it changes the INSERT verb
+      if (ast.onConflict.action._tag === 'replace') {
+        insertVerb = 'INSERT OR REPLACE'
+        // For REPLACE, the conflict target is implied and no further clause is needed
       } else {
-        // Handle the update record case
-        const updateValues = ast.onConflict.action.update
-        const updateCols = Object.keys(updateValues)
-        if (updateCols.length === 0) {
-          throw new Error('No update columns provided for ON CONFLICT DO UPDATE')
-        }
-
-        const updates = updateCols
-          .map((col) => {
-            const value = updateValues[col]
-            // If the value is undefined, use excluded.col
-            return value === undefined ? `${col} = excluded.${col}` : `${col} = ?`
-          })
-          .join(', ')
-
-        // Add values for the parameters
-        updateCols.forEach((col) => {
-          const value = updateValues[col]
-          if (value !== undefined) {
-            const colDef = ast.tableDef.sqliteDef.columns[col]
-            if (colDef === undefined) {
-              throw new Error(`Column ${col} not found`)
-            }
-            const encodedValue = Schema.encodeSync(colDef.schema)(value)
-            bindValues.push(encodedValue as SqlValue)
+        // Build the ON CONFLICT clause for IGNORE or UPDATE
+        conflictClause = ` ON CONFLICT (${ast.onConflict.targets.join(', ')}) `
+        if (ast.onConflict.action._tag === 'ignore') {
+          conflictClause += 'DO NOTHING'
+        } else {
+          // Handle the update record case
+          const updateValues = ast.onConflict.action.update
+          const updateCols = Object.keys(updateValues)
+          if (updateCols.length === 0) {
+            throw new Error('No update columns provided for ON CONFLICT DO UPDATE')
           }
-        })
 
-        query += `DO UPDATE SET ${updates}`
+          const updates = updateCols
+            .map((col) => {
+              const value = updateValues[col]
+              // If the value is undefined, use excluded.col
+              return value === undefined ? `${col} = excluded.${col}` : `${col} = ?`
+            })
+            .join(', ')
+
+          // Add values for the parameters
+          updateCols.forEach((col) => {
+            const value = updateValues[col]
+            if (value !== undefined) {
+              const colDef = ast.tableDef.sqliteDef.columns[col]
+              if (colDef === undefined) {
+                throw new Error(`Column ${col} not found`)
+              }
+              const encodedValue = Schema.encodeSync(colDef.schema)(value)
+              bindValues.push(encodedValue as SqlValue)
+            }
+          })
+
+          conflictClause += `DO UPDATE SET ${updates}`
+        }
       }
     }
+
+    // Construct the main query part
+    let query = `${insertVerb} INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
+
+    // Append the conflict clause if it was generated (i.e., not for REPLACE)
+    query += conflictClause
 
     query += formatReturningClause(ast.returning)
     return { query, bindValues }

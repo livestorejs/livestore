@@ -48,7 +48,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         .select('kanbanorder')
         .where({ id: Number(targetId) })
         .first(),
-    ).kanbanorder
+    )
     const nearestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')
@@ -59,7 +59,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         })
         .orderBy('kanbanorder', before ? 'asc' : 'desc')
         .limit(1),
-    )[0]?.kanbanorder
+    )[0]
     return generateKeyBetween(
       before ? targetKanbanOrder : nearestKanbanOrder,
       before ? nearestKanbanOrder : targetKanbanOrder,
@@ -86,7 +86,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
       )
       const lowestKanbanOrder = store.query(
         tables.issue.select('kanbanorder').where({ status }).orderBy('kanbanorder', 'asc').limit(1),
-      )[0]?.kanbanorder
+      )[0]
       const kanbanorder = lowestKanbanOrder ? generateKeyBetween(null, lowestKanbanOrder) : 'a1'
       store.commit(events.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder, modified: new Date() }))
     },

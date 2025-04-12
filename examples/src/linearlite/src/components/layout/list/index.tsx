@@ -10,7 +10,7 @@ import React from 'react'
 const filteredIssueIds$ = queryDb(
   (get) =>
     tables.issue
-      .select('id', { pluck: true })
+      .select('id')
       .where({ ...filterStateToWhere(get(filterState$)), deleted: null })
       .orderBy(filterStateToOrderBy(get(filterState$))),
   { label: 'List.visibleIssueIds' },

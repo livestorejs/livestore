@@ -21,7 +21,7 @@ export const DescriptionInput = ({
   description = store.useQuery(
     queryDb(
       tables.description
-        .select('body', { pluck: true })
+        .select('body')
         .where({ id: issue?.id ?? 0 })
         .first(),
       { deps: [issue?.id] },

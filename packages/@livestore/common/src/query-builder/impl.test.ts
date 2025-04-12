@@ -90,6 +90,13 @@ describe('query builder', () => {
         }
       `)
 
+      expect(db.todos.select('id').asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [],
+          "query": "SELECT id FROM 'todos'",
+        }
+      `)
+
       expect(db.todos.select('id', 'text').asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [],
@@ -444,6 +451,36 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET text = ?, status = ?",
+        }
+      `)
+
+      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace').asSql())
+        .toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT OR REPLACE INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+        }
+      `)
+    })
+
+    it('should handle ON CONFLICT with multiple columns', () => {
+      expect(
+        db.todos
+          .insert({ id: '123', text: 'Buy milk', status: 'active' })
+          .onConflict(['id', 'status'], 'ignore')
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id, status) DO NOTHING",
         }
       `)
     })

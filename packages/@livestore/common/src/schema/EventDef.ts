@@ -1,3 +1,4 @@
+import type { SingleOrReadonlyArray } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
@@ -11,30 +12,6 @@ export type EventDefRecord = {
   'livestore.RawSql': RawSqlEvent
   [name: string]: EventDef.Any
 }
-
-export type EventDefSqlResult<TTo> =
-  | SingleOrReadonlyArray<string>
-  | ((
-      args: TTo,
-      context: { currentFacts: EventDefFacts; clientOnly: boolean },
-    ) => SingleOrReadonlyArray<
-      | string
-      | {
-          sql: string
-          /** Note args need to be manually encoded to `BindValues` when returning this argument */
-          bindValues: BindValues
-          writeTables?: ReadonlySet<string>
-        }
-      | QueryBuilder.Any
-    >)
-
-export type MaterializerResult = {
-  sql: string
-  bindValues: BindValues
-  writeTables?: ReadonlySet<string>
-}
-
-export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 
 export type EventDef<TName extends string, TType, TEncoded = TType, TDerived extends boolean = false> = {
   name: TName
@@ -103,7 +80,7 @@ export const defineFacts = <
   record: TRecord,
 ): TRecord => record
 
-export type DefineEventOptions<TTo, TDerived> = {
+export type DefineEventOptions<TTo, TDerived extends boolean = false> = {
   // TODO actually implement this
   // onError?: (error: any) => void
   /** Warning: This feature is not fully implemented yet */
@@ -180,15 +157,26 @@ export const clientOnly = <TName extends string, TType, TEncoded = TType>(
     schema: Schema.Schema<TType, TEncoded>
   } & Omit<DefineEventOptions<TType, false>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })
-export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyWithoutFn> = EventDefSqlResult<
-  TEventDef['schema']['Type']
->
+
+export type MaterializerResult =
+  | {
+      sql: string
+      bindValues: BindValues
+      writeTables?: ReadonlySet<string>
+    }
+  | QueryBuilder.Any
+  | string
+
+export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyWithoutFn> = (
+  event: TEventDef['schema']['Type'],
+  context: { currentFacts: EventDefFacts; clientOnly: boolean },
+) => SingleOrReadonlyArray<MaterializerResult>
 
 export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
   eventDef: TEventDef,
-  handler: Materializer<TEventDef>,
+  materializer: Materializer<TEventDef>,
 ): Materializer<TEventDef> => {
-  return handler
+  return materializer
 }
 
 export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
@@ -208,13 +196,15 @@ export const materializers = <TInputRecord extends Record<string, EventDef.AnyWi
   return handlers
 }
 
-export const rawSqlEvent = clientOnly({
+export const rawSqlEvent = defineEvent({
   name: 'livestore.RawSql',
   schema: Schema.Struct({
     sql: Schema.String,
     bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
     writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
   }),
+  clientOnly: true,
+  derived: true,
 })
 
 export const rawSqlMaterializer = defineMaterializer(rawSqlEvent, ({ sql, bindValues, writeTables }) => ({

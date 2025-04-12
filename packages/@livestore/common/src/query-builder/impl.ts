@@ -19,11 +19,12 @@ export const makeQueryBuilder = <TResult, TTableDef extends State.SQLite.TableDe
       // eslint-disable-next-line prefer-rest-params
       const params = [...arguments]
 
-      if (params.length === 2 && typeof params[0] === 'string' && typeof params[1] === 'object') {
-        const [col, options] = params as any as [string, { pluck: boolean }]
+      // Pluck if there's only one column selected
+      if (params.length === 1) {
+        const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
-          resultSchemaSingle: options.pluck ? ast.resultSchemaSingle.pipe(Schema.pluck(col)) : ast.resultSchemaSingle,
+          resultSchemaSingle: ast.resultSchemaSingle.pipe(Schema.pluck(col)),
           select: { columns: [col] },
         })
       }
@@ -187,15 +188,21 @@ export const makeQueryBuilder = <TResult, TTableDef extends State.SQLite.TableDe
         resultSchema: Schema.Void,
       }) as any
     },
-    onConflict: (target: string, action: 'ignore' | 'replace' | 'update', updateValues?: Record<string, unknown>) => {
+    onConflict: (
+      targetOrTargets: string | string[],
+      action: 'ignore' | 'replace' | 'update',
+      updateValues?: Record<string, unknown>,
+    ) => {
+      const targets = Array.isArray(targetOrTargets) ? targetOrTargets : [targetOrTargets]
+
       assertInsertQueryBuilderAst(ast)
 
       const onConflict = Match.value(action).pipe(
-        Match.when('ignore', () => ({ target, action: { _tag: 'ignore' } }) satisfies QueryBuilderAst.OnConflict),
-        Match.when('replace', () => ({ target, action: { _tag: 'replace' } }) satisfies QueryBuilderAst.OnConflict),
+        Match.when('ignore', () => ({ targets, action: { _tag: 'ignore' } }) satisfies QueryBuilderAst.OnConflict),
+        Match.when('replace', () => ({ targets, action: { _tag: 'replace' } }) satisfies QueryBuilderAst.OnConflict),
         Match.when(
           'update',
-          () => ({ target, action: { _tag: 'update', update: updateValues! } }) satisfies QueryBuilderAst.OnConflict,
+          () => ({ targets, action: { _tag: 'update', update: updateValues! } }) satisfies QueryBuilderAst.OnConflict,
         ),
         Match.exhaustive,
       )

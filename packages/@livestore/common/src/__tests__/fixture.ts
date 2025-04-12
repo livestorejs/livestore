@@ -1,5 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
+import { SessionIdSymbol } from '../adapter-types.js'
 import { makeSchema, State } from '../schema/mod.js'
 
 export const UiState = State.SQLite.clientDocument({
@@ -22,6 +23,15 @@ export const appConfig = State.SQLite.clientDocument({
   schema: Config,
   default: {
     id: 'static',
+    value: { fontSize: 13, theme: 'light' },
+  },
+})
+
+export const appConfig2 = State.SQLite.clientDocument({
+  name: 'AppConfig',
+  schema: Config,
+  default: {
+    id: SessionIdSymbol,
     value: { fontSize: 13, theme: 'light' },
   },
 })
