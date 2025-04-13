@@ -1,11 +1,11 @@
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
 import * as EventId from '../../schema/EventId.js'
-import type * as MutationEvent from '../../schema/MutationEvent.js'
-import type { MutationDef, MutationEventFactsSnapshot } from '../../schema/mutations.js'
+import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
 import {
   applyFactGroups,
   factsIntersect,
   type FactValidationResult,
-  getFactsGroupForMutationArgs,
+  getFactsGroupForEventArgs,
   validateFacts,
 } from './facts.js'
 import type { HistoryDagNode } from './history-dag-common.js'
@@ -19,13 +19,13 @@ export type RebaseInput = {
   newRemoteEvents: RebaseEventWithConflict[]
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
-    rebasedLocalEvents: MutationEvent.PartialAnyDecoded[]
-    mutationDefs: Record<string, MutationDef.Any>
+    rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+    eventDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 
 export type RebaseOutput = {
-  rebasedLocalEvents: MutationEvent.PartialAnyDecoded[]
+  rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
 }
 
 export type RebaseFn = (input: RebaseInput) => RebaseOutput
@@ -49,10 +49,10 @@ export const rebaseEvents = ({
   pendingLocalEvents: HistoryDagNode[]
   newRemoteEvents: HistoryDagNode[]
   rebaseFn: RebaseFn
-  currentFactsSnapshot: MutationEventFactsSnapshot
+  currentFactsSnapshot: EventDefFactsSnapshot
   clientId: string
   sessionId: string
-}): ReadonlyArray<MutationEvent.AnyDecoded> => {
+}): ReadonlyArray<LiveStoreEvent.AnyDecoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
     newRemoteEvents.map((event) => event.factsGroup),
@@ -76,11 +76,11 @@ export const rebaseEvents = ({
         factsIntersect(pending.factsGroup.modifySet, remote.factsGroup.modifySet),
       ),
     })),
-    validate: ({ rebasedLocalEvents, mutationDefs }) =>
+    validate: ({ rebasedLocalEvents, eventDefs }) =>
       validateFacts({
         factGroups: rebasedLocalEvents.map((event) =>
-          getFactsGroupForMutationArgs({
-            factsCallback: mutationDefs[event.mutation]!.options.facts,
+          getFactsGroupForEventArgs({
+            factsCallback: eventDefs[event.name]!.options.facts,
             args: event.args,
             currentFacts: new Map(),
           }),
@@ -95,10 +95,10 @@ export const rebaseEvents = ({
       ({
         id: EventId.make({ global: headGlobalId + index + 1, client: EventId.clientDefault }),
         parentId: EventId.make({ global: headGlobalId + index, client: EventId.clientDefault }),
-        mutation: event.mutation,
+        name: event.name,
         args: event.args,
         clientId,
         sessionId,
-      }) satisfies MutationEvent.AnyDecoded,
+      }) satisfies LiveStoreEvent.AnyDecoded,
   )
 }

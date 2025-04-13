@@ -1,6 +1,6 @@
 import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
 import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import {
   Chunk,
@@ -27,7 +27,7 @@ Example data:
             "args": "{\"id\": \"127c3df4-0855-4587-ae75-14463f4a3aa0\", \"text\": \"1\"}",
             "clientId": "S_YOa",
             "id": "0",
-            "mutation": "todoCreated",
+            "name": "todoCreated",
             "parentId": "-1"
         },
         "key": "\"public\".\"events_9069baf0_b3e6_42f7_980f_188416eab3fx3\"/\"0\"",
@@ -58,15 +58,15 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 
 */
 
-const MutationEventGlobalFromStringRecord = Schema.Struct({
+const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   id: Schema.NumberFromString,
   parentId: Schema.NumberFromString,
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
 }).pipe(
-  Schema.transform(MutationEvent.AnyEncodedGlobal, {
+  Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
     decode: (_) => _,
     encode: (_) => _,
   }),
@@ -75,7 +75,7 @@ const MutationEventGlobalFromStringRecord = Schema.Struct({
 const ResponseItem = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(MutationEventGlobalFromStringRecord),
+  value: Schema.optional(LiveStoreEventGlobalFromStringRecord),
   headers: Schema.Union(
     Schema.Struct({
       operation: Schema.Union(Schema.Literal('insert'), Schema.Literal('update'), Schema.Literal('delete')),
@@ -209,7 +209,7 @@ export const makeSyncBackend =
           readonly [
             Chunk.Chunk<{
               metadata: Option.Option<SyncMetadata>
-              mutationEventEncoded: MutationEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
             }>,
             Option.Option<SyncMetadata>,
           ]
@@ -266,7 +266,7 @@ export const makeSyncBackend =
             .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
             .map((item) => ({
               metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
-              mutationEventEncoded: item.value! as MutationEvent.AnyEncodedGlobal,
+              eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
           // // TODO implement proper `remaining` handling
@@ -333,13 +333,13 @@ export const makeSyncBackend =
     })
 
 /**
- * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
+ * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 4
+export const PERSISTENCE_FORMAT_VERSION = 5
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')
-  return `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
+  return `eventlog_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
 }

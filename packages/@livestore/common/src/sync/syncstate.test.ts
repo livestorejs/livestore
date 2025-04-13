@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 
 import * as EventId from '../schema/EventId.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import * as SyncState from './syncstate.js'
 
-class TestEvent extends MutationEvent.EncodedWithMeta {
+class TestEvent extends LiveStoreEvent.EncodedWithMeta {
   constructor(
     id: EventId.EventId | typeof EventId.EventId.Encoded,
     parentId: EventId.EventId,
@@ -15,7 +15,7 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
     super({
       id: EventId.make(id),
       parentId: EventId.make(parentId),
-      mutation: 'a',
+      name: 'a',
       args: payload,
       clientId: 'static-local-id',
       sessionId: 'static-session-id',
@@ -39,9 +39,9 @@ const e1_3 = new TestEvent({ global: 1, client: 3 }, e1_2.id, 'a', true)
 const e2_0 = new TestEvent({ global: 2, client: 0 }, e1_0.id, 'a', false)
 const e2_1 = new TestEvent({ global: 2, client: 1 }, e2_0.id, 'a', true)
 
-const isEqualEvent = MutationEvent.isEqualEncoded
+const isEqualEvent = LiveStoreEvent.isEqualEncoded
 
-const isClientEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
+const isClientEvent = (event: LiveStoreEvent.EncodedWithMeta) => (event as TestEvent).isLocal
 
 describe('syncstate', () => {
   describe('merge', () => {
@@ -460,14 +460,14 @@ describe('syncstate', () => {
 })
 
 const expectEventArraysEqual = (
-  actual: ReadonlyArray<MutationEvent.EncodedWithMeta>,
-  expected: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+  actual: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
+  expected: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {
     expect(event.id).toStrictEqual(expected[i]!.id)
     expect(event.parentId).toStrictEqual(expected[i]!.parentId)
-    expect(event.mutation).toStrictEqual(expected[i]!.mutation)
+    expect(event.name).toStrictEqual(expected[i]!.name)
     expect(event.args).toStrictEqual(expected[i]!.args)
   })
 }

@@ -24,10 +24,3 @@
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
      "@tanstack/react-start": "1.114.28",
-@@ -36,4 +36,4 @@
-     "dev": "vinxi dev",
-     "preview": "vinxi start"
-   }
--}
-+}
-\ No newline at end of file

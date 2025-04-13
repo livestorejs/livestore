@@ -13,7 +13,7 @@ import * as React from 'react'
 import { Pressable, TextInput, useColorScheme, View } from 'react-native'
 
 import { Colors } from '@/constants/Colors.ts'
-import { issuesMutations } from '@/livestore/schema.ts'
+import { events } from '@/livestore/schema.ts'
 
 import { Modal } from './Modal.tsx'
 import { ThemedText } from './ThemedText.tsx'
@@ -30,7 +30,7 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
   const [visible, setVisible] = React.useState(false)
 
   const handleDelete = () => {
-    store.commit(issuesMutations.deleteIssue({ id: issueId }))
+    store.commit(events.issueDeleted({ id: issueId, deletedAt: new Date() }))
     setVisible(false)
   }
 

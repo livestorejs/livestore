@@ -44,6 +44,93 @@
 - Breaking: Renamed `store.mutate` to `store.commit`
   - Reason: Make it more clear that committing mutations is also syncing them across other clients
 
+- Breaking: Adjusted schema API
+
+  - The new API aims to separate the schema into state and events
+  - Mutations are now split up into event definitions and materializer functions
+
+  Before:
+
+  ```ts
+  // mutations.ts
+  import { Schema, defineMutation } from '@livestore/livestore'
+
+  // Mutations are now split up into event definitions and materializer functions
+  export const todoCreated = defineMutation('todoCreated',
+    Schema.Struct({
+      id: DbSchema.text(),
+      text: DbSchema.text(),
+    }),
+    sql`INSERT INTO todos (id, text) VALUES (${id}, ${text})`,
+  )
+
+  // schema.ts
+  import { DbSchema, makeSchema } from '@livestore/livestore'
+  import * as mutations from './mutations.js'
+
+  const todos = DbSchema.table('todos', {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text(),
+  })
+
+  const uiState = DbSchema.table('uiState', {
+    id: DbSchema.text({ primaryKey: true }),
+    newTodoText: DbSchema.text(),
+    filter: DbSchema.text({ }),
+  }, {
+    derivedMutations: { clientOnly: true }
+  })
+
+  const tables = { todos, uiState }
+  const schema = makeSchema({ tables, mutations })
+  ```
+
+  After:
+
+  ```ts
+  // events.ts
+  import { Events, Schema } from '@livestore/livestore'
+
+  export const todoCreated = Events.synced({
+    name: 'todoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, }),
+  })
+
+  // schema.ts
+  import { State, Schema, makeSchema } from '@livestore/livestore'
+  import * as events from './events.js'
+
+  const todos = State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text(),
+    }
+  })
+
+  // tables with `deriveMutations` are now called `clientDocuments`
+  const uiState = State.SQLite.clientDocument({
+    name: 'uiState',
+    schema: Schema.Struct({
+      newTodoText: Schema.String,
+      filter: Schema.String,
+    }),
+  })
+
+  const tables = { todos, uiState }
+
+  // Materalizers let you materialize events into the state
+  const materializers = State.SQLite.materializers(events, {
+    'v1.TodoCreated': ({ id, text }) => todos.insert({ id, text }),
+  })
+
+  // Currently SQLite is the only supported state implementation but there might be more in the future (e.g. pure in-memory JS, DuckDB, ...)
+  const state = State.SQLite.makeState({ tables, materializers })
+
+  // Schema is now more clearly separated into state and events
+  const schema = makeSchema({ state, events })
+  ```
+
 - Breaking `@livestore/react`: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
   // before
@@ -57,9 +144,9 @@
 - Breaking `@livestore/adapter-expo`: Renamed `makeAdapter` to `makePersistedAdapter`
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
 - Breaking: Renamed `makeBackend` to `backend` in sync options.
-- Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
+- Breaking `@livestore/react`: `useClientDocument` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
-- Breaking: Removed `store.__execute` from `Store`. Please use `store.commit(rawSqlMutation({ sql }))` instead.
+- Breaking: Removed `store.__execute` from `Store`.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
 - Breaking: Removed `persisted` option from `store.commit`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
@@ -125,10 +212,10 @@
 
 ### Still todo:
 
-- Fix linting
 - Separate mutation handler from mutation definition
-- Get rid of `excludeFromMutationLog` (etc)
+- Get rid of `excludeFromEventlog` (etc)
 - Syncing
+  - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
     - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
@@ -164,19 +251,22 @@
 - Release
   - Write blog post
   - Prepare X/Bluesky thread
-- After release:
-  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
-  - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-  - Examples:
-    - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-  - Docs
-    - Notes on deployment (when to deploy what)
-    - Embrace term "containers"
-      - Unit of sharing/collaboration/auth
-      - What if I want got my initial container design wrong and I want to change it?
-        - Comparables: document databases, kafka streams, 
+
+### After release:
+- Get rid of `sql-queries` module
+- Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
+- Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+- chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+- Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- Examples:
+  - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+- Docs
+  - Notes on deployment (when to deploy what)
+  - Embrace term "containers"
+    - Unit of sharing/collaboration/auth
+    - What if I want got my initial container design wrong and I want to change it?
+      - Comparables: document databases, kafka streams, 
 
 
 ## 0.2.0
@@ -196,7 +286,7 @@
   table.query.where({ name: 'Alice' })
   table.query.orderBy('name', 'desc').offset(10).limit(10)
   table.query.count().where('name', 'like', '%Ali%')
-  table.query.row('123', { insertValues: { name: 'Bob' } })
+  table.get('123', { insertValues: { name: 'Bob' } })
   ```
 
 - Breaking: Renamed `querySQL` to `queryDb` and adjusted the signature to allow both the new query builder API and raw SQL queries:
@@ -216,11 +306,11 @@
   const query$ = queryDb(table.query.select('name').where({ name: 'Alice' }))
   ```
 
-- Breaking: Replaced `rowQuery()` with `table.query.row()` (as part of the new query builder API)
+- Breaking: Replaced `rowQuery()` with `table.get()` (as part of the new query builder API)
 
 ### React integration
 
-- Fix: `useRow` now type-safe for non-nullable/non-default columns. Renamed `options.defaultValues` to `options.insertValues`
+- Fix: `useClientDocument` now type-safe for non-nullable/non-default columns. Renamed `options.defaultValues` to `options.insertValues`
 
 ### Misc
 

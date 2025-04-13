@@ -2,14 +2,14 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../adapter-types.js'
-import type { DbSchema } from '../schema/mod.js'
+import type { State } from '../schema/mod.js'
 import type { SqlValue } from '../util.js'
 import type { QueryBuilderAst } from './api.js'
 
 // Helper functions for SQL generation
 const formatWhereClause = (
   whereConditions: ReadonlyArray<QueryBuilderAst.Where>,
-  tableDef: DbSchema.TableDefBase,
+  tableDef: State.SQLite.TableDefBase,
   bindValues: SqlValue[],
 ): string => {
   if (whereConditions.length === 0) return ''
@@ -72,51 +72,66 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   if (ast._tag === 'InsertQuery') {
     const columns = Object.keys(ast.values)
     const placeholders = columns.map(() => '?').join(', ')
-    const values = Object.values(Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)) as SqlValue[]
+    const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)
 
-    bindValues.push(...values)
+    // Ensure bind values are added in the same order as columns
+    columns.forEach((col) => {
+      bindValues.push(encodedValues[col] as SqlValue)
+    })
 
-    let query = `INSERT INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
+    let insertVerb = 'INSERT'
+    let conflictClause = '' // Store the ON CONFLICT clause separately
 
     // Handle ON CONFLICT clause
     if (ast.onConflict) {
-      query += ` ON CONFLICT (${ast.onConflict.target}) `
-      if (ast.onConflict.action._tag === 'ignore') {
-        query += 'DO NOTHING'
-      } else if (ast.onConflict.action._tag === 'replace') {
-        query += 'DO REPLACE'
+      // Handle REPLACE specifically as it changes the INSERT verb
+      if (ast.onConflict.action._tag === 'replace') {
+        insertVerb = 'INSERT OR REPLACE'
+        // For REPLACE, the conflict target is implied and no further clause is needed
       } else {
-        // Handle the update record case
-        const updateValues = ast.onConflict.action.update
-        const updateCols = Object.keys(updateValues)
-        if (updateCols.length === 0) {
-          throw new Error('No update columns provided for ON CONFLICT DO UPDATE')
-        }
-
-        const updates = updateCols
-          .map((col) => {
-            const value = updateValues[col]
-            // If the value is undefined, use excluded.col
-            return value === undefined ? `${col} = excluded.${col}` : `${col} = ?`
-          })
-          .join(', ')
-
-        // Add values for the parameters
-        updateCols.forEach((col) => {
-          const value = updateValues[col]
-          if (value !== undefined) {
-            const colDef = ast.tableDef.sqliteDef.columns[col]
-            if (colDef === undefined) {
-              throw new Error(`Column ${col} not found`)
-            }
-            const encodedValue = Schema.encodeSync(colDef.schema)(value)
-            bindValues.push(encodedValue as SqlValue)
+        // Build the ON CONFLICT clause for IGNORE or UPDATE
+        conflictClause = ` ON CONFLICT (${ast.onConflict.targets.join(', ')}) `
+        if (ast.onConflict.action._tag === 'ignore') {
+          conflictClause += 'DO NOTHING'
+        } else {
+          // Handle the update record case
+          const updateValues = ast.onConflict.action.update
+          const updateCols = Object.keys(updateValues)
+          if (updateCols.length === 0) {
+            throw new Error('No update columns provided for ON CONFLICT DO UPDATE')
           }
-        })
 
-        query += `DO UPDATE SET ${updates}`
+          const updates = updateCols
+            .map((col) => {
+              const value = updateValues[col]
+              // If the value is undefined, use excluded.col
+              return value === undefined ? `${col} = excluded.${col}` : `${col} = ?`
+            })
+            .join(', ')
+
+          // Add values for the parameters
+          updateCols.forEach((col) => {
+            const value = updateValues[col]
+            if (value !== undefined) {
+              const colDef = ast.tableDef.sqliteDef.columns[col]
+              if (colDef === undefined) {
+                throw new Error(`Column ${col} not found`)
+              }
+              const encodedValue = Schema.encodeSync(colDef.schema)(value)
+              bindValues.push(encodedValue as SqlValue)
+            }
+          })
+
+          conflictClause += `DO UPDATE SET ${updates}`
+        }
       }
     }
+
+    // Construct the main query part
+    let query = `${insertVerb} INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
+
+    // Append the conflict clause if it was generated (i.e., not for REPLACE)
+    query += conflictClause
 
     query += formatReturningClause(ast.returning)
     return { query, bindValues }
@@ -125,8 +140,21 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   // UPDATE query
   if (ast._tag === 'UpdateQuery') {
     const setColumns = Object.keys(ast.values)
-    const setValues = Object.values(Schema.encodeSync(Schema.partial(ast.tableDef.schema))(ast.values))
-    bindValues.push(...setValues)
+
+    if (setColumns.length === 0) {
+      console.warn(
+        `UPDATE query requires at least one column to set (for table ${ast.tableDef.sqliteDef.name}). Running no-op query instead to skip this update query.`,
+      )
+      return { query: 'SELECT 1', bindValues: [] }
+      // return shouldNeverHappen('UPDATE query requires at least one column to set.')
+    }
+
+    const encodedValues = Schema.encodeSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
+
+    // Ensure bind values are added in the same order as columns
+    setColumns.forEach((col) => {
+      bindValues.push(encodedValues[col] as SqlValue)
+    })
 
     let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns.map((col) => `${col} = ?`).join(', ')}`
 
@@ -189,10 +217,11 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       : ''
 
   const limitStmt = ast.limit._tag === 'Some' ? `LIMIT ?` : ''
-  if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
-
   const offsetStmt = ast.offset._tag === 'Some' ? `OFFSET ?` : ''
+
+  // Push offset and limit values in the correct order matching the query string
   if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
+  if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
 
   const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
     .map((clause) => clause.trim())

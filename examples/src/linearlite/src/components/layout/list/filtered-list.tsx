@@ -1,15 +1,11 @@
 import { VirtualRow } from '@/components/layout/list/virtual-row'
-import { useDebounce } from '@/hooks/useDebounce'
-import { useScrollState } from '@/lib/livestore/queries'
+import { useDebouncedScrollState } from '@/lib/livestore/queries'
 import React from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
-import { FixedSizeList, ListOnScrollProps } from 'react-window'
+import { FixedSizeList } from 'react-window'
 
 export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly number[] }) => {
-  const [scrollState, setScrollState] = useScrollState()
-  const onScroll = useDebounce((props: ListOnScrollProps) => {
-    setScrollState((scrollState) => ({ ...scrollState, list: props.scrollOffset }))
-  }, 100)
+  const [scrollState, setScrollState] = useDebouncedScrollState('filtered-list')
 
   return (
     <div className="grow">
@@ -22,7 +18,7 @@ export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly 
             itemData={filteredIssueIds}
             overscanCount={10}
             width={width}
-            onScroll={onScroll}
+            onScroll={(e) => setScrollState({ list: e.scrollOffset })}
             initialScrollOffset={scrollState.list ?? 0}
           >
             {VirtualRow}

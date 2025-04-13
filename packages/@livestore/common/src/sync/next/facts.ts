@@ -1,20 +1,20 @@
 import { notYetImplemented } from '@livestore/utils'
 
-import type * as EventId from '../../schema/EventId.js'
 import type {
+  EventDefFactInput,
+  EventDefFacts,
+  EventDefFactsGroup,
+  EventDefFactsSnapshot,
   FactsCallback,
-  MutationEventFactInput,
-  MutationEventFacts,
-  MutationEventFactsGroup,
-  MutationEventFactsSnapshot,
-} from '../../schema/mutations.js'
+} from '../../schema/EventDef.js'
+import type * as EventId from '../../schema/EventId.js'
 import { graphologyDag } from './graphology_.js'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
 
 export const factsSnapshotForEvents = (
   events: HistoryDagNode[],
   endEventId: EventId.EventId,
-): MutationEventFactsSnapshot => {
+): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
   for (const event of events) {
@@ -31,7 +31,7 @@ export const factsSnapshotForEvents = (
 export const factsSnapshotForDag = (
   dag: HistoryDag,
   endEventId: EventId.EventId | undefined,
-): MutationEventFactsSnapshot => {
+): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
   const orderedEventIdStrs = graphologyDag.topologicalSort(dag)
@@ -56,20 +56,20 @@ export type FactValidationResult =
       success: false
       /** Index of the item that caused the validation to fail */
       index: number
-      requiredFacts: MutationEventFacts
+      requiredFacts: EventDefFacts
       mismatch: {
-        existing: MutationEventFacts
-        required: MutationEventFacts
+        existing: EventDefFacts
+        required: EventDefFacts
       }
-      currentSnapshot: MutationEventFacts
+      currentSnapshot: EventDefFacts
     }
 
 export const validateFacts = ({
   factGroups,
   initialSnapshot,
 }: {
-  factGroups: MutationEventFactsGroup[]
-  initialSnapshot: MutationEventFactsSnapshot
+  factGroups: EventDefFactsGroup[]
+  initialSnapshot: EventDefFactsSnapshot
 }): FactValidationResult => {
   const currentSnapshot = new Map(initialSnapshot)
 
@@ -102,13 +102,13 @@ export const validateFacts = ({
   }
 }
 
-export const applyFactGroups = (factGroups: MutationEventFactsGroup[], snapshot: MutationEventFactsSnapshot) => {
+export const applyFactGroups = (factGroups: EventDefFactsGroup[], snapshot: EventDefFactsSnapshot) => {
   for (const factGroup of factGroups) {
     applyFactGroup(factGroup, snapshot)
   }
 }
 
-export const applyFactGroup = (factGroup: MutationEventFactsGroup, snapshot: MutationEventFactsSnapshot) => {
+export const applyFactGroup = (factGroup: EventDefFactsGroup, snapshot: EventDefFactsSnapshot) => {
   for (const [key, value] of factGroup.modifySet) {
     snapshot.set(key, value)
   }
@@ -119,7 +119,7 @@ export const applyFactGroup = (factGroup: MutationEventFactsGroup, snapshot: Mut
 }
 
 /** Check if setA is a subset of setB */
-const isSubSetMapByValue = (setA: MutationEventFacts, setB: MutationEventFacts) => {
+const isSubSetMapByValue = (setA: EventDefFacts, setB: EventDefFacts) => {
   for (const [key, value] of setA) {
     if (setB.get(key) !== value) {
       return false
@@ -129,7 +129,7 @@ const isSubSetMapByValue = (setA: MutationEventFacts, setB: MutationEventFacts) 
 }
 
 /** Check if setA is a subset of setB */
-const isSubSetMapByKey = (setA: MutationEventFacts, setB: MutationEventFacts) => {
+const isSubSetMapByKey = (setA: EventDefFacts, setB: EventDefFacts) => {
   for (const [key, _value] of setA) {
     if (!setB.has(key)) {
       return false
@@ -139,17 +139,16 @@ const isSubSetMapByKey = (setA: MutationEventFacts, setB: MutationEventFacts) =>
 }
 
 /** Check if groupA depends on groupB */
-export const dependsOn = (groupA: MutationEventFactsGroup, groupB: MutationEventFactsGroup): boolean =>
+export const dependsOn = (groupA: EventDefFactsGroup, groupB: EventDefFactsGroup): boolean =>
   factsIntersect(groupA.depRead, groupB.modifySet) ||
   factsIntersect(groupA.depRead, groupB.modifyUnset) ||
   factsIntersect(groupA.depRequire, groupB.modifySet) ||
   factsIntersect(groupA.depRequire, groupB.modifyUnset)
 
-export const replacesFacts = (groupA: MutationEventFactsGroup, groupB: MutationEventFactsGroup): boolean => {
-  const replaces = (a: MutationEventFacts, b: MutationEventFacts) => a.size > 0 && b.size > 0 && isSameMapByKey(a, b)
+export const replacesFacts = (groupA: EventDefFactsGroup, groupB: EventDefFactsGroup): boolean => {
+  const replaces = (a: EventDefFacts, b: EventDefFacts) => a.size > 0 && b.size > 0 && isSameMapByKey(a, b)
 
-  const noFactsOrSame = (a: MutationEventFacts, b: MutationEventFacts) =>
-    a.size === 0 || b.size === 0 || isSameMapByKey(a, b)
+  const noFactsOrSame = (a: EventDefFacts, b: EventDefFacts) => a.size === 0 || b.size === 0 || isSameMapByKey(a, b)
 
   return (
     (replaces(groupA.modifySet, groupB.modifySet) && noFactsOrSame(groupA.modifyUnset, groupB.modifyUnset)) ||
@@ -159,16 +158,16 @@ export const replacesFacts = (groupA: MutationEventFactsGroup, groupB: MutationE
   )
 }
 
-export const isSameMapByKey = (set: MutationEventFacts, otherSet: MutationEventFacts) =>
+export const isSameMapByKey = (set: EventDefFacts, otherSet: EventDefFacts) =>
   set.size === otherSet.size && isSubSetMapByKey(set, otherSet)
 
-export const factsToString = (facts: MutationEventFacts) => {
+export const factsToString = (facts: EventDefFacts) => {
   return Array.from(facts)
     .map(([key, value]) => (value === EMPTY_FACT_VALUE ? key : `${key}=${value}`))
     .join(', ')
 }
 
-export const factsIntersect = (setA: MutationEventFacts, setB: MutationEventFacts): boolean => {
+export const factsIntersect = (setA: EventDefFacts, setB: EventDefFacts): boolean => {
   for (const [key, _value] of setA) {
     if (setB.has(key)) {
       return true
@@ -177,16 +176,16 @@ export const factsIntersect = (setA: MutationEventFacts, setB: MutationEventFact
   return false
 }
 
-export const getFactsGroupForMutationArgs = ({
+export const getFactsGroupForEventArgs = ({
   factsCallback,
   args,
   currentFacts,
 }: {
   factsCallback: FactsCallback<any> | undefined
   args: any
-  currentFacts: MutationEventFactsSnapshot
-}): MutationEventFactsGroup => {
-  const depRead: MutationEventFactsSnapshot = new Map<string, any>()
+  currentFacts: EventDefFactsSnapshot
+}): EventDefFactsGroup => {
+  const depRead: EventDefFactsSnapshot = new Map<string, any>()
   const factsSnapshotProxy = new Proxy(currentFacts, {
     get: (target, prop) => {
       if (prop === 'has') {
@@ -201,12 +200,12 @@ export const getFactsGroupForMutationArgs = ({
         }
       }
 
-      notYetImplemented(`getFactsGroupForMutationArgs: ${prop.toString()} is not yet implemented`)
+      notYetImplemented(`getFactsGroupForEventArgs: ${prop.toString()} is not yet implemented`)
     },
   })
 
   const factsRes = factsCallback?.(args, factsSnapshotProxy)
-  const iterableToMap = (iterable: Iterable<MutationEventFactInput>) => {
+  const iterableToMap = (iterable: Iterable<EventDefFactInput>) => {
     const map = new Map()
     for (const item of iterable) {
       if (typeof item === 'string') {

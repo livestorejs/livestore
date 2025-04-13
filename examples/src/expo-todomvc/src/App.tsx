@@ -10,7 +10,7 @@ import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
-import { mutations, schema, tables } from './livestore/schema.ts'
+import { events, schema, tables } from './livestore/schema.js'
 
 const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
@@ -37,8 +37,8 @@ export const App = () => {
           )
         }}
         boot={(store) => {
-          if (store.query(tables.todos.query.count()) === 0) {
-            store.commit(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
+          if (store.query(tables.todos.count()) === 0) {
+            store.commit(events.todoCreated({ id: nanoid(), text: 'Make coffee' }))
           }
         }}
         adapter={adapter}

@@ -7,7 +7,7 @@ export type Issue = {
   creator: string
   priority: Priority
   status: Status
-  created: number
-  modified: number
+  created: Date
+  modified: Date
   kanbanorder: string
 }

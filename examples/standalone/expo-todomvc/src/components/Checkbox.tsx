@@ -1,9 +1,9 @@
 import { Entypo } from '@expo/vector-icons'
 import { useStore } from '@livestore/react'
-import * as React from 'react'
+import React from 'react'
 import { StyleSheet, TouchableOpacity } from 'react-native'
 
-import { mutations } from '../livestore/schema.ts'
+import { events } from '../livestore/schema.js'
 
 export const Checkbox: React.FC<{
   id: string
@@ -11,8 +11,7 @@ export const Checkbox: React.FC<{
 }> = ({ id, isCompleted }) => {
   const { store } = useStore()
 
-  const handleCheckbox = () =>
-    store.commit(isCompleted ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id }))
+  const handleCheckbox = () => store.commit(isCompleted ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
 
   return (
     <TouchableOpacity onPress={handleCheckbox} style={isCompleted ? styles.checked : styles.unChecked}>
@@ -57,14 +56,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 5,
-  },
-  isToday: {
-    width: 10,
-    height: 10,
-    marginHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#262626',
-    marginRight: 13,
-    marginLeft: 15,
   },
 })

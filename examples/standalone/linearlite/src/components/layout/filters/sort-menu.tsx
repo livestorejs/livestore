@@ -14,13 +14,12 @@ export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
     const currentSorting = filterState.orderBy
     const currentDirection = filterState.orderDirection
     if (currentSorting === sortingOption)
-      setFilterState((state) => ({ ...state, orderDirection: currentDirection === 'asc' ? 'desc' : 'asc' }))
+      setFilterState({ orderDirection: currentDirection === 'asc' ? 'desc' : 'asc' })
     else
-      setFilterState((state) => ({
-        ...state,
+      setFilterState({
         orderBy: sortingOption,
         orderDirection: sortingOptions[sortingOption as SortingOption].defaultDirection as SortingDirection,
-      }))
+      })
   }
 
   const { keyboardProps } = useKeyboard({

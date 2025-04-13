@@ -1,16 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons'
 import { useStore } from '@livestore/react'
-import * as React from 'react'
+import React from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
+import { events } from '../livestore/schema.js'
 import type { Todo as ITodo } from '../livestore/schema.ts'
-import { mutations } from '../livestore/schema.ts'
 import { Checkbox } from './Checkbox.tsx'
 
 export const Todo: React.FC<ITodo> = ({ id, text, completed }) => {
   const { store } = useStore()
 
-  const handleDeleteTodo = () => store.commit(mutations.todoDeleted({ id, deleted: new Date() }))
+  const handleDeleteTodo = () => store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
 
   return (
     <View style={styles.container}>

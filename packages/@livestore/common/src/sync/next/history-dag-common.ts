@@ -1,5 +1,5 @@
+import type { EventDefFactsGroup } from '../../schema/EventDef.js'
 import * as EventId from '../../schema/EventId.js'
-import type { MutationEventFactsGroup } from '../../schema/mutations.js'
 import { graphology } from './graphology_.js'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
@@ -25,10 +25,10 @@ export const rootParentId = EventId.make({ global: EventId.ROOT.global - 1, clie
 export type HistoryDagNode = {
   id: EventId.EventId
   parentId: EventId.EventId
-  mutation: string
+  name: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
-  factsGroup: MutationEventFactsGroup
+  factsGroup: EventDefFactsGroup
   meta?: any
   clientId: string
   sessionId: string | undefined
@@ -38,7 +38,7 @@ export const rootEventNode: HistoryDagNode = {
   id: EventId.ROOT,
   parentId: rootParentId,
   // unused below
-  mutation: '__Root__',
+  name: '__Root__',
   args: {},
   factsGroup: { modifySet: new Map(), modifyUnset: new Map(), depRequire: new Map(), depRead: new Map() },
   clientId: 'root',

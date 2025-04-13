@@ -14,7 +14,7 @@ import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
 import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
 import ThemeProvider from '@/context/ThemeProvider.tsx'
 
-import { schema, tables, userMutations } from '../livestore/schema.ts'
+import { events, schema, tables } from '../livestore/schema.ts'
 
 // export const unstable_settings = {
 //   // Ensure any route can link back to `/`
@@ -76,15 +76,14 @@ const RootLayout = () => {
     </LiveStoreProvider>
   )
 }
-
 /**
  * This function is called when the app is booted.
  * It is used to initialize the database with some data.
  */
 const boot = (store: Store) => {
-  if (store.query(tables.users.query.count()) === 0) {
+  if (store.query(tables.users.count()) === 0) {
     store.commit(
-      userMutations.createUser({
+      events.userCreated({
         id: nanoid(),
         name: 'Beto',
         email: 'beto@expo.io',

@@ -6,8 +6,7 @@ import { Image, Pressable, ScrollView, TextInput, View } from 'react-native'
 
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import { updateIssueDescription, updateIssueTitle } from '@/livestore/issues-mutations.ts'
-import { tables } from '@/livestore/schema.ts'
+import { events, tables } from '@/livestore/schema.js'
 import type { Priority, Status } from '@/types.ts'
 
 const EditIssueScreen = () => {
@@ -16,11 +15,14 @@ const EditIssueScreen = () => {
   const router = useRouter()
 
   const issue = useQuery(
-    queryDb(tables.issues.query.where({ id: issueId }).first(), { label: 'issue', deps: `edit-issue-${issueId}` }),
+    queryDb(tables.issues.where({ id: issueId }).first(), {
+      label: 'edit-issue',
+      deps: `edit-issue-${issueId}`,
+    }),
   )
 
   const assignee = useQuery(
-    queryDb(tables.users.query.where({ id: issue.assigneeId! }).first(), {
+    queryDb(tables.users.where({ id: issue.assigneeId! }).first(), {
       label: 'assignee',
       deps: `edit-issue-assignee-${issue.assigneeId}`,
     }),
@@ -63,7 +65,9 @@ const EditIssueScreen = () => {
             value={issue.title}
             multiline
             autoFocus
-            onChangeText={(text: string) => store.commit(updateIssueTitle({ id: issue.id, title: text }))}
+            onChangeText={(text: string) =>
+              store.commit(events.issueTitleUpdated({ id: issue.id, title: text, updatedAt: new Date() }))
+            }
           />
 
           <View className="flex-row border my-2 border-zinc-200 dark:border-zinc-700 rounded-md p-1 px-2 gap-2">
@@ -88,7 +92,9 @@ const EditIssueScreen = () => {
             value={issue.description!}
             placeholder="Description..."
             multiline
-            onChangeText={(text: string) => store.commit(updateIssueDescription({ id: issue.id, description: text }))}
+            onChangeText={(text: string) =>
+              store.commit(events.issueDescriptionUpdated({ id: issue.id, description: text, updatedAt: new Date() }))
+            }
           />
         </View>
       </ScrollView>

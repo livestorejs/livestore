@@ -16,7 +16,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
     if (filters.includes(value)) filters.splice(filters.indexOf(value), 1)
     else filters.push(value)
     if (!filters.length) filters = undefined
-    setFilterState((state) => ({ ...state, [type]: filters }))
+    setFilterState({ [type]: filters })
   }
 
   return (

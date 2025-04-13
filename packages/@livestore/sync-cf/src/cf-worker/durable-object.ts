@@ -1,5 +1,5 @@
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
-import { DbSchema, EventId, type MutationEvent } from '@livestore/common/schema'
+import { EventId, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -19,16 +19,19 @@ const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Backe
 const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
 const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
-// NOTE actual table name is determined at runtime
-export const mutationLogTable = DbSchema.table('mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}', {
-  id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-  parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
-  mutation: DbSchema.text({}),
-  args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
-  /** ISO date format. Currently only used for debugging purposes. */
-  createdAt: DbSchema.text({}),
-  clientId: DbSchema.text({}),
-  sessionId: DbSchema.text({}),
+export const eventlogTable = State.SQLite.table({
+  // NOTE actual table name is determined at runtime
+  name: 'eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
+  columns: {
+    id: State.SQLite.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
+    parentId: State.SQLite.integer({ schema: EventId.GlobalEventId }),
+    name: State.SQLite.text({}),
+    args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any) }),
+    /** ISO date format. Currently only used for debugging purposes. */
+    createdAt: State.SQLite.text({}),
+    clientId: State.SQLite.text({}),
+    sessionId: State.SQLite.text({}),
+  },
 })
 
 const WebSocketAttachmentSchema = Schema.parseJson(
@@ -40,11 +43,11 @@ const WebSocketAttachmentSchema = Schema.parseJson(
 export const PULL_CHUNK_SIZE = 100
 
 /**
- * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
+ * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 4
+export const PERSISTENCE_FORMAT_VERSION = 5
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
@@ -87,7 +90,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           ),
         )
 
-        const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
+        const colSpec = makeColumnSpec(eventlogTable.sqliteDef.ast)
         this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
 
         return new Response(null, {
@@ -202,8 +205,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               if (connectedClients.length > 0) {
                 // TODO refactor to batch api
                 const pullRes = WSMessage.PullRes.make({
-                  batch: decodedMessage.batch.map((mutationEventEncoded) => ({
-                    mutationEventEncoded,
+                  batch: decodedMessage.batch.map((eventEncoded) => ({
+                    eventEncoded,
                     metadata: Option.some({ createdAt }),
                   })),
                   remaining: 0,
@@ -284,18 +287,18 @@ type SyncStorage = {
   getEvents: (
     cursor: number | undefined,
   ) => Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   >
   appendEvents: (
-    batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
+    batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
     createdAt: string,
   ) => Effect.Effect<void, UnexpectedError>
   resetStore: Effect.Effect<void, UnexpectedError>
 }
 
 const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncStorage => {
-  const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
+  const dbName = `eventlog_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
 
   const execDb = <T>(cb: (db: D1Database) => Promise<D1Result<T>>) =>
     Effect.tryPromise({
@@ -317,7 +320,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
   const getEvents = (
     cursor: number | undefined,
   ): Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   > =>
     Effect.gen(function* () {
@@ -325,9 +328,9 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
       // TODO handle case where `cursor` was not found
       const rawEvents = yield* execDb((db) => db.prepare(sql).all())
-      const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents).map(
-        ({ createdAt, ...mutationEventEncoded }) => ({
-          mutationEventEncoded,
+      const events = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))(rawEvents).map(
+        ({ createdAt, ...eventEncoded }) => ({
+          eventEncoded,
           metadata: Option.some({ createdAt }),
         }),
       )
@@ -349,13 +352,13 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
 
         // Create a list of placeholders ("(?, ?, ?, ?, ?, ?, ?)"), corresponding to each event.
         const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')
-        const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
+        const sql = `INSERT INTO ${dbName} (id, parentId, args, name, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
         // Flatten the event properties into a parameters array.
         const params = chunk.flatMap((event) => [
           event.id,
           event.parentId,
           JSON.stringify(event.args),
-          event.mutation,
+          event.name,
           createdAt,
           event.clientId,
           event.sessionId,

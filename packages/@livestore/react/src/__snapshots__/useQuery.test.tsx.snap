@@ -84,7 +84,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -234,7 +234,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -384,7 +384,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{}}",
       },
       "recomputations": 2,
       "sub": [
@@ -561,7 +561,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook invoked with different queries > 2: after first mutation 1`] = `
+exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook invoked with different queries > 2: after first commit 1`] = `
 {
   "atoms": [
     {
@@ -1089,7 +1089,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -1239,7 +1239,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -1389,7 +1389,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{},"queryInfo":{"_tag":"None"}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{}}",
       },
       "recomputations": 2,
       "sub": [
@@ -1566,7 +1566,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook inv
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook invoked with different queries > 2: after first mutation 1`] = `
+exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook invoked with different queries > 2: after first commit 1`] = `
 {
   "atoms": [
     {

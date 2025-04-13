@@ -8,8 +8,8 @@ import {
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 // TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
-// @ts-expect-error package misses `exports`
-import * as ExpoFs from 'expo-file-system/src/next'
+// // @ts-expect-error package misses `exports`
+// import * as ExpoFs from 'expo-file-system/src/next'
 // import * as ExpoFs from 'expo-file-system'
 import * as SQLite from 'expo-sqlite'
 

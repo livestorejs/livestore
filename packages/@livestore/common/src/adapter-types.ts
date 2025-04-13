@@ -3,7 +3,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/mod.js'
 import * as EventId from './schema/EventId.js'
-import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
+import type { LiveStoreEvent, LiveStoreSchema } from './schema/mod.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -47,12 +47,12 @@ export const LeaderPullCursor = Schema.Struct({
 export type LeaderPullCursor = typeof LeaderPullCursor.Type
 
 export interface ClientSessionLeaderThreadProxy {
-  mutations: {
+  events: {
     pull: (args: {
       cursor: LeaderPullCursor
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
@@ -62,7 +62,7 @@ export interface ClientSessionLeaderThreadProxy {
     readonly migrationsReport: MigrationsReport
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>
-  getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
+  getEventlogData: Effect.Effect<Uint8Array, UnexpectedError>
   getSyncState: Effect.Effect<SyncState, UnexpectedError>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
   sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
@@ -134,9 +134,22 @@ export type BootStatus = typeof BootStatus.Type
  * Can be used in queries to refer to the current session id.
  * Will be replaced with the actual session id at runtime
  *
- * Example:
+ * In client document table:
  * ```ts
- * const query$ = queryDb(tables.app.query.row(SessionIdSymbol), SessionIdSymbol)
+ * const uiState = State.SQLite.clientDocument({
+ *   name: 'ui_state',
+ *   schema: Schema.Struct({
+ *     theme: Schema.Literal('dark', 'light', 'system'),
+ *     user: Schema.String,
+ *     showToolbar: Schema.Boolean,
+ *   }),
+ *   default: { value: defaultFrontendState, id: SessionIdSymbol },
+ * })
+ * ```
+ *
+ * Or in a client document query:
+ * ```ts
+ * const query$ = queryDb(tables.uiState.get(SessionIdSymbol))
  * ```
  */
 export const SessionIdSymbol = Symbol.for('@livestore/session-id')
@@ -189,7 +202,7 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
 export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
-  | MigrationOptionsFromMutationLog<TSchema>
+  | MigrationOptionsFromEventlog<TSchema>
   | {
       strategy: 'hard-reset'
       hooks?: Partial<MigrationHooks>
@@ -210,14 +223,14 @@ export type MigrationHooks = {
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
-export interface MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
-  strategy: 'from-mutation-log'
+export interface MigrationOptionsFromEventlog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
+  strategy: 'from-eventlog'
   /**
-   * Mutations to exclude in the mutation log
+   * Events to exclude in the eventlog
    *
    * @default new Set(['livestore.RawSql'])
    */
-  excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
+  excludeEvents?: ReadonlySet<keyof TSchema['_EventDefMapType'] & string>
   hooks?: Partial<MigrationHooks>
   logging?: {
     excludeAffectedRows?: (sqlStmt: string) => boolean

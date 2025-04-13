@@ -1,15 +1,16 @@
-import { DbSchema, makeSchema } from '@livestore/common/schema'
+import { makeSchema, State } from '@livestore/common/schema'
 
 export * as Bridge from './bridge.js'
 
-const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+const todos = State.SQLite.table({
+  name: 'todos',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: true },
-)
+})
 
-export const schema = makeSchema({ tables: [todos] })
+const state = State.SQLite.makeState({ tables: { todos }, materializers: {} })
+
+export const schema = makeSchema({ state, events: {} })

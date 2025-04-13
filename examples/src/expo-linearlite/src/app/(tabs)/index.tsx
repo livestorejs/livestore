@@ -1,6 +1,6 @@
 import { LegendList } from '@legendapp/list'
 import { queryDb, Schema, sql } from '@livestore/livestore'
-import { useQuery, useRow, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { Pressable, View } from 'react-native'
@@ -8,8 +8,8 @@ import { Pressable, View } from 'react-native'
 import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import { updateSelectedHomeTab } from '@/livestore/mutations.ts'
-import { tables } from '@/livestore/schema.ts'
+import { uiState$ } from '@/livestore/queries.ts'
+import { events, tables } from '@/livestore/schema.ts'
 
 // const homeTabs = ['Assigned', 'Created']
 // For reference
@@ -97,7 +97,7 @@ const getOrderingOptions = (
 const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
-  const [appSettings] = useRow(tables.app)
+  const appSettings = useQuery(uiState$)
 
   // Memoize selected settings
   const {
@@ -133,7 +133,7 @@ const HomeScreen = () => {
             LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.deletedAt IS NULL 
             AND (
-              ${selectedHomeTab === 'Assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
+              ${selectedHomeTab === 'assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
             )
             ${getOrderingOptions(
               selectedHomeTab,
@@ -144,7 +144,7 @@ const HomeScreen = () => {
             )}
             LIMIT 50
           `,
-        schema: tables.issues.schema.pipe(
+        schema: tables.issues.rowSchema.pipe(
           Schema.pick('title', 'id', 'assigneeId', 'status', 'priority'),
           Schema.extend(Schema.Struct({ assigneePhotoUrl: Schema.String })),
           Schema.Array,
@@ -171,15 +171,15 @@ const HomeScreen = () => {
       <IssueItem
         issue={item}
         showAssignee={
-          selectedHomeTab === 'Assigned'
+          selectedHomeTab === 'assigned'
             ? displaySettings.assignedTabShowAssignee
             : displaySettings.createdTabShowAssignee
         }
         showStatus={
-          selectedHomeTab === 'Assigned' ? displaySettings.assignedTabShowStatus : displaySettings.createdTabShowStatus
+          selectedHomeTab === 'assigned' ? displaySettings.assignedTabShowStatus : displaySettings.createdTabShowStatus
         }
         showPriority={
-          selectedHomeTab === 'Assigned'
+          selectedHomeTab === 'assigned'
             ? displaySettings.assignedTabShowPriority
             : displaySettings.createdTabShowPriority
         }
@@ -196,10 +196,10 @@ const HomeScreen = () => {
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.commit(updateSelectedHomeTab({ tab: 'Assigned' }))
+              store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
             }}
             style={{
-              opacity: selectedHomeTab === 'Assigned' ? 1 : 0.5,
+              opacity: selectedHomeTab === 'assigned' ? 1 : 0.5,
             }}
             className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
           >
@@ -210,10 +210,10 @@ const HomeScreen = () => {
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.commit(updateSelectedHomeTab({ tab: 'Created' }))
+              store.commit(events.uiStateSet({ selectedHomeTab: 'created' }))
             }}
             style={{
-              opacity: selectedHomeTab === 'Created' ? 1 : 0.5,
+              opacity: selectedHomeTab === 'created' ? 1 : 0.5,
             }}
             className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
           >

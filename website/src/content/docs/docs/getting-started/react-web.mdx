@@ -132,65 +132,63 @@ To define the data structure for your app, set up a schema that specifies the ta
 Here's an example:
 
 ```ts
-import { DbSchema, makeSchema } from '@livestore/livestore'
-import * as mutations from './mutations.js'
+import { State, makeSchema } from '@livestore/livestore'
+import * as events from './events.js'
 
-const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }), // Unique identifier for each todo item
-    text: DbSchema.text({ default: '' }), // Text content of the todo
-    completed: DbSchema.boolean({ default: false }), // Status of the todo item
-    deleted: DbSchema.integer({ nullable: true }), // Optional field to mark deletion
+const todos = State.SQLite.table({
+  name: 'todos',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }), // Unique identifier for each todo item
+    text: State.SQLite.text({ default: '' }), // Text content of the todo
+    completed: State.SQLite.boolean({ default: false }), // Status of the todo item
+    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }), // Optional field to mark deletion
   },
-  { deriveMutations: true }, // Automatically derive mutations for this table
-)
+})
 
-export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
 
 export const tables = {
   todos,
 }
 
-export const schema = makeSchema({
-  tables,
-  mutations,
-  migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
+const materializers = State.SQLite.materializers(events, {
+  addTodo: ({ id, text }) => todos.insert({ id, text }),
+  completeTodo: ({ id }) => todos.update({ id, completed: true }),
+  deleteTodo: ({ id, deletedAt }) => todos.update({ id, deletedAt }),
 })
 
-export * as mutations from './mutations.js'
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ state, events })
+
+export * as events from './events.js'
 ```
 
-## Mutations
+## Events
 
-Create a file named `mutations.ts` inside the `livestore` folder. This file stores the mutations your app uses to interact with the database.
+Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
 
-A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
-
-Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+Use the `Events` and `Schema` modules from `@livestore/livestore` to define your events.
 
 Here's an example:
 
 ```ts
-import { defineMutation, Schema, sql } from '@livestore/livestore'
+import { Events, Schema } from '@livestore/livestore'
 
-export const addTodo = defineMutation(
-  'addTodo',
-  Schema.Struct({ id: Schema.String, text: Schema.String }),
-  sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
-)
+export const todoAdded = Events.synced({
+  name: 'v1.TodoAdded',
+  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+})
 
-export const completeTodo = defineMutation(
-  'completeTodo',
-  Schema.Struct({ id: Schema.String }),
-  sql`UPDATE todos SET completed = true WHERE id = $id`,
-)
+export const todoCompleted = Events.synced({
+  name: 'v1.TodoCompleted',
+  schema: Schema.Struct({ id: Schema.String }),
+})
 
-export const deleteTodo = defineMutation(
-  'deleteTodo',
-  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
-  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
-)
+export const todoDeleted = Events.synced({
+  name: 'v1.TodoDeleted',
+  schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+})
 ```
 
 ## Create the LiveStore Worker
@@ -221,7 +219,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web';
 import { nanoid } from '@livestore/utils/nanoid';
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker';
 import LiveStoreWorker from './livestore.worker?worker';
-import { schema, tables, mutations } from './livestore/schema.js';
+import { schema, tables, events } from './livestore/schema.js';
 import { App } from './App.jsx'
 
 const adapter = makePersistedAdapter({
@@ -237,7 +235,7 @@ const adapter = makePersistedAdapter({
 const boot = (store: Store) => {
   // If the todos table is empty, add an initial todo
   if (store.query(tables.todos.query.count()) === 0) {
-    store.commit(mutations.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
+    store.commit(events.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
   }
 }
 
@@ -258,13 +256,13 @@ createRoot(document.getElementById('root')!).render(
 
 ### Use a mutation
 
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute mutations.
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute events.
 
 Here's an example:
 
 ```tsx
 import { useStore } from '@livestore/react';
-import { deleteTodo } from './livestore/mutations.js';
+import { deleteTodo } from './livestore/events.js';
 
 export const App = () => {
   const { store } = useStore()

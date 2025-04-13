@@ -1,5 +1,5 @@
 import { sql } from '@livestore/common'
-import { rawSqlMutation } from '@livestore/common/schema'
+import { rawSqlEvent } from '@livestore/common/schema'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
@@ -64,12 +64,12 @@ Vitest.describe('otel', () => {
 
       const query$ = queryDb({
         query: `select * from todos`,
-        schema: Schema.Array(tables.todos.schema),
+        schema: Schema.Array(tables.todos.rowSchema),
         queriedTables: new Set(['todos']),
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       [
@@ -100,7 +100,7 @@ Vitest.describe('otel', () => {
       const query$ = queryDb(
         (get) => ({
           query: `select * from todos ${get(filter)}`,
-          schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
+          schema: Schema.Array(tables.todos.rowSchema).pipe(Schema.headOrElse(() => defaultTodo)),
         }),
         { label: 'all todos' },
       )
@@ -117,7 +117,7 @@ Vitest.describe('otel', () => {
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
@@ -147,7 +147,7 @@ Vitest.describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => ({ completed: false }))
-      const query$ = queryDb((get) => tables.todos.query.where(get(filter)).first({ fallback: () => defaultTodo }))
+      const query$ = queryDb((get) => tables.todos.where(get(filter)).first({ fallback: () => defaultTodo }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -157,7 +157,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {

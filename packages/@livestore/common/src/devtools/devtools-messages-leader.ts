@@ -1,7 +1,7 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { EventId } from '../schema/mod.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
 import * as SyncState from '../sync/syncstate.js'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.js'
 
@@ -18,7 +18,7 @@ export class DatabaseFileInfo extends Schema.Struct({
 
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
   readModel: DatabaseFileInfo,
-  mutationLog: DatabaseFileInfo,
+  eventlog: DatabaseFileInfo,
 }) {}
 
 export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {
@@ -51,7 +51,7 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
   subscriptionId: Schema.String,
 }) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
-  mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
+  eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
   subscriptionId: Schema.String,
 }) {}
@@ -94,16 +94,16 @@ export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
 }) {}
 
 // TODO refactor this to use push/pull semantics
-export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
-  mutationEventEncoded: MutationEvent.PartialAnyEncoded,
+export class CommitEventReq extends LSDReqResMessage('LSD.Leader.CommitEventReq', {
+  eventEncoded: LiveStoreEvent.PartialAnyEncoded,
 }) {}
 
-export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}
+export class CommitEventRes extends LSDReqResMessage('LSD.Leader.CommitEventRes', {}) {}
 
-export class MutationLogReq extends LSDReqResMessage('LSD.Leader.MutationLogReq', {}) {}
+export class EventlogReq extends LSDReqResMessage('LSD.Leader.EventlogReq', {}) {}
 
-export class MutationLogRes extends LSDReqResMessage('LSD.Leader.MutationLogRes', {
-  mutationLog: Transferable.Uint8Array,
+export class EventlogRes extends LSDReqResMessage('LSD.Leader.EventlogRes', {
+  eventlog: Transferable.Uint8Array,
 }) {}
 
 export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}
@@ -153,12 +153,12 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 export const MessageToApp = Schema.Union(
   SnapshotReq,
   LoadDatabaseFile.Request,
-  MutationLogReq,
+  EventlogReq,
   ResetAllData.Request,
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
   Disconnect,
-  RunMutationReq,
+  CommitEventReq,
   Ping,
   DatabaseFileInfoReq,
   SyncHistorySubscribe,
@@ -174,11 +174,11 @@ export type MessageToApp = typeof MessageToApp.Type
 export const MessageFromApp = Schema.Union(
   SnapshotRes,
   LoadDatabaseFile.Response,
-  MutationLogRes,
+  EventlogRes,
   Disconnect,
   SyncPull,
   NetworkStatusRes,
-  RunMutationRes,
+  CommitEventRes,
   Pong,
   DatabaseFileInfoRes,
   SyncHistoryRes,

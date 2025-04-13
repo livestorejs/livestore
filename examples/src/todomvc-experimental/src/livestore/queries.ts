@@ -1,5 +1,5 @@
-import { queryDb, SessionIdSymbol } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 
 import { tables } from './schema.js'
 
-export const app$ = queryDb(tables.app.query.row(SessionIdSymbol), { label: 'app' })
+export const app$ = queryDb(tables.uiState.get(), { label: 'app' })

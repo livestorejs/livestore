@@ -1,4 +1,4 @@
-import { mutations } from '@/lib/livestore/schema'
+import { events } from '@/lib/livestore/schema'
 import { Issue } from '@/types/issue'
 import { useStore } from '@livestore/react'
 import React from 'react'
@@ -19,7 +19,7 @@ export const TitleInput = ({
   const { store } = useStore()
 
   const handleTitleChange = (title: string) => {
-    if (issue) store.commit(mutations.updateIssueTitle({ id: issue.id, title }))
+    if (issue) store.commit(events.updateIssueTitle({ id: issue.id, title, modified: new Date() }))
     if (setTitle) setTitle(title)
   }
 

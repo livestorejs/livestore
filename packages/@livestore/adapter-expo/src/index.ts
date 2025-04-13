@@ -10,9 +10,9 @@ import type {
 } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -30,7 +30,7 @@ export type MakeDbOptions = {
      * Relative to expo-sqlite's default directory
      *
      * Example of a resulting path for `subDirectory: 'my-app'`:
-     * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-mutationlog@3.db`
+     * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
      */
     subDirectory?: string
   }
@@ -174,15 +174,15 @@ const makeLeaderThread = ({
     const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
 
     const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
-    const dbMutationLogPath = `${'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`
+    const dbEventlogPath = `${'livestore-'}eventlog@${liveStoreStorageFormatVersion}.db`
 
     const dbReadModel = yield* makeSqliteDb({ _tag: 'file', databaseName: readModelDatabaseName, directory })
-    const dbMutationLog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbMutationLogPath, directory })
+    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbEventlogPath, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       storeId,
       clientId,
       sessionId,
@@ -193,7 +193,7 @@ const makeLeaderThread = ({
       makeLeaderThreadLayer({
         clientId,
         dbReadModel,
-        dbMutationLog,
+        dbEventlog,
         devtoolsOptions,
         makeSqliteDb,
         schema,
@@ -208,7 +208,7 @@ const makeLeaderThread = ({
     return yield* Effect.gen(function* () {
       const {
         dbReadModel: db,
-        dbMutationLog,
+        dbEventlog,
         syncProcessor,
         extraIncomingMessagesQueue,
         initialState,
@@ -228,22 +228,22 @@ const makeLeaderThread = ({
         Effect.forkScoped,
       )
 
-      const initialLeaderHead = Mutationlog.getClientHeadFromDb(dbMutationLog)
+      const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
       const leaderThread = {
-        mutations: {
+        events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor
               .push(
-                batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+                batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),
-        getMutationLogData: Effect.sync(() => dbMutationLog.export()),
+        getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy
@@ -257,7 +257,7 @@ const makeLeaderThread = ({
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
   dbReadModel,
-  dbMutationLog,
+  dbEventlog,
   storeId,
   clientId,
   sessionId,
@@ -265,7 +265,7 @@ const makeDevtoolsOptions = ({
 }: {
   devtoolsEnabled: boolean
   dbReadModel: LeaderSqliteDb
-  dbMutationLog: LeaderSqliteDb
+  dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
   sessionId: string
@@ -292,7 +292,7 @@ const makeDevtoolsOptions = ({
           devtoolsWebChannel,
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,
-            mutationLog: dbMutationLog.metadata.persistenceInfo,
+            eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }
       }),

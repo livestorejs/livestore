@@ -8,7 +8,7 @@ import { SearchBar } from '@/components/layout/search/search-bar'
 import { statusOptions } from '@/data/status-options'
 import { issueCount$, useFilterState } from '@/lib/livestore/queries'
 import { Status } from '@/types/status'
-import { useQuery } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 import { Button } from 'react-aria-components'
 
@@ -23,7 +23,8 @@ export const Filters = ({
   hideSorting?: boolean
   search?: boolean
 }) => {
-  const totalCount = useQuery(issueCount$)
+  const { store } = useStore()
+  const totalCount = store.useQuery(issueCount$)
   const [filterState] = useFilterState()
 
   return (
@@ -65,7 +66,7 @@ export const Filters = ({
         {/* TODO add clear filters/sorting button */}
         {!hideSorting && <SortMenu />}
       </div>
-      {(filterState.status?.length || filterState.priority?.length) && (
+      {filterState.status?.length || filterState.priority?.length ? (
         <div className="lg:hidden h-12 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
           <div className="flex items-center h-full pl-2">
             {!hideStatusFilter && <StatusFilter />}
@@ -73,7 +74,7 @@ export const Filters = ({
             <div className="w-4 h-full shrink-0" />
           </div>
         </div>
-      )}
+      ) : null}
     </>
   )
 }

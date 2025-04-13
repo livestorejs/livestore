@@ -4,23 +4,23 @@ import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
 import { app$ } from '../livestore/queries.ts'
-import { mutations } from '../livestore/schema.ts'
+import { events } from '../livestore/schema.ts'
 
 export const NewTodo: React.FC = () => {
   const { store } = useStore()
   const { newTodoText } = useQuery(app$)
 
-  const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text }))
+  const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const todoCreated = () =>
     store.commit(
-      mutations.todoCreated({ id: new Date().toISOString(), text: newTodoText }),
-      mutations.updatedNewTodoText({ text: '' }),
+      events.todoCreated({ id: new Date().toISOString(), text: newTodoText }),
+      events.uiStateSet({ newTodoText: '' }),
     )
   const addRandom50 = () => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
-    store.commit(...todos.map((todo) => mutations.todoCreated(todo)))
+    store.commit(...todos.map((todo) => events.todoCreated(todo)))
   }
-  const reset = () => store.commit(mutations.clearAll({ deleted: Date.now() }))
+  const reset = () => store.commit(events.todoClearedCompleted({ deletedAt: new Date() }))
 
   const inputRef = React.useRef<TextInput>(null)
 

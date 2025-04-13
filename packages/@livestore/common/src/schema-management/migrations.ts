@@ -4,12 +4,12 @@ import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
 import { SqliteAst, SqliteDsl } from '../schema/db-schema/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
+import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/system-tables.js'
 import {
+  SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
-  SCHEMA_MUTATIONS_META_TABLE,
+  schemaEventDefsMetaTable,
   schemaMetaTable,
-  schemaMutationsMetaTable,
   systemTables,
 } from '../schema/system-tables.js'
 import { sql } from '../util.js'
@@ -23,20 +23,19 @@ export const makeSchemaManager = (db: SqliteDb): Effect.Effect<SchemaManager> =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
-      tableAst: schemaMutationsMetaTable.sqliteDef.ast,
+      tableAst: schemaEventDefsMetaTable.sqliteDef.ast,
       behaviour: 'create-if-not-exists',
     })
 
     return {
-      getMutationDefInfos: () =>
-        dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
+      getEventDefInfos: () => dbSelect<SchemaEventDefsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_EVENT_DEFS_META_TABLE}`),
 
-      setMutationDefInfo: (info) => {
+      setEventDefInfo: (info) => {
         dbExecute(
           db,
-          sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, updatedAt) VALUES ($mutationName, $schemaHash, $updatedAt)`,
+          sql`INSERT OR REPLACE INTO ${SCHEMA_EVENT_DEFS_META_TABLE} (eventName, schemaHash, updatedAt) VALUES ($eventName, $schemaHash, $updatedAt)`,
           {
-            mutationName: info.mutationName,
+            eventName: info.eventName,
             schemaHash: info.schemaHash,
             updatedAt: new Date().toISOString(),
           },

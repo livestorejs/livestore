@@ -14,7 +14,7 @@ export const clientDefault = 0 as any as ClientEventId
  * LiveStore event id value consisting of a globally unique event sequence number
  * and a client sequence number.
  *
- * The client sequence number is only used for clientOnly mutations and starts from 0 for each global sequence number.
+ * The client sequence number is only used for clientOnly events and starts from 0 for each global sequence number.
  */
 export type EventId = { global: GlobalEventId; client: ClientEventId }
 
@@ -28,8 +28,10 @@ export type EventId = { global: GlobalEventId; client: ClientEventId }
  */
 export const EventId = Schema.Struct({
   global: GlobalEventId,
-  /** Only increments for clientOnly mutations */
+  /** Only increments for clientOnly events */
   client: ClientEventId,
+
+  // TODO also provide a way to see "confirmation level" of event (e.g. confirmed by leader/sync backend)
 
   // TODO: actually add this field
   // Client only
@@ -98,7 +100,7 @@ export const nextPair = (id: EventId, isLocal: boolean): EventIdPair => {
 
   return {
     id: { global: (id.global + 1) as any as GlobalEventId, client: clientDefault },
-    // NOTE we always point to `client: 0` for non-clientOnly mutations
+    // NOTE we always point to `client: 0` for non-clientOnly events
     parentId: { global: id.global, client: clientDefault },
   }
 }

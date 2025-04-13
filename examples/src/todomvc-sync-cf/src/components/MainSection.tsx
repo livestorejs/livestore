@@ -3,13 +3,13 @@ import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 
 import { app$ } from '../livestore/queries.js'
-import { mutations, tables, type Todo } from '../livestore/schema.js'
+import { events, tables, type Todo } from '../livestore/schema.js'
 
 const visibleTodos$ = queryDb(
   (get) => {
     const { filter } = get(app$)
-    return tables.todos.query.where({
-      deleted: null,
+    return tables.todos.select().where({
+      deletedAt: undefined,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },
@@ -21,23 +21,23 @@ export const MainSection: React.FC = () => {
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: Todo) =>
-      store.commit(completed ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id })),
+      store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
     [store],
   )
 
-  const visibleTodos = useQuery(visibleTodos$)
+  const visibleTodos = useQuery(visibleTodos$) ?? []
 
   return (
     <section className="main">
       <ul className="todo-list">
-        {visibleTodos.map((todo) => (
+        {(Array.isArray(visibleTodos) ? visibleTodos : []).map((todo: Todo) => (
           <li key={todo.id}>
             <div className="view">
               <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
               <label>{todo.text}</label>
               <button
                 className="destroy"
-                onClick={() => store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))}
+                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
               ></button>
             </div>
           </li>

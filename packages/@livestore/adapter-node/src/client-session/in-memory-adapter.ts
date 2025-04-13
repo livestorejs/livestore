@@ -8,9 +8,9 @@ import type {
   SyncOptions,
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
-import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import type { Schema } from '@livestore/utils/effect'
@@ -43,7 +43,7 @@ export type TestingOverrides = {
     leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
   }
   makeLeaderThread?: {
-    dbMutationLog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
+    dbEventlog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
   }
 }
 
@@ -125,8 +125,8 @@ const makeLeaderThread = ({
       makeLeaderThreadLayer({
         clientId,
         dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
-        dbMutationLog: testing?.overrides?.makeLeaderThread?.dbMutationLog
-          ? yield* testing.overrides.makeLeaderThread.dbMutationLog(makeSqliteDb)
+        dbEventlog: testing?.overrides?.makeLeaderThread?.dbEventlog
+          ? yield* testing.overrides.makeLeaderThread.dbEventlog(makeSqliteDb)
           : yield* makeSqliteDb({ _tag: 'in-memory' }),
         devtoolsOptions: { enabled: false },
         makeSqliteDb,
@@ -140,25 +140,25 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbReadModel, dbMutationLog, syncProcessor, extraIncomingMessagesQueue, initialState } =
+      const { dbReadModel, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } =
         yield* LeaderThreadCtx
 
-      const initialLeaderHead = Mutationlog.getClientHeadFromDb(dbMutationLog)
+      const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
       const leaderThread = {
-        mutations: {
+        events: {
           pull:
-            testing?.overrides?.clientSession?.leaderThreadProxy?.mutations?.pull ??
+            testing?.overrides?.clientSession?.leaderThreadProxy?.events?.pull ??
             (({ cursor }) => syncProcessor.pull({ cursor })),
           push: (batch) =>
             syncProcessor.push(
-              batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => dbReadModel.export()),
-        getMutationLogData: Effect.sync(() => dbMutationLog.export()),
+        getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy

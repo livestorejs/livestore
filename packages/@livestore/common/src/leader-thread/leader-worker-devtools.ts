@@ -2,7 +2,7 @@ import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/ut
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
+import { EVENTLOG_META_TABLE, SCHEMA_EVENT_DEFS_META_TABLE, SCHEMA_META_TABLE } from '../schema/mod.js'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -63,7 +63,7 @@ const listenToDevtools = ({
       syncBackend,
       makeSqliteDb,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       shutdownStateSubRef,
       shutdownChannel,
       syncProcessor,
@@ -143,20 +143,20 @@ const listenToDevtools = ({
               }
 
               try {
-                if (tableNames.has(MUTATION_LOG_META_TABLE)) {
-                  // Is mutation log
+                if (tableNames.has(EVENTLOG_META_TABLE)) {
+                  // Is eventlog
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                  dbMutationLog.import(data)
+                  dbEventlog.import(data)
 
                   dbReadModel.destroy()
-                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
+                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_EVENT_DEFS_META_TABLE)) {
                   // Is read model
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
                   dbReadModel.import(data)
 
-                  dbMutationLog.destroy()
+                  dbEventlog.destroy()
                 } else {
                   yield* sendMessage(
                     Devtools.Leader.LoadDatabaseFile.Error.make({
@@ -190,7 +190,7 @@ const listenToDevtools = ({
               dbReadModel.destroy()
 
               if (mode === 'all-data') {
-                dbMutationLog.destroy()
+                dbEventlog.destroy()
               }
 
               yield* sendMessage(Devtools.Leader.ResetAllData.Success.make({ ...reqPayload }))
@@ -207,33 +207,33 @@ const listenToDevtools = ({
 
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = dbReadModel.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
-              const mutationLogFileSize = dbMutationLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const eventlogFileSize = dbEventlog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
                 Devtools.Leader.DatabaseFileInfoRes.make({
                   readModel: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.readModel },
-                  mutationLog: { fileSize: mutationLogFileSize, persistenceInfo: persistenceInfo.mutationLog },
+                  eventlog: { fileSize: eventlogFileSize, persistenceInfo: persistenceInfo.eventlog },
                   ...reqPayload,
                 }),
               )
 
               return
             }
-            case 'LSD.Leader.MutationLogReq': {
-              const mutationLog = dbMutationLog.export()
+            case 'LSD.Leader.EventlogReq': {
+              const eventlog = dbEventlog.export()
 
-              yield* sendMessage(Devtools.Leader.MutationLogRes.make({ mutationLog, ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.EventlogRes.make({ eventlog, ...reqPayload }))
 
               return
             }
-            case 'LSD.Leader.RunMutationReq': {
+            case 'LSD.Leader.CommitEventReq': {
               yield* syncProcessor.pushPartial({
-                mutationEvent: decodedEvent.mutationEventEncoded,
+                event: decodedEvent.eventEncoded,
                 clientId: `devtools-${clientId}`,
                 sessionId: `devtools-${clientId}`,
               })
 
-              yield* sendMessage(Devtools.Leader.RunMutationRes.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.CommitEventRes.make({ ...reqPayload }))
 
               return
             }
@@ -245,10 +245,10 @@ const listenToDevtools = ({
                 yield* syncBackend.pull(Option.none()).pipe(
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
-                  Stream.tap(({ mutationEventEncoded, metadata }) =>
+                  Stream.tap(({ eventEncoded, metadata }) =>
                     sendMessage(
                       Devtools.Leader.SyncHistoryRes.make({
-                        mutationEventEncoded,
+                        eventEncoded,
                         metadata,
                         subscriptionId,
                         ...reqPayload,

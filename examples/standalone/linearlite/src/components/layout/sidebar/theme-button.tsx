@@ -14,7 +14,7 @@ export const ThemeButton = () => {
 
   const selectTheme = (theme: Theme) => {
     setTheme(theme)
-    setFrontendState((state) => ({ ...state, theme }))
+    setFrontendState({ theme })
     if (theme === 'system') localStorage.removeItem('theme')
     else localStorage.theme = theme
     document.documentElement.classList.toggle(

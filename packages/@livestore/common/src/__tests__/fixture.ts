@@ -1,27 +1,48 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { DbSchema, makeSchema } from '../schema/mod.js'
+import { SessionIdSymbol } from '../adapter-types.js'
+import { makeSchema, State } from '../schema/mod.js'
 
-export const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+export const UiState = State.SQLite.clientDocument({
+  name: 'UiState',
+  schema: Schema.Struct({
+    showSidebar: Schema.Boolean,
+  }),
+  default: {
+    value: { showSidebar: true },
   },
-  { deriveMutations: true },
-)
+})
 
 const Config = Schema.Struct({
   fontSize: Schema.Number,
   theme: Schema.Literal('light', 'dark'),
 })
 
-export const appConfig = DbSchema.table('app_config', DbSchema.json({ schema: Config, nullable: true }), {
-  isSingleton: true,
-  deriveMutations: true,
+export const appConfig = State.SQLite.clientDocument({
+  name: 'AppConfig',
+  schema: Config,
+  default: {
+    id: 'static',
+    value: { fontSize: 13, theme: 'light' },
+  },
 })
 
-export const tables = [todos, appConfig]
+export const appConfig2 = State.SQLite.clientDocument({
+  name: 'AppConfig',
+  schema: Config,
+  default: {
+    id: SessionIdSymbol,
+    value: { fontSize: 13, theme: 'light' },
+  },
+})
 
-export const schema = makeSchema({ tables })
+const events = {
+  uiStateSet: UiState.set,
+  appConfigSet: appConfig.set,
+}
+
+export const tables = { UiState, appConfig }
+
+const state = State.SQLite.makeState({ tables, materializers: {} })
+
+export const schema = makeSchema({ state, events })

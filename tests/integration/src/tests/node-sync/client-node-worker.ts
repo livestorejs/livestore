@@ -22,7 +22,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
-import { schema, tables } from './schema.js'
+import { events, schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'
 
 class WorkerContext extends Context.Tag('WorkerContext')<
@@ -81,20 +81,20 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
       const otelSpan = yield* OtelTracer.currentOtelSpan
-      const mutationEventBatches = pipe(
+      const eventBatches = pipe(
         ReadonlyArray.range(0, count - 1),
-        ReadonlyArray.map((i) => tables.todo.insert({ id: nanoid(), title: `todo ${i} (${clientId})` })),
+        ReadonlyArray.map((i) => events.todoCreated({ id: nanoid(), title: `todo ${i} (${clientId})` })),
         ReadonlyArray.chunksOf(commitBatchSize),
       )
       const spanLinks = [{ context: otelSpan.spanContext() }]
-      for (const batch of mutationEventBatches) {
+      for (const batch of eventBatches) {
         store.commit({ spanLinks }, ...batch)
       }
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),
   StreamTodos: () =>
     Effect.gen(function* () {
       const { store } = yield* WorkerContext
-      const query$ = queryDb(tables.todo.query.orderBy('id', 'desc'))
+      const query$ = queryDb(tables.todo.orderBy('id', 'desc'))
       return store.subscribeStream(query$)
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
   OnShutdown: () =>

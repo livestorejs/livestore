@@ -1,4 +1,4 @@
-import { mutations } from '@/lib/livestore/schema'
+import { events } from '@/lib/livestore/schema'
 import { TrashIcon } from '@heroicons/react/16/solid'
 import { useStore } from '@livestore/react'
 import React from 'react'
@@ -18,11 +18,11 @@ export const DeleteButton = ({
 
   const onClick = () => {
     if (confirm) {
-      const deleted = Date.now()
+      const deleted = new Date()
       store.commit(
-        mutations.deleteIssue({ id: issueId, deleted }),
-        mutations.deleteDescription({ id: issueId, deleted }),
-        mutations.deleteCommentsByIssueId({ issueId, deleted }),
+        events.deleteIssue({ id: issueId, deleted }),
+        events.deleteDescription({ id: issueId, deleted }),
+        events.deleteCommentsByIssueId({ issueId, deleted }),
       )
       setConfirm(false)
       close()

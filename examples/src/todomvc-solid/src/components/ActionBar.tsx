@@ -1,82 +1,57 @@
 import { queryDb } from '@livestore/livestore'
 import { query } from '@livestore/solid'
-import type { Component } from 'solid-js'
+import { type Component, Show } from 'solid-js'
 
-import { mutations, tables } from '../livestore/schema.js'
-import { store } from '../livestore/store.jsx'
+import { uiState$ } from '../livestore/queries.js'
+import { events, tables } from '../livestore/schema.js'
+import { store } from '../livestore/store.js'
 import type { Filter } from '../types.js'
 
-const sessionId = store?.()?.sessionId ?? 'default'
-
-const incompleteCount$ = queryDb(tables.todos.query.count().where({ completed: false, deleted: null }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: undefined }), {
   label: 'incompleteCount',
 })
 
-export const ActionBar: Component = () => {
-  const appRow = query(
-    queryDb(
-      tables.app.query
-        .where({
-          id: sessionId,
-        })
-        .first(),
-    ),
-    {
-      filter: 'all',
-      id: sessionId,
-      newTodoText: '',
-    },
-  )
-  const incompleteCount = query(incompleteCount$, 0)
+const completedCount$ = queryDb(tables.todos.count().where({ completed: true, deletedAt: undefined }), {
+  label: 'completedCount',
+})
 
-  const setFilter = (filter: Filter) => store()?.commit(mutations.filterUpdated({ filter, sessionId }))
+export const ActionBar: Component = () => {
+  const filter = query(uiState$, { filter: 'all', newTodoText: '' })
+  const incompleteCount = query(incompleteCount$, 0)
+  const completedCount = query(completedCount$, 0)
+
+  const setFilter = (filter: Filter) => store()?.commit(events.uiStateSet({ filter }))
 
   return (
     <footer class="footer">
-      <span class="todo-count">{incompleteCount()} items left</span>
+      <span class="todo-count">
+        <strong>{incompleteCount()}</strong> items left
+      </span>
       <ul class="filters">
         <li>
-          <a
-            href="#/"
-            class={appRow()?.filter === 'all' ? 'selected' : ''}
-            onClick={() => {
-              setFilter('all')
-            }}
-          >
+          <a href="#/" classList={{ selected: filter().filter === 'all' }} onClick={() => setFilter('all')}>
             All
           </a>
         </li>
         <li>
-          <a
-            href="#/"
-            class={appRow()?.filter === 'active' ? 'selected' : ''}
-            onClick={() => {
-              setFilter('active')
-            }}
-          >
+          <a href="#/" classList={{ selected: filter().filter === 'active' }} onClick={() => setFilter('active')}>
             Active
           </a>
         </li>
         <li>
-          <a
-            href="#/"
-            class={appRow()?.filter === 'completed' ? 'selected' : ''}
-            onClick={() => {
-              setFilter('completed')
-            }}
-          >
+          <a href="#/" classList={{ selected: filter().filter === 'completed' }} onClick={() => setFilter('completed')}>
             Completed
           </a>
         </li>
       </ul>
-      <button
-        class="clear-completed"
-        onClick={() => {
-          store()?.commit(mutations.todoClearedCompleted({ deleted: Date.now() }))
-        }}
-      >
-        Clear completed
-      </button>
+      <Show when={completedCount() > 0}>
+        <button
+          class="clear-completed"
+          onClick={() => store()?.commit(events.todoClearedCompleted({ deletedAt: new Date() }))}
+        >
+          Clear completed
+        </button>
+      </Show>
     </footer>
   )
 }

@@ -10,8 +10,8 @@ import { Todo } from './Todo.tsx'
 const visibleTodos$ = queryDb(
   (get) => {
     const { filter } = get(app$)
-    return tables.todos.query.where({
-      deleted: null,
+    return tables.todos.where({
+      deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },

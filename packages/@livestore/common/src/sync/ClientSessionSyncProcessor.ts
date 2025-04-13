@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Runtime, Scope } from '@livestore/utils/effect'
 import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
@@ -5,17 +6,17 @@ import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
-import { getMutationDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import { getEventDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
 import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
 /**
  * Rebase behaviour:
- * - We continously pull mutations from the leader and apply them to the local store.
+ * - We continously pull events from the leader and apply them to the local store.
  * - If there was a race condition (i.e. the leader and client session have both advacned),
- *   we'll need to rebase the local pending mutations on top of the leader's head.
- * - The goal is to never block the UI, so we'll interrupt rebasing if a new mutations is pushed by the client session.
+ *   we'll need to rebase the local pending events on top of the leader's head.
+ * - The goal is to never block the UI, so we'll interrupt rebasing if a new events is pushed by the client session.
  * - We also want to avoid "backwards-jumping" in the UI, so we'll transactionally apply a read model changes during a rebase.
  * - We might need to make the rebase behaviour configurable e.g. to let users manually trigger a rebase
  *
@@ -25,7 +26,7 @@ export const makeClientSessionSyncProcessor = ({
   schema,
   clientSession,
   runtime,
-  applyMutation,
+  applyEvent,
   rollback,
   refreshTables,
   span,
@@ -35,8 +36,8 @@ export const makeClientSessionSyncProcessor = ({
   schema: LiveStoreSchema
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
-  applyMutation: (
-    mutationEventDecoded: MutationEvent.PartialAnyDecoded,
+  applyEvent: (
+    eventDecoded: LiveStoreEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
@@ -54,36 +55,36 @@ export const makeClientSessionSyncProcessor = ({
    */
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
-  const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
+  const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
     current: new SyncState.SyncState({
       localHead: clientSession.leaderThread.initialState.leaderHead,
       upstreamHead: clientSession.leaderThread.initialState.leaderHead,
-      // Given we're starting with the leader's snapshot, we don't have any pending mutations intially
+      // Given we're starting with the leader's snapshot, we don't have any pending events intially
       pending: [],
     }),
   }
 
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
-  const isClientEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) =>
-    getMutationDef(schema, mutationEventEncoded.mutation).options.clientOnly
+  const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+    getEventDef(schema, eventEncoded.name).eventDef.options.clientOnly
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<MutationEvent.EncodedWithMeta>().pipe(Effect.runSync)
+  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
   const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
     // TODO validate batch
 
     let baseEventId = syncStateRef.current.localHead
-    const encodedMutationEvents = batch.map(({ mutation, args }) => {
-      const mutationDef = getMutationDef(schema, mutation)
-      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.clientOnly)
+    const encodedEventDefs = batch.map(({ name, args }) => {
+      const eventDef = getEventDef(schema, name)
+      const nextIdPair = EventId.nextPair(baseEventId, eventDef.eventDef.options.clientOnly)
       baseEventId = nextIdPair.id
-      return new MutationEvent.EncodedWithMeta(
-        Schema.encodeUnknownSync(mutationEventSchema)({
-          mutation,
+      return new LiveStoreEvent.EncodedWithMeta(
+        Schema.encodeUnknownSync(eventSchema)({
+          name,
           args,
           ...nextIdPair,
           clientId: clientSession.clientId,
@@ -94,9 +95,9 @@ export const makeClientSessionSyncProcessor = ({
 
     const mergeResult = SyncState.merge({
       syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
+      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
-      isEqualEvent: MutationEvent.isEqualEncoded,
+      isEqualEvent: LiveStoreEvent.isEqualEncoded,
     })
 
     if (mergeResult._tag === 'unexpected-error') {
@@ -104,7 +105,7 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     span.addEvent('local-push', {
-      batchSize: encodedMutationEvents.length,
+      batchSize: encodedEventDefs.length,
       mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
     })
 
@@ -116,18 +117,18 @@ export const makeClientSessionSyncProcessor = ({
     syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
     const writeTables = new Set<string>()
-    for (const mutationEvent of mergeResult.newEvents) {
+    for (const event of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
-      const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-      const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
+      const decodedEventDef = Schema.decodeSync(eventSchema)(event)
+      const res = applyEvent(decodedEventDef, { otelContext, withChangeset: true })
       for (const table of res.writeTables) {
         writeTables.add(table)
       }
-      mutationEvent.meta.sessionChangeset = res.sessionChangeset
+      event.meta.sessionChangeset = res.sessionChangeset
     }
 
-    // console.debug('pushToLeader', encodedMutationEvents.length, ...encodedMutationEvents.map((_) => _.toJSON()))
-    BucketQueue.offerAll(leaderPushQueue, encodedMutationEvents).pipe(Effect.runSync)
+    // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
+    BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
 
     return { writeTables }
   }
@@ -160,7 +161,7 @@ export const makeClientSessionSyncProcessor = ({
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-      yield* clientSession.leaderThread.mutations.push(batch).pipe(
+      yield* clientSession.leaderThread.events.push(batch).pipe(
         Effect.catchTag('LeaderAheadError', () => {
           debugInfo.rejectCount++
           return BucketQueue.clear(leaderPushQueue)
@@ -177,7 +178,7 @@ export const makeClientSessionSyncProcessor = ({
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
-      clientSession.leaderThread.mutations.pull({
+      clientSession.leaderThread.events.pull({
         cursor: { mergeCounter: getMergeCounter(), eventId: syncStateRef.current.localHead },
       }),
     ).pipe(
@@ -193,7 +194,7 @@ export const makeClientSessionSyncProcessor = ({
             syncState: syncStateRef.current,
             payload,
             isClientEvent,
-            isEqualEvent: MutationEvent.isEqualEncoded,
+            isEqualEvent: LiveStoreEvent.isEqualEncoded,
           })
 
           if (mergeResult._tag === 'unexpected-error') {
@@ -257,15 +258,15 @@ export const makeClientSessionSyncProcessor = ({
           if (mergeResult.newEvents.length === 0) return
 
           const writeTables = new Set<string>()
-          for (const mutationEvent of mergeResult.newEvents) {
+          for (const event of mergeResult.newEvents) {
             // TODO apply changeset if available (will require tracking of write tables as well)
-            const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-            const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
+            const decodedEventDef = Schema.decodeSync(eventSchema)(event)
+            const res = applyEvent(decodedEventDef, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {
               writeTables.add(table)
             }
 
-            mutationEvent.meta.sessionChangeset = res.sessionChangeset
+            event.meta.sessionChangeset = res.sessionChangeset
           }
 
           refreshTables(writeTables)
@@ -314,7 +315,7 @@ export const makeClientSessionSyncProcessor = ({
 
 export interface ClientSessionSyncProcessor {
   push: (
-    batch: ReadonlyArray<MutationEvent.PartialAnyDecoded>,
+    batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
   ) => {
     writeTables: Set<string>

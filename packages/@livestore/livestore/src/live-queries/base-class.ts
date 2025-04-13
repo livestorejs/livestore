@@ -1,4 +1,3 @@
-import type { QueryInfo } from '@livestore/common'
 import { isNotNil } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
@@ -24,11 +23,7 @@ export type ReactivityGraphContext = {
 }
 
 export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any> =
-  TQuery extends LiveQuery<infer TResult, infer _1>
-    ? TResult
-    : TQuery extends LiveQueryDef<infer TResult, infer _1>
-      ? TResult
-      : unknown
+  TQuery extends LiveQuery<infer TResult> ? TResult : TQuery extends LiveQueryDef<infer TResult> ? TResult : unknown
 
 let queryIdCounter = 0
 
@@ -65,23 +60,22 @@ export const depsToString = (deps: DepKey): string => {
   return deps.filter(isNotNil).join(',')
 }
 
-export interface LiveQueryDef<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> {
+export interface LiveQueryDef<TResult> {
   _tag: 'def'
   /** Creates a new LiveQuery instance bound to a specific store/reactivityGraph */
-  make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult, TQueryInfo>>
+  make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult>>
   label: string
   hash: string
-  queryInfo: TQueryInfo
 }
 
 export namespace LiveQueryDef {
-  export type Any = LiveQueryDef<any, any>
+  export type Any = LiveQueryDef<any>
 }
 
 /**
  * A LiveQuery is stateful
  */
-export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> {
+export interface LiveQuery<TResult> {
   id: number
   _tag: 'computed' | 'db' | 'graphql'
   [TypeId]: TypeId
@@ -109,20 +103,16 @@ export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.Non
 
   activeSubscriptions: Set<StackInfo>
 
-  queryInfo: TQueryInfo
-
   runs: number
 
   executionTimes: number[]
 }
 
 export namespace LiveQuery {
-  export type Any = LiveQuery<any, any>
+  export type Any = LiveQuery<any>
 }
 
-export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
-  implements LiveQuery<TResult, TQueryInfo>
-{
+export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> {
   '__result!'!: TResult
   id = queryIdCounter++;
   [TypeId]: TypeId = TypeId
@@ -136,8 +126,6 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
   activeSubscriptions: Set<StackInfo> = new Set()
 
   abstract readonly reactivityGraph: ReactivityGraph
-
-  abstract queryInfo: TQueryInfo
 
   get runs() {
     return this.results$.recomputations
@@ -165,12 +153,7 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
 }
 
 export type GetAtomResult = <T>(
-  atom:
-    | RG.Atom<T, any, RefreshReason>
-    | LiveQueryDef<T, any>
-    | LiveQuery<T, any>
-    | ILiveQueryRef<T>
-    | ILiveQueryRefDef<T>,
+  atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ILiveQueryRef<T> | ILiveQueryRefDef<T>,
   otelContext?: otel.Context | undefined,
   debugRefreshReason?: RefreshReason | undefined,
 ) => T

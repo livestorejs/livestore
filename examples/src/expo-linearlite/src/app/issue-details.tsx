@@ -8,7 +8,7 @@ import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-na
 import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import { issuesMutations, tables } from '@/livestore/schema.ts'
+import { events, tables } from '@/livestore/schema.ts'
 import type { Priority, Status } from '@/types.ts'
 
 const IssueDetailsScreen = () => {
@@ -28,7 +28,7 @@ const IssueDetailsScreen = () => {
             LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.id = '${issueId}'
           `,
-        schema: tables.issues.schema.pipe(
+        schema: tables.issues.rowSchema.pipe(
           Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
           Schema.Array,
           Schema.headOrElse(),
@@ -63,7 +63,7 @@ const IssueDetailsScreen = () => {
             GROUP BY comments.id
             ORDER BY comments.createdAt DESC
           `,
-        schema: tables.comments.schema.pipe(
+        schema: tables.comments.rowSchema.pipe(
           Schema.extend(
             Schema.Struct({
               authorName: Schema.String,
@@ -98,16 +98,16 @@ const IssueDetailsScreen = () => {
             {issue.deletedAt ? (
               <View className="flex-row justify-between border my-2 border-zinc-200 dark:border-zinc-700 rounded-md p-2 gap-2">
                 <ThemedText style={{ color: 'red' }}>
-                  Deleted on{' '}
-                  {new Date(issue.deletedAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at{' '}
-                  {new Date(issue.deletedAt * 1000).toLocaleTimeString('en-US', {
+                  Deleted on {new Date(issue.deletedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+                  at{' '}
+                  {new Date(issue.deletedAt).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: 'numeric',
                     hour12: true,
                   })}{' '}
                 </ThemedText>
                 <Pressable
-                  onPress={() => store.store.commit(issuesMutations.restoreIssue({ id: issue.id }))}
+                  onPress={() => store.store.commit(events.issueRestored({ id: issue.id }))}
                   className="flex-row items-center gap-2 active:bg-zinc-100 dark:active:bg-zinc-800"
                 >
                   <Undo2Icon size={18} />

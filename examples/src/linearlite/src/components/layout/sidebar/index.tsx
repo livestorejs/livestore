@@ -18,13 +18,13 @@ export const Sidebar = ({ className }: { className?: string }) => {
       title: 'List view',
       icon: Bars4Icon,
       href: '/',
-      onClick: () => setFilterState((state) => ({ ...state, status: undefined })),
+      onClick: () => setFilterState({ status: null }),
     },
     {
       title: 'Board view',
       icon: ViewColumnsIcon,
       href: '/board',
-      onClick: () => setFilterState((state) => ({ ...state, status: undefined })),
+      onClick: () => setFilterState({ status: null }),
     },
   ]
 

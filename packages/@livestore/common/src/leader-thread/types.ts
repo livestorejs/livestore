@@ -24,7 +24,7 @@ import type {
   SyncBackend,
   UnexpectedError,
 } from '../index.js'
-import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
+import type { EventId, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
 import type * as SyncState from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
@@ -52,7 +52,7 @@ export type InitialSyncInfo = Option.Option<{
 //   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
 export type LeaderSqliteDb = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
-export type PersistenceInfoPair = { readModel: PersistenceInfo; mutationLog: PersistenceInfo }
+export type PersistenceInfoPair = { readModel: PersistenceInfo; eventlog: PersistenceInfo }
 
 export type DevtoolsOptions =
   | {
@@ -90,16 +90,16 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     clientId: string
     makeSqliteDb: MakeSqliteDb
     dbReadModel: LeaderSqliteDb
-    dbMutationLog: LeaderSqliteDb
+    dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
+    eventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
-    applyMutation: ApplyMutation
+    applyEvent: ApplyEvent
     initialState: {
       leaderHead: EventId.EventId
       migrationsReport: MigrationsReport
@@ -113,11 +113,11 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   }
 >() {}
 
-export type ApplyMutation = (
-  mutationEventEncoded: MutationEvent.EncodedWithMeta,
+export type ApplyEvent = (
+  eventEncoded: LiveStoreEvent.EncodedWithMeta,
   options?: {
-    /** Needed for rehydrateFromMutationLog */
-    skipMutationLog?: boolean
+    /** Needed for rehydrateFromEventlog */
+    skipEventlog?: boolean
   },
 ) => Effect.Effect<
   { sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } },
@@ -143,10 +143,10 @@ export interface LeaderSyncProcessor {
     Scope.Scope
   >
 
-  /** Used by client sessions to push mutations to the leader thread */
+  /** Used by client sessions to push events to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+    batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
@@ -158,7 +158,7 @@ export interface LeaderSyncProcessor {
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
-    mutationEvent: MutationEvent.PartialAnyEncoded
+    event: LiveStoreEvent.PartialAnyEncoded
     clientId: string
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError>

@@ -5,13 +5,13 @@ import { LiveList } from '@livestore/react/experimental'
 import React from 'react'
 
 import { app$ } from '../livestore/queries.js'
-import { mutations, tables, type Todo } from '../livestore/schema.js'
+import { events, tables, type Todo } from '../livestore/schema.js'
 
 const visibleTodos$ = queryDb(
   (get) => {
     const { filter } = get(app$)
-    return tables.todos.query.where({
-      deleted: null,
+    return tables.todos.where({
+      deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },
@@ -27,9 +27,7 @@ export const MainSection: React.FC = () => {
   // If another user toggled concurrently, we shouldn't toggle it back
   const toggleTodo = React.useCallback(
     (todo: Todo) =>
-      store.commit(
-        todo.completed ? mutations.todoUncompleted({ id: todo.id }) : mutations.todoCompleted({ id: todo.id }),
-      ),
+      store.commit(todo.completed ? events.todoUncompleted({ id: todo.id }) : events.todoCompleted({ id: todo.id })),
     [store],
   )
 
@@ -49,7 +47,6 @@ export const MainSection: React.FC = () => {
     </section>
   )
 }
-
 const Item = ({
   todo,
   toggleTodo,
@@ -73,8 +70,8 @@ const Item = ({
       onTransitionEnd={() => {
         // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
         // Since using the `setState` doesn't seem to happen "quickly enough"
-        if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
-          store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
+        if (state === 'deleting' && todo.deletedAt === null && !isDeletedRef.current) {
+          store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
           isDeletedRef.current = true
         }
       }}

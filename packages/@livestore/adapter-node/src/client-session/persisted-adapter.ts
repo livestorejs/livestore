@@ -295,7 +295,7 @@ const makeLeaderThread = ({
     )
 
     const leaderThread = {
-      mutations: {
+      events: {
         pull: ({ cursor }) =>
           runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
         push: (batch) =>
@@ -314,7 +314,7 @@ const makeLeaderThread = ({
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:client-session:export'),
       ),
-      getMutationLogData: Effect.dieMessage('Not implemented'),
+      getEventlogData: Effect.dieMessage('Not implemented'),
       getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),

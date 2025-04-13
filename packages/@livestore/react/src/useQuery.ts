@@ -1,11 +1,11 @@
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import { deepEqual, indent } from '@livestore/utils'
+import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { useStore } from './LiveStoreContext.js'
+import { LiveStoreContext } from './LiveStoreContext.js'
 import { useRcResource } from './useRcResource.js'
 import { originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -26,9 +26,6 @@ export const useQuery = <TQuery extends LiveQueryDef.Any>(
   options?: { store?: Store },
 ): LiveQueries.GetResult<TQuery> => useQueryRef(queryDef, options).valueRef.current
 
-type GetQueryInfo<TQuery extends LiveQueryDef.Any> =
-  TQuery extends LiveQueryDef<infer _1, infer TQueryInfo> ? TQueryInfo : never
-
 /**
  */
 export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
@@ -42,9 +39,13 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   },
 ): {
   valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
-  queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>>
+  queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>
 } => {
-  const { store } = useStore({ store: options?.store })
+  const store =
+    options?.store ??
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useContext(LiveStoreContext)?.store ??
+    shouldNeverHappen(`No store provided to useQuery`)
 
   const rcRefKey = `${store.storeId}_${queryDef.hash}`
 
@@ -77,7 +78,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     // which takes care of disposing the queryRcRef
     () => {},
   )
-  const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>
+  const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>>
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
   // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)

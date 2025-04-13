@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { sql } from '@livestore/common'
-import { rawSqlMutation } from '@livestore/common/schema'
+import { rawSqlEvent } from '@livestore/common/schema'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
@@ -16,12 +16,13 @@ describe('LiveStoreProvider', () => {
   it('simple', async () => {
     let appRenderCount = 0
 
-    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.schema) })
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
 
     const App = () => {
       appRenderCount++
+      const { store } = LiveStoreReact.useStore()
 
-      const todos = LiveStoreReact.useQuery(allTodos$)
+      const todos = store.useQuery(allTodos$)
 
       return <div>{JSON.stringify(todos)}</div>
     }
@@ -32,7 +33,7 @@ describe('LiveStoreProvider', () => {
       const bootCb = React.useCallback(
         (store: Store) =>
           store.commit(
-            rawSqlMutation({
+            rawSqlEvent({
               sql: sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
             }),
           ),
@@ -89,7 +90,7 @@ describe('LiveStoreProvider', () => {
       const bootCb = React.useCallback(
         (store: Store) =>
           store.commit(
-            rawSqlMutation({
+            rawSqlEvent({
               sql: sql`INSERT OR IGNORE INTO todos_missing_table (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
             }),
           ),

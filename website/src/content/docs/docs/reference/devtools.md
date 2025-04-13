@@ -10,7 +10,7 @@ sidebar:
   ![](https://share.cleanshot.com/F79hpTCY+)
 - Query inspector
   ![](https://share.cleanshot.com/pkr2jqgb+)
-- Mutation log browser
+- Eventlog browser
   ![](https://share.cleanshot.com/PTgXpcPm+)
 - Sync status
   ![](https://share.cleanshot.com/VsKY3KnR+)

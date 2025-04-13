@@ -1,4 +1,3 @@
-import type { QueryInfo } from '@livestore/common'
 import { getDurationMsFromSpan } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 
@@ -8,29 +7,25 @@ import { isValidFunctionString } from '../utils/function-string.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
-export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfo.None>(
+export const computed = <TResult>(
   fn: (get: GetAtomResult) => TResult,
   options?: {
     label?: string
-    queryInfo?: TQueryInfo
     deps?: DepKey
   },
-): LiveQueryDef<TResult, TQueryInfo> => {
+): LiveQueryDef<TResult> => {
   const hash = options?.deps ? depsToString(options.deps) : fn.toString()
   if (isValidFunctionString(hash)._tag === 'invalid') {
     throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
   }
 
-  const queryInfo = options?.queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
-
   return {
     _tag: 'def',
     make: withRCMap(hash, (ctx, _otelContext) => {
       // TODO onDestroy
-      return new LiveStoreComputedQuery<TResult, TQueryInfo>({
+      return new LiveStoreComputedQuery<TResult>({
         fn,
         label: options?.label ?? fn.toString(),
-        queryInfo: options?.queryInfo,
         reactivityGraph: ctx.reactivityGraph.deref()!,
       })
     }),
@@ -39,14 +34,10 @@ export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfo.None>
     // TODO we should figure out whether this could cause some problems and/or if there's a better way to do this
     // NOTE `fn.toString()` doesn't work in Expo as it always produces `[native code]`
     hash,
-    queryInfo,
   }
 }
 
-export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> extends LiveStoreQueryBase<
-  TResult,
-  TQueryInfo
-> {
+export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'computed' = 'computed'
 
   /** A reactive thunk representing the query results */
@@ -56,24 +47,19 @@ export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = Quer
 
   reactivityGraph: ReactivityGraph
 
-  queryInfo: TQueryInfo
-
   constructor({
     fn,
     label,
     reactivityGraph,
-    queryInfo,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
     reactivityGraph: ReactivityGraph
-    queryInfo?: TQueryInfo
   }) {
     super()
 
     this.label = label
     this.reactivityGraph = reactivityGraph
-    this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
 
     const queryLabel = `${label}:results`
 

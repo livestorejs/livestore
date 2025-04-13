@@ -61,7 +61,7 @@ wrangler deploy
 
 - A Cloudflare worker is used to open a websocket connection between the client and a durable object.
 - The durable object answers push/pull requests from the client.
-- The events are stored in a D1 SQLite database with a table for each store instance following the pattern `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}` where `PERSISTENCE_FORMAT_VERSION` is a number that is incremented whenever the `sync-cf` internal storage format changes.
+- The events are stored in a D1 SQLite database with a table for each store instance following the pattern `eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}` where `PERSISTENCE_FORMAT_VERSION` is a number that is incremented whenever the `sync-cf` internal storage format changes.
 
 ## Local development
 

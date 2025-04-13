@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
-import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema, State } from '@livestore/common/schema'
 import { createStore, queryDb, Schema } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
 import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
@@ -62,9 +62,9 @@ const live = Cli.Command.make(
         syncPayload: Option.getOrUndefined(syncPayload),
       })
 
-      const firstTable = schema.tables.values().next().value as DbSchema.TableDef
+      const firstTable = schema.tables.values().next().value as State.SQLite.TableDef
 
-      const queries$ = queryDb(firstTable.query.orderBy('id', 'desc').limit(10))
+      const queries$ = queryDb(firstTable.orderBy('id', 'desc').limit(10))
 
       yield* store.subscribeStream(queries$).pipe(
         Stream.tap((result) => Effect.log('query', result)),

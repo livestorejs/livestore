@@ -5,13 +5,13 @@ import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '..
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { MutationEvent } from '../schema/mod.js'
+import { LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
-import { makeApplyMutation } from './apply-mutation.js'
+import { makeApplyEvent } from './apply-event.js'
+import * as Eventlog from './eventlog.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
-import * as Mutationlog from './mutationlog.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type {
@@ -31,7 +31,7 @@ export interface MakeLeaderThreadLayerParams {
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   dbReadModel: LeaderSqliteDb
-  dbMutationLog: LeaderSqliteDb
+  dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
   params?: {
@@ -55,7 +55,7 @@ export const makeLeaderThreadLayer = ({
   makeSqliteDb,
   syncOptions,
   dbReadModel,
-  dbMutationLog,
+  dbEventlog,
   devtoolsOptions,
   shutdownChannel,
   params,
@@ -66,8 +66,8 @@ export const makeLeaderThreadLayer = ({
 
     // TODO do more validation here than just checking the count of tables
     // Either happens on initial boot or if schema changes
-    const dbMutationLogMissing =
-      dbMutationLog.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const dbEventlogMissing =
+      dbEventlog.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const dbReadModelMissing =
       dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
@@ -89,8 +89,8 @@ export const makeLeaderThreadLayer = ({
 
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
-      dbMutationLogMissing,
-      dbMutationLog,
+      dbEventlogMissing,
+      dbEventlog,
       dbReadModel,
       dbReadModelMissing,
       initialBlockingSyncContext,
@@ -116,7 +116,7 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
-    const applyMutation = yield* makeApplyMutation({ schema, dbReadModel, dbMutationLog })
+    const applyEvent = yield* makeApplyEvent({ schema, dbReadModel, dbEventlog })
 
     const ctx = {
       schema,
@@ -124,14 +124,14 @@ export const makeLeaderThreadLayer = ({
       storeId,
       clientId,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       makeSqliteDb,
-      mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
+      eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,
       syncProcessor,
-      applyMutation,
+      applyEvent,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       // State will be set during `bootLeaderThread`
@@ -168,7 +168,7 @@ const makeInitialBlockingSyncContext = ({
   Effect.gen(function* () {
     const ctx = {
       isDone: false,
-      processedMutations: 0,
+      processedEvents: 0,
       total: -1,
     }
 
@@ -191,10 +191,10 @@ const makeInitialBlockingSyncContext = ({
             ctx.total = remaining + processed
           }
 
-          ctx.processedMutations += processed
+          ctx.processedEvents += processed
           yield* Queue.offer(bootStatusQueue, {
             stage: 'syncing',
-            progress: { done: ctx.processedMutations, total: ctx.total },
+            progress: { done: ctx.processedEvents, total: ctx.total },
           })
 
           if (remaining === 0 && blockingDeferred !== undefined) {
@@ -223,9 +223,9 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbMutationLog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
+    const { dbEventlog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
-    yield* Mutationlog.initMutationLogDb(dbMutationLog)
+    yield* Eventlog.initEventlogDb(dbEventlog)
 
     let migrationsReport: MigrationsReport
     if (dbReadModelMissing) {

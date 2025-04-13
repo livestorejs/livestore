@@ -7,7 +7,7 @@ import {
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
-import { EventId, MutationEvent } from '@livestore/common/schema'
+import { EventId, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
@@ -103,7 +103,7 @@ export namespace LeaderWorkerInner {
 
   export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      batch: Schema.Array(MutationEvent.AnyEncoded),
+      batch: Schema.Array(LiveStoreEvent.AnyEncoded),
     },
     success: Schema.Void,
     failure: Schema.Union(UnexpectedError, LeaderAheadError),
@@ -124,7 +124,7 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()('ExportMutationlog', {
+  export class ExportEventlog extends Schema.TaggedRequest<ExportEventlog>()('ExportEventlog', {
     payload: {},
     success: Transferable.Uint8Array,
     failure: UnexpectedError,
@@ -163,7 +163,7 @@ export namespace LeaderWorkerInner {
     PushToLeader,
     Export,
     GetRecreateSnapshot,
-    ExportMutationlog,
+    ExportEventlog,
     GetLeaderHead,
     GetLeaderSyncState,
     Shutdown,
