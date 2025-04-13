@@ -3,13 +3,13 @@ import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 
 import { app$ } from '../livestore/queries.js'
-import { mutations, tables, type Todo } from '../livestore/schema.js'
+import { events, tables, type Todo } from '../livestore/schema.js'
 
 const visibleTodos$ = queryDb(
   (get) => {
     const { filter } = get(app$)
-    return tables.todos.query.where({
-      deleted: null,
+    return tables.todos.where({
+      deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },
@@ -21,7 +21,7 @@ export const MainSection: React.FC = () => {
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: Todo) =>
-      store.commit(completed ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id })),
+      store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
     [store],
   )
 
@@ -37,7 +37,7 @@ export const MainSection: React.FC = () => {
               <label>{todo.text}</label>
               <button
                 className="destroy"
-                onClick={() => store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))}
+                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
               ></button>
             </div>
           </li>
