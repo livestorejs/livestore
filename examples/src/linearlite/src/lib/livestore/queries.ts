@@ -13,4 +13,4 @@ export const highestIssueId$ = queryDb(tables.issue.select('id').orderBy('id', '
 export const highestKanbanOrder$ = queryDb(tables.issue.select('kanbanorder').orderBy('kanbanorder', 'desc').limit(1), {
   label: 'global.highestKanbanOrder',
 })
-export const filterState$ = queryDb(tables.filterState.get(SessionIdSymbol), { label: 'global.filterState' })
+export const filterState$ = queryDb(tables.filterState.get(), { label: 'global.filterState' })

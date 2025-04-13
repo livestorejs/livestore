@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { tables } from '../livestore/schema.ts'
 
-const incompleteCount$ = queryDb(tables.todos.query.count().where({ deleted: null, completed: false }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ deletedAt: null, completed: false }), {
   label: 'incompleteCount',
 })
 

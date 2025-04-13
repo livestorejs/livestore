@@ -1,6 +1,6 @@
 import Editor from '@/components/common/editor'
 import { useFrontendState } from '@/lib/livestore/queries'
-import { mutations } from '@/lib/livestore/schema'
+import { events } from '@/lib/livestore/schema'
 import { ArrowUpIcon } from '@heroicons/react/20/solid'
 import { useStore } from '@livestore/react'
 import React from 'react'
@@ -24,11 +24,11 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
   const submitComment = () => {
     if (!commentDraft) return
     store.commit(
-      mutations.createComment({
+      events.createComment({
         id: crypto.randomUUID(),
         body: commentDraft,
         issueId: issueId,
-        created: Date.now(),
+        created: new Date(),
         creator: frontendState.user,
       }),
     )

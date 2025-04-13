@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/common/avatar'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
-import { Issue, mutations } from '@/lib/livestore/schema'
+import { Issue, events } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { getIssueTag } from '@/utils/get-issue-tag'
@@ -14,10 +14,11 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
   const navigate = useNavigate()
   const { store } = useStore()
 
-  const handleChangeStatus = (status: Status) => store.commit(mutations.updateIssueStatus({ id: issue.id, status }))
+  const handleChangeStatus = (status: Status) =>
+    store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
 
   const handleChangePriority = (priority: Priority) =>
-    store.commit(mutations.updateIssuePriority({ id: issue.id, priority }))
+    store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
 
   return (
     <div

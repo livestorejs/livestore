@@ -8,13 +8,13 @@ import { Comments } from '@/components/layout/issue/comments'
 import { DeleteButton } from '@/components/layout/issue/delete-button'
 import { DescriptionInput } from '@/components/layout/issue/description-input'
 import { TitleInput } from '@/components/layout/issue/title-input'
-import { mutations, tables } from '@/lib/livestore/schema'
+import { events, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { formatDate } from '@/utils/format-date'
 import { getIssueTag } from '@/utils/get-issue-tag'
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
-import { useQuery, useStore } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
 import React from 'react'
 import { Button } from 'react-aria-components'
@@ -24,7 +24,7 @@ export const Issue = () => {
   const id = Number(useParams().id ?? 0)
   const navigate = useNavigate()
   const { store } = useStore()
-  const issue = useQuery(queryDb(tables.issue.query.where({ id }).first(), { deps: [id] }))
+  const issue = store.useQuery(queryDb(tables.issue.where({ id }).first(), { deps: [id] }))
 
   const close = () => {
     if (window.history.length > 2) navigate(-1)
@@ -32,11 +32,11 @@ export const Issue = () => {
   }
 
   const handleChangeStatus = (status: Status) => {
-    store.commit(mutations.updateIssueStatus({ id: issue.id, status }))
+    store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
   }
 
   const handleChangePriority = (priority: Priority) => {
-    store.commit(mutations.updateIssuePriority({ id: issue.id, priority }))
+    store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
   }
 
   return (

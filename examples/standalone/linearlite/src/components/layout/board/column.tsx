@@ -3,11 +3,11 @@ import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
 import { StatusDetails } from '@/data/status-options'
 import { useDebounce } from '@/hooks/useDebounce'
 import { filterState$, useFilterState, useScrollState } from '@/lib/livestore/queries'
-import { mutations, tables } from '@/lib/livestore/schema'
+import { events, tables } from '@/lib/livestore/schema'
 import { filterStateToWhere } from '@/lib/livestore/utils'
 import { Status } from '@/types/status'
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
+import * as LiveStoreReact from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -28,29 +28,29 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
   // TODO: Hook up scroll state again
   const [scrollState, setScrollState] = useScrollState()
   const onScroll = useDebounce((e) => {}, 100)
-  const { store } = useStore()
+  const { store } = LiveStoreReact.useStore()
   const [filterState] = useFilterState()
 
   const filteredIssues$ = queryDb(
     (get) =>
-      tables.issue.query
+      tables.issue
         .select()
         .where({ priority: filterStateToWhere(get(filterState$))?.priority, status, deleted: null })
         .orderBy('kanbanorder', 'desc'),
     { label: 'List.visibleIssues', deps: [status] },
   )
-  const filteredIssues = useQuery(filteredIssues$)
+  const filteredIssues = store.useQuery(filteredIssues$)
 
   const getNewCanbanOrder = (targetId: string, dropPosition: DropPosition) => {
     const before = dropPosition !== 'after'
     const targetKanbanOrder = store.query(
-      tables.issue.query
+      tables.issue
         .select('kanbanorder')
         .where({ id: Number(targetId) })
         .first(),
-    ).kanbanorder
+    )
     const nearestKanbanOrder = store.query(
-      tables.issue.query
+      tables.issue
         .select('kanbanorder')
         .where({
           status,
@@ -59,7 +59,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         })
         .orderBy('kanbanorder', before ? 'asc' : 'desc')
         .limit(1),
-    )[0]?.kanbanorder
+    )[0]
     return generateKeyBetween(
       before ? targetKanbanOrder : nearestKanbanOrder,
       before ? nearestKanbanOrder : targetKanbanOrder,
@@ -71,24 +71,24 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
     onReorder: (e: DroppableCollectionReorderEvent) => {
       const items = [...e.keys]
       const kanbanorder = getNewCanbanOrder(e.target.key as string, e.target.dropPosition)
-      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(events.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder, modified: new Date() }))
     },
     onInsert: async (e) => {
       const items = await Promise.all(
         e.items.filter(isTextDropItem).map(async (item) => JSON.parse(await item.getText('text/plain')).toString()),
       )
       const kanbanorder = getNewCanbanOrder(e.target.key as string, e.target.dropPosition)
-      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(events.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder, modified: new Date() }))
     },
     onRootDrop: async (e) => {
       const items = await Promise.all(
         e.items.filter(isTextDropItem).map(async (item) => JSON.parse(await item.getText('text/plain')).toString()),
       )
       const lowestKanbanOrder = store.query(
-        tables.issue.query.select('kanbanorder').where({ status }).orderBy('kanbanorder', 'asc').limit(1),
-      )[0]?.kanbanorder
+        tables.issue.select('kanbanorder').where({ status }).orderBy('kanbanorder', 'asc').limit(1),
+      )[0]
       const kanbanorder = lowestKanbanOrder ? generateKeyBetween(null, lowestKanbanOrder) : 'a1'
-      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(events.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder, modified: new Date() }))
     },
     renderDropIndicator: (target) => {
       return <DropIndicator target={target} className="h-1 mx-3.5 rounded-full bg-orange-500" />

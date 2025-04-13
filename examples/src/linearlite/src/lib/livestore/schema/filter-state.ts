@@ -1,6 +1,7 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { State, Schema } from '@livestore/livestore'
+import { SessionIdSymbol } from '../../../../../../../packages/@livestore/common/src/adapter-types'
 
 const OrderDirection = Schema.Literal('asc', 'desc').annotations({ title: 'OrderDirection' })
 export type OrderDirection = typeof OrderDirection.Type
@@ -20,5 +21,5 @@ export type FilterState = typeof FilterState.Type
 export const filterState = State.SQLite.clientDocument({
   name: 'filter_state',
   schema: FilterState,
-  default: { value: { orderBy: 'created', orderDirection: 'desc' } },
+  default: { value: { orderBy: 'created', orderDirection: 'desc' }, id: SessionIdSymbol },
 })

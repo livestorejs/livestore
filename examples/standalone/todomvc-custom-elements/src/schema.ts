@@ -1,75 +1,47 @@
-import { defineMutation, makeSchema, Schema, sql, State } from '@livestore/livestore'
+import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-const todos = State.SQLite.table('todos', {
-  id: State.SQLite.text({ primaryKey: true }),
-  text: State.SQLite.text({ default: '' }),
-  completed: State.SQLite.boolean({ default: false }),
-  deleted: State.SQLite.integer({ nullable: true }),
+import * as eventsDefs from './events.js'
+
+const todos = State.SQLite.table({
+  name: 'todos',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '' }),
+    completed: State.SQLite.boolean({ default: false }),
+    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+  },
 })
 
 const Filter = Schema.Literal('all', 'active', 'completed')
 export type Filter = typeof Filter.Type
 
-const app = State.SQLite.table(
-  'app',
-  {
-    newTodoText: State.SQLite.text({ default: '' }),
-    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
+const uiState = State.SQLite.clientDocument({
+  name: 'uiState',
+  schema: Schema.Struct({ newTodoText: Schema.String, filter: Filter }),
+  default: {
+    id: SessionIdSymbol,
+    value: { newTodoText: '', filter: 'all' as Filter },
   },
-  { isSingleton: true },
-)
+})
 
 export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
-export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
+export type UiState = typeof uiState.default.value
 
-export const tables = { todos, app }
+export const tables = { todos, uiState }
 
-const todoCreated = defineMutation(
-  'todoCreated',
-  Schema.Struct({ id: Schema.String, text: Schema.String }),
-  sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
-)
-
-const todoCompleted = defineMutation(
-  'todoCompleted',
-  Schema.Struct({ id: Schema.String }),
-  sql`UPDATE todos SET completed = true WHERE id = $id`,
-)
-
-const todoUncompleted = defineMutation(
-  'todoUncompleted',
-  Schema.Struct({ id: Schema.String }),
-  sql`UPDATE todos SET completed = false WHERE id = $id`,
-)
-
-export const todoDeleted = defineMutation(
-  'todoDeleted',
-  Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
-  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
-)
-
-export const todoClearedCompleted = defineMutation(
-  'todoClearedCompleted',
-  Schema.Struct({ deleted: Schema.Number }),
-  sql`UPDATE todos SET deleted = $deleted WHERE completed = true`,
-)
-
-const updatedNewTodoText = defineMutation(
-  'updatedNewTodoText',
-  Schema.Struct({ text: Schema.String }),
-  sql`UPDATE app SET newTodoText = $text`,
-)
-
-const setFilter = defineMutation('setFilter', Schema.Struct({ filter: Filter }), sql`UPDATE app SET filter = $filter`)
-
-export const mutations = {
-  todoCreated,
-  todoCompleted,
-  todoUncompleted,
-  todoDeleted,
-  todoClearedCompleted,
-  updatedNewTodoText,
-  setFilter,
+export const events = {
+  ...eventsDefs,
+  uiStateSet: uiState.set,
 }
 
-export const schema = makeSchema({ tables, mutations })
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoCreated': ({ id, text }) => todos.insert({ id, text, completed: false }),
+  'v1.TodoCompleted': ({ id }) => todos.update({ completed: true }).where({ id }),
+  'v1.TodoUncompleted': ({ id }) => todos.update({ completed: false }).where({ id }),
+  'v1.TodoDeleted': ({ id, deletedAt }) => todos.update({ deletedAt }).where({ id }),
+  'v1.TodoClearedCompleted': ({ deletedAt }) => todos.update({ deletedAt }).where({ completed: true }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ events, state })

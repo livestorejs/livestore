@@ -1,4 +1,4 @@
-import { useClientDocument, useStore } from '@livestore/react'
+import { useClientDocument } from '@livestore/react'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
 import React from 'react'
@@ -6,20 +6,6 @@ import { ScrollView, View } from 'react-native'
 
 import { RowPropertySwitch } from '@/components/RowPropertySwitch.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import {
-  updateAssignedTabCompletedIssues,
-  updateAssignedTabGrouping,
-  updateAssignedTabOrdering,
-  updateAssignedTabShowAssignee,
-  updateAssignedTabShowPriority,
-  updateAssignedTabShowStatus,
-  updateCreatedTabCompletedIssues,
-  updateCreatedTabGrouping,
-  updateCreatedTabOrdering,
-  updateCreatedTabShowAssignee,
-  updateCreatedTabShowPriority,
-  updateCreatedTabShowStatus,
-} from '@/livestore/mutations.ts'
 import { tables } from '@/livestore/schema.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
@@ -28,7 +14,6 @@ const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']
 const rowProperties = ['Assignee', 'Status', 'Priority']
 
 const FilterSettingsScreen = () => {
-  const { store } = useStore()
   const [
     {
       selectedHomeTab,
@@ -45,46 +30,8 @@ const FilterSettingsScreen = () => {
       createdTabShowStatus,
       createdTabShowPriority,
     },
-  ] = useClientDocument(tables.app)
-
-  const handleUpdateFilter = (
-    event: string | boolean,
-    query: 'tabGrouping' | 'tabOrdering' | 'tabCompletedIssues' | 'showAssignee' | 'showStatus' | 'showPriority',
-  ) => {
-    const updateFunctions = {
-      Assigned: {
-        tabGrouping: updateAssignedTabGrouping,
-        tabOrdering: updateAssignedTabOrdering,
-        tabCompletedIssues: updateAssignedTabCompletedIssues,
-        showAssignee: updateAssignedTabShowAssignee,
-        showStatus: updateAssignedTabShowStatus,
-        showPriority: updateAssignedTabShowPriority,
-      },
-      Created: {
-        tabGrouping: updateCreatedTabGrouping,
-        tabOrdering: updateCreatedTabOrdering,
-        tabCompletedIssues: updateCreatedTabCompletedIssues,
-        showAssignee: updateCreatedTabShowAssignee,
-        showStatus: updateCreatedTabShowStatus,
-        showPriority: updateCreatedTabShowPriority,
-      },
-    }
-
-    // @ts-expect-error TODO
-    const updateFunction = updateFunctions[selectedHomeTab]?.[query]
-    if (updateFunction) {
-      const payload = {
-        [query === 'tabGrouping'
-          ? 'grouping'
-          : query === 'tabOrdering'
-            ? 'ordering'
-            : query === 'tabCompletedIssues'
-              ? 'completedIssues'
-              : query]: event,
-      }
-      store.commit(updateFunction(payload))
-    }
-  }
+    setUiState,
+  ] = useClientDocument(tables.uiState)
 
   return (
     <ScrollView className="flex-1 px-4 py-6 dark:bg-[#18191B]">
@@ -100,9 +47,13 @@ const FilterSettingsScreen = () => {
         <SegmentedControl
           values={tabGroupingOptions}
           selectedIndex={tabGroupingOptions.indexOf(
-            selectedHomeTab === 'Assigned' ? assignedTabGrouping : createdTabGrouping,
+            selectedHomeTab === 'assigned' ? assignedTabGrouping : createdTabGrouping,
           )}
-          onChange={(value) => handleUpdateFilter(value.nativeEvent.value, 'tabGrouping')}
+          onChange={(value) =>
+            selectedHomeTab === 'assigned'
+              ? setUiState({ assignedTabGrouping: value.nativeEvent.value })
+              : setUiState({ createdTabGrouping: value.nativeEvent.value })
+          }
         />
       </View>
 
@@ -111,9 +62,13 @@ const FilterSettingsScreen = () => {
         <SegmentedControl
           values={tabOrderingOptions}
           selectedIndex={tabOrderingOptions.indexOf(
-            selectedHomeTab === 'Assigned' ? assignedTabOrdering : createdTabOrdering,
+            selectedHomeTab === 'assigned' ? assignedTabOrdering : createdTabOrdering,
           )}
-          onChange={(value) => handleUpdateFilter(value.nativeEvent.value, 'tabOrdering')}
+          onChange={(value) =>
+            selectedHomeTab === 'assigned'
+              ? setUiState({ assignedTabOrdering: value.nativeEvent.value })
+              : setUiState({ createdTabOrdering: value.nativeEvent.value })
+          }
         />
       </View>
       <View>
@@ -122,25 +77,12 @@ const FilterSettingsScreen = () => {
           {rowProperties.map((property) => (
             <RowPropertySwitch
               key={property}
-              onPress={() =>
-                handleUpdateFilter(
-                  !(selectedHomeTab === 'Assigned'
-                    ? property === 'Assignee'
-                      ? assignedTabShowAssignee
-                      : property === 'Status'
-                        ? assignedTabShowStatus
-                        : assignedTabShowPriority
-                    : property === 'Assignee'
-                      ? createdTabShowAssignee
-                      : property === 'Status'
-                        ? createdTabShowStatus
-                        : createdTabShowPriority),
-                  `show${property}` as 'showAssignee' | 'showStatus' | 'showPriority',
-                )
-              }
+              onPress={() => {
+                // TODO re-implement this
+              }}
               label={property}
               isSelected={
-                selectedHomeTab === 'Assigned'
+                selectedHomeTab === 'assigned'
                   ? property === 'Assignee'
                     ? assignedTabShowAssignee
                     : property === 'Status'
@@ -163,7 +105,7 @@ const FilterSettingsScreen = () => {
         <SegmentedControl
           values={completedIssuesOptions}
           selectedIndex={completedIssuesOptions.indexOf(
-            selectedHomeTab === 'Assigned'
+            selectedHomeTab === 'assigned'
               ? assignedTabCompletedIssues
               : createdTabCompletedIssues,
           )}

@@ -4,48 +4,41 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, nanoid, queryDb } from '@livestore/livestore'
+import { createStorePromise, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker?worker'
-import type { Todo } from './schema.js'
-import { mutations, schema, tables } from './schema.js'
+import { events, schema, tables, type Todo } from './schema.js'
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
 export const css = (strings: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: strings }, ...values)
 
-const store = await createStorePromise({
-  schema,
-  adapter: makePersistedAdapter({
-    storage: { type: 'opfs' },
-    worker: LiveStoreWorker,
-    sharedWorker: LiveStoreSharedWorker,
-  }),
-  storeId: 'todomvc',
+const adapter = makePersistedAdapter({
+  storage: { type: 'opfs' },
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
 })
 
-const appState$ = queryDb(tables.app.get())
-const todos$ = queryDb(tables.todos.query.where({ deleted: null }))
+const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements' })
 
-const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text }))
+const appState$ = queryDb(tables.uiState.get())
+const todos$ = queryDb(tables.todos.where({ deletedAt: undefined }))
 
-const todoCreated = (newTodoText: string) => {
-  store.commit(mutations.todoCreated({ id: nanoid(), text: newTodoText }))
-  store.commit(mutations.updatedNewTodoText({ text: '' }))
-}
+const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+
+const todoCreated = (text: string) =>
+  store.commit(events.todoCreated({ id: crypto.randomUUID(), text }), events.uiStateSet({ newTodoText: '' }))
 
 const toggleTodo = (todo: Todo) => {
   if (todo.completed) {
-    store.commit(mutations.todoUncompleted({ id: todo.id }))
+    store.commit(events.todoUncompleted({ id: todo.id }))
   } else {
-    store.commit(mutations.todoCompleted({ id: todo.id }))
+    store.commit(events.todoCompleted({ id: todo.id }))
   }
 }
 
-const todoDeleted = (todo: Todo) => {
-  store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
-}
+const todoDeleted = (todo: Todo) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
 
 const TodoItemTemplate = html`
   <link rel="stylesheet" href="/src/index.css" />

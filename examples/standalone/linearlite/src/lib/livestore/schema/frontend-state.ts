@@ -1,4 +1,4 @@
-import { State, Schema } from '@livestore/livestore'
+import { State, Schema, SessionIdSymbol } from '@livestore/livestore'
 
 const Theme = Schema.Literal('dark', 'light', 'system').annotations({ title: 'Theme' })
 export type Theme = typeof Theme.Type
@@ -12,8 +12,8 @@ export type FrontendState = typeof FrontendState.Type
 
 export const defaultFrontendState: FrontendState = { theme: 'system', user: 'John Doe', showToolbar: true }
 
-export const frontendState = State.SQLite.table(
-  'frontend_state',
-  State.SQLite.json({ schema: FrontendState, default: defaultFrontendState }),
-  { deriveEvents: true },
-)
+export const frontendState = State.SQLite.clientDocument({
+  name: 'frontend_state',
+  schema: FrontendState,
+  default: { value: defaultFrontendState, id: SessionIdSymbol },
+})

@@ -134,9 +134,22 @@ export type BootStatus = typeof BootStatus.Type
  * Can be used in queries to refer to the current session id.
  * Will be replaced with the actual session id at runtime
  *
- * Example:
+ * In client document table:
  * ```ts
- * const query$ = queryDb(tables.app.get(SessionIdSymbol), SessionIdSymbol)
+ * const uiState = State.SQLite.clientDocument({
+ *   name: 'ui_state',
+ *   schema: Schema.Struct({
+ *     theme: Schema.Literal('dark', 'light', 'system'),
+ *     user: Schema.String,
+ *     showToolbar: Schema.Boolean,
+ *   }),
+ *   default: { value: defaultFrontendState, id: SessionIdSymbol },
+ * })
+ * ```
+ *
+ * Or in a client document query:
+ * ```ts
+ * const query$ = queryDb(tables.uiState.get(SessionIdSymbol))
  * ```
  */
 export const SessionIdSymbol = Symbol.for('@livestore/session-id')

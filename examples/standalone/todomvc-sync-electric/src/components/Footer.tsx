@@ -3,24 +3,25 @@ import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 
 import { app$ } from '../livestore/queries.js'
-import { mutations, tables } from '../livestore/schema.js'
+import { events, tables, type UiState } from '../livestore/schema.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = queryDb(tables.todos.query.count().where({ completed: false, deleted: null }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',
 })
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const sessionId = store.sessionId
   const { filter } = useQuery(app$)
-  const incompleteCount = useQuery(incompleteCount$)
+  const incompleteCount = useQuery(incompleteCount$) ?? 0
 
-  const setFilter = (filter: Filter) => store.commit(mutations.filterUpdated({ filter, sessionId }))
+  const setFilter = (filter: Filter) => {
+    store.commit(events.uiStateSet({ filter }))
+  }
 
   return (
     <footer className="footer">
-      <span className="todo-count">{incompleteCount} items left</span>
+      <span className="todo-count">{typeof incompleteCount === 'number' ? incompleteCount : 0} items left</span>
       <ul className="filters">
         <li>
           <a href="#/" className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>
@@ -40,7 +41,9 @@ export const Footer: React.FC = () => {
       </ul>
       <button
         className="clear-completed"
-        onClick={() => store.commit(mutations.todoClearedCompleted({ deleted: Date.now() }))}
+        onClick={() => {
+          store.commit(events.todoClearedCompleted({ deletedAt: new Date() }))
+        }}
       >
         Clear completed
       </button>

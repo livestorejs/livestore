@@ -1,15 +1,15 @@
-import { useClientDocument, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useEffect } from 'react'
 
-import { updateNavigationHistory } from '../livestore/mutations.ts'
-import { tables } from '../livestore/schema.ts'
+import { uiState$ } from '@/livestore/queries.ts'
+import { events } from '@/livestore/schema.ts'
 
 export const NavigationHistoryTracker = () => {
   const pathname = usePathname()
   const globalParams = useGlobalSearchParams()
   const { store } = useStore()
-  const [{ navigationHistory }] = useClientDocument(tables.app)
+  const { navigationHistory } = useQuery(uiState$)
   const router = useRouter()
 
   const constructPathWithParams = React.useCallback((path: string, params: any) => {
@@ -29,11 +29,7 @@ export const NavigationHistoryTracker = () => {
     if (pathname === '/' && navigationHistory === '/') return
 
     if (navigationHistory !== pathname) {
-      store.commit(
-        updateNavigationHistory({
-          history: constructPathWithParams(pathname, globalParams),
-        }),
-      )
+      store.commit(events.uiStateSet({ navigationHistory: constructPathWithParams(pathname, globalParams) }))
     }
   }, [constructPathWithParams, globalParams, navigationHistory, pathname, store])
 

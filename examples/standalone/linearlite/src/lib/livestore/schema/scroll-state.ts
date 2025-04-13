@@ -8,8 +8,11 @@ export const ScrollState = Schema.Struct({
   done: Schema.optional(Schema.Number),
   canceled: Schema.optional(Schema.Number),
 })
+
 export type ScrollState = typeof ScrollState.Type
 
-export const scrollState = State.SQLite.table('scroll_state', State.SQLite.json({ schema: ScrollState, default: {} }), {
-  deriveEvents: true,
+export const scrollState = State.SQLite.clientDocument({
+  name: 'scroll_state',
+  schema: ScrollState,
+  default: { value: {} },
 })
