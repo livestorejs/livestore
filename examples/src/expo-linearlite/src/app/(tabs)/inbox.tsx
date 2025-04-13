@@ -7,8 +7,8 @@ import { Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-nati
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
+import { events, tables } from '@/livestore/schema.js'
 import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
-import { issuesMutations, tables, userMutations } from '@/livestore/schema.ts'
 import {
   createRandomComment,
   createRandomIssue,
@@ -18,7 +18,7 @@ import {
 } from '@/utils/generate-fake-data.ts'
 
 const COMMENTS_PER_ISSUE = 10
-const users$ = queryDb(tables.users.query.where({}), { label: 'inbox-users' })
+const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
@@ -59,10 +59,10 @@ const InboxScreen = () => {
     }
     // Add generated data to the store
     store.commit(
-      ...users.map((user) => userMutations.createUser(user)),
-      ...issues.map((issue) => issuesMutations.createIssue(issue)),
-      ...comments.map((comment) => issuesMutations.createComment(comment)),
-      ...reactions.map((reaction) => issuesMutations.createReaction(reaction)),
+      ...users.map((user) => events.userCreated(user)),
+      ...issues.map((issue) => events.issueCreated(issue)),
+      ...comments.map((comment) => events.commentCreated(comment)),
+      ...reactions.map((reaction) => events.reactionCreated(reaction)),
     )
   }
 
@@ -90,18 +90,17 @@ const InboxScreen = () => {
     }
 
     store.commit(
-      ...issues.map((issue) => issuesMutations.createIssue(issue)),
-      ...comments.map((comment) => issuesMutations.createComment(comment)),
-      ...reactions.map((reaction) => issuesMutations.createReaction(reaction)),
+      ...issues.map((issue) => events.issueCreated(issue)),
+      ...comments.map((comment) => events.commentCreated(comment)),
+      ...reactions.map((reaction) => events.reactionCreated(reaction)),
     )
   }
 
-  const reset = () => store.commit(issuesMutations.clearAll({ deleted: Date.now() }))
+  const reset = () => store.commit(events.allCleared({ deletedAt: new Date() }))
 
-  const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
+  const issuesCount$ = queryDb(tables.issues.count().where({ deletedAt: null }))
+  const issuesDeletedCount$ = queryDb(tables.issues.count().where({ deletedAt: { op: '!=', value: null } }))
   const issuesCount = useQuery(issuesCount$)
-
-  const issuesDeletedCount$ = queryDb(tables.issues.query.count().where({ deletedAt: { op: '!=', value: null } }))
   const issuesDeletedCount = useQuery(issuesDeletedCount$)
 
   const isDarkMode = useColorScheme() === 'dark'

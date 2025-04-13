@@ -7,4 +7,4 @@ import { tables } from '@/livestore/schema.ts'
  * @returns The first user in the users table.
  */
 export const useUser = (userId?: string) =>
-  useQuery(queryDb(tables.users.query.where({ id: userId }).first(), { deps: `useUser-${userId ?? '-'}` }))
+  useQuery(queryDb(tables.users.where({ id: userId }).first(), { deps: `useUser-${userId ?? '-'}` }))
