@@ -12,7 +12,7 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const { filter } = useQuery(app$) ?? ({} as UiState)
+  const { filter } = useQuery(app$)
   const incompleteCount = useQuery(incompleteCount$) ?? 0
 
   const setFilter = (filter: Filter) => {

@@ -2,16 +2,15 @@ import { queryDb } from '@livestore/livestore'
 import { query } from '@livestore/solid'
 import { type Component, Index } from 'solid-js'
 
-import { mutations, tables, type Todo } from '../livestore/schema.js'
-import { store } from '../livestore/store.jsx'
-
-const sessionId = store?.()?.sessionId ?? 'default'
+import { uiState$ } from '../livestore/queries.js'
+import { events, tables, type Todo } from '../livestore/schema.js'
+import { store } from '../livestore/store.js'
 
 const visibleTodos$ = queryDb(
   (get) => {
-    const { filter } = get(queryDb(tables.app.get(sessionId)))
-    return tables.todos.query.where({
-      deleted: null,
+    const { filter } = get(uiState$)
+    return tables.todos.where({
+      deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },
@@ -20,7 +19,7 @@ const visibleTodos$ = queryDb(
 
 export const MainSection: Component = () => {
   const toggleTodo = ({ id, completed }: Todo) => {
-    store()?.commit(completed ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id }))
+    store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
   }
 
   const visibleTodos = query(visibleTodos$, [])
@@ -39,7 +38,7 @@ export const MainSection: Component = () => {
                   class="destroy"
                   onClick={(e) => {
                     e.stopPropagation()
-                    store()?.commit(mutations.todoDeleted({ id: todo().id, deleted: new Date() }))
+                    store()?.commit(events.todoDeleted({ id: todo().id, deletedAt: new Date() }))
                   }}
                 ></button>
               </div>
