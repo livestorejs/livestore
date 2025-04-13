@@ -352,7 +352,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
 
         // Create a list of placeholders ("(?, ?, ?, ?, ?, ?, ?)"), corresponding to each event.
         const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')
-        const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
+        const sql = `INSERT INTO ${dbName} (id, parentId, args, name, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
         // Flatten the event properties into a parameters array.
         const params = chunk.flatMap((event) => [
           event.id,

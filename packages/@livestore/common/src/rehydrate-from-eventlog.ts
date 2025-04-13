@@ -48,7 +48,7 @@ export const rehydrateFromEventlog = ({
             UnexpectedError.make({
               cause,
               note: `\
-There was an error during rehydrating from the mutation log while decoding
+There was an error during rehydrating from the eventlog while decoding
 the persisted mutation event args for mutation "${row.name}".
 This likely means the schema has changed in an incompatible way.
 `,

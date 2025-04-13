@@ -77,7 +77,7 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.scopedLive('should update the data reactively - via raw store mutation', () =>
+  Vitest.scopedLive('should update the data reactively - via raw store commit', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 

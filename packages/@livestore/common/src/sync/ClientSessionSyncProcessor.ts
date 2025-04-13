@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Runtime, Scope } from '@livestore/utils/effect'
 import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'

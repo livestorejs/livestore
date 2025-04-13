@@ -1,6 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["ES2023"], // Needed for `Array.toSorted`
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,

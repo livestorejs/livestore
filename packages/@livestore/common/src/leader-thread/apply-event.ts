@@ -103,7 +103,7 @@ export const makeApplyEvent = ({
             eventEncoded.sessionId,
           )
         } else {
-          //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
+          //   console.debug('[@livestore/common:leader-thread] skipping eventlog write', mutation, statementSql, bindValues)
         }
 
         return {
@@ -163,7 +163,7 @@ export const rollback = ({
       )
     }
 
-    // Delete the mutation log rows
+    // Delete the eventlog rows
     for (const eventIdPairChunk of eventIdPairChunks) {
       dbEventlog.execute(
         sql`DELETE FROM ${EVENTLOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
@@ -179,7 +179,7 @@ export const rollback = ({
 const makeShouldExcludeEventFromLog = memoizeByRef((schema: LiveStoreSchema) => {
   const migrationOptions = schema.migrationOptions
   const eventlogExclude =
-    migrationOptions.strategy === 'from-mutation-log'
+    migrationOptions.strategy === 'from-eventlog'
       ? (migrationOptions.excludeEvents ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 

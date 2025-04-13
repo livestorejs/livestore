@@ -62,7 +62,7 @@ type LocalPushQueueItem = [
  * - The latch closes on pull receipt and re-opens post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
- * Currently we're advancing the db read model and mutation log in lockstep, but we could also decouple this in the future
+ * Currently we're advancing the db read model and eventlog in lockstep, but we could also decouple this in the future
  *
  * Tricky concurrency scenarios:
  * - Queued local push batches becoming invalid due to a prior local push item being rejected.
@@ -573,7 +573,7 @@ const applyEventsBatch: ApplyEventsBatch = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
     const { dbReadModel: db, dbEventlog, applyEvent } = yield* LeaderThreadCtx
 
-    // NOTE We always start a transaction to ensure consistency between db and mutation log (even for single-item batches)
+    // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
     db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
     dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 

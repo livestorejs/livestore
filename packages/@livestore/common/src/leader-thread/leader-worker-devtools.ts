@@ -144,7 +144,7 @@ const listenToDevtools = ({
 
               try {
                 if (tableNames.has(EVENTLOG_META_TABLE)) {
-                  // Is mutation log
+                  // Is eventlog
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
                   dbEventlog.import(data)

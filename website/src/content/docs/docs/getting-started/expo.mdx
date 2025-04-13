@@ -168,7 +168,7 @@ export const tables = {
 export const schema = makeSchema({
   tables,
   events,
-  migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
+  migrations: { strategy: 'from-eventlog' }, // Define migration strategy
 })
 
 export * as events from './events'

@@ -52,7 +52,7 @@ export interface LiveStoreProviderProps {
   renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => ReactElement
   adapter: Adapter
   /**
-   * In order for LiveStore to apply multiple mutations in a single render,
+   * In order for LiveStore to apply multiple events in a single render,
    * you need to pass the `batchUpdates` function from either `react-dom` or `react-native`.
    *
    * ```ts

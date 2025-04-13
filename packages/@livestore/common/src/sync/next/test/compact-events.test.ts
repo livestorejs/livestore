@@ -5,7 +5,7 @@ import { compactEvents } from '../compact-events.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
 import { EMPTY_FACT_VALUE } from '../history-dag-common.js'
-import { events as eventDefs, toEventNodes } from './mutation-fixtures.js'
+import { events as eventDefs, toEventNodes } from './event-fixtures.js'
 
 const customStringify = (value: any): string => {
   if (value === null) {

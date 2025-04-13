@@ -17,7 +17,7 @@ export const getExecArgsFromEvent = ({
     eventDef: EventDef.AnyWithoutFn
     materializer: Materializer
   }
-  /** Both encoded and decoded mutation events are supported to reduce the number of times we need to decode/encode */
+  /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
     | {
         decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
@@ -32,9 +32,9 @@ export const getExecArgsFromEvent = ({
   bindValues: PreparedBindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  const mutationArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
+  const eventArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
 
-  const res = materializer(mutationArgsDecoded, {
+  const res = materializer(eventArgsDecoded, {
     clientOnly: eventDef.options.clientOnly,
     // TODO properly implement this
     currentFacts: new Map(),
@@ -45,8 +45,8 @@ export const getExecArgsFromEvent = ({
   return statementRes.map((statementRes) => {
     const statementSql = statementRes.sql
 
-    const mutationArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
-    const bindValues = typeof statementRes === 'string' ? mutationArgsEncoded : statementRes.bindValues
+    const eventArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
+    const bindValues = typeof statementRes === 'string' ? eventArgsEncoded : statementRes.bindValues
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
 

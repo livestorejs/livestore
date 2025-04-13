@@ -276,7 +276,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         },
       })
 
-      // Starts background fibers (syncing, mutation processing, etc) for store
+      // Starts background fibers (syncing, event processing, etc) for store
       yield* store.boot
 
       if (boot !== undefined) {

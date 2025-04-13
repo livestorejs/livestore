@@ -47,7 +47,7 @@ export const recreateDb: Effect.Effect<
     })
 
   switch (migrationOptions.strategy) {
-    case 'from-mutation-log': {
+    case 'from-eventlog': {
       const hooks = migrationOptions.hooks
       const initResult = yield* initDb(hooks)
 

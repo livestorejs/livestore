@@ -27,7 +27,7 @@ Example data:
             "args": "{\"id\": \"127c3df4-0855-4587-ae75-14463f4a3aa0\", \"text\": \"1\"}",
             "clientId": "S_YOa",
             "id": "0",
-            "mutation": "todoCreated",
+            "name": "todoCreated",
             "parentId": "-1"
         },
         "key": "\"public\".\"events_9069baf0_b3e6_42f7_980f_188416eab3fx3\"/\"0\"",

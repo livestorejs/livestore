@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { ParseResult, Schema } from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.js'

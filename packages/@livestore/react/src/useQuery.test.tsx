@@ -87,7 +87,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('2: after first mutation')
+        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('2: after first commit')
 
         rerender('t2')
 

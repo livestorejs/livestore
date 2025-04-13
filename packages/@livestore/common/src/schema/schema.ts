@@ -113,7 +113,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     state,
     tables: state.tables,
     eventsDefsMap,
-    migrationOptions: inputSchema.migrations ?? { strategy: 'from-mutation-log' },
+    migrationOptions: inputSchema.migrations ?? { strategy: 'from-eventlog' },
     hash,
   } satisfies LiveStoreSchema
 }

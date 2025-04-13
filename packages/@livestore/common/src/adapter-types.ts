@@ -224,9 +224,9 @@ export type MigrationHooks = {
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export interface MigrationOptionsFromEventlog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
-  strategy: 'from-mutation-log'
+  strategy: 'from-eventlog'
   /**
-   * Events to exclude in the mutation log
+   * Events to exclude in the eventlog
    *
    * @default new Set(['livestore.RawSql'])
    */

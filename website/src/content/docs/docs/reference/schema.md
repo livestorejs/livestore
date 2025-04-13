@@ -42,7 +42,7 @@ export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 
-export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-mutation-log' } })
+export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-eventlog' } })
 
 ```
 
@@ -50,7 +50,7 @@ export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'f
 
 Migration strategies:
 
-- `from-mutation-log`: Automatically migrate the database to the newest schema and rehydrates the data from the mutation log.
+- `from-eventlog`: Automatically migrate the database to the newest schema and rehydrates the data from the mutation log.
 - `hard-reset`: Automatically migrate the database to the newest schema but ignores the mutation log.
 - `manual`: Manually migrate the database to the newest schema.
 
