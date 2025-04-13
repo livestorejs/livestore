@@ -5,10 +5,6 @@
 
 ## 0.3.0
 
-### WIP API simplification
-
-- [ ] get rid of row query from query builder
-
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
@@ -216,7 +212,6 @@
 
 ### Still todo:
 
-- Fix linting
 - Separate mutation handler from mutation definition
 - Get rid of `excludeFromEventlog` (etc)
 - Syncing

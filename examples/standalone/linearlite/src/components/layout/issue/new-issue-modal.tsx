@@ -32,7 +32,7 @@ export const NewIssueModal = () => {
     if (!title) return
     const date = new Date()
     // TODO make this "merge safe"
-    const highestIssueId = store.query(highestIssueId$)[0] ?? 0
+    const highestIssueId = store.query(highestIssueId$)
     const highestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')

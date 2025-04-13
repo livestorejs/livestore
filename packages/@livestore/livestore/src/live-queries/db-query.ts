@@ -19,7 +19,7 @@ import type { RefreshReason } from '../store/store-types.js'
 import { isValidFunctionString } from '../utils/function-string.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
-import { makeExecBeforeFirstRun, rowQueryLabel } from './row-query-utils.js'
+import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.js'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
@@ -352,9 +352,9 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               const expectedSchemaStr = String(schemaRef.current!.ast)
               const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 
-              console.error(
+              return shouldNeverHappen(
                 `\
-Error parsing SQL query result.
+Error parsing SQL query result (${label}).
 
 Query: ${sqlString}\
 ${bindValuesStr}
@@ -365,8 +365,8 @@ Error: ${parseErrorStr}
 
 Result:`,
                 rawDbResults,
+                '\n',
               )
-              return shouldNeverHappen(`Error parsing SQL query result: ${parsedResult.left}`)
             }
 
             const result = this.mapResult(parsedResult.right)

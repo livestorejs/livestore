@@ -201,7 +201,7 @@ jobs:
           path: example-repo
       - run: cp -r example-repo/examples/standalone/todomvc example
       - name: Add snapshot resolution to package.json
-        run: 
+        run: |
           for pkg in livestore adapter-web peer-deps react common utils; do
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done

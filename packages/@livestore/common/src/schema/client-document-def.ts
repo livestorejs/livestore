@@ -28,7 +28,7 @@ export const clientDocument = <
   TName extends string,
   TType,
   TEncoded,
-  const TOptions extends ClientDocumentTableOptions.Input<TType>,
+  const TOptions extends ClientDocumentTableOptions.Input<NoInfer<TType>>,
 >({
   name,
   schema: valueSchema,
@@ -77,7 +77,7 @@ export const clientDocument = <
     value: Schema.Struct({
       id: Schema.String,
       value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
-    }),
+    }).annotations({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', { value: { derived: true, clientOnly: true, facts: undefined } })
 
@@ -109,18 +109,18 @@ export const clientDocument = <
   return clientDocumentTableDef
 }
 
-const mergeDefaultValues = <T>(schemaDefaultValues: T, explicitDefaultValues: T): T => {
+const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
   if (
-    typeof schemaDefaultValues !== 'object' ||
+    typeof defaultValues !== 'object' ||
     typeof explicitDefaultValues !== 'object' ||
-    schemaDefaultValues === null ||
+    defaultValues === null ||
     explicitDefaultValues === null
   ) {
     return explicitDefaultValues
   }
 
-  return Object.keys(schemaDefaultValues as any).reduce((acc, key) => {
-    acc[key] = (explicitDefaultValues as any)[key] ?? (schemaDefaultValues as any)[key]
+  return Object.keys(defaultValues as any).reduce((acc, key) => {
+    acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
   }, {} as any)
 }
@@ -177,15 +177,23 @@ export const deriveEventAndMaterializer = ({
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]
+        // Skipping undefined values
+        if (encodedValueForKey === undefined) {
+          continue
+        }
         jsonSetSql = `json_set(${jsonSetSql}, ?, json(?))`
         setBindValues.push(`$.${key}`, JSON.stringify(encodedValueForKey))
       }
 
+      const onConflictClause =
+        setBindValues.length > 0
+          ? `ON CONFLICT (id) DO UPDATE SET value = ${jsonSetSql}`
+          : 'ON CONFLICT (id) DO NOTHING'
+
       const sqlQuery = `
       INSERT INTO '${name}' (id, value)
       VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET
-        value = ${jsonSetSql}
+      ${onConflictClause}
     `
 
       return {

@@ -42,7 +42,7 @@ import type {
   ReactivityGraphContext,
 } from '../live-queries/base-class.js'
 import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { makeExecBeforeFirstRun } from '../live-queries/row-query-utils.js'
+import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
 import type { Ref } from '../reactive.js'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'

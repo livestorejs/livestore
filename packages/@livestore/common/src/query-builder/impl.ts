@@ -330,12 +330,16 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       // For write operations without RETURNING, the result is the number of affected rows
       return Schema.Number
     }
+    case 'RowQuery': {
+      return queryAst.tableDef.rowSchema.pipe(
+        Schema.pluck('value'),
+        Schema.annotations({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
+        Schema.Array,
+        Schema.headOrElse(),
+      )
+    }
     default: {
-      if (queryAst.tableDef.options.isClientDocumentTable) {
-        return queryAst.tableDef.rowSchema.pipe(Schema.pluck('value'), Schema.Array, Schema.headOrElse())
-      } else {
-        return queryAst.tableDef.rowSchema.pipe(Schema.Array, Schema.headOrElse())
-      }
+      casesHandled(queryAst)
     }
   }
 }

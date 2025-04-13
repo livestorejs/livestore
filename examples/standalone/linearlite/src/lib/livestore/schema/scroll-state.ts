@@ -1,7 +1,7 @@
 import { State, Schema } from '@livestore/livestore'
 
 export const ScrollState = Schema.Struct({
-  list: Schema.optional(Schema.Number),
+  list: Schema.Number,
   backlog: Schema.optional(Schema.Number),
   todo: Schema.optional(Schema.Number),
   in_progress: Schema.optional(Schema.Number),
@@ -14,5 +14,5 @@ export type ScrollState = typeof ScrollState.Type
 export const scrollState = State.SQLite.clientDocument({
   name: 'scroll_state',
   schema: ScrollState,
-  default: { value: {} },
+  default: { value: { list: 0 } },
 })

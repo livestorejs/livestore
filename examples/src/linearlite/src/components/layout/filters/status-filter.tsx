@@ -37,7 +37,7 @@ export const StatusFilter = () => {
         </Button>
       </FilterMenu>
       <Button
-        onPress={() => setFilterState((state) => ({ ...state, status: undefined }))}
+        onPress={() => setFilterState({ status: null })}
         className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
         <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />

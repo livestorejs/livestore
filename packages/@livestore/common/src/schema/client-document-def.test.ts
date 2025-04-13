@@ -73,24 +73,23 @@ describe('client document table', () => {
     test('struct value (partial set=true)', () => {
       expect(forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: true }))
         .toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "id1",
-            "{"a":"hello"}",
-            "$.a",
-            ""hello"",
-          ],
-          "sql": "
-              INSERT INTO 'test' (id, value)
-              VALUES (?, ?)
-              ON CONFLICT (id) DO UPDATE SET
-                value = json_set(value, ?, json(?))
-            ",
-          "writeTables": Set {
-            "test",
-          },
-        }
-      `)
+          {
+            "bindValues": [
+              "id1",
+              "{"a":"hello"}",
+              "$.a",
+              ""hello"",
+            ],
+            "sql": "
+                INSERT INTO 'test' (id, value)
+                VALUES (?, ?)
+                ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+              ",
+            "writeTables": Set {
+              "test",
+            },
+          }
+        `)
     })
 
     test('struct value (partial set=false)', () => {
@@ -131,8 +130,60 @@ describe('client document table', () => {
           "sql": "
               INSERT INTO 'test' (id, value)
               VALUES (?, ?)
-              ON CONFLICT (id) DO UPDATE SET
-                value = json_set(json_set(value, ?, json(?)), ?, json(?))
+              ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+            ",
+          "writeTables": Set {
+            "test",
+          },
+        }
+      `)
+    })
+
+    test('struct value (partial set=true), explicit undefined, filter out undefined values', () => {
+      expect(
+        forSchema(
+          Schema.Struct({ a: Schema.String.pipe(Schema.optional), b: Schema.String }),
+          { a: undefined, b: 'hello' },
+          'id1',
+          {
+            partialSet: true,
+          },
+        ),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "id1",
+            "{"b":"hello"}",
+            "$.b",
+            ""hello"",
+          ],
+          "sql": "
+              INSERT INTO 'test' (id, value)
+              VALUES (?, ?)
+              ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+            ",
+          "writeTables": Set {
+            "test",
+          },
+        }
+      `)
+    })
+
+    test('struct value (partial set=true), explicit undefined, nothing to update', () => {
+      expect(
+        forSchema(Schema.Struct({ a: Schema.String.pipe(Schema.optional) }), { a: undefined }, 'id1', {
+          partialSet: true,
+        }),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "id1",
+            "{}",
+          ],
+          "sql": "
+              INSERT INTO 'test' (id, value)
+              VALUES (?, ?)
+              ON CONFLICT (id) DO NOTHING
             ",
           "writeTables": Set {
             "test",

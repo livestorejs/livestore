@@ -66,7 +66,7 @@ export const Filters = ({
         {/* TODO add clear filters/sorting button */}
         {!hideSorting && <SortMenu />}
       </div>
-      {(filterState.status?.length || filterState.priority?.length) && (
+      {filterState.status?.length || filterState.priority?.length ? (
         <div className="lg:hidden h-12 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
           <div className="flex items-center h-full pl-2">
             {!hideStatusFilter && <StatusFilter />}
@@ -74,7 +74,7 @@ export const Filters = ({
             <div className="w-4 h-full shrink-0" />
           </div>
         </div>
-      )}
+      ) : null}
     </>
   )
 }

@@ -13,11 +13,10 @@ export const useDebounce = (func: (...args: any[]) => void, delay = 1000) => {
   }, [])
 
   const debouncedFunction = (...args: any[]) => {
-    const newTimer = setTimeout(() => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
       func(...args)
     }, delay)
-    clearTimeout(timer.current)
-    timer.current = newTimer
   }
 
   return debouncedFunction

@@ -125,7 +125,7 @@ export const useClientDocument: {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
       if (queryRef.valueRef.current === newValue) return
 
-      store.commit(table.set(newValue, id as any))
+      store.commit(table.set(removeUndefinedValues(newValue), id as any))
     },
     [id, queryRef.valueRef, store, table],
   )
@@ -146,4 +146,8 @@ const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {
       `useClientDocument called on table "${table.sqliteDef.name}" which is not a client document table`,
     )
   }
+}
+
+const removeUndefinedValues = (value: any) => {
+  return Object.fromEntries(Object.entries(value).filter(([_, v]) => v !== undefined))
 }

@@ -11,8 +11,8 @@ import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries'
 export const seed = (store: Store, count: number) => {
   try {
     const existingCount = store.query(issueCount$)
-    const [highestId] = store.query(highestIssueId$)
-    const [highestKanbanOrder] = store.query(highestKanbanOrder$)
+    const highestId = store.query(highestIssueId$)
+    const highestKanbanOrder = store.query(highestKanbanOrder$)
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')

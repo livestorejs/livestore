@@ -6,8 +6,10 @@ import type * as otel from '@opentelemetry/api'
 
 import type { ReactivityGraphContext } from './base-class.js'
 
-export const rowQueryLabel = (table: State.SQLite.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
-  `row:${table.sqliteDef.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`
+export const rowQueryLabel = (
+  table: State.SQLite.ClientDocumentTableDef.Any,
+  id: string | SessionIdSymbol | undefined,
+) => `${table.sqliteDef.name}.get:${id === undefined ? table.default.id : id === SessionIdSymbol ? 'sessionId' : id}`
 
 export const makeExecBeforeFirstRun =
   ({
@@ -16,7 +18,7 @@ export const makeExecBeforeFirstRun =
     table,
     otelContext: otelContext_,
   }: {
-    id?: string | SessionIdSymbol | number
+    id?: string | SessionIdSymbol
     explicitDefaultValues?: any
     table: State.SQLite.TableDefBase
     otelContext: otel.Context | undefined
@@ -44,7 +46,7 @@ export const makeExecBeforeFirstRun =
     // and otherwise we might end up in a "reactive loop"
 
     store.commit(
-      { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idVal}` },
+      { otelContext, skipRefresh: true, label: `${table.sqliteDef.name}.set:${idVal}` },
       table.set(explicitDefaultValues, idVal as TODO),
     )
   }

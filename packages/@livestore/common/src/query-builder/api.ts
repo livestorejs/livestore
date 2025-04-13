@@ -40,8 +40,8 @@ export namespace QueryBuilderAst {
 
   export interface RowQuery {
     readonly _tag: 'RowQuery'
-    readonly tableDef: State.SQLite.TableDefBase
-    readonly id: string | SessionIdSymbol | number
+    readonly tableDef: State.SQLite.ClientDocumentTableDef.Any
+    readonly id: string | SessionIdSymbol
     readonly explicitDefaultValues: Record<string, unknown>
   }
 

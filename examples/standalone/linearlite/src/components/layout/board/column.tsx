@@ -1,8 +1,7 @@
 import { Icon } from '@/components/icons'
 import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
 import { StatusDetails } from '@/data/status-options'
-import { useDebounce } from '@/hooks/useDebounce'
-import { filterState$, useFilterState, useScrollState } from '@/lib/livestore/queries'
+import { filterState$, useFilterState, useDebouncedScrollState } from '@/lib/livestore/queries'
 import { events, tables } from '@/lib/livestore/schema'
 import { filterStateToWhere } from '@/lib/livestore/utils'
 import { Status } from '@/types/status'
@@ -25,10 +24,9 @@ import AutoSizer from 'react-virtualized-auto-sizer'
 import { Card } from './card'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
-  // TODO: Hook up scroll state again
-  const [scrollState, setScrollState] = useScrollState()
-  const onScroll = useDebounce((e) => {}, 100)
   const { store } = LiveStoreReact.useStore()
+  // TODO restore initial scroll position once React Aria supports this scenario
+  const [_scrollState, setScrollState] = useDebouncedScrollState(`column-${status}-${store.sessionId}`)
   const [filterState] = useFilterState()
 
   const filteredIssues$ = queryDb(
@@ -124,6 +122,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
                 dragAndDropHooks={dragAndDropHooks}
                 className="pt-2 overflow-y-auto"
                 style={{ width, height }}
+                onScroll={(e) => setScrollState({ list: (e.target as HTMLElement).scrollTop })}
               >
                 {(issue) => (
                   <GridListItem

@@ -11,14 +11,17 @@ export type OrderBy = typeof OrderBy.Type
 export const FilterState = Schema.Struct({
   orderBy: OrderBy,
   orderDirection: OrderDirection,
-  status: Schema.optional(Schema.Array(Status)),
-  priority: Schema.optional(Schema.Array(Priority)),
-  query: Schema.optional(Schema.String),
-})
+  status: Schema.NullOr(Schema.Array(Status)),
+  priority: Schema.NullOr(Schema.Array(Priority)),
+  query: Schema.NullOr(Schema.String),
+}).annotations({ title: 'FilterState' })
 export type FilterState = typeof FilterState.Type
 
 export const filterState = State.SQLite.clientDocument({
   name: 'filter_state',
   schema: FilterState,
-  default: { value: { orderBy: 'created', orderDirection: 'desc' }, id: SessionIdSymbol },
+  default: {
+    value: { orderBy: 'created', orderDirection: 'desc', priority: null, query: null, status: null },
+    id: SessionIdSymbol,
+  },
 })

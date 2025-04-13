@@ -25,13 +25,13 @@ export const SearchBar = () => {
         className="input w-full border-none pl-2 lg:pl-3 bg-transparent focus:outline-none focus:ring-0 placholder:text-neutral-400 dark:placeholder:text-neutral-500 dark:text-neutral-200 text-neutral-800 text-sm"
         value={filterState.query ?? ''}
         placeholder="Search issues..."
-        onChange={(e) => setFilterState((state) => ({ ...state, query: e.target.value }))}
+        onChange={(e) => setFilterState({ query: e.target.value })}
         {...keyboardProps}
       />
       {filterState.query && (
         <Button
           aria-label="Clear search query"
-          onPress={() => setFilterState((state) => ({ ...state, query: undefined }))}
+          onPress={() => setFilterState({ query: null })}
           className="absolute right-2 size-8 rounded-lg hover:bg-neutral-100 focus:bg-neutral-100 flex items-center justify-center"
         >
           <XMarkIcon className="size-5" />
