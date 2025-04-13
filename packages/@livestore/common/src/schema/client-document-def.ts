@@ -299,9 +299,72 @@ export namespace ClientDocumentTableDef {
   >
 
   export interface Trait<TName extends string, TType, TEncoded, TOptions extends ClientDocumentTableOptions<TType>> {
-    // get: QueryBuilder<TType, ClientDocumentTableDef<TName, TType, TEncoded, TOptions>>['getOrCreate']
+    /**
+     * Get the current value of the client document table.
+     *
+     * @example
+     * ```ts
+     * const someDocumentTable = State.SQLite.clientDocument({
+     *   name: 'SomeDocumentTable',
+     *   schema: Schema.Struct({
+     *     someField: Schema.String,
+     *   }),
+     *   default: { value: { someField: 'some-value' } },
+     * })
+     *
+     * const value$ = queryDb(someDocumentTable.get('some-id'))
+     *
+     * // When you've set a default id, you can omit the id argument
+     *
+     * const uiState = State.SQLite.clientDocument({
+     *   name: 'UiState',
+     *   schema: Schema.Struct({
+     *     someField: Schema.String,
+     *   }),
+     *   default: { id: SessionIdSymbol, value: { someField: 'some-value' } },
+     * })
+     *
+     * const value$ = queryDb(uiState.get())
+     * ```
+     */
     readonly get: MakeGetQueryBuilder<TName, TType, TOptions>
-    // readonly get: MakeGetQueryBuilder<ClientDocumentTableDef.Trait<TName, TType, TEncoded, TOptions>>
+    /**
+     * Derived event definition for setting the value of the client document table.
+     * If the document doesn't exist yet, the first .set event will create it.
+     *
+     * @example
+     * ```ts
+     * const someDocumentTable = State.SQLite.clientDocument({
+     *   name: 'SomeDocumentTable',
+     *   schema: Schema.Struct({
+     *     someField: Schema.String,
+     *     someOtherField: Schema.String,
+     *   }),
+     *   default: { value: { someField: 'some-default-value', someOtherField: 'some-other-default-value' } },
+     * })
+     *
+     * const setEventDef = store.commit(someDocumentTable.set({ someField: 'explicit-value' }, 'some-id'))
+     * // Will commit an event with the following payload:
+     * // { id: 'some-id', value: { someField: 'explicit-value', someOtherField: 'some-other-default-value' } }
+     * ```
+     *
+     * Similar to `.get`, you can omit the id argument if you've set a default id.
+     *
+     * @example
+     * ```ts
+     * const uiState = State.SQLite.clientDocument({
+     *   name: 'UiState',
+     *   schema: Schema.Struct({ someField: Schema.String }),
+     *   default: { id: SessionIdSymbol, value: { someField: 'some-default-value' } },
+     * })
+     *
+     * const setEventDef = store.commit(uiState.set({ someField: 'explicit-value' }))
+     * // Will commit an event with the following payload:
+     * // { id: '...', value: { someField: 'explicit-value' } }
+     * //        ^^^
+     * //        Automatically replaced with the client session id
+     * ```
+     */
     readonly set: SetEventDefLike<TName, TType, TOptions>
     readonly Value: TType
     readonly valueSchema: Schema.Schema<TType, TEncoded>

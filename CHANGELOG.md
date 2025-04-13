@@ -106,7 +106,7 @@
 
   const todos = State.SQLite.table({
     name: 'todos',
-    schema: {
+    columns: {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text(),
     }
@@ -256,20 +256,22 @@
 - Release
   - Write blog post
   - Prepare X/Bluesky thread
-- After release:
-  - Get rid of `sql-queries` module
-  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
-  - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-  - Examples:
-    - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-  - Docs
-    - Notes on deployment (when to deploy what)
-    - Embrace term "containers"
-      - Unit of sharing/collaboration/auth
-      - What if I want got my initial container design wrong and I want to change it?
-        - Comparables: document databases, kafka streams, 
+
+### After release:
+- Get rid of `sql-queries` module
+- Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
+- Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+- chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+- Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- Examples:
+  - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+- Docs
+  - Notes on deployment (when to deploy what)
+  - Embrace term "containers"
+    - Unit of sharing/collaboration/auth
+    - What if I want got my initial container design wrong and I want to change it?
+      - Comparables: document databases, kafka streams, 
 
 
 ## 0.2.0
