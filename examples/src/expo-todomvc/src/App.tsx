@@ -10,7 +10,7 @@ import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
-import { events, schema, tables } from './livestore/schema.js'
+import { events, schema, tables } from './livestore/schema.ts'
 
 const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL

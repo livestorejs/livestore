@@ -2,6 +2,7 @@
 import process from 'node:process'
 
 import { WorkerError } from '@effect/platform/WorkerError'
+import type { CloseLatch } from '@effect/platform/WorkerRunner'
 import * as Runner from '@effect/platform/WorkerRunner'
 import * as Cause from 'effect/Cause'
 import * as Context from 'effect/Context'
@@ -12,7 +13,6 @@ import * as FiberSet from 'effect/FiberSet'
 import * as Layer from 'effect/Layer'
 import * as Runtime from 'effect/Runtime'
 import * as Scope from 'effect/Scope'
-import { CloseLatch } from '@effect/platform/WorkerRunner'
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,

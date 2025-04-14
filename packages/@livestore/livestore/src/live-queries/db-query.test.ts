@@ -20,8 +20,6 @@ TODO write tests for:
 */
 
 Vitest.describe('otel', () => {
-  let cachedProvider: BasicTracerProvider | undefined
-
   const mapAttributes = (attributes: otel.Attributes) => {
     return ReadonlyRecord.map(attributes, (val, key) => {
       if (key === 'code.stacktrace') {
@@ -36,13 +34,11 @@ Vitest.describe('otel', () => {
 
     RG.__resetIds()
 
-    // const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
-    const provider = cachedProvider ?? new BasicTracerProvider()
-    cachedProvider = provider
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
-    provider.register()
+    const provider = new BasicTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(exporter)],
+    })
 
-    const otelTracer = otel.trace.getTracer('test')
+    const otelTracer = provider.getTracer('test')
 
     const span = otelTracer.startSpan('test-root')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -60,7 +56,7 @@ Vitest.describe('otel', () => {
 
   Vitest.scopedLive('otel', () =>
     Effect.gen(function* () {
-      const { store, exporter, span } = yield* makeQuery
+      const { store, exporter, span, provider } = yield* makeQuery
 
       const query$ = queryDb({
         query: `select * from todos`,
@@ -83,16 +79,22 @@ Vitest.describe('otel', () => {
 
       span.end()
 
-      return { exporter }
+      return { exporter, provider }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
     ),
   )
 
   Vitest.scopedLive('with thunks', () =>
     Effect.gen(function* () {
-      const { store, exporter, span } = yield* makeQuery
+      const { store, exporter, span, provider } = yield* makeQuery
 
       const defaultTodo = { id: '', text: '', completed: false }
 
@@ -133,16 +135,22 @@ Vitest.describe('otel', () => {
 
       span.end()
 
-      return { exporter }
+      return { exporter, provider }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
     ),
   )
 
   Vitest.scopedLive('with thunks with query builder and without labels', () =>
     Effect.gen(function* () {
-      const { store, exporter, span } = yield* makeQuery
+      const { store, exporter, span, provider } = yield* makeQuery
 
       const defaultTodo = { id: '', text: '', completed: false }
 
@@ -169,10 +177,16 @@ Vitest.describe('otel', () => {
 
       span.end()
 
-      return { exporter }
+      return { exporter, provider }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
     ),
   )
 })

@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react'
 import React from 'react'
 import { StyleSheet, TouchableOpacity } from 'react-native'
 
-import { events } from '../livestore/schema.js'
+import { events } from '../livestore/schema.ts'
 
 export const Checkbox: React.FC<{
   id: string

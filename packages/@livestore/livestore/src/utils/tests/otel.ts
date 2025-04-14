@@ -13,14 +13,21 @@ export const getSimplifiedRootSpan = (
   const mapAttributesfn = mapAttributes ?? identity
 
   spansMap.forEach((nestedSpan) => {
-    const parentSpan = nestedSpan.span.parentSpanId ? spansMap.get(nestedSpan.span.parentSpanId) : undefined
+    const parentId = nestedSpan.span.parentSpanContext?.spanId
+    const parentSpan = parentId ? spansMap.get(parentId) : undefined
     if (parentSpan) {
       parentSpan.children.push(nestedSpan)
     }
   })
 
   type NestedSpan = { span: ReadableSpan; children: NestedSpan[] }
-  const rootSpan = spansMap.get(spans.find((_) => _.name === 'createStore')!.spanContext().spanId)!
+  const createStoreSpanData = spans.find((_) => _.name === 'createStore')
+  if (createStoreSpanData === undefined) {
+    throw new Error(
+      "Could not find the root span named 'createStore'. Available spans: " + spans.map((s) => s.name).join(', '),
+    )
+  }
+  const rootSpan = spansMap.get(createStoreSpanData.spanContext().spanId)!
 
   const simplifySpanRec = (span: NestedSpan): SimplifiedNestedSpan =>
     omitEmpty({
@@ -88,7 +95,7 @@ export const toTraceFile = (spans: ReadableSpan[]) => {
             spans: spans.map((span) => ({
               traceId: span.spanContext().traceId,
               spanId: span.spanContext().spanId,
-              ...(span.parentSpanId ? { parentSpanId: span.parentSpanId } : {}),
+              ...(span.parentSpanContext?.spanId ? { parentSpanId: span.parentSpanContext.spanId } : {}),
               // traceState: span.spanContext().traceState ?? '',
               name: span.name,
               kind: 'SPAN_KIND_INTERNAL',

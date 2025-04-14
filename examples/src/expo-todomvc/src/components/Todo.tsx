@@ -3,8 +3,8 @@ import { useStore } from '@livestore/react'
 import React from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
-import { events } from '../livestore/schema.js'
 import type { Todo as ITodo } from '../livestore/schema.ts'
+import { events } from '../livestore/schema.ts'
 import { Checkbox } from './Checkbox.tsx'
 
 export const Todo: React.FC<ITodo> = ({ id, text, completed }) => {

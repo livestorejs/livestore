@@ -229,18 +229,16 @@ Vitest.describe('useClientDocument', () => {
   )
 
   Vitest.describe('otel', () => {
-    const provider = new BasicTracerProvider({})
-    provider.register()
-
     it.each([{ strictMode: true }, { strictMode: false }])(
       'should update the data based on component key strictMode=%s',
       async ({ strictMode }) => {
         const exporter = new InMemorySpanExporter()
 
-        // const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
-        provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
+        const provider = new BasicTracerProvider({
+          spanProcessors: [new SimpleSpanProcessor(exporter)],
+        })
 
-        const otelTracer = otel.trace.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+        const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
 
         const span = otelTracer.startSpan('test-root')
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -280,6 +278,8 @@ Vitest.describe('useClientDocument', () => {
           span.end()
         }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
+        await provider.forceFlush()
+
         const mapAttributes = (attributes: otel.Attributes) => {
           return ReadonlyRecord.map(attributes, (val, key) => {
             if (key === 'firstStackInfo') {
@@ -298,6 +298,8 @@ Vitest.describe('useClientDocument', () => {
         }
 
         expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+
+        await provider.shutdown()
       },
     )
   })
