@@ -16,7 +16,7 @@
     "expo-crypto": "14.0.2",
     "expo-sqlite": "15.2.4",
     "expo-status-bar": "2.0.1",
-    "react": "19.0.0",
+    "react": "19.1.0",
     "react-native": "0.79.0"
   },
   "devDependencies": {

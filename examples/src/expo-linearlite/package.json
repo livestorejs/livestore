@@ -11,8 +11,8 @@
     "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
     "@react-native-segmented-control/segmented-control": "2.5.7",
-    "@react-native/assets-registry": "0.77.1",
-    "@react-navigation/native": "7.0.14",
+    "@react-native/assets-registry": "0.79.0",
+    "@react-navigation/native": "7.1.6",
     "expo": "^53.0.0-preview.5",
     "expo-asset": "11.0.4",
     "expo-build-properties": "0.13.2",
@@ -29,18 +29,18 @@
     "expo-system-ui": "4.0.8",
     "expo-updates": "0.27.2",
     "expo-web-browser": "14.0.2",
-    "lucide-react-native": "0.475.0",
+    "lucide-react-native": "0.488.0",
     "nativewind": "4.1.23",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "0.79.0",
     "react-native-css-interop": "0.1.22",
-    "react-native-gesture-handler": "2.23.1",
-    "react-native-reanimated": "3.16.7",
-    "react-native-safe-area-context": "5.2.0",
-    "react-native-screens": "4.6.0",
-    "react-native-svg": "15.11.1",
-    "react-native-web": "0.19.13",
+    "react-native-gesture-handler": "2.25.0",
+    "react-native-reanimated": "3.17.3",
+    "react-native-safe-area-context": "5.3.0",
+    "react-native-screens": "4.10.0",
+    "react-native-svg": "15.11.2",
+    "react-native-web": "0.20.0",
     "tailwindcss": "4.0.12"
   },
   "devDependencies": {
@@ -59,7 +59,7 @@
   },
   "main": "expo-router/entry",
   "resolutions": {
-    "@react-navigation/native": "7.0.14"
+    "@react-navigation/native": "7.1.6"
   },
   "scripts": {
     "android": "expo start --clear --android",
