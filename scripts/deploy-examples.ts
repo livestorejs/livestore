@@ -49,6 +49,11 @@ const buildAndDeployExample = ({
       Effect.catchAllCause(() => BunShell.cmd(`${deployCommand}`, cwd)),
     )
 
+    if (typeof resultJson === 'string') {
+      console.error(`[deploy-examples] Expected JSON result from netlify deploy command, got:\n\n${resultJson}\n`)
+      process.exit(1)
+    }
+
     const result = yield* Schema.decode(netlifyDeployResultSchema)(resultJson).pipe(
       Effect.tapError(Effect.logError),
       Effect.tapError(() => Effect.logError(`Error deploying ${example}. Result:`, resultJson)),
