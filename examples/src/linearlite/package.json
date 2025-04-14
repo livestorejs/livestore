@@ -6,7 +6,7 @@
     "@headlessui/react": "2.2.1",
     "@heroicons/react": "2.2.0",
     "@livestore/adapter-web": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.28",
+    "@livestore/devtools-vite": "0.3.0-dev.29",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
