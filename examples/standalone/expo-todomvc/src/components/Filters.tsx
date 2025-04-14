@@ -2,8 +2,8 @@ import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { app$ } from '../livestore/queries.js'
-import { events } from '../livestore/schema.js'
+import { app$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
 import type { Filter } from '../types.ts'
 
 export const Filters: React.FC = () => {

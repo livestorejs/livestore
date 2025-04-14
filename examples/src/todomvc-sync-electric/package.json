@@ -20,7 +20,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@tanstack/react-router": "^1.114.27",
+    "@tanstack/react-router": "^1.116.0",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

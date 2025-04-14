@@ -21,5 +21,5 @@
 +    "@livestore/react": "0.3.0-dev.28",
 +    "@livestore/sync-cf": "0.3.0-dev.28",
      "babel-preset-expo": "12.0.9",
-     "expo": "52.0.37",
+     "expo": "^53.0.0-preview.5",
      "expo-asset": "11.0.4",

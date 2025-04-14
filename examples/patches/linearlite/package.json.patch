@@ -7,7 +7,7 @@
    "version": "0.0.0",
    "type": "module",
    "dependencies": {
-     "@headlessui/react": "2.2.0",
+     "@headlessui/react": "2.2.1",
      "@heroicons/react": "2.2.0",
 -    "@livestore/adapter-web": "workspace:*",
 +    "@livestore/adapter-web": "0.3.0-dev.28",

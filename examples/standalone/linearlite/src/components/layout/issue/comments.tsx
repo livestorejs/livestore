@@ -25,9 +25,9 @@ export const Comments = ({ issueId }: { issueId: number }) => {
             {/* TODO: make this a relative date */}
             <div className="text-neutral-500 dark:text-neutral-400">{formatDate(new Date(created))}</div>
           </div>
-          <ReactMarkdown className="text-neutral-600 dark:text-neutral-200 dark:prose-strong:text-neutral-200 prose-sm prose-strong:text-neutral-600 prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-pre:my-2 font-normal -mb-2">
-            {body}
-          </ReactMarkdown>
+          <div className="text-neutral-600 dark:text-neutral-200 dark:prose-strong:text-neutral-200 prose-sm prose-strong:text-neutral-600 prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-pre:my-2 font-normal -mb-2">
+            <ReactMarkdown>{body}</ReactMarkdown>
+          </div>
         </li>
       ))}
     </ul>

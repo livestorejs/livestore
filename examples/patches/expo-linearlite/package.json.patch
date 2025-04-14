@@ -20,5 +20,5 @@
 +    "@livestore/peer-deps": "0.3.0-dev.28",
 +    "@livestore/react": "0.3.0-dev.28",
      "@react-native-segmented-control/segmented-control": "2.5.7",
-     "@react-native/assets-registry": "0.77.1",
-     "@react-navigation/native": "7.0.14",
+     "@react-native/assets-registry": "0.79.0",
+     "@react-navigation/native": "7.1.6",

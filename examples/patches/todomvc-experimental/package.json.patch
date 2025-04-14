@@ -19,4 +19,4 @@
 +    "@livestore/react": "0.3.0-dev.28",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
-     "react": "19.0.0",
+     "react": "19.1.0",

@@ -1,7 +1,7 @@
 import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-import { Filter } from '../types.js'
-import * as eventsDefs from './events.js'
+import { Filter } from '../types.ts'
+import * as eventsDefs from './events.ts'
 
 const todos = State.SQLite.table({
   name: 'todos',
