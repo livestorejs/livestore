@@ -19,7 +19,7 @@ export namespace QueryBuilderAst {
   export interface SelectQuery {
     readonly _tag: 'SelectQuery'
     readonly columns: string[]
-    readonly pickFirst: false | { fallback: () => any }
+    readonly pickFirst: false | { fallback: () => any } | 'no-fallback'
     readonly select: {
       columns: ReadonlyArray<string>
     }

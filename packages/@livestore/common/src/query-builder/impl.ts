@@ -144,8 +144,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends State.SQLite.TableDe
       return makeQueryBuilder(tableDef, {
         ...ast,
         limit: Option.some(1),
-        // TODO improve
-        pickFirst: options?.fallback ? { fallback: options.fallback } : { fallback: () => undefined },
+        pickFirst: options?.fallback ? { fallback: options.fallback } : 'no-fallback',
       })
     },
     // // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
@@ -309,11 +308,17 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
   switch (queryAst._tag) {
     case 'SelectQuery': {
       const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
-      if (queryAst.pickFirst !== false) {
-        return arraySchema.pipe(Schema.headOrElse(queryAst.pickFirst.fallback))
+      if (queryAst.pickFirst === false) {
+        return arraySchema
+      } else if (queryAst.pickFirst === 'no-fallback') {
+        // Will throw if the array is empty
+        return arraySchema.pipe(Schema.headOrElse())
+      } else {
+        const fallbackValue = queryAst.pickFirst.fallback()
+        return Schema.Union(arraySchema, Schema.Tuple(Schema.Literal(fallbackValue))).pipe(
+          Schema.headOrElse(() => fallbackValue),
+        )
       }
-
-      return arraySchema
     }
     case 'CountQuery': {
       return Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())

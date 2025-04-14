@@ -2,6 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
 import { State } from '../schema/mod.js'
+import type { QueryBuilder } from './api.js'
 import { getResultSchema } from './impl.js'
 
 const todos = State.SQLite.table({
@@ -74,236 +75,241 @@ export const issue = State.SQLite.table({
 
 const db = { todos, todosWithIntId, comments, issue, UiState, UiStateWithDefaultId }
 
-describe('query builder', () => {
-  describe('result schema', () => {
-    it('should print the schema', () => {
-      expect(String(getResultSchema(db.todos))).toMatchInlineSnapshot(`"ReadonlyArray<todos>"`)
-    })
-  })
+const dump = (qb: QueryBuilder<any, any, any>) => ({
+  bindValues: qb.asSql().bindValues,
+  query: qb.asSql().query,
+  schema: getResultSchema(qb).toString(),
+})
 
+describe('query builder', () => {
   describe('basic queries', () => {
     it('should handle simple SELECT queries', () => {
-      expect(db.todos.asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos)).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT * FROM 'todos'",
+          "schema": "ReadonlyArray<todos>",
         }
       `)
 
-      expect(db.todos.select('id').asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT id FROM 'todos'",
+          "schema": "ReadonlyArray<({ readonly id: string } <-> string)>",
         }
       `)
 
-      expect(db.todos.select('id', 'text').asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT id, text FROM 'todos'",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
     })
 
     it('should handle .first()', () => {
-      expect(db.todos.select('id', 'text').first().asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').first())).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
         }
       `)
 
-      expect(
-        db.todos
-          .select('id', 'text')
-          .first({ fallback: () => undefined })
-          .asSql(),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').first({ fallback: () => undefined }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
         }
       `)
     })
 
     it('should handle WHERE clauses', () => {
-      expect(db.todos.select('id', 'text').where('completed', true).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where('completed', true))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(db.todos.select('id', 'text').where('completed', '!=', true).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where('completed', '!=', true))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed != ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(db.todos.select('id', 'text').where({ completed: true }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where({ completed: true }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(db.todos.select('id', 'text').where({ completed: undefined }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where({ completed: undefined }))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT id, text FROM 'todos'",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(
-        db.todos
-          .select('id', 'text')
-          .where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })
-          .asSql(),
-      ).toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "2024-01-01T00:00:00.000Z",
-          ],
-          "query": "SELECT id, text FROM 'todos' WHERE deletedAt <= ?",
-        }
-      `)
-      expect(
-        db.todos
-          .select('id', 'text')
-          .where({ status: { op: 'IN', value: ['active'] } })
-          .asSql(),
-      ).toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "active",
-          ],
-          "query": "SELECT id, text FROM 'todos' WHERE status IN (?)",
-        }
-      `)
-      expect(
-        db.todos
-          .select('id', 'text')
-          .where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })
-          .asSql(),
-      ).toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "active",
-            "completed",
-          ],
-          "query": "SELECT id, text FROM 'todos' WHERE status NOT IN (?, ?)",
-        }
-      `)
-    })
-
-    it('should handle OFFSET and LIMIT clauses', () => {
-      expect(db.todos.select('id', 'text').where('completed', true).offset(10).limit(10).asSql())
+      expect(dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })))
         .toMatchInlineSnapshot(`
           {
             "bindValues": [
-              1,
-              10,
-              10,
+              "2024-01-01T00:00:00.000Z",
             ],
-            "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+            "query": "SELECT id, text FROM 'todos' WHERE deletedAt <= ?",
+            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
           }
         `)
+      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })))
+        .toMatchInlineSnapshot(`
+          {
+            "bindValues": [
+              "active",
+            ],
+            "query": "SELECT id, text FROM 'todos' WHERE status IN (?)",
+            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+          }
+        `)
+      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })))
+        .toMatchInlineSnapshot(`
+          {
+            "bindValues": [
+              "active",
+              "completed",
+            ],
+            "query": "SELECT id, text FROM 'todos' WHERE status NOT IN (?, ?)",
+            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+          }
+        `)
+    })
+
+    it('should handle OFFSET and LIMIT clauses', () => {
+      expect(dump(db.todos.select('id', 'text').where('completed', true).offset(10).limit(10))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+            10,
+            10,
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
     })
 
     it('should handle OFFSET and LIMIT clauses correctly', () => {
       // Test with both offset and limit
-      expect(db.todos.select('id', 'text').where('completed', true).offset(5).limit(10).asSql()).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              1,
-              5,
-              10,
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
-          }
-        `)
+      expect(dump(db.todos.select('id', 'text').where('completed', true).offset(5).limit(10))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+            5,
+            10,
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
 
       // Test with only offset
-      expect(db.todos.select('id', 'text').where('completed', true).offset(5).asSql()).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              1,
-              5,
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ?",
-          }
-        `)
+      expect(dump(db.todos.select('id', 'text').where('completed', true).offset(5))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+            5,
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
 
       // Test with only limit
-      expect(db.todos.select('id', 'text').where('completed', true).limit(10).asSql()).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              1,
-              10,
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE completed = ? LIMIT ?",
-          }
-        `)
+      expect(dump(db.todos.select('id', 'text').where('completed', true).limit(10))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+            10,
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? LIMIT ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
     })
 
     it('should handle COUNT queries', () => {
-      expect(db.todos.count().asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.count())).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT COUNT(*) as count FROM 'todos'",
+          "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
         }
       `)
-      expect(db.todos.count().where('completed', true).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.count().where('completed', true))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
           ],
           "query": "SELECT COUNT(*) as count FROM 'todos' WHERE completed = ?",
+          "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
         }
       `)
     })
 
     it('should handle NULL comparisons', () => {
-      expect(db.todos.select('id', 'text').where('deletedAt', '=', null).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where('deletedAt', '=', null))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT id, text FROM 'todos' WHERE deletedAt IS NULL",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(db.todos.select('id', 'text').where('deletedAt', '!=', null).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where('deletedAt', '!=', null))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT id, text FROM 'todos' WHERE deletedAt IS NOT NULL",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
     })
 
     it('should handle orderBy', () => {
-      expect(db.todos.orderBy('completed', 'desc').asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.orderBy('completed', 'desc'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+          "schema": "ReadonlyArray<todos>",
         }
       `)
 
-      expect(db.todos.orderBy([{ col: 'completed', direction: 'desc' }]).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.orderBy([{ col: 'completed', direction: 'desc' }]))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+          "schema": "ReadonlyArray<todos>",
         }
       `)
 
-      expect(db.todos.orderBy([]).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.orderBy([]))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT * FROM 'todos'",
+          "schema": "ReadonlyArray<todos>",
         }
       `)
     })
@@ -311,31 +317,34 @@ describe('query builder', () => {
 
   // describe('getOrCreate queries', () => {
   //   it('should handle getOrCreate queries', () => {
-  //     expect(db.UiState.getOrCreate('sessionid-1').asSql()).toMatchInlineSnapshot(`
+  //     expect(dump(db.UiState.getOrCreate('sessionid-1'))).toMatchInlineSnapshot(`
   //         {
   //           "bindValues": [
   //             "sessionid-1",
   //           ],
   //           "query": "SELECT * FROM 'UiState' WHERE id = ?",
+  //           "schema": "...", // TODO determine schema
   //         }
   //       `)
   //   })
 
   //   it('should handle getOrCreate queries with default id', () => {
-  //     expect(db.UiStateWithDefaultId.getOrCreate().asSql()).toMatchInlineSnapshot(`
+  //     expect(dump(db.UiStateWithDefaultId.getOrCreate())).toMatchInlineSnapshot(`
   //       {
   //         "bindValues": [],
   //         "query": "SELECT * FROM 'UiState' WHERE id = ?",
+  //         "schema": "...", // TODO determine schema
   //       }
   //     `)
   //   })
   //   // it('should handle row queries with numbers', () => {
-  //   //   expect(db.todosWithIntId.getOrCreate(123, { insertValues: { status: 'active' } }).asSql()).toMatchInlineSnapshot(`
+  //   //   expect(dump(db.todosWithIntId.getOrCreate(123, { insertValues: { status: 'active' } }))).toMatchInlineSnapshot(`
   //   //     {
   //   //       "bindValues": [
   //   //         123,
   //   //       ],
   //   //       "query": "SELECT * FROM 'todos_with_int_id' WHERE id = ?",
+  //   //       "schema": "...", // TODO determine schema
   //   //     }
   //   //   `)
   //   // })
@@ -343,7 +352,7 @@ describe('query builder', () => {
 
   describe('write operations', () => {
     it('should handle INSERT queries', () => {
-      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -351,12 +360,13 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle INSERT queries with undefined values', () => {
-      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active', completed: undefined }).asSql())
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active', completed: undefined })))
         .toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -365,6 +375,7 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "schema": "number",
         }
       `)
     })
@@ -372,8 +383,8 @@ describe('query builder', () => {
     // Test helped to catch a bindValues ordering bug
     it('should handle INSERT queries (issue)', () => {
       expect(
-        db.issue
-          .insert({
+        dump(
+          db.issue.insert({
             id: 1,
             title: 'Revert the user profile page',
             priority: 2,
@@ -381,8 +392,8 @@ describe('query builder', () => {
             modified: new Date('2024-12-29T17:15:20.507Z'),
             kanbanorder: 'a2',
             creator: 'John Doe',
-          })
-          .asSql(),
+          }),
+        ),
       ).toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -395,32 +406,35 @@ describe('query builder', () => {
             "John Doe",
           ],
           "query": "INSERT INTO 'issue' (id, title, priority, created, modified, kanbanorder, creator) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle UPDATE queries', () => {
-      expect(db.todos.update({ status: 'completed' }).where({ id: '123' }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.update({ status: 'completed' }).where({ id: '123' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",
             "123",
           ],
           "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+          "schema": "number",
         }
       `)
 
       // empty update set
-      expect(db.todos.update({}).where({ id: '123' }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.update({}).where({ id: '123' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
           "query": "SELECT 1",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle UPDATE queries with undefined values', () => {
-      expect(db.todos.update({ status: undefined, text: 'some text' }).where({ id: '123' }).asSql())
+      expect(dump(db.todos.update({ status: undefined, text: 'some text' }).where({ id: '123' })))
         .toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -428,12 +442,13 @@ describe('query builder', () => {
             "123",
           ],
           "query": "UPDATE 'todos' SET text = ? WHERE id = ?",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle UPDATE queries with undefined values (issue)', () => {
-      expect(db.issue.update({ priority: 2, creator: 'John Doe' }).where({ id: 1 }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.issue.update({ priority: 2, creator: 'John Doe' }).where({ id: 1 }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             2,
@@ -441,23 +456,25 @@ describe('query builder', () => {
             1,
           ],
           "query": "UPDATE 'issue' SET priority = ?, creator = ? WHERE id = ?",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle DELETE queries', () => {
-      expect(db.todos.delete().where({ status: 'completed' }).asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.delete().where({ status: 'completed' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",
           ],
           "query": "DELETE FROM 'todos' WHERE status = ?",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle INSERT with ON CONFLICT', () => {
-      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore').asSql())
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')))
         .toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -466,14 +483,16 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING",
+          "schema": "number",
         }
       `)
 
       expect(
-        db.todos
-          .insert({ id: '123', text: 'Buy milk', status: 'active' })
-          .onConflict('id', 'update', { text: 'Buy soy milk', status: 'active' })
-          .asSql(),
+        dump(
+          db.todos
+            .insert({ id: '123', text: 'Buy milk', status: 'active' })
+            .onConflict('id', 'update', { text: 'Buy soy milk', status: 'active' }),
+        ),
       ).toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -484,10 +503,11 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET text = ?, status = ?",
+          "schema": "number",
         }
       `)
 
-      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace').asSql())
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')))
         .toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -496,16 +516,14 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT OR REPLACE INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle ON CONFLICT with multiple columns', () => {
       expect(
-        db.todos
-          .insert({ id: '123', text: 'Buy milk', status: 'active' })
-          .onConflict(['id', 'status'], 'ignore')
-          .asSql(),
+        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict(['id', 'status'], 'ignore')),
       ).toMatchInlineSnapshot(`
         {
           "bindValues": [
@@ -514,40 +532,44 @@ describe('query builder', () => {
             "active",
           ],
           "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id, status) DO NOTHING",
+          "schema": "number",
         }
       `)
     })
 
     it('should handle RETURNING clause', () => {
-      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id').asSql())
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')))
         .toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "123",
-            "Buy milk",
-            "active",
-          ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) RETURNING id",
-        }
-      `)
+          {
+            "bindValues": [
+              "123",
+              "Buy milk",
+              "active",
+            ],
+            "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) RETURNING id",
+            "schema": "ReadonlyArray<{ readonly id: string }>",
+          }
+        `)
 
-      expect(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id').asSql())
+      expect(dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')))
         .toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            "completed",
-            "123",
-          ],
-          "query": "UPDATE 'todos' SET status = ? WHERE id = ? RETURNING id",
-        }
-      `)
+          {
+            "bindValues": [
+              "completed",
+              "123",
+            ],
+            "query": "UPDATE 'todos' SET status = ? WHERE id = ? RETURNING id",
+            "schema": "ReadonlyArray<{ readonly id: string }>",
+          }
+        `)
 
-      expect(db.todos.delete().where({ status: 'completed' }).returning('id').asSql()).toMatchInlineSnapshot(`
+      expect(dump(db.todos.delete().where({ status: 'completed' }).returning('id'))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",
           ],
           "query": "DELETE FROM 'todos' WHERE status = ? RETURNING id",
+          "schema": "ReadonlyArray<{ readonly id: string }>",
         }
       `)
     })
