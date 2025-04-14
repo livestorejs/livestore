@@ -15,10 +15,10 @@
     "@livestore/webmesh": "workspace:*"
   },
   "devDependencies": {
-    "expo": "^52.0.37"
+    "expo": "^53.0.0-preview.5"
   },
   "peerDependencies": {
-    "expo": "~52.0.37"
+    "expo": "^53.0.0-preview.5"
   },
   "publishConfig": {
     "access": "public"

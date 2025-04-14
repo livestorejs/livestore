@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@effect/language-service": "^0.4.0",
+    "@effect/language-service": "^0.6.0",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
     "eslint": "^8.57.1",
@@ -20,7 +20,7 @@
     "prettier": "^3.5.3",
     "prettier-plugin-packagejson": "^2.5.10",
     "syncpack": "^13.0.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   },
   "packageManager": "pnpm@10.2.1",
   "pnpm": {
@@ -47,21 +47,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.0",
-    "metro": "0.81.2",
-    "metro-babel-transformer": "0.81.2",
-    "metro-cache": "0.81.2",
-    "metro-cache-key": "0.81.2",
-    "metro-config": "0.81.2",
-    "metro-core": "0.81.2",
-    "metro-file-map": "0.81.2",
-    "metro-minify-terser": "0.81.2",
-    "metro-resolver": "0.81.2",
-    "metro-runtime": "0.81.2",
-    "metro-source-map": "0.81.2",
-    "metro-symbolicate": "0.81.2",
-    "metro-transform-plugins": "0.81.2",
-    "metro-transform-worker": "0.81.2",
-    "react-native": "0.76.7"
+    "react-native": "0.79.0"
   },
   "resolutions#": {
     "esbuild": "Needed for CF Wrangler / vinxi build",

@@ -9,12 +9,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "expo": "^52.0.37",
+    "expo": "^53.0.0-preview.5",
     "vite": "^6.2.1"
   },
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "~52.0.37"
+    "expo": "^53.0.0-preview.5"
   },
   "publishConfig": {
     "access": "public"

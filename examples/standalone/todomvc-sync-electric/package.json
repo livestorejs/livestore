@@ -27,7 +27,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "postgres": "^3.4.5",
     "rollup-plugin-visualizer": "^5.14.0",
-    "typescript": "^5.8.2",
+    "typescript": "^5.8.3",
     "vinxi": "^0.5.3",
     "vite": "^6.2.1"
   },

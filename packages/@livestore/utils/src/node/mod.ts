@@ -17,7 +17,7 @@ import { makeNoopTracer } from '../NoopTracer.js'
 
 export * as Cli from '@effect/cli'
 export * as PlatformNode from '@effect/platform-node'
-export * as SocketServer from '@effect/experimental/SocketServer'
+export * as SocketServer from '@effect/platform/SocketServer'
 export * as OtelResource from '@effect/opentelemetry/Resource'
 
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
