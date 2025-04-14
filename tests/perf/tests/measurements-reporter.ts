@@ -214,14 +214,17 @@ export default class MeasurementsReporter implements Reporter {
 
         const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
 
+        const testName = `${testSuiteTitle} ${test.title}`
+
         let metric = Metric.summary({
-          name: `${snakeCase(testSuiteTitle)}_${snakeCase(test.title)}`,
+          name: snakeCase(testName),
           maxAge: '1 hour',
           maxSize: 100_000,
           error: 0.01,
           quantiles: [0.5, 0.9],
-          description: `Performance measurement ${test.title}`,
+          description: testName,
         }).pipe(
+          Metric.tagged('display_name', testName),
           Metric.tagged('unit', unit),
           Metric.tagged('test_suite', testSuiteTitle),
           Metric.tagged('os_type', this.systemInfo.os.type),
