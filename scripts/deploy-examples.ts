@@ -44,14 +44,19 @@ const buildAndDeployExample = ({
     const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
     const deployCommand = `bunx netlify-cli deploy --dir=${EXAMPLES_SRC_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
     // Gradually falling back for debugging purposes
-    const resultJson = yield* BunShell.cmdJson(`${deployCommand} --json`, cwd).pipe(
+    let resultJson = yield* BunShell.cmdJson(`${deployCommand} --json`, cwd).pipe(
       Effect.catchAllCause(() => BunShell.cmdText(`${deployCommand} --json`, cwd)),
       Effect.catchAllCause(() => BunShell.cmd(`${deployCommand}`, cwd)),
     )
 
     if (typeof resultJson === 'string') {
-      console.error(`[deploy-examples] Expected JSON result from netlify deploy command, got:\n\n${resultJson}\n`)
-      process.exit(1)
+      console.warn(`Got string result, trying to parse as JSON...`)
+      try {
+        resultJson = JSON.parse(resultJson)
+      } catch {
+        console.error(`[deploy-examples] Expected JSON result from netlify deploy command, got:\n\n${resultJson}\n`)
+        process.exit(1)
+      }
     }
 
     const result = yield* Schema.decode(netlifyDeployResultSchema)(resultJson).pipe(
