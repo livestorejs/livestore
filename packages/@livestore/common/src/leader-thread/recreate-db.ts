@@ -57,7 +57,6 @@ export const recreateDb: Effect.Effect<
         // db: initResult.tmpDb,
         dbEventlog,
         schema,
-        migrationOptions,
         applyEvent,
         onProgress: ({ done, total }) =>
           Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),

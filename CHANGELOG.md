@@ -212,14 +212,12 @@
 
 ### Still todo:
 
-- Separate mutation handler from mutation definition
-- Get rid of `excludeFromEventlog` (etc)
 - Syncing
   - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
     - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
-  - More graceful handling when receiving a mutation event that doesn't exist in the local schema
+  - More graceful handling when receiving a event that doesn't exist in the local schema
     - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
     - 2 solution paths:
       - Render "upgrade app" screen

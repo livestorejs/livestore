@@ -49,7 +49,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   /** Note when using the object-notation for tables/events, the object keys are ignored and not used as table/mutation names */
   inputSchema: TInputSchema & {
     /** "hard-reset" is currently the default strategy */
-    migrations?: MigrationOptions<FromInputSchema.DeriveSchema<TInputSchema>>
+    migrations?: MigrationOptions
   },
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
   // const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)

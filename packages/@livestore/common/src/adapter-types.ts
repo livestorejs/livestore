@@ -201,8 +201,8 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
 
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
-export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
-  | MigrationOptionsFromEventlog<TSchema>
+export type MigrationOptions =
+  | MigrationOptionsFromEventlog
   | {
       strategy: 'hard-reset'
       hooks?: Partial<MigrationHooks>
@@ -223,14 +223,8 @@ export type MigrationHooks = {
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
-export interface MigrationOptionsFromEventlog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
+export interface MigrationOptionsFromEventlog {
   strategy: 'from-eventlog'
-  /**
-   * Events to exclude in the eventlog
-   *
-   * @default new Set(['livestore.RawSql'])
-   */
-  excludeEvents?: ReadonlySet<keyof TSchema['_EventDefMapType'] & string>
   hooks?: Partial<MigrationHooks>
   logging?: {
     excludeAffectedRows?: (sqlStmt: string) => boolean

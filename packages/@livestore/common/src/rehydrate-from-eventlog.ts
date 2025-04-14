@@ -1,7 +1,7 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type MigrationOptionsFromEventlog, type SqliteDb, UnexpectedError } from './adapter-types.js'
+import { type SqliteDb, UnexpectedError } from './adapter-types.js'
 import type { ApplyEvent } from './leader-thread/mod.js'
 import type { EventDef, EventlogMetaRow, LiveStoreSchema } from './schema/mod.js'
 import { EventId, EVENTLOG_META_TABLE, getEventDef, LiveStoreEvent } from './schema/mod.js'
@@ -13,14 +13,12 @@ export const rehydrateFromEventlog = ({
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
   schema,
-  migrationOptions,
   onProgress,
   applyEvent,
 }: {
   dbEventlog: SqliteDb
   // db: SqliteDb
   schema: LiveStoreSchema
-  migrationOptions: MigrationOptionsFromEventlog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   applyEvent: ApplyEvent
 }) =>
@@ -33,8 +31,6 @@ export const rehydrateFromEventlog = ({
     const processEvent = (row: EventlogMetaRow) =>
       Effect.gen(function* () {
         const eventDef = getEventDef(schema, row.name)
-
-        if (migrationOptions.excludeEvents?.has(row.name) === true) return
 
         if (hashEvent(eventDef.eventDef) !== row.schemaHash) {
           yield* Effect.logWarning(`Schema hash mismatch for mutation ${row.name}. Trying to apply mutation anyway.`)

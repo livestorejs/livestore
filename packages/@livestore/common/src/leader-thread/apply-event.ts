@@ -1,9 +1,9 @@
-import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { getExecArgsFromEvent } from '../materializer-helper.js'
-import type { LiveStoreEvent, LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
+import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
   EVENTLOG_META_TABLE,
@@ -27,8 +27,6 @@ export const makeApplyEvent = ({
   dbEventlog: SqliteDb
 }): Effect.Effect<ApplyEvent, never> =>
   Effect.gen(function* () {
-    const shouldExcludeEventFromLog = makeShouldExcludeEventFromLog(schema)
-
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
@@ -89,8 +87,7 @@ export const makeApplyEvent = ({
         // console.groupEnd()
 
         // write to eventlog
-        const excludeFromEventlog = shouldExcludeEventFromLog(eventName, eventEncoded)
-        if (skipEventlog === false && excludeFromEventlog === false) {
+        if (skipEventlog === false) {
           const eventName = eventEncoded.name
           const eventDefSchemaHash =
             eventDefSchemaHashMap.get(eventName) ?? shouldNeverHappen(`Unknown event definition: ${eventName}`)
@@ -174,24 +171,3 @@ export const rollback = ({
       attributes: { count: eventIdsToRollback.length },
     }),
   )
-
-// TODO let's consider removing this "should exclude" mechanism in favour of log compaction etc
-const makeShouldExcludeEventFromLog = memoizeByRef((schema: LiveStoreSchema) => {
-  const migrationOptions = schema.migrationOptions
-  const eventlogExclude =
-    migrationOptions.strategy === 'from-eventlog'
-      ? (migrationOptions.excludeEvents ?? new Set(['livestore.RawSql']))
-      : new Set(['livestore.RawSql'])
-
-  return (eventName: string, eventEncoded: LiveStoreEvent.AnyEncoded): boolean => {
-    if (eventlogExclude.has(eventName)) return true
-
-    const eventDef = getEventDef(schema, eventName)
-    const execArgsArr = getExecArgsFromEvent({
-      eventDef,
-      event: { decoded: undefined, encoded: eventEncoded },
-    })
-
-    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
-  }
-})
