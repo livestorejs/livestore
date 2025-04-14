@@ -290,8 +290,8 @@ export namespace QueryBuilder {
      *
      * Query will fail if no rows are returned and no fallback is provided.
      */
-    readonly first: <TFallback extends GetSingle<TResult> = never>(options?: {
-      fallback?: () => TFallback
+    readonly first: <TFallback = never>(options?: {
+      fallback?: () => TFallback | GetSingle<TResult>
     }) => QueryBuilder<
       TFallback | GetSingle<TResult>,
       TTableDef,

@@ -149,5 +149,9 @@ const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {
 }
 
 const removeUndefinedValues = (value: any) => {
-  return Object.fromEntries(Object.entries(value).filter(([_, v]) => v !== undefined))
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(Object.entries(value).filter(([_, v]) => v !== undefined))
+  }
+
+  return value
 }

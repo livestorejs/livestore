@@ -105,6 +105,31 @@ describe('query builder', () => {
       `)
     })
 
+    it('should handle .first()', () => {
+      expect(db.todos.select('id', 'text').first().asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+          ],
+          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+        }
+      `)
+
+      expect(
+        db.todos
+          .select('id', 'text')
+          .first({ fallback: () => undefined })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+          ],
+          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+        }
+      `)
+    })
+
     it('should handle WHERE clauses', () => {
       expect(db.todos.select('id', 'text').where('completed', true).asSql()).toMatchInlineSnapshot(`
         {

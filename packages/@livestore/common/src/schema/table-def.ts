@@ -2,7 +2,7 @@ import { type Nullable } from '@livestore/utils'
 import type { Schema, Types } from '@livestore/utils/effect'
 
 import type { QueryBuilder } from '../query-builder/mod.js'
-import { makeQueryBuilder, QueryBuilderAstSymbol } from '../query-builder/mod.js'
+import { makeQueryBuilder, QueryBuilderAstSymbol, QueryBuilderTypeId } from '../query-builder/mod.js'
 import { SqliteDsl } from './db-schema/mod.js'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
@@ -108,8 +108,10 @@ export const table = <
     tableDef[key] = query[key]
   }
 
-  // @ts-expect-error TODO properly implement this
+  // @ts-expect-error TODO properly type this
   tableDef[QueryBuilderAstSymbol] = query[QueryBuilderAstSymbol]
+  // @ts-expect-error TODO properly type this
+  tableDef[QueryBuilderTypeId] = query[QueryBuilderTypeId]
 
   return tableDef as any
 }
