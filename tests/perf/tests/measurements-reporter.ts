@@ -11,6 +11,7 @@ import {
   Data,
   Pretty,
   ReadonlyArray,
+  Config,
   Schema,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
@@ -213,14 +214,33 @@ export default class MeasurementsReporter implements Reporter {
 
         const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
 
-        const metric = Metric.summary({
+        let metric = Metric.summary({
           name: `${snakeCase(testSuiteTitle)}_${snakeCase(test.title)}`,
           maxAge: '1 hour',
           maxSize: 100_000,
           error: 0.01,
           quantiles: [0.5, 0.9],
           description: `Performance measurement ${test.title}`,
-        }).pipe(Metric.tagged('unit', unit), Metric.tagged('test_suite', testSuiteTitle))
+        }).pipe(
+          Metric.tagged('unit', unit),
+          Metric.tagged('test_suite', testSuiteTitle),
+          Metric.tagged('os_type', this.systemInfo.os.type),
+          Metric.tagged('o_platform', this.systemInfo.os.platform),
+          Metric.tagged('os_release', this.systemInfo.os.release),
+          Metric.tagged('os_arch', this.systemInfo.os.arch),
+          Metric.tagged('cpu_model', this.systemInfo.cpus.model),
+          Metric.tagged('cpu_count', this.systemInfo.cpus.count.toString()),
+          Metric.tagged('cpu_speed', this.systemInfo.cpus.speed.toString()),
+          Metric.tagged('memory_total', this.systemInfo.memory.total.toString()),
+          Metric.tagged('memory_free', this.systemInfo.memory.free.toString()),
+        )
+
+        const isCi = yield* Config.boolean('CI').pipe(Config.withDefault(false))
+        if (isCi) {
+          const commitSha = yield* Config.string('GITHUB_SHA')
+          const refName = yield* Config.string('GITHUB_REF_NAME')
+          metric = metric.pipe(Metric.tagged('commit_sha', commitSha), Metric.tagged('ref_name', refName))
+        }
 
         this.metricsByTestTitle[test.title] = {
           metric: metric,
@@ -231,18 +251,7 @@ export default class MeasurementsReporter implements Reporter {
           },
         }
       }),
-    ).pipe(
-      Effect.tagMetrics('os.type', this.systemInfo.os.type),
-      Effect.tagMetrics('os.platform', this.systemInfo.os.platform),
-      Effect.tagMetrics('os.release', this.systemInfo.os.release),
-      Effect.tagMetrics('os.arch', this.systemInfo.os.arch),
-      Effect.tagMetrics('cpu.model', this.systemInfo.cpus.model),
-      Effect.tagMetrics('cpu.count', this.systemInfo.cpus.count.toString()),
-      Effect.tagMetrics('cpu.speed', this.systemInfo.cpus.speed.toString()),
-      Effect.tagMetrics('memory.total', this.systemInfo.memory.total.toString()),
-      Effect.tagMetrics('memory.free', this.systemInfo.memory.free.toString()),
-      Effect.runSync,
-    )
+    ).pipe(Effect.runSync)
   }
 
   onTestEnd = async (test: TestCase, result: TestResult): Promise<void> => {
