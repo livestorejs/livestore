@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.3.0-dev.29",
+  "version": "0.3.0-dev.30",
   "type": "module",
   "sideEffects": [
     "./dist/global.js",
