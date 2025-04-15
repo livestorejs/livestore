@@ -1,6 +1,6 @@
 import { makeWorker } from '@livestore/adapter-web/worker'
 
-import { schema } from './livestore/schema.js'
-import { makeTracer } from './otel.js'
+import { makeTracer } from '../otel.js'
+import { schema } from './schema.js'
 
 makeWorker({ schema, otelOptions: { tracer: makeTracer('todomvc-worker') } })

@@ -9,7 +9,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
-import LiveStoreWorker from './livestore.worker?worker'
+import LiveStoreWorker from './livestore/livestore.worker?worker'
 import { schema } from './livestore/schema.js'
 import { makeTracer } from './otel.js'
 

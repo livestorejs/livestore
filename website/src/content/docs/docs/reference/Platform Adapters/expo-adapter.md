@@ -1,5 +1,7 @@
 ---
 title: Expo Adapter
+sidebar:
+  order: 2
 ---
 
 ## Notes on Android

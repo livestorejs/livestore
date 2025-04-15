@@ -1,50 +1,27 @@
 ---
-title: Schema
+title: SQLite State Schema
 sidebar:
   order: 2
 ---
 
-- LiveStore uses schema definitions both to define your database tables (i.e. the read model) and to define your event payloads.
-- It's based on the excellent [Effect Schema](https://effect.website/docs/schema/introduction/) library.
-- SQLite tables are defined as [STRICT](https://www.sqlite.org/stricttables.html) tables.
-
-## SQLite state schema
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
+import eventsCode from '../../../../../../../examples/standalone/todomvc/src/livestore/events.ts?raw'
+import schemaCode from '../../../../../../../examples/standalone/todomvc/src/livestore/schema.ts?raw'
 
 LiveStore provides a schema definition language for defining your database tables and mutation definitions. LiveStore automatically migrates your database schema when you change your schema definitions.
 
 ### Example
 
-```ts
-import { State, makeSchema, Schema } from '@livestore/livestore'
 
-export const Filter = Schema.Literal('all', 'active', 'completed')
+<Tabs syncKey="package-manager">
+  <TabItem label="schema.ts">
+    <Code lang="ts" code={schemaCode} />
+  </TabItem>
+  <TabItem label="events.ts">
+    <Code lang="ts" code={eventsCode} />
+  </TabItem>
+</Tabs>
 
-const todos = State.SQLite.table(
-  'todos',
-  {
-    id: State.SQLite.text({ primaryKey: true }),
-    text: State.SQLite.text({ default: '' }),
-    completed: State.SQLite.boolean({ default: false }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
-  },
-)
-
-const app = State.SQLite.table(
-  'app',
-  {
-    newTodoText: State.SQLite.text({ default: '' }),
-    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
-  },
-)
-
-export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
-export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
-
-export const tables = { todos, app }
-
-export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-eventlog' } })
-
-```
 
 ### Schema migrations
 
@@ -103,36 +80,11 @@ export const userTable = State.SQLite.table('user', {
 })
 ```
 
+## Best Practices
 
-## Event schema
-
-
-```ts
-import { Events, Schema, sql } from '@livestore/livestore'
-
-export const todoCreated = Events.synced({
-  name: 'todoCreated',
-  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-})
-
-export const todoCompleted = Events.synced({
-  name: 'todoCompleted',
-  schema: Schema.Struct({ id: Schema.String }),
-})
-```
-
-## Effect Schema
-
-LiveStore uses the [Effect Schema](https://effect.website/docs/schema/introduction/) library to define schemas for the following:
-
-- Read model table column definitions
-- Event event payloads definitions
-- Query response types
-
-For convenience, LiveStore re-exports the `Schema` type from the `effect` package, which is the same as if you'd import it via `import { Schema } from 'effect'` directly.
-
-### Example
-
-```ts
-import { Schema } from '@livestore/livestore'
-```
+- It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
+	- This means you'll rarely use `React.useState` when using LiveStore
+- In some cases for "fast changing values" it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations. Cases where this can make sense can include:
+  - Text input / rich text editing
+  - Scroll position tracking, resize events, move/drag events
+  - ...

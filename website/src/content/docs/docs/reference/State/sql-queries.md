@@ -56,4 +56,11 @@ table.update({ name: 'Alice' }).where({ id: '123' })
 table.delete().where({ id: '123' })
 ```
 
-## Derived mutations
+## Best Practices
+
+- Query results should be treated as immutable/read-only
+- For queries which could return many rows, it's recommended to paginate the results
+  - Usually both via paginated/virtualized rendering as well as paginated queries
+	- You'll get best query performance by using a `WHERE` clause over an indexed column combined with a `LIMIT` clause. Avoid `OFFSET` as it can be slow on large tables
+- For very large/complex queries, it can also make sense to implement incremental view maintenance (IVM) for your queries
+  - You can for example do this by have a separate table which is a materialized version of your query results which you update manually (and ideally incrementally) as the underlying data changes.

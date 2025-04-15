@@ -1,5 +1,7 @@
 ---
 title: Node Adapter
+sidebar:
+  order: 2
 ---
 
 Works with Node.js, Bun and Deno.

@@ -1,6 +1,8 @@
 ---
 title: Web Adapter
 description: Information about LiveStore's web adapter
+sidebar:
+  order: 1
 ---
 
 ## Example
@@ -64,3 +66,7 @@ LiveStore also uses `window.sessionStorage` to retain the identity of a client s
 
 - Notable required browser APIs: OPFS, SharedWorker, `navigator.locks`, WASM
 - The web adapter of LiveStore currently doesn't work on Android browsers as they don't support the `SharedWorker` API (see [Chromium bug](https://issues.chromium.org/issues/40290702)).
+
+## Best Practices
+
+- It's recommended to develop in an incognito window to avoid issues with persistent storage (e.g. OPFS).

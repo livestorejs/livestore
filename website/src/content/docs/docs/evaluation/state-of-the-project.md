@@ -10,8 +10,8 @@ LiveStore is based on years of research (see [Riffle](https://riffle.systems/ess
 ## Current state
 
 - LiveStore is currently in *private early access* and available as an *alpha release*.
-- **private early access**: To keep the development sustainable and level of feedback manageable, LiveStore is currently only available in early access to GitHub sponsors. We plan to offer public access to LiveStore early 2025.
-- **alpha release**: LiveStore is still under heavy development which includes breaking changes and database resets during version upgrades. We expect LiveStore to reach a relatively stable state (beta) in the first half of 2025 and aiming for an initial stable release in the second half of 2025.
+- **private early access**: To keep the development sustainable and level of feedback manageable, LiveStore is currently only available in early access to GitHub sponsors. We plan to offer public access to LiveStore mid 2025.
+- **alpha release**: LiveStore is still under heavy development which includes breaking changes and database resets during version upgrades. We expect LiveStore to reach a relatively stable state (beta) in the first half of 2025 and aiming for a 1.0 release in 2026.
 
 ### On breaking changes
 

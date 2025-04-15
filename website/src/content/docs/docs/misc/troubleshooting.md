@@ -31,3 +31,8 @@ If you're seeing an error like `RuntimeException: Cannot execute an Effect versi
 As a first step you can try deleting `node_modules` and running `pnpm install` again.
 
 If the issue persists, you can try to add `"resolutions": { "effect": "3.12.1" }` or [`pnpm.overrides`](https://pnpm.io/package_json#pnpmoverrides) to your `package.json` to force the correct version of `effect` to be used.
+
+## Package management
+
+- Please make sure you only have a single version of any given package in your project (incl. LiveStore and other packages like `react`, etc). Having multiple versions of the same package can lead to all kinds of issues and should be avoided. This is particularly important when using LiveStore in a monorepo.
+- Setting `resolutions` in your root `package.json` or tools like [PNPM catalogs](https://pnpm.io/catalogs) or [Syncpack](https://github.com/JamieMason/syncpack) can help you manage this.

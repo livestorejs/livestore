@@ -1,0 +1,10 @@
+--- vite.config.js
++++ vite.config.js
+@@ -9,7 +9,6 @@
+ export default defineConfig({
+   server: {
+     port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+-    fs: { strict: false },
+   },
+   worker: isProdBuild ? { format: 'es' } : undefined,
+   plugins: [react(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
