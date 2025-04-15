@@ -2,10 +2,10 @@
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Command, Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { BunShell, Cli } from './lib.js'
+import { Cli } from './lib.js'
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.
@@ -39,29 +39,32 @@ const buildAndDeployExample = ({
 }) =>
   Effect.gen(function* () {
     const cwd = `${EXAMPLES_SRC_DIR}/${example}`
-    yield* BunShell.cmd('pnpm build', cwd)
-    const prodFlag = prod ? '--prod' : ''
-    const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
-    const deployCommand = `bunx netlify-cli deploy --dir=${EXAMPLES_SRC_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
-    // Gradually falling back for debugging purposes
-    let resultJson = yield* BunShell.cmdJson(`${deployCommand} --json`, cwd).pipe(
-      Effect.catchAllCause(() => BunShell.cmdText(`${deployCommand} --json`, cwd)),
-      Effect.catchAllCause(() => BunShell.cmd(`${deployCommand}`, cwd)),
+    yield* Command.make('pnpm', 'build').pipe(
+      Command.workingDirectory(cwd),
+      Command.stdout('inherit'), // Stream stdout to process.stdout)
+      Command.exitCode,
+      Effect.tap((exitCode) =>
+        exitCode === 0 ? Effect.logDebug(`Build succeeded for ${example}`) : Effect.die(`Build failed for ${example}`),
+      ),
     )
 
-    if (typeof resultJson === 'string') {
-      console.warn(`Got string result, trying to parse as JSON...`)
-      try {
-        resultJson = JSON.parse(resultJson)
-      } catch {
-        console.error(`[deploy-examples] Expected JSON result from netlify deploy command, got:\n\n${resultJson}\n`)
-        process.exit(1)
-      }
-    }
+    const prodFlag = prod ? '--prod' : ''
+    const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
+    const deployCommand = Command.make(
+      'bunx',
+      'netlify-cli',
+      'deploy',
+      '--json',
+      `--dir=${EXAMPLES_SRC_DIR}/${example}/dist`,
+      `--site=example-${example}`,
+      prodFlag,
+      aliasFlag,
+    ).pipe(Command.workingDirectory(cwd))
 
-    const result = yield* Schema.decode(netlifyDeployResultSchema)(resultJson).pipe(
-      Effect.tapError(Effect.logError),
-      Effect.tapError(() => Effect.logError(`Error deploying ${example}. Result:`, resultJson)),
+    const result = yield* Command.string(deployCommand).pipe(
+      Effect.tap((result) => Effect.logDebug(`Deploy result for ${example}: ${result}`)),
+      Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
+      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     )
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
@@ -125,4 +128,8 @@ const cli = Cli.Command.run(command, {
   version: '0.0.1',
 })
 
-cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)
+cli(process.argv).pipe(
+  Logger.withMinimumLogLevel(LogLevel.Debug),
+  Effect.provide(PlatformNode.NodeContext.layer),
+  PlatformNode.NodeRuntime.runMain,
+)

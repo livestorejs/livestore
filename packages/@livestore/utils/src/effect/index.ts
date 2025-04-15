@@ -107,6 +107,7 @@ export {
   HttpMiddleware,
   HttpRouter,
   HttpServerResponse,
+  Command,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 
