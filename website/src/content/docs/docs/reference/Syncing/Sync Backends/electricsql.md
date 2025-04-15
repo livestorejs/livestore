@@ -16,7 +16,7 @@ Events are stored in a table following the pattern `eventlog_${PERSISTENCE_FORMA
 
 ### Can I use my existing Postgres database with the sync backend?
 
-Unless the database is already modelled as a mutation log following the `@livestore/sync-electric` storage format, you won't be able to easily use your existing database with this sync backend implementation.
+Unless the database is already modelled as a eventlog following the `@livestore/sync-electric` storage format, you won't be able to easily use your existing database with this sync backend implementation.
 
 We might support this use case in the future, you can follow the progress [here](https://github.com/livestorejs/livestore/issues/286). Please share any feedback you have on this use case there.
 

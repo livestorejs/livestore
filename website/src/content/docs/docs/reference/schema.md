@@ -50,8 +50,8 @@ export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'f
 
 Migration strategies:
 
-- `from-eventlog`: Automatically migrate the database to the newest schema and rehydrates the data from the mutation log.
-- `hard-reset`: Automatically migrate the database to the newest schema but ignores the mutation log.
+- `from-eventlog`: Automatically migrate the database to the newest schema and rehydrates the data from the eventlog.
+- `hard-reset`: Automatically migrate the database to the newest schema but ignores the eventlog.
 - `manual`: Manually migrate the database to the newest schema.
 
 ### Client documents

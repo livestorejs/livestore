@@ -47,7 +47,7 @@ export const startDevtoolsServer = ({
         if (LS_DEV) {
           viteConfig.server ??= {}
           viteConfig.server.fs ??= {}
-          viteConfig.server.fs.strict = true
+          viteConfig.server.fs.strict = false
 
           viteConfig.optimizeDeps ??= {}
           viteConfig.optimizeDeps.force = true

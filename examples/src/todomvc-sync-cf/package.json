@@ -16,8 +16,8 @@
     "@opentelemetry/sdk-trace-base": "2.0.0",
     "@opentelemetry/sdk-trace-web": "2.0.0",
     "@overengineering/fps-meter": "0.1.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {

@@ -144,7 +144,7 @@
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
-- Breaking: Removed `persisted` option from `store.commit`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
+- Breaking: Removed `persisted` option from `store.commit`. This will be superceded by [eventlog compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Breaking: Moved `queryGraphQL` to `@livestore/graphql` and thus removing `graphql` from peer dependencies of `@livestore/livestore`.
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
@@ -176,7 +176,7 @@
 - Improved sync view:
   - See sync heads in real-time
   - Connect/disconnect button
-- Improved mutation log view:
+- Improved eventlog view:
   - Client-only mutations are now highlighted
   - Added `clientId` / `sessionId` columns
 - Grouped slow queries and live queries under new queries tab
@@ -227,7 +227,7 @@
   - Electric:
     - fix: connectivity state + offline handling
     - implement sync payload
-  - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
+  - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")

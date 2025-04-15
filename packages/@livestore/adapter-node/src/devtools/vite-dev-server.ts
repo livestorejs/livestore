@@ -44,10 +44,6 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
         fs: { strict: process.env.LS_DEV ? false : true },
       },
       appType: 'spa',
-      optimizeDeps: {
-        // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-        exclude: ['@livestore/wa-sqlite'],
-      },
       root: __dirname,
       base: '/_livestore/',
       plugins: [

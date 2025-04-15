@@ -1,6 +1,6 @@
 --- metro.config.js
 +++ metro.config.js
-@@ -4,25 +4,11 @@
+@@ -4,26 +4,11 @@
  // Learn more https://docs.expo.io/guides/customizing-metro
  const { getDefaultConfig } = require('expo/metro-config')
  const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
@@ -19,6 +19,7 @@
 -  viteConfig: (viteConfig) => {
 -    viteConfig.server.fs ??= {}
 -    viteConfig.server.fs.strict = false
+-    viteConfig.optimizeDeps ??= {}
 -    viteConfig.optimizeDeps.force = true
 -    return viteConfig
 -  },

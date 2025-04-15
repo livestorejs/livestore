@@ -19,6 +19,7 @@ addLiveStoreDevtoolsMiddleware(config, {
   viteConfig: (viteConfig) => {
     viteConfig.server.fs ??= {}
     viteConfig.server.fs.strict = false
+    viteConfig.optimizeDeps ??= {}
     viteConfig.optimizeDeps.force = true
     return viteConfig
   },

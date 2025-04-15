@@ -19,4 +19,4 @@ LiveStore heavily relies on SQLite as its default read model.
 
 ## Implementation notes
 
-- LiveStore uses the `session` extension to enable efficient database rollback which is needed when the mutation log is rolled back as part of a rebase. An alternative implementation strategy would be to rely on snapshotting (i.e. periodically create database snapshots and roll back to the latest snapshot + applied missing mutations).
+- LiveStore uses the `session` extension to enable efficient database rollback which is needed when the eventlog is rolled back as part of a rebase. An alternative implementation strategy would be to rely on snapshotting (i.e. periodically create database snapshots and roll back to the latest snapshot + applied missing mutations).

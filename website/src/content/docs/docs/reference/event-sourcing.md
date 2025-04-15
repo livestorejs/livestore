@@ -22,7 +22,7 @@ sidebar:
 	- Foundation for syncing
 - Downsides
   - Slightly more boilerplate to manually define mutations
-  - Need to be careful so mutation log doesn't grow too much
+  - Need to be careful so eventlog doesn't grow too much
 
 ## Further reading
 

@@ -130,6 +130,12 @@ export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
     - `bunx syncpack fix-mismatches` to adjust versions across `package.json` files (check before with `lint`)
     - `bunx syncpack update` to update packages across the monorepo to the latest versions
 
+#### Notes on some packages
+
+- The following packages need to be updated with extra care:
+  - `react`/`react-dom` as we need to move in lockstep with Expo / React Native
+  - `effect`
+
 #### Updating dependencies
 
 - Either update the versions manually in each `package.json` file or use `bunx syncpack update`.
