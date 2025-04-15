@@ -22,7 +22,7 @@
   "devDependencies": {
     "@tanstack/react-router": "^1.116.0",
     "@types/node": "^22.13.10",
-    "@types/react": "^19.0.10",
+    "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "postgres": "^3.4.5",

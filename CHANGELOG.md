@@ -19,16 +19,12 @@
 - New: `@livestore/sync-electric` backend (experimental)
   - See [docs page](https://livestore.dev/docs/reference/syncing/electricsql/) for more details
 
-- New: `@livestore/adapter-expo` now supports syncing:
+- New: `@livestore/adapter-expo` now supports syncing (requires Expo 53 or later):
   ```ts
   const adapter = makePersistedAdapter({
     sync: { backend: makeCfSync({ url: `https://...` }) },
   })
   ```
-
-  Note: Until Expo 53 is released:
-    - Expo Go won't work, so please build and run the app manually (e.g. via Xcode)
-    - Please make sure you're using the canary version of `"expo-sqlite": "^15.2.0-canary-20250325-0a15ab6"`
 
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!
