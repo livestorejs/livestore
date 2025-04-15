@@ -82,7 +82,7 @@ const deploy = ({
   alias: Option.Option<string>
 }) =>
   Effect.gen(function* () {
-    const excludeDirs = new Set(['expo-linearlite', 'expo-todomvc', 'cli', 'todomvc-sync-electric'])
+    const excludeDirs = new Set(['expo-linearlite', 'expo-todomvc', 'node-cli', 'todomvc-sync-electric'])
     const examplesToDeploy = fs
       .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && !excludeDirs.has(entry.name))

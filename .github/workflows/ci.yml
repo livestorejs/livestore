@@ -199,7 +199,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-      - run: cp -r example-repo/examples/standalone/todomvc example
+      - run: cp -r example-repo/examples/standalone/web-todomvc example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore adapter-web peer-deps react common utils; do
@@ -229,7 +229,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-      - run: cp -r example-repo/examples/standalone/linearlite example
+      - run: cp -r example-repo/examples/standalone/web-linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore adapter-web peer-deps react common utils; do

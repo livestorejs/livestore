@@ -4,7 +4,7 @@ title: 'ElectricSQL'
 
 ## Example
 
-See the [todomvc-sync-electric](https://github.com/livestorejs/livestore/tree/main/examples/src/todomvc-sync-electric) example.
+See the [todomvc-sync-electric](https://github.com/livestorejs/livestore/tree/main/examples/src/web-todomvc-sync-electric) example.
 
 ## How the sync backend works
 
