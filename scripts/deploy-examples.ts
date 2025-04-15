@@ -64,6 +64,7 @@ const buildAndDeployExample = ({
     const result = yield* Command.string(deployCommand).pipe(
       Effect.tap((result) => Effect.logDebug(`Deploy result for ${example}: ${result}`)),
       Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
+      Effect.retry({ times: 2 }),
       Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     )
 
