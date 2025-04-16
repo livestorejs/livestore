@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-expo",
-  "version": "0.3.0-dev.32",
+  "version": "0.3.0-dev.33",
   "type": "module",
   "sideEffects": false,
   "exports": {
