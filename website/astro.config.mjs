@@ -31,27 +31,27 @@ export default defineConfig({
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
               tsconfig: '../packages/@livestore/livestore/tsconfig.json',
-              output: 'api/livestore',
+              output: 'docs/api/livestore',
             }),
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/react/src/mod.ts'],
               tsconfig: '../packages/@livestore/react/tsconfig.json',
-              output: 'api/react',
+              output: 'docs/api/react',
             }),
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
               tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-              output: 'api/adapter-web',
+              output: 'docs/api/adapter-web',
             }),
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
               tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-              output: 'api/adapter-node',
+              output: 'docs/api/adapter-node',
             }),
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
               tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-              output: 'api/adapter-expo',
+              output: 'docs/api/adapter-expo',
             }),
             starlightTypeDoc({
               entryPoints: [
@@ -59,12 +59,12 @@ export default defineConfig({
                 '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
               ],
               tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
-              output: 'api/sync-cf',
+              output: 'docs/api/sync-cf',
             }),
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
               tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
-              output: 'api/sync-electric',
+              output: 'docs/api/sync-electric',
             }),
           ]
         : [],
