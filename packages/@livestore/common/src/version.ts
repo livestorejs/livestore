@@ -2,7 +2,7 @@
 // import packageJson from '../package.json' with { type: 'json' }
 // export const liveStoreVersion = packageJson.version
 
-export const liveStoreVersion = '0.3.0-dev.31' as const
+export const liveStoreVersion = '0.3.0-dev.32' as const
 
 /**
  * This version number is incremented whenever the internal storage format changes in a breaking way.
