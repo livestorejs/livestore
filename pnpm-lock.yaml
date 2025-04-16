@@ -43,6 +43,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.26.0
         version: 8.26.0(eslint@8.57.1)(typescript@5.8.3)
+      '@vitest/ui':
+        specifier: ^3.1.1
+        version: 3.1.1(vitest@3.1.1)
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -88,6 +91,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   examples/src/expo-linearlite:
     dependencies:
@@ -880,7 +886,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1034,7 +1040,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1107,7 +1113,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1267,7 +1273,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1328,7 +1334,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1380,7 +1386,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1429,7 +1435,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/solid':
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
@@ -1475,7 +1481,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1551,7 +1557,7 @@ importers:
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.33
-        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1717,7 +1723,7 @@ importers:
         version: 2023.10.5
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/common:
     dependencies:
@@ -1739,7 +1745,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/devtools-expo:
     dependencies:
@@ -1864,7 +1870,7 @@ importers:
         version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/peer-deps:
     dependencies:
@@ -1900,7 +1906,7 @@ importers:
         version: 0.33.8(effect@3.14.8)
       '@effect/vitest':
         specifier: 0.20.8
-        version: 0.20.8(effect@3.14.8)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.20.8(effect@3.14.8)(vitest@3.1.1)
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1976,7 +1982,7 @@ importers:
         version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/solid:
     dependencies:
@@ -2010,7 +2016,7 @@ importers:
         version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/sqlite-wasm:
     dependencies:
@@ -2112,7 +2118,7 @@ importers:
         version: 0.33.8(effect@3.14.8)
       '@effect/vitest':
         specifier: ^0.20.8
-        version: 0.20.8(effect@3.14.8)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+        version: 0.20.8(effect@3.14.8)(vitest@3.1.1)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -2154,7 +2160,7 @@ importers:
         version: 26.0.0
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/@livestore/webmesh:
     dependencies:
@@ -2167,7 +2173,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   scripts:
     devDependencies:
@@ -2217,9 +2223,6 @@ importers:
       vite:
         specifier: ^6.2.1
         version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
-      vitest:
-        specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
       wrangler:
         specifier: ^4.0.0
         version: 4.0.0
@@ -2244,7 +2247,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   website:
     dependencies:
@@ -4130,6 +4133,9 @@ packages:
     resolution: {integrity: sha512-dJ0dMbZeHhI+wb77+ljx/FeC8VBP6j/rj9OAojO08JI80wTZy6vRk9KvHKiDCUh4iMpEiseMgqRBIeW+eKX6RA==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@polka/url@1.0.0-next.29':
+    resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
   '@popperjs/core@2.11.8':
     resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
@@ -6152,6 +6158,11 @@ packages:
   '@vitest/spy@3.1.1':
     resolution: {integrity: sha512-+EmrUOOXbKzLkTDwlsc/xrwOlPDXyVk3Z6P6K4oiCndxz7YLpp/0R0UsWVOKT0IXWjjBJuSMk6D27qipaupcvQ==}
 
+  '@vitest/ui@3.1.1':
+    resolution: {integrity: sha512-2HpiRIYg3dlvAJBV9RtsVswFgUSJK4Sv7QhpxoP0eBGkYwzGIKP34PjaV00AULQi9Ovl6LGyZfsetxDWY5BQdQ==}
+    peerDependencies:
+      vitest: 3.1.1
+
   '@vitest/utils@3.1.1':
     resolution: {integrity: sha512-1XIjflyaU2k3HMArJ50bwSh3wKWPD6Q47wz/NUSmRV0zNywPc4w79ARjg/i/aNINHwA+mIALhUVqD9/aUvZNgg==}
 
@@ -8129,6 +8140,9 @@ packages:
 
   fetch-retry@4.1.1:
     resolution: {integrity: sha512-e6eB7zN6UBSwGVwrbWVH+gdLnkW9WwHhmq2YDK1Sh30pzx1onRVGBvogTlUeWxwTa+L86NYdo4hFkh7O8ZjSnA==}
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   figures@3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
@@ -11415,6 +11429,10 @@ packages:
   simple-swizzle@0.2.2:
     resolution: {integrity: sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg==}
 
+  sirv@3.0.1:
+    resolution: {integrity: sha512-FoqMu0NCGBLCcAkS1qA+XJIQTR6/JHfQXl+uGteNCQ76T91DMUjPa9xfmeqMY3z80nLSg9yQmNjK0Px6RWsH/A==}
+    engines: {node: '>=18'}
+
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -11887,6 +11905,10 @@ packages:
 
   toml@3.0.0:
     resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==}
+
+  totalist@3.0.1:
+    resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
+    engines: {node: '>=6'}
 
   tough-cookie@5.1.2:
     resolution: {integrity: sha512-FVDYdxtnj0G6Qm/DhNPSb8Ju59ULcup3tuJxkFb5K8Bv2pUXILbf0xZWU8PX8Ov19OXljbUyveOFwRMwkXzO+A==}
@@ -13988,10 +14010,10 @@ snapshots:
     dependencies:
       effect: 3.14.8
 
-  '@effect/vitest@0.20.8(effect@3.14.8)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))':
+  '@effect/vitest@0.20.8(effect@3.14.8)(vitest@3.1.1)':
     dependencies:
       effect: 3.14.8
-      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
   '@egjs/hammerjs@2.0.17':
     dependencies:
@@ -14992,7 +15014,7 @@ snapshots:
 
   '@livestore/devtools-vite@0.3.0-dev.33': {}
 
-  '@livestore/peer-deps@0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))':
+  '@livestore/peer-deps@0.3.0-dev.33(@effect/cluster@0.29.17(@effect/platform@0.80.8(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8))(@effect/rpc@0.55.12(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@effect/sql@0.33.8(@effect/experimental@0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0))(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(ioredis@5.5.0)(vitest@3.1.1)':
     dependencies:
       '@effect/cli': 0.59.8(@effect/platform@0.80.8(effect@3.14.8))(@effect/printer-ansi@0.42.8(@effect/typeclass@0.33.8(effect@3.14.8))(effect@3.14.8))(@effect/printer@0.42.8(@effect/typeclass@0.33.8(effect@3.14.8))(effect@3.14.8))(effect@3.14.8)
       '@effect/experimental': 0.44.8(@effect/platform@0.80.8(effect@3.14.8))(effect@3.14.8)(ioredis@5.5.0)
@@ -15004,7 +15026,7 @@ snapshots:
       '@effect/printer': 0.42.8(@effect/typeclass@0.33.8(effect@3.14.8))(effect@3.14.8)
       '@effect/printer-ansi': 0.42.8(@effect/typeclass@0.33.8(effect@3.14.8))(effect@3.14.8)
       '@effect/typeclass': 0.33.8(effect@3.14.8)
-      '@effect/vitest': 0.20.8(effect@3.14.8)(vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@effect/vitest': 0.20.8(effect@3.14.8)(vitest@3.1.1)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/exporter-metrics-otlp-http': 0.200.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.200.0(@opentelemetry/api@1.9.0)
@@ -15394,6 +15416,8 @@ snapshots:
   '@playwright/test@1.51.0':
     dependencies:
       playwright: 1.51.0
+
+  '@polka/url@1.0.0-next.29': {}
 
   '@popperjs/core@2.11.8': {}
 
@@ -18564,6 +18588,17 @@ snapshots:
     dependencies:
       tinyspy: 3.0.2
 
+  '@vitest/ui@3.1.1(vitest@3.1.1)':
+    dependencies:
+      '@vitest/utils': 3.1.1
+      fflate: 0.8.2
+      flatted: 3.3.3
+      pathe: 2.0.3
+      sirv: 3.0.1
+      tinyglobby: 0.2.12
+      tinyrainbow: 2.0.0
+      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+
   '@vitest/utils@3.1.1':
     dependencies:
       '@vitest/pretty-format': 3.1.1
@@ -21083,6 +21118,8 @@ snapshots:
       picomatch: 4.0.2
 
   fetch-retry@4.1.1: {}
+
+  fflate@0.8.2: {}
 
   figures@3.2.0:
     dependencies:
@@ -25473,6 +25510,12 @@ snapshots:
     dependencies:
       is-arrayish: 0.3.2
 
+  sirv@3.0.1:
+    dependencies:
+      '@polka/url': 1.0.0-next.29
+      mrmime: 2.0.1
+      totalist: 3.0.1
+
   sisteransi@1.0.5: {}
 
   sitemap@8.0.0:
@@ -25987,6 +26030,8 @@ snapshots:
   toidentifier@1.0.1: {}
 
   toml@3.0.0: {}
+
+  totalist@3.0.1: {}
 
   tough-cookie@5.1.2:
     dependencies:
@@ -26598,7 +26643,7 @@ snapshots:
     optionalDependencies:
       vite: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
-  vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0):
+  vitest@3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0):
     dependencies:
       '@vitest/expect': 3.1.1
       '@vitest/mocker': 3.1.1(vite@6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
@@ -26623,6 +26668,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 22.13.10
+      '@vitest/ui': 3.1.1(vitest@3.1.1)
       jsdom: 26.0.0
     transitivePeerDependencies:
       - jiti

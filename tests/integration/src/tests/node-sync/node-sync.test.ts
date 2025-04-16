@@ -48,15 +48,15 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   )
 
   const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
-  const MutateBatchSize = Schema.Literal(1, 2, 10, 100)
+  const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
 
   Vitest.scopedLive.prop(
     'node-sync prop tests',
     DEBUGGER_ACTIVE
-      ? [Schema.Literal('file'), Schema.Literal(500), Schema.Literal(500), Schema.Literal(1), Schema.Literal(1)]
-      : [WorkerSchema.AdapterType, CreateCount, CreateCount, MutateBatchSize, LEADER_PUSH_BATCH_SIZE],
+      ? [Schema.Literal('file'), Schema.Literal(1), Schema.Literal(405), Schema.Literal(100), Schema.Literal(2)]
+      : [WorkerSchema.AdapterType, CreateCount, CreateCount, CommitBatchSize, LEADER_PUSH_BATCH_SIZE],
     ([adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
@@ -80,7 +80,7 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, commitBatchSize }))
           .pipe(Effect.fork)
 
-        const test = Effect.all(
+        const exec = Effect.all(
           [
             clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
               Stream.filter((_) => _.length === totalCount),
@@ -101,8 +101,9 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
           clientB.executeEffect(WorkerSchema.OnShutdown.make()),
         )
 
-        yield* Effect.raceFirst(test, onShutdown)
+        yield* Effect.raceFirst(exec, onShutdown)
       }).pipe(
+        Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withCtx(test, {
           skipOtel: DEBUGGER_ACTIVE ? false : true,
           suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
@@ -149,7 +150,7 @@ const makeWorker = ({
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
+  (testContext: Vitest.TestContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
       DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
