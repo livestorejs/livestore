@@ -185,6 +185,7 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
   const defaultValueStr = (() => {
     if (column.default._tag === 'None') return ''
 
+    if (column.default.value === null) return 'default null'
     if (SqliteDsl.isSqlDefaultValue(column.default.value)) return `default ${column.default.value.sql}`
 
     const encodeValue = EffectSchema.encodeSync(column.schema)
