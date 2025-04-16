@@ -29,7 +29,13 @@ export default defineConfig({
         SocialIcons: './src/components/SocialIcons.astro',
       },
       plugins: [
-        starlightLinksValidator(),
+        starlightLinksValidator({
+          // `exclude` specifies the links to be excluded, not the files that contain the links
+          exclude: [
+            '/examples', // Custom pages are not yet supported by this plugin https://github.com/HiDeoo/starlight-links-validator/issues/39
+            '/docs/api/**',
+          ],
+        }),
         ...(process.env.STARLIGHT_INCLUDE_API_DOCS
           ? [
               starlightTypeDoc({

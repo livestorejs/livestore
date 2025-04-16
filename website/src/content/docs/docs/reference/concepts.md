@@ -31,7 +31,7 @@ sidebar:
   - LiveStore uses schema definitions for the following cases:
     - [Event schema](/docs/reference/events/events-schema)
     - [SQLite state schema](/docs/reference/state/sqlite-schema)
-    - [Query result schemas](/docs/reference/queries/sql-queries)
+    - [Query result schemas](/docs/reference/state/sql-queries)
   - LiveStore uses the [Effect Schema module](/docs/patterns/effect) to define fine-granular schemas
 - State
   - Derived from the eventlog via materializers

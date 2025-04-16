@@ -29,7 +29,7 @@
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!
   - Thank you to [@kulshekhar](https://github.com/kulshekhar) for the initial implementation! (See [PR #225](https://github.com/livestorejs/livestore/pull/225))
-  - There are is still a lot of [work to be done](packages/@livestore/solid/README.md) - contributions welcome!
+  - There are is still a lot of work to be done - contributions welcome!
 
 ### Breaking changes
 
