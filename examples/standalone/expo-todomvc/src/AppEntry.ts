@@ -2,6 +2,6 @@ import './polyfill.ts'
 
 import { registerRootComponent } from 'expo'
 
-import { App } from './App.tsx'
+import { Root } from './Root.tsx'
 
-registerRootComponent(App)
+registerRootComponent(Root)

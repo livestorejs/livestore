@@ -2263,9 +2263,15 @@ importers:
       astro:
         specifier: 5.4.3
         version: 5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)
+      remark-custom-header-id:
+        specifier: 1.0.0
+        version: 1.0.0
       sharp:
         specifier: 0.33.5
         version: 0.33.5
+      starlight-links-validator:
+        specifier: 0.16.0
+        version: 0.16.0(@astrojs/starlight@0.32.2(astro@5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)))
       starlight-typedoc:
         specifier: 0.20.0
         version: 0.20.0(@astrojs/starlight@0.32.2(astro@5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)))(typedoc-plugin-markdown@4.4.2(typedoc@0.27.9(typescript@5.8.3)))(typedoc@0.27.9(typescript@5.8.3))
@@ -5879,6 +5885,9 @@ packages:
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
 
+  '@types/picomatch@3.0.2':
+    resolution: {integrity: sha512-n0i8TD3UDB7paoMMxA3Y65vUncFJXjcUf7lQY7YyKGl6031FNjfsLs6pdLFCy2GNFxItPJG8GvvpbZc2skH7WA==}
+
   '@types/react-beautiful-dnd@13.1.8':
     resolution: {integrity: sha512-E3TyFsro9pQuK4r8S/OL6G99eq7p8v29sX0PM7oT8Z+PJfZvSQTx4zTQbUJ+QZXioAF0e7TGBEcA1XhYhCweyQ==}
 
@@ -8730,6 +8739,10 @@ packages:
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
 
+  is-absolute-url@4.0.1:
+    resolution: {integrity: sha512-/51/TKE88Lmm7Gc4/8btclNXWS+g50wXhYJq8HWIBAGUBnoAdRu1aXeh364t/O7wXDAcTJDP8PNuNKWUDWie+A==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
   is-alphabetical@2.0.1:
     resolution: {integrity: sha512-FWyyY60MeTNyeSRpkM2Iry0G9hpr7/9kD40mD/cGQEuilcZYS4okz8SN2Q6rLCJ8gbCt6fN+rC+6tMGS99LaxQ==}
 
@@ -11013,6 +11026,10 @@ packages:
   rehype@13.0.2:
     resolution: {integrity: sha512-j31mdaRFrwFRUIlxGeuPXXKWQxet52RBQRvCmzl5eCefn/KGbomK5GMHNMsOJf55fgo3qw5tST5neDuarDYR2A==}
 
+  remark-custom-header-id@1.0.0:
+    resolution: {integrity: sha512-xs1MAgCg1HoiIfqSVV5BPydB4/sc1tT8OHDoqt8Lnf1JHPMUDVumY2Szm/P9MIxIzOT9+tu4IYJTql0vCzldoA==}
+    engines: {node: '>=18'}
+
   remark-directive@3.0.1:
     resolution: {integrity: sha512-gwglrEQEZcZYgVyG1tQuA+h58EZfq5CSULw7J90AFuCTyib1thgHPoqQ+h9iFvU6R+vnZ5oNFQR5QKgGpk741A==}
 
@@ -11510,6 +11527,12 @@ packages:
 
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+
+  starlight-links-validator@0.16.0:
+    resolution: {integrity: sha512-wInToor19C7UxhesPuxTBIhB1LH1wzNQHD4HaumfcB+yFhg5u80yQEnkZDrABHrUEEEwFm//NoZbWhnUj1m2ug==}
+    engines: {node: '>=18.17.1'}
+    peerDependencies:
+      '@astrojs/starlight': '>=0.32.0'
 
   starlight-typedoc@0.20.0:
     resolution: {integrity: sha512-BdcBVV5V8t8PyplQGFbyncs/5Ppl9ynIVz6z++VocwKZZXi/1j+CcImchygfrVKy59rWch5+6uRSXYkS9zRhqA==}
@@ -18123,6 +18146,8 @@ snapshots:
 
   '@types/normalize-package-data@2.4.4': {}
 
+  '@types/picomatch@3.0.2': {}
+
   '@types/react-beautiful-dnd@13.1.8':
     dependencies:
       '@types/react': 19.1.2
@@ -21842,6 +21867,8 @@ snapshots:
 
   iron-webcrypto@1.2.1: {}
 
+  is-absolute-url@4.0.1: {}
+
   is-alphabetical@2.0.1: {}
 
   is-alphanumerical@2.0.1:
@@ -24944,6 +24971,11 @@ snapshots:
       rehype-stringify: 10.0.1
       unified: 11.0.5
 
+  remark-custom-header-id@1.0.0:
+    dependencies:
+      '@types/unist': 3.0.3
+      unist-util-visit: 5.0.0
+
   remark-directive@3.0.1:
     dependencies:
       '@types/mdast': 4.0.4
@@ -25544,6 +25576,22 @@ snapshots:
       get-source: 2.0.12
 
   standard-as-callback@2.1.0: {}
+
+  starlight-links-validator@0.16.0(@astrojs/starlight@0.32.2(astro@5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0))):
+    dependencies:
+      '@astrojs/starlight': 0.32.2(astro@5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0))
+      '@types/picomatch': 3.0.2
+      github-slugger: 2.0.0
+      hast-util-from-html: 2.0.3
+      hast-util-has-property: 3.0.0
+      is-absolute-url: 4.0.1
+      kleur: 4.1.5
+      mdast-util-mdx-jsx: 3.2.0
+      mdast-util-to-string: 4.0.0
+      picomatch: 4.0.2
+      unist-util-visit: 5.0.0
+    transitivePeerDependencies:
+      - supports-color
 
   starlight-typedoc@0.20.0(@astrojs/starlight@0.32.2(astro@5.4.3(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)))(typedoc-plugin-markdown@4.4.2(typedoc@0.27.9(typescript@5.8.3)))(typedoc@0.27.9(typescript@5.8.3)):
     dependencies:

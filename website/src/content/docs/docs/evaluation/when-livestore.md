@@ -11,6 +11,7 @@ description: Considerations when deciding to use LiveStore.
   - you are looking for a principled data layer that works across platforms
   - you want to use SQLite for your queries
   - you like [event sourcing](/docs/reference/event-sourcing) to model data changes
+  - you are working on a new app as LiveStore doesn't yet provide a way to [re-use an existing database](/docs/misc/faq#existing-database)
   - the current [state of the project](/docs/evaluation/state-of-the-project) aligns with your own timeline and requirements
 
 ## Database

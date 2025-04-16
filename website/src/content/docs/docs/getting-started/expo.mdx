@@ -3,7 +3,23 @@ title: Expo
 description: Learn how to use LiveStore with Expo.
 ---
 
-import { Steps, Tabs, TabItem } from '@astrojs/starlight/components'
+import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
+import babelConfigCode from '../../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
+import metroConfigCode from '../../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
+import eventsCode from '../../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
+import schemaCode from '../../../../../../examples/standalone/expo-todomvc/src/livestore/schema.ts?raw'
+import rootCode from '../../../../../../examples/standalone/expo-todomvc/src/Root.tsx?raw'
+import headerCode from '../../../../../../examples/standalone/expo-todomvc/src/components/NewTodo.tsx?raw'
+import mainSectionCode from '../../../../../../examples/standalone/expo-todomvc/src/components/ListTodos.tsx?raw'
+
+export const CODE = {
+  babelConfig: babelConfigCode,
+  metroConfig: metroConfigCode,
+  schema: schemaCode,
+  root: rootCode,
+  header: headerCode,
+  mainSection: mainSectionCode,
+}
 
 ### Prerequisites
 
@@ -84,7 +100,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 1.  **Install dependencies**
 
     ```bash
-    bunx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils expo-sqlite
+    bunx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils @livestore/peer-deps expo-sqlite
     ```
 
 2.  **Add Vite meta plugin to babel config file**
@@ -100,111 +116,41 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     In your `babel.config.js` file, add the plugin as follows:
 
-    ```js
-    module.exports = function (api) {
-      api.cache(true)
-      return {
-        presets: ['babel-preset-expo'],
-        plugins: ['babel-plugin-transform-vite-meta-env', '@babel/plugin-syntax-import-attributes'],
-      }
-    }
-    ```
+    <Code code={CODE.babelConfig} lang="js" title="babel.config.js" />
 
 3.  **Update Metro config**
 
     Add the following code to your `metro.config.js` file:
 
-    ```js
-    const { getDefaultConfig } = require('expo/metro-config')
-    const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
-
-    /** @type {import('expo/metro-config').MetroConfig} */
-    const config = getDefaultConfig(__dirname)
-
-    config.resolver.unstable_enableSymlinks = true
-    config.resolver.unstable_enablePackageExports = true
-    config.resolver.unstable_conditionNames = ['require', 'default']
-
-    // Add LiveStore Devtools middleware only in a local development environment
-    if (!process.env.CI && process.stdout.isTTY) {
-      addLiveStoreDevtoolsMiddleware(config, { schemaPath: './livestore/schema.ts' })
-    }
-
-    module.exports = config
-    ```
+    <Code code={CODE.metroConfig} lang="js" title="metro.config.js" />
 
 </Steps>
+
+## Events
+
+Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
+
+Use the `Events` and `Schema` modules from `@livestore/livestore` to define your events.
+
+Here's an example:
+
+<Code code={eventsCode} lang="ts" title="src/livestore/events.ts" />
 
 ## Define your schema
 
 To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
 
-- In your project root, create a **schema** folder and inside it create a file named **index.ts**. This file defines the tables and data structures for your app.
+- In `src`, create a `livestore` folder and inside it create a file named `schema.ts`. This file defines the tables and data structures for your app.
 
-- In `index.ts`, define a table to represent a data model, such as a `todos`.
-
-Here's an example:
-
-```ts
-import { State, makeSchema } from '@livestore/livestore'
-import * as events from './events'
-
-const todos = State.SQLite.table({
-  name: 'todos',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }), // Unique identifier for each todo item
-    text: State.SQLite.text({ default: '' }), // Text content of the todo
-    completed: State.SQLite.boolean({ default: false }), // Status of the todo item
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }), // Optional field to mark deletion
-  },
-})
-
-export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
-
-export const tables = {
-  todos,
-}
-
-export const schema = makeSchema({
-  tables,
-  events,
-  migrations: { strategy: 'from-eventlog' }, // Define migration strategy
-})
-
-export * as events from './events'
-```
-
-## Mutations
-
-Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
-
-A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
-
-Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed events for secure and efficient database interactions.
+- In `schema.ts`, define a table to represent a data model, such as a `todos`.
 
 Here's an example:
 
-```ts
-import { defineMutation, Schema, sql } from '@livestore/livestore'
+<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
 
-export const todoCreated = defineMutation(
-  'todoCreated',
-  Schema.Struct({ id: Schema.String, text: Schema.String }),
-  sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
-)
+## Add the LiveStore Provider
 
-export const todoCompleted = defineMutation(
-  'todoCompleted',
-  Schema.Struct({ id: Schema.String }),
-  sql`UPDATE todos SET completed = true WHERE id = $id`,
-)
-
-export const todoDeleted = defineMutation(
-  'todoDeleted',
-  Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
-  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
-)
-```
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
 
 ## Add the LiveStore Provider
 
@@ -212,113 +158,25 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-```tsx
-import React from 'react'
-import { Stack } from 'expo-router'
-import { makePersistedAdapter } from '@livestore/adapter-expo'
-import { sql, Store } from '@livestore/livestore'
-import { LiveStoreProvider } from '@livestore/react'
-import { cuid } from '@livestore/utils/cuid'
-import { Button, Text, unstable_batchedUpdates as batchUpdates } from 'react-native'
+<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
 
-import { events, schema } from '../livestore/schema'
+### Commit events
 
-const adapter = makePersistedAdapter()
-
-export default function RootLayout() {
-  const [, rerender] = React.useState({})
-
-  return (
-    <LiveStoreProvider
-      boot={boot}
-      schema={schema}
-      adapter={adapter}
-      batchUpdates={batchUpdates}
-      renderLoading={(_) => <Text>Stage: {_.stage}</Text>}
-      renderShutdown={() => <Button title="Reload" onPress={() => rerender({})} />}
-      renderError={(error: any) => <Text>Error: {JSON.stringify(error, null, 2)}</Text>}
-    >
-      <Stack>
-        <Stack.Screen name="index" />
-      </Stack>
-    </LiveStoreProvider>
-  )
-}
-
-/**
- * This function is called when the app is booted.
- * It is used to initialize the database with initial data.
- */
-const boot = (store: Store) => {
-  // If the todos table is empty, add an initial todo
-  if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-    store.commit(events.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
-  }
-}
-```
-
-### Use a mutation
-
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute events.
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
 
 Here's an example:
 
-```ts
-import { useStore } from '@livestore/react'
-import { todoDeleted } from '@/livestore/events'
-
-export default function HomeScreen() {
-  const { store } = useStore()
-  return (
-    <Button
-      title="Delete my todo"
-      onPress={() => {
-        store.commit(todoDeleted({ id: '1', deleted: Date.now() }))
-      }}
-    />
-  )
-}
-```
+<Code code={CODE.header} lang="tsx" title="src/components/NewTodo.tsx" />
 
 ## Queries
 
-To retrieve data from the database, first define a query using `querySQL` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
 Here's an example:
 
-```ts
-import { View, Text } from 'react-native'
-import { useQuery } from '@livestore/react'
-import { queryDb } from '@livestore/livestore'
-import { tables } from '@/livestore/schema'
-
-export default function HomeScreen() {
-  // Define a query
-  const todosQuery = queryDb(tables.todos)
-
-  // Use the query
-  const todos = useQuery(todosQuery)
-
-  console.log(todos)
-  // Output:
-  // [
-  //   {
-  //     id: "1",
-  //     completed: false,
-  //     deleted: null,
-  //     text: "Make coffee"
-  //   }
-  // ]
-
-  return (
-    <View>
-      <Text>{todos[0].text}</Text>
-    </View>
-  )
-}
-```
+<Code code={CODE.mainSection} lang="tsx" title="src/components/ListTodos.tsx" />
 
 ## Devtools
 

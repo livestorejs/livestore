@@ -19,7 +19,7 @@ const adapter = makePersistedAdapter({
   sync: { backend: syncUrl ? makeCfSync({ url: syncUrl }) : undefined },
 })
 
-export const App = () => {
+export const Root = () => {
   const [, rerender] = React.useState({})
 
   return (

@@ -17,3 +17,5 @@ LiveStore is developed by [Johannes Schickling](https://github.com/schickling) a
 ## Is there a hosted sync backend provided by LiveStore?
 
 No, LiveStore is designed to be self-hosted or be used with a 3rd party sync backend.
+
+## Can I use my existing database with LiveStore? {#existing-database}

@@ -4,6 +4,8 @@ import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
+import remarkCustomHeaderId from 'remark-custom-header-id'
+import starlightLinksValidator from 'starlight-links-validator'
 import starlightTypeDoc from 'starlight-typedoc'
 
 const VERCEL_PREVIEW_DOMAIN = process.env.VERCEL_ENV !== 'production' && process.env.VERCEL_BRANCH_URL
@@ -26,48 +28,51 @@ export default defineConfig({
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
       },
-      plugins: process.env.STARLIGHT_INCLUDE_API_DOCS
-        ? [
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
-              tsconfig: '../packages/@livestore/livestore/tsconfig.json',
-              output: 'docs/api/livestore',
-            }),
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/react/src/mod.ts'],
-              tsconfig: '../packages/@livestore/react/tsconfig.json',
-              output: 'docs/api/react',
-            }),
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
-              tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-              output: 'docs/api/adapter-web',
-            }),
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
-              tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-              output: 'docs/api/adapter-node',
-            }),
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
-              tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-              output: 'docs/api/adapter-expo',
-            }),
-            starlightTypeDoc({
-              entryPoints: [
-                '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
-                '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
-              ],
-              tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
-              output: 'docs/api/sync-cf',
-            }),
-            starlightTypeDoc({
-              entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
-              tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
-              output: 'docs/api/sync-electric',
-            }),
-          ]
-        : [],
+      plugins: [
+        starlightLinksValidator(),
+        ...(process.env.STARLIGHT_INCLUDE_API_DOCS
+          ? [
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
+                tsconfig: '../packages/@livestore/livestore/tsconfig.json',
+                output: 'docs/api/livestore',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/react/src/mod.ts'],
+                tsconfig: '../packages/@livestore/react/tsconfig.json',
+                output: 'docs/api/react',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
+                output: 'docs/api/adapter-web',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
+                output: 'docs/api/adapter-node',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
+                output: 'docs/api/adapter-expo',
+              }),
+              starlightTypeDoc({
+                entryPoints: [
+                  '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
+                  '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
+                ],
+                tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
+                output: 'docs/api/sync-cf',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
+                tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
+                output: 'docs/api/sync-electric',
+              }),
+            ]
+          : []),
+      ],
 
       sidebar: [
         // {
@@ -123,5 +128,8 @@ export default defineConfig({
       },
     },
     plugins: [tailwind()],
+  },
+  markdown: {
+    remarkPlugins: [remarkCustomHeaderId],
   },
 })
