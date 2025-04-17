@@ -2,16 +2,16 @@ import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
 import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
-import { SqliteAst, SqliteDsl } from '../schema/db-schema/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/system-tables.js'
+import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
+import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'
 import {
   SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
   schemaEventDefsMetaTable,
   schemaMetaTable,
   systemTables,
-} from '../schema/system-tables.js'
+} from '../schema/state/sqlite/system-tables.js'
 import { sql } from '../util.js'
 import type { SchemaManager } from './common.js'
 import { dbExecute, dbSelect } from './common.js'

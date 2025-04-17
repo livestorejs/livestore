@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
+import * as EventId from '../../EventId.js'
 import { SqliteDsl } from './db-schema/mod.js'
-import * as EventId from './EventId.js'
 import { table } from './table-def.js'
 
 /// Read model DB

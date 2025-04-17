@@ -1,12 +1,11 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { State } from '../schema/mod.js'
+import type { TableDefBase } from '../table-def.js'
 import type { QueryBuilder, QueryBuilderAst } from './api.js'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.js'
 import { astToSql } from './astToSql.js'
-
-export const makeQueryBuilder = <TResult, TTableDef extends State.SQLite.TableDefBase>(
+export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   ast: QueryBuilderAst = emptyAst(tableDef),
 ): QueryBuilder<TResult, TTableDef, never> => {
@@ -262,7 +261,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends State.SQLite.TableDe
   } satisfies QueryBuilder<TResult, TTableDef>
 }
 
-const emptyAst = (tableDef: State.SQLite.TableDefBase): QueryBuilderAst.SelectQuery => ({
+const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
   _tag: 'SelectQuery',
   columns: [],
   pickFirst: false,

@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { State } from '../schema/mod.js'
+import { State } from '../../../mod.js'
 import type { QueryBuilder } from './api.js'
 import { getResultSchema } from './impl.js'
 

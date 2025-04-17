@@ -1,4 +1,4 @@
-import type { SqliteDsl } from '../schema/db-schema/mod.js'
+import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
 import type { BindValues } from './sql-queries.js'
 import * as SqlQueries from './sql-queries.js'
 import type * as ClientTypes from './types.js'

@@ -10,7 +10,7 @@ import {
   sessionChangesetMetaTable,
   SYNC_STATUS_TABLE,
   syncStatusTable,
-} from '../schema/system-tables.js'
+} from '../schema/state/sqlite/system-tables.js'
 import { migrateTable } from '../schema-management/migrations.js'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.js'
 import type { PreparedBindValues } from '../util.js'

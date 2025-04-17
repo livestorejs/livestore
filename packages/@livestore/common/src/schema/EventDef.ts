@@ -2,8 +2,8 @@ import type { SingleOrReadonlyArray } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { QueryBuilder } from '../query-builder/mod.js'
 import type { BindValues } from '../sql-queries/sql-queries.js'
+import type { QueryBuilder } from './state/sqlite/query-builder/mod.js'
 
 export type EventDefMap = {
   map: Map<string | 'livestore.RawSql', EventDef.Any>

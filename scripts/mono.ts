@@ -45,21 +45,6 @@ const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([examplesCommand, lintCommand, testCommand, circularCommand]),
 )
 
-if (import.meta.main) {
-  // 'CLI for managing the Livestore monorepo',
-  const cli = Cli.Command.run(command, {
-    name: 'mono',
-    version: '0.0.0',
-  })
-
-  cli(process.argv).pipe(
-    Effect.provide(PlatformNode.NodeContext.layer),
-    Effect.annotateLogs({ thread: 'mono' }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    PlatformNode.NodeRuntime.runMain,
-  )
-}
-
 const cmd = Effect.fn(function* (commandStr: string, options?: { cwd?: string; runInShell?: boolean }) {
   const cwd = options?.cwd ?? process.cwd()
   yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
@@ -74,3 +59,18 @@ const cmd = Effect.fn(function* (commandStr: string, options?: { cwd?: string; r
     Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
   )
 })
+
+if (import.meta.main) {
+  // 'CLI for managing the Livestore monorepo',
+  const cli = Cli.Command.run(command, {
+    name: 'mono',
+    version: '0.0.0',
+  })
+
+  cli(process.argv).pipe(
+    Effect.provide(PlatformNode.NodeContext.layer),
+    Effect.annotateLogs({ thread: 'mono' }),
+    Logger.withMinimumLogLevel(LogLevel.Debug),
+    PlatformNode.NodeRuntime.runMain,
+  )
+}

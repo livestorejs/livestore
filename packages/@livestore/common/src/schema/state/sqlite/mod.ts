@@ -1,8 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
+import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.js'
+import type { State } from '../../schema.js'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
-import { type Materializer, rawSqlEvent, rawSqlMaterializer } from './EventDef.js'
-import type { State } from './schema.js'
 import { systemTables } from './system-tables.js'
 import { type TableDef, type TableDefBase } from './table-def.js'
 
@@ -14,7 +14,7 @@ export {
   type ClientDocumentTableDef,
   type ClientDocumentTableOptions,
 } from './client-document-def.js'
-export * from './EventDef.js'
+export * from '../../EventDef.js'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): State => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)

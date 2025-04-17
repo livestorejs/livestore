@@ -1,13 +1,13 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.js'
-import { tableIsClientDocumentTable } from './client-document-def.js'
-import type { SqliteDsl } from './db-schema/mod.js'
-import { SqliteAst } from './db-schema/mod.js'
 import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './EventDef.js'
 import { rawSqlEvent } from './EventDef.js'
-import { systemTables } from './system-tables.js'
-import type { TableDef } from './table-def.js'
+import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.js'
+import type { SqliteDsl } from './state/sqlite/db-schema/mod.js'
+import { SqliteAst } from './state/sqlite/db-schema/mod.js'
+import { systemTables } from './state/sqlite/system-tables.js'
+import type { TableDef } from './state/sqlite/table-def.js'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
@@ -36,6 +36,7 @@ export type LiveStoreSchema<
 }
 
 export type State = {
+  // TODO abstract this further away from sqlite/tables
   readonly tables: Map<string, TableDef.Any>
   readonly materializers: Map<string, Materializer>
 }
