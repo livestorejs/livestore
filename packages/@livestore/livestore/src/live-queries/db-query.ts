@@ -85,7 +85,7 @@ export const queryDb: {
 
   const label = options?.label ?? queryString
 
-  return {
+  const def: LiveQueryDef.Any = {
     _tag: 'def',
     make: withRCMap(hash, (ctx, otelContext) => {
       // TODO onDestroy
@@ -95,11 +95,14 @@ export const queryDb: {
         label,
         map: options?.map,
         otelContext,
+        def,
       })
     }),
     label,
     hash,
   }
+
+  return def
 }
 
 const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
@@ -146,6 +149,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
   readonly reactivityGraph
 
   private mapResult: (rows: TResultSchema) => TResult
+  def: LiveQueryDef<TResult>
 
   constructor({
     queryInput,
@@ -153,6 +157,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     reactivityGraph,
     map,
     otelContext,
+    def,
   }: {
     label?: string
     queryInput:
@@ -162,11 +167,13 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     map?: (rows: TResultSchema) => TResult
     /** Only used for the initial query execution */
     otelContext?: otel.Context
+    def: LiveQueryDef<TResult>
   }) {
     super()
 
     let label = inputLabel ?? 'db(unknown)'
     this.reactivityGraph = reactivityGraph
+    this.def = def
 
     this.mapResult = map === undefined ? (rows: any) => rows as TResult : map
 

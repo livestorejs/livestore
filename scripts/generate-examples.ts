@@ -245,8 +245,8 @@ const syncExamples = ({ direction, watch }: { direction: SyncDirection; watch: b
     }
   })
 
-const updatePatchesCommand = Cli.Command.make('update-patches', {}, () => updatePatches)
-const syncExamplesCommand = Cli.Command.make(
+export const updatePatchesCommand = Cli.Command.make('update-patches', {}, () => updatePatches)
+export const syncExamplesCommand = Cli.Command.make(
   'sync',
   {
     direction: Cli.Options.text('direction').pipe(Cli.Options.withSchema(SyncDirection)),

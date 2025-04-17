@@ -1,8 +1,8 @@
 import { Command, Effect, identity, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
-import { command as generateExamplesCommand } from './generate-examples.js'
-
+import { command as deployExamplesCommand } from './deploy-examples.js'
+import * as generateExamples from './generate-examples.js'
 const testCommand = Cli.Command.make(
   'test',
   {},
@@ -11,11 +11,14 @@ const testCommand = Cli.Command.make(
   }),
 )
 
-const lintCheck = Cli.Command.make(
-  'check',
-  {},
-  Effect.fn(function* () {
-    yield* cmd('eslint examples packages website --ext .ts,.tsx --max-warnings=0')
+const lintCommand = Cli.Command.make(
+  'lint',
+  {
+    fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)),
+  },
+  Effect.fn(function* ({ fix }: { fix: boolean }) {
+    const fixFlag = fix ? '--fix' : ''
+    yield* cmd(`eslint scripts examples packages website --ext .ts,.tsx --max-warnings=0 ${fixFlag}`)
     yield* cmd('syncpack lint')
   }),
 )
@@ -30,10 +33,16 @@ const circularCommand = Cli.Command.make(
   }),
 )
 
-const lintCommand = Cli.Command.make('lint').pipe(Cli.Command.withSubcommands([lintCheck]))
+const examplesCommand = Cli.Command.make('examples').pipe(
+  Cli.Command.withSubcommands([
+    generateExamples.updatePatchesCommand,
+    generateExamples.syncExamplesCommand,
+    deployExamplesCommand,
+  ]),
+)
 
 const command = Cli.Command.make('mono').pipe(
-  Cli.Command.withSubcommands([generateExamplesCommand, lintCommand, testCommand, circularCommand]),
+  Cli.Command.withSubcommands([examplesCommand, lintCommand, testCommand, circularCommand]),
 )
 
 if (import.meta.main) {

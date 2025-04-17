@@ -54,7 +54,7 @@ export const queryGraphQL = <
   const label = options.label ?? documentName ?? 'graphql'
   const map = options.map
 
-  return {
+  const def: LiveQueries.LiveQueryDef.Any = {
     _tag: 'def',
     make: LiveQueries.withRCMap(hash, (ctx, _otelContext) => {
       return new LiveStoreGraphQLQuery({
@@ -63,11 +63,14 @@ export const queryGraphQL = <
         label,
         map,
         reactivityGraph: ctx.reactivityGraph.deref()!,
+        def,
       })
     }),
     label,
     hash,
   }
+
+  return def
 }
 
 export class LiveStoreGraphQLQuery<
@@ -89,6 +92,8 @@ export class LiveStoreGraphQLQuery<
 
   reactivityGraph: LiveQueries.ReactivityGraph
 
+  def: LiveQueries.LiveQueryDef<TResultMapped>
+
   private mapResult
 
   constructor({
@@ -97,12 +102,14 @@ export class LiveStoreGraphQLQuery<
     genVariableValues,
     reactivityGraph,
     map,
+    def,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: LiveQueries.GetAtomResult) => TVariableValues)
     label?: string
     reactivityGraph: LiveQueries.ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
+    def: LiveQueries.LiveQueryDef<TResultMapped>
   }) {
     super()
 
@@ -112,6 +119,7 @@ export class LiveStoreGraphQLQuery<
     this.document = document
 
     this.reactivityGraph = reactivityGraph
+    this.def = def
 
     this.mapResult =
       map === undefined

@@ -106,6 +106,7 @@ export interface LiveQuery<TResult> {
   runs: number
 
   executionTimes: number[]
+  def: LiveQueryDef<TResult>
 }
 
 export namespace LiveQuery {
@@ -120,6 +121,8 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
 
   /** Human-readable label for the query for debugging */
   abstract label: string
+
+  abstract def: LiveQueryDef<TResult>
 
   abstract results$: RG.Thunk<TResult, ReactivityGraphContext, RefreshReason>
 

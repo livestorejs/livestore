@@ -89,6 +89,7 @@ export class SerializedLiveQuery extends Schema.Struct({
   _tag: Schema.Literal('computed', 'db', 'graphql'),
   id: Schema.Number,
   label: Schema.String,
+  hash: Schema.String,
   runs: Schema.Number,
   executionTimes: Schema.Array(Schema.Number),
   lastestResult: Schema.Any,

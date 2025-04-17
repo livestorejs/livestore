@@ -19,7 +19,7 @@ export const computed = <TResult>(
     throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
   }
 
-  return {
+  const def: LiveQueryDef.Any = {
     _tag: 'def',
     make: withRCMap(hash, (ctx, _otelContext) => {
       // TODO onDestroy
@@ -27,6 +27,7 @@ export const computed = <TResult>(
         fn,
         label: options?.label ?? fn.toString(),
         reactivityGraph: ctx.reactivityGraph.deref()!,
+        def,
       })
     }),
     label: options?.label ?? fn.toString(),
@@ -35,6 +36,8 @@ export const computed = <TResult>(
     // NOTE `fn.toString()` doesn't work in Expo as it always produces `[native code]`
     hash,
   }
+
+  return def
 }
 
 export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult> {
@@ -46,20 +49,24 @@ export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult>
   label: string
 
   reactivityGraph: ReactivityGraph
+  def: LiveQueryDef<TResult>
 
   constructor({
     fn,
     label,
     reactivityGraph,
+    def,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
     reactivityGraph: ReactivityGraph
+    def: LiveQueryDef<TResult>
   }) {
     super()
 
     this.label = label
     this.reactivityGraph = reactivityGraph
+    this.def = def
 
     const queryLabel = `${label}:results`
 

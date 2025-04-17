@@ -73,16 +73,14 @@ const buildAndDeployExample = ({
     return result
   }).pipe(Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)))
 
-const deploy = ({
-  exampleFilter,
-  prod,
-  alias,
-}: {
-  exampleFilter: Option.Option<string>
-  prod: boolean
-  alias: Option.Option<string>
-}) =>
-  Effect.gen(function* () {
+export const command = Cli.Command.make(
+  'deploy',
+  {
+    exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
+    prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
+    alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
+  },
+  Effect.fn(function* ({ alias, exampleFilter, prod }) {
     const excludeDirs = new Set(['expo-linearlite', 'expo-todomvc', 'node-cli', 'todomvc-sync-electric'])
     const examplesToDeploy = fs
       .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
@@ -112,25 +110,18 @@ const deploy = ({
     for (const result of results) {
       console.log(`  ${result.site_name}: ${result.deploy_url}`)
     }
+  }),
+)
+
+if (import.meta.main) {
+  const cli = Cli.Command.run(command, {
+    name: 'Deploy Examples',
+    version: '0.0.0',
   })
 
-const exampleFilterOption = Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional)
-const prodOption = Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false))
-const aliasOption = Cli.Options.text('alias').pipe(Cli.Options.optional)
-
-const command = Cli.Command.make(
-  'deploy',
-  { exampleFilter: exampleFilterOption, prod: prodOption, alias: aliasOption },
-  ({ exampleFilter, prod, alias }) => deploy({ exampleFilter, prod, alias }),
-)
-
-const cli = Cli.Command.run(command, {
-  name: 'Prompt Examples',
-  version: '0.0.1',
-})
-
-cli(process.argv).pipe(
-  Logger.withMinimumLogLevel(LogLevel.Debug),
-  Effect.provide(PlatformNode.NodeContext.layer),
-  PlatformNode.NodeRuntime.runMain,
-)
+  cli(process.argv).pipe(
+    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.provide(PlatformNode.NodeContext.layer),
+    PlatformNode.NodeRuntime.runMain,
+  )
+}

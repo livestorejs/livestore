@@ -39,7 +39,9 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey }: LiveListProps<T
           // TODO figure out a way so that `item$` returns an ordered lookup map to more efficiently find the item by key
           [
             key,
-            computed((get) => get(items$).find((item) => getKey(item, 0) === key)!) as LiveQueryDef<TItem>,
+            computed((get) => get(items$).find((item) => getKey(item, 0) === key)!, {
+              deps: [key],
+            }) as LiveQueryDef<TItem>,
           ] as const,
       ),
     [getKey, items$, keys],

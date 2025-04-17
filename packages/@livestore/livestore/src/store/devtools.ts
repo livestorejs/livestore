@@ -227,6 +227,7 @@ export const connectDevtoolsToStore = ({
                       _tag: q._tag,
                       id: q.id,
                       label: q.label,
+                      hash: q.def.hash,
                       runs: q.runs,
                       executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
                       lastestResult:

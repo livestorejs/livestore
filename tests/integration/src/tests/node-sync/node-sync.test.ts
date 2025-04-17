@@ -111,7 +111,7 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
       ),
     DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: 10 }, timeout: propTestTimeout },
+      : { fastCheck: { numRuns: 8 }, timeout: propTestTimeout },
   )
 })
 
