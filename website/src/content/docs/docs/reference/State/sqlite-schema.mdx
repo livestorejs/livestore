@@ -73,10 +73,13 @@ export const UserMetadata = Schema.Struct({
   favoriteColor: Schema.Literal('red', 'blue', 'green'),
  })
 
-export const userTable = State.SQLite.table('user', {
-  id: State.SQLite.text({ primaryKey: true }),
-  name: State.SQLite.text(),
-  metadata: State.SQLite.json({ schema: UserMetadata }),
+export const userTable = State.SQLite.table({
+  name: 'user',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    name: State.SQLite.text(),
+    metadata: State.SQLite.json({ schema: UserMetadata }),
+  }
 })
 ```
 

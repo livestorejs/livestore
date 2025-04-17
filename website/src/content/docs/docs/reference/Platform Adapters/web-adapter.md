@@ -70,3 +70,12 @@ LiveStore also uses `window.sessionStorage` to retain the identity of a client s
 ## Best Practices
 
 - It's recommended to develop in an incognito window to avoid issues with persistent storage (e.g. OPFS).
+
+## FAQ
+
+### What's the bundle size of the web adapter?
+
+LiveStore with the web adapter adds two parts to your application bundle:
+
+- The LiveStore JavaScript bundle (~180KB gzipped)
+- SQLite WASM (~300KB gzipped)

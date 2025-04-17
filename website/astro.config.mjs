@@ -8,8 +8,8 @@ import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightTypeDoc from 'starlight-typedoc'
 
-const VERCEL_PREVIEW_DOMAIN = process.env.VERCEL_ENV !== 'production' && process.env.VERCEL_BRANCH_URL
-const domain = VERCEL_PREVIEW_DOMAIN ?? 'livestore.dev'
+// Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
+const domain = process.env.DEPLOY_PRIME_URL ? new URL(process.env.DEPLOY_PRIME_URL).hostname : 'livestore.dev'
 
 const site = `https://${domain}`
 
@@ -119,6 +119,10 @@ export default defineConfig({
           label: 'API Reference (generated)',
           autogenerate: { directory: 'docs/api' },
           collapsed: true,
+        },
+        {
+          label: 'Contributing',
+          autogenerate: { directory: 'docs/contributing' },
         },
       ],
       customCss: ['./src/tailwind.css'],
