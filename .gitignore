@@ -30,3 +30,5 @@ _tmp*
 
 .vinxi
 .output
+
+scripts/.completions

@@ -35,28 +35,21 @@ hero:
 
 ---
 
+import { officeHours } from '../../../data.js'
+
 ## Office Hours
 
 <div style="display: flex; flex-direction: column; gap: 2rem;">
-  <iframe 
-    width="560" 
-    height="315" 
-    src="https://www.youtube.com/embed/2GYKgI1GU8k" 
-    title="YouTube video player" 
-    frameborder="0" 
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-    allowfullscreen
-    style={{ aspectRatio: "16 / 9", }}
-  />
-
-  <iframe 
-    width="560" 
-    height="315" 
-    src="https://www.youtube.com/embed/MenhU6n0r5c" 
-    title="YouTube video player" 
-    frameborder="0" 
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-    allowfullscreen
-    style={{ aspectRatio: "16 / 9", }}
-  />
+  {officeHours.map((url) => (
+    <iframe
+      width="560"
+      height="315"
+      src={url}
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+      style={{ aspectRatio: '16 / 9' }}
+    />
+  ))}
 </div>

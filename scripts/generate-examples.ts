@@ -255,13 +255,15 @@ const syncExamplesCommand = Cli.Command.make(
   syncExamples,
 )
 
-const command = Cli.Command.make('sync_examples').pipe(
+export const command = Cli.Command.make('generate-examples').pipe(
   Cli.Command.withSubcommands([updatePatchesCommand, syncExamplesCommand]),
 )
 
-const cli = Cli.Command.run(command, {
-  name: 'sync_examples',
-  version: '0.0.1',
-})
+if (import.meta.main) {
+  const cli = Cli.Command.run(command, {
+    name: 'generate-examples',
+    version: '0.0.1',
+  })
 
-cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)
+  cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)
+}

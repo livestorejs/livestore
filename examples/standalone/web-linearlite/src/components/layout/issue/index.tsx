@@ -39,6 +39,14 @@ export const Issue = () => {
     store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
   }
 
+  const handleChangeDescription = (body: string) => {
+    store.commit(events.updateDescription({ id: issue.id, body }))
+  }
+
+  const description = store.useQuery(
+    queryDb(tables.description.select('body').where({ id: issue.id }).first(), { deps: [issue.id] }),
+  )
+
   return (
     <div className="flex flex-col h-full">
       <div className="h-12 shrink-0 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
@@ -73,7 +81,7 @@ export const Issue = () => {
         <div className="grow overflow-y-auto">
           <div className="p-4 lg:p-14 border-b border-neutral-200 dark:border-neutral-700">
             <TitleInput issue={issue} className="lg:mb-4" />
-            <DescriptionInput issue={issue} />
+            <DescriptionInput description={description} setDescription={handleChangeDescription} />
           </div>
           <div className="p-4 lg:p-14">
             <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mb-4">

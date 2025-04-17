@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+node --enable-source-maps $WORKSPACE_ROOT/examples/src/node-cli/dist/main.js "$@"
+# bun $WORKSPACE_ROOT/examples/src/cli/dist/main.js "$@"

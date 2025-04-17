@@ -7,18 +7,22 @@ sidebar:
 
 ## Before contributing
 
-- Please note that LiveStore is still in active development and APIs are subject to change.
-- Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Discord is the best way to get in touch.
+First of all, thank you for your interest in contributing to LiveStore! Building LiveStore has been an incredible amount of work, so everyone interested in contributing is very much appreciated. 🧡
+
+Please note that LiveStore is still in active development with many things yet subject to change (e.g. APIs, examples, docs, etc).
+
+Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Please get in touch via the `#contrib` channel on [Discord](https://discord.gg/RbMcjUAPd7).
 
 ## Areas for contribution
 
-You can look at ["help wanted" issues](https://github.com/livestorejs/livestore/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) on GitHub for ideas.
+There are many ways to contribute to LiveStore.
 
 ### Help wanted for ...
 
-- SQLite WASM build maintainer (e.g. keeping it up to date with upstream SQLite and wa-sqlite versions)
+- You can look at ["help wanted" issues](https://github.com/livestorejs/livestore/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) on GitHub for ideas.
+- [SQLite WASM build](https://github.com/livestorejs/wa-sqlite) maintainer (e.g. keeping it up to date with upstream SQLite and wa-sqlite versions)
 - Examples maintainer (e.g. keeping dependencies & best practices up to date)
-- Svelte integration maintainer (e.g. keeping it up to date with upstream Svelte and svelte-kit versions)
+- Solid integration maintainer (e.g. keeping it up to date with upstream Solid versions)
 
 ### In scope and encouraged
 
@@ -42,14 +46,6 @@ You can look at ["help wanted" issues](https://github.com/livestorejs/livestore/
 - Changes to the landing page
 - Changes to the devtools
 - Rewriting the core library in a different language
-
-## Requirements (for code contributions)
-
-### Recommended software experience
-
-- Deep experience with TypeScript (incl. type-level programming)
-- Experience with distributed systems
-- Experience with [Effect](https://effect.website) (or willingness to learn)
 
 ## Guiding principles {#guiding-principles}
 

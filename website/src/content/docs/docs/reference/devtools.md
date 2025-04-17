@@ -4,6 +4,8 @@ sidebar:
   order: 10
 ---
 
+NOTE: Once LiveStore is open source, the devtools will be a [sponsor-only benefit](/docs/misc/sponsoring).
+
 ## Features
 
 - Real-time data browser with 2-way sync

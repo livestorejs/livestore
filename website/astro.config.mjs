@@ -8,6 +8,8 @@ import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightTypeDoc from 'starlight-typedoc'
 
+import { DISCORD_INVITE_URL } from '../CONSTANTS.js'
+
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain = process.env.DEPLOY_PRIME_URL ? new URL(process.env.DEPLOY_PRIME_URL).hostname : 'livestore.dev'
 
@@ -21,7 +23,7 @@ export default defineConfig({
       title: `LiveStore (${liveStoreVersion})`,
       social: {
         github: 'https://github.com/livestorejs/livestore',
-        discord: 'https://discord.gg/RbMcjUAPd7',
+        discord: DISCORD_INVITE_URL,
         'x.com': 'https://x.com/livestoredev',
       },
 

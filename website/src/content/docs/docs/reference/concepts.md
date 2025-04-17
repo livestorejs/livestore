@@ -60,3 +60,12 @@ Assuming the web adapter in a multi-client, multi-tab browser application, a dia
 ![](https://i.imgur.com/NCKbfub.png)
 
 The architecture is similar for other adapters (e.g. Expo) but often only involves a single client session per client.
+
+## Pluggable architecture
+
+LiveStore is pluggable in 3 ways:
+
+- Platform adapters
+- Sync backends
+- Framework integrations
+
