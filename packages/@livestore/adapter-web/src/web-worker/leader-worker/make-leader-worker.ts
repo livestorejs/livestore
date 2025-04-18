@@ -27,7 +27,7 @@ import {
 import type * as otel from '@opentelemetry/api'
 
 import * as OpfsUtils from '../../opfs-utils.js'
-import { getAppDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
+import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 
@@ -108,11 +108,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
         const runtime = yield* Effect.runtime<never>()
 
-        const makeDb = (kind: 'app' | 'eventlog') =>
+        const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
             _tag: 'opfs',
             opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
-            fileName: kind === 'app' ? getAppDbFileName(schema) : 'eventlog.db',
+            fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
             configureDb: (db) =>
               configureConnection(db, {
                 //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
@@ -125,11 +125,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Might involve some async work, so we're running them concurrently
-        const [dbReadModel, dbEventlog] = yield* Effect.all([makeDb('app'), makeDb('eventlog')], {
+        const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], {
           concurrency: 2,
         })
 
-        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbReadModel, dbEventlog })
+        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
         const shutdownChannel = yield* makeShutdownChannel(storeId)
 
         return makeLeaderThreadLayer({
@@ -138,7 +138,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           clientId,
           makeSqliteDb,
           syncOptions,
-          dbReadModel,
+          dbState,
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
@@ -162,7 +162,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
 
         // return cachedSnapshot ?? workerCtx.db.export()
 
-        const snapshot = workerCtx.dbReadModel.export()
+        const snapshot = workerCtx.dbState.export()
         return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
       }).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -186,7 +186,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbReadModel.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
@@ -228,11 +228,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  dbReadModel,
+  dbState,
   dbEventlog,
 }: {
   devtoolsEnabled: boolean
-  dbReadModel: SqliteDb
+  dbState: SqliteDb
   dbEventlog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
@@ -251,7 +251,7 @@ const makeDevtoolsOptions = ({
             schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
           }),
           persistenceInfo: {
-            readModel: dbReadModel.metadata.persistenceInfo,
+            readModel: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

@@ -3,7 +3,7 @@ import type { HttpClient } from '@livestore/utils/effect'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { InvalidPullError, IsOfflineError, MigrationHooks, MigrationsReport, SqliteError } from '../index.js'
-import { migrateDb, rehydrateFromEventlog, UnexpectedError } from '../index.js'
+import { migrateDb, rematerializeFromEventlog, UnexpectedError } from '../index.js'
 import { configureConnection } from './connection.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -12,14 +12,14 @@ export const recreateDb: Effect.Effect<
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | HttpClient.HttpClient
 > = Effect.gen(function* () {
-  const { dbReadModel, dbEventlog, schema, bootStatusQueue, applyEvent } = yield* LeaderThreadCtx
+  const { dbState, dbEventlog, schema, bootStatusQueue, materializeEvent } = yield* LeaderThreadCtx
 
   const migrationOptions = schema.migrationOptions
   let migrationsReport: MigrationsReport
 
   yield* Effect.addFinalizer(
     Effect.fn('recreateDb:finalizer')(function* (ex) {
-      if (ex._tag === 'Failure') dbReadModel.destroy()
+      if (ex._tag === 'Failure') dbState.destroy()
     }),
   )
 
@@ -27,7 +27,7 @@ export const recreateDb: Effect.Effect<
   // and later we'll overwrite the persisted database with the new data
   // TODO bring back this optimization
   // const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-  const tmpDb = dbReadModel
+  const tmpDb = dbState
   yield* configureConnection(tmpDb, { foreignKeys: true })
 
   const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
@@ -53,11 +53,11 @@ export const recreateDb: Effect.Effect<
 
       migrationsReport = initResult.migrationsReport
 
-      yield* rehydrateFromEventlog({
+      yield* rematerializeFromEventlog({
         // db: initResult.tmpDb,
         dbEventlog,
         schema,
-        applyEvent,
+        materializeEvent,
         onProgress: ({ done, total }) =>
           Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
       })
@@ -79,7 +79,7 @@ export const recreateDb: Effect.Effect<
       break
     }
     case 'manual': {
-      const oldDbData = dbReadModel.export()
+      const oldDbData = dbState.export()
 
       migrationsReport = { migrations: [] }
 

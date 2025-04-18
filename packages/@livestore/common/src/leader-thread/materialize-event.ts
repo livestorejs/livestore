@@ -3,29 +3,23 @@ import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { getExecArgsFromEvent } from '../materializer-helper.js'
-import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
-import {
-  EventId,
-  EVENTLOG_META_TABLE,
-  getEventDef,
-  SESSION_CHANGESET_META_TABLE,
-  sessionChangesetMetaTable,
-} from '../schema/mod.js'
+import type { LiveStoreSchema } from '../schema/mod.js'
+import { EventId, getEventDef, SystemTables } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { sql } from '../util.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import * as Eventlog from './eventlog.js'
-import type { ApplyEvent } from './types.js'
+import type { MaterializeEvent } from './types.js'
 
-export const makeApplyEvent = ({
+export const makeMaterializeEvent = ({
   schema,
-  dbReadModel: db,
+  dbState: db,
   dbEventlog,
 }: {
   schema: LiveStoreSchema
-  dbReadModel: SqliteDb
+  dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<ApplyEvent, never> =>
+}): Effect.Effect<MaterializeEvent, never> =>
   Effect.gen(function* () {
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -55,7 +49,7 @@ export const makeApplyEvent = ({
         //   },
         // })
 
-        // console.group('[@livestore/common:leader-thread:applyEvent]', { eventName })
+        // console.group('[@livestore/common:leader-thread:materializeEvent]', { eventName })
 
         const session = db.session()
 
@@ -72,8 +66,8 @@ export const makeApplyEvent = ({
         yield* execSql(
           db,
           ...insertRow({
-            tableName: SESSION_CHANGESET_META_TABLE,
-            columns: sessionChangesetMetaTable.sqliteDef.columns,
+            tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
+            columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
             values: {
               idGlobal: eventEncoded.id.global,
               idClient: eventEncoded.id.client,
@@ -113,30 +107,30 @@ export const makeApplyEvent = ({
             : { _tag: 'no-op' as const },
         }
       }).pipe(
-        Effect.withSpan(`@livestore/common:leader-thread:applyEvent`, {
+        Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {
           attributes: {
             eventName: eventEncoded.name,
-            mutationId: eventEncoded.id,
+            eventId: eventEncoded.id,
             'span.label': `${EventId.toString(eventEncoded.id)} ${eventEncoded.name}`,
           },
         }),
-        // Effect.logDuration('@livestore/common:leader-thread:applyEvent'),
+        // Effect.logDuration('@livestore/common:leader-thread:materializeEvent'),
       )
   })
 
 export const rollback = ({
-  db,
+  dbState,
   dbEventlog,
   eventIdsToRollback,
 }: {
-  db: SqliteDb
+  dbState: SqliteDb
   dbEventlog: SqliteDb
   eventIdsToRollback: EventId.EventId[]
 }) =>
   Effect.gen(function* () {
-    const rollbackEvents = db
-      .select<SessionChangesetMetaRow>(
-        sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
+    const rollbackEvents = dbState
+      .select<SystemTables.SessionChangesetMetaRow>(
+        sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
       .map((_) => ({ id: { global: _.idGlobal, client: _.idClient }, changeset: _.changeset, debug: _.debug }))
       .toSorted((a, b) => EventId.compare(a.id, b.id))
@@ -145,7 +139,7 @@ export const rollback = ({
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {
       const { changeset } = rollbackEvents[i]!
       if (changeset !== null) {
-        db.makeChangeset(changeset).invert().apply()
+        dbState.makeChangeset(changeset).invert().apply()
       }
     }
 
@@ -155,15 +149,15 @@ export const rollback = ({
 
     // Delete the changeset rows
     for (const eventIdPairChunk of eventIdPairChunks) {
-      db.execute(
-        sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      dbState.execute(
+        sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
       )
     }
 
     // Delete the eventlog rows
     for (const eventIdPairChunk of eventIdPairChunks) {
       dbEventlog.execute(
-        sql`DELETE FROM ${EVENTLOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+        sql`DELETE FROM ${SystemTables.EVENTLOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
       )
     }
   }).pipe(

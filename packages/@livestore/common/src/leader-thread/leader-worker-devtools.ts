@@ -2,7 +2,7 @@ import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/ut
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { EVENTLOG_META_TABLE, SCHEMA_EVENT_DEFS_META_TABLE, SCHEMA_META_TABLE } from '../schema/mod.js'
+import { SystemTables } from '../schema/mod.js'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -62,7 +62,7 @@ const listenToDevtools = ({
     const {
       syncBackend,
       makeSqliteDb,
-      dbReadModel,
+      dbState,
       dbEventlog,
       shutdownStateSubRef,
       shutdownChannel,
@@ -109,7 +109,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SnapshotReq': {
-              const snapshot = dbReadModel.export()
+              const snapshot = dbState.export()
 
               yield* sendMessage(Devtools.Leader.SnapshotRes.make({ snapshot, ...reqPayload }))
 
@@ -143,18 +143,21 @@ const listenToDevtools = ({
               }
 
               try {
-                if (tableNames.has(EVENTLOG_META_TABLE)) {
-                  // Is eventlog
+                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
+                  // Is eventlog db
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
                   dbEventlog.import(data)
 
-                  dbReadModel.destroy()
-                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_EVENT_DEFS_META_TABLE)) {
-                  // Is read model
+                  dbState.destroy()
+                } else if (
+                  tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
+                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
+                ) {
+                  // Is state db
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                  dbReadModel.import(data)
+                  dbState.import(data)
 
                   dbEventlog.destroy()
                 } else {
@@ -187,7 +190,7 @@ const listenToDevtools = ({
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-              dbReadModel.destroy()
+              dbState.destroy()
 
               if (mode === 'all-data') {
                 dbEventlog.destroy()
@@ -206,7 +209,7 @@ const listenToDevtools = ({
               }
 
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
-              const dbFileSize = dbReadModel.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const dbFileSize = dbState.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
               const eventlogFileSize = dbEventlog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(

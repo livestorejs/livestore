@@ -3,7 +3,7 @@ import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError }
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
+import { EventId, SystemTables } from '@livestore/common/schema'
 import {
   ClientSessionRequestContentscriptMain,
   connectViaWorker,
@@ -364,7 +364,7 @@ export const makePersistedAdapter =
         idGlobal: EventId.GlobalEventId
         idClient: EventId.ClientEventId
       }>(
-        `select idGlobal, idClient from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idClient desc limit 1`,
+        `select idGlobal, idClient from ${SystemTables.SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idClient desc limit 1`,
       )[0]
 
       const initialLeaderHead = initialLeaderHeadRes

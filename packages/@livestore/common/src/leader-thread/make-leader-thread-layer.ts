@@ -8,10 +8,10 @@ import type { LiveStoreSchema } from '../schema/mod.js'
 import { LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
-import { makeApplyEvent } from './apply-event.js'
 import * as Eventlog from './eventlog.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
+import { makeMaterializeEvent } from './materialize-event.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type {
@@ -30,7 +30,7 @@ export interface MakeLeaderThreadLayerParams {
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  dbReadModel: LeaderSqliteDb
+  dbState: LeaderSqliteDb
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
@@ -54,7 +54,7 @@ export const makeLeaderThreadLayer = ({
   syncPayload,
   makeSqliteDb,
   syncOptions,
-  dbReadModel,
+  dbState,
   dbEventlog,
   devtoolsOptions,
   shutdownChannel,
@@ -69,8 +69,8 @@ export const makeLeaderThreadLayer = ({
     const dbEventlogMissing =
       dbEventlog.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
-    const dbReadModelMissing =
-      dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const dbStateMissing =
+      dbState.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const syncBackend =
       syncOptions?.backend === undefined
@@ -91,8 +91,8 @@ export const makeLeaderThreadLayer = ({
       schema,
       dbEventlogMissing,
       dbEventlog,
-      dbReadModel,
-      dbReadModelMissing,
+      dbState,
+      dbStateMissing,
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       params: {
@@ -116,14 +116,14 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
-    const applyEvent = yield* makeApplyEvent({ schema, dbReadModel, dbEventlog })
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
 
     const ctx = {
       schema,
       bootStatusQueue,
       storeId,
       clientId,
-      dbReadModel,
+      dbState,
       dbEventlog,
       makeSqliteDb,
       eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
@@ -131,7 +131,7 @@ export const makeLeaderThreadLayer = ({
       shutdownChannel,
       syncBackend,
       syncProcessor,
-      applyEvent,
+      materializeEvent,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       // State will be set during `bootLeaderThread`
@@ -144,7 +144,7 @@ export const makeLeaderThreadLayer = ({
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
     ctx.initialState = yield* bootLeaderThread({
-      dbReadModelMissing,
+      dbStateMissing,
       initialBlockingSyncContext,
       devtoolsOptions,
     }).pipe(Effect.provide(layer))
@@ -210,11 +210,11 @@ const makeInitialBlockingSyncContext = ({
  * It also starts various background processes (e.g. syncing)
  */
 const bootLeaderThread = ({
-  dbReadModelMissing,
+  dbStateMissing,
   initialBlockingSyncContext,
   devtoolsOptions,
 }: {
-  dbReadModelMissing: boolean
+  dbStateMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
@@ -228,7 +228,7 @@ const bootLeaderThread = ({
     yield* Eventlog.initEventlogDb(dbEventlog)
 
     let migrationsReport: MigrationsReport
-    if (dbReadModelMissing) {
+    if (dbStateMissing) {
       const recreateResult = yield* recreateDb
       migrationsReport = recreateResult.migrationsReport
     } else {

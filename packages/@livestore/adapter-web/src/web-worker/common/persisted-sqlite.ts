@@ -19,55 +19,53 @@ export const readPersistedAppDbFromClientSession = ({
   storeId: string
   schema: LiveStoreSchema
 }) =>
-  Effect.gen(function* () {
-    return yield* Effect.promise(async () => {
-      const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
-      const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
+  Effect.promise(async () => {
+    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
+    const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
 
-      if (sahPoolOpaqueDir === undefined) {
+    if (sahPoolOpaqueDir === undefined) {
+      return undefined
+    }
+
+    const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
+      const file = await fileHandle.getFile()
+      const fileName = await decodeSAHPoolFilename(file)
+      return fileName ? { fileName, file } : undefined
+    }
+
+    const getAllFiles = async (asyncIterator: AsyncIterable<FileSystemHandle>): Promise<FileSystemFileHandle[]> => {
+      const results: FileSystemFileHandle[] = []
+      for await (const value of asyncIterator) {
+        if (value.kind === 'file') {
+          results.push(value as FileSystemFileHandle)
+        }
+      }
+      return results
+    }
+
+    const files = await getAllFiles(sahPoolOpaqueDir.values())
+
+    const fileResults = await Promise.all(files.map(tryGetDbFile))
+
+    const appDbFileName = '/' + getStateDbFileName(schema)
+
+    const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
+    // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
+
+    if (dbFileRes !== undefined) {
+      const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
+      // console.debug('readPersistedAppDbFromClientSession', data.byteLength, data)
+
+      // Given the SAH pool always eagerly creates files with empty non-header data,
+      // we want to return undefined if the file exists but is empty
+      if (data.byteLength === 0) {
         return undefined
       }
 
-      const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
-        const file = await fileHandle.getFile()
-        const fileName = await decodeSAHPoolFilename(file)
-        return fileName ? { fileName, file } : undefined
-      }
+      return new Uint8Array(data)
+    }
 
-      const getAllFiles = async (asyncIterator: AsyncIterable<FileSystemHandle>): Promise<FileSystemFileHandle[]> => {
-        const results: FileSystemFileHandle[] = []
-        for await (const value of asyncIterator) {
-          if (value.kind === 'file') {
-            results.push(value as FileSystemFileHandle)
-          }
-        }
-        return results
-      }
-
-      const files = await getAllFiles(sahPoolOpaqueDir.values())
-
-      const fileResults = await Promise.all(files.map(tryGetDbFile))
-
-      const appDbFileName = '/' + getAppDbFileName(schema)
-
-      const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
-      // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
-
-      if (dbFileRes !== undefined) {
-        const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
-        // console.debug('readPersistedAppDbFromClientSession', data.byteLength, data)
-
-        // Given the SAH pool always eagerly creates files with empty non-header data,
-        // we want to return undefined if the file exists but is empty
-        if (data.byteLength === 0) {
-          return undefined
-        }
-
-        return new Uint8Array(data)
-      }
-
-      return undefined
-    })
+    return undefined
   }).pipe(
     Effect.logWarnIfTakesLongerThan({
       duration: 1000,
@@ -138,7 +136,7 @@ export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) 
   return `${directory}@${liveStoreStorageFormatVersion}`
 }
 
-export const getAppDbFileName = (schema: LiveStoreSchema) => {
+export const getStateDbFileName = (schema: LiveStoreSchema) => {
   const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
-  return `app${schemaHashSuffix}.db`
+  return `state${schemaHashSuffix}.db`
 }

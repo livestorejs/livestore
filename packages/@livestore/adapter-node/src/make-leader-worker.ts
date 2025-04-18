@@ -77,7 +77,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbReadModel.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
@@ -107,7 +107,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         // const cachedSnapshot =
         //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
         // return cachedSnapshot ?? workerCtx.db.export()
-        const snapshot = workerCtx.dbReadModel.export()
+        const snapshot = workerCtx.dbState.export()
         return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
       }).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -173,24 +173,25 @@ const makeLeaderThread = ({
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
-    const makeDb = (kind: 'app' | 'eventlog') =>
+    const makeDb = (kind: 'state' | 'eventlog') =>
       makeSqliteDb({
         _tag: 'fs',
         directory: path.join(baseDirectory ?? '', storeId),
-        fileName: kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
+        fileName:
+          kind === 'state' ? getStateDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
         // TODO enable WAL for nodejs
         configureDb: (db) =>
           configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
 
     // Might involve some async work, so we're running them concurrently
-    const [dbReadModel, dbEventlog] = yield* Effect.all([makeDb('app'), makeDb('eventlog')], { concurrency: 2 })
+    const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled: devtools.enabled,
       devtoolsPort: devtools.port,
       devtoolsHost: devtools.host,
-      dbReadModel,
+      dbState,
       dbEventlog,
       storeId,
       clientId,
@@ -205,7 +206,7 @@ const makeLeaderThread = ({
       clientId,
       makeSqliteDb,
       syncOptions,
-      dbReadModel,
+      dbState,
       dbEventlog,
       devtoolsOptions,
       shutdownChannel,
@@ -218,11 +219,11 @@ const makeLeaderThread = ({
     Layer.unwrapScoped,
   )
 
-const getAppDbFileName = (suffix: string) => `app${suffix}@${liveStoreStorageFormatVersion}.db`
+const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  dbReadModel,
+  dbState,
   dbEventlog,
   storeId,
   clientId,
@@ -231,7 +232,7 @@ const makeDevtoolsOptions = ({
   schemaPath,
 }: {
   devtoolsEnabled: boolean
-  dbReadModel: LeaderSqliteDb
+  dbState: LeaderSqliteDb
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
@@ -269,7 +270,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel,
           persistenceInfo: {
-            readModel: dbReadModel.metadata.persistenceInfo,
+            readModel: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

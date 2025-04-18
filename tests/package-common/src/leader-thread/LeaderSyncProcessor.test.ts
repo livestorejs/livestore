@@ -61,7 +61,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
+      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
 
       expect(result).toEqual([
         { id: '1', text: 't1', completed: 0 },
@@ -97,7 +97,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
+      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
 
       // This will cause a rebase given mismatch: local insert(id: '2') vs remote insert(id: '1')
@@ -105,7 +105,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
 
-      const rebasedResult = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
+      const rebasedResult = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(rebasedResult).toEqual([
         { id: '1', text: 't1', completed: 0 },
         { id: '2', text: 't2', completed: 0 },
@@ -138,7 +138,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
+      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
@@ -245,7 +245,7 @@ const LeaderThreadCtxLive = ({
       syncPayload: undefined,
       makeSqliteDb,
       syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
-      dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
+      dbState: yield* makeSqliteDb({ _tag: 'in-memory' }),
       dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
       shutdownChannel: yield* WebChannel.noopChannel<any, any>(),

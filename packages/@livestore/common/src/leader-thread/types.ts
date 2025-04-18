@@ -89,7 +89,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     storeId: string
     clientId: string
     makeSqliteDb: MakeSqliteDb
-    dbReadModel: LeaderSqliteDb
+    dbState: LeaderSqliteDb
     dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
@@ -99,7 +99,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
-    applyEvent: ApplyEvent
+    materializeEvent: MaterializeEvent
     initialState: {
       leaderHead: EventId.EventId
       migrationsReport: MigrationsReport
@@ -113,10 +113,10 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   }
 >() {}
 
-export type ApplyEvent = (
+export type MaterializeEvent = (
   eventEncoded: LiveStoreEvent.EncodedWithMeta,
   options?: {
-    /** Needed for rehydrateFromEventlog */
+    /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
   },
 ) => Effect.Effect<

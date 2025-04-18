@@ -50,14 +50,14 @@ export const getEventsSince = (
   since: EventId.EventId,
 ): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
   Effect.gen(function* () {
-    const { dbEventlog, dbReadModel } = yield* LeaderThreadCtx
+    const { dbEventlog, dbState } = yield* LeaderThreadCtx
 
     const query = eventlogMetaTable.where('idGlobal', '>=', since.global).asSql()
     const pendingEventsRaw = dbEventlog.select(query.query, prepareBindValues(query.bindValues, query.query))
     const pendingEvents = Schema.decodeUnknownSync(eventlogMetaTable.rowSchema.pipe(Schema.Array))(pendingEventsRaw)
 
     const sessionChangesetRows = sessionChangesetMetaTable.where('idGlobal', '>=', since.global).asSql()
-    const sessionChangesetRowsRaw = dbReadModel.select(
+    const sessionChangesetRowsRaw = dbState.select(
       sessionChangesetRows.query,
       prepareBindValues(sessionChangesetRows.bindValues, sessionChangesetRows.query),
     )

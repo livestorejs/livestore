@@ -1,4 +1,4 @@
-export * from './state/sqlite/system-tables.js'
+export * as SystemTables from './state/sqlite/system-tables.js'
 export { SqliteAst, SqliteDsl } from './state/sqlite/db-schema/mod.js'
 export * from './EventDef.js'
 export * from './state/sqlite/schema-helpers.js'

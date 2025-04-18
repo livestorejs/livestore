@@ -176,12 +176,12 @@ const makeLeaderThread = ({
     const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
     const dbEventlogPath = `${'livestore-'}eventlog@${liveStoreStorageFormatVersion}.db`
 
-    const dbReadModel = yield* makeSqliteDb({ _tag: 'file', databaseName: readModelDatabaseName, directory })
+    const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: readModelDatabaseName, directory })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbEventlogPath, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
-      dbReadModel,
+      dbState,
       dbEventlog,
       storeId,
       clientId,
@@ -192,7 +192,7 @@ const makeLeaderThread = ({
     const layer = yield* Layer.memoize(
       makeLeaderThreadLayer({
         clientId,
-        dbReadModel,
+        dbState,
         dbEventlog,
         devtoolsOptions,
         makeSqliteDb,
@@ -207,7 +207,7 @@ const makeLeaderThread = ({
 
     return yield* Effect.gen(function* () {
       const {
-        dbReadModel: db,
+        dbState: db,
         dbEventlog,
         syncProcessor,
         extraIncomingMessagesQueue,
@@ -256,7 +256,7 @@ const makeLeaderThread = ({
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  dbReadModel,
+  dbState,
   dbEventlog,
   storeId,
   clientId,
@@ -264,7 +264,7 @@ const makeDevtoolsOptions = ({
   devtoolsWebmeshNode,
 }: {
   devtoolsEnabled: boolean
-  dbReadModel: LeaderSqliteDb
+  dbState: LeaderSqliteDb
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
@@ -291,7 +291,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel,
           persistenceInfo: {
-            readModel: dbReadModel.metadata.persistenceInfo,
+            readModel: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

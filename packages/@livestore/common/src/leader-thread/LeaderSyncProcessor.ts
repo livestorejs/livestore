@@ -18,18 +18,12 @@ import type * as otel from '@opentelemetry/api'
 import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import {
-  EventId,
-  getEventDef,
-  LEADER_MERGE_COUNTER_TABLE,
-  LiveStoreEvent,
-  SESSION_CHANGESET_META_TABLE,
-} from '../schema/mod.js'
+import { EventId, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.js'
 import { LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
-import { rollback } from './apply-event.js'
 import * as Eventlog from './eventlog.js'
+import { rollback } from './materialize-event.js'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -73,8 +67,8 @@ export const makeLeaderSyncProcessor = ({
   schema,
   dbEventlogMissing,
   dbEventlog,
-  dbReadModel,
-  dbReadModelMissing,
+  dbState,
+  dbStateMissing,
   initialBlockingSyncContext,
   onError,
   params,
@@ -84,9 +78,9 @@ export const makeLeaderSyncProcessor = ({
   /** Only used to know whether we can safely query dbEventlog during setup execution */
   dbEventlogMissing: boolean
   dbEventlog: SqliteDb
-  dbReadModel: SqliteDb
-  /** Only used to know whether we can safely query dbReadModel during setup execution */
-  dbReadModelMissing: boolean
+  dbState: SqliteDb
+  /** Only used to know whether we can safely query dbState during setup execution */
+  dbStateMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
   onError: 'shutdown' | 'ignore'
   params: {
@@ -128,7 +122,7 @@ export const makeLeaderSyncProcessor = ({
     const currentLocalPushGenerationRef = { current: 0 }
 
     type MergeCounter = number
-    const mergeCounterRef = { current: dbReadModelMissing ? 0 : yield* getMergeCounterFromDb(dbReadModel) }
+    const mergeCounterRef = { current: dbStateMissing ? 0 : yield* getMergeCounterFromDb(dbState) }
     const mergePayloads = new Map<MergeCounter, typeof SyncState.PayloadUpstream.Type>()
 
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
@@ -552,14 +546,14 @@ const backgroundApplyLocalPushes = ({
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
-      yield* applyEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+      yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
 
       // Allow the backend pulling to start
       yield* pullLatch.open
     }
   })
 
-type ApplyEventsBatch = (_: {
+type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
   /**
    * The deferreds are used by the caller to know when the mutation has been processed.
@@ -569,9 +563,9 @@ type ApplyEventsBatch = (_: {
 }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
-const applyEventsBatch: ApplyEventsBatch = ({ batchItems, deferreds }) =>
+const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
-    const { dbReadModel: db, dbEventlog, applyEvent } = yield* LeaderThreadCtx
+    const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
 
     // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
     db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -588,7 +582,7 @@ const applyEventsBatch: ApplyEventsBatch = ({ batchItems, deferreds }) =>
     )
 
     for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset } = yield* applyEvent(batchItems[i]!)
+      const { sessionChangeset } = yield* materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
 
       if (deferreds?.[i] !== undefined) {
@@ -601,7 +595,7 @@ const applyEventsBatch: ApplyEventsBatch = ({ batchItems, deferreds }) =>
   }).pipe(
     Effect.uninterruptible,
     Effect.scoped,
-    Effect.withSpan('@livestore/common:LeaderSyncProcessor:applyEventItems', {
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:materializeEventItems', {
       attributes: { batchSize: batchItems.length },
     }),
     Effect.tapCauseLogPretty,
@@ -640,7 +634,7 @@ const backgroundBackendPulling = ({
   advancePushHead: (eventId: EventId.EventId) => void
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbReadModel: db, dbEventlog, schema } = yield* LeaderThreadCtx
+    const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -700,7 +694,11 @@ const backgroundBackendPulling = ({
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
-            yield* rollback({ db, dbEventlog, eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id) })
+            yield* rollback({
+              dbState: db,
+              dbEventlog,
+              eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id),
+            })
           }
 
           yield* connectedClientSessionPullQueues.offer({
@@ -744,7 +742,7 @@ const backgroundBackendPulling = ({
 
         advancePushHead(mergeResult.newSyncState.localHead)
 
-        yield* applyEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
@@ -833,7 +831,7 @@ const backgroundBackendPushing = ({
 const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
   // Since we're using the session changeset rows to query for the current head,
   // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)
+  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)
 }
 
 interface PullQueueSet {
@@ -894,18 +892,18 @@ const makePullQueueSet = Effect.gen(function* () {
 
 const incrementMergeCounter = (mergeCounterRef: { current: number }) =>
   Effect.gen(function* () {
-    const { dbReadModel } = yield* LeaderThreadCtx
+    const { dbState } = yield* LeaderThreadCtx
     mergeCounterRef.current++
-    dbReadModel.execute(
-      sql`INSERT OR REPLACE INTO ${LEADER_MERGE_COUNTER_TABLE} (id, mergeCounter) VALUES (0, ${mergeCounterRef.current})`,
+    dbState.execute(
+      sql`INSERT OR REPLACE INTO ${SystemTables.LEADER_MERGE_COUNTER_TABLE} (id, mergeCounter) VALUES (0, ${mergeCounterRef.current})`,
     )
     return mergeCounterRef.current
   })
 
-const getMergeCounterFromDb = (dbReadModel: SqliteDb) =>
+const getMergeCounterFromDb = (dbState: SqliteDb) =>
   Effect.gen(function* () {
-    const result = dbReadModel.select<{ mergeCounter: number }>(
-      sql`SELECT mergeCounter FROM ${LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
+    const result = dbState.select<{ mergeCounter: number }>(
+      sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
     )
     return result[0]?.mergeCounter ?? 0
   })

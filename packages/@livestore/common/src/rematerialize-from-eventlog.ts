@@ -2,38 +2,41 @@ import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type SqliteDb, UnexpectedError } from './adapter-types.js'
-import type { ApplyEvent } from './leader-thread/mod.js'
-import type { EventDef, EventlogMetaRow, LiveStoreSchema } from './schema/mod.js'
-import { EventId, EVENTLOG_META_TABLE, getEventDef, LiveStoreEvent } from './schema/mod.js'
+import type { MaterializeEvent } from './leader-thread/mod.js'
+import type { EventDef, LiveStoreSchema } from './schema/mod.js'
+import { EventId, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
-export const rehydrateFromEventlog = ({
+export const rematerializeFromEventlog = ({
   dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
   schema,
   onProgress,
-  applyEvent,
+  materializeEvent,
 }: {
   dbEventlog: SqliteDb
   // db: SqliteDb
   schema: LiveStoreSchema
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
-  applyEvent: ApplyEvent
+  materializeEvent: MaterializeEvent
 }) =>
   Effect.gen(function* () {
-    const eventsCount = dbEventlog.select<{ count: number }>(`SELECT COUNT(*) AS count FROM ${EVENTLOG_META_TABLE}`)[0]!
-      .count
+    const eventsCount = dbEventlog.select<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
+    )[0]!.count
 
     const hashEvent = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
 
-    const processEvent = (row: EventlogMetaRow) =>
+    const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
         const eventDef = getEventDef(schema, row.name)
 
         if (hashEvent(eventDef.eventDef) !== row.schemaHash) {
-          yield* Effect.logWarning(`Schema hash mismatch for mutation ${row.name}. Trying to apply mutation anyway.`)
+          yield* Effect.logWarning(
+            `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
+          )
         }
 
         const args = JSON.parse(row.argsJson)
@@ -44,8 +47,8 @@ export const rehydrateFromEventlog = ({
             UnexpectedError.make({
               cause,
               note: `\
-There was an error during rehydrating from the eventlog while decoding
-the persisted mutation event args for mutation "${row.name}".
+There was an error during rematerializing from the eventlog while decoding
+the persisted event args for event definition "${row.name}".
 This likely means the schema has changed in an incompatible way.
 `,
             }),
@@ -61,13 +64,13 @@ This likely means the schema has changed in an incompatible way.
           sessionId: row.sessionId,
         })
 
-        yield* applyEvent(eventEncoded, { skipEventlog: true })
-      }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromEventlog:processEvent`))
+        yield* materializeEvent(eventEncoded, { skipEventlog: true })
+      }).pipe(Effect.withSpan(`@livestore/common:rematerializeFromEventlog:processEvent`))
 
     const CHUNK_SIZE = 100
 
     const stmt = dbEventlog.prepare(sql`\
-SELECT * FROM ${EVENTLOG_META_TABLE} 
+SELECT * FROM ${SystemTables.EVENTLOG_META_TABLE} 
 WHERE idGlobal > $idGlobal OR (idGlobal = $idGlobal AND idClient > $idClient)
 ORDER BY idGlobal ASC, idClient ASC
 LIMIT ${CHUNK_SIZE}
@@ -75,28 +78,28 @@ LIMIT ${CHUNK_SIZE}
 
     let processedEvents = 0
 
-    yield* Stream.unfoldChunk<Chunk.Chunk<EventlogMetaRow> | { _tag: 'Initial ' }, EventlogMetaRow>(
-      { _tag: 'Initial ' },
-      (item) => {
-        // End stream if no more rows
-        if (Chunk.isChunk(item) && item.length === 0) return Option.none()
+    yield* Stream.unfoldChunk<
+      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial ' },
+      SystemTables.EventlogMetaRow
+    >({ _tag: 'Initial ' }, (item) => {
+      // End stream if no more rows
+      if (Chunk.isChunk(item) && item.length === 0) return Option.none()
 
-        const lastId = Chunk.isChunk(item)
-          ? Chunk.last(item).pipe(
-              Option.map((_) => ({ global: _.idGlobal, client: _.idClient })),
-              Option.getOrElse(() => EventId.ROOT),
-            )
-          : EventId.ROOT
-        const nextItem = Chunk.fromIterable(
-          stmt.select<EventlogMetaRow>({
-            $idGlobal: lastId?.global,
-            $idClient: lastId?.client,
-          } as any as PreparedBindValues),
-        )
-        const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()
-        return Option.some([prevItem, nextItem])
-      },
-    ).pipe(
+      const lastId = Chunk.isChunk(item)
+        ? Chunk.last(item).pipe(
+            Option.map((_) => ({ global: _.idGlobal, client: _.idClient })),
+            Option.getOrElse(() => EventId.ROOT),
+          )
+        : EventId.ROOT
+      const nextItem = Chunk.fromIterable(
+        stmt.select<SystemTables.EventlogMetaRow>({
+          $idGlobal: lastId?.global,
+          $idClient: lastId?.client,
+        } as any as PreparedBindValues),
+      )
+      const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()
+      return Option.some([prevItem, nextItem])
+    }).pipe(
       Stream.bufferChunks({ capacity: 2 }),
       Stream.tap((row) =>
         Effect.gen(function* () {
@@ -109,6 +112,6 @@ LIMIT ${CHUNK_SIZE}
       Stream.runDrain,
     )
   }).pipe(
-    Effect.withPerformanceMeasure('@livestore/common:rehydrateFromEventlog'),
-    Effect.withSpan('@livestore/common:rehydrateFromEventlog'),
+    Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'),
+    Effect.withSpan('@livestore/common:rematerializeFromEventlog'),
   )

@@ -20,14 +20,7 @@ import {
   replaceSessionIdSymbol,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import {
-  getEventDef,
-  LEADER_MERGE_COUNTER_TABLE,
-  LiveStoreEvent,
-  SCHEMA_EVENT_DEFS_META_TABLE,
-  SCHEMA_META_TABLE,
-  SESSION_CHANGESET_META_TABLE,
-} from '@livestore/common/schema'
+import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
@@ -114,7 +107,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       schema,
       clientSession,
       runtime: effectContext.runtime,
-      applyEvent: (eventDecoded, { otelContext, withChangeset }) => {
+      materializeEvent: (eventDecoded, { otelContext, withChangeset }) => {
         const eventDef = getEventDef(schema, eventDecoded.name)
 
         const execArgsArr = getExecArgsFromEvent({
@@ -204,10 +197,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         ? this.schema.tables.keys()
         : Array.from(this.schema.tables.keys()).filter(
             (_) =>
-              _ !== SCHEMA_META_TABLE &&
-              _ !== SCHEMA_EVENT_DEFS_META_TABLE &&
-              _ !== SESSION_CHANGESET_META_TABLE &&
-              _ !== LEADER_MERGE_COUNTER_TABLE,
+              _ !== SystemTables.SCHEMA_META_TABLE &&
+              _ !== SystemTables.SCHEMA_EVENT_DEFS_META_TABLE &&
+              _ !== SystemTables.SESSION_CHANGESET_META_TABLE &&
+              _ !== SystemTables.LEADER_MERGE_COUNTER_TABLE,
           ),
     )
     const existingTableRefs = new Map(
@@ -540,13 +533,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         try {
           const { writeTables } = (() => {
             try {
-              const applyEvents = () => this.syncProcessor.push(events, { otelContext })
+              const materializeEvents = () => this.syncProcessor.push(events, { otelContext })
 
               if (events.length > 1) {
                 // TODO: what to do about leader transaction here?
-                return this.sqliteDbWrapper.txn(applyEvents)
+                return this.sqliteDbWrapper.txn(materializeEvents)
               } else {
-                return applyEvents()
+                return materializeEvents()
               }
             } catch (e: any) {
               console.error(e)

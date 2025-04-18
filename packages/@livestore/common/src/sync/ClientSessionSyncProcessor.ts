@@ -7,7 +7,7 @@ import * as otel from '@opentelemetry/api'
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { getEventDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
+import { getEventDef, type LiveStoreSchema, SystemTables } from '../schema/mod.js'
 import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
@@ -17,7 +17,7 @@ import * as SyncState from './syncstate.js'
  * - If there was a race condition (i.e. the leader and client session have both advacned),
  *   we'll need to rebase the local pending events on top of the leader's head.
  * - The goal is to never block the UI, so we'll interrupt rebasing if a new events is pushed by the client session.
- * - We also want to avoid "backwards-jumping" in the UI, so we'll transactionally apply a read model changes during a rebase.
+ * - We also want to avoid "backwards-jumping" in the UI, so we'll transactionally apply state changes during a rebase.
  * - We might need to make the rebase behaviour configurable e.g. to let users manually trigger a rebase
  *
  * Longer term we should evalutate whether we can unify the ClientSessionSyncProcessor with the LeaderSyncProcessor.
@@ -26,7 +26,7 @@ export const makeClientSessionSyncProcessor = ({
   schema,
   clientSession,
   runtime,
-  applyEvent,
+  materializeEvent,
   rollback,
   refreshTables,
   span,
@@ -36,7 +36,7 @@ export const makeClientSessionSyncProcessor = ({
   schema: LiveStoreSchema
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
-  applyEvent: (
+  materializeEvent: (
     eventDecoded: LiveStoreEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
@@ -120,7 +120,7 @@ export const makeClientSessionSyncProcessor = ({
     for (const event of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
       const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-      const res = applyEvent(decodedEventDef, { otelContext, withChangeset: true })
+      const res = materializeEvent(decodedEventDef, { otelContext, withChangeset: true })
       for (const table of res.writeTables) {
         writeTables.add(table)
       }
@@ -173,7 +173,7 @@ export const makeClientSessionSyncProcessor = ({
 
     const getMergeCounter = () =>
       clientSession.sqliteDb.select<{ mergeCounter: number }>(
-        sql`SELECT mergeCounter FROM ${LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
+        sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
       )[0]?.mergeCounter ?? 0
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
@@ -261,7 +261,7 @@ export const makeClientSessionSyncProcessor = ({
           for (const event of mergeResult.newEvents) {
             // TODO apply changeset if available (will require tracking of write tables as well)
             const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-            const res = applyEvent(decodedEventDef, { otelContext, withChangeset: true })
+            const res = materializeEvent(decodedEventDef, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {
               writeTables.add(table)
             }

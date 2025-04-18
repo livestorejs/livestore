@@ -124,7 +124,7 @@ const makeLeaderThread = ({
     const layer = yield* Layer.memoize(
       makeLeaderThreadLayer({
         clientId,
-        dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
+        dbState: yield* makeSqliteDb({ _tag: 'in-memory' }),
         dbEventlog: testing?.overrides?.makeLeaderThread?.dbEventlog
           ? yield* testing.overrides.makeLeaderThread.dbEventlog(makeSqliteDb)
           : yield* makeSqliteDb({ _tag: 'in-memory' }),
@@ -140,8 +140,7 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbReadModel, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } =
-        yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -157,13 +156,13 @@ const makeLeaderThread = ({
             ),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
-        export: Effect.sync(() => dbReadModel.export()),
+        export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy
 
-      const initialSnapshot = dbReadModel.export()
+      const initialSnapshot = dbState.export()
 
       return { leaderThread, initialSnapshot }
     }).pipe(Effect.provide(layer))
