@@ -119,15 +119,13 @@ jobs:
         timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
-      - run: pnpm build:examples:src
-        env:
-          VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
       - run: |
           pnpm deploy:examples:src \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
             --alias=snapshot-$(git rev-parse --short HEAD)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-website:
     strategy:
