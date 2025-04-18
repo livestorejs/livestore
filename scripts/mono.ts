@@ -3,6 +3,7 @@ import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { command as deployExamplesCommand } from './deploy-examples.js'
 import * as generateExamples from './generate-examples.js'
+
 const testCommand = Cli.Command.make(
   'test',
   {},
@@ -21,6 +22,32 @@ const lintCommand = Cli.Command.make(
     yield* cmd(`eslint scripts examples packages website --ext .ts,.tsx --max-warnings=0 ${fixFlag}`)
     yield* cmd('syncpack lint')
   }),
+)
+
+const websiteCommand = Cli.Command.make('website').pipe(
+  Cli.Command.withSubcommands([
+    Cli.Command.make(
+      'dev',
+      {},
+      Effect.fn(function* () {
+        yield* cmd('pnpm astro dev', { cwd: `${process.env.WORKSPACE_ROOT}/website` })
+      }),
+    ),
+    Cli.Command.make(
+      'build',
+      {
+        apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
+      },
+      Effect.fn(function* ({ apiDocs }) {
+        yield* cmd('pnpm astro build', {
+          cwd: `${process.env.WORKSPACE_ROOT}/website`,
+          env: {
+            STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
+          },
+        })
+      }),
+    ),
+  ]),
 )
 
 const circularCommand = Cli.Command.make(
@@ -42,10 +69,13 @@ const examplesCommand = Cli.Command.make('examples').pipe(
 )
 
 const command = Cli.Command.make('mono').pipe(
-  Cli.Command.withSubcommands([examplesCommand, lintCommand, testCommand, circularCommand]),
+  Cli.Command.withSubcommands([examplesCommand, lintCommand, testCommand, circularCommand, websiteCommand]),
 )
 
-const cmd = Effect.fn(function* (commandStr: string, options?: { cwd?: string; runInShell?: boolean }) {
+const cmd = Effect.fn(function* (
+  commandStr: string,
+  options?: { cwd?: string; runInShell?: boolean; env?: Record<string, string | undefined> },
+) {
   const cwd = options?.cwd ?? process.cwd()
   yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
   const [command, ...args] = commandStr.split(' ')
@@ -55,6 +85,7 @@ const cmd = Effect.fn(function* (commandStr: string, options?: { cwd?: string; r
     Command.stderr('inherit'), // Stream stderr to process.stderr
     Command.workingDirectory(cwd),
     options?.runInShell ? Command.runInShell(true) : identity,
+    Command.env(options?.env ?? {}),
     Command.exitCode,
     Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
   )

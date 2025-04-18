@@ -2,7 +2,6 @@
 title: Encryption
 sidebar:
   order: 20
-  badge: Backlog
 ---
 
 LiveStore doesn't yet support encryption but might in the future.

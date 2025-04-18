@@ -2,7 +2,6 @@
 title: Performance benchmarks
 sidebar:
   order: 5
-  badge: TBD
 ---
 
 Unfortunately, there isn't much to see here yet.
