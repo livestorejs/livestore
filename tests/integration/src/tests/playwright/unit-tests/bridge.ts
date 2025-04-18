@@ -1,10 +1,11 @@
-import { BootStatus, UnexpectedError } from '@livestore/common'
+import { BootStatus, MigrationsReport, UnexpectedError } from '@livestore/common'
 import { Schema } from '@livestore/utils/effect'
 
 export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStatus', {
   exit: Schema.Exit({
     success: Schema.Struct({
       bootStatusUpdates: Schema.Array(BootStatus),
+      migrationsReport: MigrationsReport,
     }),
     failure: UnexpectedError,
     defect: Schema.Defect,

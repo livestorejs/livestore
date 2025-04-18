@@ -212,13 +212,12 @@
   - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
-    - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
   - More graceful handling when receiving a event that doesn't exist in the local schema
     - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
     - 2 solution paths:
       - Render "upgrade app" screen
       - Go offline until user upgrades the app
-  - introduce a way to know when a mutation is confirmed by the sync backend
+  - introduce a way to know when an event is confirmed by the sync backend
   - cf sync:
     - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
@@ -228,6 +227,7 @@
     - fix: connectivity state + offline handling
     - implement sync payload
   - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
+    - possibly introduce a eventlog id in the global sync metadata
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")

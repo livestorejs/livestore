@@ -202,10 +202,12 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
 export type MigrationOptions =
-  | MigrationOptionsFromEventlog
   | {
-      strategy: 'hard-reset'
+      strategy: 'auto'
       hooks?: Partial<MigrationHooks>
+      logging?: {
+        excludeAffectedRows?: (sqlStmt: string) => boolean
+      }
     }
   | {
       strategy: 'manual'
@@ -222,14 +224,6 @@ export type MigrationHooks = {
 }
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
-
-export interface MigrationOptionsFromEventlog {
-  strategy: 'from-eventlog'
-  hooks?: Partial<MigrationHooks>
-  logging?: {
-    excludeAffectedRows?: (sqlStmt: string) => boolean
-  }
-}
 
 export interface ClientSessionDevtoolsChannel
   extends WebChannel.WebChannel<Devtools.ClientSession.MessageToApp, Devtools.ClientSession.MessageFromApp> {}

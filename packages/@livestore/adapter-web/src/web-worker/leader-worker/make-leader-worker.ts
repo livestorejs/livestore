@@ -251,7 +251,7 @@ const makeDevtoolsOptions = ({
             schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
           }),
           persistenceInfo: {
-            readModel: dbState.metadata.persistenceInfo,
+            state: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

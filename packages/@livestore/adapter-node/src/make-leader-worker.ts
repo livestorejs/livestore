@@ -171,7 +171,8 @@ const makeLeaderThread = ({
     const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
     const runtime = yield* Effect.runtime<never>()
 
-    const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
+    const schemaHashSuffix =
+      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') =>
       makeSqliteDb({
@@ -270,7 +271,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel,
           persistenceInfo: {
-            readModel: dbState.metadata.persistenceInfo,
+            state: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

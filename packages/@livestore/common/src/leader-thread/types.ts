@@ -52,7 +52,7 @@ export type InitialSyncInfo = Option.Option<{
 //   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
 export type LeaderSqliteDb = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
-export type PersistenceInfoPair = { readModel: PersistenceInfo; eventlog: PersistenceInfo }
+export type PersistenceInfoPair = { state: PersistenceInfo; eventlog: PersistenceInfo }
 
 export type DevtoolsOptions =
   | {

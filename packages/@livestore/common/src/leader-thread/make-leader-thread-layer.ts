@@ -1,7 +1,7 @@
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '../adapter-types.js'
+import type { BootStatus, MakeSqliteDb, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
@@ -227,13 +227,7 @@ const bootLeaderThread = ({
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
-    let migrationsReport: MigrationsReport
-    if (dbStateMissing) {
-      const recreateResult = yield* recreateDb
-      migrationsReport = recreateResult.migrationsReport
-    } else {
-      migrationsReport = { migrations: [] }
-    }
+    const { migrationsReport } = dbStateMissing ? yield* recreateDb : { migrationsReport: { migrations: [] } }
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot

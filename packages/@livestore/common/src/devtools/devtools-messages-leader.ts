@@ -17,7 +17,7 @@ export class DatabaseFileInfo extends Schema.Struct({
 }) {}
 
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
-  readModel: DatabaseFileInfo,
+  state: DatabaseFileInfo,
   eventlog: DatabaseFileInfo,
 }) {}
 

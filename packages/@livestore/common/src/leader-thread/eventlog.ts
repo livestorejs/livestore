@@ -7,9 +7,9 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
+  eventlogSystemTables,
   sessionChangesetMetaTable,
   SYNC_STATUS_TABLE,
-  syncStatusTable,
 } from '../schema/state/sqlite/system-tables.js'
 import { migrateTable } from '../schema-management/migrations.js'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.js'
@@ -21,19 +21,14 @@ import { LeaderThreadCtx } from './types.js'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
-    yield* migrateTable({
-      db: dbEventlog,
-      behaviour: 'create-if-not-exists',
-      tableAst: eventlogMetaTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
-
-    yield* migrateTable({
-      db: dbEventlog,
-      behaviour: 'create-if-not-exists',
-      tableAst: syncStatusTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
+    for (const tableDef of eventlogSystemTables) {
+      yield* migrateTable({
+        db: dbEventlog,
+        behaviour: 'create-if-not-exists',
+        tableAst: tableDef.sqliteDef.ast,
+        skipMetaTable: true,
+      })
+    }
 
     // Create sync status row if it doesn't exist
     yield* execSql(

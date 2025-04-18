@@ -137,6 +137,7 @@ export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) 
 }
 
 export const getStateDbFileName = (schema: LiveStoreSchema) => {
-  const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
+  const schemaHashSuffix =
+    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
   return `state${schemaHashSuffix}.db`
 }

@@ -21,10 +21,12 @@ test(
         Exit.succeed({
           bootStatusUpdates: [
             { stage: 'loading' },
-            { stage: 'migrating', progress: { done: 1, total: 2 } },
-            { stage: 'migrating', progress: { done: 2, total: 2 } },
+            { stage: 'migrating', progress: { done: 1, total: 1 } },
             { stage: 'done' },
           ],
+          migrationsReport: {
+            migrations: [{ tableName: 'todos', hashes: { expected: 27_118_251_376, actual: undefined } }],
+          },
         }),
       )
     }),

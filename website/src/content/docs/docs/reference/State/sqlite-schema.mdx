@@ -27,8 +27,7 @@ LiveStore provides a schema definition language for defining your database table
 
 Migration strategies:
 
-- `from-eventlog`: Automatically migrate the database to the newest schema and rehydrates the data from the eventlog.
-- `hard-reset`: Automatically migrate the database to the newest schema but ignores the eventlog.
+- `auto`: Automatically migrate the database to the newest schema and rematerializes the state from the eventlog.
 - `manual`: Manually migrate the database to the newest schema.
 
 ### Client documents

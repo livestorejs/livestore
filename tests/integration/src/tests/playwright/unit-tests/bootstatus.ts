@@ -10,7 +10,7 @@ export const test = () =>
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
 
-    const _adapter = yield* makePersistedAdapter({
+    const clientSession = yield* makePersistedAdapter({
       storage: { type: 'opfs' },
       worker: LiveStoreWorker,
       sharedWorker: LiveStoreSharedWorker,
@@ -32,7 +32,7 @@ export const test = () =>
       Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
     )
 
-    return { bootStatusUpdates }
+    return { bootStatusUpdates, migrationsReport: clientSession.leaderThread.initialState.migrationsReport }
   }).pipe(
     Effect.tapCauseLogPretty,
     Effect.exit,

@@ -6,16 +6,16 @@ import type { LiveStoreSchema } from '../schema/mod.js'
 import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
 import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'
 import {
+  isStateSystemTable,
   SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
   schemaEventDefsMetaTable,
-  schemaMetaTable,
-  systemTables,
+  stateSystemTables,
 } from '../schema/state/sqlite/system-tables.js'
 import { sql } from '../util.js'
 import type { SchemaManager } from './common.js'
 import { dbExecute, dbSelect } from './common.js'
-import { validateSchema } from './validate-mutation-defs.js'
+import { validateSchema } from './validate-schema.js'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
@@ -55,11 +55,13 @@ export const migrateDb = ({
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }): Effect.Effect<MigrationsReport, UnexpectedError> =>
   Effect.gen(function* () {
-    yield* migrateTable({
-      db,
-      tableAst: schemaMetaTable.sqliteDef.ast,
-      behaviour: 'create-if-not-exists',
-    })
+    for (const tableDef of stateSystemTables) {
+      yield* migrateTable({
+        db,
+        tableAst: tableDef.sqliteDef.ast,
+        behaviour: 'create-if-not-exists',
+      })
+    }
 
     // TODO enforce that migrating tables isn't allowed once the store is running
 
@@ -72,11 +74,11 @@ export const migrateDb = ({
       schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
     )
 
-    const tableDefs = new Set([
+    const tableDefs = [
       // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
-      ...systemTables,
-      ...Array.from(schema.tables.values()).filter((_) => _.sqliteDef.name !== SCHEMA_META_TABLE),
-    ])
+      ...stateSystemTables,
+      ...Array.from(schema.state.sqlite.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
+    ]
 
     const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()
 

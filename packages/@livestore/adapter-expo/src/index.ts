@@ -173,10 +173,12 @@ const makeLeaderThread = ({
     const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
     const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
 
-    const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
+    const schemaHashSuffix =
+      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+    const stateDatabaseName = `${'livestore-'}${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
     const dbEventlogPath = `${'livestore-'}eventlog@${liveStoreStorageFormatVersion}.db`
 
-    const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: readModelDatabaseName, directory })
+    const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbEventlogPath, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -291,7 +293,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel,
           persistenceInfo: {
-            readModel: dbState.metadata.persistenceInfo,
+            state: dbState.metadata.persistenceInfo,
             eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }

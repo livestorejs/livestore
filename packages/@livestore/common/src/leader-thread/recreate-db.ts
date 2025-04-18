@@ -14,7 +14,7 @@ export const recreateDb: Effect.Effect<
 > = Effect.gen(function* () {
   const { dbState, dbEventlog, schema, bootStatusQueue, materializeEvent } = yield* LeaderThreadCtx
 
-  const migrationOptions = schema.migrationOptions
+  const migrationOptions = schema.state.sqlite.migrations
   let migrationsReport: MigrationsReport
 
   yield* Effect.addFinalizer(
@@ -47,7 +47,7 @@ export const recreateDb: Effect.Effect<
     })
 
   switch (migrationOptions.strategy) {
-    case 'from-eventlog': {
+    case 'auto': {
       const hooks = migrationOptions.hooks
       const initResult = yield* initDb(hooks)
 
@@ -61,18 +61,6 @@ export const recreateDb: Effect.Effect<
         onProgress: ({ done, total }) =>
           Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
       })
-
-      yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
-
-      break
-    }
-    case 'hard-reset': {
-      const hooks = migrationOptions.hooks
-      const initResult = yield* initDb(hooks)
-
-      migrationsReport = initResult.migrationsReport
-
-      // The database is migrated but empty now, so nothing else to do
 
       yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
 

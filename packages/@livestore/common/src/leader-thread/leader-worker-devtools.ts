@@ -214,7 +214,7 @@ const listenToDevtools = ({
 
               yield* sendMessage(
                 Devtools.Leader.DatabaseFileInfoRes.make({
-                  readModel: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.readModel },
+                  state: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.state },
                   eventlog: { fileSize: eventlogFileSize, persistenceInfo: persistenceInfo.eventlog },
                   ...reqPayload,
                 }),

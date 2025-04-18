@@ -5,8 +5,7 @@ import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './Even
 import { rawSqlEvent } from './EventDef.js'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.js'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.js'
-import { SqliteAst } from './state/sqlite/db-schema/mod.js'
-import { systemTables } from './state/sqlite/system-tables.js'
+import { stateSystemTables } from './state/sqlite/system-tables.js'
 import type { TableDef } from './state/sqlite/table-def.js'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
@@ -16,28 +15,24 @@ export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
   TEventsDefRecord extends EventDefRecord = EventDefRecord,
 > = {
-  readonly _Type: LiveStoreSchemaSymbol
+  readonly LiveStoreSchemaSymbol: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
   readonly _EventDefMapType: TEventsDefRecord
 
-  // TODO remove in favour of `state`
-  readonly tables: Map<string, TableDef>
-  /** Compound hash of all table defs etc */
-  readonly hash: number
   readonly state: State
-
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
-
-  // readonly materializers: Map<string, Materializer>
-
-  migrationOptions: MigrationOptions
 }
 
+// TODO abstract this further away from sqlite/tables
 export type State = {
-  // TODO abstract this further away from sqlite/tables
-  readonly tables: Map<string, TableDef.Any>
+  readonly sqlite: {
+    readonly tables: Map<string, TableDef.Any>
+    readonly migrations: MigrationOptions
+    /** Compound hash of all table defs etc */
+    readonly hash: number
+  }
   readonly materializers: Map<string, Materializer>
 }
 
@@ -48,32 +43,12 @@ export type InputSchema = {
 
 export const makeSchema = <TInputSchema extends InputSchema>(
   /** Note when using the object-notation for tables/events, the object keys are ignored and not used as table/mutation names */
-  inputSchema: TInputSchema & {
-    /** "hard-reset" is currently the default strategy */
-    migrations?: MigrationOptions
-  },
+  inputSchema: TInputSchema,
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
-  // const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
-  //   ? inputSchema.tables
-  //   : Object.values(inputSchema.tables)
-
-  // const inputTables = []
-
-  // const tables = new Map<string, TableDef>()
-
-  // for (const tableDef of inputTables) {
-  //   // TODO validate tables (e.g. index names are unique)
-  //   if (tables.has(tableDef.sqliteDef.ast.name)) {
-  //     shouldNeverHappen(`Duplicate table name: ${tableDef.sqliteDef.ast.name}. Please use unique names for tables.`)
-  //   }
-  //   tables.set(tableDef.sqliteDef.ast.name, tableDef)
-  // }
-
   const state = inputSchema.state
-  const tables = inputSchema.state.tables
+  const tables = inputSchema.state.sqlite.tables
 
-  for (const tableDef of systemTables) {
-    // // @ts-expect-error TODO fix type level issue
+  for (const tableDef of stateSystemTables) {
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
@@ -100,22 +75,12 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  const hash = SqliteAst.hash({
-    _tag: 'dbSchema',
-    tables: [...tables.values()].map((_) => _.sqliteDef.ast),
-  })
-
   return {
-    _Type: LiveStoreSchemaSymbol,
+    LiveStoreSchemaSymbol,
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
-    // tables,
-    // events,
     state,
-    tables: state.tables,
     eventsDefsMap,
-    migrationOptions: inputSchema.migrations ?? { strategy: 'from-eventlog' },
-    hash,
   } satisfies LiveStoreSchema
 }
 
@@ -139,7 +104,7 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 
 export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
-    DbSchemaFromInputSchemaTables<TInputSchema['state']['tables']>,
+    DbSchemaFromInputSchemaTables<TInputSchema['state']['sqlite']['tables']>,
     EventDefRecordFromInputSchemaEvents<TInputSchema['events']>
   >
 
@@ -148,7 +113,7 @@ export namespace FromInputSchema {
    * - array: we use the table name of each array item (= table definition) as the object key
    * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
    */
-  type DbSchemaFromInputSchemaTables<TTables extends InputSchema['state']['tables']> =
+  type DbSchemaFromInputSchemaTables<TTables extends InputSchema['state']['sqlite']['tables']> =
     TTables extends ReadonlyArray<TableDef>
       ? { [K in TTables[number] as K['sqliteDef']['name']]: K['sqliteDef'] }
       : TTables extends Record<string, TableDef>

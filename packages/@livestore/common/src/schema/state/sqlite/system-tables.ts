@@ -66,17 +66,16 @@ export const leaderMergeCounterTable = table({
 
 export type LeaderMergeCounterRow = typeof leaderMergeCounterTable.Type
 
-export const systemTables = [
+export const stateSystemTables = [
   schemaMetaTable,
   schemaEventDefsMetaTable,
   sessionChangesetMetaTable,
   leaderMergeCounterTable,
 ]
 
-/// Eventlog DB
+export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
 
-export const SyncStatus = Schema.Literal('synced', 'pending', 'error', 'clientOnly')
-export type SyncStatus = typeof SyncStatus.Type
+/// Eventlog DB
 
 export const EVENTLOG_META_TABLE = 'eventlog'
 
@@ -113,3 +112,5 @@ export const syncStatusTable = table({
 })
 
 export type SyncStatusRow = typeof syncStatusTable.Type
+
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable]

@@ -1,9 +1,11 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
+import type { MigrationOptions } from '../../../adapter-types.js'
 import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.js'
 import type { State } from '../../schema.js'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
-import { systemTables } from './system-tables.js'
+import { SqliteAst } from './db-schema/mod.js'
+import { stateSystemTables } from './system-tables.js'
 import { type TableDef, type TableDefBase } from './table-def.js'
 
 export * from './table-def.js'
@@ -32,7 +34,7 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     tables.set(sqliteDef.ast.name, tableDef)
   }
 
-  for (const tableDef of systemTables) {
+  for (const tableDef of stateSystemTables) {
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
@@ -53,10 +55,19 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     }
   }
 
-  return { tables, materializers }
+  const hash = SqliteAst.hash({
+    _tag: 'dbSchema',
+    tables: [...tables.values()].map((_) => _.sqliteDef.ast),
+  })
+
+  return { sqlite: { tables, migrations: inputSchema.migrations ?? { strategy: 'auto' }, hash }, materializers }
 }
 
 export type InputState = {
   readonly tables: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
   readonly materializers: Record<string, Materializer<any>>
+  /**
+   * @default { strategy: 'auto' }
+   */
+  readonly migrations?: MigrationOptions
 }

@@ -47,6 +47,13 @@ There are many ways to contribute to LiveStore.
 - Changes to the devtools
 - Rewriting the core library in a different language
 
+### Open research questions
+
+- Safer event schema evolution
+- Incremental view maintenance for complex SQLite database views
+
+Please get in touch if you'd like to discuss any of these topics!
+
 ## Guiding principles {#guiding-principles}
 
 - Keep it as simple as possible
