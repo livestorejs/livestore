@@ -1,10 +1,10 @@
-import '@livestore/utils/node-vitest-polyfill'
+import '@livestore/utils-dev/node-vitest-polyfill'
 
 import { makeRef, queryDb } from '@livestore/livestore'
 import * as LiveStore from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils/node-vitest'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 // @ts-expect-error no types

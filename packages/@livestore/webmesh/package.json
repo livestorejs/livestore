@@ -19,6 +19,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
     "vitest": "^3.1.1"
   },
   "publishConfig": {

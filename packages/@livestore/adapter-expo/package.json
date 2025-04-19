@@ -21,6 +21,11 @@
     "expo-file-system": "*",
     "expo-sqlite": "^15.2.4"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "peerDependencies": {
     "expo-file-system": "*",
     "expo-sqlite": "~15.2.4"

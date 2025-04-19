@@ -1,4 +1,4 @@
-import '@livestore/utils/node-vitest-polyfill'
+import '@livestore/utils-dev/node-vitest-polyfill'
 
 import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
@@ -23,8 +23,9 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils/node-vitest'
+import { PlatformNode } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
 import type { MockSyncBackend } from '../mock-sync-backend.js'

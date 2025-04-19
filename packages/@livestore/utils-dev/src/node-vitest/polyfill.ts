@@ -1,0 +1,1 @@
+process.stdout.isTTY = true

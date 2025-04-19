@@ -1,4 +1,4 @@
-import { Vitest } from '@livestore/utils/node-vitest'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
 import { EventId } from './mod.js'

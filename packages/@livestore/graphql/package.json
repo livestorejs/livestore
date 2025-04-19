@@ -19,6 +19,11 @@
   "devDependencies": {
     "graphql": "^16.10.0"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "peerDependencies": {
     "graphql": "~16.10.0"
   },

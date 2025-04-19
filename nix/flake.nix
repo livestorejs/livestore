@@ -46,6 +46,7 @@
             watchman
             caddy
             act
+            pkgsUnstable.deno
             
             self.packages.${system}.find-free-port
 

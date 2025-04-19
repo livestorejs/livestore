@@ -14,6 +14,10 @@ description: Considerations when deciding to use LiveStore.
   - you are working on a new app as LiveStore doesn't yet provide a way to [re-use an existing database](/docs/misc/faq#existing-database)
   - the current [state of the project](/docs/evaluation/state-of-the-project) aligns with your own timeline and requirements
 
+## Evaluation exercise
+
+A great way to evaluate whether LiveStore is a good fit for your application, is by trying to model your application events (and optionally state) schema.
+
 ## Database
 
 - All the client app data should fit into a in-memory SQLite database

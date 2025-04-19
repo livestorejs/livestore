@@ -12,6 +12,7 @@
   "references": [
     { "path": "../common" },
     { "path": "../adapter-web" },
-    { "path": "../utils" }
+    { "path": "../utils" },
+    { "path": "../utils-dev" },
   ]
 }

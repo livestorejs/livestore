@@ -1,7 +1,7 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
 import { makeCfSync } from '@livestore/sync-cf'
 import { Effect } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 const argv = getWorkerArgs()
 

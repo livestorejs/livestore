@@ -1,4 +1,4 @@
-import '@livestore/utils/node-vitest-polyfill'
+import '@livestore/utils-dev/node-vitest-polyfill'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-node'
 import { SyncState, type UnexpectedError } from '@livestore/common'
@@ -20,8 +20,9 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils/node-vitest'
+import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
 import { events, schema, tables } from '../leader-thread/fixture.js'

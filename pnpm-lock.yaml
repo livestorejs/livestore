@@ -340,6 +340,9 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/utils
     devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/utils-dev
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -1743,6 +1746,9 @@ importers:
         specifier: 0.24.8
         version: 0.24.8
     devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -1856,6 +1862,9 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../adapter-web
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: ^2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
@@ -1904,25 +1913,10 @@ importers:
       '@effect/typeclass':
         specifier: 0.33.8
         version: 0.33.8(effect@3.14.8)
-      '@effect/vitest':
-        specifier: 0.20.8
-        version: 0.20.8(effect@3.14.8)(vitest@3.1.1)
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
-      '@opentelemetry/exporter-metrics-otlp-http':
-        specifier: 0.200.0
-        version: 0.200.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/exporter-trace-otlp-http':
-        specifier: 0.200.0
-        version: 0.200.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources':
-        specifier: 2.0.0
-        version: 2.0.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-metrics':
-        specifier: 2.0.0
-        version: 2.0.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-base':
         specifier: 2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
       effect:
@@ -1947,6 +1941,9 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../adapter-web
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: ^2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
@@ -2122,22 +2119,7 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      '@opentelemetry/exporter-metrics-otlp-http':
-        specifier: ^0.200.0
-        version: 0.200.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/exporter-trace-otlp-http':
-        specifier: ^0.200.0
-        version: 0.200.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources':
-        specifier: ^2.0.0
-        version: 2.0.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-metrics':
-        specifier: ^2.0.0
-        version: 2.0.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-base':
-        specifier: ^2.0.0
-        version: 2.0.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-node':
         specifier: ^2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
       '@types/bun':
@@ -2162,6 +2144,36 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
+  packages/@livestore/utils-dev:
+    dependencies:
+      '@effect/opentelemetry':
+        specifier: 0.46.4
+        version: 0.46.4(@effect/platform@0.80.8(effect@3.14.8))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.32.0)(effect@3.14.8)
+      '@effect/vitest':
+        specifier: 0.20.8
+        version: 0.20.8(effect@3.14.8)(vitest@3.1.1)
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+      '@opentelemetry/exporter-metrics-otlp-http':
+        specifier: 0.200.0
+        version: 0.200.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: 0.200.0
+        version: 0.200.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-metrics':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
+
   packages/@livestore/webmesh:
     dependencies:
       '@livestore/common':
@@ -2171,6 +2183,9 @@ importers:
         specifier: workspace:*
         version: link:../utils
     devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -2180,6 +2195,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../packages/@livestore/utils
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../packages/@livestore/utils-dev
       '@types/node':
         specifier: ^22.13.10
         version: 22.13.10
@@ -2210,6 +2228,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils-dev
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -2248,6 +2269,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
     devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils-dev
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)

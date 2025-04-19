@@ -8,5 +8,5 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../utils" }]
+  "references": [{ "path": "../utils" }, { "path": "../utils-dev" }]
 }

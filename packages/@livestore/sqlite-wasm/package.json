@@ -31,6 +31,11 @@
     "@types/node": "^22.13.10",
     "@types/wicg-file-system-access": "^2023.10.5"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },

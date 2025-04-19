@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
@@ -42,6 +43,11 @@
     "vite": "^6.2.1",
     "vitest": "^3.1.1"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "peerDependencies": {
     "react": "~19.0.0"
   },

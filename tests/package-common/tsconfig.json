@@ -12,6 +12,7 @@
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/utils" },
+    { "path": "../../packages/@livestore/utils-dev" },
     { "path": "../../packages/@livestore/sqlite-wasm" },
     { "path": "../../packages/@livestore/adapter-node" },
     { "path": "../../packages/@livestore/livestore" },

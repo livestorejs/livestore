@@ -1,4 +1,4 @@
-import '@livestore/utils/node-vitest-polyfill'
+import '@livestore/utils-dev/node-vitest-polyfill'
 
 import { IS_CI } from '@livestore/utils'
 import {
@@ -14,8 +14,8 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils/node-vitest'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
 import { Packet } from './mesh-schema.js'

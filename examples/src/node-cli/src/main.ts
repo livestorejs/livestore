@@ -9,7 +9,8 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb, Schema } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
 import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
-import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
+import { Cli, PlatformNode } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('directory').pipe(Cli.Options.withDefault(''))

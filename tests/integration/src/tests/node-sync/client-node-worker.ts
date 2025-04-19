@@ -20,7 +20,8 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessRunner, OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
+import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 import { events, schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'

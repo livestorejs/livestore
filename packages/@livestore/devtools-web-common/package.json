@@ -19,6 +19,11 @@
     "@livestore/webmesh": "workspace:*"
   },
   "devDependencies": {},
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },

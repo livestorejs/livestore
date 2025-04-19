@@ -12,6 +12,11 @@
     "expo": "^53.0.0-preview.5",
     "vite": "^6.2.1"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "main": "./dist/index.cjs",
   "peerDependencies": {
     "expo": "^53.0.0-preview.5"

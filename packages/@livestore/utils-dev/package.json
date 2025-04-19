@@ -1,0 +1,46 @@
+{
+  "name": "@livestore/utils-dev",
+  "version": "0.3.0-dev.33",
+  "type": "module",
+  "sideEffects": [
+    "./dist/node-vitest/polyfill.js"
+  ],
+  "exports": {
+    "./node": {
+      "types": "./dist/node/mod.d.ts",
+      "default": "./dist/node/mod.js"
+    },
+    "./node-vitest": {
+      "types": "./dist/node-vitest/mod.d.ts",
+      "default": "./dist/node-vitest/mod.js"
+    },
+    "./node-vitest-polyfill": {
+      "types": "./dist/node-vitest/polyfill.d.ts",
+      "default": "./dist/node-vitest/polyfill.js"
+    }
+  },
+  "dependencies": {
+    "@effect/opentelemetry": "0.46.4",
+    "@effect/vitest": "0.20.8",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
+    "@opentelemetry/sdk-metrics": "2.0.0",
+    "@opentelemetry/sdk-trace-base": "2.0.0",
+    "@opentelemetry/sdk-trace-node": "2.0.0"
+  },
+  "devDependencies": {},
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "peerDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo 'No tests for utils-dev'"
+  }
+}

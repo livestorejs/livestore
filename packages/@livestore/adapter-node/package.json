@@ -45,6 +45,11 @@
     "@types/ws": "^8.18.0",
     "rollup": "^4.35.0"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
