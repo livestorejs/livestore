@@ -1,4 +1,3 @@
-import '../../global.css'
 import '../../polyfill.ts'
 
 import { Tabs, useRouter } from 'expo-router'
@@ -33,7 +32,7 @@ const TabLayout = () => {
             color: 'gray',
           },
           headerRight: () => (
-            <Pressable className="p-3" style={{ marginRight: 16 }} onPress={() => router.push('/filter-settings')}>
+            <Pressable style={{ marginRight: 16, padding: 8 }} onPress={() => router.push('/filter-settings')}>
               <SlidersHorizontal color={'gray'} size={18} />
             </Pressable>
           ),
