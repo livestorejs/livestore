@@ -3,13 +3,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-
     "sourceMap": false,
     "composite": false,
     "declarationMap": false,
     "declaration": false,
-    "jsx": "react-jsx",
-
+    "jsx": "react-jsx"
   },
   "include": ["./test-app", "./tests"],
   "references": [
