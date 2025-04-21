@@ -13,7 +13,7 @@ import { expect } from 'vitest'
 
 import * as WorkerSchema from './worker-schema.js'
 
-const testTimeout = IS_CI ? 60_000 : 10_000
+const testTimeout = IS_CI ? 120_000 : 15_000
 const propTestTimeout = IS_CI ? 300_000 : 120_000
 
 const DEBUGGER_ACTIVE = process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined

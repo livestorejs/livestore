@@ -1,6 +1,6 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
-import { makeRef, queryDb } from '@livestore/livestore'
+import { queryDb, signal } from '@livestore/livestore'
 import * as LiveStore from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
@@ -101,7 +101,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
-        const filter$ = makeRef('t1', { label: 'id-filter' })
+        const filter$ = signal('t1', { label: 'id-filter' })
 
         const todo$ = queryDb((get) => tables.todos.where('id', get(filter$)), { label: 'todo' })
 
@@ -129,7 +129,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(2)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-        ReactTesting.act(() => store.setRef(filter$, 't2'))
+        ReactTesting.act(() => store.setSignal(filter$, 't2'))
 
         expect(result.current).toBe('buy eggs')
         expect(renderCount.val).toBe(3)

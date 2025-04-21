@@ -28,11 +28,11 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import type {
-  ILiveQueryRefDef,
   LiveQuery,
   LiveQueryDef,
   ReactivityGraph,
   ReactivityGraphContext,
+  SignalDef,
 } from '../live-queries/base-class.js'
 import { makeReactivityGraph } from '../live-queries/base-class.js'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
@@ -402,23 +402,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     }
   }
 
-  atom = (): TODO => {}
-
-  // makeLive: {
-  //   <T>(def: LiveQueryDef<T, any>): LiveQuery<T, any>
-  //   <T>(def: ILiveQueryRefDef<T>): ILiveQueryRef<T>
-  // } = (def: any) => {
-  //   if (def._tag === 'live-ref-def') {
-  //     return (def as ILiveQueryRefDef<any>).make(this.reactivityGraph.context!)
-  //   } else {
-  //     return (def as LiveQueryDef<any, any>).make(this.reactivityGraph.context!) as any
-  //   }
-  // }
-
-  setRef = <T>(refDef: ILiveQueryRefDef<T>, value: T): void => {
-    const ref = refDef.make(this.reactivityGraph.context!)
-    ref.value.set(value)
-    ref.deref()
+  setSignal = <T>(signalDef: SignalDef<T>, value: T): void => {
+    const signalRef = signalDef.make(this.reactivityGraph.context!)
+    signalRef.value.set(value)
+    signalRef.deref()
   }
 
   // #region commit

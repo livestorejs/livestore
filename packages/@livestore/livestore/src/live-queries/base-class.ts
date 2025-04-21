@@ -14,7 +14,7 @@ export const makeReactivityGraph = (): ReactivityGraph =>
 export type ReactivityGraphContext = {
   store: Store
   /** Maps from the hash of the query definition to the RcRef of the query */
-  defRcMap: Map<string, RcRef<LiveQuery.Any | ILiveQueryRef<any>>>
+  defRcMap: Map<string, RcRef<LiveQuery.Any | ISignal<any>>>
   /** Back-reference to the reactivity graph for convenience */
   reactivityGraph: WeakRef<ReactivityGraph>
   otelTracer: otel.Tracer
@@ -27,14 +27,14 @@ export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any> =
 
 let queryIdCounter = 0
 
-export interface ILiveQueryRefDef<T> {
-  _tag: 'live-ref-def'
+export interface SignalDef<T> {
+  _tag: 'signal-def'
   defaultValue: T
-  make: (ctx: ReactivityGraphContext) => RcRef<ILiveQueryRef<T>>
+  make: (ctx: ReactivityGraphContext) => RcRef<ISignal<T>>
 }
 
-export interface ILiveQueryRef<T> {
-  _tag: 'live-ref'
+export interface ISignal<T> {
+  _tag: 'signal'
   reactivityGraph: ReactivityGraph
   ref: RG.Ref<T, ReactivityGraphContext, RefreshReason>
   set: (value: T) => void
@@ -156,12 +156,12 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
 }
 
 export type GetAtomResult = <T>(
-  atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ILiveQueryRef<T> | ILiveQueryRefDef<T>,
+  atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ISignal<T> | SignalDef<T>,
   otelContext?: otel.Context | undefined,
   debugRefreshReason?: RefreshReason | undefined,
 ) => T
 
-export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ILiveQueryRef<any>>>
+export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ISignal<any>>>
 
 export const makeGetAtomResult = (
   get: RG.GetAtom,
@@ -175,15 +175,15 @@ export const makeGetAtomResult = (
     if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom, otelContext, debugRefreshReason)
 
     // LiveQueryDef case
-    if (atom._tag === 'def' || atom._tag === 'live-ref-def') {
+    if (atom._tag === 'def' || atom._tag === 'signal-def') {
       const query = atom.make(ctx)
       dependencyQueriesRef.add(query)
       // TODO deref the query on destroy
       return getAtom(query.value, _otelContext, debugRefreshReason)
     }
 
-    // LiveQueryRef case
-    if (atom._tag === 'live-ref') return get(atom.ref, otelContext, debugRefreshReason)
+    // Signal case
+    if (atom._tag === 'signal') return get(atom.ref, otelContext, debugRefreshReason)
 
     // LiveQuery case
     return get(atom.results$, otelContext, debugRefreshReason)
@@ -192,7 +192,7 @@ export const makeGetAtomResult = (
   return getAtom
 }
 
-export const withRCMap = <T extends LiveQuery.Any | ILiveQueryRef<any>>(
+export const withRCMap = <T extends LiveQuery.Any | ISignal<any>>(
   id: string,
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => T,
 ): ((ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<T>) => {
