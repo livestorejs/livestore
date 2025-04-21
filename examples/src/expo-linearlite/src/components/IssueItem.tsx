@@ -31,7 +31,7 @@ export const IssueItem = memo(
     return (
       <Link href={linkHref as LinkProps['href']} asChild>
         <Pressable
-          style={[styles.pressable, { backgroundColor: isDarkMode ? undefined : undefined }]}
+          style={[styles.pressable, { backgroundColor: isDarkMode ? '#27272a' : '#fafafa' }]}
           android_ripple={{ color: isDarkMode ? '#333' : '#eee' }}
         >
           <View style={styles.container}>
@@ -67,6 +67,8 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',

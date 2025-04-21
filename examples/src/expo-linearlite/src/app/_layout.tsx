@@ -7,9 +7,19 @@ import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
-import { Button, LogBox, Platform, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
+import {
+  Button,
+  LogBox,
+  Platform,
+  StyleSheet,
+  Text,
+  unstable_batchedUpdates as batchUpdates,
+  useColorScheme,
+  View,
+} from 'react-native'
 
 import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
+import { darkBackground, darkText, nordicGray } from '@/constants/Colors.ts'
 import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
 import ThemeProvider from '@/context/ThemeProvider.tsx'
 
@@ -25,6 +35,20 @@ LogBox.ignoreAllLogs()
 const RootLayout = () => {
   const adapter = makePersistedAdapter()
   const [, rerender] = React.useState({})
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? darkBackground : 'white',
+    },
+    text: {
+      color: isDark ? darkText : nordicGray,
+    },
+  })
 
   return (
     <LiveStoreProvider
@@ -32,14 +56,14 @@ const RootLayout = () => {
       renderLoading={(_) => <LoadingLiveStore stage={_.stage} />}
       // disableDevtools={true}
       renderError={(error: any) => (
-        <View className="flex-1 items-center justify-center">
-          <Text>Error: {JSON.stringify(error, null, 2)}</Text>
+        <View style={styles.container}>
+          <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
         </View>
       )}
       renderShutdown={() => {
         return (
-          <View className="flex-1 items-center justify-center">
-            <Text>LiveStore Shutdown</Text>
+          <View style={styles.container}>
+            <Text style={styles.text}>LiveStore Shutdown</Text>
             <Button title="Reload" onPress={() => rerender({})} />
           </View>
         )
@@ -56,7 +80,7 @@ const RootLayout = () => {
             name="filter-settings"
             options={{
               presentation: Platform.OS === 'ios' ? 'formSheet' : 'modal',
-              sheetAllowedDetents: [0.4],
+              sheetAllowedDetents: [0.4, 0.8],
               sheetCornerRadius: 16,
               sheetGrabberVisible: true,
               headerShown: Platform.OS === 'android',
