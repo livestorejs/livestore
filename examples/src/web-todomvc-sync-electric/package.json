@@ -6,7 +6,7 @@
   "dependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.34",
+    "@livestore/devtools-vite": "0.3.0-dev.35",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
