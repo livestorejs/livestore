@@ -9,7 +9,7 @@ import type {
   Store,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
-import { errorToString, LS_DEV } from '@livestore/utils'
+import { errorToString, IS_REACT_NATIVE, LS_DEV } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Cause,
@@ -81,9 +81,8 @@ export interface LiveStoreProviderProps {
   syncPayload?: Schema.JsonValue
 }
 
-const defaultRenderError = (error: UnexpectedError | unknown) => (
-  <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
-)
+const defaultRenderError = (error: UnexpectedError | unknown) =>
+  IS_REACT_NATIVE ? <></> : <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted) => {
   const reason =
@@ -99,10 +98,11 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
               ? 'manual shutdown'
               : 'unknown reason'
 
-  return <>LiveStore Shutdown due to {reason}</>
+  return IS_REACT_NATIVE ? <></> : <>LiveStore Shutdown due to {reason}</>
 }
 
-const defaultRenderLoading = (status: BootStatus) => <>LiveStore is loading ({status.stage})...</>
+const defaultRenderLoading = (status: BootStatus) =>
+  IS_REACT_NATIVE ? <></> : <>LiveStore is loading ({status.stage})...</>
 
 export const LiveStoreProvider = ({
   renderLoading = defaultRenderLoading,

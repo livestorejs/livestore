@@ -451,10 +451,15 @@ export const makePersistedAdapter =
           const webmeshNode = yield* Webmesh.makeMeshNode(`client-session-${storeId}-${clientId}-${sessionId}`)
           globalThis.__debugWebmeshNode = webmeshNode
 
-          yield* logDevtoolsUrl({ clientSession, storeId })
+          yield* logDevtoolsUrl({ clientSession, schema, storeId })
 
           const sessionsChannel = yield* makeSessionsChannel
-          const sessionInfoMessage = Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId })
+          const sessionInfoMessage = Devtools.SessionInfo.SessionInfo.make({
+            storeId,
+            clientId,
+            sessionId,
+            schemaAlias: schema.devtools.alias,
+          })
 
           yield* Devtools.SessionInfo.provideSessionInfo({
             webChannel: sessionsChannel,

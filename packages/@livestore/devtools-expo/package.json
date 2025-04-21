@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "expo": "^53.0.0-preview.5",
+    "expo": "^53.0.0-preview.7",
     "vite": "^6.2.1"
   },
   "files": [
@@ -19,7 +19,7 @@
   ],
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "^53.0.0-preview.5"
+    "expo": "^53.0.0-preview.7"
   },
   "publishConfig": {
     "access": "public"

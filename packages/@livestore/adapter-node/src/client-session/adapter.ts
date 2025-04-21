@@ -150,6 +150,7 @@ const makeAdapterImpl = ({
           ? {
               enabled: true,
               schemaPath: devtoolsOptionsInput.schemaPath,
+              schemaAlias: schema.devtools.alias,
               port: devtoolsOptionsInput.port ?? 4242,
               host: devtoolsOptionsInput.host ?? 'localhost',
             }
@@ -194,9 +195,10 @@ const makeAdapterImpl = ({
             schema: Devtools.SessionInfo.Message,
           })
 
+          const schemaAlias = schema.devtools.alias
           yield* Devtools.SessionInfo.provideSessionInfo({
             webChannel: sessionsChannel,
-            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId }),
+            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId, schemaAlias }),
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           const storeDevtoolsChannel = yield* DevtoolsNode.makeChannelForConnectedMeshNode({

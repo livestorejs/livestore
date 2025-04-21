@@ -25,6 +25,7 @@ import { makeViteMiddleware } from './vite-dev-server.js'
  */
 export const startDevtoolsServer = ({
   schemaPath,
+  schemaAlias,
   storeId,
   clientId,
   sessionId,
@@ -32,6 +33,7 @@ export const startDevtoolsServer = ({
   host,
 }: {
   schemaPath: string
+  schemaAlias: string
   storeId: string
   clientId: string
   sessionId: string
@@ -106,7 +108,7 @@ export const startDevtoolsServer = ({
     }).pipe(Effect.interruptible)
 
     yield* Effect.logDebug(
-      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}`,
+      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}/${schemaAlias}`,
     )
 
     return HttpServer.serve(handler, HttpMiddleware.logger)

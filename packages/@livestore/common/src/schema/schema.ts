@@ -23,6 +23,10 @@ export type LiveStoreSchema<
 
   readonly state: State
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
+  readonly devtools: {
+    /** @default 'default' */
+    readonly alias: string
+  }
 }
 
 // TODO abstract this further away from sqlite/tables
@@ -39,6 +43,15 @@ export type State = {
 export type InputSchema = {
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: State
+  readonly devtools?: {
+    /**
+     * This alias value is used to disambiguate between multiple schemas in the devtools.
+     * Only needed when an app uses multiple schemas.
+     *
+     * @default 'default'
+     */
+    readonly alias?: string
+  }
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -81,6 +94,9 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
     state,
     eventsDefsMap,
+    devtools: {
+      alias: inputSchema.devtools?.alias ?? 'default',
+    },
   } satisfies LiveStoreSchema
 }
 

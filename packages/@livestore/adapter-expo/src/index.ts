@@ -121,7 +121,12 @@ export const makePersistedAdapter =
 
           yield* Devtools.SessionInfo.provideSessionInfo({
             webChannel: sessionInfoChannel,
-            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ clientId, sessionId, storeId }),
+            sessionInfo: Devtools.SessionInfo.SessionInfo.make({
+              clientId,
+              sessionId,
+              storeId,
+              schemaAlias: schema.devtools.alias,
+            }),
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           const storeDevtoolsChannel = yield* DevtoolsExpo.makeChannelForConnectedMeshNode({
