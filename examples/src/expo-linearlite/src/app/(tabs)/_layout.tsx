@@ -1,4 +1,3 @@
-import '../../global.css'
 import '../../polyfill.ts'
 
 import { Tabs, useRouter } from 'expo-router'

@@ -1,4 +1,3 @@
-import '../global.css'
 import '../polyfill.ts'
 import 'react-native-reanimated'
 

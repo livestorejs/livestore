@@ -9,7 +9,8 @@ import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
 import { uiState$ } from '@/livestore/queries.ts'
-import { events, tables } from '@/livestore/schema.ts'
+
+import { events, tables } from '../../livestore/schema.ts'
 
 // const homeTabs = ['Assigned', 'Created']
 // For reference
@@ -232,7 +233,7 @@ const HomeScreen = () => {
       // TODO remove type-cast when LegendList supports immutable arrays
       data={issues as typeof issues extends (infer T)[] ? T[] : never}
       renderItem={renderItem}
-      contentContainerClassName="gap-1 px-2"
+      contentContainerStyle={{ gap: 1, paddingHorizontal: 2 }}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
       estimatedItemSize={40}

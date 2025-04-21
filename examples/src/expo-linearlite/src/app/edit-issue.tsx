@@ -6,8 +6,9 @@ import { Image, Pressable, ScrollView, TextInput, View } from 'react-native'
 
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import { events, tables } from '@/livestore/schema.js'
 import type { Priority, Status } from '@/types.ts'
+
+import { events, tables } from '../livestore/schema.ts'
 
 const EditIssueScreen = () => {
   const issueId = useLocalSearchParams().issueId as string

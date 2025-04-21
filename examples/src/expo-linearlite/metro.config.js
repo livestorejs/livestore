@@ -1,4 +1,3 @@
-const { withNativeWind } = require('nativewind/metro')
 const path = require('node:path')
 /* eslint-disable unicorn/prefer-module */
 
@@ -25,4 +24,4 @@ addLiveStoreDevtoolsMiddleware(config, {
   },
 })
 
-module.exports = withNativeWind(config, { input: './src/global.css' })
+module.exports = config
