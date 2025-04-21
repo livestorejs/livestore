@@ -4,7 +4,7 @@
   "include": [],
   "references": [
     { "path": "./scripts" },
-    { "path": "./examples/src/node-cli" },
+    { "path": "./examples/src/node-effect-cli" },
     { "path": "./examples/src/expo-todomvc" },
     { "path": "./examples/src/expo-linearlite" },
     { "path": "./examples/src/web-linearlite" },

@@ -322,7 +322,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
-  examples/src/node-cli:
+  examples/src/node-effect-cli:
     dependencies:
       '@livestore/adapter-node':
         specifier: workspace:*

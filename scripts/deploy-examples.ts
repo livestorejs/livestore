@@ -81,7 +81,7 @@ export const command = Cli.Command.make(
     alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
   },
   Effect.fn(function* ({ alias, exampleFilter, prod }) {
-    const excludeDirs = new Set(['expo-linearlite', 'expo-todomvc', 'node-cli', 'todomvc-sync-electric'])
+    const excludeDirs = new Set(['expo-linearlite', 'expo-todomvc', 'node-effect-cli', 'todomvc-sync-electric'])
     const examplesToDeploy = fs
       .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && !excludeDirs.has(entry.name))

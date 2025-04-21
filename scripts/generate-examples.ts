@@ -20,7 +20,7 @@ const STANDALONE_DIR = `${workspaceRoot}/examples/standalone`
 const PATCHES_DIR = `${workspaceRoot}/examples/patches`
 const SRC_DIR = `${workspaceRoot}/examples/src`
 
-const EXCLUDE_EXAMPLES = ['node-cli']
+const EXCLUDE_EXAMPLES = ['node-effect-cli']
 
 $.cwd(workspaceRoot)
 

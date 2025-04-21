@@ -5,4 +5,12 @@ sidebar:
   order: 3
 ---
 
-TODO
+```ts
+import { makeAdapter } from '@livestore/adapter-node'
+
+const adapter = makeAdapter({
+  storage: { type: 'fs' },
+  // sync: { backend: makeCfSync({ url: '...' }) },
+})
+```
+
