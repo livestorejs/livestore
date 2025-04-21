@@ -18,31 +18,25 @@ export const WorkerArgv = Schema.parseJson(
   }),
 )
 
-export const StorageTypeOpfs = Schema.Struct({
-  type: Schema.Literal('opfs'),
-  /**
-   * Default is `livestore-${storeId}`
-   *
-   * When providing this option, make sure to include the `storeId` in the path to avoid
-   * conflicts with other LiveStore apps.
-   */
-  directory: Schema.optional(Schema.String),
+export const StorageTypeInMemory = Schema.Struct({
+  type: Schema.Literal('in-memory'),
 })
 
-export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
+export type StorageTypeInMemory = typeof StorageTypeInMemory.Type
 
-// export const StorageTypeIndexeddb = Schema.Struct({
-//   type: Schema.Literal('indexeddb'),
-//   /** @default "livestore" */
-//   databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
-//   /** @default "livestore-" */
-//   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
-// })
+export const StorageTypeFs = Schema.Struct({
+  type: Schema.Literal('fs'),
+  /**
+   * Where to store the database files
+   *
+   * @default Current working directory
+   */
+  baseDirectory: Schema.String,
+})
 
-export const StorageType = Schema.Union(
-  StorageTypeOpfs,
-  // StorageTypeIndexeddb
-)
+export type StorageTypeFs = typeof StorageTypeFs.Type
+
+export const StorageType = Schema.Union(StorageTypeInMemory, StorageTypeFs)
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
@@ -71,14 +65,17 @@ export namespace LeaderWorkerInner {
     payload: {
       storeId: Schema.String,
       clientId: Schema.String,
-      baseDirectory: Schema.optional(Schema.String),
-      schemaPath: Schema.String,
+      storage: StorageType,
       syncPayload: Schema.UndefinedOr(Schema.JsonValue),
-      devtools: Schema.Struct({
-        port: Schema.Number,
-        host: Schema.String,
-        enabled: Schema.Boolean,
-      }),
+      devtools: Schema.Union(
+        Schema.Struct({
+          enabled: Schema.Literal(true),
+          schemaPath: Schema.String,
+          port: Schema.Number,
+          host: Schema.String,
+        }),
+        Schema.Struct({ enabled: Schema.Literal(false) }),
+      ),
     },
     success: Schema.Void,
     failure: UnexpectedError,

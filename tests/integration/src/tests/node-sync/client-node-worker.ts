@@ -2,7 +2,7 @@ import './thread-polyfill.js'
 
 import path from 'node:path'
 
-import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
+import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
@@ -35,13 +35,12 @@ class WorkerContext extends Context.Tag('WorkerContext')<
 >() {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType, params }) =>
+  InitialMessage: ({ storeId, clientId, adapterType, storageType, params }) =>
     Effect.gen(function* () {
-      const adapter =
-        adapterType === 'file'
-          ? makePersistedAdapter({
-              schemaPath: new URL('./schema.js', import.meta.url).toString(),
-              workerUrl: new URL('./livestore.worker.js', import.meta.url),
+      const storage =
+        storageType === 'fs'
+          ? {
+              type: 'fs' as const,
               baseDirectory: path.resolve(
                 process.cwd(),
                 `tmp`,
@@ -49,11 +48,18 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
                 storeId,
                 clientId,
               ),
+            }
+          : { type: 'in-memory' as const }
+
+      const sync = { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) }
+
+      const adapter =
+        adapterType === 'single-threaded'
+          ? makeAdapter({ storage, clientId, sync })
+          : makeWorkerAdapter({
+              workerUrl: new URL('./livestore.worker.js', import.meta.url),
+              storage: { type: 'in-memory' },
               clientId,
-            })
-          : makeInMemoryAdapter({
-              clientId,
-              sync: { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) },
             })
 
       const shutdownDeferred = yield* makeShutdownDeferred

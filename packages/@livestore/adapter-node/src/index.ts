@@ -1,2 +1,1 @@
-export { makeInMemoryAdapter } from './client-session/in-memory-adapter.js'
-export { makePersistedAdapter } from './client-session/persisted-adapter.js'
+export { makeAdapter, makeWorkerAdapter } from './client-session/adapter.js'

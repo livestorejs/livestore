@@ -111,6 +111,9 @@ export const startDevtoolsServer = ({
 
     return HttpServer.serve(handler, HttpMiddleware.logger)
   }).pipe(
+    Effect.withSpan('@livestore/adapter-node:startDevtoolsServer', {
+      attributes: { storeId, clientId, sessionId, port, host, schemaPath },
+    }),
     Layer.unwrapScoped,
     // HttpServer.withLogAddress,
     Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port, host })),

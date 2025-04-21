@@ -1647,9 +1647,6 @@ importers:
 
   packages/@livestore/adapter-node:
     dependencies:
-      '@livestore/adapter-web':
-        specifier: workspace:*
-        version: link:../adapter-web
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1671,15 +1668,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
-      '@opentelemetry/otlp-exporter-base':
-        specifier: 0.200.0
-        version: 0.200.0(@opentelemetry/api@1.9.0)
       vite:
         specifier: 6.2.1
         version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
-      ws:
-        specifier: 8.18.0
-        version: 8.18.0
     devDependencies:
       '@rollup/plugin-commonjs':
         specifier: ^28.0.3
@@ -1690,9 +1681,6 @@ importers:
       '@rollup/plugin-terser':
         specifier: ^0.4.4
         version: 0.4.4(rollup@4.35.0)
-      '@types/ws':
-        specifier: ^8.18.0
-        version: 8.18.0
       rollup:
         specifier: ^4.35.0
         version: 4.35.0
@@ -5988,9 +5976,6 @@ packages:
 
   '@types/wicg-file-system-access@2023.10.5':
     resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
-
-  '@types/ws@8.18.0':
-    resolution: {integrity: sha512-8svvI3hMyvN0kKCJMvTJP/x6Y/EoQbepff882wL+Sn5QsXb3etnamgrJq4isrBxSJj5L2AuXcI0+bgkoAXGUJw==}
 
   '@types/ws@8.5.14':
     resolution: {integrity: sha512-bd/YFLW+URhBzMXurx7lWByOu+xzU9+kb3RboOteXYDfW+tr+JZa99OyNmPINEGB/ahzKrEuc8rcv4gnpJmxTw==}
@@ -18283,10 +18268,6 @@ snapshots:
   '@types/web@0.0.203': {}
 
   '@types/wicg-file-system-access@2023.10.5': {}
-
-  '@types/ws@8.18.0':
-    dependencies:
-      '@types/node': 22.13.10
 
   '@types/ws@8.5.14':
     dependencies:

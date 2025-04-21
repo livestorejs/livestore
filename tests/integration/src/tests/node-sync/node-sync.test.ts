@@ -21,16 +21,16 @@ const DEBUGGER_ACTIVE = process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undef
 Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
-    [WorkerSchema.AdapterType],
-    ([adapterType], test) =>
+    [WorkerSchema.StorageType, WorkerSchema.AdapterType],
+    ([storageType, adapterType], test) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const todoCount = 4
 
         const [clientA, clientB] = yield* Effect.all(
           [
-            makeWorker({ clientId: 'client-a', storeId, adapterType }),
-            makeWorker({ clientId: 'client-b', storeId, adapterType }),
+            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType }),
           ],
           { concurrency: 'unbounded' },
         )
@@ -45,7 +45,7 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
 
         expect(result.length).toEqual(todoCount)
       }).pipe(withCtx(test)),
-    { fastCheck: { numRuns: 2 } },
+    { fastCheck: { numRuns: 4 } },
   )
 
   const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
@@ -56,9 +56,23 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'node-sync prop tests',
     DEBUGGER_ACTIVE
-      ? [Schema.Literal('file'), Schema.Literal(1), Schema.Literal(405), Schema.Literal(100), Schema.Literal(2)]
-      : [WorkerSchema.AdapterType, CreateCount, CreateCount, CommitBatchSize, LEADER_PUSH_BATCH_SIZE],
-    ([adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
+      ? [
+          Schema.Literal('fs'),
+          Schema.Literal('single-threaded'),
+          Schema.Literal(1),
+          Schema.Literal(405),
+          Schema.Literal(100),
+          Schema.Literal(2),
+        ]
+      : [
+          WorkerSchema.StorageType,
+          WorkerSchema.AdapterType,
+          CreateCount,
+          CreateCount,
+          CommitBatchSize,
+          LEADER_PUSH_BATCH_SIZE,
+        ],
+    ([storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
@@ -66,8 +80,8 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
 
         const [clientA, clientB] = yield* Effect.all(
           [
-            makeWorker({ clientId: 'client-a', storeId, adapterType, leaderPushBatchSize }),
-            makeWorker({ clientId: 'client-b', storeId, adapterType, leaderPushBatchSize }),
+            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, leaderPushBatchSize }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType, leaderPushBatchSize }),
           ],
           { concurrency: 'unbounded' },
         )
@@ -112,7 +126,7 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
       ),
     DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: 8 }, timeout: propTestTimeout },
+      : { fastCheck: { numRuns: 6 }, timeout: propTestTimeout },
   )
 })
 
@@ -120,11 +134,13 @@ const makeWorker = ({
   clientId,
   storeId,
   adapterType,
+  storageType,
   leaderPushBatchSize,
 }: {
   clientId: string
   storeId: string
   adapterType: typeof WorkerSchema.AdapterType.Type
+  storageType: typeof WorkerSchema.StorageType.Type
   leaderPushBatchSize?: number
 }) =>
   Effect.gen(function* () {
@@ -138,7 +154,13 @@ const makeWorker = ({
       size: 1,
       concurrency: 100,
       initialMessage: () =>
-        WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, params: { leaderPushBatchSize } }),
+        WorkerSchema.InitialMessage.make({
+          storeId,
+          clientId,
+          adapterType,
+          storageType,
+          params: { leaderPushBatchSize },
+        }),
     }).pipe(
       Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
       Effect.tapCauseLogPretty,

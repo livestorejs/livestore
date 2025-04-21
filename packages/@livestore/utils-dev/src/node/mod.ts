@@ -1,6 +1,7 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
+import { IS_BUN } from '@livestore/utils'
 import type { Tracer } from '@livestore/utils/effect'
 import { Config, Effect, Layer, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
@@ -18,11 +19,13 @@ export const OtelLiveHttp = ({
   rootSpanName,
   rootSpanAttributes,
   skipLogUrl,
+  traceNodeBootstrap,
 }: {
   serviceName?: string
   rootSpanName?: string
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
+  traceNodeBootstrap?: boolean
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan, never, never> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
@@ -65,32 +68,37 @@ export const OtelLiveHttp = ({
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
 
-    /**
-     * Create a span representing the Node.js bootstrap duration.
-     */
-    yield* Effect.gen(function* () {
-      const tracer = yield* OtelTracer.OtelTracer
-      const currentSpan = yield* OtelTracer.currentOtelSpan
+    if (traceNodeBootstrap) {
+      /**
+       * Create a span representing the Node.js bootstrap duration.
+       */
+      yield* Effect.gen(function* () {
+        const tracer = yield* OtelTracer.OtelTracer
+        const currentSpan = yield* OtelTracer.currentOtelSpan
 
-      const nodeTiming = performance.nodeTiming
+        const nodeTiming = performance.nodeTiming
 
-      const bootSpan = tracer.startSpan(
-        'node-bootstrap',
-        {
-          startTime: nodeTiming.nodeStart,
-          attributes: {
-            'node.timing.nodeStart': nodeTiming.nodeStart,
-            'node.timing.environment': nodeTiming.environment,
-            'node.timing.bootstrapComplete': nodeTiming.bootstrapComplete,
-            'node.timing.loopStart': nodeTiming.loopStart,
+        // TODO get rid of this workaround for Bun once Bun properly supports performance.nodeTiming
+        const startTime = IS_BUN ? nodeTiming.startTime : performance.timeOrigin + nodeTiming.nodeStart
+
+        const bootSpan = tracer.startSpan(
+          'node-bootstrap',
+          {
+            startTime: nodeTiming.nodeStart,
+            attributes: {
+              'node.timing.nodeStart': nodeTiming.nodeStart,
+              'node.timing.environment': nodeTiming.environment,
+              'node.timing.bootstrapComplete': nodeTiming.bootstrapComplete,
+              'node.timing.loopStart': nodeTiming.loopStart,
+              'node.timing.duration': nodeTiming.duration,
+            },
           },
-        },
-        otel.trace.setSpanContext(otel.context.active(), currentSpan.spanContext()),
-      )
+          otel.trace.setSpanContext(otel.context.active(), currentSpan.spanContext()),
+        )
 
-      // bootSpan.end(nodeTiming.environment)
-      bootSpan.end(nodeTiming.nodeStart + nodeTiming.duration)
-    }).pipe(Effect.provide(layer), Effect.orDie)
+        bootSpan.end(startTime + nodeTiming.duration)
+      }).pipe(Effect.provide(layer), Effect.orDie)
+    }
 
     return layer
   }).pipe(Layer.unwrapScoped) as any

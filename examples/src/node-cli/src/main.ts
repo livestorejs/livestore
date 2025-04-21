@@ -1,9 +1,6 @@
-// import { performance } from 'node:perf_hooks'
-// console.log('nodeTiming', performance.nodeTiming)
-
 import path from 'node:path'
 
-import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
+import { makeAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb, Schema } from '@livestore/livestore'
@@ -13,12 +10,12 @@ import { Cli, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
-const baseDirectoryOption = Cli.Options.text('directory').pipe(Cli.Options.withDefault(''))
+const baseDirectoryOption = Cli.Options.text('storage-fs-base-directory').pipe(Cli.Options.withDefault(''))
 const schemaPathOption = Cli.Options.text('schema-path')
 const enableDevtoolsOption = Cli.Options.boolean('enable-devtools').pipe(Cli.Options.withDefault(false))
-const adapterTypeOption = Cli.Options.text('adapter-type').pipe(
-  Cli.Options.withSchema(Schema.Literal('persisted', 'in-memory')),
-  Cli.Options.withDefault('persisted'),
+const adapterTypeOption = Cli.Options.text('storage').pipe(
+  Cli.Options.withSchema(Schema.Literal('fs', 'in-memory')),
+  Cli.Options.withDefault('fs'),
 )
 
 const syncPayloadOption = Cli.Options.text('sync-payload').pipe(
@@ -44,16 +41,11 @@ const live = Cli.Command.make(
       // console.log('relativeSchemaPath', relativeSchemaPath)
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
 
-      const adapter =
-        adapterType === 'persisted'
-          ? makePersistedAdapter({
-              schemaPath: relativeSchemaPath,
-              workerUrl: new URL('./livestore.worker.js', import.meta.url),
-              baseDirectory,
-            })
-          : makeInMemoryAdapter({
-              sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
-            })
+      const adapter = makeAdapter({
+        storage: adapterType === 'fs' ? { type: 'fs', baseDirectory } : { type: 'in-memory' },
+        devtools: { schemaPath },
+        sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
+      })
 
       const store = yield* createStore({
         adapter,
@@ -100,7 +92,7 @@ const start = Cli.Command.make('start', {}, () =>
 
 const server = Cli.Command.make('server').pipe(Cli.Command.withSubcommands([start]))
 
-const otelLayer = OtelLiveHttp({ serviceName: 'livestore-cli', skipLogUrl: false })
+const otelLayer = OtelLiveHttp({ serviceName: 'livestore-cli', skipLogUrl: false, traceNodeBootstrap: true })
 
 const command = Cli.Command.make('livestore').pipe(
   Cli.Command.withSubcommands([client, server]),

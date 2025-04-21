@@ -149,6 +149,8 @@ if (import.meta.main) {
       serviceName: 'mono',
       rootSpanName: 'cli',
       rootSpanAttributes: { 'span.label': process.argv.slice(2).join(' ') },
+      skipLogUrl: process.argv.join(' ').includes('--completions'),
+      traceNodeBootstrap: true,
     }),
   )
 

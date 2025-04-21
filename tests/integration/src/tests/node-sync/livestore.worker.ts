@@ -5,12 +5,15 @@ import { Effect } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
+import { schema } from './schema.js'
+
 const argv = getWorkerArgs()
 
 makeWorkerEffect({
   sync: {
     backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
   },
+  schema,
 }).pipe(
   Effect.provide(
     IS_CI

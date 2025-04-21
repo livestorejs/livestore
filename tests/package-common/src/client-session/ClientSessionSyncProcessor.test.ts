@@ -1,6 +1,6 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
-import { makeInMemoryAdapter } from '@livestore/adapter-node'
+import { makeAdapter } from '@livestore/adapter-node'
 import { SyncState, type UnexpectedError } from '@livestore/common'
 import { Eventlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -99,7 +99,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       const shutdownDeferred = yield* makeShutdownDeferred
       const pullQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
 
-      const adapter = makeInMemoryAdapter({
+      const adapter = makeAdapter({
+        storage: { type: 'in-memory' },
         testing: {
           overrides: {
             clientSession: {
@@ -170,7 +171,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         }),
       )
 
-      const adapter = makeInMemoryAdapter({
+      const adapter = makeAdapter({
+        storage: { type: 'in-memory' },
         sync: {
           backend: () => mockSyncBackend.makeSyncBackend,
           initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
@@ -238,7 +240,10 @@ const TestContextLive = Layer.scoped(
     const mockSyncBackend = yield* makeMockSyncBackend
     const shutdownDeferred = yield* makeShutdownDeferred
 
-    const adapter = makeInMemoryAdapter({ sync: { backend: () => mockSyncBackend.makeSyncBackend } })
+    const adapter = makeAdapter({
+      storage: { type: 'in-memory' },
+      sync: { backend: () => mockSyncBackend.makeSyncBackend },
+    })
     const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test', shutdownDeferred })
 
     return { makeStore, mockSyncBackend, shutdownDeferred }

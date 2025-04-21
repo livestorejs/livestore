@@ -208,11 +208,8 @@
 
 ### Still todo:
 
-- Node adapter:
-  - Simplify API
-  - Reduce direct deps
-  - Rework adapters: single threaded vs multi-threaded + in-memory vs persistent
-  - Make devtools an optional dep
+- Web adapter:
+  - Same as node adapter
 - Syncing
   - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Refactor: Rename `EventId` to `EventNumber`

@@ -98,7 +98,7 @@ export const makeWebSocketEdge = ({
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
       const retryOpenTimeoutSchedule = Schedule.exponential(100).pipe(
-        Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout'),
+        Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),
       )
 
       yield* Stream.never.pipe(

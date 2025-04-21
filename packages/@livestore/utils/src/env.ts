@@ -40,3 +40,5 @@ export const LS_DEV = env('LS_DEV') !== undefined || env('VITE_LS_DEV') !== unde
 const envTruish = (env: string | undefined) => env !== undefined && env !== 'false' && env !== '0'
 
 export const IS_CI = envTruish(env('CI'))
+
+export const IS_BUN = typeof Bun !== 'undefined'

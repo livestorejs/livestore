@@ -43,15 +43,17 @@ export type NodeDatabaseInputFs = {
 
 export type NodeDatabaseInput = NodeDatabaseInputInMemory | NodeDatabaseInputFs
 
+export type MakeNodeSqliteDb = MakeSqliteDb<
+  { dbPointer: number; persistenceInfo: PersistenceInfo },
+  NodeDatabaseInput,
+  NodeDatabaseMetadata
+>
+
 export const sqliteDbFactory = ({
   sqlite3,
 }: {
   sqlite3: SQLiteAPI
-}): Effect.Effect<
-  MakeSqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }, NodeDatabaseInput, NodeDatabaseMetadata>,
-  never,
-  FileSystem.FileSystem
-> =>
+}): Effect.Effect<MakeNodeSqliteDb, never, FileSystem.FileSystem> =>
   Effect.andThen(
     FileSystem.FileSystem,
     (fs) => (input) =>

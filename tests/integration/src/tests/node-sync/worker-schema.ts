@@ -3,13 +3,15 @@ import { Schema } from '@livestore/utils/effect'
 
 import { tables } from './schema.js'
 
-export const AdapterType = Schema.Literal('in-memory', 'file')
+export const StorageType = Schema.Literal('in-memory', 'fs')
+export const AdapterType = Schema.Literal('single-threaded', 'worker')
 
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
   payload: {
     storeId: Schema.String,
     clientId: Schema.String,
     adapterType: AdapterType,
+    storageType: StorageType,
     params: Schema.Struct({
       leaderPushBatchSize: Schema.optional(Schema.Number),
     }),

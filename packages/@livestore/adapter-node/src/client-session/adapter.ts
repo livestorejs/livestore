@@ -8,8 +8,13 @@ import type {
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
   LockStatus,
+  MakeSqliteDb,
+  SyncOptions,
 } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
+import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import type { LiveStoreSchema } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsNode from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -29,49 +34,82 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
+import type { TestingOverrides } from '../leader-thread-shared.js'
+import { makeLeaderThread } from '../leader-thread-shared.js'
 import { makeShutdownChannel } from '../shutdown-channel.js'
 import * as WorkerSchema from '../worker-schema.js'
 
 export interface NodeAdapterOptions {
-  /**
-   * Example: `new URL('./livestore.worker.js', import.meta.url)`
-   */
-  workerUrl: URL
-  /** Needed for the worker and the devtools */
-  schemaPath: string
-  /** Where to store the database files */
-  baseDirectory?: string
+  storage: WorkerSchema.StorageType
   /** The default is the hostname of the current machine */
   clientId?: string
-  /** @default 'static' */
+  /**
+   * Warning: This adapter doesn't currently support multiple client sessions for the same client (i.e. same storeId + clientId)
+   * @default 'static'
+   */
   sessionId?: string
+
   devtools?: {
+    schemaPath: string
     /**
      * Where to run the devtools server (via Vite)
      *
      * @default 4242
      */
-    port: number
+    port?: number
     /**
      * @default 'localhost'
      */
-    host: string
+    host?: string
+  }
+
+  /** Only used internally for testing */
+  testing?: {
+    overrides?: TestingOverrides
   }
 }
 
+/** Runs everything in the same thread. Use `makeWorkerAdapter` for multi-threaded implementation. */
+export const makeAdapter = ({
+  sync,
+  ...options
+}: NodeAdapterOptions & {
+  sync?: SyncOptions
+}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'single-threaded', sync } })
+
 /**
- * Warning: This adapter doesn't currently support multiple client sessions for the same client (i.e. same storeId + clientId)
+ * Runs persistence and syncing in a worker thread.
  */
-export const makePersistedAdapter = ({
+export const makeWorkerAdapter = ({
   workerUrl,
-  schemaPath,
-  baseDirectory,
-  devtools: devtoolsOptions = { port: 4242, host: 'localhost' },
+  ...options
+}: NodeAdapterOptions & {
+  /**
+   * Example: `new URL('./livestore.worker.js', import.meta.url)`
+   */
+  workerUrl: URL
+}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl } })
+
+const makeAdapterImpl = ({
+  storage,
+  devtools: devtoolsOptionsInput,
   clientId = hostname(),
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
-}: NodeAdapterOptions): Adapter =>
-  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue, syncPayload }) =>
+  testing,
+  leaderThread: leaderThreadInput,
+}: NodeAdapterOptions & {
+  leaderThread:
+    | {
+        _tag: 'single-threaded'
+        sync: SyncOptions | undefined
+      }
+    | {
+        _tag: 'multi-threaded'
+        workerUrl: URL
+      }
+}): Adapter =>
+  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue, syncPayload, schema }) =>
     Effect.gen(function* () {
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -86,39 +124,62 @@ export const makePersistedAdapter = ({
       //   yield* Effect.logWarning('Failed to load database file', fileData.left)
       // }
 
-      const shutdownChannel = yield* makeShutdownChannel(storeId)
+      if (leaderThreadInput._tag === 'multi-threaded') {
+        const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
-        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
-        Stream.runDrain,
-        Effect.interruptible,
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
+        yield* shutdownChannel.listen.pipe(
+          Stream.flatten(),
+          Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
+          Stream.runDrain,
+          Effect.interruptible,
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+        )
+      }
 
       const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
-      const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
-        shutdown,
-        storeId,
-        clientId,
-        sessionId,
-        workerUrl,
-        baseDirectory,
-        devtoolsEnabled,
-        devtoolsOptions,
-        schemaPath,
-        bootStatusQueue,
-        syncPayload,
-      })
+      const devtoolsOptions: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools'] =
+        devtoolsEnabled && devtoolsOptionsInput !== undefined
+          ? {
+              enabled: true,
+              schemaPath: devtoolsOptionsInput.schemaPath,
+              port: devtoolsOptionsInput.port ?? 4242,
+              host: devtoolsOptionsInput.host ?? 'localhost',
+            }
+          : { enabled: false }
+
+      const { leaderThread, initialSnapshot } =
+        leaderThreadInput._tag === 'single-threaded'
+          ? yield* makeLocalLeaderThread({
+              storeId,
+              clientId,
+              schema,
+              makeSqliteDb,
+              syncOptions: leaderThreadInput.sync,
+              syncPayload,
+              devtools: devtoolsOptions,
+              storage,
+              testing,
+            }).pipe(UnexpectedError.mapToUnexpectedError)
+          : yield* makeWorkerLeaderThread({
+              shutdown,
+              storeId,
+              clientId,
+              sessionId,
+              workerUrl: leaderThreadInput.workerUrl,
+              storage,
+              devtools: devtoolsOptions,
+              bootStatusQueue,
+              syncPayload,
+            })
 
       syncInMemoryDb.import(initialSnapshot)
 
-      if (devtoolsEnabled) {
+      if (devtoolsOptions.enabled) {
         yield* Effect.gen(function* () {
           const webmeshNode = yield* DevtoolsNode.makeNodeDevtoolsConnectedMeshNode({
             url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
@@ -142,7 +203,11 @@ export const makePersistedAdapter = ({
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Effect.withSpan('@livestore/adapter-node:client-session:devtools'),
+          Effect.forkScoped,
+        )
       }
 
       const devtools: ClientSession['devtools'] = devtoolsEnabled
@@ -167,30 +232,97 @@ export const makePersistedAdapter = ({
       Effect.provide(FetchHttpClient.layer),
     )) satisfies Adapter
 
-const makeLeaderThread = ({
+const makeLocalLeaderThread = ({
+  storeId,
+  clientId,
+  schema,
+  makeSqliteDb,
+  syncOptions,
+  syncPayload,
+  storage,
+  devtools,
+  testing,
+}: {
+  storeId: string
+  clientId: string
+  schema: LiveStoreSchema
+  makeSqliteDb: MakeSqliteDb
+  syncOptions: SyncOptions | undefined
+  storage: WorkerSchema.StorageType
+  syncPayload: Schema.JsonValue | undefined
+  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  testing?: {
+    overrides?: TestingOverrides
+  }
+}) =>
+  Effect.gen(function* () {
+    const layer = yield* Layer.build(
+      makeLeaderThread({
+        storeId,
+        clientId,
+        schema,
+        syncOptions,
+        storage,
+        syncPayload,
+        devtools,
+        makeSqliteDb,
+        testing: testing?.overrides,
+      }).pipe(Layer.unwrapScoped),
+    )
+
+    return yield* Effect.gen(function* () {
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+
+      const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
+
+      const leaderThread = {
+        events: {
+          pull:
+            testing?.overrides?.clientSession?.leaderThreadProxy?.events?.pull ??
+            (({ cursor }) => syncProcessor.pull({ cursor })),
+          push: (batch) =>
+            syncProcessor.push(
+              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+              { waitForProcessing: true },
+            ),
+        },
+        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        export: Effect.sync(() => dbState.export()),
+        getEventlogData: Effect.sync(() => dbEventlog.export()),
+        getSyncState: syncProcessor.syncState,
+        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+      } satisfies ClientSessionLeaderThreadProxy
+
+      const initialSnapshot = dbState.export()
+
+      return { leaderThread, initialSnapshot }
+    }).pipe(Effect.provide(layer))
+  })
+
+const makeWorkerLeaderThread = ({
   shutdown,
   storeId,
   clientId,
   sessionId,
   workerUrl,
-  baseDirectory,
-  devtoolsEnabled,
-  devtoolsOptions,
-  schemaPath,
+  storage,
+  devtools,
   bootStatusQueue,
   syncPayload,
+  testing,
 }: {
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   storeId: string
   clientId: string
   sessionId: string
   workerUrl: URL
-  baseDirectory: string | undefined
-  devtoolsEnabled: boolean
-  devtoolsOptions: { port: number; host: string }
-  schemaPath: string
+  storage: WorkerSchema.StorageType
+  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
   syncPayload: Schema.JsonValue | undefined
+  testing?: {
+    overrides?: TestingOverrides
+  }
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
@@ -206,9 +338,8 @@ const makeLeaderThread = ({
         new WorkerSchema.LeaderWorkerInner.InitialMessage({
           storeId,
           clientId,
-          baseDirectory,
-          devtools: { enabled: devtoolsEnabled, port: devtoolsOptions.port, host: devtoolsOptions.host },
-          schemaPath,
+          storage,
+          devtools,
           syncPayload,
         }),
     }).pipe(
@@ -296,8 +427,10 @@ const makeLeaderThread = ({
 
     const leaderThread = {
       events: {
-        pull: ({ cursor }) =>
-          runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
+        pull:
+          testing?.overrides?.clientSession?.leaderThreadProxy?.events?.pull ??
+          (({ cursor }) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie)),
         push: (batch) =>
           runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
             Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
