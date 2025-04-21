@@ -125,6 +125,9 @@ const makeAdapterImpl = ({
       // }
 
       if (leaderThreadInput._tag === 'multi-threaded') {
+        // TODO make static import again once BroadcastChannel is stable in Deno
+        //
+        // const { makeShutdownChannel } = yield* Effect.promise(() => import('../shutdown-channel.js'))
         const shutdownChannel = yield* makeShutdownChannel(storeId)
 
         yield* shutdownChannel.listen.pipe(

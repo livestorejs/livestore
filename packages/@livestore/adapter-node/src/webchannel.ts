@@ -1,4 +1,4 @@
-import { BroadcastChannel } from 'node:worker_threads'
+import { type BroadcastChannel as NodeBroadcastChannel } from 'node:worker_threads'
 
 import type { Either, ParseResult } from '@livestore/utils/effect'
 import { Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
@@ -12,7 +12,14 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
 }): Effect.Effect<WebChannel.WebChannel<Msg, Msg>, never, Scope.Scope> =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
-      const channel = new BroadcastChannel(channelName)
+      if (globalThis.BroadcastChannel === undefined) {
+        yield* Effect.logWarning('BroadcastChannel is not supported in this environment. Using a NoopChannel instead.')
+        return (yield* WebChannel.noopChannel()) as any as WebChannel.WebChannel<Msg, Msg>
+      }
+
+      // NOTE we're using `globalThis.BroadcastChannel` here because `BroadcastChannel`
+      // from `node:worker_threads` is not yet stable in Deno
+      const channel = new globalThis.BroadcastChannel(channelName) as any as NodeBroadcastChannel
 
       yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
 
@@ -37,7 +44,13 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
 
             return channel
           }),
-          (channel) => Effect.sync(() => channel.unref()),
+          (channel) =>
+            Effect.sync(() => {
+              // NOTE not all BroadcastChannel implementations have the `unref` method
+              if (typeof channel.unref === 'function') {
+                channel.unref()
+              }
+            }),
         ),
       )
 
