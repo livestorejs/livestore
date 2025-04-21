@@ -6,7 +6,7 @@ permissions:
 
 on:
   push:
-    branches: 
+    branches:
       - main  # Only run on pushes to main
   pull_request:
     branches: ['**']  # Run on PRs targeting any branch
@@ -61,6 +61,34 @@ jobs:
           # TODO surface deploy url in github UI via environments
         run: |
           bunx netlify-cli deploy --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+  perf-test:
+    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Use FlakeHub Cache for Nix binaries
+        uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Load environment with direnv
+        uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
+      - name: Install dependencies
+        run: pnpm install
+      - name: Compile TypeScript code
+        run: pnpm build:ts
+      - name: Generate OTLP Auth Header
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+        id: otlp_auth
+        run: echo "auth_header=Authorization=Basic $(echo -n '${{ env.GRAFANA_CLOUD_OTLP_INSTANCE_ID }}:${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}' | base64)" >> $GITHUB_OUTPUT
+      - name: Run performance tests
+        env:
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
+          OTEL_EXPORTER_OTLP_HEADERS: ${{ steps.otlp_auth.outputs.auth_header }}
+        run: pnpm perf:test
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
@@ -178,7 +206,7 @@ jobs:
             --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
   # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
   # to simulate a simple user-facing setup
@@ -199,7 +227,7 @@ jobs:
           path: example-repo
       - run: cp -r example-repo/examples/standalone/web-todomvc example
       - name: Add snapshot resolution to package.json
-        run: |
+        run:|
           for pkg in livestore adapter-web peer-deps react common utils; do
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
