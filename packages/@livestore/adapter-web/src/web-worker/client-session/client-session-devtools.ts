@@ -5,7 +5,8 @@ import { Effect } from '@livestore/utils/effect'
 export const logDevtoolsUrl = ({ clientSession, storeId }: { clientSession: ClientSession; storeId: string }) =>
   Effect.gen(function* () {
     if (isDevEnv()) {
-      const devtoolsBaseUrl = `${location.origin}/_livestore`
+      const devtoolsPath = globalThis.LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
+      const devtoolsBaseUrl = `${location.origin}${devtoolsPath}`
 
       // Check whether devtools are available and then log the URL
       const response = yield* Effect.promise(() => fetch(devtoolsBaseUrl))

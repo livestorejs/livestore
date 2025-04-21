@@ -230,26 +230,28 @@ export const makeSyncBackend =
             return yield* InvalidPullError.make({
               message: `Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`,
             })
+          } else if (resp.status === 409) {
+            // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
+            // {
+            // "message": "The shape associated with this shape_handle and offset was not found. Resync to fetch the latest shape",
+            // "shape_handle": "2494_84241",
+            // "offset": "-1"
+            // }
+
+            // TODO: implementation plan:
+            // start pulling events from scratch with the new handle and ignore the "old events"
+            // until we found a new event, then, continue with the new handle
+            return notYetImplemented(`Electric shape not found`)
+          } else if (resp.status < 200 || resp.status >= 300) {
+            return yield* InvalidPullError.make({
+              message: `Unexpected status code: ${resp.status}`,
+            })
           }
 
           const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
           const nextHandle = {
             offset: headers['electric-offset'],
             handle: headers['electric-handle'],
-          }
-
-          // TODO handle case where Electric shape is not found for a given handle
-          // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
-          // {
-          // "message": "The shape associated with this shape_handle and offset was not found. Resync to fetch the latest shape",
-          // "shape_handle": "2494_84241",
-          // "offset": "-1"
-          // }
-          if (resp.status === 409) {
-            // TODO: implementation plan:
-            // start pulling events from scratch with the new handle and ignore the "old events"
-            // until we found a new event, then, continue with the new handle
-            return notYetImplemented(`Electric shape not found for handle ${nextHandle.handle}`)
           }
 
           // Electric completes the long-poll request after ~20 seconds with a 204 status
@@ -279,7 +281,9 @@ export const makeSyncBackend =
           return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
-          Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
+          Effect.mapError((cause) =>
+            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ message: cause.toString() }),
+          ),
         )
 
       const pullEndpointHasSameOrigin =

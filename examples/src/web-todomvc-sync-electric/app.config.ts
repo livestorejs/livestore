@@ -36,8 +36,7 @@ export default defineConfig({
       exclude: ['@livestore/wa-sqlite'],
     },
     plugins: [
-      // NOTE vinxi causes the devtools to be served on: http://localhost:3000/_build/_livestore
-      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts', experimental: { vinxi: true } }),
+      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
       shouldAnalyze
         ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
         : undefined,

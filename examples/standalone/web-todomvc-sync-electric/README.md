@@ -11,8 +11,6 @@ pnpm
 pnpm dev
 ```
 
-Note that due to vinxi, the devtools are served on: `/_build/_livestore`
-
 ### Running the Electric server locally
 
 ```bash

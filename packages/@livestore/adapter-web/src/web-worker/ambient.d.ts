@@ -35,3 +35,6 @@ interface ImportMeta {
 
 // eslint-disable-next-line no-var
 declare var __debugLiveStoreUtils: any
+
+// eslint-disable-next-line no-var
+declare var LIVESTORE_DEVTOOLS_PATH: string | undefined

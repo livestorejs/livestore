@@ -17,7 +17,7 @@ export const makeDb = (storeId: string) => {
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
 			"id" INTEGER PRIMARY KEY,
       "parentId" INTEGER,
-			"mutation" TEXT NOT NULL,
+			"name" TEXT NOT NULL,
 			"args" JSONB NOT NULL,
       "clientId" TEXT NOT NULL,
       "sessionId" TEXT NOT NULL
