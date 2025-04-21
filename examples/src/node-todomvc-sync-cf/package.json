@@ -1,18 +1,17 @@
 {
-  "name": "livestore-example-src-node-effect-cli",
+  "name": "livestore-example-src-node-todomvc-sync-cf",
   "version": "0.0.0",
   "type": "module",
   "private": true,
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
-    "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/sync-cf": "workspace:*"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
     "typescript": "^5.8.3"
   },
-  "scripts": {}
+  "scripts": {
+    "start": "bun src/main.ts"
+  }
 }

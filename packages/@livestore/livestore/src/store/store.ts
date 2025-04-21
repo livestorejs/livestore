@@ -203,7 +203,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         .map((_) => [_.label!.slice('tableRef:'.length), _] as const),
     )
     for (const tableName of allTableNames) {
-      this.tableRefs[tableName] = existingTableRefs.get(tableName) ?? this.makeTableRef(tableName)
+      this.tableRefs[tableName] =
+        existingTableRefs.get(tableName) ??
+        this.reactivityGraph.makeRef(null, {
+          equal: () => false,
+          label: `tableRef:${tableName}`,
+          meta: { liveStoreRefType: 'table' },
+        })
     }
 
     this.boot = Effect.gen(this, function* () {
@@ -580,12 +586,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     )
   }
 
-  private makeTableRef = (tableName: string) =>
-    this.reactivityGraph.makeRef(null, {
-      equal: () => false,
-      label: `tableRef:${tableName}`,
-      meta: { liveStoreRefType: 'table' },
-    })
+  /**
+   * Shuts down the store and closes the client session.
+   *
+   * This is called automatically when the store was created using the React or Effect API.
+   */
+  shutdown = (cause?: Cause.Cause<UnexpectedError>) =>
+    this.clientSession.shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
 
   /**
    * Helper methods useful during development
@@ -624,9 +631,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         console.log('Leader sync state:', leader.toJSON())
       }).pipe(this.runEffectFork)
     },
-
-    shutdown: (cause?: Cause.Cause<UnexpectedError>) =>
-      this.clientSession.shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' }))),
 
     version: liveStoreVersion,
   }

@@ -31,7 +31,7 @@ export const StorageTypeFs = Schema.Struct({
    *
    * @default Current working directory
    */
-  baseDirectory: Schema.String,
+  baseDirectory: Schema.optional(Schema.String),
 })
 
 export type StorageTypeFs = typeof StorageTypeFs.Type

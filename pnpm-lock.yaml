@@ -347,6 +347,22 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  examples/src/node-todomvc-sync-cf:
+    dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-node
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/sync-cf
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   examples/src/web-linearlite:
     dependencies:
       '@headlessui/react':
