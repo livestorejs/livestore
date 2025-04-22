@@ -17,6 +17,10 @@ const events = {
     name: 'todoCreatedRaw',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
   }),
+  emptyEventPayload: Events.synced({
+    name: 'emptyEventPayload',
+    schema: Schema.Void,
+  }),
 }
 
 const todos = State.SQLite.table({
@@ -36,11 +40,11 @@ const materializers = State.SQLite.materializers(events, {
     const previousIds = ctx.query(todos.select('id'))
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
   },
-
   todoCreatedRaw: ({ id, text, completed }, ctx) => {
     const previousIds = ctx.query({ query: 'SELECT id FROM todos', bindValues: {} }).map((_: any) => _.id as string)
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
   },
+  emptyEventPayload: () => [],
 })
 
 const schema = makeSchema({ events, state: State.SQLite.makeState({ tables, materializers }) })
@@ -67,6 +71,14 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
         { completed: false, id: 'b', text: 'b', previousIds: ['a'] },
         { completed: false, id: 'c', text: 'c', previousIds: ['a', 'b'] },
       ])
+    }).pipe(withCtx(test)),
+  )
+
+  Vitest.scopedLive('should allow empty event payload', (test) =>
+    Effect.gen(function* () {
+      const adapter = makeAdapter({ storage: { type: 'in-memory' } })
+      const store = yield* createStore({ schema, adapter, storeId: 'test' })
+      store.commit(events.emptyEventPayload())
     }).pipe(withCtx(test)),
   )
 })

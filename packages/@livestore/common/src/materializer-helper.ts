@@ -36,7 +36,8 @@ export const getExecArgsFromEvent = ({
   bindValues: PreparedBindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  const eventArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
+  const eventArgsDecoded =
+    event.decoded === undefined ? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args) : event.decoded.args
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
