@@ -15,11 +15,10 @@ export const thousandItemsAppended = Events.synced({
   schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).pipe(Schema.itemsCount(1000)),
 })
 
-// TODO: Uncomment when https://discord.com/channels/1154415661842452532/1363969607689568326/1364125143453929545 is implemented
-// export const everyTenthItemUpdated = Events.synced({
-//   name: 'v1.EveryTenthItemUpdated',
-//   schema: Schema.Void,
-// })
+export const everyTenthItemUpdated = Events.synced({
+  name: 'v1.EveryTenthItemUpdated',
+  schema: Schema.Void,
+})
 
 export const itemDeleted = Events.synced({
   name: 'v1.ItemDeleted',

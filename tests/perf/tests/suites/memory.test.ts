@@ -48,14 +48,13 @@ repeatSuite(
       await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>button')).toBeVisible()
     })
 
-    // TODO: Uncomment when https://discord.com/channels/1154415661842452532/1363969607689568326/1364125143453929545 is implemented
-    // test('after updating every 10th row 5 times', async ({ page }) => {
-    //   await page.locator('#create1k').click()
-    //   for (let i = 0; i < 5; i++) {
-    //     await page.locator('#updateEvery10th').click()
-    //     await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toContainText(' !!!'.repeat(i))
-    //   }
-    // })
+    test('after updating every 10th row 5 times', async ({ page }) => {
+      await page.locator('#create1k').click()
+      for (let i = 0; i < 5; i++) {
+        await page.locator('#updateEvery10th').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toContainText(' !!!'.repeat(i))
+      }
+    })
 
     test('after creating and clearing 1,000 rows 5 times', async ({ page }) => {
       for (let i = 0; i < 5; i++) {

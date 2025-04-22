@@ -151,15 +151,14 @@ const Main = () => {
           >
             Append 1,000 rows
           </Button>
-          {/* TODO: Uncomment when https://discord.com/channels/1154415661842452532/1363969607689568326/1364125143453929545 is implemented */}
-          {/*<Button*/}
-          {/*  id="updateEvery10th"*/}
-          {/*  onClick={() => {*/}
-          {/*    store.commit(events.everyTenthItemUpdated())*/}
-          {/*  }}*/}
-          {/*>*/}
-          {/*  Update every 10th row*/}
-          {/*</Button>*/}
+          <Button
+            id="updateEvery10th"
+            onClick={() => {
+              store.commit(events.everyTenthItemUpdated())
+            }}
+          >
+            Update every 10th row
+          </Button>
           <Button
             id="clear"
             onClick={() => {
