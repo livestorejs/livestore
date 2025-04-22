@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-node-common",
-  "version": "0.3.0-dev.36",
+  "version": "0.3.0-dev.37",
   "type": "module",
   "sideEffects": false,
   "exports": {

@@ -38,7 +38,7 @@
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.36",
+    "@livestore/devtools-vite": "0.3.0-dev.37",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
