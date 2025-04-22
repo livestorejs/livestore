@@ -174,7 +174,7 @@ export const makeGetAtomResult = (
     // ReactivityGraph atoms case
     if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom, otelContext, debugRefreshReason)
 
-    // LiveQueryDef case
+    // def case
     if (atom._tag === 'def' || atom._tag === 'signal-def') {
       const query = atom.make(ctx)
       dependencyQueriesRef.add(query)
@@ -212,8 +212,8 @@ export const withRCMap = <T extends LiveQuery.Any | ISignal<any>>(
         item!.rc--
         if (item!.rc === 0) {
           item!.value.destroy()
+          ctx.defRcMap.delete(id)
         }
-        ctx.defRcMap.delete(id)
       },
     }
     ctx.defRcMap.set(id, item)

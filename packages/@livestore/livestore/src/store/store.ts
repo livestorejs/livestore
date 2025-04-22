@@ -28,6 +28,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import type {
+  ISignal,
   LiveQuery,
   LiveQueryDef,
   ReactivityGraph,
@@ -413,7 +414,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   setSignal = <T>(signalDef: SignalDef<T>, value: T): void => {
     const signalRef = signalDef.make(this.reactivityGraph.context!)
     signalRef.value.set(value)
-    signalRef.deref()
+
+    // The current implementation of signals i.e. the separation into `signal-def` and `signal`
+    // can lead to a situation where a reffed signal is immediately de-reffed when calling `store.setSignal`,
+    // in case there is nothing else holding a reference to the signal which leads to the set value being "lost".
+    // To avoid this, we don't deref the signal here if this set call is the only reference to the signal.
+    // Hopefully this won't lead to any issues in the future. 🤞
+    if (signalRef.rc > 1) {
+      signalRef.deref()
+    }
   }
 
   // #region commit
