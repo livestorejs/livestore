@@ -8,7 +8,7 @@ import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.js'
-import { type BindValues, makeBindValues } from './sql-queries/sql-queries.js'
+import { type BindValues } from './sql-queries/sql-queries.js'
 import type { ParamsObject, PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
