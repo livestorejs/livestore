@@ -1,22 +1,26 @@
 import { isReadonlyArray } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
+import type { SqliteDb } from './adapter-types.js'
 import { SessionIdSymbol } from './adapter-types.js'
-import type { EventDef, Materializer, MaterializerResult } from './schema/EventDef.js'
+import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.js'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
+import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import type { BindValues } from './sql-queries/sql-queries.js'
-import type { PreparedBindValues } from './util.js'
+import { getResultSchema } from './schema/state/sqlite/query-builder/impl.js'
+import { type BindValues, makeBindValues } from './sql-queries/sql-queries.js'
+import type { ParamsObject, PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
 export const getExecArgsFromEvent = ({
-  eventDef: { eventDef, materializer },
+  eventDef,
+  materializer,
+  db,
   event,
 }: {
-  eventDef: {
-    eventDef: EventDef.AnyWithoutFn
-    materializer: Materializer
-  }
+  eventDef: EventDef.AnyWithoutFn
+  materializer: Materializer
+  db: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
     | {
@@ -34,8 +38,28 @@ export const getExecArgsFromEvent = ({
 }> => {
   const eventArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
 
+  const query: MaterializerContextQuery = (
+    rawQueryOrQueryBuilder:
+      | {
+          query: string
+          bindValues: ParamsObject
+        }
+      | QueryBuilder.Any,
+  ) => {
+    if (isQueryBuilder(rawQueryOrQueryBuilder)) {
+      const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+      const rawResults = db.select(query, prepareBindValues(bindValues, query))
+      const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+      return Schema.decodeSync(resultSchema)(rawResults)
+    } else {
+      const { query, bindValues } = rawQueryOrQueryBuilder
+      return db.select(query, prepareBindValues(bindValues, query))
+    }
+  }
+
   const res = materializer(eventArgsDecoded, {
-    clientOnly: eventDef.options.clientOnly,
+    eventDef,
+    query,
     // TODO properly implement this
     currentFacts: new Map(),
   })

@@ -20,6 +20,10 @@ const lintCommand = Cli.Command.make(
   Effect.fn(function* ({ fix }) {
     const fixFlag = fix ? '--fix' : ''
     yield* cmd(`eslint scripts examples packages website --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
+    if (fix) {
+      yield* cmd('syncpack format')
+    }
+
     yield* cmd('syncpack lint')
   }),
 )

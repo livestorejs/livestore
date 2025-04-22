@@ -33,10 +33,12 @@ export const makeMaterializeEvent = ({
         const skipEventlog = options?.skipEventlog ?? false
 
         const eventName = eventEncoded.name
-        const eventDef = getEventDef(schema, eventName)
+        const { eventDef, materializer } = getEventDef(schema, eventName)
 
         const execArgsArr = getExecArgsFromEvent({
           eventDef,
+          materializer,
+          db,
           event: { decoded: undefined, encoded: eventEncoded },
         })
 

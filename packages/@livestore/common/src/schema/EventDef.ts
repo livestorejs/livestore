@@ -3,6 +3,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import type { BindValues } from '../sql-queries/sql-queries.js'
+import type { ParamsObject } from '../util.js'
 import type { QueryBuilder } from './state/sqlite/query-builder/mod.js'
 
 export type EventDefMap = {
@@ -167,9 +168,19 @@ export type MaterializerResult =
   | QueryBuilder.Any
   | string
 
+export type MaterializerContextQuery = {
+  (args: { query: string; bindValues: ParamsObject }): ReadonlyArray<unknown>
+  <TResult>(qb: QueryBuilder<TResult, any, any>): TResult
+}
+
 export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyWithoutFn> = (
   event: TEventDef['schema']['Type'],
-  context: { currentFacts: EventDefFacts; clientOnly: boolean },
+  context: {
+    currentFacts: EventDefFacts
+    eventDef: TEventDef
+    /** Can be used to query the current state */
+    query: MaterializerContextQuery
+  },
 ) => SingleOrReadonlyArray<MaterializerResult>
 
 export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(

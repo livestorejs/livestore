@@ -107,8 +107,8 @@ export const makeLeaderSyncProcessor = ({
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
-      const eventDef = getEventDef(schema, eventEncoded.name)
-      return eventDef.eventDef.options.clientOnly
+      const { eventDef } = getEventDef(schema, eventEncoded.name)
+      return eventDef.options.clientOnly
     }
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
@@ -196,14 +196,14 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const eventDef = getEventDef(schema, name)
+        const { eventDef } = getEventDef(schema, name)
 
         const eventEncoded = new LiveStoreEvent.EncodedWithMeta({
           name,
           args,
           clientId,
           sessionId,
-          ...EventId.nextPair(syncState.localHead, eventDef.eventDef.options.clientOnly),
+          ...EventId.nextPair(syncState.localHead, eventDef.options.clientOnly),
         })
 
         yield* push([eventEncoded])
@@ -251,8 +251,8 @@ export const makeLeaderSyncProcessor = ({
         const globalPendingEvents = pendingEvents
           // Don't sync clientOnly events
           .filter((eventEncoded) => {
-            const eventDef = getEventDef(schema, eventEncoded.name)
-            return eventDef.eventDef.options.clientOnly === false
+            const { eventDef } = getEventDef(schema, eventEncoded.name)
+            return eventDef.options.clientOnly === false
           })
 
         if (globalPendingEvents.length > 0) {
@@ -540,8 +540,8 @@ const backgroundApplyLocalPushes = ({
 
       // Don't sync clientOnly events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-        const eventDef = getEventDef(schema, eventEncoded.name)
-        return eventDef.eventDef.options.clientOnly === false
+        const { eventDef } = getEventDef(schema, eventEncoded.name)
+        return eventDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -688,8 +688,8 @@ const backgroundBackendPulling = ({
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const eventDef = getEventDef(schema, event.name)
-            return eventDef.eventDef.options.clientOnly === false
+            const { eventDef } = getEventDef(schema, event.name)
+            return eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 

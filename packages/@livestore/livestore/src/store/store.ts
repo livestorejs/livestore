@@ -108,10 +108,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       clientSession,
       runtime: effectContext.runtime,
       materializeEvent: (eventDecoded, { otelContext, withChangeset }) => {
-        const eventDef = getEventDef(schema, eventDecoded.name)
+        const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
 
         const execArgsArr = getExecArgsFromEvent({
           eventDef,
+          materializer,
+          db: this.sqliteDbWrapper,
           event: { decoded: eventDecoded, encoded: undefined },
         })
 

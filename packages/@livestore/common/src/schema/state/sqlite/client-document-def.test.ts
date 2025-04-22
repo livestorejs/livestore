@@ -5,11 +5,6 @@ import { tables } from '../../../__tests__/fixture.js'
 import type * as LiveStoreEvent from '../../LiveStoreEvent.js'
 import { clientDocument, ClientDocumentTableDefSymbol } from './client-document-def.js'
 
-const materializerContext = {
-  currentFacts: new Map(),
-  clientOnly: false,
-}
-
 describe('client document table', () => {
   test('set event', () => {
     expect(patchId(tables.UiState.set({ showSidebar: false }, 'session-1'))).toMatchInlineSnapshot(`
@@ -51,7 +46,11 @@ describe('client document table', () => {
 
       const materializer = Doc[ClientDocumentTableDefSymbol].derived.setMaterializer
 
-      return materializer(Doc.set(value, id as any).args, materializerContext)
+      return materializer(Doc.set(value, id as any).args, {
+        currentFacts: new Map(),
+        query: {} as any, // unused
+        eventDef: Doc[ClientDocumentTableDefSymbol].derived.setEventDef,
+      })
     }
 
     test('string value', () => {
