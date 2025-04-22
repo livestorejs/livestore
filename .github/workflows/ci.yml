@@ -79,7 +79,7 @@ jobs:
         run: pnpm install
       - name: Compile TypeScript code
         run: pnpm build:ts
-      - name: Generate OTLP Auth Header
+      - name: Generate OTLP authentication header
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
         id: otlp_auth
