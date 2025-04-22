@@ -7,8 +7,6 @@ import { Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-nati
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import { events, tables } from '@/livestore/schema.js'
-import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
 import {
   createRandomComment,
   createRandomIssue,
@@ -16,6 +14,9 @@ import {
   createRandomUser,
   randomValueFromArray,
 } from '@/utils/generate-fake-data.ts'
+
+import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
+import { events, tables } from '../../livestore/schema.ts'
 
 const COMMENTS_PER_ISSUE = 10
 const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })

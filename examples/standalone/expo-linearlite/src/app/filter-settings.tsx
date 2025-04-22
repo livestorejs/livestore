@@ -2,10 +2,11 @@ import { useClientDocument } from '@livestore/react'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
 import React from 'react'
-import { ScrollView, View } from 'react-native'
+import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { RowPropertySwitch } from '@/components/RowPropertySwitch.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
+import { darkSecondary } from '@/constants/Colors.ts'
 import { tables } from '@/livestore/schema.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
@@ -14,6 +15,9 @@ const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']
 const rowProperties = ['Assignee', 'Status', 'Priority']
 
 const FilterSettingsScreen = () => {
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
+
   const [
     {
       selectedHomeTab,
@@ -33,8 +37,27 @@ const FilterSettingsScreen = () => {
     setUiState,
   ] = useClientDocument(tables.uiState)
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 24,
+      backgroundColor: isDark ? darkSecondary : 'white',
+    },
+    section: {
+      marginBottom: 32,
+    },
+    sectionTitle: {
+      marginBottom: 12,
+    },
+    rowPropertiesContainer: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+  })
+
   return (
-    <ScrollView className="flex-1 px-4 py-6 dark:bg-[#18191B]">
+    <ScrollView style={styles.container}>
       <Stack.Screen
         options={{
           headerTitle: `Filter settings for "${selectedHomeTab}" tab`,
@@ -42,8 +65,8 @@ const FilterSettingsScreen = () => {
         }}
       />
 
-      <View className="mb-8">
-        <ThemedText className="mb-3">Grouping</ThemedText>
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionTitle}>Grouping</ThemedText>
         <SegmentedControl
           values={tabGroupingOptions}
           selectedIndex={tabGroupingOptions.indexOf(
@@ -57,8 +80,8 @@ const FilterSettingsScreen = () => {
         />
       </View>
 
-      <View className="mb-8">
-        <ThemedText className="mb-3">Ordering</ThemedText>
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionTitle}>Ordering</ThemedText>
         <SegmentedControl
           values={tabOrderingOptions}
           selectedIndex={tabOrderingOptions.indexOf(
@@ -72,8 +95,8 @@ const FilterSettingsScreen = () => {
         />
       </View>
       <View>
-        <ThemedText className="mb-3">Row Properties</ThemedText>
-        <View className="flex-row gap-3">
+        <ThemedText style={styles.sectionTitle}>Row Properties</ThemedText>
+        <View style={styles.rowPropertiesContainer}>
           {rowProperties.map((property) => (
             <RowPropertySwitch
               key={property}
@@ -98,22 +121,6 @@ const FilterSettingsScreen = () => {
           ))}
         </View>
       </View>
-      {/* <View className="mb-8">
-        <ThemedText className="text-lg font-semibold mb-2">
-          Completed Issues
-        </ThemedText>
-        <SegmentedControl
-          values={completedIssuesOptions}
-          selectedIndex={completedIssuesOptions.indexOf(
-            selectedHomeTab === 'assigned'
-              ? assignedTabCompletedIssues
-              : createdTabCompletedIssues,
-          )}
-          onChange={(value) =>
-            handleUpdateFilter(value.nativeEvent.value, 'tabCompletedIssues')
-          }
-        />
-      </View> */}
     </ScrollView>
   )
 }

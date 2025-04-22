@@ -7,7 +7,6 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string
   darkColor?: string
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link'
-  className?: string
 }
 
 const styles = StyleSheet.create({

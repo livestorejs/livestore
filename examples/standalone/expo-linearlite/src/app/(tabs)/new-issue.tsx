@@ -2,7 +2,7 @@ import { nanoid } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
 import React, { Fragment } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
 
 import { useUser } from '@/hooks/useUser.ts'
 import { uiState$ } from '@/livestore/queries.ts'
@@ -14,6 +14,8 @@ const NewIssueScreen = () => {
   const router = useRouter()
   const { store } = useStore()
   const { newIssueText, newIssueDescription } = useQuery(uiState$)
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   const handleCreateIssue = () => {
     if (!newIssueText) return
@@ -44,34 +46,55 @@ const NewIssueScreen = () => {
           title: 'New Issue',
           headerRight: () => (
             <Pressable onPress={handleCreateIssue}>
-              <Text className="text-blue-500 pr-4">Create</Text>
+              <Text style={styles.actionButton}>Create</Text>
             </Pressable>
           ),
           headerLeft: () => (
             <Pressable onPress={() => router.back()}>
-              <Text className="text-blue-500 pl-4">Cancel</Text>
+              <Text style={styles.actionButton}>Cancel</Text>
             </Pressable>
           ),
           freezeOnBlur: false,
         }}
       />
-      <View className="px-5 pt-3">
+      <View style={styles.container}>
         <TextInput
           value={newIssueText}
-          className="font-bold text-2xl mb-3 dark:text-zinc-50"
+          style={[styles.titleInput, isDark && styles.darkText]}
           onChangeText={(text: string) => store.commit(events.uiStateSet({ newIssueText: text }))}
           placeholder="Issue title"
+          placeholderTextColor={isDark ? '#a1a1aa' : '#71717a'}
         />
         <TextInput
           value={newIssueDescription}
           onChangeText={(text: string) => store.commit(events.uiStateSet({ newIssueDescription: text }))}
-          className="dark:text-zinc-50"
+          style={isDark ? styles.darkText : null}
           placeholder="Description..."
+          placeholderTextColor={isDark ? '#a1a1aa' : '#71717a'}
           multiline
         />
       </View>
     </Fragment>
   )
 }
+
+const styles = StyleSheet.create({
+  actionButton: {
+    color: '#3b82f6', // blue-500
+    paddingHorizontal: 16,
+  },
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  titleInput: {
+    fontWeight: 'bold',
+    fontSize: 24,
+    marginBottom: 12,
+  },
+  darkText: {
+    color: '#fafafa', // zinc-50
+  },
+})
 
 export default NewIssueScreen

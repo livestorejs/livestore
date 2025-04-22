@@ -3,13 +3,14 @@ import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
 import { uiState$ } from '@/livestore/queries.ts'
-import { events, tables } from '@/livestore/schema.ts'
+
+import { events, tables } from '../../livestore/schema.ts'
 
 // const homeTabs = ['Assigned', 'Created']
 // For reference
@@ -98,6 +99,8 @@ const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
   const appSettings = useQuery(uiState$)
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   // Memoize selected settings
   const {
@@ -191,19 +194,20 @@ const HomeScreen = () => {
   // Memoize the header component
   const ListHeaderComponent = useMemo(
     () => (
-      <View className="px-3 bg-white dark:bg-[#0C0D0D]">
-        <View className="flex-row gap-2 my-3">
+      <View style={[styles.headerContainer, isDark && styles.headerContainerDark]}>
+        <View style={styles.tabContainer}>
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
               store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
             }}
-            style={{
-              opacity: selectedHomeTab === 'assigned' ? 1 : 0.5,
-            }}
-            className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
+            style={[
+              styles.tabButton,
+              isDark && styles.tabButtonDark,
+              { opacity: selectedHomeTab === 'assigned' ? 1 : 0.5 },
+            ]}
           >
-            <ThemedText className="text-center" type="defaultSemiBold">
+            <ThemedText style={styles.tabText} type="defaultSemiBold">
               Assigned
             </ThemedText>
           </Pressable>
@@ -212,19 +216,20 @@ const HomeScreen = () => {
               await Haptics.selectionAsync()
               store.commit(events.uiStateSet({ selectedHomeTab: 'created' }))
             }}
-            style={{
-              opacity: selectedHomeTab === 'created' ? 1 : 0.5,
-            }}
-            className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
+            style={[
+              styles.tabButton,
+              isDark && styles.tabButtonDark,
+              { opacity: selectedHomeTab === 'created' ? 1 : 0.5 },
+            ]}
           >
-            <ThemedText className="text-center" type="defaultSemiBold">
+            <ThemedText style={styles.tabText} type="defaultSemiBold">
               Created
             </ThemedText>
           </Pressable>
         </View>
       </View>
     ),
-    [selectedHomeTab, store],
+    [selectedHomeTab, store, isDark],
   )
 
   return (
@@ -232,7 +237,7 @@ const HomeScreen = () => {
       // TODO remove type-cast when LegendList supports immutable arrays
       data={issues as typeof issues extends (infer T)[] ? T[] : never}
       renderItem={renderItem}
-      contentContainerClassName="gap-1 px-2"
+      contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
       estimatedItemSize={40}
@@ -242,5 +247,37 @@ const HomeScreen = () => {
     />
   )
 }
+
+const styles = StyleSheet.create({
+  headerContainer: {
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+  },
+  headerContainerDark: {
+    backgroundColor: '#0C0D0D',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 12,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#e4e4e7', // zinc-200
+  },
+  tabButtonDark: {
+    backgroundColor: '#27272a', // zinc-800
+  },
+  tabText: {
+    textAlign: 'center',
+  },
+  listContent: {
+    gap: 1,
+    paddingHorizontal: 2,
+  },
+})
 
 export default HomeScreen
