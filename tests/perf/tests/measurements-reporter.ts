@@ -2,21 +2,22 @@
 import os from 'node:os'
 
 import {
+  Config,
+  Data,
   Effect,
   ManagedRuntime,
   Metric,
+  MetricState,
   Option,
   ParseResult,
-  MetricState,
-  Data,
   Pretty,
   ReadonlyArray,
-  Config,
   Schema,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils/node'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
-import { TableConsoleRenderer } from './table-console-renderer.js'
+
+import { printConsoleTable } from './print-console-table.js'
 
 const MeasurementUnit = Schema.Literal('ms', 'bytes')
 type MeasurementUnit = typeof MeasurementUnit.Type
@@ -345,7 +346,7 @@ export default class MeasurementsReporter implements Reporter {
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
         return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]
       })
-      TableConsoleRenderer.renderTable(headers, rows)
+      printConsoleTable(headers, rows)
     } else {
       const headers = [testSuiteTitle, 'Mean', 'Median', 'P90', 'Min', 'Max']
       const rows: string[][] = []
@@ -373,7 +374,7 @@ export default class MeasurementsReporter implements Reporter {
           `${formatValue(metricState.max)} ${displayUnit}`,
         ])
       }
-      TableConsoleRenderer.renderTable(headers, rows)
+      printConsoleTable(headers, rows)
     }
   }
 }

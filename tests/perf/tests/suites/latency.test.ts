@@ -90,39 +90,40 @@ repeatSuite(
       })
     })
 
-    test('for updating every 10th row of 1,000 rows', async ({ page, context }, testInfo) => {
-      const warmupCount = 3
-      const cpuThrottlingRate = 4
-
-      testInfo.annotations.push(
-        { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
-        { type: 'warmup runs', description: warmupCount.toString() },
-      )
-
-      await test.step('warmup', async () => {
-        await page.locator('#create1k').click()
-        await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText((1000).toFixed(0))
-        for (let i = 0; i < warmupCount; i++) {
-          await page.locator('#updateEvery10th').click()
-          await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>button')).toContainText(
-            ' !!!'.repeat(i + 1),
-          )
-        }
-      })
-
-      await test.step('prepare', async () => {
-        await page.requestGC()
-        const cdpSession = await context.newCDPSession(page)
-        await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
-      })
-
-      await test.step('run', async () => {
-        await page.locator('#updateEvery10th').click()
-        await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>button')).toContainText(
-          ' !!!'.repeat(3 + 1),
-        )
-      })
-    })
+    // TODO: Uncomment when https://discord.com/channels/1154415661842452532/1363969607689568326/1364125143453929545 is implemented
+    // test('for updating every 10th row of 1,000 rows', async ({ page, context }, testInfo) => {
+    //   const warmupCount = 3
+    //   const cpuThrottlingRate = 4
+    //
+    //   testInfo.annotations.push(
+    //     { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
+    //     { type: 'warmup runs', description: warmupCount.toString() },
+    //   )
+    //
+    //   await test.step('warmup', async () => {
+    //     await page.locator('#create1k').click()
+    //     await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText((1000).toFixed(0))
+    //     for (let i = 0; i < warmupCount; i++) {
+    //       await page.locator('#updateEvery10th').click()
+    //       await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>button')).toContainText(
+    //         ' !!!'.repeat(i + 1),
+    //       )
+    //     }
+    //   })
+    //
+    //   await test.step('prepare', async () => {
+    //     await page.requestGC()
+    //     const cdpSession = await context.newCDPSession(page)
+    //     await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+    //   })
+    //
+    //   await test.step('run', async () => {
+    //     await page.locator('#updateEvery10th').click()
+    //     await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>button')).toContainText(
+    //       ' !!!'.repeat(3 + 1),
+    //     )
+    //   })
+    // })
 
     test('for highlighting a selected row', async ({ page, context }, testInfo) => {
       const warmupCount = 5

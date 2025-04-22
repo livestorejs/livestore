@@ -12,10 +12,9 @@
   "include": ["./test-app", "./tests"],
   "references": [
     { "path": "../../packages/@livestore/adapter-web" },
-    { "path": "../../packages/@livestore/common" },
-    { "path": "../../packages/@livestore/effect-playwright" },
     { "path": "../../packages/@livestore/livestore" },
     { "path": "../../packages/@livestore/react" },
-    { "path": "../../packages/@livestore/utils" }
+    { "path": "../../packages/@livestore/utils" },
+    { "path": "../../packages/@livestore/utils-dev" }
   ]
 }
