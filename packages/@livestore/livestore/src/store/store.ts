@@ -28,7 +28,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import type {
-  ISignal,
   LiveQuery,
   LiveQueryDef,
   ReactivityGraph,

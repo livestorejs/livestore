@@ -19,7 +19,7 @@ export namespace QueryBuilderAst {
   export interface SelectQuery {
     readonly _tag: 'SelectQuery'
     readonly columns: string[]
-    readonly pickFirst: false | { fallback: () => any } | 'no-fallback'
+    readonly pickFirst: false | { fallback: () => any } | 'throws'
     readonly select: {
       columns: ReadonlyArray<string>
     }
@@ -288,10 +288,11 @@ export namespace QueryBuilder {
      * db.todos.where('id', '123').first()
      * ```
      *
-     * Query will fail if no rows are returned and no fallback is provided.
+     * Query will throw if no rows are returned and no fallback is provided.
      */
     readonly first: <TFallback = never>(options?: {
-      fallback?: () => TFallback | GetSingle<TResult>
+      /** @default 'throws' */
+      fallback?: (() => TFallback | GetSingle<TResult>) | 'throws'
     }) => QueryBuilder<
       TFallback | GetSingle<TResult>,
       TTableDef,

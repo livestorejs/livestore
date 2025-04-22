@@ -143,7 +143,8 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         limit: Option.some(1),
-        pickFirst: options?.fallback ? { fallback: options.fallback } : 'no-fallback',
+        pickFirst:
+          options?.fallback !== undefined && options.fallback !== 'throws' ? { fallback: options.fallback } : 'throws',
       })
     },
     // // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
@@ -309,7 +310,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
       if (queryAst.pickFirst === false) {
         return arraySchema
-      } else if (queryAst.pickFirst === 'no-fallback') {
+      } else if (queryAst.pickFirst === 'throws') {
         // Will throw if the array is empty
         return arraySchema.pipe(Schema.headOrElse())
       } else {
