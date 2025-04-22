@@ -12,7 +12,7 @@ export const tenThousandItemsCreated = Events.synced({
 
 export const thousandItemsAppended = Events.synced({
   name: 'v1.ThousandItemsAppended',
-  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).pipe(Schema.itemsCount(10_000)),
+  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).pipe(Schema.itemsCount(1_000)),
 })
 
 // TODO: Uncomment when https://discord.com/channels/1154415661842452532/1363969607689568326/1364125143453929545 is implemented
