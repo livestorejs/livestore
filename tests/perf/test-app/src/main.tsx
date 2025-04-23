@@ -57,7 +57,7 @@ const N = [
 const random = (max: number) => Math.round(Math.random() * 1000) % max
 
 let nextId = 1
-const buildItems = (count: number): Items => {
+const generateRandomItems = (count: number): Items => {
   const items: Items = Array.from({ length: count })
   for (let i = 0; i < count; i++) {
     items[i] = {
@@ -131,7 +131,9 @@ const Main = () => {
           <Button
             id="create1k"
             onClick={() => {
-              store.commit(events.thousandItemsCreated(buildItems(1000)))
+              // We commit a single event instead of one per item to better represent user intention. The user didn’t press a button 1000 times for each item; they pressed it once to create 1000 items.
+              // We need to include the items in the event payload rather than generating them in the materializer. Otherwise, the materializer wouldn’t be deterministic.
+              store.commit(events.thousandItemsCreated(generateRandomItems(1000)))
             }}
           >
             Create 1,000 rows
@@ -139,7 +141,7 @@ const Main = () => {
           <Button
             id="create10k"
             onClick={() => {
-              store.commit(events.tenThousandItemsCreated(buildItems(10_000)))
+              store.commit(events.tenThousandItemsCreated(generateRandomItems(10_000)))
             }}
           >
             Create 10,000 rows
@@ -147,7 +149,7 @@ const Main = () => {
           <Button
             id="append1k"
             onClick={() => {
-              store.commit(events.thousandItemsAppended(buildItems(1000)))
+              store.commit(events.thousandItemsAppended(generateRandomItems(1000)))
             }}
           >
             Append 1,000 rows
