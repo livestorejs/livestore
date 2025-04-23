@@ -36,7 +36,6 @@ pnpm test:profiler
   - Potential solutions:
     - Calibrate and throttle CPU before tests. Requires https://developer.chrome.com/blog/new-in-devtools-134#calibrated-cpu-throttling to be accessible with the Chrome Devtools Protocol.
     - Use dedicated GitHub Actions runners. Requires a paid plan.
-- [ ] Use production build of the test app
 
 ### Test scenarios
 - [ ] Test startup latency

@@ -25,7 +25,8 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
-    "test-app": "vite test-app",
+    "test-app": "vite build test-app && vite preview test-app",
+    "test-app:dev": "vite test-app",
     "test:profiler": "PERF_PROFILER=1 pnpm test"
   }
 }

@@ -10,7 +10,7 @@ export default defineConfig({
   workers: 1, // Run tests serially for more consistent performance measurements
   reportSlowTests: null,
   reporter: [process.env.CI ? ['dot'] : ['line'], ['./dist/tests/measurements-reporter.js']],
-  use: { baseURL: 'http://localhost:5173' },
+  use: { baseURL: 'http://localhost:4173' },
   projects: [
     {
       name: 'chromium',
@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm test-app',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
   },
 })
