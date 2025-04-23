@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import LiveStoreWorker from './livestore.worker.js?worker'
 import { allItems$, uiState$ } from './queries.js'
 import { events, type Item, type Items, schema } from './schema.js'
+import { makeTracer } from "./otel.js";
 
 const A = [
   'pretty',
@@ -178,6 +179,8 @@ const Main = () => {
   )
 }
 
+const otelTracer = makeTracer('livestore-perf-tests-app')
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LiveStoreProvider
@@ -185,6 +188,7 @@ createRoot(document.getElementById('root')!).render(
       adapter={adapter}
       batchUpdates={batchUpdates}
       renderLoading={(bootStatus) => <p>Stage: {bootStatus.stage}</p>}
+      otelOptions={{ tracer: otelTracer }}
     >
       <Main />
     </LiveStoreProvider>

@@ -2288,6 +2288,18 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: 0.200.0
+        version: 0.200.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-web':
+        specifier: 2.0.0
+        version: 2.0.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
         specifier: 1.51.0
         version: 1.51.0
