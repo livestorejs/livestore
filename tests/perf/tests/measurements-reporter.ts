@@ -356,20 +356,19 @@ export default class MeasurementsReporter implements Reporter {
 
         const quantiles = Object.fromEntries(metricState.quantiles)
 
-        const getQuantileValue = (q: number): number | undefined => {
-          const quantileOption = quantiles[q]
-          return quantileOption ? Option.getOrUndefined(quantileOption) : undefined
-        }
-
-        const median = getQuantileValue(0.5)
-        const p90 = getQuantileValue(0.9)
+        const median = Option.map(quantiles[0.5] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
+          Option.getOrElse(() => 'n/a'),
+        )
+        const p90 = Option.map(quantiles[0.9] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
+          Option.getOrElse(() => 'n/a'),
+        )
         const mean = metricState.sum / metricState.count
 
         rows.push([
           testTitle,
           `${formatValue(mean)} ${displayUnit}`,
-          median === undefined ? 'n/a' : `${formatValue(median)} ${displayUnit}`,
-          p90 === undefined ? 'n/a' : `${formatValue(p90)} ${displayUnit}`,
+          median,
+          p90,
           `${formatValue(metricState.min)} ${displayUnit}`,
           `${formatValue(metricState.max)} ${displayUnit}`,
         ])
