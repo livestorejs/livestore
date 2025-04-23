@@ -1,0 +1,37 @@
+{
+  "name": "web-meals-tracking-tanstack-router",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && tsc",
+    "dev": "vite --port 3000",
+    "serve": "vite preview",
+    "start": "vite --port 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/platform": "0.80.8",
+    "@livestore/adapter-web": "0.3.0-dev.37",
+    "@livestore/common": "0.3.0-dev.37",
+    "@livestore/livestore": "0.3.0-dev.37",
+    "@livestore/peer-deps": "0.3.0-dev.37",
+    "@livestore/react": "0.3.0-dev.37",
+    "@livestore/wa-sqlite": "1.0.5-dev.2",
+    "@tailwindcss/vite": "^4.1.4",
+    "@tanstack/react-router": "^1.114.3",
+    "@tanstack/router-plugin": "^1.114.3",
+    "clsx": "^2.1.1",
+    "effect": "3.14.8",
+    "lucide-react": "^0.503.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0"
+  }
+}

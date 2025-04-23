@@ -44,7 +44,8 @@
     "**/.vercel": true,
     "**/.direnv": true,
     "**/dist": true,
-    "pnpm-lock.yaml": true
+    "pnpm-lock.yaml": true,
+    "**/routeTree.gen.ts": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "workbench.editor.customLabels.enabled": true,
@@ -52,4 +53,10 @@
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
   },
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "files.readonlyInclude": {
+    "**/routeTree.gen.ts": true
+  }
 }
