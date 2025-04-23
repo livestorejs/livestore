@@ -83,11 +83,11 @@ jobs:
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY' | base64)" >> $GITHUB_ENV
+        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '"$GRAFANA_CLOUD_OTLP_INSTANCE_ID":"$GRAFANA_CLOUD_OTLP_API_KEY"' | base64)" >> $GITHUB_ENV
       - name: Run performance tests
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
-        run: pnpm test:perf >> $GITHUB_STEP_SUMMARY
+        run: pnpm test:perf
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
