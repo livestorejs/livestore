@@ -79,16 +79,15 @@ jobs:
         run: pnpm install
       - name: Compile TypeScript code
         run: pnpm build:ts
-      - name: Generate OTLP authentication header
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
-        id: otlp_auth
-        run: echo "auth_header=Authorization=Basic $(echo -n '${{ env.GRAFANA_CLOUD_OTLP_INSTANCE_ID }}:${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}' | base64)" >> $GITHUB_OUTPUT
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY' | base64)" >> $GITHUB_ENV
       - name: Run performance tests
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
-          OTEL_EXPORTER_OTLP_HEADERS: ${{ steps.otlp_auth.outputs.auth_header }}
-        run: pnpm test:perf
+        run: pnpm test:perf >> $GITHUB_STEP_SUMMARY
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
