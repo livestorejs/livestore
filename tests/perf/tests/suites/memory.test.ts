@@ -38,17 +38,17 @@ repeatSuite(
       await expect(page.locator('#create1k')).toBeVisible()
     })
 
-    test('after creating 1,000 rows', async ({ page }) => {
+    test('after creating 1,000 items', async ({ page }) => {
       await page.locator('#create1k').click()
       await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
     })
 
-    test('after creating 10,000 rows', async ({ page }) => {
+    test('after creating 10,000 items', async ({ page }) => {
       await page.locator('#create10k').click()
       await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>button')).toBeVisible()
     })
 
-    test('after updating every 10th row 5 times', async ({ page }) => {
+    test('after updating every 10th item 5 times', async ({ page }) => {
       await page.locator('#create1k').click()
       for (let i = 0; i < 5; i++) {
         await page.locator('#updateEvery10th').click()
@@ -56,7 +56,7 @@ repeatSuite(
       }
     })
 
-    test('after creating and clearing 1,000 rows 5 times', async ({ page }) => {
+    test('after creating and clearing 1,000 items 5 times', async ({ page }) => {
       for (let i = 0; i < 5; i++) {
         await page.locator('#create1k').click()
         await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText(

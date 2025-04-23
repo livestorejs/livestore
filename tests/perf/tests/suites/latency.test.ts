@@ -40,7 +40,7 @@ repeatSuite(
       testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
     })
 
-    test('for creating 1,000 rows', async ({ page }, testInfo) => {
+    test('for creating 1,000 items', async ({ page }, testInfo) => {
       const warmupCount = 5
 
       testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })
@@ -66,7 +66,7 @@ repeatSuite(
       })
     })
 
-    test('for updating all 1,000 rows', async ({ page }, testInfo) => {
+    test('for updating all 1,000 items', async ({ page }, testInfo) => {
       const warmupCount = 5
 
       testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })
@@ -90,7 +90,7 @@ repeatSuite(
       })
     })
 
-    test('for updating every 10th row of 1,000 rows', async ({ page, context }, testInfo) => {
+    test('for updating every 10th item of 1,000 items', async ({ page, context }, testInfo) => {
       const warmupCount = 3
       const cpuThrottlingRate = 4
 
@@ -124,7 +124,7 @@ repeatSuite(
       })
     })
 
-    test('for highlighting a selected row', async ({ page, context }, testInfo) => {
+    test('for highlighting a selected item', async ({ page, context }, testInfo) => {
       const warmupCount = 5
       const cpuThrottlingRate = 4
 
@@ -157,8 +157,8 @@ repeatSuite(
       })
     })
 
-    test('for removing one row', async ({ page, context }, testInfo) => {
-      const rowsToSkip = 4
+    test('for removing one item', async ({ page, context }, testInfo) => {
+      const itemsToSkip = 4
       const warmupCount = 5
       const cpuThrottlingRate = 2
 
@@ -171,29 +171,29 @@ repeatSuite(
         await page.locator('#create1k').click()
         await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toBeVisible()
         for (let i = 0; i < warmupCount; i++) {
-          const rowToClick = warmupCount - i + rowsToSkip
-          await expect(page.locator(`tbody>tr:nth-of-type(${rowToClick})>td:nth-of-type(1)`)).toHaveText(
-            rowToClick.toString(),
+          const itemToClick = warmupCount - i + itemsToSkip
+          await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
+            itemToClick.toString(),
           )
-          await page.locator(`tbody>tr:nth-of-type(${rowToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
-          await expect(page.locator(`tbody>tr:nth-of-type(${rowToClick})>td:nth-of-type(1)`)).toHaveText(
-            `${rowsToSkip + warmupCount + 1}`,
+          await page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
+          await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
+            `${itemsToSkip + warmupCount + 1}`,
           )
         }
-        await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip + 1})>td:nth-of-type(1)`)).toHaveText(
-          `${rowsToSkip + warmupCount + 1}`,
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 1})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip + warmupCount + 1}`,
         )
-        await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip})>td:nth-of-type(1)`)).toHaveText(`${rowsToSkip}`)
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(`${itemsToSkip}`)
 
-        // Click on a row the second time
-        await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(
-          `${rowsToSkip + warmupCount + 2}`,
+        // Click on a item the second time
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip + warmupCount + 2}`,
         )
         await page
-          .locator(`tbody>tr:nth-of-type(${rowsToSkip + 2})>td:nth-of-type(3)>button>span:nth-of-type(1)`)
+          .locator(`tbody>tr:nth-of-type(${itemsToSkip + 2})>td:nth-of-type(3)>button>span:nth-of-type(1)`)
           .click()
-        await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(
-          `${rowsToSkip + warmupCount + 3}`,
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip + warmupCount + 3}`,
         )
       })
 
@@ -204,14 +204,14 @@ repeatSuite(
       })
 
       await test.step('run', async () => {
-        await page.locator(`tbody>tr:nth-of-type(${rowsToSkip})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
-        await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip})>td:nth-of-type(1)`)).toHaveText(
-          `${rowsToSkip + warmupCount + 1}`,
+        await page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip + warmupCount + 1}`,
         )
       })
     })
 
-    test('for creating 10,000 rows', async ({ page }, testInfo) => {
+    test('for creating 10,000 items', async ({ page }, testInfo) => {
       const warmupCount = 5
 
       testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })
@@ -235,7 +235,7 @@ repeatSuite(
       })
     })
 
-    test('for appending 1,000 to a table with 1,000 rows', async ({ page }, testInfo) => {
+    test('for appending 1,000 to a table with 1,000 items', async ({ page }, testInfo) => {
       const warmupCount = 5
 
       testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })
@@ -261,7 +261,7 @@ repeatSuite(
       })
     })
 
-    test('for clearing a table with 1,000 rows', async ({ page, context }, testInfo) => {
+    test('for clearing a table with 1,000 items', async ({ page, context }, testInfo) => {
       const warmupCount = 5
       const cpuThrottlingRate = 4
 

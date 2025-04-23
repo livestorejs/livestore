@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client'
 import LiveStoreWorker from './livestore.worker.js?worker'
 import { allItems$, uiState$ } from './queries.js'
 import { events, type Item, type Items, schema } from './schema.js'
-import { makeTracer } from "./otel.js";
+import { makeTracer } from './otel.js'
 
 const A = [
   'pretty',
@@ -76,7 +76,7 @@ const adapter = makePersistedAdapter({
 
 const RemoveIcon = <span>X</span>
 
-const Row = React.memo(({ item }: { item: Item }) => {
+const ItemRow = React.memo(({ item }: { item: Item }) => {
   const { store } = useStore()
   const { selected } = useQuery(uiState$)
   const isSelected = selected === item.id
@@ -108,9 +108,9 @@ const Row = React.memo(({ item }: { item: Item }) => {
   )
 })
 
-const RowList = React.memo(() => {
+const ItemRowList = React.memo(() => {
   const items = useQuery(allItems$)
-  return items.map((item) => <Row key={item.id} item={item} />)
+  return items.map((item) => <ItemRow key={item.id} item={item} />)
 })
 
 const Button = React.memo(
@@ -136,7 +136,7 @@ const Main = () => {
               store.commit(events.thousandItemsCreated(generateRandomItems(1000)))
             }}
           >
-            Create 1,000 rows
+            Create 1,000 items
           </Button>
           <Button
             id="create10k"
@@ -144,7 +144,7 @@ const Main = () => {
               store.commit(events.tenThousandItemsCreated(generateRandomItems(10_000)))
             }}
           >
-            Create 10,000 rows
+            Create 10,000 items
           </Button>
           <Button
             id="append1k"
@@ -152,7 +152,7 @@ const Main = () => {
               store.commit(events.thousandItemsAppended(generateRandomItems(1000)))
             }}
           >
-            Append 1,000 rows
+            Append 1,000 items
           </Button>
           <Button
             id="updateEvery10th"
@@ -160,7 +160,7 @@ const Main = () => {
               store.commit(events.everyTenthItemUpdated())
             }}
           >
-            Update every 10th row
+            Update every 10th items
           </Button>
           <Button
             id="clear"
@@ -174,7 +174,7 @@ const Main = () => {
       </div>
       <table>
         <tbody>
-          <RowList />
+          <ItemRowList />
         </tbody>
       </table>
     </div>
