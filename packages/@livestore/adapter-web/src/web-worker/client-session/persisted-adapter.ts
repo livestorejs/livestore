@@ -467,7 +467,7 @@ export const makePersistedAdapter =
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           yield* Effect.gen(function* () {
-            const clientSessionStaticChannel = yield* WebChannel.windowChannel2({
+            const clientSessionStaticChannel = yield* WebChannel.windowChannel({
               listenWindow: window,
               sendWindow: window,
               schema: { listen: Schema.Void, send: ClientSessionRequestContentscriptMain },
@@ -480,7 +480,7 @@ export const makePersistedAdapter =
 
             const contentscriptMainNodeName = `contentscript-main-${storeId}-${clientId}-${sessionId}`
 
-            const contentscriptMainChannel = yield* WebChannel.windowChannel2({
+            const contentscriptMainChannel = yield* WebChannel.windowChannel({
               listenWindow: window,
               sendWindow: window,
               schema: Webmesh.WebmeshSchema.Packet,

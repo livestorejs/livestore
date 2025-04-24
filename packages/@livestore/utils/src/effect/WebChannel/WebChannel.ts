@@ -74,7 +74,7 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
  * NOTE the `listenName` and `sendName` is needed for cases where both sides are using the same window
  * e.g. for a browser extension, so we need a way to know for which side a message is intended for.
  */
-export const windowChannel2 = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
+export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   listenWindow,
   sendWindow,
   targetOrigin = '*',
@@ -144,45 +144,6 @@ export const windowChannel2 = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEnco
         schema,
         supportsTransferables,
         debugInfo,
-      }
-    }).pipe(Effect.withSpan(`WebChannel:windowChannel`)),
-  )
-
-export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
-  window,
-  targetOrigin = '*',
-  schema: inputSchema,
-}: {
-  window: Window
-  targetOrigin?: string
-  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-}): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
-  Effect.scopeWithCloseable((scope) =>
-    Effect.gen(function* () {
-      const schema = mapSchema(inputSchema)
-
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(schema.send)(message)
-          window.postMessage(messageEncoded, targetOrigin, transferables)
-        })
-
-      const listen = Stream.fromEventListener<MessageEvent>(window, 'message').pipe(
-        Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
-        listenToDebugPing('window'),
-      )
-
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
-      const supportsTransferables = true
-
-      return {
-        [WebChannelSymbol]: WebChannelSymbol,
-        send,
-        listen,
-        closedDeferred,
-        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
-        schema,
-        supportsTransferables,
       }
     }).pipe(Effect.withSpan(`WebChannel:windowChannel`)),
   )

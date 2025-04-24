@@ -27,7 +27,7 @@ export const handlePageConsole = ({
   shouldEvaluateArgs?: boolean
 }) =>
   pageConsole({ page, label: name, shouldEvaluateArgs }).pipe(
-    Stream.tapSync((_) => console.log(`${name}[${_.type}]:`, _.message, ..._.args)),
+    // Stream.tap((_) => Effect.log(`${name}[${_.type}]: ${_.message}`, ..._.args)),
     Stream.runDrain,
     Effect.withSpan(`handlePageConsole-${name}`),
   )
@@ -75,6 +75,12 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
   Layer.scoped(BrowserContext, browserContext(params))
+
+export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): Effect.Effect<T, SiteError> =>
+  Effect.tryPromise({
+    try: () => f(),
+    catch: (cause) => new SiteError({ label: options?.label ?? f.toString(), messages: cause }),
+  }).pipe(Effect.withSpan('withPage:' + (options?.label ?? f.toString())))
 
 export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
   type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
@@ -177,44 +183,55 @@ export const pageConsole = ({
   label: string
   shouldEvaluateArgs: boolean
 }) =>
-  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) => {
-    const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
-    const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
-      const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
-      if (Option.isSome(parsed)) {
-        const message = parsed.value
+  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) =>
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
+        const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
+          const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
+          if (Option.isSome(parsed)) {
+            const message = parsed.value
 
-        // TODO nested groups
-        if ((message.type === 'group' || message.type === 'groupCollapsed') && message.message.includes('%cERROR%c')) {
-          errorGroupRef.current = { errorMessages: [message] }
-        } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-          emit.fail(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))
-        } else if (
-          message.type === 'error' &&
-          message.message.includes('Failed to load resource: the server responded with a status of 404 (Not Found)') ===
-            false &&
-          message.message.includes('All fibers interrupted without errors') === false
-        ) {
-          if (errorGroupRef.current === undefined) {
-            emit.fail(new SiteError({ label, messages: [message] }))
-          } else {
-            errorGroupRef.current.errorMessages.push(message)
+            // TODO nested groups
+            if (
+              (message.type === 'group' || message.type === 'groupCollapsed') &&
+              message.message.includes('%cERROR%c')
+            ) {
+              errorGroupRef.current = { errorMessages: [message] }
+            } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
+              emit.fail(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))
+            } else if (
+              message.type === 'error' &&
+              message.message.includes(
+                'Failed to load resource: the server responded with a status of 404 (Not Found)',
+              ) === false &&
+              message.message.includes('All fibers interrupted without errors') === false
+            ) {
+              if (errorGroupRef.current === undefined) {
+                emit.fail(new SiteError({ label, messages: [message] }))
+              } else {
+                errorGroupRef.current.errorMessages.push(message)
+              }
+            } else {
+              emit.single(message)
+            }
           }
-        } else {
-          emit.single(message)
         }
-      }
-    }
-    page.on('console', onConsole)
+        page.on('console', onConsole)
 
-    const onPageError = (cause: Error) => emit.fail(new SiteError({ label, messages: [cause] }))
-    page.on('pageerror', onPageError)
+        const onPageError = (cause: Error) => emit.fail(new SiteError({ label, messages: [cause] }))
+        page.on('pageerror', onPageError)
 
-    return Effect.sync(() => {
-      page.off('console', onConsole)
-      page.off('pageerror', onPageError)
-    })
-  })
+        return { onConsole, onPageError }
+      }),
+      ({ onConsole, onPageError }) =>
+        Effect.sync(() => {
+          console.log('stop listening to page console')
+          page.off('console', onConsole)
+          page.off('pageerror', onPageError)
+        }),
+    ),
+  )
 
 export class SiteError extends Schema.TaggedError<SiteError>()('Playwright.SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
