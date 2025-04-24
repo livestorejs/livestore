@@ -14,10 +14,13 @@ import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/com
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
+import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
+import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
+import * as RN from 'react-native'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
 import { makeSqliteDb } from './make-sqlite-db.js'
@@ -35,9 +38,9 @@ export type MakeDbOptions = {
     subDirectory?: string
   }
   // syncBackend?: TODO
-  /** @default 'expo' */
+  /** @default android/ios id (see https://docs.expo.dev/versions/latest/sdk/application) */
   clientId?: string
-  /** @default 'expo' */
+  /** @default 'static' */
   sessionId?: string
 }
 
@@ -61,7 +64,7 @@ export const makePersistedAdapter =
         })
       }
 
-      const { storage, clientId = 'expo', sessionId = 'expo', sync: syncOptions } = options
+      const { storage, clientId = yield* getDeviceId, sessionId = 'static', sync: syncOptions } = options
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -305,3 +308,18 @@ const makeDevtoolsOptions = ({
       }),
     }
   })
+
+const getDeviceId = Effect.gen(function* () {
+  if (RN.Platform.OS === 'android') {
+    return ExpoApplication.getAndroidId()
+  } else if (RN.Platform.OS === 'ios') {
+    const iosId = yield* Effect.promise(() => ExpoApplication.getIosIdForVendorAsync())
+    if (iosId === null) {
+      return shouldNeverHappen('getDeviceId: iosId is null')
+    }
+
+    return iosId
+  } else {
+    return shouldNeverHappen(`getDeviceId: Unsupported platform: ${RN.Platform.OS}`)
+  }
+})

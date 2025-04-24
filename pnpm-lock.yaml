@@ -130,6 +130,9 @@ importers:
       expo:
         specifier: ^53.0.0-preview.7
         version: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+      expo-application:
+        specifier: 6.1.2
+        version: 6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))
       expo-asset:
         specifier: 11.1.1
         version: 11.1.1(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
@@ -275,6 +278,9 @@ importers:
       expo:
         specifier: ^53.0.0-preview.7
         version: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
+      expo-application:
+        specifier: 6.1.2
+        version: 6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))
       expo-asset:
         specifier: 11.1.1
         version: 11.1.1(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
@@ -915,6 +921,9 @@ importers:
       expo:
         specifier: ^53.0.0-preview.7
         version: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
+      expo-application:
+        specifier: 6.1.2
+        version: 6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))
       expo-asset:
         specifier: 11.1.1
         version: 11.1.1(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
@@ -1060,6 +1069,9 @@ importers:
       expo:
         specifier: ^53.0.0-preview.7
         version: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
+      expo-application:
+        specifier: 6.1.2
+        version: 6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))
       expo-asset:
         specifier: 11.1.1
         version: 11.1.1(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
@@ -1642,12 +1654,18 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
+      expo-application:
+        specifier: '*'
+        version: 6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))
       expo-file-system:
         specifier: '*'
         version: 18.0.11(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))
       expo-sqlite:
         specifier: ^15.2.4
         version: 15.2.4(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
+      react-native:
+        specifier: 0.79.0
+        version: 0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)
 
   packages/@livestore/adapter-node:
     dependencies:
@@ -7819,6 +7837,11 @@ packages:
   expect-type@1.2.0:
     resolution: {integrity: sha512-80F22aiJ3GLyVnS/B3HzgR6RelZVumzj9jkL0Rhz4h0xYbNW9PjlQz5h3J/SShErbXBc295vseR4/MIbVmUbeA==}
     engines: {node: '>=12.0.0'}
+
+  expo-application@6.1.2:
+    resolution: {integrity: sha512-zSOpDc3T2yLvFWP/jZwfmzoxlUujMh4WWkYDNc43lE6rQW84q13MvJXA6Hf21AQZl/3BHkuUnf/D5gmXDSg8kA==}
+    peerDependencies:
+      expo: '*'
 
   expo-asset@11.1.1:
     resolution: {integrity: sha512-r74+TTeqU65dZP5Hzm/+9C6u1c0gtNUX3d88nK4x0ytS721wJKu4rsRyMMG51apStegiLYAa5gMSZz5TwU/Teg==}
@@ -20595,6 +20618,14 @@ snapshots:
   exit-hook@2.2.1: {}
 
   expect-type@1.2.0: {}
+
+  expo-application@6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      expo: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+
+  expo-application@6.1.2(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      expo: 53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
 
   expo-asset@11.1.1(expo@53.0.0-preview.7(@babel/core@7.26.10)(@expo/metro-runtime@5.0.2(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.0(@babel/core@7.26.10)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0):
     dependencies:
