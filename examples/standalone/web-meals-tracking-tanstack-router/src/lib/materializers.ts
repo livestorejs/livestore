@@ -1,25 +1,19 @@
-import { State } from "@livestore/livestore";
-import * as events from "./events";
-import { foods, meals } from "./tables";
+import { State } from '@livestore/livestore'
 
-// ?: Why the name `materializers`? What about `actions`?
+import * as events from './events.js'
+import { foods, meals } from './tables.js'
+
 export const materializers = State.SQLite.materializers(events, {
-  "v1.MealCreated": ({ id, foodId, quantity, date }) =>
-    meals.insert({ id, foodId, quantity, date }),
+  'v1.MealCreated': ({ id, foodId, quantity, date }) => meals.insert({ id, foodId, quantity, date }),
 
-  "v1.FoodCreated": ({ name, calories, protein, carbs, fat }) =>
+  'v1.FoodCreated': ({ name, calories }) =>
     foods.insert({
       id: crypto.randomUUID(),
       name,
       calories,
-      protein,
-      carbs,
-      fat,
     }),
 
-  "v1.FoodUpdated": ({ id, name, calories, protein, carbs, fat }) =>
-    foods.update({ name, calories, protein, carbs, fat }).where({ id }),
+  'v1.FoodUpdated': ({ id, name, calories }) => foods.update({ name, calories }).where({ id }),
 
-  "v1.MealUpdated": ({ id, quantity }) =>
-    meals.update({ quantity }).where({ id }),
-});
+  'v1.MealUpdated': ({ id, quantity }) => meals.update({ quantity }).where({ id }),
+})

@@ -1,40 +1,40 @@
-import { useStore } from "@livestore/react";
-import { useSearch } from "@tanstack/react-router";
-import { allFoodsQuery$ } from "../lib/queries";
-import { events } from "../lib/schema";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { useStore } from '@livestore/react'
+import { useSearch } from '@tanstack/react-router'
 
-export default function InsertMealForm() {
-  const { date } = useSearch({ from: "/" });
-  const { store } = useStore();
+import { allFoodsQuery$ } from '../lib/queries.js'
+import { events } from '../lib/schema.js'
 
-  const foods = store.useQuery(allFoodsQuery$);
+export const InsertMealForm = () => {
+  const { date } = useSearch({ from: '/' })
+  const { store } = useStore()
+
+  const foods = store.useQuery(allFoodsQuery$)
   const action = (formData: globalThis.FormData) => {
-    const foodId = formData.get("foodId");
-    const quantity = formData.get("quantity");
+    const foodId = formData.get('foodId')
+    const quantity = formData.get('quantity')
     store.commit(
       events.mealCreated({
         date,
         id: crypto.randomUUID(),
         foodId: foodId as string,
         quantity: Number(quantity),
-      })
-    );
-  };
+      }),
+    )
+  }
 
   return (
-    <form action={action} className="flex flex-col gap-y-2">
-      <Input type="number" name="quantity" placeholder="Quantity" />
-      <div className="flex flex-wrap gap-4">
+    <form action={action}>
+      <input type="number" name="quantity" placeholder="Quantity" />
+      <div>
         {foods.map((food) => (
-          <label key={food.id} className="flex items-center gap-x-1">
+          <label key={food.id}>
             <input type="radio" name="foodId" value={food.id} />
-            <span className="text-sm font-light">{food.name}</span>
+            <span>{food.name}</span>
           </label>
         ))}
       </div>
-      <Button type="submit">Insert meal</Button>
+
+      <button type="submit">Insert meal</button>
     </form>
-  );
+  )
 }

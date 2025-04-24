@@ -1,65 +1,34 @@
-import { useStore } from "@livestore/react";
-import { foodUpdated } from "../lib/events";
-import { allFoodsQuery$ } from "../lib/queries";
-import { Input } from "./ui/input";
+import { useStore } from '@livestore/react'
 
-export default function FoodsList() {
-  const { store } = useStore();
-  const foods = store.useQuery(allFoodsQuery$);
+import { foodUpdated } from '../lib/events.js'
+import { allFoodsQuery$ } from '../lib/queries.js'
+
+export const FoodsList = () => {
+  const { store } = useStore()
+  const foods = store.useQuery(allFoodsQuery$)
   return (
-    <div className="flex flex-col gap-y-4">
-      <h2 className="text-lg font-bold">Foods</h2>
-      <div className="flex flex-col gap-y-2">
+    <div>
+      <h2>Foods</h2>
+      <div>
         {foods.map((food) => (
-          <div key={food.id} className="grid grid-cols-5 gap-x-2">
-            <Input
+          <div key={food.id}>
+            <input
               type="text"
               value={food.name}
               onChange={(e) => {
-                store.commit(
-                  foodUpdated({ id: food.id, name: e.target.value })
-                );
+                store.commit(foodUpdated({ id: food.id, name: e.target.value }))
               }}
             />
-            <Input
+            <input
               type="number"
               value={food.calories}
               onChange={(e) => {
-                store.commit(
-                  foodUpdated({ id: food.id, calories: e.target.valueAsNumber })
-                );
-              }}
-            />
-            <Input
-              type="number"
-              value={food.protein}
-              onChange={(e) => {
-                store.commit(
-                  foodUpdated({ id: food.id, protein: e.target.valueAsNumber })
-                );
-              }}
-            />
-            <Input
-              type="number"
-              value={food.carbs}
-              onChange={(e) => {
-                store.commit(
-                  foodUpdated({ id: food.id, carbs: e.target.valueAsNumber })
-                );
-              }}
-            />
-            <Input
-              type="number"
-              value={food.fat}
-              onChange={(e) => {
-                store.commit(
-                  foodUpdated({ id: food.id, fat: e.target.valueAsNumber })
-                );
+                store.commit(foodUpdated({ id: food.id, calories: e.target.valueAsNumber }))
               }}
             />
           </div>
         ))}
       </div>
     </div>
-  );
+  )
 }
