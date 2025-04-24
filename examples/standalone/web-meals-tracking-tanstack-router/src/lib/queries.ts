@@ -24,6 +24,7 @@ const allMealsWithFoodsQuery$ = queryDb({
   ),
 })
 
+// Computed value to format the meals data
 export const convertedMealsQuery$ = computed((get) => {
   const meals = get(allMealsWithFoodsQuery$)
   return meals.map((meal) => ({
@@ -37,6 +38,7 @@ export const convertedMealsQuery$ = computed((get) => {
   }))
 })
 
+// Computed value to calculate the total macros (calories)
 export const totalMacrosQuery$ = computed((get) => {
   const meals = get(convertedMealsQuery$)
   return { calories: Number.sumAll(meals.map((meal) => meal.calories)) }

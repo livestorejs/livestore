@@ -5,6 +5,7 @@ import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { schema } from '../lib/schema.js'
+// Import using the `?worker` extension to get a worker URL
 import LiveStoreWorker from '../worker?worker'
 
 const adapter = makePersistedAdapter({
@@ -16,12 +17,7 @@ const adapter = makePersistedAdapter({
 export const Route = createRootRoute({
   component: () => {
     return (
-      <LiveStoreProvider
-        schema={schema}
-        adapter={adapter}
-        batchUpdates={batchUpdates}
-        renderLoading={({ stage }) => <p>{stage}</p>}
-      >
+      <LiveStoreProvider schema={schema} adapter={adapter} batchUpdates={batchUpdates}>
         <Outlet />
       </LiveStoreProvider>
     )

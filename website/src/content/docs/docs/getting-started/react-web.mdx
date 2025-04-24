@@ -10,21 +10,12 @@ import viteConfigCode from '../../../../../../examples/standalone/web-meals-trac
 import tablesCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/tables.ts?raw'
 import eventsCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/events.ts?raw'
 import materializersCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/materializers.ts?raw'
-import schemaCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
-import workerCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/livestore.worker.ts?raw'
-import rootCode from '../../../../../../examples/standalone/web-todomvc/src/Root.tsx?raw'
-import headerCode from '../../../../../../examples/standalone/web-todomvc/src/components/Header.tsx?raw'
-import mainSectionCode from '../../../../../../examples/standalone/web-todomvc/src/components/MainSection.tsx?raw'
-
-export const CODE = {
-  viteConfig: viteConfigCode,
-  events: eventsCode,
-  schema: schemaCode,
-  worker: workerCode,
-  root: rootCode,
-  header: headerCode,
-  mainSection: mainSectionCode,
-}
+import schemaCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/schema.ts?raw'
+import workerCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/worker.ts?raw'
+import rootCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/routes/__root.tsx?raw'
+import queriesCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/queries.ts?raw'
+import useQueryCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/components/meals-list.tsx?raw'
+import commitCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/components/insert-food-form.tsx?raw'
 
 ### Option A: Quick start
 
@@ -103,17 +94,17 @@ For existing projects, see [Existing project setup](#existing-project-setup).
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
        ```shell
-       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
+       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/peer-deps
        ```
      </TabItem>
      <TabItem label="pnpm">
        ```shell
-       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
+       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/peer-deps
        ```
      </TabItem>
      <TabItem label="npm">
        ```shell
-       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
+       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/peer-deps @livestore/devtools-vite
        ```
      </TabItem>
    </Tabs>
@@ -136,63 +127,65 @@ Every operation must be defined as an event using `Events.synced`:
 <Code code={eventsCode} lang="ts" title="src/lib/events.ts" />
 
 ## Materializers
-Materializers map the actual operation to execute for each event. Create a materializer using `State.SQLite.materializers` and passing all the events defined before:
+An event just defines the name and parameters for an action. A materializer is then needed to provide the implementation of each event.
+
+Create a materializer using `State.SQLite.materializers` passing all the events defined before:
 
 <Code code={materializersCode} lang="ts" title="src/lib/materializers.ts" />
 
 ## Schema
+`tables` and `materializers` are used to compose the state for the app using `State.SQLite.makeState`.
 
+From this state you then derive the schema for the app using `makeSchema`:
 
-## Events
+<Code code={schemaCode} lang="ts" title="src/lib/schema.ts" />
 
-Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
+We then export `schema`, `tables` and `events`.
 
-Use the `Events` and `Schema` modules from `@livestore/livestore` to define your events.
+## Web Worker
+A web worker is used by LiveStore to sync the database in a background thread.
 
-Here's an example:
+Create a TypeScript file that executes `makeWorker` passing `schema` exported above:
 
-<Code code={eventsCode} lang="ts" title="src/livestore/events.ts" />
+> LiveStore provides various worker adapters, in this example we are using the worker from `@livestore/adapter-web`.
 
-## Define your schema
+<Code code={workerCode} lang="ts" title="src/worker.ts" />
 
-To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
+## LiveStoreProvider
+The final setup step is wrapping your React app with `<LiveStoreProvider>` from `@livestore/react`.
 
-- In `src`, create a `livestore` folder and inside it create a file named `schema.ts`. This file defines the tables and data structures for your app.
+`<LiveStoreProvider>` **requires** the following parameters:
+- `schema`: the schema we created before using `makeSchema`
+- `adapter`: used for storage persistence, created using `makePersistedAdapter` from `@livestore/adapter-web`
+- `batchUpdates`: experimental API imported from `react-dom`
 
-- In `schema.ts`, define a table to represent a data model, such as a `todos`.
+> Make sure to reference the correct path for `worker.ts` and add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-Here's an example:
-
-<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
-
-## Create the LiveStore Worker
-
-Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
-
-<Code code={CODE.worker} lang="ts" title="src/livestore/livestore.worker.ts" />
-
-## Add the LiveStore Provider
-
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
-
-Here's an example:
-
-<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
-
-### Commit events
-
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
-
-Here's an example:
-
-<Code code={CODE.header} lang="tsx" title="src/components/Header.tsx" />
+<Code code={rootCode} lang="ts" title="src/routes/__root.tsx" />
 
 ## Queries
+Using `queryDb` you can define SQL queries to read data from the database.
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+> You can either use the API provided by LiveStore (`tables.foods.select()`) or write raw SQL queries using `sql`.
 
-Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
+You can then compose queries and compute values using `computed`.
 
-Here's an example:
+> Consider abstracting queries into a separate file to keep your code organized.
 
-<Code code={CODE.mainSection} lang="tsx" title="src/components/MainSection.tsx" />
+<Code code={queriesCode} lang="tsx" title="src/lib/queries.ts" />
+
+### Store and useQuery
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component. It provides a type safe `store` instance that you can use to commit events and read queries.
+
+In your component you can execute a query with `store.useQuery`:
+
+> Note that queries are **reactive**: the component will re-render every time the data changes.
+
+<Code code={useQueryCode} lang="tsx" title="src/components/meals-list.tsx" />
+
+## Commit events
+Using `store` from `useStore` you can also commit events. You just need to call `store.commit` passing the event to execute (type safe as well).
+
+> Note that `store.commit` is a **synchronous operation**, therefore you don't need any complex `async` logic like `Suspense` or `useActionState`.
+
+<Code code={commitCode} lang="tsx" title="src/components/insert-food-form.tsx" />
