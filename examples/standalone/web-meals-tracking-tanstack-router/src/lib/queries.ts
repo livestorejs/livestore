@@ -1,39 +1,27 @@
-import { computed, queryDb, Schema, signal, sql } from '@livestore/livestore'
+import { computed, queryDb, Schema, sql } from '@livestore/livestore'
 import { Number } from 'effect'
 
 import { tables } from './schema.js'
 import { convertMacroQuantity } from './utils.js'
 
+// Query using livestore's API (`select`)
 export const allFoodsQuery$ = queryDb(tables.foods.select())
 
-export const filterFoodsQuery$ = queryDb(tables.filterFoodsDocument.get())
-
-export const dateSearchParamSignal$ = signal(
-  (() => {
-    const searchParams = new URLSearchParams(globalThis.location.search)
-    const date = searchParams.get('date')
-    return date!
-  })(),
-)
-
-const allMealsWithFoodsQuery$ = queryDb((get) => {
-  const date = get(dateSearchParamSignal$)
-  const { name } = get(filterFoodsQuery$)
-  return {
-    query: sql`
-    SELECT meal.id, meal.date, meal.quantity, food.name, food.calories, food.protein, food.carbs, food.fat
-    FROM meal
-    INNER JOIN food ON meal.foodId = food.id
-    WHERE meal.date = '${date}'
-    ${name ? `AND food.name LIKE '%${name}%'` : ``}
+const allMealsWithFoodsQuery$ = queryDb({
+  // Raw SQL query using `sql`
+  query: sql`
+  SELECT meal.id, meal.date, meal.quantity, food.name, food.calories, food.protein, food.carbs, food.fat
+  FROM meal
+  INNER JOIN food ON meal.foodId = food.id
   `,
-    schema: Schema.Array(
-      tables.meals.rowSchema.pipe(
-        Schema.omit('foodId'),
-        Schema.extend(tables.foods.rowSchema.pipe(Schema.pick('name', 'calories'))),
-      ),
+
+  // Schema derived from `schema` of tables (`rowSchema`)
+  schema: Schema.Array(
+    tables.meals.rowSchema.pipe(
+      Schema.omit('foodId'),
+      Schema.extend(tables.foods.rowSchema.pipe(Schema.pick('name', 'calories'))),
     ),
-  }
+  ),
 })
 
 export const convertedMealsQuery$ = computed((get) => {
@@ -42,7 +30,6 @@ export const convertedMealsQuery$ = computed((get) => {
     id: meal.id,
     name: meal.name,
     quantity: meal.quantity,
-    date: meal.date,
     calories: convertMacroQuantity({
       quantity: meal.quantity,
       macro: meal.calories,

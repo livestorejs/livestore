@@ -1,7 +1,10 @@
 import { Events, Schema } from '@livestore/livestore'
 
 export const foodCreated = Events.synced({
+  // Unique name for the event
   name: 'v1.FoodCreated',
+
+  // Parameters accepted by the event (validated using a `Schema`)
   schema: Schema.Struct({
     name: Schema.String,
     calories: Schema.Number,
@@ -14,7 +17,6 @@ export const mealCreated = Events.synced({
     id: Schema.UUID,
     foodId: Schema.String,
     quantity: Schema.Number,
-    date: Schema.String,
   }),
 })
 

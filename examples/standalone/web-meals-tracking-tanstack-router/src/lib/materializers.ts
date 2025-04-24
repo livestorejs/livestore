@@ -4,7 +4,7 @@ import * as events from './events.js'
 import { foods, meals } from './tables.js'
 
 export const materializers = State.SQLite.materializers(events, {
-  'v1.MealCreated': ({ id, foodId, quantity, date }) => meals.insert({ id, foodId, quantity, date }),
+  'v1.MealCreated': ({ id, foodId, quantity }) => meals.insert({ id, foodId, quantity }),
 
   'v1.FoodCreated': ({ name, calories }) =>
     foods.insert({

@@ -4,6 +4,7 @@ import { events } from '../lib/schema.js'
 
 export const InsertFoodForm = () => {
   const { store } = useStore()
+
   const action = (formData: globalThis.FormData) => {
     const name = formData.get('name')
     const calories = formData.get('calories')
@@ -14,12 +15,11 @@ export const InsertFoodForm = () => {
       }),
     )
   }
+
   return (
     <form action={action}>
-      <div>
-        <input type="text" name="name" placeholder="Name" />
-        <input type="number" name="calories" placeholder="Calories" />
-      </div>
+      <input type="text" name="name" placeholder="Name" />
+      <input type="number" name="calories" placeholder="Calories" />
 
       <button type="submit">Insert food</button>
     </form>

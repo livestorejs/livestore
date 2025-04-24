@@ -1,17 +1,14 @@
 import { makeSchema, State } from '@livestore/livestore'
 
-import * as sqlEvents from './events.js'
+import * as events from './events.js'
 import { materializers } from './materializers.js'
-import * as sqlTables from './tables.js'
-import * as uiDocuments from './ui.js'
-
-const events = {
-  ...sqlEvents,
-  setFilterFoods: uiDocuments.filterFoodsDocument.set,
-}
-const tables = { ...sqlTables, ...uiDocuments }
+import * as tables from './tables.js'
 
 const state = State.SQLite.makeState({ tables, materializers })
 
-export { events, tables }
+// Export final schema based on events and state
 export const schema = makeSchema({ events, state })
+
+// Re-export `events` and `tables` for convenience
+export * as events from './events.js'
+export * as tables from './tables.js'

@@ -6,8 +6,10 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import viteConfigCode from '../../../../../../examples/standalone/web-todomvc/vite.config.js?raw'
-import eventsCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/events.ts?raw'
+import viteConfigCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/vite.config.js?raw'
+import tablesCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/tables.ts?raw'
+import eventsCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/events.ts?raw'
+import materializersCode from '../../../../../../examples/standalone/web-meals-tracking-tanstack-router/src/lib/materializers.ts?raw'
 import schemaCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
 import workerCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/livestore.worker.ts?raw'
 import rootCode from '../../../../../../examples/standalone/web-todomvc/src/Root.tsx?raw'
@@ -118,10 +120,28 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
 2. **Update Vite config**
 
-   Add the following code to your `vite.config.js` file:
+   Add the following code to your `vite.config.ts` file:
 
-   <Code code={viteConfigCode} lang="js" title="vite.config.js" />
+   <Code code={viteConfigCode} lang="ts" title="vite.config.ts" />
 </Steps>
+
+## Database tables
+Define the structure of the data as SQLite tables using `State.SQLite.table`:
+
+<Code code={tablesCode} lang="ts" title="src/lib/tables.ts" />
+
+## Events
+Every operation must be defined as an event using `Events.synced`:
+
+<Code code={eventsCode} lang="ts" title="src/lib/events.ts" />
+
+## Materializers
+Materializers map the actual operation to execute for each event. Create a materializer using `State.SQLite.materializers` and passing all the events defined before:
+
+<Code code={materializersCode} lang="ts" title="src/lib/materializers.ts" />
+
+## Schema
+
 
 ## Events
 
