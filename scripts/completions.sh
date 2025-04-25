@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# TODO running `completions.sh` on initial repo setup fails because we haven't built the TS source yet which `mono` and `livestore` depend on
+# resulting in an error like https://share.cleanshot.com/3ZQWLFSm
+
 # (1) Generate completions
 
 # Fish
