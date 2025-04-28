@@ -223,9 +223,9 @@ export default class MeasurementsReporter implements Reporter {
             let metric = Metric.summary({
               name: snakeCase(testName),
               maxAge: '1 hour',
-              maxSize: 100_000,
-              error: 0.01,
-              quantiles: [0.5, 0.9],
+              maxSize: 100,
+              error: 0,
+              quantiles: [0.25, 0.5, 0.75],
               description: testName,
             }).pipe(
               Metric.tagged('unit', unit),
@@ -363,7 +363,7 @@ export default class MeasurementsReporter implements Reporter {
       })
       printConsoleTable(headers, rows)
     } else {
-      const headers = [testSuiteTitle, 'Mean', 'Median', 'P90', 'Min', 'Max']
+      const headers = [testSuiteTitle, 'Mean', 'Median', 'IQR', 'Min', 'Max']
       const rows: string[][] = []
 
       for (const [testTitle, metricState] of Object.entries(metricStatesResult)) {
@@ -371,19 +371,23 @@ export default class MeasurementsReporter implements Reporter {
 
         const quantiles = Object.fromEntries(metricState.quantiles)
 
+        const mean = metricState.sum / metricState.count
         const median = Option.map(quantiles[0.5] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
           Option.getOrElse(() => 'n/a'),
         )
-        const p90 = Option.map(quantiles[0.9] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
-          Option.getOrElse(() => 'n/a'),
-        )
-        const mean = metricState.sum / metricState.count
+        const lowerQuartile = quantiles[0.25] ?? Option.none()
+        const upperQuartile = quantiles[0.75] ?? Option.none()
+        const iqr = Option.zipWith(
+          lowerQuartile,
+          upperQuartile,
+          (lower, upper) => `${formatValue(upper - lower)} ${displayUnit}`,
+        ).pipe(Option.getOrElse(() => 'n/a'))
 
         rows.push([
           testTitle,
           `${formatValue(mean)} ${displayUnit}`,
           median,
-          p90,
+          iqr,
           `${formatValue(metricState.min)} ${displayUnit}`,
           `${formatValue(metricState.max)} ${displayUnit}`,
         ])
