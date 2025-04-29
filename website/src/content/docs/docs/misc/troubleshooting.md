@@ -30,7 +30,7 @@ If you're seeing an error like `RuntimeException: Cannot execute an Effect versi
 
 As a first step you can try deleting `node_modules` and running `pnpm install` again.
 
-If the issue persists, you can try to add `"resolutions": { "effect": "3.14.8" }` or [`pnpm.overrides`](https://pnpm.io/package_json#pnpmoverrides) to your `package.json` to force the correct version of `effect` to be used.
+If the issue persists, you can try to add `"resolutions": { "effect": "3.14.15" }` or [`pnpm.overrides`](https://pnpm.io/package_json#pnpmoverrides) to your `package.json` to force the correct version of `effect` to be used.
 
 ## Package management
 
