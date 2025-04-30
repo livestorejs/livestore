@@ -310,7 +310,7 @@ export default class MeasurementsReporter implements Reporter {
 
       const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
 
-      console.log(`\n🧪 ${testSuiteTitlePath} (${testSuiteTitle}):\n`)
+      console.log(`\n🧪 ${testSuiteTitlePath}:\n`)
       this.printMeasurementsTable(testSuiteTitle, trackedMetricsInGroup)
     }
   }
