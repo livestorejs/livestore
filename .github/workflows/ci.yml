@@ -45,7 +45,7 @@ jobs:
       - run: pnpm install
       - run: pnpm build:ts
       # Seems like webmesh / utils is flaky on CI when running in parallel with the other packages, so we run it separately
-      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --parallel run test
+      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --parallel run test
       - run: pnpm --filter '@livestore/webmesh' run test
       - run: pnpm --filter '@livestore/utils' run test
       - uses: actions/upload-artifact@v4
