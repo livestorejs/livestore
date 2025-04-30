@@ -14,8 +14,16 @@ export const repeatSuite = (
   }
 
   test.describe(suiteName, suiteDetails, () => {
+    if (shouldRecordPerfProfile) {
+      console.warn(`Skipping repetitions for suite "${suiteName}" due to performance profiling.`)
+      test.describe('Performance Profiling', suiteCallback)
+      return
+    }
+
     for (let i = 1; i <= repetitions; i++) {
       test.describe(`Run ${i}/${repetitions}`, suiteCallback)
     }
   })
 }
+
+export const shouldRecordPerfProfile = process.env.PERF_PROFILER === '1'
