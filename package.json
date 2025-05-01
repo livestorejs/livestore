@@ -47,7 +47,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.0",
-    "react-native": "0.79.0"
+    "react-native": "^0.79.0"
   },
   "resolutions#": {
     "esbuild": "Needed for CF Wrangler / vinxi build",
