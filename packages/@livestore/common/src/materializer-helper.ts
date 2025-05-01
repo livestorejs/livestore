@@ -38,6 +38,7 @@ export const getExecArgsFromEvent = ({
 }> => {
   const eventArgsDecoded =
     event.decoded === undefined ? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args) : event.decoded.args
+  const eventArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -70,7 +71,6 @@ export const getExecArgsFromEvent = ({
   return statementRes.map((statementRes) => {
     const statementSql = statementRes.sql
 
-    const eventArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
     const bindValues = typeof statementRes === 'string' ? eventArgsEncoded : statementRes.bindValues
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables

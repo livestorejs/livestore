@@ -70,6 +70,7 @@
     "release:dev": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish  --tag dev --no-git-checks",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",
     "test": "CI=1 pnpm --parallel run test",
+    "test:perf": "pnpm --filter '@local/tests-perf' test",
     "update-lockfile": "CI=1 pnpm install --lockfile-only"
   }
 }

@@ -6,7 +6,7 @@ permissions:
 
 on:
   push:
-    branches: 
+    branches:
       - main  # Only run on pushes to main
   pull_request:
     branches: ['**']  # Run on PRs targeting any branch
@@ -45,7 +45,7 @@ jobs:
       - run: pnpm install
       - run: pnpm build:ts
       # Seems like webmesh / utils is flaky on CI when running in parallel with the other packages, so we run it separately
-      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --parallel run test
+      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --parallel run test
       - run: pnpm --filter '@livestore/webmesh' run test
       - run: pnpm --filter '@livestore/utils' run test
       - uses: actions/upload-artifact@v4
@@ -61,6 +61,33 @@ jobs:
           # TODO surface deploy url in github UI via environments
         run: |
           bunx netlify-cli deploy --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+  perf-test:
+    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Use FlakeHub Cache for Nix binaries
+        uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Load environment with direnv
+        uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
+      - name: Install dependencies
+        run: pnpm install
+      - name: Compile TypeScript code
+        run: pnpm build:ts
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+      - name: Run performance tests
+        env:
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
+        run: pnpm test:perf
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
@@ -178,7 +205,7 @@ jobs:
             --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
   # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
   # to simulate a simple user-facing setup

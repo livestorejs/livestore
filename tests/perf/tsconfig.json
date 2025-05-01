@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "sourceMap": false,
+    "composite": false,
+    "declarationMap": false,
+    "declaration": false,
+    "jsx": "react-jsx"
+  },
+  "include": ["./test-app", "./tests"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/react" },
+    { "path": "../../packages/@livestore/utils" },
+    { "path": "../../packages/@livestore/utils-dev" }
+  ]
+}

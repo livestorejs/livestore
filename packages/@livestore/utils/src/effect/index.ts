@@ -37,6 +37,7 @@ export {
   SortedMap,
   HashMap,
   HashSet,
+  ManagedRuntime,
   MutableHashSet,
   MutableHashMap,
   TQueue,
