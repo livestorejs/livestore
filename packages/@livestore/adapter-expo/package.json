@@ -12,7 +12,6 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-expo-common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "@opentelemetry/api": "1.9.0"

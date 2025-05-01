@@ -1,15 +1,16 @@
 import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
-import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
+import {
+  Devtools,
+  IntentionalShutdownCause,
+  makeClientSession,
+  StoreInterrupted,
+  UnexpectedError,
+} from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventId, SystemTables } from '@livestore/common/schema'
-import {
-  ClientSessionRequestContentscriptMain,
-  connectViaWorker,
-  makeChannelForConnectedMeshNode,
-  makeSessionsChannel,
-} from '@livestore/devtools-web-common/web-channel'
+import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -104,17 +105,10 @@ export type WebAdapterOptions = {
 
 export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
-  ({
-    schema,
-    storeId,
-    devtoolsEnabled,
-    debugInstanceId,
-    bootStatusQueue,
-    shutdown,
-    connectDevtoolsToStore,
-    syncPayload,
-  }) =>
+  (adapterArgs) =>
     Effect.gen(function* () {
+      const { schema, storeId, devtoolsEnabled, debugInstanceId, bootStatusQueue, shutdown, syncPayload } = adapterArgs
+
       yield* ensureBrowserRequirements
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
@@ -392,135 +386,102 @@ export const makePersistedAdapter =
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
-      const devtools: ClientSession['devtools'] = devtoolsEnabled
-        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
-        : { enabled: false }
+      const leaderThread: ClientSession['leaderThread'] = {
+        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
+          Effect.timeout(10_000),
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/adapter-web:client-session:export'),
+        ),
 
-      const clientSession = {
-        sqliteDb,
-        devtools,
-        lockStatus,
-        clientId,
-        sessionId,
-
-        leaderThread: {
-          export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
-            Effect.timeout(10_000),
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/adapter-web:client-session:export'),
-          ),
-
-          events: {
-            pull: ({ cursor }) =>
-              runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
-            push: (batch) =>
-              runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-                Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
-                  attributes: { batchSize: batch.length },
-                }),
-              ),
-          },
-
-          initialState: { leaderHead: initialLeaderHead, migrationsReport },
-
-          getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportEventlog()).pipe(
-            Effect.timeout(10_000),
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
-          ),
-
-          getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
-          ),
-
-          sendDevtoolsMessage: (message) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
-              UnexpectedError.mapToUnexpectedError,
-              Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
+        events: {
+          pull: ({ cursor }) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
+          push: (batch) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+              Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
+                attributes: { batchSize: batch.length },
+              }),
             ),
         },
 
-        shutdown,
-      } satisfies ClientSession
+        initialState: { leaderHead: initialLeaderHead, migrationsReport },
 
-      if (devtoolsEnabled) {
-        yield* Effect.gen(function* () {
-          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
+        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportEventlog()).pipe(
+          Effect.timeout(10_000),
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
+        ),
 
-          const webmeshNode = yield* Webmesh.makeMeshNode(`client-session-${storeId}-${clientId}-${sessionId}`)
-          globalThis.__debugWebmeshNode = webmeshNode
+        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
+        ),
 
-          yield* logDevtoolsUrl({ clientSession, schema, storeId })
+        sendDevtoolsMessage: (message) =>
+          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
+          ),
+      }
 
-          const sessionsChannel = yield* makeSessionsChannel
-          const sessionInfoMessage = Devtools.SessionInfo.SessionInfo.make({
-            storeId,
-            clientId,
-            sessionId,
-            schemaAlias: schema.devtools.alias,
-          })
+      const clientSession = yield* makeClientSession({
+        ...adapterArgs,
+        sqliteDb,
+        lockStatus,
+        clientId,
+        sessionId,
+        leaderThread,
+        webmeshMode: 'direct',
+        connectWebmeshNode: Effect.fn(function* ({ webmeshNode, sessionInfo }) {
+          if (devtoolsEnabled) {
+            yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
 
-          yield* Devtools.SessionInfo.provideSessionInfo({
-            webChannel: sessionsChannel,
-            sessionInfo: sessionInfoMessage,
-          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+            // This additional sessioninfo broadcast channel is needed since we can't use the shared worker
+            // as it's currently storeId-specific
+            yield* Devtools.SessionInfo.provideSessionInfo({
+              webChannel: yield* DevtoolsWeb.makeSessionInfoBroadcastChannel,
+              sessionInfo,
+            }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-          yield* Effect.gen(function* () {
-            const clientSessionStaticChannel = yield* WebChannel.windowChannel({
-              listenWindow: window,
-              sendWindow: window,
-              schema: { listen: Schema.Void, send: ClientSessionRequestContentscriptMain },
-              ids: { own: 'client-session-static', other: 'contentscript-main-static' },
-            })
+            yield* Effect.gen(function* () {
+              const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
 
-            yield* clientSessionStaticChannel.send(
-              ClientSessionRequestContentscriptMain.make({ clientId, sessionId, storeId }),
+              yield* clientSessionStaticChannel.send(
+                DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
+              )
+
+              const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
+                Stream.flatten(),
+                Stream.runHead,
+                Effect.flatten,
+              )
+
+              const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
+
+              const contentscriptMainChannel = yield* WebChannel.windowChannel({
+                listenWindow: window,
+                sendWindow: window,
+                schema: Webmesh.WebmeshSchema.Packet,
+                ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
+              })
+
+              yield* webmeshNode.addEdge({ target: contentscriptMainNodeName, edgeChannel: contentscriptMainChannel })
+            }).pipe(
+              Effect.withSpan('@livestore/adapter-web:client-session:devtools:browser-extension'),
+              Effect.tapCauseLogPretty,
+              Effect.forkScoped,
             )
 
-            const contentscriptMainNodeName = `contentscript-main-${storeId}-${clientId}-${sessionId}`
+            const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
-            const contentscriptMainChannel = yield* WebChannel.windowChannel({
-              listenWindow: window,
-              sendWindow: window,
-              schema: Webmesh.WebmeshSchema.Packet,
-              ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
+            yield* DevtoolsWeb.connectViaWorker({
+              node: webmeshNode,
+              target: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }),
+              worker: sharedWorker,
             })
-
-            yield* webmeshNode.addEdge({
-              target: contentscriptMainNodeName,
-              edgeChannel: contentscriptMainChannel,
-            })
-            // yield* Effect.logDebug(
-            //   `[@livestore/adapter-web:client-session] initiated connection: ${webmeshNode.nodeName} → contentscript-main`,
-            // )
-
-            const extensionWorkerChannel = yield* webmeshNode.makeBroadcastChannel({
-              channelName: 'session-info',
-              schema: Devtools.SessionInfo.Message,
-            })
-
-            yield* Devtools.SessionInfo.provideSessionInfo({
-              webChannel: extensionWorkerChannel,
-              sessionInfo: sessionInfoMessage,
-            })
-          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-
-          yield* connectViaWorker({ node: webmeshNode, target: 'shared-worker', worker: sharedWorker })
-
-          const storeDevtoolsChannel = yield* makeChannelForConnectedMeshNode({
-            node: webmeshNode,
-            target: `devtools`,
-            schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
-          })
-
-          yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        }).pipe(
-          Effect.withSpan('@livestore/adapter-web:client-session:devtools'),
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-        )
-      }
+          }
+        }),
+      })
 
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError)

@@ -1,16 +1,17 @@
-import type { ClientSession } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
 export const logDevtoolsUrl = ({
-  clientSession,
   schema,
   storeId,
+  clientId,
+  sessionId,
 }: {
-  clientSession: ClientSession
   schema: LiveStoreSchema
   storeId: string
+  clientId: string
+  sessionId: string
 }) =>
   Effect.gen(function* () {
     if (isDevEnv()) {
@@ -22,7 +23,7 @@ export const logDevtoolsUrl = ({
       if (response.ok) {
         const text = yield* Effect.promise(() => response.text())
         if (text.includes('<meta name="livestore-devtools" content="true" />')) {
-          const url = `${devtoolsBaseUrl}/web/${storeId}/${clientSession.clientId}/${clientSession.sessionId}/${schema.devtools.alias}`
+          const url = `${devtoolsBaseUrl}/web/${storeId}/${clientId}/${sessionId}/${schema.devtools.alias}`
           yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}`)
         }
       }

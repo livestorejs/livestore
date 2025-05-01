@@ -42,14 +42,16 @@ export type SocketType =
 export const connectViaWebSocket = ({
   node,
   url,
+  openTimeout,
 }: {
   node: MeshNode
   url: string
+  openTimeout?: number
 }): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const disconnected = yield* Deferred.make<void>()
 
-    const socket = yield* Socket.makeWebSocket(url, { openTimeout: 50 })
+    const socket = yield* Socket.makeWebSocket(url, { openTimeout })
 
     const edgeChannel = yield* makeWebSocketEdge({
       socket,
@@ -106,6 +108,9 @@ export const makeWebSocketEdge = ({
         Stream.catchTag(
           'SocketError',
           Effect.fn(function* (error) {
+            // yield* Effect.logError(`[websocket-edge] Socket error`, error)
+            // In the case of the socket being closed, we're interrupting the stream
+            // and close the WebChannel (which can be observed from the outside)
             if (error.reason === 'Close') {
               yield* isConnectedLatch.close
               yield* Deferred.succeed(closedDeferred, undefined)
@@ -123,6 +128,7 @@ export const makeWebSocketEdge = ({
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
               const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
+              // yield* Effect.logDebug(`[websocket-edge] recv from ${msg.from}: ${decodedPayload._tag}`, decodedPayload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),

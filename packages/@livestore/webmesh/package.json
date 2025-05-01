@@ -15,7 +15,6 @@
   },
   "types": "./dist/mod.d.ts",
   "dependencies": {
-    "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {

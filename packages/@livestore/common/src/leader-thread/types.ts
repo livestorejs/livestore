@@ -8,9 +8,9 @@ import type {
   Stream,
   Subscribable,
   SubscriptionRef,
-  WebChannel,
 } from '@livestore/utils/effect'
 import { Context, Schema } from '@livestore/utils/effect'
+import type { MeshNode } from '@livestore/webmesh'
 
 import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
 import type {
@@ -60,13 +60,14 @@ export type DevtoolsOptions =
     }
   | {
       enabled: true
-      makeBootContext: Effect.Effect<
+      boot: Effect.Effect<
         {
-          devtoolsWebChannel: WebChannel.WebChannel<Devtools.Leader.MessageToApp, Devtools.Leader.MessageFromApp>
+          node: MeshNode
           persistenceInfo: PersistenceInfoPair
+          mode: 'proxy' | 'direct'
         },
         UnexpectedError,
-        Scope.Scope
+        Scope.Scope | HttpClient.HttpClient | LeaderThreadCtx
       >
     }
 

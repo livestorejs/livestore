@@ -9,7 +9,6 @@
   "references": [
     { "path": "../common" },
     { "path": "../utils" },
-    { "path": "../devtools-expo-common" },
     { "path": "../webmesh" }
   ]
 }

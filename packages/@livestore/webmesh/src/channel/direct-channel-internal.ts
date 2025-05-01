@@ -16,30 +16,30 @@ import {
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.js'
 import * as MeshSchema from '../mesh-schema.js'
 
-export interface MakeMessageChannelArgs {
+export interface MakeDirectChannelArgs {
   nodeName: MeshNodeName
   /** Queue of incoming messages for this channel */
   incomingPacketsQueue: Queue.Queue<MessageQueueItem>
   newEdgeAvailablePubSub: PubSub.PubSub<MeshNodeName>
   channelName: ChannelName
   target: MeshNodeName
-  sendPacket: (packet: typeof MeshSchema.MessageChannelPacket.Type) => Effect.Effect<void>
+  sendPacket: (packet: typeof MeshSchema.DirectChannelPacket.Type) => Effect.Effect<void>
   checkTransferableEdges: (
-    packet: typeof MeshSchema.MessageChannelPacket.Type,
-  ) => typeof MeshSchema.MessageChannelResponseNoTransferables.Type | undefined
+    packet: typeof MeshSchema.DirectChannelPacket.Type,
+  ) => typeof MeshSchema.DirectChannelResponseNoTransferables.Type | undefined
   schema: WebChannel.OutputSchema<any, any, any, any>
 }
 
 const makeDeferredResult = Deferred.make<
   WebChannel.WebChannel<any, any>,
-  typeof MeshSchema.MessageChannelResponseNoTransferables.Type
+  typeof MeshSchema.DirectChannelResponseNoTransferables.Type
 >
 
 /**
  * The channel version is important here, as a channel will only be established once both sides have the same version.
  * The version is used to avoid concurrency issues where both sides have different incompatible message ports.
  */
-export const makeMessageChannelInternal = ({
+export const makeDirectChannelInternal = ({
   nodeName,
   incomingPacketsQueue,
   target,
@@ -50,14 +50,14 @@ export const makeMessageChannelInternal = ({
   channelVersion,
   scope,
   sourceId,
-}: MakeMessageChannelArgs & {
+}: MakeDirectChannelArgs & {
   channelVersion: number
-  /** We're passing in the closeable scope from the wrapping message channel */
+  /** We're passing in the closeable scope from the wrapping direct channel */
   scope: Scope.CloseableScope
   sourceId: string
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
-  typeof MeshSchema.MessageChannelResponseNoTransferables.Type,
+  typeof MeshSchema.DirectChannelResponseNoTransferables.Type,
   Scope.Scope
 > =>
   Effect.gen(function* () {
@@ -95,8 +95,8 @@ export const makeMessageChannelInternal = ({
     // }
 
     const schema = {
-      send: Schema.Union(schema_.send, MeshSchema.MessageChannelPing, MeshSchema.MessageChannelPong),
-      listen: Schema.Union(schema_.listen, MeshSchema.MessageChannelPing, MeshSchema.MessageChannelPong),
+      send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
+      listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
     }
 
     const channelStateRef: { current: ChannelState } = {
@@ -122,7 +122,7 @@ export const makeMessageChannelInternal = ({
 
         if (channelState._tag === 'Initial') return shouldNeverHappen()
 
-        if (packet._tag === 'MessageChannelResponseNoTransferables') {
+        if (packet._tag === 'DirectChannelResponseNoTransferables') {
           yield* Deferred.fail(deferred, packet)
           return 'close'
         }
@@ -139,7 +139,7 @@ export const makeMessageChannelInternal = ({
         // If this channel has a higher version, we need to signal the other side to close
         // and recreate the channel with the new version
         if (packet.channelVersion < channelVersion) {
-          const newPacket = MeshSchema.MessageChannelRequest.make({
+          const newPacket = MeshSchema.DirectChannelRequest.make({
             source: nodeName,
             sourceId,
             target,
@@ -158,7 +158,7 @@ export const makeMessageChannelInternal = ({
           return
         }
 
-        if (channelState._tag === 'Established' && packet._tag === 'MessageChannelRequest') {
+        if (channelState._tag === 'Established' && packet._tag === 'DirectChannelRequest') {
           if (packet.sourceId === channelState.otherSourceId) {
             return
           } else {
@@ -172,7 +172,7 @@ export const makeMessageChannelInternal = ({
 
         switch (packet._tag) {
           // Assumption: Each side has sent an initial request and another request as a response for an incoming request
-          case 'MessageChannelRequest': {
+          case 'DirectChannelRequest': {
             if (channelState._tag !== 'RequestSent') {
               // We can safely ignore further incoming requests as we're already creating a channel
               return
@@ -181,7 +181,7 @@ export const makeMessageChannelInternal = ({
             if (packet.reqId === channelState.reqPacketId) {
               // Circuit-breaker: We've already sent a request so we don't need to send another one
             } else {
-              const newRequestPacket = MeshSchema.MessageChannelRequest.make({
+              const newRequestPacket = MeshSchema.DirectChannelRequest.make({
                 source: nodeName,
                 sourceId,
                 target,
@@ -199,10 +199,10 @@ export const makeMessageChannelInternal = ({
             const isWinner = nodeName > target
 
             if (isWinner) {
-              span?.addEvent(`winner side: creating message channel and sending response`)
+              span?.addEvent(`winner side: creating direct channel and sending response`)
               const mc = new MessageChannel()
 
-              // We're using a message channel with acks here to make sure messages are not lost
+              // We're using a direct channel with acks here to make sure messages are not lost
               // which might happen during re-edge scenarios.
               // Also we need to eagerly start listening since we're using the channel "ourselves"
               // for the initial ping-pong sequence.
@@ -213,7 +213,7 @@ export const makeMessageChannelInternal = ({
               }).pipe(Effect.andThen(WebChannel.toOpenChannel))
 
               yield* respondToSender(
-                MeshSchema.MessageChannelResponseSuccess.make({
+                MeshSchema.DirectChannelResponseSuccess.make({
                   reqId: packet.id,
                   target,
                   source: nodeName,
@@ -232,14 +232,14 @@ export const makeMessageChannelInternal = ({
               // Now we wait for the other side to respond via the channel
               yield* channel.listen.pipe(
                 Stream.flatten(),
-                Stream.filter(Schema.is(MeshSchema.MessageChannelPing)),
+                Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
                 Stream.take(1),
                 Stream.runDrain,
               )
 
               // span?.addEvent(`winner side: sending pong`)
 
-              yield* channel.send(MeshSchema.MessageChannelPong.make({}))
+              yield* channel.send(MeshSchema.DirectChannelPong.make({}))
 
               span?.addEvent(`winner side: established`)
               channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
@@ -247,20 +247,20 @@ export const makeMessageChannelInternal = ({
               yield* Deferred.succeed(deferred, channel)
             } else {
               span?.addEvent(`loser side: waiting for response`)
-              // Wait for `MessageChannelResponseSuccess` packet
+              // Wait for `DirectChannelResponseSuccess` packet
               channelStateRef.current = { _tag: 'loser:WaitingForResponse', otherSourceId: packet.sourceId }
             }
 
             break
           }
-          case 'MessageChannelResponseSuccess': {
+          case 'DirectChannelResponseSuccess': {
             if (channelState._tag !== 'loser:WaitingForResponse') {
               return shouldNeverHappen(
-                `Expected to find message channel response from ${target}, but was in ${channelState._tag} state`,
+                `Expected to find direct channel response from ${target}, but was in ${channelState._tag} state`,
               )
             }
 
-            // See message-channel notes above
+            // See direct-channel notes above
             const channel = yield* WebChannel.messagePortChannelWithAck({
               port: packet.port,
               schema,
@@ -269,7 +269,7 @@ export const makeMessageChannelInternal = ({
 
             const waitForPongFiber = yield* channel.listen.pipe(
               Stream.flatten(),
-              Stream.filter(Schema.is(MeshSchema.MessageChannelPong)),
+              Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
               Effect.fork,
@@ -282,7 +282,7 @@ export const makeMessageChannelInternal = ({
             // TODO write a test that reproduces this issue and fix the root cause ()
             // https://github.com/livestorejs/livestore/issues/262
             yield* channel
-              .send(MeshSchema.MessageChannelPing.make({}))
+              .send(MeshSchema.DirectChannelPing.make({}))
               .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
 
             // span?.addEvent(`loser side: waiting for pong`)
@@ -324,7 +324,7 @@ export const makeMessageChannelInternal = ({
     }
 
     const edgeRequest = Effect.gen(function* () {
-      const packet = MeshSchema.MessageChannelRequest.make({
+      const packet = MeshSchema.DirectChannelRequest.make({
         source: nodeName,
         sourceId,
         target,
@@ -353,4 +353,4 @@ export const makeMessageChannelInternal = ({
     const channel = yield* deferred
 
     return channel
-  }).pipe(Effect.withSpanScoped(`makeMessageChannel:${channelVersion}`))
+  }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))

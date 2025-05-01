@@ -4,7 +4,6 @@ import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -92,7 +91,9 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
-          Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: `leader-${storeId}-${clientId}` })),
+          Effect.provide(
+            WebmeshWorker.CacheService.layer({ nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }) }),
+          ),
           Effect.forkScoped,
         )
 
@@ -239,22 +240,18 @@ const makeDevtoolsOptions = ({
     if (devtoolsEnabled === false) {
       return { enabled: false }
     }
+
     const { node } = yield* WebmeshWorker.CacheService
 
     return {
       enabled: true,
-      makeBootContext: Effect.gen(function* () {
-        return {
-          devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
-            node,
-            target: `devtools`,
-            schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
-          }),
-          persistenceInfo: {
-            state: dbState.metadata.persistenceInfo,
-            eventlog: dbEventlog.metadata.persistenceInfo,
-          },
+      boot: Effect.gen(function* () {
+        const persistenceInfo = {
+          state: dbState.metadata.persistenceInfo,
+          eventlog: dbEventlog.metadata.persistenceInfo,
         }
+
+        return { node, persistenceInfo, mode: 'direct' }
       }),
     }
   })

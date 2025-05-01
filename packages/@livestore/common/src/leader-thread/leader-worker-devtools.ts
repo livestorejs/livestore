@@ -15,38 +15,56 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       return
     }
 
-    const { syncProcessor, extraIncomingMessagesQueue } = yield* LeaderThreadCtx
+    const { syncProcessor, extraIncomingMessagesQueue, clientId, storeId } = yield* LeaderThreadCtx
 
     yield* listenToDevtools({
       incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
       sendMessage: () => Effect.void,
     }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { persistenceInfo, devtoolsWebChannel } = yield* options.makeBootContext
+    const { node, persistenceInfo, mode } = yield* options.boot
 
-    const sendMessage: SendMessageToDevtools = (message) =>
-      devtoolsWebChannel
-        .send(message)
-        .pipe(
-          Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
-          Effect.interruptible,
-          Effect.ignoreLogged,
-        )
+    yield* node.listenForChannel.pipe(
+      Stream.filter(
+        (res) =>
+          Devtools.isChannelName.devtoolsClientLeader(res.channelName, { storeId, clientId }) && res.mode === mode,
+      ),
+      Stream.tap(({ channelName, source }) =>
+        Effect.gen(function* () {
+          const channel = yield* node.makeChannel({
+            target: source,
+            channelName,
+            schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
+            mode,
+          })
 
-    const syncState = yield* syncProcessor.syncState
-    const mergeCounter = syncProcessor.getMergeCounter()
+          const sendMessage: SendMessageToDevtools = (message) =>
+            channel
+              .send(message)
+              .pipe(
+                Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
+                Effect.interruptible,
+                Effect.ignoreLogged,
+              )
 
-    yield* syncProcessor.pull({ cursor: { mergeCounter, eventId: syncState.localHead } }).pipe(
-      Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
+          const syncState = yield* syncProcessor.syncState
+          const mergeCounter = syncProcessor.getMergeCounter()
+
+          yield* syncProcessor.pull({ cursor: { mergeCounter, eventId: syncState.localHead } }).pipe(
+            Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
+            Stream.runDrain,
+            Effect.forkScoped,
+          )
+
+          yield* listenToDevtools({
+            incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+            sendMessage,
+            persistenceInfo,
+          })
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
+      ),
       Stream.runDrain,
-      Effect.forkScoped,
     )
-
-    yield* listenToDevtools({
-      incomingMessages: devtoolsWebChannel.listen.pipe(Stream.flatten(), Stream.orDie),
-      sendMessage,
-      persistenceInfo,
-    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
   }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:boot'))
 
 const listenToDevtools = ({
