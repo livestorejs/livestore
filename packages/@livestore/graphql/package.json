@@ -1,6 +1,6 @@
 {
   "name": "@livestore/graphql",
-  "version": "0.3.0-dev.38",
+  "version": "0.3.0-dev.39",
   "type": "module",
   "exports": {
     ".": {
