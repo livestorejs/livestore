@@ -10,7 +10,6 @@
   "references": [
     { "path": "../common" },
     { "path": "../utils" },
-    { "path": "../devtools-node-common" },
     { "path": "../webmesh" },
     { "path": "../sqlite-wasm" }
   ]

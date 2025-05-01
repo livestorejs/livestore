@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-expo",
-  "version": "0.3.0-dev.37",
+  "version": "0.3.0-dev.38",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -12,14 +12,15 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-expo-common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
+    "expo-application": "*",
     "expo-file-system": "*",
-    "expo-sqlite": "^15.2.4"
+    "expo-sqlite": "^15.2.4",
+    "react-native": "0.79.0"
   },
   "files": [
     "package.json",
@@ -27,6 +28,7 @@
     "dist"
   ],
   "peerDependencies": {
+    "expo-application": "*",
     "expo-file-system": "*",
     "expo-sqlite": "~15.2.4"
   },

@@ -9,6 +9,7 @@ import {
   identity,
   Layer,
   Logger,
+  LogLevel,
   Schema,
   Scope,
   Stream,
@@ -80,7 +81,7 @@ const createChannel = (source: MeshNode, target: string, options?: Partial<Param
     channelName: options?.channelName ?? 'test',
     schema: ExampleSchema,
     // transferables: options?.transferables ?? 'prefer',
-    mode: options?.mode ?? 'messagechannel',
+    mode: options?.mode ?? 'direct',
     timeout: options?.timeout ?? 200,
   })
 
@@ -108,7 +109,7 @@ const propTestTimeout = IS_CI ? 60_000 : 20_000
 Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   const Delay = Schema.UndefinedOr(Schema.Literal(0, 1, 10, 50))
   // NOTE for message channels, we test both with and without transferables (i.e. proxying)
-  const ChannelType = Schema.Literal('messagechannel', 'messagechannel.proxy', 'proxy')
+  const ChannelType = Schema.Literal('direct', 'proxy(via-messagechannel-edge)', 'proxy')
   const NodeNames = Schema.Union(
     Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')),
     Schema.Tuple(Schema.Literal('B'), Schema.Literal('A')),
@@ -117,17 +118,17 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   const fromChannelType = (
     channelType: typeof ChannelType.Type,
   ): {
-    mode: 'messagechannel' | 'proxy'
+    mode: 'direct' | 'proxy'
     connectNodes: typeof connectNodesViaMessageChannel | typeof connectNodesViaBroadcastChannel
   } => {
     switch (channelType) {
       case 'proxy': {
         return { mode: 'proxy', connectNodes: connectNodesViaBroadcastChannel }
       }
-      case 'messagechannel': {
-        return { mode: 'messagechannel', connectNodes: connectNodesViaMessageChannel }
+      case 'direct': {
+        return { mode: 'direct', connectNodes: connectNodesViaMessageChannel }
       }
-      case 'messagechannel.proxy': {
+      case 'proxy(via-messagechannel-edge)': {
         return { mode: 'proxy', connectNodes: connectNodesViaMessageChannel }
       }
     }
@@ -142,7 +143,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   }: {
     nodeX: MeshNode
     nodeY: MeshNode
-    channelType: 'messagechannel' | 'proxy' | 'messagechannel.proxy'
+    channelType: 'direct' | 'proxy' | 'proxy(via-messagechannel-edge)'
     numberOfMessages?: number
     delays?: { x?: number; y?: number; connect?: number }
   }) =>
@@ -177,12 +178,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         { concurrency: 'unbounded' },
       ).pipe(Effect.withSpan(`exchangeMessages(${nodeLabel.x}↔${nodeLabel.y})`))
     })
+
   Vitest.describe('A <> B', () => {
     Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
       // const delayX = 40
       // const delayY = undefined
       // const connectDelay = undefined
-      // const channelType = 'messagechannel'
+      // const channelType = 'direct'
       // const nodeNames = ['B', 'A'] as const
       // Vitest.scopedLive(
       //   'a / b connect at different times with different channel types',
@@ -218,7 +220,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       {
         // const waitForOfflineDelay = undefined
         // const sleepDelay = 0
-        // const channelType = 'messagechannel'
+        // const channelType = 'direct'
         // Vitest.scopedLive(
         //   'b reconnects',
         //   (test) =>
@@ -342,22 +344,22 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         }).pipe(withCtx(test)),
       )
 
-      const ChannelTypeWithoutMessageChannelProxy = Schema.Literal('proxy', 'messagechannel')
+      const ChannelTypeWithoutMessageChannelProxy = Schema.Literal('proxy', 'direct')
       // TODO there seems to be a flaky case here which gets hit sometimes (e.g. 2025-02-28-17:11)
       // Log output:
       // test: { seed: -964670352, path: "1", endOnFailure: true }
-      // test: Counterexample: ["messagechannel",["A","B"]]
+      // test: Counterexample: ["direct",["A","B"]]
       // test: Shrunk 0 time(s)
       // test: Got AssertionError: expected { _tag: 'MessageChannelPing' } to deeply equal { message: 'A1' }
       // test:     at next (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:376:59)
-      // test:     at prop tests:replace edge while keeping the channel:channelType=messagechannel nodeNames=A,B (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:801:14)
+      // test:     at prop tests:replace edge while keeping the channel:channelType=direct nodeNames=A,B (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:801:14)
       // test: Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
       // test:    ✓ webmesh node > A <> B > prop tests > TODO improve latency > concurrent messages 2110ms
       // test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
       // test:  FAIL  src/node.test.ts > webmesh node > A <> B > prop tests > replace edge while keeping the channel
       // test: Error: Property failed after 2 tests
       // test: { seed: -964670352, path: "1", endOnFailure: true }
-      // test: Counterexample: ["messagechannel",["A","B"]]
+      // test: Counterexample: ["direct",["A","B"]]
       Vitest.scopedLive.prop(
         'replace edge while keeping the channel',
         [ChannelTypeWithoutMessageChannelProxy, NodeNames],
@@ -540,7 +542,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         yield* connectNodesViaBroadcastChannel(nodeA, nodeB)
 
-        const err = yield* createChannel(nodeA, 'B', { mode: 'messagechannel' }).pipe(Effect.timeout(200), Effect.flip)
+        const err = yield* createChannel(nodeA, 'B', { mode: 'direct' }).pipe(Effect.timeout(200), Effect.flip)
         expect(err._tag).toBe('TimeoutException')
       }).pipe(withCtx(test)),
     )
@@ -805,9 +807,9 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     )
   })
 
-  Vitest.describe('mixture of messagechannel and proxy edge connections', () => {
+  Vitest.describe('mixture of direct and proxy edge connections', () => {
     // TODO test case to better guard against case where side A tries to create a proxy channel to B
-    // and side B tries to create a messagechannel to A
+    // and side B tries to create a direct to A
     Vitest.scopedLive('should work for proxy channels', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
@@ -820,7 +822,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    Vitest.scopedLive('should work for messagechannels', (test) =>
+    Vitest.scopedLive('should work for directs', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -844,6 +846,171 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
       }).pipe(withCtx(test)),
     )
+  })
+
+  Vitest.describe('listenForChannel', () => {
+    Vitest.scopedLive('connect later', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+
+        const mode = 'direct' as 'proxy' | 'direct'
+        const connect = mode === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
+
+        const nodeACode = Effect.gen(function* () {
+          const channelAToB = yield* createChannel(nodeA, 'B', { channelName: 'test', mode })
+          yield* channelAToB.send({ message: 'A1' })
+          expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+        })
+
+        const nodeBCode = Effect.gen(function* () {
+          const nodeB = yield* makeMeshNode('B')
+          yield* connect(nodeA, nodeB)
+
+          yield* nodeB.listenForChannel.pipe(
+            Stream.filter((_) => _.channelName === 'test' && _.source === 'A' && _.mode === mode),
+            Stream.tap(
+              Effect.fn(function* (channelInfo) {
+                const channel = yield* createChannel(nodeB, channelInfo.source, {
+                  channelName: channelInfo.channelName,
+                  mode,
+                })
+                yield* channel.send({ message: 'B1' })
+                expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
+              }),
+            ),
+            Stream.take(1),
+            Stream.runDrain,
+          )
+        })
+
+        yield* Effect.all([nodeACode, nodeBCode.pipe(Effect.delay(500))], { concurrency: 'unbounded' })
+      }).pipe(withCtx(test)),
+    )
+
+    // TODO provide a way to allow for reconnecting in the `listenForChannel` case
+    Vitest.scopedLive.skip('reconnect', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+
+        const mode = 'direct' as 'proxy' | 'direct'
+        const connect = mode === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
+
+        const nodeACode = Effect.gen(function* () {
+          const channelAToB = yield* createChannel(nodeA, 'B', { channelName: 'test', mode })
+          yield* channelAToB.send({ message: 'A1' })
+          expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+        })
+
+        const nodeBCode = Effect.gen(function* () {
+          const nodeB = yield* makeMeshNode('B')
+          yield* connect(nodeA, nodeB)
+
+          yield* nodeB.listenForChannel.pipe(
+            Stream.filter((_) => _.channelName === 'test' && _.source === 'A' && _.mode === mode),
+            Stream.tap(
+              Effect.fn(function* (channelInfo) {
+                const channel = yield* createChannel(nodeB, channelInfo.source, {
+                  channelName: channelInfo.channelName,
+                  mode,
+                })
+                yield* channel.send({ message: 'B1' })
+                expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
+              }),
+            ),
+            Stream.take(1),
+            Stream.runDrain,
+          )
+        }).pipe(
+          Effect.withSpan('nodeBCode:gen1'),
+          Effect.andThen(
+            Effect.gen(function* () {
+              const nodeB = yield* makeMeshNode('B')
+              yield* connect(nodeA, nodeB, { replaceIfExists: true })
+
+              yield* nodeB.listenForChannel.pipe(
+                Stream.filter((_) => _.channelName === 'test' && _.source === 'A' && _.mode === mode),
+                Stream.tap(
+                  Effect.fn(function* (channelInfo) {
+                    const channel = yield* createChannel(nodeB, channelInfo.source, {
+                      channelName: channelInfo.channelName,
+                      mode,
+                    })
+                    console.log('recreated channel', channel)
+                    // yield* channel.send({ message: 'B1' })
+                    // expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
+                  }),
+                ),
+                Stream.take(1),
+                Stream.runDrain,
+              )
+            }).pipe(Effect.withSpan('nodeBCode:gen2')),
+          ),
+        )
+
+        yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })
+      }).pipe(withCtx(test)),
+    )
+
+    Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
+      Vitest.scopedLive.prop(
+        'listenForChannel A <> B <> C',
+        [Delay, Delay, Delay, Delay, ChannelType],
+        ([delayNodeA, delayNodeC, delayConnectAB, delayConnectBC, channelType], test) =>
+          Effect.gen(function* () {
+            const nodeA = yield* makeMeshNode('A')
+            const nodeB = yield* makeMeshNode('B')
+            const nodeC = yield* makeMeshNode('C')
+
+            const mode = channelType.includes('proxy') ? 'proxy' : 'direct'
+            const connect = channelType === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
+            yield* connect(nodeA, nodeB).pipe(maybeDelay(delayConnectAB, 'delayConnectAB'))
+            yield* connect(nodeB, nodeC).pipe(maybeDelay(delayConnectBC, 'delayConnectBC'))
+
+            const nodeACode = Effect.gen(function* () {
+              const _channel2AToC = yield* createChannel(nodeA, 'C', { channelName: 'test-2', mode })
+
+              const channelAToC = yield* createChannel(nodeA, 'C', { channelName: 'test-1', mode })
+              yield* channelAToC.send({ message: 'A1' })
+              expect(yield* getFirstMessage(channelAToC)).toEqual({ message: 'C1' })
+            })
+
+            const nodeCCode = Effect.gen(function* () {
+              const _channel2CToA = yield* createChannel(nodeC, 'A', { channelName: 'test-2', mode })
+
+              yield* nodeC.listenForChannel.pipe(
+                Stream.filter((_) => _.channelName === 'test-1' && _.source === 'A' && _.mode === mode),
+                Stream.tap(
+                  Effect.fn(function* (channelInfo) {
+                    const channel = yield* createChannel(nodeC, channelInfo.source, {
+                      channelName: channelInfo.channelName,
+                      mode,
+                    })
+                    yield* channel.send({ message: 'C1' })
+                    expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
+                  }),
+                ),
+                Stream.take(1),
+                Stream.runDrain,
+              )
+            })
+
+            yield* Effect.all(
+              [
+                nodeACode.pipe(maybeDelay(delayNodeA, 'nodeACode')),
+                nodeCCode.pipe(maybeDelay(delayNodeC, 'nodeCCode')),
+              ],
+              { concurrency: 'unbounded' },
+            )
+          }).pipe(
+            withCtx(test, {
+              skipOtel: true,
+              suffix: `delayNodeA=${delayNodeA} delayNodeC=${delayNodeC} delayConnectAB=${delayConnectAB} delayConnectBC=${delayConnectBC} channelType=${channelType}`,
+              timeout: testTimeout * 2,
+            }),
+          ),
+        { fastCheck: { numRuns: 10 } },
+      )
+    })
   })
 
   Vitest.describe('broadcast channel', () => {
@@ -893,6 +1060,7 @@ const withCtx =
     self.pipe(
       Effect.timeout(timeout),
       Effect.provide(Logger.pretty),
+      Logger.withMinimumLogLevel(LogLevel.Debug),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
       skipOtel ? identity : Effect.provide(otelLayer),

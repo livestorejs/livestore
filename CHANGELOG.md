@@ -5,6 +5,10 @@
 
 ## 0.3.0
 
+## WIP devtools refactor
+
+- [] support reloads
+
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
@@ -253,6 +257,11 @@
 - Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
 - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
 - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+- Web adapter:
+  - Refactor `shared-worker`
+    - Make it optional (for Android support)
+    - Make it store-agnostic (so it's reused across store instances)
+    - Remove extra broadcast channel for session info in @livestore/adapter-web
 - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
 - Examples:
   - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps

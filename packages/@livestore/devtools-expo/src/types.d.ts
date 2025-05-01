@@ -13,4 +13,16 @@ export type Options = {
    * Example: `./src/schema.ts`
    */
   schemaPath: string
+  /**
+   * The port to listen on for the devtools server
+   *
+   * @default 4242
+   */
+  port: number
+  /**
+   * The host to listen on for the devtools server
+   *
+   * @default 'localhost'
+   */
+  host: string
 }

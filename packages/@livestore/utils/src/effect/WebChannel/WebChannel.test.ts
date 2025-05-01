@@ -12,7 +12,7 @@ Vitest.describe('WebChannel', () => {
         const windowB = new JSDOM().window as unknown as globalThis.Window
 
         const codeSideA = Effect.gen(function* () {
-          const channelToB = yield* WebChannel.windowChannel2({
+          const channelToB = yield* WebChannel.windowChannel({
             listenWindow: windowA,
             sendWindow: windowB,
             ids: { own: 'a', other: 'b' },
@@ -32,7 +32,7 @@ Vitest.describe('WebChannel', () => {
         })
 
         const codeSideB = Effect.gen(function* () {
-          const channelToA = yield* WebChannel.windowChannel2({
+          const channelToA = yield* WebChannel.windowChannel({
             listenWindow: windowB,
             sendWindow: windowA,
             ids: { own: 'b', other: 'a' },
@@ -60,7 +60,7 @@ Vitest.describe('WebChannel', () => {
         const window = new JSDOM().window as unknown as globalThis.Window
 
         const codeSideA = Effect.gen(function* () {
-          const channelToB = yield* WebChannel.windowChannel2({
+          const channelToB = yield* WebChannel.windowChannel({
             listenWindow: window,
             sendWindow: window,
             ids: { own: 'a', other: 'b' },
@@ -80,7 +80,7 @@ Vitest.describe('WebChannel', () => {
         })
 
         const codeSideB = Effect.gen(function* () {
-          const channelToA = yield* WebChannel.windowChannel2({
+          const channelToA = yield* WebChannel.windowChannel({
             listenWindow: window,
             sendWindow: window,
             ids: { own: 'b', other: 'a' },

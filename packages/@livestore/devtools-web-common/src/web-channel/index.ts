@@ -3,7 +3,7 @@ import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
 import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
-import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
+import { WebmeshSchema } from '@livestore/webmesh'
 
 import * as WorkerSchema from '../worker/schema.js'
 
@@ -14,73 +14,58 @@ declare global {
   var __debugWebmeshNode: any
 }
 
-export const makeSessionsChannel = WebChannel.broadcastChannel({
+export const makeSessionInfoBroadcastChannel: Effect.Effect<
+  WebChannel.WebChannel<Devtools.SessionInfo.Message, Devtools.SessionInfo.Message>,
+  UnexpectedError,
+  Scope.Scope
+> = WebChannel.broadcastChannel({
   channelName: 'session-info',
   schema: Devtools.SessionInfo.Message,
 })
 
-export const ClientSessionRequestContentscriptMain = Schema.TaggedStruct('ClientSessionRequestContentscriptMain', {
+export const makeNodeName = {
+  sharedWorker: ({ storeId }: { storeId: string }) => `shared-worker-${storeId}`,
+  // TODO refactor shared-worker setup so there's only a single shared-worker per origin
+  // sharedWorker: () => `shared-worker`,
+  browserExtension: {
+    contentscriptMain: (tabId: number) => `contentscript-main-${tabId}`,
+    contentscriptIframe: (tabId: number) => `contentscript-iframe-${tabId}`,
+  },
+}
+
+export const ClientSessionContentscriptMainReq = Schema.TaggedStruct('ClientSessionContentscriptMainReq', {
   storeId: Schema.String,
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-export type ClientSessionRequestContentscriptMain = typeof ClientSessionRequestContentscriptMain.Type
 
-export const makeWebDevtoolsConnectedMeshNode = ({
-  nodeName,
-  target,
-  worker,
-}: {
-  nodeName: string
-  target: string
-  worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
-}) =>
-  Effect.gen(function* () {
-    const node = yield* makeMeshNode(nodeName)
+export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSessionContentscriptMainRes', {
+  tabId: Schema.Number,
+})
 
-    yield* connectViaWorker({ node, target, worker })
-
-    return node
-  })
-
-export const makeChannelForConnectedMeshNode = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
-  target,
-  node,
-  schema,
-}: {
-  node: MeshNode
-  target: string
-  schema: WebChannel.InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-}) =>
-  node.makeChannel({
-    target,
-    channelName: 'devtools(' + [node.nodeName, target].sort().join('↔') + ')',
-    schema,
-    mode: 'messagechannel',
-  })
-
-export const makeWebDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
-  nodeName,
-  target,
-  schema,
-  worker,
-  workerTargetName,
-}: {
-  nodeName: string
-  target: string
-  schema: WebChannel.InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-  worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
-  workerTargetName: string
-}): Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, UnexpectedError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const node = yield* makeWebDevtoolsConnectedMeshNode({ nodeName, target: workerTargetName, worker })
-
-    globalThis.__debugWebmeshNode = node
-
-    const channel = yield* makeChannelForConnectedMeshNode({ node, target, schema })
-
-    return channel
-  }).pipe(Effect.withSpan(`devtools-web-common:makeWebDevtoolsChannel`))
+// Effect.suspend is needed since `window` is not available in the shared worker
+export const makeStaticClientSessionChannel = {
+  contentscriptMain: Effect.suspend(() =>
+    WebChannel.windowChannel({
+      // eslint-disable-next-line unicorn/prefer-global-this
+      listenWindow: window,
+      // eslint-disable-next-line unicorn/prefer-global-this
+      sendWindow: window,
+      schema: { listen: ClientSessionContentscriptMainReq, send: ClientSessionContentscriptMainRes },
+      ids: { own: 'contentscript-main-static', other: 'client-session-static' },
+    }),
+  ),
+  clientSession: Effect.suspend(() =>
+    WebChannel.windowChannel({
+      // eslint-disable-next-line unicorn/prefer-global-this
+      listenWindow: window,
+      // eslint-disable-next-line unicorn/prefer-global-this
+      sendWindow: window,
+      schema: { listen: ClientSessionContentscriptMainRes, send: ClientSessionContentscriptMainReq },
+      ids: { own: 'client-session-static', other: 'contentscript-main-static' },
+    }),
+  ),
+}
 
 export const connectViaWorker = ({
   node,

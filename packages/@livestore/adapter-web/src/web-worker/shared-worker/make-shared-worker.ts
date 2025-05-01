@@ -1,5 +1,5 @@
-import { UnexpectedError } from '@livestore/common'
-import { connectViaWorker } from '@livestore/devtools-web-common/web-channel'
+import { Devtools, UnexpectedError } from '@livestore/common'
+import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
@@ -207,10 +207,11 @@ const makeWorkerRunner = Effect.gen(function* () {
           const { node } = yield* WebmeshWorker.CacheService
           const { storeId, clientId } = initialMessagePayload.initialMessage
 
-          yield* connectViaWorker({ node, worker, target: `leader-${storeId}-${clientId}` }).pipe(
-            Effect.tapCauseLogPretty,
-            Effect.forkScoped,
-          )
+          yield* DevtoolsWeb.connectViaWorker({
+            node,
+            worker,
+            target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
@@ -239,6 +240,9 @@ const makeWorkerRunner = Effect.gen(function* () {
 }).pipe(Layer.unwrapScoped)
 
 export const makeWorker = () => {
+  // Extract from `livestore-shared-worker-${storeId}`
+  const storeId = self.name.replace('livestore-shared-worker-', '')
+
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     // WorkerRunner.launch,
@@ -248,7 +252,7 @@ export const makeWorker = () => {
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.prettyWithThread(self.name)),
     Effect.provide(FetchHttpClient.layer),
-    Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: 'shared-worker' })),
+    Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) })),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     (_) => _ as any as Effect.Effect<void, any>,

@@ -187,6 +187,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
     this.otel = {
       tracer: otelOptions.tracer,
+      rootSpanContext: otelOptions.rootSpanContext,
       commitsSpanContext: otelMuationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
@@ -643,6 +644,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     },
 
     version: liveStoreVersion,
+
+    otel: {
+      rootSpanContext: () => otel.trace.getSpan(this.otel.rootSpanContext)?.spanContext(),
+    },
   }
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path

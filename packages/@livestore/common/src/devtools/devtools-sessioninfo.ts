@@ -20,6 +20,7 @@ export const SessionInfo = Schema.TaggedStruct('SessionInfo', {
   clientId: Schema.String,
   sessionId: Schema.String,
   schemaAlias: Schema.String,
+  isLeader: Schema.Boolean,
 })
 export type SessionInfo = typeof SessionInfo.Type
 

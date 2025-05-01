@@ -148,3 +148,8 @@ export const unwrap = <A, E, R, E1, R1>(
     get: Effect.flatMap(effect, (s) => s.get),
     changes: Stream.unwrap(Effect.map(effect, (s) => s.changes)),
   })
+
+export const never = make({
+  get: Effect.never,
+  changes: Stream.never,
+})

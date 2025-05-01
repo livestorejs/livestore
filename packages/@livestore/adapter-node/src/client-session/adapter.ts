@@ -4,18 +4,16 @@ import * as WT from 'node:worker_threads'
 import type {
   Adapter,
   BootStatus,
-  ClientSession,
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
   LockStatus,
   MakeSqliteDb,
   SyncOptions,
 } from '@livestore/common'
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { makeClientSession, UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import * as DevtoolsNode from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
@@ -33,6 +31,7 @@ import {
   WorkerError,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import * as Webmesh from '@livestore/webmesh'
 
 import type { TestingOverrides } from '../leader-thread-shared.js'
 import { makeLeaderThread } from '../leader-thread-shared.js'
@@ -109,8 +108,10 @@ const makeAdapterImpl = ({
         workerUrl: URL
       }
 }): Adapter =>
-  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue, syncPayload, schema }) =>
+  ((adapterArgs) =>
     Effect.gen(function* () {
+      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -183,51 +184,24 @@ const makeAdapterImpl = ({
 
       syncInMemoryDb.import(initialSnapshot)
 
-      if (devtoolsOptions.enabled) {
-        yield* Effect.gen(function* () {
-          const webmeshNode = yield* DevtoolsNode.makeNodeDevtoolsConnectedMeshNode({
-            url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
-            nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
-          })
-
-          const sessionsChannel = yield* webmeshNode.makeBroadcastChannel({
-            channelName: 'session-info',
-            schema: Devtools.SessionInfo.Message,
-          })
-
-          const schemaAlias = schema.devtools.alias
-          yield* Devtools.SessionInfo.provideSessionInfo({
-            webChannel: sessionsChannel,
-            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId, schemaAlias }),
-          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-
-          const storeDevtoolsChannel = yield* DevtoolsNode.makeChannelForConnectedMeshNode({
-            node: webmeshNode,
-            target: `devtools-${storeId}-${clientId}-${sessionId}`,
-            schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
-          })
-
-          yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        }).pipe(
-          Effect.tapCauseLogPretty,
-          Effect.withSpan('@livestore/adapter-node:client-session:devtools'),
-          Effect.forkScoped,
-        )
-      }
-
-      const devtools: ClientSession['devtools'] = devtoolsEnabled
-        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
-        : { enabled: false }
-
-      const clientSession = {
+      const clientSession = yield* makeClientSession({
+        ...adapterArgs,
         sqliteDb: syncInMemoryDb,
+        webmeshMode: 'proxy',
+        connectWebmeshNode: Effect.fn(function* ({ webmeshNode }) {
+          if (devtoolsOptions.enabled) {
+            yield* Webmesh.connectViaWebSocket({
+              node: webmeshNode,
+              url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
+              openTimeout: 50,
+            }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+          }
+        }),
         leaderThread,
-        devtools,
         lockStatus,
         clientId,
         sessionId,
-        shutdown,
-      } satisfies ClientSession
+      })
 
       return clientSession
     }).pipe(

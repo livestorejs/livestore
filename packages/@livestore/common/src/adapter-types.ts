@@ -232,7 +232,9 @@ export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: ClientSessionDevtoolsChannel,
 ) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
-export type Adapter = (opts: {
+export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
+
+export interface AdapterArgs {
   schema: LiveStoreSchema
   storeId: string
   devtoolsEnabled: boolean
@@ -246,7 +248,7 @@ export type Adapter = (opts: {
    * @default undefined
    */
   syncPayload: Schema.JsonValue | undefined
-}) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
+}
 
 export const MigrationsReportEntry = Schema.Struct({
   tableName: Schema.String,

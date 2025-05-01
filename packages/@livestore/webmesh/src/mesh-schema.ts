@@ -17,13 +17,13 @@ const defaultPacketFields = {
 const remainingHopsUndefined = Schema.Undefined.pipe(Schema.optional)
 
 /**
- * Needs to go through already existing MessageChannel edges, times out otherwise
+ * Needs to go through already existing DirectChannel edges, times out otherwise
  *
  * Can't yet contain the `port` because the request might be duplicated while forwarding to multiple nodes.
  * We need a clear path back to the sender to avoid this, thus we respond with a separate
- * `MessageChannelResponseSuccess` which contains the `port`.
+ * `DirectChannelResponseSuccess` which contains the `port`.
  */
-export class MessageChannelRequest extends Schema.TaggedStruct('MessageChannelRequest', {
+export class DirectChannelRequest extends Schema.TaggedStruct('DirectChannelRequest', {
   ...defaultPacketFields,
   remainingHops: Schema.Array(Schema.String).pipe(Schema.optional),
   channelVersion: Schema.Number,
@@ -36,7 +36,7 @@ export class MessageChannelRequest extends Schema.TaggedStruct('MessageChannelRe
   sourceId: Schema.String,
 }) {}
 
-export class MessageChannelResponseSuccess extends Schema.TaggedStruct('MessageChannelResponseSuccess', {
+export class DirectChannelResponseSuccess extends Schema.TaggedStruct('DirectChannelResponseSuccess', {
   ...defaultPacketFields,
   reqId: Schema.String,
   port: Transferable.MessagePort,
@@ -45,14 +45,11 @@ export class MessageChannelResponseSuccess extends Schema.TaggedStruct('MessageC
   channelVersion: Schema.Number,
 }) {}
 
-export class MessageChannelResponseNoTransferables extends Schema.TaggedStruct(
-  'MessageChannelResponseNoTransferables',
-  {
-    ...defaultPacketFields,
-    reqId: Schema.String,
-    remainingHops: Schema.Array(Schema.String),
-  },
-) {}
+export class DirectChannelResponseNoTransferables extends Schema.TaggedStruct('DirectChannelResponseNoTransferables', {
+  ...defaultPacketFields,
+  reqId: Schema.String,
+  remainingHops: Schema.Array(Schema.String),
+}) {}
 
 export class ProxyChannelRequest extends Schema.TaggedStruct('ProxyChannelRequest', {
   ...defaultPacketFields,
@@ -124,10 +121,10 @@ export const BroadcastChannelPacket = Schema.TaggedStruct('BroadcastChannelPacke
   target: Schema.Literal('-'),
 })
 
-export class MessageChannelPacket extends Schema.Union(
-  MessageChannelRequest,
-  MessageChannelResponseSuccess,
-  MessageChannelResponseNoTransferables,
+export class DirectChannelPacket extends Schema.Union(
+  DirectChannelRequest,
+  DirectChannelResponseSuccess,
+  DirectChannelResponseNoTransferables,
 ) {}
 
 export class ProxyChannelPacket extends Schema.Union(
@@ -138,7 +135,7 @@ export class ProxyChannelPacket extends Schema.Union(
 ) {}
 
 export class Packet extends Schema.Union(
-  MessageChannelPacket,
+  DirectChannelPacket,
   ProxyChannelPacket,
   NetworkEdgeAdded,
   NetworkTopologyRequest,
@@ -146,5 +143,5 @@ export class Packet extends Schema.Union(
   BroadcastChannelPacket,
 ) {}
 
-export class MessageChannelPing extends Schema.TaggedStruct('MessageChannelPing', {}) {}
-export class MessageChannelPong extends Schema.TaggedStruct('MessageChannelPong', {}) {}
+export class DirectChannelPing extends Schema.TaggedStruct('DirectChannelPing', {}) {}
+export class DirectChannelPong extends Schema.TaggedStruct('DirectChannelPong', {}) {}

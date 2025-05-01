@@ -83,6 +83,7 @@ export type QueryDebugInfo = {
 
 export type StoreOtel = {
   tracer: otel.Tracer
+  rootSpanContext: otel.Context
   commitsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }

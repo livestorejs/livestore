@@ -71,6 +71,7 @@ export const makeProxyChannel = ({
       const channelStateRef = { current: { _tag: 'Initial' } as ProxiedChannelState }
 
       const debugInfo = {
+        kind: 'proxy-channel',
         pendingSends: 0,
         totalSends: 0,
         connectCounter: 0,
@@ -118,9 +119,15 @@ export const makeProxyChannel = ({
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].sort().join('_')
 
+      const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
+        Effect.acquireRelease(Queue.shutdown),
+      )
+
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
         Effect.gen(function* () {
-          // yield* Effect.log(`${nodeName}:processing packet ${packet._tag} from ${packet.source}`)
+          // yield* Effect.logDebug(
+          //   `[${nodeName}] processProxyPacket received: ${packet._tag} from ${packet.source} (reqId: ${packet.id})`,
+          // )
 
           const otherSideName = packet.source
           const channelKey = `target:${otherSideName}, channelName:${packet.channelName}` satisfies ChannelKey
@@ -130,19 +137,46 @@ export const makeProxyChannel = ({
             case 'ProxyChannelRequest': {
               const combinedChannelId = getCombinedChannelId(packet.channelIdCandidate)
 
-              if (channelState._tag === 'Initial' || channelState._tag === 'Established') {
-                yield* SubscriptionRef.set(connectedStateRef, false)
-                channelStateRef.current = { _tag: 'Pending', initiatedVia: 'incoming-request' }
-                yield* Effect.spanEvent(`Reconnecting`).pipe(Effect.withParentSpan(channelSpan))
-                debugInfo.isConnected = false
-                debugInfo.connectCounter++
-
-                // If we're already connected, we need to re-establish the edge
-                if (channelState._tag === 'Established' && channelState.combinedChannelId !== combinedChannelId) {
+              // Handle Established state explicitly
+              if (channelState._tag === 'Established') {
+                // Check if the incoming request is for the *same* channel instance
+                if (channelState.combinedChannelId === combinedChannelId) {
+                  // Already established with the same ID, likely a redundant request.
+                  // Just respond and stay established.
+                  // yield* Effect.logDebug(
+                  //   `[${nodeName}] Received redundant ProxyChannelRequest for already established channel instance ${combinedChannelId}. Responding.`,
+                  // )
+                } else {
+                  // Established, but the incoming request has a different ID.
+                  // This implies a reconnect scenario where IDs don't match. Reset to Pending and re-initiate.
+                  yield* Effect.logWarning(
+                    `[${nodeName}] Received ProxyChannelRequest with different channel ID (${combinedChannelId}) while established with ${channelState.combinedChannelId}. Re-establishing.`,
+                  )
+                  yield* SubscriptionRef.set(connectedStateRef, false)
+                  channelStateRef.current = { _tag: 'Pending', initiatedVia: 'incoming-request' }
+                  yield* Effect.spanEvent(`Reconnecting (received conflicting ProxyChannelRequest)`).pipe(
+                    Effect.withParentSpan(channelSpan),
+                  )
+                  debugInfo.isConnected = false
+                  debugInfo.connectCounter++
+                  // We need to send our own request as well to complete the handshake for the new ID
                   yield* edgeRequest
                 }
+              } else if (channelState._tag === 'Initial') {
+                // Standard initial connection: set to Pending
+                yield* SubscriptionRef.set(connectedStateRef, false) // Ensure connectedStateRef is false if we were somehow Initial but it wasn't false
+                channelStateRef.current = { _tag: 'Pending', initiatedVia: 'incoming-request' }
+                yield* Effect.spanEvent(`Connecting (received ProxyChannelRequest)`).pipe(
+                  Effect.withParentSpan(channelSpan),
+                )
+                debugInfo.isConnected = false // Should be false already, but ensure consistency
+                debugInfo.connectCounter++
+                // No need to send edgeRequest here, the response acts as our part of the handshake for the incoming request's ID
               }
+              // If state is 'Pending', we are already trying to connect.
+              // Just let the response go out, don't change state.
 
+              // Send the response regardless of the initial state (unless an error occurred)
               yield* respondToSender(
                 MeshSchema.ProxyChannelResponseSuccess.make({
                   reqId: packet.id,
@@ -160,7 +194,6 @@ export const makeProxyChannel = ({
             }
             case 'ProxyChannelResponseSuccess': {
               if (channelState._tag !== 'Pending') {
-                // return shouldNeverHappen(`Expected proxy channel to be pending but got ${channelState._tag}`)
                 if (
                   channelState._tag === 'Established' &&
                   channelState.combinedChannelId !== packet.combinedChannelId
@@ -168,8 +201,14 @@ export const makeProxyChannel = ({
                   return shouldNeverHappen(
                     `ProxyChannel[${channelKey}]: Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
                   )
+                } else if (channelState._tag === 'Established') {
+                  // yield* Effect.logDebug(`[${nodeName}] Ignoring redundant ResponseSuccess with same ID ${packet.id}`)
+                  return
                 } else {
-                  // for now just ignore it but should be looked into (there seems to be some kind of race condition/inefficiency)
+                  yield* Effect.logWarning(
+                    `[${nodeName}] Ignoring ResponseSuccess ${packet.id} received in unexpected state ${channelState._tag}`,
+                  )
+                  return
                 }
               }
 
@@ -182,21 +221,41 @@ export const makeProxyChannel = ({
 
               yield* setStateToEstablished(packet.combinedChannelId)
 
+              const establishedState = channelStateRef.current
+              if (establishedState._tag === 'Established') {
+                //
+                const bufferedPackets = yield* Queue.takeAll(earlyPayloadBuffer)
+                // yield* Effect.logDebug(
+                //   `[${nodeName}] Draining early payload buffer (${bufferedPackets.length}) after ResponseSuccess`,
+                // )
+                for (const bufferedPacket of bufferedPackets) {
+                  if (establishedState.combinedChannelId !== bufferedPacket.combinedChannelId) {
+                    yield* Effect.logWarning(
+                      `[${nodeName}] Discarding buffered payload ${bufferedPacket.id}: Combined channel ID mismatch during drain. Expected ${establishedState.combinedChannelId}, got ${bufferedPacket.combinedChannelId}`,
+                    )
+                    continue
+                  }
+                  const decodedMessage = yield* Schema.decodeUnknown(establishedState.listenSchema)(
+                    bufferedPacket.payload,
+                  )
+                  yield* establishedState.listenQueue.pipe(Queue.offer(decodedMessage))
+                }
+              } else {
+                yield* Effect.logError(
+                  `[${nodeName}] State is not Established immediately after setStateToEstablished was called. Cannot drain buffer. State: ${establishedState._tag}`,
+                )
+              }
+
               return
             }
             case 'ProxyChannelPayload': {
-              if (channelState._tag !== 'Established') {
-                // return yield* Effect.die(`Not yet connected to ${target}. dropping message`)
-                yield* Effect.spanEvent(`Not yet connected to ${target}. dropping message`, { packet })
-                return
-              }
-
-              if (channelState.combinedChannelId !== packet.combinedChannelId) {
+              if (channelState._tag === 'Established' && channelState.combinedChannelId !== packet.combinedChannelId) {
                 return yield* Effect.die(
                   `ProxyChannel[${channelKey}]: Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
                 )
               }
 
+              // yield* Effect.logDebug(`[${nodeName}] Received payload reqId: ${packet.id}. Sending Ack.`)
               yield* respondToSender(
                 MeshSchema.ProxyChannelPayloadAck.make({
                   reqId: packet.id,
@@ -205,25 +264,36 @@ export const makeProxyChannel = ({
                   target,
                   source: nodeName,
                   channelName,
-                  combinedChannelId: channelState.combinedChannelId,
+                  combinedChannelId:
+                    channelState._tag === 'Established' ? channelState.combinedChannelId : packet.combinedChannelId,
                 }),
               )
 
-              const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
-              yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
-
+              if (channelState._tag === 'Established') {
+                const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
+                yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
+              } else {
+                // yield* Effect.logDebug(
+                //   `[${nodeName}] Buffering early payload reqId: ${packet.id} (state: ${channelState._tag})`,
+                // )
+                yield* Queue.offer(earlyPayloadBuffer, packet)
+              }
               return
             }
             case 'ProxyChannelPayloadAck': {
+              // yield* Effect.logDebug(`[${nodeName}] Received Ack for reqId: ${packet.reqId}`)
+
               if (channelState._tag !== 'Established') {
                 yield* Effect.spanEvent(`Not yet connected to ${target}. dropping message`)
+                yield* Effect.logWarning(
+                  `[${nodeName}] Received Ack but not established (State: ${channelState._tag}). Dropping Ack for ${packet.reqId}`,
+                )
                 return
               }
 
               const ack =
                 channelState.ackMap.get(packet.reqId) ??
                 shouldNeverHappen(`[ProxyChannel[${channelKey}]] Expected ack for ${packet.reqId}`)
-
               yield* Deferred.succeed(ack, void 0)
 
               channelState.ackMap.delete(packet.reqId)
@@ -344,15 +414,27 @@ export const makeProxyChannel = ({
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
+      const runtime = yield* Effect.runtime()
+
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
         send,
         listen,
         closedDeferred,
-        supportsTransferables: true,
+        supportsTransferables: false,
         schema,
         shutdown: Scope.close(scope, Exit.void),
         debugInfo,
+        ...({
+          debug: {
+            ping: (message: string = 'ping') =>
+              send(WebChannel.DebugPingMessage.make({ message })).pipe(
+                Effect.provide(runtime),
+                Effect.tapCauseLogPretty,
+                Effect.runFork,
+              ),
+          },
+        } as {}),
       } satisfies WebChannel.WebChannel<any, any>
 
       return webChannel as WebChannel.WebChannel<any, any>

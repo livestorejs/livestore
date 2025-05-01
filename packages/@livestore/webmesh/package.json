@@ -1,6 +1,6 @@
 {
   "name": "@livestore/webmesh",
-  "version": "0.3.0-dev.37",
+  "version": "0.3.0-dev.38",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -15,7 +15,6 @@
   },
   "types": "./dist/mod.d.ts",
   "dependencies": {
-    "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {

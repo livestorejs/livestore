@@ -15,8 +15,8 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as WebmeshSchema from '../mesh-schema.js'
-import type { MakeMessageChannelArgs } from './message-channel-internal.js'
-import { makeMessageChannelInternal } from './message-channel-internal.js'
+import type { MakeDirectChannelArgs } from './direct-channel-internal.js'
+import { makeDirectChannelInternal } from './direct-channel-internal.js'
 
 /**
  * Behaviour:
@@ -33,7 +33,7 @@ import { makeMessageChannelInternal } from './message-channel-internal.js'
  *
  * If needed we can also implement further functionality (like heartbeat) in this wrapper channel.
  */
-export const makeMessageChannel = ({
+export const makeDirectChannel = ({
   schema,
   newEdgeAvailablePubSub,
   channelName,
@@ -42,7 +42,7 @@ export const makeMessageChannel = ({
   incomingPacketsQueue,
   target,
   sendPacket,
-}: MakeMessageChannelArgs) =>
+}: MakeDirectChannelArgs) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       /** Only used to identify whether a source is the same instance to know when to reconnect */
@@ -66,7 +66,7 @@ export const makeMessageChannel = ({
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
           channelVersion: number
-          makeMessageChannelScope: Scope.CloseableScope
+          makeDirectChannelScope: Scope.CloseableScope
         }>()
 
         while (true) {
@@ -75,9 +75,9 @@ export const makeMessageChannel = ({
 
           yield* Effect.spanEvent(`Connecting#${channelVersion}`)
 
-          const makeMessageChannelScope = yield* Scope.make()
+          const makeDirectChannelScope = yield* Scope.make()
           // Attach the new scope to the parent scope
-          yield* Effect.addFinalizer((ex) => Scope.close(makeMessageChannelScope, ex))
+          yield* Effect.addFinalizer((ex) => Scope.close(makeDirectChannelScope, ex))
 
           /**
            * Expected concurrency behaviour:
@@ -86,7 +86,7 @@ export const makeMessageChannel = ({
            *   - The edge setup succeeds and we can interrupt the waitForNewEdgeFiber
            * - Tricky paths:
            *   - While a edge is still being setup, we want to re-try when there is a new edge
-           *   - If the edge setup returns a `MessageChannelResponseNoTransferables` error,
+           *   - If the edge setup returns a `DirectChannelResponseNoTransferables` error,
            *     we want to wait for a new edge and then re-try
            * - Further notes:
            *   - If the parent scope closes, we want to also interrupt both the edge setup and the waitForNewEdgeFiber
@@ -102,7 +102,7 @@ export const makeMessageChannel = ({
             Effect.fork,
           )
 
-          const makeChannel = makeMessageChannelInternal({
+          const makeChannel = makeDirectChannelInternal({
             nodeName,
             sourceId,
             incomingPacketsQueue,
@@ -113,10 +113,10 @@ export const makeMessageChannel = ({
             channelVersion,
             newEdgeAvailablePubSub,
             sendPacket,
-            scope: makeMessageChannelScope,
+            scope: makeDirectChannelScope,
           }).pipe(
-            Scope.extend(makeMessageChannelScope),
-            Effect.forkIn(makeMessageChannelScope),
+            Scope.extend(makeDirectChannelScope),
+            Effect.forkIn(makeDirectChannelScope),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
             Effect.withUnhandledErrorLogLevel(Option.none()),
@@ -125,16 +125,16 @@ export const makeMessageChannel = ({
           const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
 
           if (raceResult === 'new-edge') {
-            yield* Scope.close(makeMessageChannelScope, Exit.fail('new-edge'))
+            yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
             const channelExit = yield* raceResult.pipe(Effect.exit)
             if (channelExit._tag === 'Failure') {
-              yield* Scope.close(makeMessageChannelScope, channelExit)
+              yield* Scope.close(makeDirectChannelScope, channelExit)
 
               if (
                 Cause.isFailType(channelExit.cause) &&
-                Schema.is(WebmeshSchema.MessageChannelResponseNoTransferables)(channelExit.cause.error)
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error)
               ) {
                 // Only retry when there is a new edge available
                 yield* waitForNewEdgeFiber.pipe(Effect.exit)
@@ -142,14 +142,14 @@ export const makeMessageChannel = ({
             } else {
               const channel = channelExit.value
 
-              yield* Deferred.succeed(resultDeferred, { channel, makeMessageChannelScope, channelVersion })
+              yield* Deferred.succeed(resultDeferred, { channel, makeDirectChannelScope, channelVersion })
               break
             }
           }
         }
 
         // Now we wait until the first channel is established
-        const { channel, makeMessageChannelScope, channelVersion } = yield* resultDeferred
+        const { channel, makeDirectChannelScope, channelVersion } = yield* resultDeferred
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
@@ -164,7 +164,7 @@ export const makeMessageChannel = ({
           Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
           Stream.runDrain,
           Effect.tapCauseLogPretty,
-          Effect.forkIn(makeMessageChannelScope),
+          Effect.forkIn(makeDirectChannelScope),
         )
 
         yield* Effect.gen(function* () {
@@ -177,12 +177,12 @@ export const makeMessageChannel = ({
             yield* Deferred.succeed(deferred, void 0)
             yield* TQueue.take(sendQueue) // Remove the message from the queue
           }
-        }).pipe(Effect.forkIn(makeMessageChannelScope))
+        }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
         yield* channel.closedDeferred
 
-        yield* Scope.close(makeMessageChannelScope, Exit.succeed('channel-closed'))
+        yield* Scope.close(makeDirectChannelScope, Exit.succeed('channel-closed'))
 
         yield* Effect.spanEvent(`Disconnected#${channelVersion}`)
         debugInfo.isConnected = false

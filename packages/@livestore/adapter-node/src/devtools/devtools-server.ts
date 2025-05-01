@@ -1,7 +1,9 @@
 import http from 'node:http'
 import path from 'node:path'
 
+import type { Devtools } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
+import type { HttpClient } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -25,25 +27,18 @@ import { makeViteMiddleware } from './vite-dev-server.js'
  */
 export const startDevtoolsServer = ({
   schemaPath,
-  schemaAlias,
-  storeId,
-  clientId,
-  sessionId,
+  clientSessionInfo,
   port,
   host,
 }: {
   schemaPath: string
-  schemaAlias: string
-  storeId: string
-  clientId: string
-  sessionId: string
+  clientSessionInfo: Devtools.SessionInfo.SessionInfo | undefined
   host: string
   port: number
-}) =>
+}): Effect.Effect<never, never, HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const clientSessionInfo = { storeId, clientId, sessionId }
     const viteMiddleware = yield* makeViteMiddleware({
-      mode: { _tag: 'node', clientSessionInfo, url: `ws://localhost:${port}` },
+      mode: { _tag: 'node', url: `http://${host}:${port}` },
       schemaPath: path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
         if (LS_DEV) {
@@ -67,23 +62,29 @@ export const startDevtoolsServer = ({
       const req = yield* HttpServerRequest.HttpServerRequest
 
       if (Headers.has(req.headers, 'upgrade')) {
-        // yield* Effect.log(`WS Relay ${relayNodeName}: request ${req.url}`)
+        // yield* Effect.logDebug(`WS Relay ${relayNodeName}: WS upgrade request ${req.url}`)
 
         const socket = yield* req.upgrade
 
         const { webChannel, from } = yield* makeWebSocketEdge({ socket, socketType: { _tag: 'relay' } })
 
-        yield* node
-          .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
-          .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
+        // To handle websocket closing, we need to race the `webChannel.closedDeferred` to properly interrupt the handler
+        yield* Effect.raceFirst(
+          Effect.gen(function* () {
+            yield* node
+              .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
+              .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
 
-        if (LS_DEV) {
-          yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
-          yield* Effect.addFinalizerLog(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
-        }
+            if (LS_DEV) {
+              yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
+              yield* Effect.addFinalizerLog(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
+            }
 
-        // We want to keep the websocket open until the client disconnects or the server shuts down
-        yield* Effect.never
+            // We want to keep the websocket open until the client disconnects or the server shuts down
+            yield* Effect.never
+          }),
+          webChannel.closedDeferred,
+        )
 
         return HttpServerResponse.empty({ status: 101 })
       } else {
@@ -105,19 +106,23 @@ export const startDevtoolsServer = ({
       }
 
       return HttpServerResponse.text('Not found')
-    }).pipe(Effect.interruptible)
+    }).pipe(Effect.tapCauseLogPretty, Effect.interruptible)
+
+    const sessionSuffix = clientSessionInfo
+      ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
+      : '?autoconnect'
 
     yield* Effect.logDebug(
-      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}/${schemaAlias}`,
+      `[@livestore/devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node${sessionSuffix}`,
     )
 
     return HttpServer.serve(handler, HttpMiddleware.logger)
   }).pipe(
     Effect.withSpan('@livestore/adapter-node:startDevtoolsServer', {
-      attributes: { storeId, clientId, sessionId, port, host, schemaPath },
+      attributes: { clientSessionInfo, port, host, schemaPath },
     }),
+    HttpMiddleware.withLoggerDisabled,
     Layer.unwrapScoped,
-    // HttpServer.withLogAddress,
     Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port, host })),
     Layer.launch,
     Effect.orDie,

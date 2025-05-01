@@ -1,6 +1,6 @@
 import { type Effect, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { MessageChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.js'
+import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.js'
 
 export type ProxyQueueItem = {
   packet: typeof ProxyChannelPacket.Type
@@ -8,8 +8,8 @@ export type ProxyQueueItem = {
 }
 
 export type MessageQueueItem = {
-  packet: typeof MessageChannelPacket.Type
-  respondToSender: (msg: typeof MessageChannelPacket.Type) => Effect.Effect<void>
+  packet: typeof DirectChannelPacket.Type
+  respondToSender: (msg: typeof DirectChannelPacket.Type) => Effect.Effect<void>
 }
 
 export type MeshNodeName = string
@@ -31,5 +31,13 @@ export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
   'span.label':
     packet.id + (Predicate.hasProperty(packet, 'reqId') && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
-  ...(packet._tag !== 'MessageChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? { packet } : {}),
+  ...(packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? { packet } : {}),
 })
+
+export const ListenForChannelResult = Schema.Struct({
+  channelName: Schema.String,
+  source: Schema.String,
+  mode: Schema.Union(Schema.Literal('proxy'), Schema.Literal('direct')),
+})
+
+export type ListenForChannelResult = typeof ListenForChannelResult.Type

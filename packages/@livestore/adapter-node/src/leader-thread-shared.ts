@@ -11,10 +11,10 @@ import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@lives
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
+import * as Webmesh from '@livestore/webmesh'
 
 import { makeShutdownChannel } from './shutdown-channel.js'
 import type * as WorkerSchema from './worker-schema.js'
@@ -134,35 +134,38 @@ const makeDevtoolsOptions = ({
 
     return {
       enabled: true,
-      makeBootContext: Effect.gen(function* () {
+      boot: Effect.gen(function* () {
         // Lazy import to improve startup time
         const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.js'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
         yield* startDevtoolsServer({
           schemaPath: devtools.schemaPath,
-          schemaAlias: devtools.schemaAlias,
-          storeId,
-          clientId,
-          sessionId: 'static', // TODO make this dynamic
+          clientSessionInfo: Devtools.SessionInfo.SessionInfo.make({
+            storeId,
+            clientId,
+            sessionId: 'static', // TODO make this dynamic
+            schemaAlias: devtools.schemaAlias,
+            isLeader: true,
+          }),
           port: devtools.port,
           host: devtools.host,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-        const devtoolsWebChannel = yield* makeNodeDevtoolsChannel({
-          nodeName: `leader-${storeId}-${clientId}`,
-          target: `devtools-${storeId}-${clientId}-static`,
-          url: `ws://localhost:${devtools.port}`,
-          schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
-        })
+        const node = yield* Webmesh.makeMeshNode(Devtools.makeNodeName.client.leader({ storeId, clientId }))
 
-        return {
-          devtoolsWebChannel,
-          persistenceInfo: {
-            state: dbState.metadata.persistenceInfo,
-            eventlog: dbEventlog.metadata.persistenceInfo,
-          },
+        yield* Webmesh.connectViaWebSocket({
+          node,
+          url: `http://${devtools.host}:${devtools.port}`,
+          openTimeout: 50,
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+        const persistenceInfo = {
+          state: dbState.metadata.persistenceInfo,
+          eventlog: dbEventlog.metadata.persistenceInfo,
         }
-      }).pipe(Effect.provide(FetchHttpClient.layer)),
+
+        return { node, persistenceInfo, mode: 'proxy' }
+      }),
     }
   })

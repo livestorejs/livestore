@@ -301,6 +301,10 @@ export const connectDevtoolsToStore = ({
           syncHeadClientSessionSubscriptions.delete(subscriptionId)
           break
         }
+        case 'LSD.ClientSession.Ping': {
+          sendToDevtools(Devtools.ClientSession.Pong.make({ requestId, clientId, sessionId, liveStoreVersion }))
+          break
+        }
         default: {
           console.warn(`[LSD.ClientSession] Unknown message`, decodedMessage)
         }

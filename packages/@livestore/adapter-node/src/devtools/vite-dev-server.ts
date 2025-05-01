@@ -22,7 +22,7 @@ export type ViteDevtoolsOptions = {
    *
    * @default 'node'
    */
-  mode: Extract<Devtools.DevtoolsMode, { _tag: 'node' } | { _tag: 'expo' }>
+  mode: Extract<Devtools.DevtoolsMode, { _tag: 'node' }>
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -30,9 +30,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // NOTE this is currently also used in @livestore/devtools-expo
 export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
   Effect.gen(function* () {
-    const hmrPort = yield* getFreePort
-
     const cwd = process.cwd()
+
+    const hmrPort = yield* getFreePort
 
     const defaultViteConfig = Vite.defineConfig({
       server: {
