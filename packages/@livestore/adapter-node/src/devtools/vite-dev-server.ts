@@ -1,4 +1,3 @@
-import * as http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -6,6 +5,7 @@ import type { Devtools } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { Effect } from '@livestore/utils/effect'
+import { getFreePort } from '@livestore/utils/node'
 import * as Vite from 'vite'
 
 export type ViteDevtoolsOptions = {
@@ -32,7 +32,7 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
   Effect.gen(function* () {
     const cwd = process.cwd()
 
-    const hmrPort = yield* getFreePort
+    const hmrPort = yield* getFreePort.pipe(UnexpectedError.mapToUnexpectedError)
 
     const defaultViteConfig = Vite.defineConfig({
       server: {
@@ -65,24 +65,3 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
 
     return viteServer
   }).pipe(Effect.withSpan('@livestore/adapter-node:devtools:makeViteServer'))
-
-export const getFreePort = Effect.async<number, UnexpectedError>((cb) => {
-  const server = http.createServer()
-
-  // Listen on port 0 to get an available port
-  server.listen(0, () => {
-    const address = server.address()
-
-    if (address && typeof address === 'object') {
-      const port = address.port
-      server.close(() => cb(Effect.succeed(port)))
-    } else {
-      server.close(() => cb(UnexpectedError.make({ cause: 'Failed to get a free port' })))
-    }
-  })
-
-  // Error handling in case the server encounters an error
-  server.on('error', (err) => {
-    server.close(() => cb(UnexpectedError.make({ cause: err })))
-  })
-})

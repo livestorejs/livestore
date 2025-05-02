@@ -1,3 +1,5 @@
+import { envTruish } from './misc.js'
+
 export const env = (name: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env !== undefined) {
     return process.env[name]
@@ -36,8 +38,6 @@ export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_
 
 /** Only set when developing LiveStore itself. */
 export const LS_DEV = env('LS_DEV') !== undefined || env('VITE_LS_DEV') !== undefined
-
-const envTruish = (env: string | undefined) => env !== undefined && env !== 'false' && env !== '0'
 
 export const IS_CI = envTruish(env('CI'))
 

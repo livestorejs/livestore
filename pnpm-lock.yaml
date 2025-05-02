@@ -89,6 +89,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+      vite:
+        specifier: ^6.2.1
+        version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -2172,6 +2175,9 @@ importers:
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../packages/@livestore/utils-dev
+      '@local/tests-integration':
+        specifier: workspace:*
+        version: link:../tests/integration
       '@types/node':
         specifier: ^22.13.10
         version: 22.13.10

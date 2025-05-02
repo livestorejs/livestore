@@ -36,10 +36,6 @@
     "access": "public"
   },
   "scripts": {
-    "postinstall": "rm -f node_modules/expo-sqlite",
     "test": "echo No tests yet"
-  },
-  "scripts_": {
-    "postinstall": "This is needed to avoid a Expo/PNPM related issue"
   }
 }

@@ -108,6 +108,8 @@ export {
   HttpRouter,
   HttpServerResponse,
   Command,
+  CommandExecutor,
+  Error as PlatformError,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 

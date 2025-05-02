@@ -3,6 +3,9 @@
   "version": "0.0.54-dev.23",
   "type": "module",
   "private": true,
+  "exports": {
+    "./run-tests": "./scripts/run-tests.ts"
+  },
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
@@ -22,9 +25,6 @@
     "wrangler": "^4.0.0"
   },
   "scripts": {
-    "test": "pnpm test:unit & pnpm test:todomvc & pnpm test:node-sync",
-    "test:node-sync": "vitest src/tests/node-sync/node-sync.test.ts",
-    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter livestore-example-src-web-todomvc dev' playwright test src/tests/playwright/todomvc.play.ts",
-    "test:unit": "PLAYWRIGHT_SUITE=unit DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='pnpm vite dev' playwright test src/tests/playwright/unit-tests.play.ts"
+    "test": "bun ./scripts/run-tests.ts"
   }
 }

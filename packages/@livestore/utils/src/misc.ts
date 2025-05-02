@@ -24,3 +24,6 @@ export const tryAsFunctionAndNew = <TArg, TResult>(
     return fnOrConstructor(arg)
   }
 }
+
+export const envTruish = (env: string | undefined) =>
+  env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'

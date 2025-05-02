@@ -2,11 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
+  "include": ["./src", "./scripts", "xvitest.config.ts"],
   "references": [
     { "path": "../../packages/@livestore/effect-playwright" },
     { "path": "../../packages/@livestore/common" },

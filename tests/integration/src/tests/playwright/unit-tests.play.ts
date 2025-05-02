@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 import { runAndGetExit, runTest } from './shared-test.js'
 import { Bridge } from './unit-tests/shared.js'
 
-const modulePrefix = './src/tests/playwright/unit-tests'
+const modulePrefix = '../unit-tests'
 
 test(
   'bootstatus',

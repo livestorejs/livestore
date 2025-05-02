@@ -11,5 +11,6 @@
   "references": [
     { "path": "../packages/@livestore/utils" },
     { "path": "../packages/@livestore/utils-dev" },
+    { "path": "../tests/integration" }
   ]
 }

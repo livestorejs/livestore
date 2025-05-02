@@ -1,5 +1,6 @@
 import process from 'node:process'
 
+import { envTruish } from '@livestore/utils'
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
@@ -65,6 +66,7 @@ const config: PlaywrightTestConfig = {
       use: {
         ...devices['Desktop Chrome'],
         deviceScaleFactor: 2,
+        headless: envTruish(process.env.PLAYWRIGHT_HEADLESS),
       },
     },
 

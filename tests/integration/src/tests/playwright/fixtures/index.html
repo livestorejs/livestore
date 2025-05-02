@@ -8,7 +8,7 @@
   <body>
     <div id="root"></div>
     <script type="module">
-      const modules = import.meta.glob('./src/tests/playwright/unit-tests/**/*.ts')
+      const modules = import.meta.glob('../unit-tests/**/*.ts')
 
       const main = async () => {
         const searchParams = new URLSearchParams(window.location.search)
