@@ -61,7 +61,9 @@ const buildAndDeployExample = ({
       aliasFlag,
     ).pipe(Command.workingDirectory(cwd))
 
-    const result = yield* Command.string(deployCommand).pipe(
+    const result = yield* deployCommand.pipe(
+      Command.stderr('inherit'), // Stream stderr to process.stderr
+      Command.string,
       Effect.tap((result) => Effect.logDebug(`Deploy result for ${example}: ${result}`)),
       Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
       Effect.retry({ times: 2 }),
