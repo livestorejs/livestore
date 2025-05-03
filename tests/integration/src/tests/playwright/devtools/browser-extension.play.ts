@@ -4,7 +4,9 @@ import path from 'node:path'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { envTruish, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Fiber, Layer, Logger } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Logger, OtelTracer } from '@livestore/utils/effect'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 
@@ -94,14 +96,22 @@ const runTest =
       console.log('LIVESTORE_DEVTOOLS_CHROME_DIST_PATH is not set, skipping test')
     }
 
+    const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+    const parentSpan = OtelTracer.makeExternalSpan({
+      traceId: parentSpanContext.traceId,
+      spanId: parentSpanContext.spanId,
+    })
+
     const thread = `playwright-worker-${testInfo.workerIndex}`
     // @ts-expect-error TODO fix types
     globalThis.name = thread
 
+    const layer = Layer.mergeAll(PWLive, OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }))
+
     return eff.pipe(
       Effect.withSpan(testInfo.title),
       Effect.scoped,
-      Effect.provide(PWLive),
+      Effect.provide(layer),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread }),
       Effect.provide(Logger.pretty),
@@ -120,7 +130,7 @@ test(
   'single tab',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-1')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
 
       yield* Effect.promise(async () => {
         const el = tab1.page.locator('.new-todo')
@@ -149,12 +159,40 @@ test(
   ),
 )
 
+test.skip(
+  'single tab (two stores)',
+  runTest(
+    Effect.gen(function* () {
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
+
+      yield* Effect.promise(async () => {
+        await tab1.page.getByText('Notes').waitFor()
+        await tab1.page.getByText('Todos').waitFor()
+
+        // await checkDevtoolsState({
+        //   devtools: tab1.liveStoreDevtools,
+        //   expect: { leader: true, alreadyLoaded: false, tables: ['uiState (1)', 'todos (1)'] },
+        // })
+      }).pipe(
+        Effect.raceFirst(
+          Fiber.joinAll([
+            tab1.pageConsoleFiber,
+            tab1.devtoolsConsoleFiber,
+            // TODO bring back background
+            // backgroundPageConsoleFiber!,
+          ]),
+        ),
+      )
+    }),
+  ),
+)
+
 test(
   'two tabs',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-1')
-      const tab2 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-2')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
+      const tab2 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-2')
 
       yield* Effect.promise(async () => {
         await tab1.page.focus('body')
@@ -200,6 +238,32 @@ test(
             tab1.devtoolsConsoleFiber,
             tab2.pageConsoleFiber,
             tab2.devtoolsConsoleFiber,
+            // TODO bring back background
+            // backgroundPageConsoleFiber!,
+          ]),
+        ),
+      )
+    }),
+  ),
+)
+
+test(
+  'no livestore',
+  runTest(
+    Effect.gen(function* () {
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/no-livestore`, 'tab-1')
+
+      yield* Effect.promise(async () => {
+        await tab1.page.getByText('No Livestore').waitFor()
+
+        // TODO bring back once we restructured the playwright tests
+        // this test relies on the devtools vite plugin not being loaded but currently it is loaded
+        // await tab1.devtools.getByText('LiveStore Devtools entrypoint not found').waitFor()
+      }).pipe(
+        Effect.raceFirst(
+          Fiber.joinAll([
+            tab1.pageConsoleFiber,
+            tab1.devtoolsConsoleFiber,
             // TODO bring back background
             // backgroundPageConsoleFiber!,
           ]),

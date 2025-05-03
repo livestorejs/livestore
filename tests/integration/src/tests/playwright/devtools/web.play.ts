@@ -4,8 +4,9 @@ import path from 'node:path'
 
 import * as Playwright from '@livestore/effect-playwright'
 import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, Schema, Tracer } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 
@@ -39,7 +40,7 @@ const makeTabPair = (url: string, tabName: string) =>
 
     usedPages.add(page)
 
-    yield* Effect.promise(() => page.goto(`${url}#${tabName}`))
+    yield* Effect.promise(() => page.goto(`${url}/devtools/todomvc#${tabName}`))
 
     const rootSpanContext = yield* Effect.promise(() =>
       page
@@ -72,8 +73,6 @@ const PWLive = Effect.gen(function* () {
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrapEffect)
 
-const layer = Layer.mergeAll(PWLive, OtelLiveHttp({ serviceName: 'playwright' }))
-
 const runTest =
   (eff: Effect.Effect<void, unknown, Playwright.BrowserContext | Scope.Scope>) =>
   (
@@ -83,6 +82,14 @@ const runTest =
     const thread = `playwright-worker-${testInfo.workerIndex}`
     // @ts-expect-error TODO fix types
     globalThis.name = thread
+
+    const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+    const parentSpan = OtelTracer.makeExternalSpan({
+      traceId: parentSpanContext.traceId,
+      spanId: parentSpanContext.spanId,
+    })
+
+    const layer = Layer.mergeAll(PWLive, OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }))
 
     return eff.pipe(
       Effect.withSpan(testInfo.title),

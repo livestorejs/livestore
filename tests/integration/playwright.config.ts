@@ -4,19 +4,6 @@ import { envTruish } from '@livestore/utils'
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
-const getDevServerPortFromEnv = () => {
-  const parsedPort = Number.parseInt(process.env.DEV_SERVER_PORT!)
-
-  if (Number.isNaN(parsedPort) || parsedPort < 1024 || parsedPort > 65_535) {
-    // TODO fix this in VSC test integration
-    throw new Error(`Need to provide valid DEV_SERVER_PORT env var between 1024 and 65535.`)
-  }
-
-  return parsedPort
-}
-
-const devServerPort = getDevServerPortFromEnv()
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -117,10 +104,10 @@ const config: PlaywrightTestConfig = {
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: process.env.DEV_SERVER_COMMAND!,
-    port: devServerPort,
-  },
+  // webServer: {
+  //   command: process.env.DEV_SERVER_COMMAND!,
+  //   port: devServerPort,
+  // },
 }
 
 export default config

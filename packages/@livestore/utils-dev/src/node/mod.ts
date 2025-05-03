@@ -18,11 +18,13 @@ export const OtelLiveHttp = ({
   serviceName,
   rootSpanName,
   rootSpanAttributes,
+  parentSpan,
   skipLogUrl,
   traceNodeBootstrap,
 }: {
   serviceName?: string
   rootSpanName?: string
+  parentSpan?: Tracer.AnySpan
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
   traceNodeBootstrap?: boolean
@@ -64,6 +66,7 @@ export const OtelLiveHttp = ({
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
       onEnd: skipLogUrl ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      parent: parentSpan,
     })
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))

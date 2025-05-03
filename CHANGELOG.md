@@ -8,6 +8,7 @@
 ## WIP devtools refactor
 
 - [] support reloads
+- [] fix playwright integration tests
 
 ### New features
 
@@ -257,6 +258,7 @@
 - Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
 - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
 - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+- Handle more gracefully: 2 different store instances with the same store id currently dead-lock on boot
 - Web adapter:
   - Refactor `shared-worker`
     - Make it optional (for Android support)

@@ -2,12 +2,12 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Command, Effect, identity, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { commands as runTestsCommands } from '@local/tests-integration/run-tests'
+import { commands as integrationTestsCommands } from '@local/tests-integration/run-tests'
 
 import { command as deployExamplesCommand } from './deploy-examples.js'
 import * as generateExamples from './generate-examples.js'
 
-const integrationTests = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(runTestsCommands))
+const integrationTests = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(integrationTestsCommands))
 
 const testCommand = Cli.Command.make(
   'test',

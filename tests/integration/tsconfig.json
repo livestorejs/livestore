@@ -4,12 +4,14 @@
     "outDir": "./dist",
     "rootDir": ".",
     "resolveJsonModule": true,
+    "jsx": "react",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src", "./scripts", "xvitest.config.ts"],
   "references": [
     { "path": "../../packages/@livestore/effect-playwright" },
     { "path": "../../packages/@livestore/common" },
+    { "path": "../../packages/@livestore/react" },
     { "path": "../../packages/@livestore/livestore" },
     { "path": "../../packages/@livestore/adapter-node" },
     { "path": "../../packages/@livestore/sync-cf" },

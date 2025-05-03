@@ -1,4 +1,7 @@
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { defineConfig } from 'vite'
+
+const TEST_LIVESTORE_SCHEMA_PATH_JSON = process.env.TEST_LIVESTORE_SCHEMA_PATH_JSON
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -10,4 +13,9 @@ export default defineConfig({
     // Error: `No loader is configured for ".node" files`
     exclude: ['@livestore/wa-sqlite', 'fsevents'],
   },
+  plugins: [
+    TEST_LIVESTORE_SCHEMA_PATH_JSON
+      ? livestoreDevtoolsPlugin({ schemaPath: JSON.parse(TEST_LIVESTORE_SCHEMA_PATH_JSON) })
+      : undefined,
+  ],
 })

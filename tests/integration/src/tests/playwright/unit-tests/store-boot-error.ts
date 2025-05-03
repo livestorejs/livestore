@@ -1,7 +1,7 @@
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import { createStore } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
 
 import { Bridge, schema } from './shared.js'
 

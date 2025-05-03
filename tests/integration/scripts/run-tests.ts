@@ -1,10 +1,12 @@
+import path from 'node:path'
+
 import { UnexpectedError } from '@livestore/common'
 import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Command, Effect, identity, Logger, LogLevel } from '@livestore/utils/effect'
+import { Command, Effect, identity, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 
-const cwd = import.meta.dirname + '/..'
+const cwd = path.resolve(import.meta.dirname, '..')
 
 const unitTest: Cli.Command.Command<
   'unit',
@@ -61,12 +63,14 @@ const todomvcTest: Cli.Command.Command<
     headless: Cli.Options.boolean('headless').pipe(Cli.Options.withDefault(false)),
   },
   Effect.fn(function* ({ headless }) {
+    const devPort = yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError)
     yield* cmd(['pnpm', 'playwright', 'test', 'src/tests/playwright/todomvc.play.ts'], {
       cwd,
       env: {
         PLAYWRIGHT_SUITE: 'todomvc',
-        DEV_SERVER_PORT: yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError),
-        DEV_SERVER_COMMAND: 'pnpm vite dev',
+        DEV_SERVER_PORT: devPort,
+        // DEV_SERVER_COMMAND: 'pnpm vite dev',
+        DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
         PLAYWRIGHT_HEADLESS: headless ? '1' : '0',
       },
     })
@@ -87,18 +91,35 @@ const devtoolsTest: Cli.Command.Command<
     headless: Cli.Options.boolean('headless').pipe(Cli.Options.withDefault(false)),
     ui: Cli.Options.boolean('ui').pipe(Cli.Options.withDefault(false)),
   },
-  Effect.fn(function* ({ headless, ui }) {
-    const devPort = yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError)
-    yield* cmd(['pnpm', 'playwright', 'test', ui ? '--ui' : undefined, 'src/tests/playwright/devtools/*'], {
-      cwd,
-      env: {
-        PLAYWRIGHT_SUITE: 'devtools',
-        PLAYWRIGHT_HEADLESS: headless ? '1' : '0',
-        DEV_SERVER_PORT: devPort,
-        DEV_SERVER_COMMAND: `PORT=${devPort} pnpm --filter livestore-example-src-web-todomvc dev`,
-      },
-    })
-  }),
+  Effect.fn(
+    function* ({ headless, ui }) {
+      const devPort = yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError)
+      const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
+        Effect.map((span) => JSON.stringify(span.spanContext())),
+        Effect.orDie,
+      )
+
+      yield* cmd(`vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
+        env: {
+          // Relative to vite config
+          TEST_LIVESTORE_SCHEMA_PATH_JSON: JSON.stringify('./devtools/todomvc/livestore/schema.ts'),
+        },
+        cwd,
+      }).pipe(Effect.forkScoped)
+
+      yield* cmd(['pnpm', 'playwright', 'test', ui ? '--ui' : undefined, 'src/tests/playwright/devtools/*'], {
+        cwd,
+        env: {
+          PLAYWRIGHT_SUITE: 'devtools',
+          PLAYWRIGHT_HEADLESS: headless ? '1' : '0',
+          DEV_SERVER_PORT: devPort,
+          SPAN_CONTEXT_JSON: spanContext,
+        },
+      })
+    },
+    Effect.withSpan('test:devtools'),
+    Effect.scoped,
+  ),
 )
 
 export const commands = [unitTest, nodeSyncTest, todomvcTest, devtoolsTest] as const

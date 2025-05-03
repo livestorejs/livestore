@@ -1,24 +1,12 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Livestore Web Adapter Tests</title>
+    <title>Test Fixtures (Router)</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-      const modules = import.meta.glob('../unit-tests/**/*.ts')
-
-      const main = async () => {
-        const searchParams = new URLSearchParams(window.location.search)
-        const importPath = searchParams.get('importPath')
-        const exportName = searchParams.get('exportName')
-        const module = await modules[importPath]()
-        await module[exportName]()
-      }
-
-      main().catch((error) => console.error(error))
-    </script>
+    <script type="module" src="/main.tsx"></script>
   </body>
-</html>
+</html> 
