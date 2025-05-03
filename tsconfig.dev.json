@@ -17,8 +17,6 @@
     { "path": "./examples/src/web-todomvc-sync-electric" },
     { "path": "./tests/integration" },
     { "path": "./tests/package-common" },
-    // TODO @IGassmann bring back once we've fixed the tsc max call stack issue
-    // { "path": "./tests/perf"},
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/sync-cf" }
   ]
