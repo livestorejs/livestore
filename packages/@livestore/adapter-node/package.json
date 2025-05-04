@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.42",
+    "@livestore/devtools-vite": "0.3.0-dev.44",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
