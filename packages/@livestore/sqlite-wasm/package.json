@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sqlite-wasm",
-  "version": "0.3.0-dev.40",
+  "version": "0.3.0-dev.41",
   "type": "module",
   "exports": {
     ".": {
