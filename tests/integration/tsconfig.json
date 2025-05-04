@@ -7,7 +7,7 @@
     "jsx": "react",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src", "./scripts", "xvitest.config.ts"],
+  "include": ["./src", "./scripts"],
   "references": [
     { "path": "../../packages/@livestore/effect-playwright" },
     { "path": "../../packages/@livestore/common" },

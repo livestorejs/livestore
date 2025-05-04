@@ -4,6 +4,11 @@
   "include": [],
   "references": [
     { "path": "./scripts" },
+    { "path": "./tests/integration" },
+    { "path": "./tests/perf" },
+    { "path": "./tests/package-common" },
+    { "path": "./packages/@livestore/sync-electric" },
+    { "path": "./packages/@livestore/sync-cf" },
     { "path": "./examples/src/node-effect-cli" },
     { "path": "./examples/src/node-todomvc-sync-cf" },
     { "path": "./examples/src/expo-todomvc" },
@@ -15,9 +20,5 @@
     { "path": "./examples/src/web-todomvc-solid" },
     { "path": "./examples/src/web-todomvc-sync-cf" },
     { "path": "./examples/src/web-todomvc-sync-electric" },
-    { "path": "./tests/integration" },
-    { "path": "./tests/package-common" },
-    { "path": "./packages/@livestore/sync-electric" },
-    { "path": "./packages/@livestore/sync-cf" }
   ]
 }
