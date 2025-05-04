@@ -19,8 +19,8 @@
   "devDependencies": {
     "expo-application": "^6.1.4",
     "expo-file-system": "^18.1.8",
-    "expo-sqlite": "^15.2.4",
-    "react-native": "^0.79.0"
+    "expo-sqlite": "^15.2.9",
+    "react-native": "^0.79.2"
   },
   "files": [
     "package.json",
@@ -30,7 +30,7 @@
   "peerDependencies": {
     "expo-application": "~6.1.4",
     "expo-file-system": "~18.1.8",
-    "expo-sqlite": "~15.2.4"
+    "expo-sqlite": "~15.2.9"
   },
   "publishConfig": {
     "access": "public"

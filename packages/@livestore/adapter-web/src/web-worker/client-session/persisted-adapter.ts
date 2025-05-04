@@ -481,6 +481,14 @@ export const makePersistedAdapter =
             })
           }
         }),
+        registerBeforeUnload: (onBeforeUnload) => {
+          if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('beforeunload', onBeforeUnload)
+            return () => window.removeEventListener('beforeunload', onBeforeUnload)
+          }
+
+          return () => {}
+        },
       })
 
       return clientSession

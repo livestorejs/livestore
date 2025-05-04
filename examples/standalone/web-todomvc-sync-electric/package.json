@@ -29,7 +29,7 @@
     "rollup-plugin-visualizer": "^5.14.0",
     "typescript": "^5.8.3",
     "vinxi": "^0.5.3",
-    "vite": "^6.2.1"
+    "vite": "^6.3.4"
   },
   "scripts": {
     "build": "vinxi build",

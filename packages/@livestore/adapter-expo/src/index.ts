@@ -110,6 +110,13 @@ export const makePersistedAdapter =
             }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
           }
         }),
+        registerBeforeUnload: (_onBeforeUnload) => {
+          // RN.AppState.addEventListener('change', (event) => {
+          //   console.log('AppState.change', event)
+          // })
+
+          return () => {}
+        },
       })
 
       return clientSession

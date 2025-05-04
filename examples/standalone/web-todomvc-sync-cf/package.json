@@ -27,7 +27,7 @@
     "concurrently": "^9.1.2",
     "rollup-plugin-visualizer": "^5.14.0",
     "typescript": "^5.8.3",
-    "vite": "^6.2.1",
+    "vite": "^6.3.4",
     "wrangler": "^4.0.0"
   },
   "scripts": {

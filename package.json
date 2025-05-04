@@ -22,8 +22,8 @@
     "prettier-plugin-packagejson": "^2.5.10",
     "syncpack": "^13.0.2",
     "typescript": "^5.8.3",
-    "vite": "^6.2.1",
-    "vitest": "^3.1.1"
+    "vite": "^6.3.4",
+    "vitest": "^3.1.2"
   },
   "packageManager": "pnpm@10.2.1",
   "pnpm": {
@@ -48,7 +48,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.0",
-    "react-native": "^0.79.0"
+    "react-native": "^0.79.2"
   },
   "resolutions#": {
     "esbuild": "Needed for CF Wrangler / vinxi build",

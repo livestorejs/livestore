@@ -34,11 +34,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "todomvc-app-css": "^2.4.3",
-    "vite": "^6.2.1",
-    "vitest": "^3.1.1",
+    "vite": "^6.3.4",
+    "vitest": "^3.1.2",
     "wrangler": "^4.0.0"
   },
   "scripts": {
-    "test": "bun ./scripts/run-tests.ts"
+    "test": "CI=1 bun ./scripts/run-tests.ts"
   }
 }

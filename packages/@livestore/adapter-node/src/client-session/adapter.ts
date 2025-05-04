@@ -201,6 +201,8 @@ const makeAdapterImpl = ({
         lockStatus,
         clientId,
         sessionId,
+        // Not really applicable for node as there is no "reload the app" concept
+        registerBeforeUnload: (_onBeforeUnload) => () => {},
       })
 
       return clientSession

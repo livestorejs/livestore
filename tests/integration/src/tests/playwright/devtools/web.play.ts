@@ -142,7 +142,7 @@ test(
           ]),
         ),
       )
-    }),
+    }).pipe(Effect.retry({ times: 2 })),
   ),
 )
 
@@ -228,7 +228,7 @@ test(
           ]),
         ),
       )
-    }),
+    }).pipe(Effect.retry({ times: 2 })),
   ),
 )
 

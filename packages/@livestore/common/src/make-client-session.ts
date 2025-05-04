@@ -1,4 +1,3 @@
-import { liveStoreVersion } from '@livestore/common'
 import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
@@ -12,6 +11,7 @@ import type {
   UnexpectedError,
 } from './adapter-types.js'
 import * as Devtools from './devtools/mod.js'
+import { liveStoreVersion } from './version.js'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -31,6 +31,7 @@ export const makeClientSession = <R>({
   shutdown,
   connectWebmeshNode,
   webmeshMode,
+  registerBeforeUnload,
 }: AdapterArgs & {
   clientId: string
   sessionId: string
@@ -42,6 +43,7 @@ export const makeClientSession = <R>({
     sessionInfo: Devtools.SessionInfo.SessionInfo
   }) => Effect.Effect<void, UnexpectedError, Scope.Scope | R>
   webmeshMode: 'direct' | 'proxy'
+  registerBeforeUnload: (onBeforeUnload: () => void) => () => void
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] = devtoolsEnabled
@@ -93,18 +95,16 @@ export const makeClientSession = <R>({
                   mode: webmeshMode,
                 })
 
-                if (typeof globalThis !== 'undefined' && typeof window.addEventListener === 'function') {
-                  const onBeforeUnload = (_event: BeforeUnloadEvent) => {
-                    clientSessionDevtoolsChannel
-                      .send(Devtools.ClientSession.Disconnect.make({ clientId, liveStoreVersion, sessionId }))
-                      .pipe(Effect.runFork)
-                  }
-
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => window.addEventListener('beforeunload', onBeforeUnload)),
-                    () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
-                  )
+                const onBeforeUnload = () => {
+                  clientSessionDevtoolsChannel
+                    .send(Devtools.ClientSession.Disconnect.make({ clientId, liveStoreVersion, sessionId }))
+                    .pipe(Effect.runFork)
                 }
+
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => registerBeforeUnload(onBeforeUnload)),
+                  (unsub) => Effect.sync(() => unsub()),
+                )
 
                 yield* connectDevtoolsToStore(clientSessionDevtoolsChannel)
               },
