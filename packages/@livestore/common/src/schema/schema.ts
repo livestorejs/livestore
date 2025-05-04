@@ -11,17 +11,17 @@ import type { TableDef } from './state/sqlite/table-def.js'
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
 
-export type LiveStoreSchema<
+export interface LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
   TEventsDefRecord extends EventDefRecord = EventDefRecord,
-> = {
+> {
   readonly LiveStoreSchemaSymbol: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
   readonly _EventDefMapType: TEventsDefRecord
 
-  readonly state: State
+  readonly state: InternalState
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
   readonly devtools: {
     /** @default 'default' */
@@ -30,7 +30,7 @@ export type LiveStoreSchema<
 }
 
 // TODO abstract this further away from sqlite/tables
-export type State = {
+export interface InternalState {
   readonly sqlite: {
     readonly tables: Map<string, TableDef.Any>
     readonly migrations: MigrationOptions
@@ -40,9 +40,9 @@ export type State = {
   readonly materializers: Map<string, Materializer>
 }
 
-export type InputSchema = {
+export interface InputSchema {
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
-  readonly state: State
+  readonly state: InternalState
   readonly devtools?: {
     /**
      * This alias value is used to disambiguate between multiple schemas in the devtools.

@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../../../adapter-types.js'
 import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.js'
-import type { State } from '../../schema.js'
+import type { InternalState } from '../../schema.js'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
 import { SqliteAst } from './db-schema/mod.js'
 import { stateSystemTables } from './system-tables.js'
@@ -18,7 +18,7 @@ export {
 } from './client-document-def.js'
 export * from '../../EventDef.js'
 
-export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): State => {
+export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
     ? inputSchema.tables
     : Object.values(inputSchema.tables)
