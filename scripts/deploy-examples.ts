@@ -42,6 +42,7 @@ const buildAndDeployExample = ({
     yield* Command.make('pnpm', 'build').pipe(
       Command.workingDirectory(cwd),
       Command.stdout('inherit'), // Stream stdout to process.stdout)
+      Command.stderr('inherit'), // Stream stderr to process.stderr
       Command.exitCode,
       Effect.tap((exitCode) =>
         exitCode === 0 ? Effect.logDebug(`Build succeeded for ${example}`) : Effect.die(`Build failed for ${example}`),

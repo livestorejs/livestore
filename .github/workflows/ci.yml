@@ -45,7 +45,7 @@ jobs:
       - run: pnpm install
       - run: pnpm build:ts
       # Seems like webmesh / utils is flaky on CI when running in parallel with the other packages, so we run it separately
-      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --filter '@local/tests-integration' --parallel run test
+      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --filter '!@local/tests-integration' --parallel run test
       - run: pnpm --filter '@local/tests-integration' run test
       - run: pnpm --filter '@livestore/webmesh' run test
       - run: pnpm --filter '@livestore/utils' run test
@@ -206,6 +206,7 @@ jobs:
             --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
   # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
