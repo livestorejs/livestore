@@ -14,25 +14,6 @@ export const env = (name: string): string | undefined => {
   return undefined
 }
 
-export const isDevEnv = () => {
-  if (typeof process !== 'undefined' && process.env !== undefined) {
-    return process.env.NODE_ENV !== 'production'
-  }
-
-  // TODO re-enable the full guard code once `import.meta` is supported in Expo
-  // if (import.meta !== undefined && import.meta.env !== undefined) {
-  if (import.meta.env !== undefined) {
-    return import.meta.env.DEV
-  }
-
-  // @ts-expect-error Only exists in Expo / RN
-  if (typeof globalThis !== 'undefined' && globalThis.__DEV__) {
-    return true
-  }
-
-  return false
-}
-
 // export const TRACE_VERBOSE = true
 export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
 

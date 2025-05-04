@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/prefer-global-this */
 
-import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider } from '@tanstack/react-router'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
@@ -35,27 +35,53 @@ const DynamicIndexHtml = () => {
 
 const rootRoute = createRootRoute({ component: Outlet })
 
+const routes = [
+  {
+    path: '/dynamic-index-html',
+    component: DynamicIndexHtml,
+  },
+  {
+    path: '/devtools/two-stores',
+    component: React.lazy(() => import('./devtools/two-stores/Root.jsx').then((m) => ({ default: m.Root }))),
+  },
+  {
+    path: '/devtools/todomvc',
+    component: React.lazy(() => import('./devtools/todomvc/Root.jsx').then((m) => ({ default: m.App }))),
+  },
+  {
+    path: '/devtools/no-livestore',
+    component: NoLivestore,
+  },
+]
+
+const Home = () => {
+  return (
+    <div>
+      <h1>Home</h1>
+      <ul>
+        {routes.map((route) => (
+          <li key={route.path}>
+            <Link to={route.path}>{route.path}</Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 const routeTree = rootRoute.addChildren([
   createRoute({
     getParentRoute: () => rootRoute,
-    path: '/dynamic-index-html',
-    component: DynamicIndexHtml,
+    path: '/',
+    component: Home,
   }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/devtools/two-stores',
-    component: React.lazy(() => import('./devtools/two-stores/Root.jsx').then((m) => ({ default: m.Root }))),
-  }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/devtools/todomvc',
-    component: React.lazy(() => import('./devtools/todomvc/Root.jsx').then((m) => ({ default: m.App }))),
-  }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/devtools/no-livestore',
-    component: NoLivestore,
-  }),
+  ...routes.map((route) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: route.path,
+      component: route.component,
+    }),
+  ),
 ])
 
 const router = createRouter({ routeTree })

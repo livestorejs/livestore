@@ -1,9 +1,19 @@
-import { Deferred, Either, Exit, GlobalValue, Option, PubSub, Queue, Scope } from 'effect'
+import { Deferred, Either, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import type { DurationInput } from 'effect/Duration'
 
+import { shouldNeverHappen } from '../../misc.js'
 import * as Effect from '../Effect.js'
 import * as Schema from '../Schema/index.js'
 import * as Stream from '../Stream.js'
-import { DebugPingMessage, type InputSchema, type WebChannel, WebChannelSymbol } from './common.js'
+import {
+  DebugPingMessage,
+  type InputSchema,
+  type WebChannel,
+  WebChannelHeartbeat,
+  WebChannelPing,
+  WebChannelPong,
+  WebChannelSymbol,
+} from './common.js'
 import { listenToDebugPing, mapSchema } from './common.js'
 
 export const shutdown = <MsgListen, MsgSend>(webChannel: WebChannel<MsgListen, MsgSend>): Effect.Effect<void> =>
@@ -402,15 +412,69 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
 /**
  * Eagerly starts listening to a channel by buffering incoming messages in a queue.
  */
-export const toOpenChannel = (channel: WebChannel<any, any>): Effect.Effect<WebChannel<any, any>, never, Scope.Scope> =>
+export const toOpenChannel = (
+  channel: WebChannel<any, any>,
+  options?: {
+    /**
+     * Sends a heartbeat message to the other end of the channel every `interval`.
+     * If the other end doesn't respond within `timeout` milliseconds, the channel is shutdown.
+     */
+    heartbeat?: {
+      interval: DurationInput
+      timeout: DurationInput
+    }
+  },
+): Effect.Effect<WebChannel<any, any>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const queue = yield* Queue.unbounded<Either.Either<any, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
 
+    const pendingPingDeferredRef = {
+      current: undefined as { deferred: Deferred.Deferred<void>; requestId: string } | undefined,
+    }
+
     yield* channel.listen.pipe(
+      // TODO implement this on the "chunk" level for better performance
+      options?.heartbeat
+        ? Stream.filterEffect(
+            Effect.fn(function* (msg) {
+              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right)) {
+                if (msg.right._tag === 'WebChannel.Ping') {
+                  yield* channel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
+                } else {
+                  const { deferred, requestId } = pendingPingDeferredRef.current ?? shouldNeverHappen('No pending ping')
+                  if (requestId !== msg.right.requestId) {
+                    shouldNeverHappen('Received pong for unexpected requestId', requestId, msg.right.requestId)
+                  }
+                  yield* Deferred.succeed(deferred, void 0)
+                }
+
+                return false
+              }
+              return true
+            }),
+          )
+        : identity,
       Stream.tapChunk((chunk) => Queue.offerAll(queue, chunk)),
       Stream.runDrain,
       Effect.forkScoped,
     )
+
+    if (options?.heartbeat) {
+      const { interval, timeout } = options.heartbeat
+      yield* Effect.gen(function* () {
+        while (true) {
+          yield* Effect.sleep(interval)
+          const requestId = crypto.randomUUID()
+          yield* channel.send(WebChannelPing.make({ requestId }))
+          const deferred = yield* Deferred.make<void>()
+          pendingPingDeferredRef.current = { deferred, requestId }
+          yield* deferred.pipe(
+            Effect.timeout(timeout),
+            Effect.catchTag('TimeoutException', () => channel.shutdown),
+          )
+        }
+      }).pipe(Effect.withSpan(`WebChannel:heartbeat`), Effect.forkScoped)
+    }
 
     // We're currently limiting the chunk size to 1 to not drop messages in scearnios where
     // the listen stream get subscribed to, only take N messages and then unsubscribe.

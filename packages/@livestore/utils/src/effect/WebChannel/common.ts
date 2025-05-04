@@ -23,11 +23,23 @@ export const DebugPingMessage = Schema.TaggedStruct('WebChannel.DebugPing', {
   payload: Schema.optional(Schema.String),
 })
 
-export const schemaWithDebugPing = <MsgListen, MsgSend>(
+export const WebChannelPing = Schema.TaggedStruct('WebChannel.Ping', {
+  requestId: Schema.String,
+})
+
+export const WebChannelPong = Schema.TaggedStruct('WebChannel.Pong', {
+  requestId: Schema.String,
+})
+
+export const WebChannelHeartbeat = Schema.Union(WebChannelPing, WebChannelPong)
+
+type WebChannelMessages = typeof DebugPingMessage.Type | typeof WebChannelPing.Type | typeof WebChannelPong.Type
+
+export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
   schema: OutputSchema<MsgListen, MsgSend, any, any>,
-): OutputSchema<MsgListen | typeof DebugPingMessage.Type, MsgSend | typeof DebugPingMessage.Type, any, any> => ({
-  send: Schema.Union(schema.send, DebugPingMessage),
-  listen: Schema.Union(schema.listen, DebugPingMessage),
+): OutputSchema<MsgListen | WebChannelMessages, MsgSend | WebChannelMessages, any, any> => ({
+  send: Schema.Union(schema.send, DebugPingMessage, WebChannelPing, WebChannelPong),
+  listen: Schema.Union(schema.listen, DebugPingMessage, WebChannelPing, WebChannelPong),
 })
 
 export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
@@ -43,8 +55,8 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>,
 ): OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =>
   Predicate.hasProperty(schema, 'send') && Predicate.hasProperty(schema, 'listen')
-    ? (schemaWithDebugPing(schema) as any)
-    : (schemaWithDebugPing({ send: schema, listen: schema }) as any)
+    ? (schemaWithWebChannelMessages(schema) as any)
+    : (schemaWithWebChannelMessages({ send: schema, listen: schema }) as any)
 
 export const listenToDebugPing =
   (channelName: string) =>

@@ -235,7 +235,6 @@
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
   - support app reloading in Expo (requires an equivalent of `beforeunload` to be triggered in `makeClientSession`)
-  - handle chrome extension background worker going inactive
   - Expo devtools: use node adapter ws server
   - sync session appears for wrong storeid
   - sync view:
@@ -254,8 +253,7 @@
 - Get rid of `sql-queries` module
 - Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
 - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-- chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
-- Handle more gracefully: 2 different store instances with the same store id currently dead-lock on boot
+- Handle more gracefully: 2 different store instances with the same store id currently dead-lock on boot (probably related to semaphore in LiveStoreProvider)
 - Web adapter:
   - Refactor `shared-worker`
     - Make it optional (for Android support)

@@ -16,7 +16,6 @@ export { default as prettyBytes } from 'pretty-bytes'
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
 
-import { isDevEnv } from './env.js'
 import { objectToString } from './misc.js'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
@@ -90,15 +89,6 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
 export function casesHandled(unexpectedCase: never): never {
   debugger
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
-}
-
-export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
-  console.error(msg, ...args)
-  if (isDevEnv()) {
-    debugger
-  }
-
-  throw new Error(`This should never happen: ${msg}`)
 }
 
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
