@@ -13,14 +13,14 @@
     "@livestore/sync-electric": "0.3.0-dev.40",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@overengineering/fps-meter": "0.1.2",
-    "@tanstack/react-start": "1.116.1",
+    "@tanstack/react-start": "1.119.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-error-boundary": "5.0.0",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@tanstack/react-router": "^1.116.0",
+    "@tanstack/react-router": "^1.119.0",
     "@types/node": "^22.13.10",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",

@@ -1,0 +1,11 @@
+---
+// Make sure this page is using `output: 'server'`
+export const prerender = false
+
+import { Sponsor } from '../../components/Sponsor.jsx'
+import SponsorLayout from '../../layouts/SponsorLayout.astro'
+---
+
+<SponsorLayout title="LiveStore Sponsor Dashboard">
+	<Sponsor client:load />
+</SponsorLayout>

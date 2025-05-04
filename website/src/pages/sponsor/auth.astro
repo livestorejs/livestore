@@ -1,0 +1,11 @@
+---
+// Make sure this page is using `output: 'server'`
+export const prerender = false
+
+import { SponsorAuth } from '../../components/SponsorAuth.jsx'
+import SponsorLayout from '../../layouts/SponsorLayout.astro'
+---
+
+<SponsorLayout title="Sponsor Auth">
+	<SponsorAuth client:load />
+</SponsorLayout>

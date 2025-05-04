@@ -88,6 +88,19 @@ export * as OtelTracer from '@effect/opentelemetry/Tracer'
 export * as TaskTracing from './TaskTracing.js'
 
 export {
+  Rpc,
+  RpcGroup,
+  RpcClient,
+  RpcMessage,
+  RpcSchema,
+  RpcMiddleware,
+  RpcServer,
+  RpcSerialization,
+  RpcTest,
+  RpcWorker,
+} from '@effect/rpc'
+
+export {
   Transferable,
   FileSystem,
   Worker,
@@ -109,6 +122,7 @@ export {
   HttpServerResponse,
   Command,
   CommandExecutor,
+  KeyValueStore,
   Error as PlatformError,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
