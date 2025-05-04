@@ -44,6 +44,8 @@ const config: PlaywrightTestConfig = {
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on',
+
+    headless: envTruish(process.env.PLAYWRIGHT_HEADLESS),
   },
 
   /* Configure projects for major browsers */
@@ -53,7 +55,6 @@ const config: PlaywrightTestConfig = {
       use: {
         ...devices['Desktop Chrome'],
         deviceScaleFactor: 2,
-        headless: envTruish(process.env.PLAYWRIGHT_HEADLESS),
       },
     },
 

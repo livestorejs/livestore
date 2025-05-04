@@ -294,7 +294,8 @@ const useCreateStore = ({
       }
     })
 
-    Effect.gen(function* () {
+    const cancel = Effect.gen(function* () {
+      console.log('creating scope', counter)
       const componentScope = yield* Scope.make()
       const shutdownDeferred = yield* makeShutdownDeferred
 
@@ -302,6 +303,7 @@ const useCreateStore = ({
       ctxValueRef.current.shutdownDeferred = shutdownDeferred
 
       yield* Effect.gen(function* () {
+        console.log('creating store', counter)
         const store = yield* createStore({
           schema,
           storeId,
@@ -348,10 +350,12 @@ const useCreateStore = ({
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.prettyWithThread('window')),
       Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.runFork,
+      Effect.runCallback,
     )
 
     return () => {
+      cancel()
+
       if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
         interrupt(
           ctxValueRef.current.componentScope,

@@ -52,7 +52,9 @@ export const runAndGetExit = <Tag extends string, A>({
     const page = yield* Effect.promise(() => browserContext.newPage())
 
     yield* Effect.promise(() =>
-      page.goto(`http://localhost:${process.env.DEV_SERVER_PORT}/?importPath=${importPath}&exportName=${exportName}`),
+      page.goto(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/dynamic-index-html?importPath=${importPath}&exportName=${exportName}`,
+      ),
     )
 
     const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)

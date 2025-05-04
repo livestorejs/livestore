@@ -17,6 +17,7 @@ export const makeInMemoryAdapter =
   (initialData?: Uint8Array): Adapter =>
   ({
     schema,
+    shutdown,
     // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore
   }) =>
     Effect.gen(function* () {
@@ -54,7 +55,7 @@ export const makeInMemoryAdapter =
           sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
         },
         lockStatus,
-        shutdown: () => Effect.dieMessage('TODO implement shutdown'),
+        shutdown,
       } satisfies ClientSession
 
       return clientSession

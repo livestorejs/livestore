@@ -130,7 +130,10 @@ test(
   'single tab',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+        'tab-1',
+      )
 
       yield* Effect.promise(async () => {
         const el = tab1.page.locator('.new-todo')
@@ -163,7 +166,10 @@ test.skip(
   'single tab (two stores)',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+        'tab-1',
+      )
 
       yield* Effect.promise(async () => {
         await tab1.page.getByText('Notes').waitFor()
@@ -187,12 +193,20 @@ test.skip(
   ),
 )
 
+// Flaky error case:
+// NotReadableError: The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.
 test(
   'two tabs',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-1')
-      const tab2 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/todomvc`, 'tab-2')
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+        'tab-1',
+      )
+      const tab2 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+        'tab-2',
+      )
 
       yield* Effect.promise(async () => {
         await tab1.page.focus('body')
@@ -251,7 +265,10 @@ test(
   'no livestore',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/devtools/no-livestore`, 'tab-1')
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/no-livestore`,
+        'tab-1',
+      )
 
       yield* Effect.promise(async () => {
         await tab1.page.getByText('No Livestore').waitFor()

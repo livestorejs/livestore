@@ -106,7 +106,7 @@ test(
   'single tab',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-1')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
 
       yield* Effect.gen(function* () {
         yield* Effect.promise(async () => {
@@ -150,8 +150,8 @@ test(
   'two tabs',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-1')
-      const tab2 = yield* makeTabPair(`http://localhost:${process.env.DEV_SERVER_PORT}/`, 'tab-2')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
+      const tab2 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-2')
 
       // const browserContext = yield* Playwright.BrowserContext
 
@@ -234,6 +234,9 @@ test(
 
 const shutdownTab = (tab: PW.Page) =>
   Effect.gen(function* () {
+    // yield* Playwright.withPage(() => tab.pause())
+    yield* Effect.sleep(1000)
+    yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
     yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
       label: 'shutdown',
     })

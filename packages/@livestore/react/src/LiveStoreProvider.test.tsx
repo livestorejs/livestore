@@ -12,7 +12,9 @@ import { schema, tables } from './__tests__/fixture.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
 import * as LiveStoreReact from './mod.js'
 
-describe('LiveStoreProvider', () => {
+describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) => {
+  const WithStrictMode = strictMode ? React.StrictMode : React.Fragment
+
   it('simple', async () => {
     let appRenderCount = 0
 
@@ -42,16 +44,18 @@ describe('LiveStoreProvider', () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
-        <LiveStoreProvider
-          schema={schema}
-          renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
-          adapter={adapterMemo}
-          boot={bootCb}
-          signal={abortController.signal}
-          batchUpdates={batchUpdates}
-        >
-          <App />
-        </LiveStoreProvider>
+        <WithStrictMode>
+          <LiveStoreProvider
+            schema={schema}
+            renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
+            adapter={adapterMemo}
+            boot={bootCb}
+            signal={abortController.signal}
+            batchUpdates={batchUpdates}
+          >
+            <App />
+          </LiveStoreProvider>
+        </WithStrictMode>
       )
     }
 
@@ -61,14 +65,14 @@ describe('LiveStoreProvider', () => {
 
     await waitForElementToBeRemoved(() => screen.getByText((_) => _.startsWith('Loading LiveStore')))
 
-    expect(appRenderCount).toBe(1)
+    expect(appRenderCount).toBe(strictMode ? 2 : 1)
 
     rerender(<Root forceUpdate={2} />)
 
     await waitFor(() => screen.getByText('Loading LiveStore: loading'))
     await waitFor(() => screen.getByText((_) => _.includes('buy milk')))
 
-    expect(appRenderCount).toBe(2)
+    expect(appRenderCount).toBe(strictMode ? 4 : 2)
 
     abortController.abort()
 
@@ -99,15 +103,17 @@ describe('LiveStoreProvider', () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
-        <LiveStoreProvider
-          schema={schema}
-          renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
-          adapter={adapterMemo}
-          boot={bootCb}
-          batchUpdates={batchUpdates}
-        >
-          <App />
-        </LiveStoreProvider>
+        <WithStrictMode>
+          <LiveStoreProvider
+            schema={schema}
+            renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
+            adapter={adapterMemo}
+            boot={bootCb}
+            batchUpdates={batchUpdates}
+          >
+            <App />
+          </LiveStoreProvider>
+        </WithStrictMode>
       )
     }
 
@@ -116,5 +122,58 @@ describe('LiveStoreProvider', () => {
     expect(appRenderCount).toBe(0)
 
     await waitFor(() => screen.getByText((_) => _.startsWith('LiveStore.UnexpectedError')))
+  })
+
+  it('unmounts when store is shutdown', async () => {
+    let appRenderCount = 0
+
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+    const shutdownDeferred = Promise.withResolvers<void>()
+
+    const App = () => {
+      appRenderCount++
+      const { store } = LiveStoreReact.useStore()
+
+      React.useEffect(() => {
+        shutdownDeferred.promise.then(() => {
+          console.log('shutdown')
+          return store.shutdown()
+        })
+      }, [store])
+
+      const todos = store.useQuery(allTodos$)
+
+      return <div>{JSON.stringify(todos)}</div>
+    }
+
+    const adapter = makeInMemoryAdapter()
+
+    const Root = () => {
+      return (
+        <WithStrictMode>
+          <LiveStoreProvider
+            schema={schema}
+            renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
+            adapter={adapter}
+            batchUpdates={batchUpdates}
+          >
+            <App />
+          </LiveStoreProvider>
+        </WithStrictMode>
+      )
+    }
+
+    render(<Root />)
+
+    expect(appRenderCount).toBe(0)
+
+    await waitFor(() => screen.getByText('[]'))
+
+    React.act(() => shutdownDeferred.resolve())
+
+    expect(appRenderCount).toBe(strictMode ? 2 : 1)
+
+    await waitFor(() => screen.getByText('LiveStore Shutdown due to manual shutdown', { exact: false }))
   })
 })

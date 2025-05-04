@@ -1,5 +1,6 @@
 import process from 'node:process'
 
+import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
 
@@ -34,6 +35,7 @@ export const handlePageConsole = ({
 
 export const browserContext = ({ extensionPath, persistentContextPath, launchOptions }: MakeBrowserContextParams) =>
   Effect.gen(function* () {
+    const headless = envTruish(process.env.PLAYWRIGHT_HEADLESS)
     let browserContext: PW.BrowserContext
     // let backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
 
@@ -41,7 +43,7 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
       browserContext = yield* Effect.promise(() =>
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
-          headless: process.env.CI ? true : false,
+          headless,
           devtools: true,
         }),
       )
@@ -51,9 +53,9 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
       browserContext = yield* Effect.promise(() =>
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
-          headless: false,
+          headless: false, // Using `--headless` flag below instead
           args: [
-            process.env.CI ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],
