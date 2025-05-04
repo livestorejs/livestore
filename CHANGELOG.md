@@ -5,10 +5,6 @@
 
 ## 0.3.0
 
-## WIP devtools refactor
-
-- [] support reloads
-- [] fix playwright integration tests
 
 ### New features
 
@@ -238,7 +234,8 @@
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
-  - Devtools lose connection to client session (https://share.cleanshot.com/dK2rvyyj)
+  - support app reloading in Expo (requires an equivalent of `beforeunload` to be triggered in `makeClientSession`)
+  - handle chrome extension background worker going inactive
   - Expo devtools: use node adapter ws server
   - sync session appears for wrong storeid
   - sync view:

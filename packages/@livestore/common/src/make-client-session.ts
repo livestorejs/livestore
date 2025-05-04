@@ -1,3 +1,4 @@
+import { liveStoreVersion } from '@livestore/common'
 import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
@@ -91,6 +92,19 @@ export const makeClientSession = <R>({
                   },
                   mode: webmeshMode,
                 })
+
+                if (typeof globalThis !== 'undefined' && typeof window.addEventListener === 'function') {
+                  const onBeforeUnload = (_event: BeforeUnloadEvent) => {
+                    clientSessionDevtoolsChannel
+                      .send(Devtools.ClientSession.Disconnect.make({ clientId, liveStoreVersion, sessionId }))
+                      .pipe(Effect.runFork)
+                  }
+
+                  yield* Effect.acquireRelease(
+                    Effect.sync(() => window.addEventListener('beforeunload', onBeforeUnload)),
+                    () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
+                  )
+                }
 
                 yield* connectDevtoolsToStore(clientSessionDevtoolsChannel)
               },

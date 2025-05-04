@@ -108,6 +108,12 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      * @default 1 second
      */
     timeout?: Duration.DurationInput
+    /**
+     * If true, will close an existing channel if it exists.
+     *
+     * @default false
+     */
+    closeExisting?: boolean
   }) => Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 
   listenForChannel: Stream.Stream<ListenForChannelResult>
@@ -473,6 +479,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       // TODO in the future we could have a mode that prefers directs and then falls back to proxies if needed
       mode,
       timeout = Duration.seconds(1),
+      closeExisting = false,
     }) =>
       Effect.gen(function* () {
         const schema = WebChannel.mapSchema(inputSchema)
@@ -481,9 +488,16 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         if (channelMap.has(channelKey)) {
           const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
           if (existingChannel) {
-            shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
+            if (closeExisting) {
+              yield* existingChannel.shutdown
+              channelMap.delete(channelKey)
+            } else {
+              shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
+            }
           }
-        } else {
+        }
+
+        if (channelMap.has(channelKey) === false) {
           const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
             Effect.acquireRelease(Queue.shutdown),
           )

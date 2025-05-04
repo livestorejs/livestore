@@ -27,6 +27,7 @@ ProxyChannels and DirectChannels have the following properties (similar to TCP):
 - It's using the `WebChannel` concept from the `@livestore/utils` package.
 - We assume network edges to be low-latency (a few ms)
 - Webmesh is used in LiveStore as the foundation for the LiveStore devtools protocol communication.
+- The implementation should avoid timeout-based "solutions" as much as possible.
 
 ## Tradeoffs
 

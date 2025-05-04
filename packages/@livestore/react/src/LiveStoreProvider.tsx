@@ -295,7 +295,6 @@ const useCreateStore = ({
     })
 
     const cancel = Effect.gen(function* () {
-      console.log('creating scope', counter)
       const componentScope = yield* Scope.make()
       const shutdownDeferred = yield* makeShutdownDeferred
 
@@ -303,7 +302,6 @@ const useCreateStore = ({
       ctxValueRef.current.shutdownDeferred = shutdownDeferred
 
       yield* Effect.gen(function* () {
-        console.log('creating store', counter)
         const store = yield* createStore({
           schema,
           storeId,
