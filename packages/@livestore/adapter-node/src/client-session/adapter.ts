@@ -188,7 +188,7 @@ const makeAdapterImpl = ({
         ...adapterArgs,
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
-        connectWebmeshNode: Effect.fn(function* ({ webmeshNode }) {
+        connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
           if (devtoolsOptions.enabled) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
@@ -201,6 +201,7 @@ const makeAdapterImpl = ({
         lockStatus,
         clientId,
         sessionId,
+        isLeader: true,
         // Not really applicable for node as there is no "reload the app" concept
         registerBeforeUnload: (_onBeforeUnload) => () => {},
       })

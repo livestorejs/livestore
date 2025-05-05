@@ -430,9 +430,10 @@ export const makePersistedAdapter =
         lockStatus,
         clientId,
         sessionId,
+        isLeader: gotLocky, // TODO update when leader is changing
         leaderThread,
         webmeshMode: 'direct',
-        connectWebmeshNode: Effect.fn(function* ({ webmeshNode, sessionInfo }) {
+        connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode, sessionInfo }) {
           if (devtoolsEnabled) {
             yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
 

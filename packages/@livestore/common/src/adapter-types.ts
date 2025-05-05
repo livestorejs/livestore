@@ -193,7 +193,9 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
     }),
   ),
   /** The SQLite result code */
-  code: Schema.optional(Schema.Number),
+  // code: Schema.optional(Schema.Number),
+  // Added string support for Expo SQLite (we should refactor this to have a unified error type)
+  code: Schema.optional(Schema.Union(Schema.Number, Schema.String)),
   /** The original SQLite3 error */
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),

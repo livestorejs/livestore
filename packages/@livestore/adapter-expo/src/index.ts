@@ -97,6 +97,7 @@ export const makePersistedAdapter =
         ...adapterArgs,
         lockStatus,
         clientId,
+        isLeader: true,
         sessionId,
         leaderThread,
         sqliteDb,
@@ -120,11 +121,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(
-      Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.tapCauseLogPretty,
-    )
+    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
 
 const makeLeaderThread = ({
   storeId,

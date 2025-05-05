@@ -24,7 +24,7 @@ export type DevtoolsModeTag = typeof DevtoolsModeTag.Type
 
 export const makeNodeName = {
   devtools: {
-    random: () => `devtools-session-info-${nanoid()}`,
+    random: () => `devtools-instance-${nanoid()}`,
   },
   client: {
     session: ({ storeId, clientId, sessionId }: { storeId: string; clientId: string; sessionId: string }) =>

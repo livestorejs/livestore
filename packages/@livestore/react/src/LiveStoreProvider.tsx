@@ -226,18 +226,32 @@ const useCreateStore = ({
       Effect.runFork,
     )
 
+  const inputPropChanges = {
+    schema: inputPropsCacheRef.current.schema !== schema,
+    otelOptions: inputPropsCacheRef.current.otelOptions !== otelOptions,
+    boot: inputPropsCacheRef.current.boot !== boot,
+    adapter: inputPropsCacheRef.current.adapter !== adapter,
+    batchUpdates: inputPropsCacheRef.current.batchUpdates !== batchUpdates,
+    disableDevtools: inputPropsCacheRef.current.disableDevtools !== disableDevtools,
+    signal: inputPropsCacheRef.current.signal !== signal,
+    context: inputPropsCacheRef.current.context !== context,
+    params: inputPropsCacheRef.current.params !== params,
+    confirmUnsavedChanges: inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges,
+    syncPayload: inputPropsCacheRef.current.syncPayload !== syncPayload,
+  }
+
   if (
-    inputPropsCacheRef.current.schema !== schema ||
-    inputPropsCacheRef.current.otelOptions !== otelOptions ||
-    inputPropsCacheRef.current.boot !== boot ||
-    inputPropsCacheRef.current.adapter !== adapter ||
-    inputPropsCacheRef.current.batchUpdates !== batchUpdates ||
-    inputPropsCacheRef.current.disableDevtools !== disableDevtools ||
-    inputPropsCacheRef.current.signal !== signal ||
-    inputPropsCacheRef.current.context !== context ||
-    inputPropsCacheRef.current.params !== params ||
-    inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges ||
-    inputPropsCacheRef.current.syncPayload !== syncPayload
+    inputPropChanges.schema ||
+    inputPropChanges.otelOptions ||
+    inputPropChanges.boot ||
+    inputPropChanges.adapter ||
+    inputPropChanges.batchUpdates ||
+    inputPropChanges.disableDevtools ||
+    inputPropChanges.signal ||
+    inputPropChanges.context ||
+    inputPropChanges.params ||
+    inputPropChanges.confirmUnsavedChanges ||
+    inputPropChanges.syncPayload
   ) {
     inputPropsCacheRef.current = {
       schema,
@@ -253,10 +267,14 @@ const useCreateStore = ({
       syncPayload,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
+      const changedInputProps = Object.keys(inputPropChanges).filter(
+        (key) => inputPropChanges[key as keyof typeof inputPropChanges],
+      )
+
       interrupt(
         ctxValueRef.current.componentScope,
         ctxValueRef.current.shutdownDeferred,
-        new StoreInterrupted({ reason: 're-rendering due to changed input props' }),
+        new StoreInterrupted({ reason: `re-rendering due to changed input props: ${changedInputProps.join(', ')}` }),
       )
       ctxValueRef.current.componentScope = undefined
       ctxValueRef.current.shutdownDeferred = undefined
@@ -295,7 +313,7 @@ const useCreateStore = ({
     })
 
     const cancel = Effect.gen(function* () {
-      const componentScope = yield* Scope.make()
+      const componentScope = yield* Scope.make().pipe(Effect.acquireRelease(Scope.close))
       const shutdownDeferred = yield* makeShutdownDeferred
 
       ctxValueRef.current.componentScope = componentScope

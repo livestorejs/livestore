@@ -22,6 +22,7 @@ export const makeClientSession = <R>({
   storeId,
   clientId,
   sessionId,
+  isLeader,
   devtoolsEnabled,
   connectDevtoolsToStore,
   lockStatus,
@@ -35,6 +36,7 @@ export const makeClientSession = <R>({
 }: AdapterArgs & {
   clientId: string
   sessionId: string
+  isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   leaderThread: ClientSessionLeaderThreadProxy
   sqliteDb: SqliteDb
@@ -64,7 +66,7 @@ export const makeClientSession = <R>({
           clientId,
           sessionId,
           schemaAlias,
-          isLeader: true, // TODO actually check if we are leader
+          isLeader,
         })
 
         yield* connectWebmeshNode({ webmeshNode, sessionInfo })
@@ -88,21 +90,20 @@ export const makeClientSession = <R>({
                 const clientSessionDevtoolsChannel = yield* webmeshNode.makeChannel({
                   target: source,
                   channelName,
-                  schema: {
-                    listen: Devtools.ClientSession.MessageToApp,
-                    send: Devtools.ClientSession.MessageFromApp,
-                  },
+                  schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
                   mode: webmeshMode,
                 })
 
-                const onBeforeUnload = () => {
-                  clientSessionDevtoolsChannel
-                    .send(Devtools.ClientSession.Disconnect.make({ clientId, liveStoreVersion, sessionId }))
-                    .pipe(Effect.runFork)
-                }
+                const sendDisconnect = clientSessionDevtoolsChannel
+                  .send(Devtools.ClientSession.Disconnect.make({ clientId, liveStoreVersion, sessionId }))
+                  .pipe(Effect.orDie)
 
+                // Disconnect on shutdown (e.g. when switching stores)
+                yield* Effect.addFinalizer(() => sendDisconnect)
+
+                // Disconnect on before unload
                 yield* Effect.acquireRelease(
-                  Effect.sync(() => registerBeforeUnload(onBeforeUnload)),
+                  Effect.sync(() => registerBeforeUnload(() => sendDisconnect.pipe(Effect.runFork))),
                   (unsub) => Effect.sync(() => unsub()),
                 )
 
