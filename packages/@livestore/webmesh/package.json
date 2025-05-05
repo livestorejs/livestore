@@ -1,6 +1,6 @@
 {
   "name": "@livestore/webmesh",
-  "version": "0.3.0-dev.45",
+  "version": "0.3.0-dev.46",
   "type": "module",
   "sideEffects": false,
   "exports": {
