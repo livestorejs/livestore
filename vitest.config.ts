@@ -19,6 +19,7 @@ export default defineConfig({
       ...rootPackages,
       // path.join(rootDir, 'tests/'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),
+      path.join(rootDir, 'tests/package-common'),
     ],
   },
 })

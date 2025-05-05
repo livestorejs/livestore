@@ -22,7 +22,17 @@ const makeTabPair = (url: string, tabName: string) =>
 
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
-    const newPage = Effect.promise(() => browserContext.newPage())
+    const newPage = Effect.promise(() => browserContext.newPage()).pipe(
+      Effect.acquireRelease(
+        Effect.fn('close-page')(function* (page, exit) {
+          const reason =
+            exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
+
+          yield* Effect.log(reason)
+          yield* Effect.promise(() => page.close({ reason }))
+        }),
+      ),
+    )
 
     // Chrome opens with `about:blank` page, so we can use that for the first call
     const page =
@@ -39,6 +49,7 @@ const makeTabPair = (url: string, tabName: string) =>
     }).pipe(Effect.forkScoped)
 
     usedPages.add(page)
+    yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
 
     yield* Effect.promise(() => page.goto(`${url}/devtools/todomvc#${tabName}`))
 
@@ -142,7 +153,8 @@ test(
           ]),
         ),
       )
-    }).pipe(Effect.retry({ times: 2 })),
+    }),
+    // .pipe(Effect.scoped, Effect.retry({ times: 2 })),
   ),
 )
 
@@ -228,7 +240,8 @@ test(
           ]),
         ),
       )
-    }).pipe(Effect.retry({ times: 2 })),
+    }),
+    // .pipe(Effect.scoped, Effect.retry({ times: 2 })),
   ),
 )
 
@@ -239,7 +252,7 @@ const shutdownTab = (tab: PW.Page) =>
     yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
     yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
       label: 'shutdown',
-    })
+    }).pipe(Effect.timeout(1000))
 
     yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
   }).pipe(Effect.withSpan('shutdown-tab'))

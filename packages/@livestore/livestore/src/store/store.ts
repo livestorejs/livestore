@@ -23,7 +23,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Fiber, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -602,8 +602,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError>) =>
-    this.clientSession.shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+  shutdown = async (cause?: Cause.Cause<UnexpectedError>) => {
+    await this.clientSession
+      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+      .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+  }
 
   /**
    * Helper methods useful during development

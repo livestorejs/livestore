@@ -15,6 +15,7 @@ import {
   Deferred,
   Effect,
   Exit,
+  Fiber,
   identity,
   Layer,
   Logger,
@@ -210,7 +211,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
         Effect.gen(function* () {
           yield* Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
@@ -232,8 +233,8 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
           // Given that the shutdown flow might also interrupt the effect that is calling the shutdown,
           // we want to detach the shutdown effect so it's not interrupted by itself
           Effect.runFork,
+          Fiber.join,
         )
-      }
 
       const clientSession: ClientSession = yield* adapter({
         schema,

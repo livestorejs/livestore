@@ -147,7 +147,7 @@ export const makePersistedAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -177,7 +177,7 @@ export const makePersistedAdapter =
         Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
-        Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
+        Effect.tapErrorCause(shutdown),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -220,7 +220,7 @@ export const makePersistedAdapter =
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
+          Effect.tapErrorCause(shutdown),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -229,10 +229,9 @@ export const makePersistedAdapter =
         yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 })).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
-        )
+        yield* sharedWorker
+          .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
+          .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
@@ -308,9 +307,7 @@ export const makePersistedAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) ? Effect.void : Effect.sync(() => shutdown(cause)),
-        ),
+        Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -430,7 +427,8 @@ export const makePersistedAdapter =
         lockStatus,
         clientId,
         sessionId,
-        isLeader: gotLocky, // TODO update when leader is changing
+        // isLeader: gotLocky, // TODO update when leader is changing
+        isLeader: true,
         leaderThread,
         webmeshMode: 'direct',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode, sessionInfo }) {

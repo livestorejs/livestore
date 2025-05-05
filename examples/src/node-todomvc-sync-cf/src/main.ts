@@ -24,7 +24,7 @@ const main = async () => {
   console.log('todos', todos)
 
   // TODO wait for syncing to be complete
-  store.shutdown()
+  await store.shutdown()
 }
 
 main().catch(console.error)

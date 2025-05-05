@@ -272,7 +272,7 @@ export const makeClientSessionSyncProcessor = ({
           refreshTables(writeTables)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => Effect.sync(() => clientSession.shutdown(cause))),
+          Effect.catchAllCause((cause) => clientSession.shutdown(cause)),
         ),
       ),
       Stream.runDrain,

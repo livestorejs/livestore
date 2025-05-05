@@ -133,7 +133,7 @@ const makeAdapterImpl = ({
 
         yield* shutdownChannel.listen.pipe(
           Stream.flatten(),
-          Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
+          Stream.tap((error) => shutdown(Cause.fail(error))),
           Stream.runDrain,
           Effect.interruptible,
           Effect.tapCauseLogPretty,
@@ -293,7 +293,7 @@ const makeWorkerLeaderThread = ({
   syncPayload,
   testing,
 }: {
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string
@@ -327,7 +327,7 @@ const makeWorkerLeaderThread = ({
     }).pipe(
       Effect.provide(nodeWorkerLayer),
       UnexpectedError.mapToUnexpectedError,
-      Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
+      Effect.tapErrorCause(shutdown),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
@@ -385,9 +385,7 @@ const makeWorkerLeaderThread = ({
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) =>
-        Cause.isInterruptedOnly(cause) ? Effect.void : Effect.sync(() => shutdown(cause)),
-      ),
+      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

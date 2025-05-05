@@ -68,7 +68,7 @@ export const makePersistedAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
