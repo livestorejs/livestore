@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.3.0-dev.44",
+  "version": "0.3.0-dev.45",
   "type": "module",
   "sideEffects": [
     "./dist/node-vitest/polyfill.js"
