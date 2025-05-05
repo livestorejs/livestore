@@ -1,4 +1,4 @@
-import { shouldNeverHappen } from '@livestore/utils'
+import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import { Command, Effect, identity, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -42,6 +42,52 @@ const websiteCommand = Cli.Command.make('website').pipe(
           cwd: `${process.env.WORKSPACE_ROOT}/website`,
           env: { STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined },
         }),
+    ),
+    Cli.Command.make(
+      'deploy',
+      {
+        // TODO clean up when Effect CLI boolean flag is fixed
+        prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
+        alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
+        site: Cli.Options.text('site').pipe(Cli.Options.optional),
+      },
+      Effect.fn(function* ({ prod: prodOption, alias: aliasOption, site: siteOption }) {
+        const branchName = yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(
+          Effect.map((branchName) => branchName.trim()),
+        )
+
+        yield* Effect.log(`Branch name: "${branchName}"`)
+
+        const devBranchName = 'wip/0.3.0'
+
+        const site =
+          siteOption._tag === 'Some'
+            ? siteOption.value
+            : branchName === 'main'
+              ? 'livestore-website' // Prod site
+              : 'livestore-website-next' // Dev site
+
+        const deployArgs = ['bunx', 'netlify-cli', 'deploy', '--dir=dist', `--site=${site}`, '--filter=website']
+
+        yield* Effect.log(`Deploying to "${site}" for draft URL`)
+        yield* cmd([...deployArgs], { cwd: `${process.env.WORKSPACE_ROOT}/website` })
+
+        const alias =
+          aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+
+        const prod =
+          prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
+            ? prodOption.value
+            : branchName === 'main' || branchName === devBranchName
+              ? true
+              : false
+
+        yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
+
+        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], {
+          cwd: `${process.env.WORKSPACE_ROOT}/website`,
+        })
+      }),
     ),
   ]),
 )
@@ -105,11 +151,12 @@ const command = Cli.Command.make('mono').pipe(
 )
 
 const cmd = Effect.fn('cmd')(function* (
-  commandStr: string,
+  commandInput: string | (string | undefined)[],
   options?: { cwd?: string; shell?: boolean; env?: Record<string, string | undefined> },
 ) {
   const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-  const [command, ...args] = commandStr.split(' ')
+  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+  const commandStr = [command, ...args].join(' ')
 
   yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
   yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
