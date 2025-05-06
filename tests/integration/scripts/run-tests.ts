@@ -1,10 +1,10 @@
 import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
-import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Command, Effect, identity, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { Effect, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
+import { cmd } from '@livestore/utils-dev/node'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
@@ -186,25 +186,3 @@ if (import.meta.main) {
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }
-
-const cmd = Effect.fn('cmd')(function* (
-  commandInput: string | (string | undefined)[],
-  options?: { cwd?: string; shell?: boolean; env?: Record<string, string | undefined> },
-) {
-  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
-  const commandStr = [command, ...args].join(' ')
-
-  yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
-
-  return yield* Command.make(command!, ...args).pipe(
-    Command.stdout('inherit'), // Stream stdout to process.stdout
-    Command.stderr('inherit'), // Stream stderr to process.stderr
-    Command.workingDirectory(cwd),
-    options?.shell ? Command.runInShell(true) : identity,
-    Command.env({ ...options?.env }),
-    Command.exitCode,
-    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
-  )
-})

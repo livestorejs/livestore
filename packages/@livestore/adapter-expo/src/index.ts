@@ -107,7 +107,7 @@ export const makePersistedAdapter =
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: devtoolsUrl,
-              openTimeout: 50,
+              openTimeout: 500,
             }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
           }
         }),
@@ -270,7 +270,7 @@ const makeDevtoolsOptions = ({
         yield* Webmesh.connectViaWebSocket({
           node,
           url: devtoolsUrl,
-          openTimeout: 50,
+          openTimeout: 500,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         return { node, persistenceInfo, mode: 'proxy' }

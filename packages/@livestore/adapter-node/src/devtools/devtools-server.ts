@@ -66,7 +66,11 @@ export const startDevtoolsServer = ({
 
         const socket = yield* req.upgrade
 
-        const { webChannel, from } = yield* makeWebSocketEdge({ socket, socketType: { _tag: 'relay' } })
+        const { webChannel, from } = yield* makeWebSocketEdge({
+          socket,
+          socketType: { _tag: 'relay' },
+          debug: { id: `relay:${relayNodeName}` },
+        })
 
         // To handle websocket closing, we need to race the `webChannel.closedDeferred` to properly interrupt the handler
         yield* Effect.raceFirst(

@@ -1,9 +1,9 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
-import { IS_BUN } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, Layer, OtelTracer } from '@livestore/utils/effect'
+import { IS_BUN, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
+import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
+import { Command, Config, Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -143,3 +143,53 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     // TODO make dynamic via env var
     return `${grafanaEndpoint}/explore?${searchParams.toString()}`
   })
+
+export const cmd: (
+  commandInput: string | (string | undefined)[],
+  options?:
+    | {
+        cwd?: string
+        shell?: boolean
+        env?: Record<string, string | undefined>
+      }
+    | undefined,
+) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn(
+  'cmd',
+)(function* (commandInput, options) {
+  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+  const commandStr = [command, ...args].join(' ')
+
+  yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
+  yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
+
+  return yield* Command.make(command!, ...args).pipe(
+    Command.stdout('inherit'), // Stream stdout to process.stdout
+    Command.stderr('inherit'), // Stream stderr to process.stderr
+    Command.workingDirectory(cwd),
+    options?.shell ? Command.runInShell(true) : identity,
+    Command.env(options?.env ?? {}),
+    Command.exitCode,
+    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
+  )
+})
+
+export const cmdText: (
+  commandStr: string,
+  options?: { cwd?: string; runInShell?: boolean; env?: Record<string, string | undefined> },
+) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
+  function* (commandStr, options) {
+    const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+    const [command, ...args] = commandStr.split(' ')
+
+    yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
+    yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
+
+    return yield* Command.make(command!, ...args).pipe(
+      Command.workingDirectory(cwd),
+      options?.runInShell ? Command.runInShell(true) : identity,
+      Command.env(options?.env ?? {}),
+      Command.string,
+    )
+  },
+)

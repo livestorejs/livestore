@@ -49,7 +49,7 @@ export interface NodeAdapterOptions {
   sessionId?: string
 
   devtools?: {
-    schemaPath: string
+    schemaPath: string | URL
     /**
      * Where to run the devtools server (via Vite)
      *
@@ -60,6 +60,12 @@ export interface NodeAdapterOptions {
      * @default 'localhost'
      */
     host?: string
+    /**
+     * Whether to use existing devtools server
+     *
+     * @default false
+     */
+    useExistingDevtoolsServer?: boolean
   }
 
   /** Only used internally for testing */
@@ -150,10 +156,14 @@ const makeAdapterImpl = ({
         devtoolsEnabled && devtoolsOptionsInput !== undefined
           ? {
               enabled: true,
-              schemaPath: devtoolsOptionsInput.schemaPath,
+              schemaPath:
+                typeof devtoolsOptionsInput.schemaPath === 'string'
+                  ? devtoolsOptionsInput.schemaPath
+                  : devtoolsOptionsInput.schemaPath.pathname,
               schemaAlias: schema.devtools.alias,
               port: devtoolsOptionsInput.port ?? 4242,
               host: devtoolsOptionsInput.host ?? 'localhost',
+              useExistingDevtoolsServer: devtoolsOptionsInput.useExistingDevtoolsServer ?? false,
             }
           : { enabled: false }
 
@@ -193,7 +203,7 @@ const makeAdapterImpl = ({
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
-              openTimeout: 50,
+              openTimeout: 500,
             }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
           }
         }),

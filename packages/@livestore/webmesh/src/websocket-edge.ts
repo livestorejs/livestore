@@ -49,20 +49,19 @@ export const connectViaWebSocket = ({
   openTimeout?: number
 }): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const disconnected = yield* Deferred.make<void>()
-
     const socket = yield* Socket.makeWebSocket(url, { openTimeout })
 
     const edgeChannel = yield* makeWebSocketEdge({
       socket,
       socketType: { _tag: 'leaf', from: node.nodeName },
+      debug: { id: `node:${node.nodeName}` },
     })
 
     yield* node
       .addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
       .pipe(Effect.acquireRelease(() => node.removeEdge('ws').pipe(Effect.orDie)))
 
-    yield* disconnected
+    yield* edgeChannel.webChannel.closedDeferred
   }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
 
 const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
@@ -74,9 +73,11 @@ const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructo
 export const makeWebSocketEdge = ({
   socket,
   socketType,
+  debug: debugInfo,
 }: {
   socket: Socket.Socket
   socketType: SocketType
+  debug?: { id?: string }
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
@@ -99,7 +100,7 @@ export const makeWebSocketEdge = ({
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
-      const retryOpenTimeoutSchedule = Schedule.exponential(100).pipe(
+      const retryOpenTimeoutSchedule = Schedule.union(Schedule.exponential(100), Schedule.spaced(5000)).pipe(
         Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),
       )
 
@@ -107,13 +108,13 @@ export const makeWebSocketEdge = ({
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
         Stream.catchTag(
           'SocketError',
-          Effect.fn(function* (error) {
-            // yield* Effect.logError(`[websocket-edge] Socket error`, error)
+          Effect.fnUntraced(function* (error) {
+            // yield* Effect.logError(`[websocket-edge] Socket error`, error, { socketType, debugId: debugInfo?.id })
             // In the case of the socket being closed, we're interrupting the stream
             // and close the WebChannel (which can be observed from the outside)
             if (error.reason === 'Close') {
-              yield* isConnectedLatch.close
               yield* Deferred.succeed(closedDeferred, undefined)
+              yield* isConnectedLatch.close
               return yield* Effect.interrupt
             } else {
               return yield* Effect.fail(error)
@@ -134,6 +135,12 @@ export const makeWebSocketEdge = ({
           }),
         ),
         Stream.runDrain,
+        Effect.tap(
+          Effect.fnUntraced(function* () {
+            yield* Deferred.succeed(closedDeferred, undefined)
+            yield* isConnectedLatch.close
+          }),
+        ),
         Effect.interruptible,
         Effect.withSpan('makeWebSocketEdge:listen'),
         Effect.tapCauseLogPretty,

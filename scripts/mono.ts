@@ -1,7 +1,6 @@
-import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
-import { Command, Effect, identity, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { commands as integrationTestsCommands } from '@local/tests-integration/run-tests'
 
 import { command as deployExamplesCommand } from './deploy-examples.js'
@@ -149,46 +148,6 @@ const command = Cli.Command.make('mono').pipe(
     releaseCommand,
   ]),
 )
-
-const cmd = Effect.fn('cmd')(function* (
-  commandInput: string | (string | undefined)[],
-  options?: { cwd?: string; shell?: boolean; env?: Record<string, string | undefined> },
-) {
-  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
-  const commandStr = [command, ...args].join(' ')
-
-  yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
-
-  return yield* Command.make(command!, ...args).pipe(
-    Command.stdout('inherit'), // Stream stdout to process.stdout
-    Command.stderr('inherit'), // Stream stderr to process.stderr
-    Command.workingDirectory(cwd),
-    options?.shell ? Command.runInShell(true) : identity,
-    Command.env(options?.env ?? {}),
-    Command.exitCode,
-    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
-  )
-})
-
-const cmdText = Effect.fn('cmdTextc')(function* (
-  commandStr: string,
-  options?: { cwd?: string; runInShell?: boolean; env?: Record<string, string | undefined> },
-) {
-  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-  const [command, ...args] = commandStr.split(' ')
-
-  yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
-
-  return yield* Command.make(command!, ...args).pipe(
-    Command.workingDirectory(cwd),
-    options?.runInShell ? Command.runInShell(true) : identity,
-    Command.env(options?.env ?? {}),
-    Command.string,
-  )
-})
 
 if (import.meta.main) {
   // 'CLI for managing the Livestore monorepo',

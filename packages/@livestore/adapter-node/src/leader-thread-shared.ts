@@ -139,25 +139,27 @@ const makeDevtoolsOptions = ({
         const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.js'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
-        yield* startDevtoolsServer({
-          schemaPath: devtools.schemaPath,
-          clientSessionInfo: Devtools.SessionInfo.SessionInfo.make({
-            storeId,
-            clientId,
-            sessionId: 'static', // TODO make this dynamic
-            schemaAlias: devtools.schemaAlias,
-            isLeader: true,
-          }),
-          port: devtools.port,
-          host: devtools.host,
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        if (devtools.useExistingDevtoolsServer === false) {
+          yield* startDevtoolsServer({
+            schemaPath: devtools.schemaPath,
+            clientSessionInfo: Devtools.SessionInfo.SessionInfo.make({
+              storeId,
+              clientId,
+              sessionId: 'static', // TODO make this dynamic
+              schemaAlias: devtools.schemaAlias,
+              isLeader: true,
+            }),
+            port: devtools.port,
+            host: devtools.host,
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }
 
         const node = yield* Webmesh.makeMeshNode(Devtools.makeNodeName.client.leader({ storeId, clientId }))
 
         yield* Webmesh.connectViaWebSocket({
           node,
           url: `http://${devtools.host}:${devtools.port}`,
-          openTimeout: 50,
+          openTimeout: 500,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         const persistenceInfo = {
