@@ -5,7 +5,6 @@
 
 ## 0.3.0
 
-
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
@@ -231,12 +230,13 @@
     - implement sync payload
   - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
     - possibly introduce a eventlog id in the global sync metadata
+- Expo:
+  - Fix memory leak in certain cases (needs repro info)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
   - support app reloading in Expo (requires an equivalent of `beforeunload` to be triggered in `makeClientSession`)
-  - Expo devtools: use node adapter ws server
-  - sync session appears for wrong storeid
+  - sync session appears for wrong storeid (needs repro info)
   - sync view:
     - different colors for when a node pulled/pushed
     - show status indicators in each node: uptodate/syncing/error

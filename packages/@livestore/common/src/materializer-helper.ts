@@ -1,4 +1,4 @@
-import { isReadonlyArray } from '@livestore/utils'
+import { isNil, isReadonlyArray } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.js'
@@ -38,7 +38,10 @@ export const getExecArgsFromEvent = ({
 }> => {
   const eventArgsDecoded =
     event.decoded === undefined ? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args) : event.decoded.args
-  const eventArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
+
+  const eventArgsEncoded = isNil(event.decoded?.args)
+    ? undefined
+    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:

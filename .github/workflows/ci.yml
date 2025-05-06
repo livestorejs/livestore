@@ -45,7 +45,8 @@ jobs:
       - run: pnpm install
       - run: pnpm build:ts
       # Seems like webmesh / utils is flaky on CI when running in parallel with the other packages, so we run it separately
-      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --filter '!@local/tests-integration' --parallel run test
+      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --filter '!@local/tests-integration' --filter '!@local/tests-package-common' --parallel run test
+      - run: pnpm --filter '@local/tests-package-common' run test
       - run: pnpm --filter '@local/tests-integration' run test
       - run: pnpm --filter '@livestore/webmesh' run test
       - run: pnpm --filter '@livestore/utils' run test
