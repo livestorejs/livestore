@@ -12,16 +12,16 @@ LiveStore is based on [the idea of event-sourcing](/docs/reference/event-sourcin
 
 ## Events
 
-A mutation event consists of the following data:
-- `id`: event id
-- `parentId`: parent event id
-- `mutation`: mutation name (refers to a mutation definition in the schema)
-- `args`: mutation arguments (encoded using the mutation's schema definition, usually JSON)
+A LiveStore event consists of the following data:
+- `seqNum`: event sequence number
+- `parentSeqNum`: parent event sequence number
+- `name`: event name (refers to a event definition in the schema)
+- `args`: event arguments (encoded using the event's schema definition, usually JSON)
 
-### Event ids
+### Event sequence numbers
 
-- Event ids: sequence integers
-  - local event id to sync across client sessions
+- Event sequence numbers: monotonically increasing integers
+  - client event sequence number to sync across client sessions (never exposed to the sync backend)
 
 ### Sync heads
 

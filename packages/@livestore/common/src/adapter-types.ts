@@ -56,7 +56,7 @@ export interface ClientSessionLeaderThreadProxy {
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
-    /** The latest mutation event id during boot. Used for the client session to resume syncing. */
+    /** The latest event sequence number during boot. Used for the client session to resume syncing. */
     readonly leaderHead: EventSequenceNumber.EventSequenceNumber
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport

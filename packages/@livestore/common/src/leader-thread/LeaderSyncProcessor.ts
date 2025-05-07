@@ -118,7 +118,7 @@ export const makeLeaderSyncProcessor = ({
      * If a local-push batch is rejected, all subsequent push queue items with the same generation are also rejected,
      * even if they would be valid on their own.
      */
-    // TODO get rid of this in favour of the `mergeGeneration` event id field
+    // TODO get rid of this in favour of the `mergeGeneration` event sequence number field
     const currentLocalPushGenerationRef = { current: 0 }
 
     type MergeCounter = number
@@ -930,7 +930,7 @@ const validatePushBatch = (
       }
     }
 
-    // Make sure smallest event id is > pushHead
+    // Make sure smallest sequence number is > pushHead
     if (EventSequenceNumber.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum)) {
       return yield* LeaderAheadError.make({
         minimumExpectedNum: pushHead,

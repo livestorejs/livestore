@@ -61,7 +61,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
     /**
      * Constraints for batch:
      * - Number of events: 1-100
-     * - event ids must be in ascending order
+     * - sequence numbers must be in ascending order
      * */
     batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
   ) => Effect.Effect<void, IsOfflineError | InvalidPushError, HttpClient.HttpClient>

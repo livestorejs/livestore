@@ -3,6 +3,7 @@ import {
   Devtools,
   LeaderAheadError,
   LeaderPullCursor,
+  liveStoreVersion,
   MigrationsReport,
   SyncState,
   UnexpectedError,
@@ -165,6 +166,9 @@ export namespace SharedWorker {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
       payload: Schema.Union(InitialMessagePayloadFromClientSession, Schema.TaggedStruct('FromWebBridge', {})),
+      // To guard against scenarios where a client session is already running a newer version of LiveStore
+      // We should probably find a better way to handle those cases once they become more common.
+      liveStoreVersion: Schema.Literal(liveStoreVersion),
     },
     success: Schema.Void,
     failure: UnexpectedError,

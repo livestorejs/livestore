@@ -56,6 +56,7 @@ export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
 export const LEADER_MERGE_COUNTER_TABLE = '__livestore_leader_merge_counter'
 
+// TODO get rid of this table in favour of client-only merge generation
 export const leaderMergeCounterTable = table({
   name: LEADER_MERGE_COUNTER_TABLE,
   columns: {

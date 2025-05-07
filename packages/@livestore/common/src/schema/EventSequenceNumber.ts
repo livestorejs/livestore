@@ -16,7 +16,14 @@ export const clientDefault = 0 as any as ClientEventSequenceNumber
  *
  * The client sequence number is only used for clientOnly events and starts from 0 for each global sequence number.
  */
-export type EventSequenceNumber = { global: GlobalEventSequenceNumber; client: ClientEventSequenceNumber }
+export type EventSequenceNumber = {
+  global: GlobalEventSequenceNumber
+  client: ClientEventSequenceNumber
+  /**
+   * TODO add generation number in favour of LEADER_MERGE_COUNTER_TABLE
+   */
+  // generation: number
+}
 
 // export const EventSequenceNumber = Schema.Struct({})
 // export const EventSequenceNumber = Schema.Struct({})
@@ -39,7 +46,7 @@ export const EventSequenceNumber = Schema.Struct({
 }).annotations({ title: 'LiveStore.EventSequenceNumber' })
 
 /**
- * Compare two event ids i.e. checks if the first event id is less than the second.
+ * Compare two event sequence numbers i.e. checks if the first event sequence number is less than the second.
  */
 export const compare = (a: EventSequenceNumber, b: EventSequenceNumber) => {
   if (a.global !== b.global) {
@@ -49,18 +56,18 @@ export const compare = (a: EventSequenceNumber, b: EventSequenceNumber) => {
 }
 
 /**
- * Convert an event id to a string representation.
+ * Convert an event sequence number to a string representation.
  */
 export const toString = (seqNum: EventSequenceNumber) =>
   seqNum.client === 0 ? `e${seqNum.global}` : `e${seqNum.global}+${seqNum.client}`
 
 /**
- * Convert a string representation of an event id to an event id.
+ * Convert a string representation of an event sequence number to an event sequence number.
  */
 export const fromString = (str: string): EventSequenceNumber => {
   const [global, client] = str.slice(1, -1).split(',').map(Number)
   if (global === undefined || client === undefined) {
-    throw new Error('Invalid event id string')
+    throw new Error('Invalid event sequence number string')
   }
   return { global, client } as EventSequenceNumber
 }

@@ -2,6 +2,7 @@ import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import {
   Devtools,
   IntentionalShutdownCause,
+  liveStoreVersion,
   makeClientSession,
   StoreInterrupted,
   UnexpectedError,
@@ -161,6 +162,7 @@ export const makePersistedAdapter =
         concurrency: 100,
         initialMessage: () =>
           new WorkerSchema.SharedWorker.InitialMessage({
+            liveStoreVersion,
             payload: {
               _tag: 'FromClientSession',
               initialMessage: new WorkerSchema.LeaderWorkerInner.InitialMessage({

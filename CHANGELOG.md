@@ -259,12 +259,19 @@
     - Make it store-agnostic (so it's reused across store instances)
     - Remove extra broadcast channel for session info in @livestore/adapter-web
 - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- Refactor/improve event sequence number implementation
+  - Current pain points/suboptimalities:
+    - `syncstate.ts`: branching for global/client-only events
+    - Get rid of `leaderMergeCounterTable` in favour of client-only merge generation
+      - Idea: Embed merge generation in the client-only event sequence number
+      - Adjust leader + client session sync processor accordingly
+    - Improve table schema for `eventlog` table (if possible)
 - Examples:
   - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
   - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
 - Docs
   - Notes on deployment (when to deploy what)
-  - Embrace term "containers"
+  - Document event model/eventlog design
     - Unit of sharing/collaboration/auth
     - What if I want got my initial container design wrong and I want to change it?
       - Comparables: document databases, kafka streams, 
