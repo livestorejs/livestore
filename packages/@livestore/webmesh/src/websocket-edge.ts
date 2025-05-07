@@ -183,6 +183,7 @@ export const makeWebSocketEdge = ({
         schema,
         supportsTransferables: false,
         shutdown: Scope.close(scope, Exit.void),
+        debugInfo,
       } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
       return { webChannel, from }

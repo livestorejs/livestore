@@ -8,6 +8,8 @@ import { cmd } from '@livestore/utils-dev/node'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
+const PlaywrightMode = Schema.Literal('headless', 'ui', 'dev-server')
+
 const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
   Effect.gen(function* () {
     const devPort = useWorkspacePort
@@ -30,26 +32,30 @@ const unitTest: Cli.Command.Command<
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
   {
-    readonly headless: boolean
+    readonly mode: 'headless' | 'ui' | 'dev-server'
   }
 > = Cli.Command.make(
   'unit',
   {
-    headless: Cli.Options.boolean('headless').pipe(Cli.Options.withDefault(false)),
+    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
   },
   Effect.fn(
-    function* ({ headless }) {
-      const { devPort } = yield* viteDevServer('todomvc', false)
+    function* ({ mode }) {
+      const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
 
-      yield* cmd(['pnpm', 'playwright', 'test', 'src/tests/playwright/unit-tests.play.ts'], {
-        env: {
-          PLAYWRIGHT_SUITE: 'unit',
-          LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-          DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
-          PLAYWRIGHT_HEADLESS: headless ? '1' : '0',
+      yield* cmd(
+        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/unit-tests.play.ts'],
+        {
+          env: {
+            PLAYWRIGHT_SUITE: 'unit',
+            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+            DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
+            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
+          },
+          cwd,
         },
-        cwd,
-      })
+      )
     },
     Effect.withSpan('test:unit'),
     Effect.scoped,
@@ -77,25 +83,29 @@ const todomvcTest: Cli.Command.Command<
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
   {
-    readonly headless: boolean
+    readonly mode: 'headless' | 'ui' | 'dev-server'
   }
 > = Cli.Command.make(
   'todomvc',
   {
-    headless: Cli.Options.boolean('headless').pipe(Cli.Options.withDefault(false)),
+    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
   },
   Effect.fn(
-    function* ({ headless }) {
-      const { devPort } = yield* viteDevServer('todomvc', false)
+    function* ({ mode }) {
+      const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
 
-      yield* cmd(['pnpm', 'playwright', 'test', 'src/tests/playwright/todomvc.play.ts'], {
-        cwd,
-        env: {
-          PLAYWRIGHT_SUITE: 'todomvc',
-          LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-          PLAYWRIGHT_HEADLESS: headless ? '1' : '0',
+      yield* cmd(
+        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
+        {
+          cwd,
+          env: {
+            PLAYWRIGHT_SUITE: 'todomvc',
+            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
+          },
         },
-      })
+      )
     },
     Effect.withSpan('test:todomvc'),
     Effect.scoped,
@@ -112,9 +122,7 @@ const devtoolsTest: Cli.Command.Command<
 > = Cli.Command.make(
   'devtools',
   {
-    // headless: Cli.Options.boolean('headless').pipe(Cli.Options.withDefault(false)),
-    // ui: Cli.Options.boolean('ui').pipe(Cli.Options.withDefault(false)),
-    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(Schema.Literal('headless', 'ui', 'dev-server'))),
+    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
   },
   Effect.fn(
     function* ({ mode }) {
@@ -148,30 +156,37 @@ const devtoolsTest: Cli.Command.Command<
   ),
 )
 
-export const commands = [unitTest, nodeSyncTest, todomvcTest, devtoolsTest] as const
-
-export const command: Cli.Command.Command<
-  'run',
+export const runAll: Cli.Command.Command<
+  'all',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
-  {
-    readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
-  }
+  {}
 > = Cli.Command.make(
-  'run',
+  'all',
   {},
   Effect.fn(function* () {
     yield* Effect.all(
       [
-        unitTest.handler({ headless: true }),
+        unitTest.handler({ mode: 'headless' }),
         nodeSyncTest.handler({}),
-        todomvcTest.handler({ headless: true }),
+        todomvcTest.handler({ mode: 'headless' }),
         devtoolsTest.handler({ mode: 'headless' }),
       ],
       { concurrency: 'unbounded' },
     )
   }),
-).pipe(Cli.Command.withSubcommands([unitTest, nodeSyncTest, todomvcTest, devtoolsTest]))
+)
+
+export const commands = [unitTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll] as const
+
+export const command: Cli.Command.Command<
+  'integration',
+  CommandExecutor.CommandExecutor,
+  UnexpectedError | PlatformError.PlatformError,
+  {
+    readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
+  }
+> = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(commands))
 
 if (import.meta.main) {
   const cli = Cli.Command.run(command, {

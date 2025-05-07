@@ -25,7 +25,7 @@
     "@opentelemetry/resources": "^2.0.0",
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@playwright/test": "^1.51.0",
+    "@playwright/test": "^1.52.0",
     "@tanstack/react-router": "^1.119.0",
     "@tanstack/router-plugin": "^1.119.0",
     "@types/node": "^22.13.10",

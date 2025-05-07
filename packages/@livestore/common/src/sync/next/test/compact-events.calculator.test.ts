@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { compactEvents } from '../compact-events.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import { customSerializer } from './compact-events.test.js'
-import { toEventNodes } from './event-fixtures.js'
+import { printEvent, toEventNodes } from './event-fixtures.js'
 
 expect.addSnapshotSerializer(customSerializer)
 
@@ -15,7 +15,7 @@ const compact = (events: any[]) => {
 
   return Array.from(compacted.dag.nodeEntries())
     .map((_) => _.attributes)
-    .map(({ factsGroup, ...rest }) => ({ ...rest, facts: factsGroup }))
+    .map(printEvent)
     .slice(1)
 }
 
@@ -50,8 +50,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { seqNum: 1, parentSeqNum: 0, name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
-        { seqNum: 2, parentSeqNum: 1, name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { seqNum: "e1", parentSeqNum: "e0", name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { seqNum: "e2", parentSeqNum: "e1", name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })
@@ -64,8 +64,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { seqNum: 1, parentSeqNum: 0, name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
-        { seqNum: 2, parentSeqNum: 1, name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
+        { seqNum: "e1", parentSeqNum: "e0", name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
+        { seqNum: "e2", parentSeqNum: "e1", name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
       ]
     `)
   })
@@ -79,7 +79,7 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { seqNum: 3, parentSeqNum: 0, name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { seqNum: "e3", parentSeqNum: "e0", name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
       ]
     `)
   })
@@ -94,8 +94,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { seqNum: 3, parentSeqNum: 0, name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
-        { seqNum: 4, parentSeqNum: 3, name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { seqNum: "e3", parentSeqNum: "e0", name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { seqNum: "e4", parentSeqNum: "e3", name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })
@@ -111,10 +111,10 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { seqNum: 1, parentSeqNum: 0, name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
-        { seqNum: 3, parentSeqNum: 1, name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
-        { seqNum: 4, parentSeqNum: 3, name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero +multiplyByZero -multiplyByZero" }
-        { seqNum: 5, parentSeqNum: 4, name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { seqNum: "e1", parentSeqNum: "e0", name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { seqNum: "e3", parentSeqNum: "e1", name: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { seqNum: "e4", parentSeqNum: "e3", name: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero +multiplyByZero -multiplyByZero" }
+        { seqNum: "e5", parentSeqNum: "e4", name: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })

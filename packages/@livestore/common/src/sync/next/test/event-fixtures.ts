@@ -8,6 +8,13 @@ import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
 import { rootEventNode } from '../history-dag-common.js'
 
+export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
+  seqNum: EventSequenceNumber.toString(seqNum),
+  parentSeqNum: EventSequenceNumber.toString(parentSeqNum),
+  ...rest,
+  facts: factsGroup,
+})
+
 /** Used for conflict detection and event history compaction */
 export const facts = defineFacts({
   todoExists: (id: string) => `todo-exists-${id}`,

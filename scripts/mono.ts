@@ -1,20 +1,19 @@
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
-import { commands as integrationTestsCommands } from '@local/tests-integration/run-tests'
+import * as integrationTests from '@local/tests-integration/run-tests'
 
 import { command as deployExamplesCommand } from './deploy-examples.js'
 import * as generateExamples from './generate-examples.js'
-
-const integrationTests = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(integrationTestsCommands))
 
 const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
     yield* cmd('vitest')
+    yield* integrationTests.runAll.handler({})
   }),
-).pipe(Cli.Command.withSubcommands([integrationTests]))
+).pipe(Cli.Command.withSubcommands([integrationTests.command]))
 
 const lintCommand = Cli.Command.make(
   'lint',

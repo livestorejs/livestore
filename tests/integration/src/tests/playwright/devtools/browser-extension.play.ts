@@ -158,7 +158,8 @@ test(
           ]),
         ),
       )
-    }).pipe(Effect.retry({ times: 2 })),
+    }),
+    // .pipe(Effect.retry({ times: 2 })),
   ),
 )
 
@@ -189,7 +190,8 @@ test.skip(
           ]),
         ),
       )
-    }).pipe(Effect.retry({ times: 2 })),
+    }),
+    // .pipe(Effect.retry({ times: 2 })),
   ),
 )
 
@@ -257,7 +259,8 @@ test(
           ]),
         ),
       )
-    }).pipe(Effect.retry({ times: 2 })),
+    }),
+    // .pipe(Effect.retry({ times: 2 })),
   ),
 )
 
