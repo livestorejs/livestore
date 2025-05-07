@@ -2,13 +2,15 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { Effect, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
-const PlaywrightMode = Schema.Literal('headless', 'ui', 'dev-server')
+const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
+  Cli.Options.withDefault('headless'),
+)
 
 const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
   Effect.gen(function* () {
@@ -27,27 +29,27 @@ const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
     return { devPort }
   })
 
-const unitTest: Cli.Command.Command<
-  'unit',
+export const miscTest: Cli.Command.Command<
+  'misc',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
   }
 > = Cli.Command.make(
-  'unit',
+  'misc',
   {
-    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
+    mode: modeOption,
   },
   Effect.fn(
     function* ({ mode }) {
       const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
 
       yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/unit-tests.play.ts'],
+        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
         {
           env: {
-            PLAYWRIGHT_SUITE: 'unit',
+            PLAYWRIGHT_SUITE: 'misc',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
             DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
             PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
@@ -57,12 +59,12 @@ const unitTest: Cli.Command.Command<
         },
       )
     },
-    Effect.withSpan('test:unit'),
+    Effect.withSpan('test:misc'),
     Effect.scoped,
   ),
 )
 
-const nodeSyncTest: Cli.Command.Command<
+export const nodeSyncTest: Cli.Command.Command<
   'node-sync',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
@@ -71,14 +73,14 @@ const nodeSyncTest: Cli.Command.Command<
   'node-sync',
   {},
   Effect.fn(function* () {
-    yield* cmd(['pnpm', 'vitest', 'src/tests/node-sync/node-sync.test.ts'], {
+    yield* cmd(['vitest', 'src/tests/node-sync/node-sync.test.ts'], {
       cwd,
       env: { CI: '1' },
     })
   }),
 )
 
-const todomvcTest: Cli.Command.Command<
+export const todomvcTest: Cli.Command.Command<
   'todomvc',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
@@ -88,7 +90,7 @@ const todomvcTest: Cli.Command.Command<
 > = Cli.Command.make(
   'todomvc',
   {
-    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
+    mode: modeOption,
   },
   Effect.fn(
     function* ({ mode }) {
@@ -112,7 +114,7 @@ const todomvcTest: Cli.Command.Command<
   ),
 )
 
-const devtoolsTest: Cli.Command.Command<
+export const devtoolsTest: Cli.Command.Command<
   'devtools',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
@@ -122,7 +124,7 @@ const devtoolsTest: Cli.Command.Command<
 > = Cli.Command.make(
   'devtools',
   {
-    mode: Cli.Options.text('mode').pipe(Cli.Options.withSchema(PlaywrightMode)),
+    mode: modeOption,
   },
   Effect.fn(
     function* ({ mode }) {
@@ -160,24 +162,30 @@ export const runAll: Cli.Command.Command<
   'all',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError,
-  {}
+  {
+    readonly concurrency: 'sequential' | 'parallel'
+  }
 > = Cli.Command.make(
   'all',
-  {},
-  Effect.fn(function* () {
+  {
+    concurrency: Cli.Options.choice('concurrency', ['sequential', 'parallel']).pipe(
+      Cli.Options.withDefault('parallel'),
+    ),
+  },
+  Effect.fn(function* ({ concurrency }) {
     yield* Effect.all(
       [
-        unitTest.handler({ mode: 'headless' }),
+        miscTest.handler({ mode: 'headless' }),
         nodeSyncTest.handler({}),
         todomvcTest.handler({ mode: 'headless' }),
         devtoolsTest.handler({ mode: 'headless' }),
       ],
-      { concurrency: 'unbounded' },
+      { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
     )
   }),
 )
 
-export const commands = [unitTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll] as const
+export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll] as const
 
 export const command: Cli.Command.Command<
   'integration',

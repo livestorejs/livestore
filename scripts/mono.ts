@@ -6,14 +6,54 @@ import * as integrationTests from '@local/tests-integration/run-tests'
 import { command as deployExamplesCommand } from './deploy-examples.js'
 import * as generateExamples from './generate-examples.js'
 
+const cwd = process.env.WORKSPACE_ROOT
+const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
+
+// GitHub actions log groups
+const runTestGroup =
+  (name: string) =>
+  <E, C>(effect: Effect.Effect<unknown, E, C>) =>
+    Effect.gen(function* () {
+      console.log(`::group::${name}`)
+      yield* effect
+      console.log(`::endgroup::`)
+    }).pipe(Effect.withSpan(`test-group(${name})`))
+
+const testUnitCommand = Cli.Command.make(
+  'unit',
+  {},
+  Effect.fn(function* () {
+    // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
+    if (isGithubAction) {
+      process.env.CI = '1'
+
+      const vitestPathsToRunSequentially = [`${cwd}/packages/@livestore/webmesh`, `${cwd}/tests/package-common`]
+      const vitestPathsToRunInParallel = [
+        `${cwd}/packages/@livestore/utils`,
+        `${cwd}/packages/@livestore/common`,
+        `${cwd}/packages/@livestore/livestore`,
+      ]
+
+      for (const vitestPath of vitestPathsToRunSequentially) {
+        yield* runTestGroup(vitestPath)(cmd(`vitest run ${vitestPath}`, { cwd }))
+      }
+
+      // Run the rest of the tests in parallel
+      yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
+    } else {
+      yield* cmd('vitest run')
+    }
+  }),
+)
+
 const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
-    yield* cmd('vitest')
-    yield* integrationTests.runAll.handler({})
+    yield* testUnitCommand.handler({})
+    yield* integrationTests.runAll.handler({ concurrency: isGithubAction ? 'sequential' : 'parallel' })
   }),
-).pipe(Cli.Command.withSubcommands([integrationTests.command]))
+).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
 
 const lintCommand = Cli.Command.make(
   'lint',

@@ -44,12 +44,20 @@ jobs:
         timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
-      # Seems like webmesh / utils is flaky on CI when running in parallel with the other packages, so we run it separately
-      - run: pnpm --filter '!@livestore/webmesh' --filter '!@livestore/utils' --filter '!@local/tests-perf' --filter '!@local/tests-integration' --filter '!@local/tests-package-common' --parallel run test
-      - run: pnpm --filter '@local/tests-package-common' run test
-      - run: pnpm --filter '@local/tests-integration' run test
-      - run: pnpm --filter '@livestore/webmesh' run test
-      - run: pnpm --filter '@livestore/utils' run test
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+      - run: mono test unit
+      - run: mono test integration misc
+      - run: mono test integration todomvc
+      - run: mono test integration node-sync
+      - run: mono test integration devtools
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -77,19 +85,18 @@ jobs:
       - name: Load environment with direnv
         uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - name: Install dependencies
-        run: pnpm install
-      - name: Compile TypeScript code
-        run: pnpm build:ts
+      - run: pnpm install
+      - run: pnpm build:ts
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
       - name: Run performance tests
-        env:
-          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
         run: pnpm test:perf
+        env:
+          GRAFANA_ENDPOINT: https://livestore.grafana.net
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
