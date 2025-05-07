@@ -50,7 +50,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
           const syncState = yield* syncProcessor.syncState
           const mergeCounter = syncProcessor.getMergeCounter()
 
-          yield* syncProcessor.pull({ cursor: { mergeCounter, eventId: syncState.localHead } }).pipe(
+          yield* syncProcessor.pull({ cursor: { mergeCounter, eventNum: syncState.localHead } }).pipe(
             Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
             Stream.runDrain,
             Effect.forkScoped,

@@ -18,7 +18,7 @@ import type * as otel from '@opentelemetry/api'
 import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventId, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.js'
+import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.js'
 import { LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
@@ -150,9 +150,9 @@ export const makeLeaderSyncProcessor = ({
      *
      * Thus the purpoe of the pushHeadRef is the guard the integrity of the local push queue
      */
-    const pushHeadRef = { current: EventId.ROOT }
-    const advancePushHead = (eventId: EventId.EventId) => {
-      pushHeadRef.current = EventId.max(pushHeadRef.current, eventId)
+    const pushHeadRef = { current: EventSequenceNumber.ROOT }
+    const advancePushHead = (eventNum: EventSequenceNumber.EventSequenceNumber) => {
+      pushHeadRef.current = EventSequenceNumber.max(pushHeadRef.current, eventNum)
     }
 
     // NOTE: New events are only pushed to sync backend after successful local push processing
@@ -162,7 +162,7 @@ export const makeLeaderSyncProcessor = ({
 
         yield* validatePushBatch(newEvents, pushHeadRef.current)
 
-        advancePushHead(newEvents.at(-1)!.id)
+        advancePushHead(newEvents.at(-1)!.seqNum)
 
         const waitForProcessing = options?.waitForProcessing ?? false
         const generation = currentLocalPushGenerationRef.current
@@ -203,7 +203,7 @@ export const makeLeaderSyncProcessor = ({
           args,
           clientId,
           sessionId,
-          ...EventId.nextPair(syncState.localHead, eventDef.options.clientOnly),
+          ...EventSequenceNumber.nextPair(syncState.localHead, eventDef.options.clientOnly),
         })
 
         yield* push([eventEncoded])
@@ -223,9 +223,11 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
-      const initialLocalHead = dbEventlogMissing ? EventId.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+      const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const initialBackendHead = dbEventlogMissing ? EventId.ROOT.global : Eventlog.getBackendHeadFromDb(dbEventlog)
+      const initialBackendHead = dbEventlogMissing
+        ? EventSequenceNumber.ROOT.global
+        : Eventlog.getBackendHeadFromDb(dbEventlog)
 
       if (initialBackendHead > initialLocalHead.global) {
         return shouldNeverHappen(
@@ -235,11 +237,11 @@ export const makeLeaderSyncProcessor = ({
 
       const pendingEvents = dbEventlogMissing
         ? []
-        : yield* Eventlog.getEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
+        : yield* Eventlog.getEventsSince({ global: initialBackendHead, client: EventSequenceNumber.clientDefault })
 
       const initialSyncState = new SyncState.SyncState({
         pending: pendingEvents,
-        upstreamHead: { global: initialBackendHead, client: EventId.clientDefault },
+        upstreamHead: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
         localHead: initialLocalHead,
       })
 
@@ -347,7 +349,7 @@ export const makeLeaderSyncProcessor = ({
                 payload: {
                   _tag: 'upstream-advance' as const,
                   newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
-                    EventId.isGreaterThanOrEqual(cursor.eventId, eventEncoded.id),
+                    EventSequenceNumber.isGreaterThanOrEqual(cursor.eventNum, eventEncoded.seqNum),
                   ),
                 },
                 mergeCounter,
@@ -479,7 +481,7 @@ const backgroundApplyLocalPushes = ({
 
           const nextGeneration = currentLocalPushGenerationRef.current
 
-          const providedId = newEvents.at(0)!.id
+          const providedNum = newEvents.at(0)!.seqNum
           // All subsequent pushes with same generation should be rejected as well
           // We're also handling the case where the localPushQueue already contains events
           // from the next generation which we preserve in the queue
@@ -503,8 +505,8 @@ const backgroundApplyLocalPushes = ({
             Deferred.fail(
               deferred,
               LeaderAheadError.make({
-                minimumExpectedId: mergeResult.expectedMinimumId,
-                providedId,
+                minimumExpectedNum: mergeResult.expectedMinimumId,
+                providedNum,
                 // nextGeneration,
               }),
             ),
@@ -617,7 +619,7 @@ const backgroundBackendPulling = ({
   mergePayloads,
   advancePushHead,
 }: {
-  initialBackendHead: EventId.GlobalEventId
+  initialBackendHead: EventSequenceNumber.GlobalEventSequenceNumber
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
@@ -631,7 +633,7 @@ const backgroundBackendPulling = ({
   connectedClientSessionPullQueues: PullQueueSet
   mergeCounterRef: { current: number }
   mergePayloads: Map<number, typeof SyncState.PayloadUpstream.Type>
-  advancePushHead: (eventId: EventId.EventId) => void
+  advancePushHead: (eventNum: EventSequenceNumber.EventSequenceNumber) => void
 }) =>
   Effect.gen(function* () {
     const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
@@ -675,7 +677,7 @@ const backgroundBackendPulling = ({
           return yield* Effect.fail(mergeResult.cause)
         }
 
-        const newBackendHead = newEvents.at(-1)!.id
+        const newBackendHead = newEvents.at(-1)!.seqNum
 
         Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
@@ -697,7 +699,7 @@ const backgroundBackendPulling = ({
             yield* rollback({
               dbState: db,
               dbEventlog,
-              eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id),
+              eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
             })
           }
 
@@ -731,7 +733,9 @@ const backgroundBackendPulling = ({
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
             // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
             const confirmedNewEvents = newEvents.filter((event) =>
-              mergeResult.confirmedEvents.some((confirmedEvent) => EventId.isEqual(event.id, confirmedEvent.id)),
+              mergeResult.confirmedEvents.some((confirmedEvent) =>
+                EventSequenceNumber.isEqual(event.seqNum, confirmedEvent.seqNum),
+              ),
             )
             yield* Eventlog.updateSyncMetadata(confirmedNewEvents)
           }
@@ -828,10 +832,10 @@ const backgroundBackendPushing = ({
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pushing'))
 
-const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
+const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.EventSequenceNumber) => {
   // Since we're using the session changeset rows to query for the current head,
   // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)
+  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
 }
 
 interface PullQueueSet {
@@ -908,7 +912,10 @@ const getMergeCounterFromDb = (dbState: SqliteDb) =>
     return result[0]?.mergeCounter ?? 0
   })
 
-const validatePushBatch = (batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, pushHead: EventId.EventId) =>
+const validatePushBatch = (
+  batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
+  pushHead: EventSequenceNumber.EventSequenceNumber,
+) =>
   Effect.gen(function* () {
     if (batch.length === 0) {
       return
@@ -916,18 +923,18 @@ const validatePushBatch = (batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
 
     // Make sure batch is monotonically increasing
     for (let i = 1; i < batch.length; i++) {
-      if (EventId.isGreaterThanOrEqual(batch[i - 1]!.id, batch[i]!.id)) {
+      if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
         shouldNeverHappen(
-          `Events must be ordered in monotonically ascending order by eventId. Received: [${batch.map((e) => EventId.toString(e.id)).join(', ')}]`,
+          `Events must be ordered in monotonically ascending order by eventNum. Received: [${batch.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
         )
       }
     }
 
     // Make sure smallest event id is > pushHead
-    if (EventId.isGreaterThanOrEqual(pushHead, batch[0]!.id)) {
+    if (EventSequenceNumber.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum)) {
       return yield* LeaderAheadError.make({
-        minimumExpectedId: pushHead,
-        providedId: batch[0]!.id,
+        minimumExpectedNum: pushHead,
+        providedNum: batch[0]!.seqNum,
       })
     }
   })

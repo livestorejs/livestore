@@ -1,5 +1,5 @@
 import type { EventDefFactsGroup } from '../../schema/EventDef.js'
-import * as EventId from '../../schema/EventId.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
 import { graphology } from './graphology_.js'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
@@ -20,11 +20,14 @@ export const emptyHistoryDag = (): HistoryDag =>
   })
 
 // TODO consider making `ROOT_ID` parent to itself
-export const rootParentId = EventId.make({ global: EventId.ROOT.global - 1, client: EventId.clientDefault })
+export const rootParentNum = EventSequenceNumber.make({
+  global: EventSequenceNumber.ROOT.global - 1,
+  client: EventSequenceNumber.clientDefault,
+})
 
 export type HistoryDagNode = {
-  id: EventId.EventId
-  parentId: EventId.EventId
+  seqNum: EventSequenceNumber.EventSequenceNumber
+  parentSeqNum: EventSequenceNumber.EventSequenceNumber
   name: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
@@ -35,8 +38,8 @@ export type HistoryDagNode = {
 }
 
 export const rootEventNode: HistoryDagNode = {
-  id: EventId.ROOT,
-  parentId: rootParentId,
+  seqNum: EventSequenceNumber.ROOT,
+  parentSeqNum: rootParentNum,
   // unused below
   name: '__Root__',
   args: {},

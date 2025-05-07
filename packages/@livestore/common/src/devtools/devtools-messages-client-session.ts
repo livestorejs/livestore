@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
 import { DebugInfo } from '../debug-info.js'
-import { EventId } from '../schema/mod.js'
+import { EventSequenceNumber } from '../schema/mod.js'
 import { PreparedBindValues } from '../util.js'
 import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
 
@@ -52,8 +52,8 @@ export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.Clie
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
-  local: EventId.EventId,
-  upstream: EventId.EventId,
+  local: EventSequenceNumber.EventSequenceNumber,
+  upstream: EventSequenceNumber.EventSequenceNumber,
   subscriptionId: Schema.String,
 }) {}
 

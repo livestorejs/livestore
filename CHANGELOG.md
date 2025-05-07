@@ -194,7 +194,7 @@
 - Embraced git-style push/pull semantics to sync mutations across the system
 - Added node syncing integration tests
 - Got rid of the coordinator abstraction in favour of a clear separation between leader and client sessions
-- Renamed field from `EventId.local` to `EventId.client`
+- Renamed from `EventId.local` to `EventSequenceNumber.client`
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - New devtools protocol via webmesh
   - Should improve reliability of devtools connection (particularly during app reloads)
@@ -212,7 +212,6 @@
   - Same as node adapter
 - Syncing
   - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
-  - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
   - More graceful handling when receiving a event that doesn't exist in the local schema
     - This can happen if a new app version with a new schema and an old client with the old schema tries to sync

@@ -15,8 +15,8 @@ export const makeDb = (storeId: string) => {
   const migrate = () =>
     sql`
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
-			"id" INTEGER PRIMARY KEY,
-      "parentId" INTEGER,
+			"seqNum" INTEGER PRIMARY KEY,
+      "parentSeqNum" INTEGER,
 			"name" TEXT NOT NULL,
 			"args" JSONB NOT NULL,
       "clientId" TEXT NOT NULL,

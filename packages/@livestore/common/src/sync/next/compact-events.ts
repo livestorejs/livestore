@@ -1,6 +1,6 @@
+import { EventSequenceNumber } from '../../schema/mod.js'
 import { replacesFacts } from './facts.js'
 import { graphologyDag } from './graphology_.js'
-import { eventIdToString } from './history-dag.js'
 import type { HistoryDag } from './history-dag-common.js'
 import { emptyHistoryDag } from './history-dag-common.js'
 
@@ -17,25 +17,25 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   const dag = inputDag.copy()
   const compactedEventCount = 0
 
-  const orderedEventIdStrs = graphologyDag.topologicalSort(dag).reverse()
+  const orderedEventSequenceNumberStrs = graphologyDag.topologicalSort(dag).reverse()
 
   // drop root
-  orderedEventIdStrs.pop()
+  orderedEventSequenceNumberStrs.pop()
 
-  for (const eventIdStr of orderedEventIdStrs) {
-    if (dag.hasNode(eventIdStr) === false) {
+  for (const eventNumStr of orderedEventSequenceNumberStrs) {
+    if (dag.hasNode(eventNumStr) === false) {
       continue
     }
 
-    const subDagsForEvent = Array.from(makeSubDagsForEvent(dag, eventIdStr))
+    const subDagsForEvent = Array.from(makeSubDagsForEvent(dag, eventNumStr))
     for (const subDag of subDagsForEvent) {
       let shouldRetry = true
       while (shouldRetry) {
-        const subDagsInHistory = findSubDagsInHistory(dag, subDag, eventIdStr)
+        const subDagsInHistory = findSubDagsInHistory(dag, subDag, eventNumStr)
 
         // console.debug(
         //   'subDagsInHistory',
-        //   eventIdStr,
+        //   eventNumStr,
         //   'target',
         //   subDag.nodes(),
         //   'found',
@@ -65,9 +65,9 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   return { dag, compactedEventCount }
 }
 
-function* makeSubDagsForEvent(inputDag: HistoryDag, eventIdStr: string): Generator<HistoryDag> {
-  /** Map from eventIdStr to array of eventIdStrs that are dependencies */
-  let nextIterationEls: Map<string, string[]> = new Map([[eventIdStr, []]])
+function* makeSubDagsForEvent(inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
+  /** Map from eventNumStr to array of eventNumStrs that are dependencies */
+  let nextIterationEls: Map<string, string[]> = new Map([[eventNumStr, []]])
   let previousDag: HistoryDag | undefined
 
   while (nextIterationEls.size > 0) {
@@ -77,19 +77,22 @@ function* makeSubDagsForEvent(inputDag: HistoryDag, eventIdStr: string): Generat
     const currentIterationEls = new Map(nextIterationEls)
     nextIterationEls = new Map()
 
-    for (const [currentEventIdStr, edgeTargetIdStrs] of currentIterationEls) {
-      const node = inputDag.getNodeAttributes(currentEventIdStr)
-      if (subDag.hasNode(currentEventIdStr) === false) {
-        subDag.addNode(currentEventIdStr, { ...node })
+    for (const [currentEventSequenceNumberStr, edgeTargetIdStrs] of currentIterationEls) {
+      const node = inputDag.getNodeAttributes(currentEventSequenceNumberStr)
+      if (subDag.hasNode(currentEventSequenceNumberStr) === false) {
+        subDag.addNode(currentEventSequenceNumberStr, { ...node })
       }
       for (const edgeTargetIdStr of edgeTargetIdStrs) {
-        subDag.addEdge(currentEventIdStr, edgeTargetIdStr, { type: 'facts' })
+        subDag.addEdge(currentEventSequenceNumberStr, edgeTargetIdStr, { type: 'facts' })
       }
 
-      for (const depEdge of inputDag.outboundEdgeEntries(currentEventIdStr)) {
+      for (const depEdge of inputDag.outboundEdgeEntries(currentEventSequenceNumberStr)) {
         if (depEdge.attributes.type === 'facts') {
-          const depEventIdStr = depEdge.target
-          nextIterationEls.set(depEventIdStr, [...(nextIterationEls.get(depEventIdStr) ?? []), currentEventIdStr])
+          const depEventSequenceNumberStr = depEdge.target
+          nextIterationEls.set(depEventSequenceNumberStr, [
+            ...(nextIterationEls.get(depEventSequenceNumberStr) ?? []),
+            currentEventSequenceNumberStr,
+          ])
         }
       }
     }
@@ -102,23 +105,23 @@ function* makeSubDagsForEvent(inputDag: HistoryDag, eventIdStr: string): Generat
 }
 
 /**
- * Iterates over all events from root to `upToExclEventIdStr`
+ * Iterates over all events from root to `upToExclEventSequenceNumberStr`
  * and collects all valid sub dags that are replaced by `targetSubDag`.
  */
 const findSubDagsInHistory = (
   inputDag: HistoryDag,
   targetSubDag: HistoryDag,
-  upToExclEventIdStr: string,
+  upToExclEventSequenceNumberStr: string,
 ): { subDags: HistoryDag[]; allOutsideDependencies: string[][] } => {
   const subDags: HistoryDag[] = []
   const allOutsideDependencies: string[][] = []
 
-  for (const eventIdStr of graphologyDag.topologicalSort(inputDag)) {
-    if (eventIdStr === upToExclEventIdStr) {
+  for (const eventNumStr of graphologyDag.topologicalSort(inputDag)) {
+    if (eventNumStr === upToExclEventSequenceNumberStr) {
       break
     }
 
-    for (const subDag of makeSubDagsForEvent(inputDag, eventIdStr)) {
+    for (const subDag of makeSubDagsForEvent(inputDag, eventNumStr)) {
       // console.debug('findSubDagsInHistory', 'target', targetSubDag.nodes(), 'subDag', subDag.nodes())
       if (subDag.size < targetSubDag.size) {
         continue
@@ -152,9 +155,9 @@ const outsideDependenciesForDag = (subDag: HistoryDag, inputDag: HistoryDag) => 
   for (const nodeIdStr of subDag.nodes()) {
     for (const edgeEntry of inputDag.outboundEdgeEntries(nodeIdStr)) {
       if (edgeEntry.attributes.type === 'facts') {
-        const depEventIdStr = edgeEntry.target
-        if (subDag.hasNode(depEventIdStr) === false) {
-          outsideDependencies.push(depEventIdStr)
+        const depEventSequenceNumberStr = edgeEntry.target
+        if (subDag.hasNode(depEventSequenceNumberStr) === false) {
+          outsideDependencies.push(depEventSequenceNumberStr)
         }
       }
     }
@@ -201,19 +204,19 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
   return true
 }
 
-const removeEvent = (dag: HistoryDag, eventIdStr: string) => {
-  // console.debug('removing event', eventIdStr)
-  const event = dag.getNodeAttributes(eventIdStr)
-  const parentIdStr = eventIdToString(event.parentId)
-  const childEdges = dag.outboundEdgeEntries(eventIdStr)
+const removeEvent = (dag: HistoryDag, eventNumStr: string) => {
+  // console.debug('removing event', eventNumStr)
+  const event = dag.getNodeAttributes(eventNumStr)
+  const parentSeqNumStr = EventSequenceNumber.toString(event.parentSeqNum)
+  const childEdges = dag.outboundEdgeEntries(eventNumStr)
 
   for (const childEdge of childEdges) {
     if (childEdge.attributes.type === 'parent') {
       const childEvent = dag.getNodeAttributes(childEdge.target)
-      childEvent.parentId = { ...event.parentId }
-      dag.addEdge(parentIdStr, eventIdToString(childEvent.id), { type: 'parent' })
+      childEvent.parentSeqNum = { ...event.parentSeqNum }
+      dag.addEdge(parentSeqNumStr, EventSequenceNumber.toString(childEvent.seqNum), { type: 'parent' })
     }
   }
 
-  dag.dropNode(eventIdStr)
+  dag.dropNode(eventNumStr)
 }

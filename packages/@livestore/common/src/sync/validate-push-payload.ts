@@ -1,20 +1,20 @@
 import { Effect } from '@livestore/utils/effect'
 
-import type { EventId, LiveStoreEvent } from '../schema/mod.js'
+import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.js'
 import { InvalidPushError } from './sync.js'
 
 // TODO proper batch validation
 export const validatePushPayload = (
   batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
-  currentEventId: EventId.GlobalEventId,
+  currentEventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber,
 ) =>
   Effect.gen(function* () {
-    if (batch[0]!.id <= currentEventId) {
+    if (batch[0]!.seqNum <= currentEventSequenceNumber) {
       return yield* InvalidPushError.make({
         reason: {
           _tag: 'ServerAhead',
-          minimumExpectedId: currentEventId + 1,
-          providedId: batch[0]!.id,
+          minimumExpectedNum: currentEventSequenceNumber + 1,
+          providedNum: batch[0]!.seqNum,
         },
       })
     }

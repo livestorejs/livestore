@@ -28,7 +28,7 @@ Example data:
             "clientId": "S_YOa",
             "id": "0",
             "name": "todoCreated",
-            "parentId": "-1"
+            "parentSeqNum": "-1"
         },
         "key": "\"public\".\"events_9069baf0_b3e6_42f7_980f_188416eab3fx3\"/\"0\"",
         "headers": {
@@ -59,8 +59,8 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 */
 
 const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
-  id: Schema.NumberFromString,
-  parentId: Schema.NumberFromString,
+  seqNum: Schema.NumberFromString,
+  parentSeqNum: Schema.NumberFromString,
   name: Schema.String,
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
@@ -341,7 +341,7 @@ export const makeSyncBackend =
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 5
+export const PERSISTENCE_FORMAT_VERSION = 6
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')

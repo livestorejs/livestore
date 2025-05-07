@@ -7,7 +7,7 @@ import {
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
-import { EventId, LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -116,7 +116,7 @@ export namespace LeaderWorkerInner {
 
   export class GetLeaderHead extends Schema.TaggedRequest<GetLeaderHead>()('GetLeaderHead', {
     payload: {},
-    success: EventId.EventId,
+    success: EventSequenceNumber.EventSequenceNumber,
     failure: UnexpectedError,
   }) {}
 

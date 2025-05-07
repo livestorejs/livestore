@@ -2,53 +2,55 @@ import { memoizeByRef } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
 import type { EventDef, EventDefRecord } from './EventDef.js'
-import * as EventId from './EventId.js'
+import * as EventSequenceNumber from './EventSequenceNumber.js'
 import type { LiveStoreSchema } from './schema.js'
 
-export type EventDefPartial<TEventDef extends EventDef.Any> = {
-  name: TEventDef['name']
-  args: Schema.Schema.Type<TEventDef['schema']>
+export namespace ForEventDef {
+  export type PartialDecoded<TEventDef extends EventDef.Any> = {
+    name: TEventDef['name']
+    args: Schema.Schema.Type<TEventDef['schema']>
+  }
+
+  export type PartialEncoded<TEventDef extends EventDef.Any> = {
+    name: TEventDef['name']
+    args: Schema.Schema.Encoded<TEventDef['schema']>
+  }
+
+  export type Decoded<TEventDef extends EventDef.Any> = {
+    name: TEventDef['name']
+    args: Schema.Schema.Type<TEventDef['schema']>
+    seqNum: EventSequenceNumber.EventSequenceNumber
+    parentSeqNum: EventSequenceNumber.EventSequenceNumber
+    clientId: string
+    sessionId: string
+  }
+
+  export type Encoded<TEventDef extends EventDef.Any> = {
+    name: TEventDef['name']
+    args: Schema.Schema.Encoded<TEventDef['schema']>
+    seqNum: EventSequenceNumber.EventSequenceNumber
+    parentSeqNum: EventSequenceNumber.EventSequenceNumber
+    clientId: string
+    sessionId: string
+  }
 }
 
-export type PartialEncoded<TEventDef extends EventDef.Any> = {
-  name: TEventDef['name']
-  args: Schema.Schema.Encoded<TEventDef['schema']>
-}
-
-export type ForEventDef<TEventDef extends EventDef.Any> = {
-  name: TEventDef['name']
-  args: Schema.Schema.Type<TEventDef['schema']>
-  id: EventId.EventId
-  parentId: EventId.EventId
-  clientId: string
-  sessionId: string
-}
-
-export type EventDefEncoded<TEventDef extends EventDef.Any> = {
-  name: TEventDef['name']
-  args: Schema.Schema.Encoded<TEventDef['schema']>
-  id: EventId.EventId
-  parentId: EventId.EventId
-  clientId: string
-  sessionId: string
-}
-
-export type AnyDecoded = ForEventDef<EventDef.Any>
+export type AnyDecoded = ForEventDef.Decoded<EventDef.Any>
 export const AnyDecoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
-  id: EventId.EventId,
-  parentId: EventId.EventId,
+  seqNum: EventSequenceNumber.EventSequenceNumber,
+  parentSeqNum: EventSequenceNumber.EventSequenceNumber,
   clientId: Schema.String,
   sessionId: Schema.String,
 }).annotations({ title: 'LiveStoreEvent.AnyDecoded' })
 
-export type AnyEncoded = EventDefEncoded<EventDef.Any>
+export type AnyEncoded = ForEventDef.Encoded<EventDef.Any>
 export const AnyEncoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
-  id: EventId.EventId,
-  parentId: EventId.EventId,
+  seqNum: EventSequenceNumber.EventSequenceNumber,
+  parentSeqNum: EventSequenceNumber.EventSequenceNumber,
   clientId: Schema.String,
   sessionId: Schema.String,
 }).annotations({ title: 'LiveStoreEvent.AnyEncoded' })
@@ -56,15 +58,15 @@ export const AnyEncoded = Schema.Struct({
 export const AnyEncodedGlobal = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
-  id: EventId.GlobalEventId,
-  parentId: EventId.GlobalEventId,
+  seqNum: EventSequenceNumber.GlobalEventSequenceNumber,
+  parentSeqNum: EventSequenceNumber.GlobalEventSequenceNumber,
   clientId: Schema.String,
   sessionId: Schema.String,
 }).annotations({ title: 'LiveStoreEvent.AnyEncodedGlobal' })
 export type AnyEncodedGlobal = typeof AnyEncodedGlobal.Type
 
-export type PartialAnyDecoded = EventDefPartial<EventDef.Any>
-export type PartialAnyEncoded = PartialEncoded<EventDef.Any>
+export type PartialAnyDecoded = ForEventDef.PartialDecoded<EventDef.Any>
+export type PartialAnyEncoded = ForEventDef.PartialEncoded<EventDef.Any>
 
 export const PartialAnyEncoded = Schema.Struct({
   name: Schema.String,
@@ -72,23 +74,23 @@ export const PartialAnyEncoded = Schema.Struct({
 })
 
 export type PartialForSchema<TSchema extends LiveStoreSchema> = {
-  [K in keyof TSchema['_EventDefMapType']]: EventDefPartial<TSchema['_EventDefMapType'][K]>
+  [K in keyof TSchema['_EventDefMapType']]: ForEventDef.PartialDecoded<TSchema['_EventDefMapType'][K]>
 }[keyof TSchema['_EventDefMapType']]
 
 export type ForSchema<TSchema extends LiveStoreSchema> = {
-  [K in keyof TSchema['_EventDefMapType']]: ForEventDef<TSchema['_EventDefMapType'][K]>
+  [K in keyof TSchema['_EventDefMapType']]: ForEventDef.Decoded<TSchema['_EventDefMapType'][K]>
 }[keyof TSchema['_EventDefMapType']]
 
 export const isPartialEventDef = (event: AnyDecoded | PartialAnyDecoded): event is PartialAnyDecoded =>
-  'id' in event === false && 'parentId' in event === false
+  'num' in event === false && 'parentSeqNum' in event === false
 
 export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
     [K in keyof TEventDefRecord]: {
       name: K
       args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
-      id: EventId.EventId
-      parentId: EventId.EventId
+      seqNum: EventSequenceNumber.EventSequenceNumber
+      parentSeqNum: EventSequenceNumber.EventSequenceNumber
       clientId: string
       sessionId: string
     }
@@ -97,8 +99,8 @@ export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.S
     [K in keyof TEventDefRecord]: {
       name: K
       args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
-      id: EventId.EventId
-      parentId: EventId.EventId
+      seqNum: EventSequenceNumber.EventSequenceNumber
+      parentSeqNum: EventSequenceNumber.EventSequenceNumber
       clientId: string
       sessionId: string
     }
@@ -128,8 +130,8 @@ export const makeEventDefSchema = <TSchema extends LiveStoreSchema>(
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
-        id: EventId.EventId,
-        parentId: EventId.EventId,
+        seqNum: EventSequenceNumber.EventSequenceNumber,
+        parentSeqNum: EventSequenceNumber.EventSequenceNumber,
         clientId: Schema.String,
         sessionId: Schema.String,
       }),
@@ -154,9 +156,8 @@ export const makeEventDefSchemaMemo = memoizeByRef(makeEventDefSchema)
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.EncodedWithMeta')({
   name: Schema.String,
   args: Schema.Any,
-  // TODO rename to `.num` / `.parentNum`
-  id: EventId.EventId,
-  parentId: EventId.EventId,
+  seqNum: EventSequenceNumber.EventSequenceNumber,
+  parentSeqNum: EventSequenceNumber.EventSequenceNumber,
   clientId: Schema.String,
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
@@ -181,10 +182,10 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
 }) {
   toJSON = (): any => {
     // Only used for logging/debugging
-    // - More readable way to print the id + parentId
+    // - More readable way to print the seqNum + parentSeqNum
     // - not including `meta`, `clientId`, `sessionId`
     return {
-      id: `${EventId.toString(this.id)} → ${EventId.toString(this.parentId)} (${this.clientId}, ${this.sessionId})`,
+      seqNum: `${EventSequenceNumber.toString(this.seqNum)} → ${EventSequenceNumber.toString(this.parentSeqNum)} (${this.clientId}, ${this.sessionId})`,
       name: this.name,
       args: this.args,
     }
@@ -192,46 +193,46 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
 
   /**
    * Example: (global event)
-   * For event id e2 → e1 which should be rebased on event id e3 → e2
-   * the resulting event id will be e4 → e3
+   * For event e2 → e1 which should be rebased on event e3 → e2
+   * the resulting event num will be e4 → e3
    *
    * Example: (client event)
-   * For event id e2+1 → e2 which should be rebased on event id e3 → e2
-   * the resulting event id will be e3+1 → e3
+   * For event e2+1 → e2 which should be rebased on event e3 → e2
+   * the resulting event num will be e3+1 → e3
    *
    * Syntax: e2+2 → e2+1
    *          ^ ^    ^ ^
-   *          | |    | +- client parent id
-   *          | |    +--- global parent id
-   *          | +-- client id
-   *          +---- global id
-   * Client id is ommitted for global events
+   *          | |    | +- client parent number
+   *          | |    +--- global parent number
+   *          | +-- client number
+   *          +---- global number
+   * Client num is ommitted for global events
    */
-  rebase = (parentId: EventId.EventId, isClient: boolean) =>
+  rebase = (parentSeqNum: EventSequenceNumber.EventSequenceNumber, isClient: boolean) =>
     new EncodedWithMeta({
       ...this,
-      ...EventId.nextPair(parentId, isClient),
+      ...EventSequenceNumber.nextPair(parentSeqNum, isClient),
     })
 
   static fromGlobal = (event: AnyEncodedGlobal, syncMetadata: Option.Option<Schema.JsonValue>) =>
     new EncodedWithMeta({
       ...event,
-      id: { global: event.id, client: EventId.clientDefault },
-      parentId: { global: event.parentId, client: EventId.clientDefault },
+      seqNum: { global: event.seqNum, client: EventSequenceNumber.clientDefault },
+      parentSeqNum: { global: event.parentSeqNum, client: EventSequenceNumber.clientDefault },
       meta: { sessionChangeset: { _tag: 'unset' as const }, syncMetadata },
     })
 
   toGlobal = (): AnyEncodedGlobal => ({
     ...this,
-    id: this.id.global,
-    parentId: this.parentId.global,
+    seqNum: this.seqNum.global,
+    parentSeqNum: this.parentSeqNum.global,
   })
 }
 
 /** NOTE `meta` is not considered for equality */
 export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
-  a.id.global === b.id.global &&
-  a.id.client === b.id.client &&
+  a.seqNum.global === b.seqNum.global &&
+  a.seqNum.client === b.seqNum.client &&
   a.name === b.name &&
   a.clientId === b.clientId &&
   a.sessionId === b.sessionId &&

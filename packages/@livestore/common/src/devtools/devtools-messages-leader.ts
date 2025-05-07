@@ -1,7 +1,7 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { EventId } from '../schema/mod.js'
+import { EventSequenceNumber } from '../schema/mod.js'
 import * as SyncState from '../sync/syncstate.js'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.js'
 
@@ -63,8 +63,8 @@ export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUn
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
-  local: EventId.EventId,
-  upstream: EventId.EventId,
+  local: EventSequenceNumber.EventSequenceNumber,
+  upstream: EventSequenceNumber.EventSequenceNumber,
   subscriptionId: Schema.String,
 }) {}
 

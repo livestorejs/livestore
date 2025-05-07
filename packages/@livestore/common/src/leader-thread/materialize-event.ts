@@ -4,7 +4,7 @@ import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.js'
 import { getExecArgsFromEvent } from '../materializer-helper.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventId, getEventDef, SystemTables } from '../schema/mod.js'
+import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { sql } from '../util.js'
 import { execSql, execSqlPrepared } from './connection.js'
@@ -71,8 +71,8 @@ export const makeMaterializeEvent = ({
             tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
             columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
             values: {
-              idGlobal: eventEncoded.id.global,
-              idClient: eventEncoded.id.client,
+              seqNumGlobal: eventEncoded.seqNum.global,
+              seqNumClient: eventEncoded.seqNum.client,
               // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
               debug: LS_DEV ? execArgsArr : null,
@@ -112,8 +112,8 @@ export const makeMaterializeEvent = ({
         Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {
           attributes: {
             eventName: eventEncoded.name,
-            eventId: eventEncoded.id,
-            'span.label': `${EventId.toString(eventEncoded.id)} ${eventEncoded.name}`,
+            eventNum: eventEncoded.seqNum,
+            'span.label': `${EventSequenceNumber.toString(eventEncoded.seqNum)} ${eventEncoded.name}`,
           },
         }),
         // Effect.logDuration('@livestore/common:leader-thread:materializeEvent'),
@@ -123,19 +123,23 @@ export const makeMaterializeEvent = ({
 export const rollback = ({
   dbState,
   dbEventlog,
-  eventIdsToRollback,
+  eventNumsToRollback,
 }: {
   dbState: SqliteDb
   dbEventlog: SqliteDb
-  eventIdsToRollback: EventId.EventId[]
+  eventNumsToRollback: EventSequenceNumber.EventSequenceNumber[]
 }) =>
   Effect.gen(function* () {
     const rollbackEvents = dbState
       .select<SystemTables.SessionChangesetMetaRow>(
-        sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
+        sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
-      .map((_) => ({ id: { global: _.idGlobal, client: _.idClient }, changeset: _.changeset, debug: _.debug }))
-      .toSorted((a, b) => EventId.compare(a.id, b.id))
+      .map((_) => ({
+        seqNum: { global: _.seqNumGlobal, client: _.seqNumClient },
+        changeset: _.changeset,
+        debug: _.debug,
+      }))
+      .toSorted((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
 
     // Apply changesets in reverse order
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {
@@ -145,25 +149,25 @@ export const rollback = ({
       }
     }
 
-    const eventIdPairChunks = ReadonlyArray.chunksOf(100)(
-      eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`),
+    const eventNumPairChunks = ReadonlyArray.chunksOf(100)(
+      eventNumsToRollback.map((seqNum) => `(${seqNum.global}, ${seqNum.client})`),
     )
 
     // Delete the changeset rows
-    for (const eventIdPairChunk of eventIdPairChunks) {
+    for (const eventNumPairChunk of eventNumPairChunks) {
       dbState.execute(
-        sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+        sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
       )
     }
 
     // Delete the eventlog rows
-    for (const eventIdPairChunk of eventIdPairChunks) {
+    for (const eventNumPairChunk of eventNumPairChunks) {
       dbEventlog.execute(
-        sql`DELETE FROM ${SystemTables.EVENTLOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+        sql`DELETE FROM ${SystemTables.EVENTLOG_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
       )
     }
   }).pipe(
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
-      attributes: { count: eventIdsToRollback.length },
+      attributes: { count: eventNumsToRollback.length },
     }),
   )

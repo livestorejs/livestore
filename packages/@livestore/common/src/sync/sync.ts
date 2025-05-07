@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import type { UnexpectedError } from '../adapter-types.js'
 import type { InitialSyncOptions } from '../leader-thread/types.js'
-import * as EventId from '../schema/EventId.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 
 /**
@@ -42,7 +42,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   connect: Effect.Effect<void, IsOfflineError | UnexpectedError, HttpClient.HttpClient | Scope.Scope>
   pull: (
     args: Option.Option<{
-      cursor: EventId.EventId
+      cursor: EventSequenceNumber.EventSequenceNumber
       metadata: Option.Option<TSyncMetadata>
     }>,
   ) => Stream.Stream<
@@ -80,8 +80,8 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
       message: Schema.String,
     }),
     Schema.TaggedStruct('ServerAhead', {
-      minimumExpectedId: Schema.Number,
-      providedId: Schema.Number,
+      minimumExpectedNum: Schema.Number,
+      providedNum: Schema.Number,
     }),
   ),
 }) {}
@@ -91,8 +91,8 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
 }) {}
 
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
-  minimumExpectedId: EventId.EventId,
-  providedId: EventId.EventId,
+  minimumExpectedNum: EventSequenceNumber.EventSequenceNumber,
+  providedNum: EventSequenceNumber.EventSequenceNumber,
   /** Generation number the client session should use for subsequent pushes */
   // nextGeneration: Schema.Number,
 }) {}

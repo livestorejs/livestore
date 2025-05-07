@@ -1,5 +1,5 @@
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
-import { EventId, type LiveStoreEvent, State } from '@livestore/common/schema'
+import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -23,8 +23,8 @@ export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime
   name: 'eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
   columns: {
-    id: State.SQLite.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-    parentId: State.SQLite.integer({ schema: EventId.GlobalEventId }),
+    seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     name: State.SQLite.text({}),
     args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any) }),
     /** ISO date format. Currently only used for debugging purposes. */
@@ -47,7 +47,7 @@ export const PULL_CHUNK_SIZE = 100
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 5
+export const PERSISTENCE_FORMAT_VERSION = 6
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
@@ -171,14 +171,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               }
 
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-              const expectedParentId = yield* storage.getHead
+              const expectedParentNum = yield* storage.getHead
 
               // TODO handle clientId unique conflict
               // Validate the batch
               const firstEvent = decodedMessage.batch[0]!
-              if (firstEvent.parentId !== expectedParentId) {
+              if (firstEvent.parentSeqNum !== expectedParentNum) {
                 const err = WSMessage.Error.make({
-                  message: `Invalid parent id. Received e${firstEvent.parentId} but expected e${expectedParentId}`,
+                  message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${expectedParentNum}`,
                   requestId,
                 })
 
@@ -283,7 +283,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
 type SyncStorage = {
   dbName: string
-  getHead: Effect.Effect<EventId.GlobalEventId, UnexpectedError>
+  getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError>
   getEvents: (
     cursor: number | undefined,
   ) => Effect.Effect<
@@ -309,13 +309,15 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       Effect.withSpan('@livestore/sync-cf:durable-object:execDb'),
     )
 
-  const getHead: Effect.Effect<EventId.GlobalEventId, UnexpectedError> = Effect.gen(function* () {
-    const result = yield* execDb<{ id: EventId.GlobalEventId }>((db) =>
-      db.prepare(`SELECT id FROM ${dbName} ORDER BY id DESC LIMIT 1`).all(),
-    )
+  const getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError> = Effect.gen(
+    function* () {
+      const result = yield* execDb<{ seqNum: EventSequenceNumber.GlobalEventSequenceNumber }>((db) =>
+        db.prepare(`SELECT seqNum FROM ${dbName} ORDER BY seqNum DESC LIMIT 1`).all(),
+      )
 
-    return result[0]?.id ?? EventId.ROOT.global
-  }).pipe(UnexpectedError.mapToUnexpectedError)
+      return result[0]?.seqNum ?? EventSequenceNumber.ROOT.global
+    },
+  ).pipe(UnexpectedError.mapToUnexpectedError)
 
   const getEvents = (
     cursor: number | undefined,
@@ -324,8 +326,8 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
     UnexpectedError
   > =>
     Effect.gen(function* () {
-      const whereClause = cursor === undefined ? '' : `WHERE id > ${cursor}`
-      const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
+      const whereClause = cursor === undefined ? '' : `WHERE seqNum > ${cursor}`
+      const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY seqNum ASC`
       // TODO handle case where `cursor` was not found
       const rawEvents = yield* execDb((db) => db.prepare(sql).all())
       const events = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))(rawEvents).map(
@@ -352,11 +354,11 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
 
         // Create a list of placeholders ("(?, ?, ?, ?, ?, ?, ?)"), corresponding to each event.
         const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')
-        const sql = `INSERT INTO ${dbName} (id, parentId, args, name, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
+        const sql = `INSERT INTO ${dbName} (seqNum, parentSeqNum, args, name, createdAt, clientId, sessionId) VALUES ${valuesPlaceholders}`
         // Flatten the event properties into a parameters array.
         const params = chunk.flatMap((event) => [
-          event.id,
-          event.parentId,
+          event.seqNum,
+          event.parentSeqNum,
           JSON.stringify(event.args),
           event.name,
           createdAt,

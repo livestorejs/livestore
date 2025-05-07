@@ -2,7 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from '../../../schema/EventDef.js'
 import { defineEvent, defineFacts } from '../../../schema/EventDef.js'
-import * as EventId from '../../../schema/EventId.js'
+import * as EventSequenceNumber from '../../../schema/EventSequenceNumber.js'
 import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
@@ -131,15 +131,15 @@ export const toEventNodes = (
 ): HistoryDagNode[] => {
   const nodesAcc: HistoryDagNode[] = [rootEventNode]
 
-  let currentEventId: EventId.EventId = EventId.ROOT
+  let currentEventSequenceNumber: EventSequenceNumber.EventSequenceNumber = EventSequenceNumber.ROOT
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const eventDef = eventDefs[partialEvent.name]!
-    const eventId = EventId.nextPair(currentEventId, eventDef.options.clientOnly).id
-    currentEventId = eventId
+    const eventNum = EventSequenceNumber.nextPair(currentEventSequenceNumber, eventDef.options.clientOnly).seqNum
+    currentEventSequenceNumber = eventNum
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
-    // console.log('factsSnapshot', eventId, factsSnapshot)
+    // console.log('factsSnapshot', eventNum, factsSnapshot)
     // const depRead: EventDefFactsSnapshot = new Map<string, any>()
     // const factsSnapshotProxy = new Proxy(factsSnapshot, {
     //   get: (target, prop) => {
@@ -188,8 +188,8 @@ export const toEventNodes = (
     })
 
     const node = {
-      id: eventId,
-      parentId: getParentId(eventId),
+      seqNum: eventNum,
+      parentSeqNum: getParentNum(eventNum),
       name: partialEvent.name,
       args: partialEvent.args,
       factsGroup: facts,
@@ -207,13 +207,13 @@ export const toEventNodes = (
   return eventNodes
 }
 
-const getParentId = (eventId: EventId.EventId): EventId.EventId => {
-  const globalParentId = eventId.global
-  const clientParentId = eventId.client - 1
+const getParentNum = (eventNum: EventSequenceNumber.EventSequenceNumber): EventSequenceNumber.EventSequenceNumber => {
+  const globalParentNum = eventNum.global
+  const clientParentNum = eventNum.client - 1
 
-  if (clientParentId < 0) {
-    return EventId.make({ global: globalParentId - 1, client: EventId.clientDefault })
+  if (clientParentNum < 0) {
+    return EventSequenceNumber.make({ global: globalParentNum - 1, client: EventSequenceNumber.clientDefault })
   }
 
-  return EventId.make({ global: globalParentId, client: clientParentId })
+  return EventSequenceNumber.make({ global: globalParentNum, client: clientParentNum })
 }

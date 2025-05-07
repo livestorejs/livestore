@@ -7,18 +7,18 @@ import type {
   EventDefFactsSnapshot,
   FactsCallback,
 } from '../../schema/EventDef.js'
-import type * as EventId from '../../schema/EventId.js'
+import type * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
 import { graphologyDag } from './graphology_.js'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
 
 export const factsSnapshotForEvents = (
   events: HistoryDagNode[],
-  endEventId: EventId.EventId,
+  endEventSequenceNumber: EventSequenceNumber.EventSequenceNumber,
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
   for (const event of events) {
-    if (compareEventIds(event.id, endEventId) > 0) {
+    if (compareEventSequenceNumbers(event.seqNum, endEventSequenceNumber) > 0) {
       return facts
     }
 
@@ -30,15 +30,15 @@ export const factsSnapshotForEvents = (
 
 export const factsSnapshotForDag = (
   dag: HistoryDag,
-  endEventId: EventId.EventId | undefined,
+  endEventSequenceNumber: EventSequenceNumber.EventSequenceNumber | undefined,
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
-  const orderedEventIdStrs = graphologyDag.topologicalSort(dag)
+  const orderedEventSequenceNumberStrs = graphologyDag.topologicalSort(dag)
 
-  for (let i = 0; i < orderedEventIdStrs.length; i++) {
-    const event = dag.getNodeAttributes(orderedEventIdStrs[i]!)
-    if (endEventId !== undefined && compareEventIds(event.id, endEventId) > 0) {
+  for (let i = 0; i < orderedEventSequenceNumberStrs.length; i++) {
+    const event = dag.getNodeAttributes(orderedEventSequenceNumberStrs[i]!)
+    if (endEventSequenceNumber !== undefined && compareEventSequenceNumbers(event.seqNum, endEventSequenceNumber) > 0) {
       return facts
     }
 
@@ -226,7 +226,10 @@ export const getFactsGroupForEventArgs = ({
   return facts
 }
 
-export const compareEventIds = (a: EventId.EventId, b: EventId.EventId) => {
+export const compareEventSequenceNumbers = (
+  a: EventSequenceNumber.EventSequenceNumber,
+  b: EventSequenceNumber.EventSequenceNumber,
+) => {
   if (a.global !== b.global) {
     return a.global - b.global
   }

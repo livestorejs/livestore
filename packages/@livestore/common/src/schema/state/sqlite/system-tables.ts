@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import * as EventId from '../../EventId.js'
+import * as EventSequenceNumber from '../../EventSequenceNumber.js'
 import { SqliteDsl } from './db-schema/mod.js'
 import { table } from './table-def.js'
 
@@ -44,12 +44,12 @@ export const sessionChangesetMetaTable = table({
   name: SESSION_CHANGESET_META_TABLE,
   columns: {
     // TODO bring back primary key
-    idGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
-    idClient: SqliteDsl.integer({ schema: EventId.ClientEventId }),
+    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
     changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),
   },
-  indexes: [{ columns: ['idGlobal', 'idClient'], name: 'idx_session_changeset_id' }],
+  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
 })
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
@@ -83,10 +83,10 @@ export const eventlogMetaTable = table({
   name: EVENTLOG_META_TABLE,
   columns: {
     // TODO Adjust modeling so a global event never needs a client id component
-    idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-    idClient: SqliteDsl.integer({ primaryKey: true, schema: EventId.ClientEventId }),
-    parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
-    parentIdClient: SqliteDsl.integer({ schema: EventId.ClientEventId }),
+    seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    parentSeqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    parentSeqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
     name: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
@@ -95,8 +95,8 @@ export const eventlogMetaTable = table({
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
   indexes: [
-    { columns: ['idGlobal'], name: 'idx_eventlog_idGlobal' },
-    { columns: ['idGlobal', 'idClient'], name: 'idx_eventlog_id' },
+    { columns: ['seqNumGlobal'], name: 'idx_eventlog_seqNumGlobal' },
+    { columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_eventlog_seqNum' },
   ],
 })
 

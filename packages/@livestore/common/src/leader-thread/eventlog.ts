@@ -2,7 +2,7 @@ import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
-import * as EventId from '../schema/EventId.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import {
   EVENTLOG_META_TABLE,
@@ -34,7 +34,7 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
     yield* execSql(
       dbEventlog,
       sql`INSERT INTO ${SYNC_STATUS_TABLE} (head)
-          SELECT ${EventId.ROOT.global}
+          SELECT ${EventSequenceNumber.ROOT.global}
           WHERE NOT EXISTS (SELECT 1 FROM ${SYNC_STATUS_TABLE})`,
       {},
     )
@@ -42,16 +42,16 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
 
 /** Exclusive of the "since event" */
 export const getEventsSince = (
-  since: EventId.EventId,
+  since: EventSequenceNumber.EventSequenceNumber,
 ): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
   Effect.gen(function* () {
     const { dbEventlog, dbState } = yield* LeaderThreadCtx
 
-    const query = eventlogMetaTable.where('idGlobal', '>=', since.global).asSql()
+    const query = eventlogMetaTable.where('seqNumGlobal', '>=', since.global).asSql()
     const pendingEventsRaw = dbEventlog.select(query.query, prepareBindValues(query.bindValues, query.query))
     const pendingEvents = Schema.decodeUnknownSync(eventlogMetaTable.rowSchema.pipe(Schema.Array))(pendingEventsRaw)
 
-    const sessionChangesetRows = sessionChangesetMetaTable.where('idGlobal', '>=', since.global).asSql()
+    const sessionChangesetRows = sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global).asSql()
     const sessionChangesetRowsRaw = dbState.select(
       sessionChangesetRows.query,
       prepareBindValues(sessionChangesetRows.bindValues, sessionChangesetRows.query),
@@ -64,13 +64,14 @@ export const getEventsSince = (
       .map((eventlogEvent) => {
         const sessionChangeset = sessionChangesetRowsDecoded.find(
           (readModelEvent) =>
-            readModelEvent.idGlobal === eventlogEvent.idGlobal && readModelEvent.idClient === eventlogEvent.idClient,
+            readModelEvent.seqNumGlobal === eventlogEvent.seqNumGlobal &&
+            readModelEvent.seqNumClient === eventlogEvent.seqNumClient,
         )
         return LiveStoreEvent.EncodedWithMeta.make({
           name: eventlogEvent.name,
           args: eventlogEvent.argsJson,
-          id: { global: eventlogEvent.idGlobal, client: eventlogEvent.idClient },
-          parentId: { global: eventlogEvent.parentIdGlobal, client: eventlogEvent.parentIdClient },
+          seqNum: { global: eventlogEvent.seqNumGlobal, client: eventlogEvent.seqNumClient },
+          parentSeqNum: { global: eventlogEvent.parentSeqNumGlobal, client: eventlogEvent.parentSeqNumClient },
           clientId: eventlogEvent.clientId,
           sessionId: eventlogEvent.sessionId,
           meta: {
@@ -86,24 +87,28 @@ export const getEventsSince = (
           },
         })
       })
-      .filter((_) => EventId.compare(_.id, since) > 0)
-      .sort((a, b) => EventId.compare(a.id, b.id))
+      .filter((_) => EventSequenceNumber.compare(_.seqNum, since) > 0)
+      .sort((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
   })
 
-export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventId.EventId => {
-  const res = dbEventlog.select<{ idGlobal: EventId.GlobalEventId; idClient: EventId.ClientEventId }>(
-    sql`select idGlobal, idClient from ${EVENTLOG_META_TABLE} order by idGlobal DESC, idClient DESC limit 1`,
+export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.EventSequenceNumber => {
+  const res = dbEventlog.select<{
+    seqNumGlobal: EventSequenceNumber.GlobalEventSequenceNumber
+    seqNumClient: EventSequenceNumber.ClientEventSequenceNumber
+  }>(
+    sql`select seqNumGlobal, seqNumClient from ${EVENTLOG_META_TABLE} order by seqNumGlobal DESC, seqNumClient DESC limit 1`,
   )[0]
 
-  return res ? { global: res.idGlobal, client: res.idClient } : EventId.ROOT
+  return res ? { global: res.seqNumGlobal, client: res.seqNumClient } : EventSequenceNumber.ROOT
 }
 
-export const getBackendHeadFromDb = (dbEventlog: SqliteDb): EventId.GlobalEventId =>
-  dbEventlog.select<{ head: EventId.GlobalEventId }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ??
-  EventId.ROOT.global
+export const getBackendHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.GlobalEventSequenceNumber =>
+  dbEventlog.select<{ head: EventSequenceNumber.GlobalEventSequenceNumber }>(
+    sql`select head from ${SYNC_STATUS_TABLE}`,
+  )[0]?.head ?? EventSequenceNumber.ROOT.global
 
 // TODO use prepared statements
-export const updateBackendHead = (dbEventlog: SqliteDb, head: EventId.EventId) =>
+export const updateBackendHead = (dbEventlog: SqliteDb, head: EventSequenceNumber.EventSequenceNumber) =>
   dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)
 
 export const insertIntoEventlog = (
@@ -115,16 +120,16 @@ export const insertIntoEventlog = (
 ) =>
   Effect.gen(function* () {
     // Check history consistency during LS_DEV
-    if (LS_DEV && eventEncoded.parentId.global !== EventId.ROOT.global) {
+    if (LS_DEV && eventEncoded.parentSeqNum.global !== EventSequenceNumber.ROOT.global) {
       const parentEventExists =
         dbEventlog.select<{ count: number }>(
-          `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE idGlobal = ? AND idClient = ?`,
-          [eventEncoded.parentId.global, eventEncoded.parentId.client] as any as PreparedBindValues,
+          `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ? AND seqNumClient = ?`,
+          [eventEncoded.parentSeqNum.global, eventEncoded.parentSeqNum.client] as any as PreparedBindValues,
         )[0]!.count === 1
 
       if (parentEventExists === false) {
         shouldNeverHappen(
-          `Parent mutation ${eventEncoded.parentId.global},${eventEncoded.parentId.client} does not exist`,
+          `Parent mutation ${eventEncoded.parentSeqNum.global},${eventEncoded.parentSeqNum.client} does not exist`,
         )
       }
     }
@@ -136,10 +141,10 @@ export const insertIntoEventlog = (
         tableName: EVENTLOG_META_TABLE,
         columns: eventlogMetaTable.sqliteDef.columns,
         values: {
-          idGlobal: eventEncoded.id.global,
-          idClient: eventEncoded.id.client,
-          parentIdGlobal: eventEncoded.parentId.global,
-          parentIdClient: eventEncoded.parentId.client,
+          seqNumGlobal: eventEncoded.seqNum.global,
+          seqNumClient: eventEncoded.seqNum.client,
+          parentSeqNumGlobal: eventEncoded.parentSeqNum.global,
+          parentSeqNumClient: eventEncoded.parentSeqNum.client,
           name: eventEncoded.name,
           argsJson: eventEncoded.args ?? {},
           clientId,
@@ -164,18 +169,18 @@ export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.EncodedWi
         ...updateRows({
           tableName: EVENTLOG_META_TABLE,
           columns: eventlogMetaTable.sqliteDef.columns,
-          where: { idGlobal: event.id.global, idClient: event.id.client },
+          where: { seqNumGlobal: event.seqNum.global, seqNumClient: event.seqNum.client },
           updateValues: { syncMetadataJson: event.meta.syncMetadata },
         }),
       )
     }
   })
 
-export const getSyncBackendCursorInfo = (remoteHead: EventId.GlobalEventId) =>
+export const getSyncBackendCursorInfo = (remoteHead: EventSequenceNumber.GlobalEventSequenceNumber) =>
   Effect.gen(function* () {
     const { dbEventlog } = yield* LeaderThreadCtx
 
-    if (remoteHead === EventId.ROOT.global) return Option.none()
+    if (remoteHead === EventSequenceNumber.ROOT.global) return Option.none()
 
     const EventlogQuerySchema = Schema.Struct({
       syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),
@@ -183,12 +188,12 @@ export const getSyncBackendCursorInfo = (remoteHead: EventId.GlobalEventId) =>
 
     const syncMetadataOption = yield* Effect.sync(() =>
       dbEventlog.select<{ syncMetadataJson: string }>(
-        sql`SELECT syncMetadataJson FROM ${EVENTLOG_META_TABLE} WHERE idGlobal = ${remoteHead} ORDER BY idClient ASC LIMIT 1`,
+        sql`SELECT syncMetadataJson FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ${remoteHead} ORDER BY seqNumClient ASC LIMIT 1`,
       ),
     ).pipe(Effect.andThen(Schema.decode(EventlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
 
     return Option.some({
-      cursor: { global: remoteHead, client: EventId.clientDefault },
+      cursor: { global: remoteHead, client: EventSequenceNumber.clientDefault },
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/common:eventlog:getSyncBackendCursorInfo', { attributes: { remoteHead } }))

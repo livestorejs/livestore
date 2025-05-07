@@ -3,7 +3,7 @@ import '@livestore/utils-dev/node-vitest-polyfill'
 import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import { EventId, LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { IS_CI } from '@livestore/utils'
@@ -88,8 +88,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
         testContext
           .encodeLiveStoreEvent({
             ...events.todoCreated({ id: '1', text: 't1' }),
-            id: EventId.make({ global: 1, client: 0 }),
-            parentId: EventId.ROOT,
+            seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+            parentSeqNum: EventSequenceNumber.ROOT,
           })
           .toGlobal(),
       )
@@ -157,8 +157,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
             testContext
               .encodeLiveStoreEvent({
                 ...events.todoCreated({ id: `backend_${i}`, text: '', completed: false }),
-                id: EventId.make({ global: i + 1, client: 0 }),
-                parentId: EventId.make({ global: i, client: 0 }),
+                seqNum: EventSequenceNumber.make({ global: i + 1, client: 0 }),
+                parentSeqNum: EventSequenceNumber.make({ global: i, client: 0 }),
               })
               .toGlobal(),
           )
@@ -183,8 +183,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
       for (let i = 0; i < 10; i++) {
         const event = {
           ...events.todoCreated({ id: `session_1_${i}`, text: '', completed: false }),
-          id: EventId.make({ global: i + 1, client: 0 }),
-          parentId: EventId.make({ global: i, client: 0 }),
+          seqNum: EventSequenceNumber.make({ global: i + 1, client: 0 }),
+          parentSeqNum: EventSequenceNumber.make({ global: i, client: 0 }),
         }
         yield* testContext.localPush(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
       }
@@ -270,20 +270,20 @@ const LeaderThreadCtxLive = ({
           }),
         })
 
-      const currentLiveStoreEventId = { current: EventId.ROOT }
+      const currentLiveStoreEventSequenceNumber = { current: EventSequenceNumber.ROOT }
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
-        cursor: { mergeCounter: 0, eventId: EventId.ROOT },
+        cursor: { mergeCounter: 0, eventNum: EventSequenceNumber.ROOT },
       })
 
       const toEncodedLiveStoreEvent = (event: LiveStoreEvent.PartialAnyDecoded | LiveStoreEvent.AnyDecoded) => {
-        if (Predicate.hasProperty(event, 'id')) {
+        if (Predicate.hasProperty(event, 'seqNum')) {
           return encodeLiveStoreEvent(event)
         }
 
-        const nextIdPair = EventId.nextPair(currentLiveStoreEventId.current, false)
-        currentLiveStoreEventId.current = nextIdPair.id
-        return encodeLiveStoreEvent({ ...event, ...nextIdPair })
+        const nextNumPair = EventSequenceNumber.nextPair(currentLiveStoreEventSequenceNumber.current, false)
+        currentLiveStoreEventSequenceNumber.current = nextNumPair.seqNum
+        return encodeLiveStoreEvent({ ...event, ...nextNumPair })
       }
 
       const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>

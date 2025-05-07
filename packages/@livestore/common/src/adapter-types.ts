@@ -2,7 +2,7 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/mod.js'
-import * as EventId from './schema/EventId.js'
+import * as EventSequenceNumber from './schema/EventSequenceNumber.js'
 import type { LiveStoreEvent, LiveStoreSchema } from './schema/mod.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
@@ -41,7 +41,7 @@ export interface ClientSession {
 
 export const LeaderPullCursor = Schema.Struct({
   mergeCounter: Schema.Number,
-  eventId: EventId.EventId,
+  eventNum: EventSequenceNumber.EventSequenceNumber,
 })
 
 export type LeaderPullCursor = typeof LeaderPullCursor.Type
@@ -57,7 +57,7 @@ export interface ClientSessionLeaderThreadProxy {
   /** The initial state after the leader thread has booted */
   readonly initialState: {
     /** The latest mutation event id during boot. Used for the client session to resume syncing. */
-    readonly leaderHead: EventId.EventId
+    readonly leaderHead: EventSequenceNumber.EventSequenceNumber
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
   }

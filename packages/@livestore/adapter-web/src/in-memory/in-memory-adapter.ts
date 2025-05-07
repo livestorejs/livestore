@@ -1,7 +1,7 @@
 import type { Adapter, ClientSession, LockStatus, MigrationsReport } from '@livestore/common'
 import { migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
-import { EventId } from '@livestore/common/schema'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -48,7 +48,7 @@ export const makeInMemoryAdapter =
             pull: () => Stream.never,
             push: () => Effect.void,
           },
-          initialState: { leaderHead: EventId.ROOT, migrationsReport },
+          initialState: { leaderHead: EventSequenceNumber.ROOT, migrationsReport },
           export: Effect.sync(() => sqliteDb.export()),
           getEventlogData: Effect.succeed(new Uint8Array()),
           getSyncState: Effect.dieMessage('Not implemented'),

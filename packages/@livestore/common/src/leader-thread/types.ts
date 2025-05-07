@@ -24,7 +24,7 @@ import type {
   SyncBackend,
   UnexpectedError,
 } from '../index.js'
-import type { EventId, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
 import type * as SyncState from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
@@ -43,7 +43,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventId.EventId
+  cursor: EventSequenceNumber.EventSequenceNumber
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -102,7 +102,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {
-      leaderHead: EventId.EventId
+      leaderHead: EventSequenceNumber.EventSequenceNumber
       migrationsReport: MigrationsReport
     }
     /**
@@ -165,7 +165,7 @@ export interface LeaderSyncProcessor {
   }) => Effect.Effect<void, UnexpectedError>
 
   boot: Effect.Effect<
-    { initialLeaderHead: EventId.EventId },
+    { initialLeaderHead: EventSequenceNumber.EventSequenceNumber },
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >

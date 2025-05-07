@@ -1,5 +1,5 @@
 import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
-import * as EventId from '../../schema/EventId.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
 import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
 import {
   applyFactGroups,
@@ -88,13 +88,19 @@ export const rebaseEvents = ({
         initialSnapshot,
       }),
   })
-  const headGlobalId = newRemoteEvents.at(-1)!.id.global
+  const headGlobalId = newRemoteEvents.at(-1)!.seqNum.global
 
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        id: EventId.make({ global: headGlobalId + index + 1, client: EventId.clientDefault }),
-        parentId: EventId.make({ global: headGlobalId + index, client: EventId.clientDefault }),
+        seqNum: EventSequenceNumber.make({
+          global: headGlobalId + index + 1,
+          client: EventSequenceNumber.clientDefault,
+        }),
+        parentSeqNum: EventSequenceNumber.make({
+          global: headGlobalId + index,
+          client: EventSequenceNumber.clientDefault,
+        }),
         name: event.name,
         args: event.args,
         clientId,

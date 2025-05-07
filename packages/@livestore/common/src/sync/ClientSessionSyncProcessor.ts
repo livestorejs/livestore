@@ -5,7 +5,7 @@ import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable }
 import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
-import * as EventId from '../schema/EventId.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { getEventDef, type LiveStoreSchema, SystemTables } from '../schema/mod.js'
 import { sql } from '../util.js'
@@ -77,16 +77,16 @@ export const makeClientSessionSyncProcessor = ({
   const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
     // TODO validate batch
 
-    let baseEventId = syncStateRef.current.localHead
+    let baseEventSequenceNumber = syncStateRef.current.localHead
     const encodedEventDefs = batch.map(({ name, args }) => {
       const eventDef = getEventDef(schema, name)
-      const nextIdPair = EventId.nextPair(baseEventId, eventDef.eventDef.options.clientOnly)
-      baseEventId = nextIdPair.id
+      const nextNumPair = EventSequenceNumber.nextPair(baseEventSequenceNumber, eventDef.eventDef.options.clientOnly)
+      baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(eventSchema)({
           name,
           args,
-          ...nextIdPair,
+          ...nextNumPair,
           clientId: clientSession.clientId,
           sessionId: clientSession.sessionId,
         }),
@@ -179,7 +179,7 @@ export const makeClientSessionSyncProcessor = ({
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
       clientSession.leaderThread.events.pull({
-        cursor: { mergeCounter: getMergeCounter(), eventId: syncStateRef.current.localHead },
+        cursor: { mergeCounter: getMergeCounter(), eventNum: syncStateRef.current.localHead },
       }),
     ).pipe(
       Stream.tap(({ payload, mergeCounter: leaderMergeCounter }) =>

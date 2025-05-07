@@ -9,7 +9,7 @@ import {
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventId, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber, SystemTables } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -352,15 +352,18 @@ export const makePersistedAdapter =
       // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
       // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
       const initialLeaderHeadRes = sqliteDb.select<{
-        idGlobal: EventId.GlobalEventId
-        idClient: EventId.ClientEventId
+        seqNumGlobal: EventSequenceNumber.GlobalEventSequenceNumber
+        seqNumClient: EventSequenceNumber.ClientEventSequenceNumber
       }>(
-        `select idGlobal, idClient from ${SystemTables.SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idClient desc limit 1`,
+        `select seqNumGlobal, seqNumClient from ${SystemTables.SESSION_CHANGESET_META_TABLE} order by seqNumGlobal desc, seqNumClient desc limit 1`,
       )[0]
 
       const initialLeaderHead = initialLeaderHeadRes
-        ? EventId.make({ global: initialLeaderHeadRes.idGlobal, client: initialLeaderHeadRes.idClient })
-        : EventId.ROOT
+        ? EventSequenceNumber.make({
+            global: initialLeaderHeadRes.seqNumGlobal,
+            client: initialLeaderHeadRes.seqNumClient,
+          })
+        : EventSequenceNumber.ROOT
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 

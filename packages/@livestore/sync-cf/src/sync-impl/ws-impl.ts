@@ -2,7 +2,7 @@
 
 import type { SyncBackend, SyncBackendConstructor } from '@livestore/common'
 import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
-import { EventId } from '@livestore/common/schema'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import {
   Deferred,
@@ -83,10 +83,10 @@ export const makeCfSync =
                       pullResponseReceived = true
 
                       if (stashedPullBatch.length > 0 && msg.remaining === 0) {
-                        const pullResHead = msg.batch.at(-1)?.eventEncoded.id ?? EventId.ROOT.global
+                        const pullResHead = msg.batch.at(-1)?.eventEncoded.seqNum ?? EventSequenceNumber.ROOT.global
                         // Index where stashed events are greater than pullResHead
                         const newPartialBatchIndex = stashedPullBatch.findIndex(
-                          (batchItem) => batchItem.eventEncoded.id > pullResHead,
+                          (batchItem) => batchItem.eventEncoded.seqNum > pullResHead,
                         )
                         const batchWithNewStashedEvents =
                           newPartialBatchIndex === -1 ? [] : stashedPullBatch.slice(newPartialBatchIndex)
@@ -172,8 +172,8 @@ const connect = (wsUrl: string) =>
             `Sent message: ${message._tag}`,
             message._tag === 'WSMessage.PushReq'
               ? {
-                  id: message.batch[0]!.id,
-                  parentId: message.batch[0]!.parentId,
+                  seqNum: message.batch[0]!.seqNum,
+                  parentSeqNum: message.batch[0]!.parentSeqNum,
                   batchLength: message.batch.length,
                 }
               : message._tag === 'WSMessage.PullReq'

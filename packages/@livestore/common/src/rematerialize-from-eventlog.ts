@@ -4,7 +4,7 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { type SqliteDb, UnexpectedError } from './adapter-types.js'
 import type { MaterializeEvent } from './leader-thread/mod.js'
 import type { EventDef, LiveStoreSchema } from './schema/mod.js'
-import { EventId, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
+import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
@@ -56,8 +56,8 @@ This likely means the schema has changed in an incompatible way.
         )
 
         const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
-          id: { global: row.idGlobal, client: row.idClient },
-          parentId: { global: row.parentIdGlobal, client: row.parentIdClient },
+          seqNum: { global: row.seqNumGlobal, client: row.seqNumClient },
+          parentSeqNum: { global: row.parentSeqNumGlobal, client: row.parentSeqNumClient },
           name: row.name,
           args,
           clientId: row.clientId,
@@ -71,8 +71,8 @@ This likely means the schema has changed in an incompatible way.
 
     const stmt = dbEventlog.prepare(sql`\
 SELECT * FROM ${SystemTables.EVENTLOG_META_TABLE} 
-WHERE idGlobal > $idGlobal OR (idGlobal = $idGlobal AND idClient > $idClient)
-ORDER BY idGlobal ASC, idClient ASC
+WHERE seqNumGlobal > $seqNumGlobal OR (seqNumGlobal = $seqNumGlobal AND seqNumClient > $seqNumClient)
+ORDER BY seqNumGlobal ASC, seqNumClient ASC
 LIMIT ${CHUNK_SIZE}
 `)
 
@@ -87,14 +87,14 @@ LIMIT ${CHUNK_SIZE}
 
       const lastId = Chunk.isChunk(item)
         ? Chunk.last(item).pipe(
-            Option.map((_) => ({ global: _.idGlobal, client: _.idClient })),
-            Option.getOrElse(() => EventId.ROOT),
+            Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
+            Option.getOrElse(() => EventSequenceNumber.ROOT),
           )
-        : EventId.ROOT
+        : EventSequenceNumber.ROOT
       const nextItem = Chunk.fromIterable(
         stmt.select<SystemTables.EventlogMetaRow>({
-          $idGlobal: lastId?.global,
-          $idClient: lastId?.client,
+          $seqNumGlobal: lastId?.global,
+          $seqNumClient: lastId?.client,
         } as any as PreparedBindValues),
       )
       const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()

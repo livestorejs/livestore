@@ -4,7 +4,7 @@ import { makeAdapter } from '@livestore/adapter-node'
 import { SyncState, type UnexpectedError } from '@livestore/common'
 import { Eventlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventId, LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { IS_CI } from '@livestore/utils'
@@ -58,8 +58,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
 
       yield* mockSyncBackend.advance({
         ...encoded,
-        id: EventId.globalEventId(1),
-        parentId: EventId.ROOT.global,
+        seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
+        parentSeqNum: EventSequenceNumber.ROOT.global,
         clientId: 'other-client',
         sessionId: 'static-session-id',
       })
@@ -78,8 +78,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         yield* mockSyncBackend
           .advance({
             ...encode(events.todoCreated({ id: `backend_${i}`, text: '', completed: false })),
-            id: EventId.globalEventId(i + 1),
-            parentId: EventId.globalEventId(i),
+            seqNum: EventSequenceNumber.globalEventSequenceNumber(i + 1),
+            parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(i),
             clientId: 'other-client',
             sessionId: 'static-session-id',
           })
@@ -137,8 +137,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         pullQueue,
         LiveStoreEvent.EncodedWithMeta.make({
           ...encode(events.todoCreated({ id: `id_0`, text: '', completed: false })),
-          id: EventId.make({ global: 1, client: 0 }),
-          parentId: EventId.ROOT,
+          seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+          parentSeqNum: EventSequenceNumber.ROOT,
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
@@ -164,8 +164,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       yield* mockSyncBackend.advance(
         LiveStoreEvent.AnyEncodedGlobal.make({
           ...encode(events.todoCreated({ id: `backend_0`, text: 't2', completed: false })),
-          id: EventId.globalEventId(1),
-          parentId: EventId.ROOT.global,
+          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
+          parentSeqNum: EventSequenceNumber.ROOT.global,
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
@@ -189,8 +189,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
                   LiveStoreEvent.EncodedWithMeta.make({
                     ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
                     clientId: 'client',
-                    id: EventId.make({ global: 1, client: 0 }),
-                    parentId: EventId.ROOT,
+                    seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+                    parentSeqNum: EventSequenceNumber.ROOT,
                     sessionId: 'static-session-id',
                   }),
                   dbEventlog,
