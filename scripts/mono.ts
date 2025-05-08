@@ -73,7 +73,16 @@ const lintCommand = Cli.Command.make(
 
 const websiteCommand = Cli.Command.make('website').pipe(
   Cli.Command.withSubcommands([
-    Cli.Command.make('dev', {}, () => cmd('pnpm astro dev', { cwd: `${process.env.WORKSPACE_ROOT}/website` })),
+    Cli.Command.make(
+      'dev',
+      {
+        open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
+      },
+      ({ open }) =>
+        cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+          cwd: `${process.env.WORKSPACE_ROOT}/website`,
+        }),
+    ),
     Cli.Command.make(
       'build',
       { apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)) },

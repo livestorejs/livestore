@@ -2405,6 +2405,9 @@ importers:
       sharp:
         specifier: 0.33.5
         version: 0.33.5
+      starlight-auto-sidebar:
+        specifier: 0.1.1
+        version: 0.1.1(@astrojs/starlight@0.32.2(astro@5.4.3(@netlify/blobs@8.2.0)(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)))
       starlight-links-validator:
         specifier: 0.16.0
         version: 0.16.0(@astrojs/starlight@0.32.2(astro@5.4.3(@netlify/blobs@8.2.0)(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0)))
@@ -12166,6 +12169,12 @@ packages:
 
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+
+  starlight-auto-sidebar@0.1.1:
+    resolution: {integrity: sha512-5Sz+d+FTpxiVb2jOqHUFkO+/KPfUyTsJR4K/O13ilZE0MaxwRaUuPioz0tf33Izrqj1b7+dp4/vv9Pd4flLCcQ==}
+    engines: {node: '>=18.17.1'}
+    peerDependencies:
+      '@astrojs/starlight': '>=0.32.0'
 
   starlight-links-validator@0.16.0:
     resolution: {integrity: sha512-wInToor19C7UxhesPuxTBIhB1LH1wzNQHD4HaumfcB+yFhg5u80yQEnkZDrABHrUEEEwFm//NoZbWhnUj1m2ug==}
@@ -26934,6 +26943,10 @@ snapshots:
       get-source: 2.0.12
 
   standard-as-callback@2.1.0: {}
+
+  starlight-auto-sidebar@0.1.1(@astrojs/starlight@0.32.2(astro@5.4.3(@netlify/blobs@8.2.0)(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0))):
+    dependencies:
+      '@astrojs/starlight': 0.32.2(astro@5.4.3(@netlify/blobs@8.2.0)(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0))
 
   starlight-links-validator@0.16.0(@astrojs/starlight@0.32.2(astro@5.4.3(@netlify/blobs@8.2.0)(@types/node@22.13.10)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.1)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.0))):
     dependencies:

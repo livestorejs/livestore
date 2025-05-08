@@ -22,4 +22,19 @@ Vitest.describe('signal', () => {
       expect(store.query(duplicated$)).toBe(2)
     }),
   )
+
+  Vitest.scopedLive('counter example', () =>
+    Effect.gen(function* () {
+      const count$ = signal(0, { label: 'count$' })
+
+      const store = yield* makeTodoMvc({})
+
+      const increment = () => store.setSignal(count$, (prev) => prev + 1)
+
+      increment()
+      increment()
+
+      expect(store.query(count$)).toBe(2)
+    }),
+  )
 })

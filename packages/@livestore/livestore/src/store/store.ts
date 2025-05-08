@@ -375,6 +375,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | QueryBuilder<TResult, any, any>
       | LiveQuery<TResult>
       | LiveQueryDef<TResult>
+      | SignalDef<TResult>
       | { query: string; bindValues: ParamsObject },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
@@ -406,14 +407,33 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       const result = this.query(query$.value, options)
       query$.deref()
       return result
+    } else if (query._tag === 'signal-def') {
+      const signal$ = query.make(this.reactivityGraph.context!)
+      return signal$.value.get()
     } else {
       return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
     }
   }
 
-  setSignal = <T>(signalDef: SignalDef<T>, value: T): void => {
+  /**
+   * Set the value of a signal
+   *
+   * @example
+   * ```ts
+   * const count$ = signal(0, { label: 'count$' })
+   * store.setSignal(count$, 2)
+   * ```
+   *
+   * @example
+   * ```ts
+   * const count$ = signal(0, { label: 'count$' })
+   * store.setSignal(count$, (prev) => prev + 1)
+   * ```
+   */
+  setSignal = <T>(signalDef: SignalDef<T>, value: T | ((prev: T) => T)): void => {
     const signalRef = signalDef.make(this.reactivityGraph.context!)
-    signalRef.value.set(value)
+    const newValue: T = typeof value === 'function' ? (value as any)(signalRef.value.get()) : value
+    signalRef.value.set(newValue)
 
     // The current implementation of signals i.e. the separation into `signal-def` and `signal`
     // can lead to a situation where a reffed signal is immediately de-reffed when calling `store.setSignal`,
