@@ -45,6 +45,7 @@ const buildAndDeployExample = ({
         'bunx',
         'netlify-cli',
         'deploy',
+        '--no-build',
         '--json',
         `--dir=${EXAMPLES_SRC_DIR}/${example}/dist`,
         `--site=example-${example}`,
@@ -53,15 +54,14 @@ const buildAndDeployExample = ({
       ],
       {
         cwd,
-        // Prevent netlify from using TTY
-        env: { CI: '1' },
+        env: { CI: '1' }, // Prevent netlify from using TTY
       },
     )
 
     const result = yield* deployCommand.pipe(
       Effect.tap((result) => Effect.logDebug(`Deploy result for ${example}: ${result}`)),
       Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
-      // Effect.retry({ times: 2 }),
+      Effect.retry({ times: 2 }),
       Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     )
 
@@ -108,24 +108,12 @@ export const command = Cli.Command.make(
 
     const results = yield* Effect.forEach(
       filteredExamplesToDeploy,
-      (example) =>
-        buildAndDeployExample({ example, prod, alias })
-          // TODO remove when netlify cli is fixed
-          .pipe(
-            Effect.tapCauseLogPretty,
-            // to keep CI from failing, we're currently catching all errors and logging them as warnings
-            Effect.catchAllCause(() => {
-              console.log('::warning::Failed to deploy example. Continuing...')
-              return Effect.succeed(undefined)
-            }),
-          ),
+      (example) => buildAndDeployExample({ example, prod, alias }),
       { concurrency: 4 },
     )
 
     console.log(`Deployed ${results.length} examples:`)
     for (const result of results) {
-      // TODO remove when netlify cli is fixed
-      if (result === undefined) continue
       console.log(`  ${result.site_name}: ${result.deploy_url}`)
     }
   }),

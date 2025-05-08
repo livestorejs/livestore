@@ -26,6 +26,7 @@ jobs:
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
+      - run: pnpm build:ts
       - run: mono lint
 
   test:
@@ -71,7 +72,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           # TODO surface deploy url in github UI via environments
         run: |
-          bunx netlify-cli deploy --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
     steps:

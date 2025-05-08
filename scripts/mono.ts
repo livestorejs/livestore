@@ -122,29 +122,21 @@ const websiteCommand = Cli.Command.make('website').pipe(
               ? 'livestore-website' // Prod site
               : 'livestore-website-next' // Dev site
 
-        // TODO remove the site ids again when Netlify has fixed `--site`
-        const siteIds: Record<string, string> = {
-          'livestore-website': 'abeae053-d336-480a-a0fe-f0aaaacaa74e',
-          'livestore-website-next': 'e02ba783-ea85-4be1-8b7f-c1b2b4d0d307',
-        }
-
-        const siteId = siteIds[site]!
-
         // Check if netlify is logged in
-        yield* cmd('bunx netlify-cli status', { cwd, env: { NETLIFY_SITE_ID: siteId } })
+        yield* cmd('bunx netlify-cli status', { cwd })
 
         const deployArgs = [
           'bunx',
           'netlify-cli',
           'deploy',
+          '--no-build',
           '--dir=dist',
-          // TODO bring back when Netlify has fixed `--site`
-          // `--site=${site}`,
+          `--site=${site}`,
           '--filter=website',
         ]
 
         yield* Effect.log(`Deploying to "${site}" for draft URL`)
-        yield* cmd([...deployArgs], { cwd, env: { NETLIFY_SITE_ID: siteId } })
+        yield* cmd([...deployArgs], { cwd })
 
         const alias =
           aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
@@ -158,10 +150,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
 
         yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
-        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], {
-          cwd,
-          env: { NETLIFY_SITE_ID: siteId },
-        })
+        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd })
       }),
     ),
   ]),
