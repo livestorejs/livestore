@@ -1,5 +1,7 @@
 ---
 title: Sponsoring
+sidebar:
+  order: 25
 ---
 
 LiveStore is currently only available for [GitHub Sponsors](https://github.com/sponsors/schickling).
@@ -17,6 +19,7 @@ LiveStore is currently only available for [GitHub Sponsors](https://github.com/s
 
 - [ElectricSQL](https://www.electricsql.com/)
 - [Netlify](https://www.netlify.com/)
+- [Expo](https://expo.dev/)
 
 ### Individuals
 

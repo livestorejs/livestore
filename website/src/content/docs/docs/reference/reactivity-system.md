@@ -4,7 +4,7 @@ sidebar:
   order: 2
 ---
 
-LiveStore has a built-in high-performance reactivity system which is similar to Signals (e.g. in [SolidJS](https://docs.solidjs.com/concepts/signals)).
+LiveStore has a high-performance, fine-grained reactivity system built in which is similar to Signals (e.g. in [SolidJS](https://docs.solidjs.com/concepts/signals)).
 
 ## Defining reactive state
 
@@ -13,25 +13,25 @@ LiveStore provides 3 types of reactive state:
 - Reactive state values (`signal()`)
 - Reactive computed values (`computed()`)
 
-Reactive state variables end on a `$` by convention (e.g. `todos$`).
+Reactive state variables end on a `$` by convention (e.g. `todos$`). The `label` option is optional but can be used to identify the reactive state variable in the devtools.
 
 ### Reactive SQL queries
 
 ```ts
 import { queryDb } from '@livestore/livestore'
 
-const todos$ = queryDb(tables.todos.orderBy('createdAt', 'desc'))
+const todos$ = queryDb(tables.todos.orderBy('createdAt', 'desc'), { label: 'todos$' })
 
 // Or using callback syntax to depend on other queries
 const todos$ = queryDb((get) => {
   const { showCompleted } = get(uiState$)
   return tables.todos.where(showCompleted ? { completed: true } : {})
-})
+}, { label: 'todos$' })
 ```
 
 ### Signals
 
-Signals are reactive state values that can be set and get. This can be useful for state that this not materialized from events into SQLite tables.
+Signals are reactive state values that can be set and get. This can be useful for state that is not materialized from events into SQLite tables.
 
 ```ts
 import { signal } from '@livestore/livestore'
@@ -60,7 +60,6 @@ import { computed } from '@livestore/livestore'
 const num$ = signal(0, { label: 'num$' })
 const duplicated$ = computed((get) => get(num$) * 2, { label: 'duplicated$' })
 ```
-
 
 ## Accessing reactive state
 

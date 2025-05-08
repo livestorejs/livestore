@@ -69,6 +69,12 @@ LiveStore currently only support OPFS to locally persist its data. In the future
 
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads. 
 
+## Architecture diagram
+
+Assuming the web adapter in a multi-client, multi-tab browser application, a diagram looks like this:
+
+![](https://i.imgur.com/NCKbfub.png)
+
 ## Other notes
 
 - The web adapter is using some browser APIs that might require a HTTPS connection (e.g. `navigator.locks`). It's recommended to even use HTTPS during local development (e.g. via [Caddy](https://caddyserver.com/docs/automatic-https)).
