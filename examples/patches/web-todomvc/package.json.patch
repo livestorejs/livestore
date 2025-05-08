@@ -20,10 +20,3 @@
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
      "react": "19.0.0",
-@@ -27,4 +27,4 @@
-     "dev": "vite --force",
-     "preview": "vite preview"
-   }
--}
-+}
-\ No newline at end of file
