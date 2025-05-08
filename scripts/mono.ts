@@ -65,10 +65,13 @@ const lintCommand = Cli.Command.make(
     const fixFlag = fix ? '--fix' : ''
     yield* cmd(`eslint scripts examples packages website --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
     if (fix) {
-      yield* cmd('syncpack format')
+      yield* cmd('syncpack format', { cwd })
     }
 
-    yield* cmd('syncpack lint')
+    yield* cmd('syncpack lint', { cwd })
+
+    // Shell needed for wildcards
+    yield* cmd('madge --circular --no-spinner examples/src/*/src packages/*/*/src', { cwd, shell: true })
   }),
 )
 
