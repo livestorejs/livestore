@@ -10,7 +10,7 @@ import { ErrorBoundary } from 'react-error-boundary'
 
 import { schema } from '@/livestore/schema.js'
 
-import LiveStoreWorker from '../livestore/livestore.worker?worker'
+import LiveStoreWorker from '../livestore.worker?worker'
 
 const RootComponent = () => {
   const storeId = getStoreId()

@@ -3,9 +3,7 @@ import fs from 'node:fs'
 import process from 'node:process'
 
 import { Command, Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
-
-import { Cli } from './lib.js'
+import { Cli, PlatformNode } from '@livestore/utils/node'
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.

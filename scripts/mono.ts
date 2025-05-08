@@ -3,8 +3,9 @@ import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 
-import { command as deployExamplesCommand } from './deploy-examples.js'
-import * as generateExamples from './generate-examples.js'
+import { copyTodomvcSrc } from './examples/copy-examples.js'
+import { command as deployExamplesCommand } from './examples/deploy-examples.js'
+import * as generateExamples from './examples/generate-examples.js'
 
 const cwd = process.env.WORKSPACE_ROOT
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
@@ -207,6 +208,7 @@ const examplesCommand = Cli.Command.make('examples').pipe(
     generateExamples.updatePatchesCommand,
     generateExamples.syncExamplesCommand,
     deployExamplesCommand,
+    copyTodomvcSrc,
   ]),
 )
 

@@ -4,12 +4,14 @@ import { useStore } from '@livestore/react'
 import { LiveList } from '@livestore/react/experimental'
 import React from 'react'
 
-import { app$ } from '../livestore/queries.js'
-import { events, tables, type Todo } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.js'
+import { events, tables } from '../livestore/schema.js'
+
+type Todo = typeof tables.todos.Type
 
 const visibleTodos$ = queryDb(
   (get) => {
-    const { filter } = get(app$)
+    const { filter } = get(uiState$)
     return tables.todos.where({
       deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',

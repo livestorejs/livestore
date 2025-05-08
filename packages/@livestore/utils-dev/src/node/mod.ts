@@ -158,10 +158,10 @@ export const cmd: (
 )(function* (commandInput, options) {
   const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
   const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
-  const commandStr = [command, ...args].join(' ')
+  const commandDebugStr = [command, ...args].join(' ')
 
-  yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
+  yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
+  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, commandStr: commandDebugStr, cwd, command, args })
 
   return yield* Command.make(command!, ...args).pipe(
     Command.stdout('inherit'), // Stream stdout to process.stdout
@@ -170,7 +170,7 @@ export const cmd: (
     options?.shell ? Command.runInShell(true) : identity,
     Command.env(options?.env ?? {}),
     Command.exitCode,
-    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandStr} failed`))),
+    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandDebugStr} failed`))),
   )
 })
 

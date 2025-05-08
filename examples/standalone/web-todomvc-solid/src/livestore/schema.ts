@@ -1,7 +1,22 @@
 import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-import { Filter } from '../types.js'
 import * as eventsDefs from './events.js'
+
+export const Filter = Schema.Literal('all', 'active', 'completed')
+export type Filter = typeof Filter.Type
+
+/**
+ * LiveStore allows you to freely define your app state as SQLite tables (sometimes referred to as "read model")
+ * and even supports arbitary schema changes without the need for manual schema migrations.
+ *
+ * Your app doesn't directly write to those tables, but instead commits events which are then materialized
+ * into state (i.e. SQLite tables).
+ *
+ * LiveStore doesn't sync tables directly, but syncs events instead which are then materialized into the tables
+ * resulting in the same state.
+ *
+ * See docs to learn more: https://next.livestore.dev/docs/reference/state
+ */
 
 const todos = State.SQLite.table({
   name: 'todos',
@@ -13,17 +28,18 @@ const todos = State.SQLite.table({
   },
 })
 
+// LiveStore aims to provide a unified state management solution (for synced and client-only state),
+// so to simplify local-only state management, it also offers a client-only document concept
+// giving you the convenience of `React.useState` with a derived `.set` event and auto-registered materializer.
 const uiState = State.SQLite.clientDocument({
   name: 'uiState',
   schema: Schema.Struct({ newTodoText: Schema.String, filter: Filter }),
   default: {
+    // Using the SessionIdSymbol as default id means the UiState will be scoped per client session (i.e. browser tab).
     id: SessionIdSymbol,
-    value: { newTodoText: '', filter: 'all' as Filter },
+    value: { newTodoText: '', filter: 'all' },
   },
 })
-
-export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
-export type UiState = typeof uiState.default.value
 
 export const events = {
   ...eventsDefs,

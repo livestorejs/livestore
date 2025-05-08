@@ -1,13 +1,13 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { app$ } from '../livestore/queries.js'
-import { events, tables, type Todo } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.js'
+import { events, tables } from '../livestore/schema.js'
 
 const visibleTodos$ = queryDb(
   (get) => {
-    const { filter } = get(app$)
+    const { filter } = get(uiState$)
     return tables.todos.where({
       deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
@@ -20,19 +20,19 @@ export const MainSection: React.FC = () => {
   const { store } = useStore()
 
   const toggleTodo = React.useCallback(
-    ({ id, completed }: Todo) =>
+    ({ id, completed }: typeof tables.todos.Type) =>
       store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
     [store],
   )
 
-  const visibleTodos = useQuery(visibleTodos$)
+  const visibleTodos = store.useQuery(visibleTodos$)
 
   return (
     <section className="main">
       <ul className="todo-list">
         {visibleTodos.map((todo) => (
           <li key={todo.id}>
-            <div className="view">
+            <div className="state">
               <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
               <label>{todo.text}</label>
               <button

@@ -1,7 +1,9 @@
 import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-import { Filter } from '../types.js'
 import * as eventsDefs from './events.js'
+
+export const Filter = Schema.Literal('all', 'active', 'completed')
+export type Filter = typeof Filter.Type
 
 /**
  * LiveStore allows you to freely define your app state as SQLite tables (sometimes referred to as "read model")

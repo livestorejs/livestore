@@ -3,7 +3,7 @@ import { query } from '@livestore/solid'
 import { type Component, Index } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.js'
-import { events, tables, type Todo } from '../livestore/schema.js'
+import { events, tables } from '../livestore/schema.js'
 import { store } from '../livestore/store.js'
 
 const visibleTodos$ = queryDb(
@@ -18,7 +18,7 @@ const visibleTodos$ = queryDb(
 )
 
 export const MainSection: Component = () => {
-  const toggleTodo = ({ id, completed }: Todo) => {
+  const toggleTodo = ({ id, completed }: typeof tables.todos.Type) => {
     store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
   }
 

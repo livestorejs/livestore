@@ -1,17 +1,18 @@
-import { useQuery, useStore } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { app$ } from '../livestore/queries.js'
+import { uiState$ } from '../livestore/queries.js'
 import { events } from '../livestore/schema.js'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
-  const { newTodoText } = useQuery(app$)
+  const { newTodoText } = store.useQuery(uiState$)
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+
   const todoCreated = () =>
     store.commit(
-      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText.trim() }),
+      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
       events.uiStateSet({ newTodoText: '' }),
     )
 
@@ -22,7 +23,7 @@ export const Header: React.FC = () => {
         className="new-todo"
         placeholder="What needs to be done?"
         autoFocus={true}
-        value={newTodoText ?? ''}
+        value={newTodoText}
         onChange={(e) => updatedNewTodoText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

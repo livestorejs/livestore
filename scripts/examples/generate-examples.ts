@@ -3,11 +3,10 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { Effect, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
-import { $ } from 'bun'
-
-import { BunShell, Cli } from './lib.js'
+import type { CommandExecutor } from '@livestore/utils/effect'
+import { Effect, Runtime, Schema } from '@livestore/utils/effect'
+import { Cli } from '@livestore/utils/node'
+import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 const workspaceRoot = process.env.WORKSPACE_ROOT
 if (!workspaceRoot) {
@@ -21,8 +20,6 @@ const PATCHES_DIR = `${workspaceRoot}/examples/patches`
 const SRC_DIR = `${workspaceRoot}/examples/src`
 
 const EXCLUDE_EXAMPLES = ['node-effect-cli', 'node-todomvc-sync-cf']
-
-$.cwd(workspaceRoot)
 
 const checkDirs = Effect.gen(function* () {
   // Fails if dirs don't exist
@@ -38,11 +35,25 @@ type SyncDirection = typeof SyncDirection.Type
 // Helper function to sync src to src-patched
 const syncDirectories = (direction: SyncDirection) =>
   Effect.gen(function* () {
-    const excludeArgs = EXCLUDE_EXAMPLES.map((pattern) => `--exclude='${pattern}'`).join(' ')
+    const excludeArgs = EXCLUDE_EXAMPLES.map((pattern) => `--exclude=${pattern}`)
+
+    const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
 
     if (direction === 'src-to-standalone') {
-      yield* BunShell.cmd(
-        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${excludeArgs} ${SRC_DIR}/ ${STANDALONE_DIR}/`,
+      yield* cmd(
+        [
+          'rsync',
+          '-a',
+          '--delete',
+          '--verbose',
+          `--filter=dir-merge,- .gitignore`,
+          `--exclude=.git`,
+          `--exclude=README.md`,
+          ...excludeArgs,
+          `${SRC_DIR}/`,
+          `${STANDALONE_DIR}/`,
+        ],
+        { cwd: workspaceRoot },
       )
 
       // Apply patches
@@ -56,7 +67,9 @@ const syncDirectories = (direction: SyncDirection) =>
             const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
             const targetFile = `${STANDALONE_DIR}${relativePath}`
             try {
-              await $`patch -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`.nothrow()
+              await cmd(`patch -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`, { cwd: workspaceRoot }).pipe(
+                Runtime.runPromise(runtime),
+              )
               // console.log(`Applied patch: ${fullPath} to ${targetFile}`)
             } catch (error) {
               console.error(`Failed to apply patch ${fullPath}: ${error}`)
@@ -71,7 +84,7 @@ const syncDirectories = (direction: SyncDirection) =>
 
       if (process.env.CI) {
         // Exit with error if there are any unstaged changes
-        const status = yield* BunShell.cmdText(`git status --porcelain`)
+        const status = yield* cmdText(`git status --porcelain`)
         if (status !== '') {
           console.error('Unstaged changes detected', status)
           process.exit(1)
@@ -91,8 +104,19 @@ const syncDirectories = (direction: SyncDirection) =>
       // From https://unix.stackexchange.com/a/168602
       // This tells rsync to look in each directory for a file .gitignore:
       // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
-      yield* BunShell.cmd(
-        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${excludeArgs} ${STANDALONE_DIR}/ ${SRC_DIR}/`,
+      yield* cmd(
+        [
+          'rsync',
+          '-a',
+          '--delete',
+          `--filter=dir-merge,- .gitignore`,
+          `--exclude=.git`,
+          `--exclude=README.md`,
+          ...excludeArgs,
+          `${STANDALONE_DIR}/`,
+          `${SRC_DIR}/`,
+        ],
+        { cwd: workspaceRoot },
       )
 
       // Reverse patches
@@ -106,7 +130,9 @@ const syncDirectories = (direction: SyncDirection) =>
             const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
             const targetFile = `${SRC_DIR}${relativePath}`
             try {
-              await $`patch -R -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`.nothrow()
+              await cmd(`patch -R -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`, {
+                cwd: workspaceRoot,
+              }).pipe(Runtime.runPromise(runtime))
               // console.log(`Reversed patch: ${fullPath} from ${targetFile}`)
             } catch (error) {
               console.error(`Failed to reverse patch ${fullPath}: ${error}`)
@@ -135,8 +161,10 @@ const setupWatchman = (direction: SyncDirection) =>
             { dir: PATCHES_DIR, name: 'listen-patch-changes' },
           ]
 
+    const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
+
     for (const { dir, name } of watchDirs) {
-      yield* BunShell.cmd(`watchman watch ${dir}`)
+      yield* cmd(`watchman watch ${dir}`, { cwd: workspaceRoot })
       console.log(`Set up watch on ${dir}`)
 
       // Subscribe to changes
@@ -162,7 +190,7 @@ const setupWatchman = (direction: SyncDirection) =>
           const changes = JSON.parse(data.toString())
           if (changes.files) {
             console.log(`Changes detected in ${dir}:`, changes.files.map((f: { name: string }) => f.name).join(', '))
-            syncDirectories(direction).pipe(Effect.runPromise)
+            syncDirectories(direction).pipe(Runtime.runPromise(runtime))
           }
         } catch (error) {
           console.error(`Error parsing Watchman output: ${error}`)
@@ -186,7 +214,7 @@ const setupWatchman = (direction: SyncDirection) =>
 const updatePatches = Effect.gen(function* () {
   yield* checkDirs
 
-  yield* BunShell.cmd(`rm -rf ${PATCHES_DIR}`)
+  yield* cmd(`rm -rf ${PATCHES_DIR}`, { cwd: workspaceRoot })
 
   const exampleDirs = fs.readdirSync(SRC_DIR).filter((item) => fs.statSync(`${SRC_DIR}/${item}`).isDirectory())
   const filesToPatch = [
@@ -199,7 +227,7 @@ const updatePatches = Effect.gen(function* () {
   ]
   for (const exampleDir of exampleDirs) {
     const patchDir = `${PATCHES_DIR}/${exampleDir}`
-    yield* BunShell.cmd(`mkdir -p ${patchDir}`)
+    yield* cmd(`mkdir -p ${patchDir}`, { cwd: workspaceRoot })
 
     for (const file of filesToPatch) {
       const distFile = `${STANDALONE_DIR}/${exampleDir}/${file}`
@@ -207,7 +235,7 @@ const updatePatches = Effect.gen(function* () {
       const patchFile = `${patchDir}/${file}.patch`
 
       if (fs.existsSync(distFile) && fs.existsSync(srcFile)) {
-        const diffResult = yield* BunShell.cmdTextNothrow(
+        const diffResult = yield* cmdText(
           `diff -u --minimal --unidirectional-new-file --label=${file} --label=${file} ${srcFile} ${distFile}`,
         )
         if (diffResult === '') {
@@ -225,6 +253,8 @@ const syncExamples = ({ direction, watch }: { direction: SyncDirection; watch: b
   Effect.gen(function* () {
     yield* checkDirs
 
+    const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
+
     if (watch === false) {
       yield* syncDirectories(direction)
     } else {
@@ -234,10 +264,10 @@ const syncExamples = ({ direction, watch }: { direction: SyncDirection; watch: b
       const teardownWatchman = () =>
         Effect.gen(function* () {
           console.log('Tearing down Watchman...')
-          yield* BunShell.cmd(`watchman shutdown-server`).pipe(Effect.ignoreLogged)
+          yield* cmd(`watchman shutdown-server`, { cwd: workspaceRoot }).pipe(Effect.ignoreLogged)
           console.log('Watchman teardown complete')
           process.exit(0)
-        }).pipe(Effect.runFork)
+        }).pipe(Runtime.runFork(runtime))
 
       process.on('SIGTERM', teardownWatchman)
       process.on('SIGINT', teardownWatchman)
@@ -251,21 +281,10 @@ export const updatePatchesCommand = Cli.Command.make('update-patches', {}, () =>
 export const syncExamplesCommand = Cli.Command.make(
   'sync',
   {
-    direction: Cli.Options.text('direction').pipe(Cli.Options.withSchema(SyncDirection)),
+    direction: Cli.Options.choice('direction', ['src-to-standalone', 'standalone-to-src']).pipe(
+      Cli.Options.withSchema(SyncDirection),
+    ),
     watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
   },
   syncExamples,
 )
-
-export const command = Cli.Command.make('generate-examples').pipe(
-  Cli.Command.withSubcommands([updatePatchesCommand, syncExamplesCommand]),
-)
-
-if (import.meta.main) {
-  const cli = Cli.Command.run(command, {
-    name: 'generate-examples',
-    version: '0.0.1',
-  })
-
-  cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)
-}
