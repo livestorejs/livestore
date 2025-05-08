@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -123,7 +125,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
               : 'livestore-website-next' // Dev site
 
         // Check if netlify is logged in
-        yield* cmd('bunx netlify-cli status', { cwd })
+        yield* cmd('bunx netlify-cli status', { cwd }).pipe(Effect.ignoreLogged)
 
         const deployArgs = [
           'bunx',
@@ -195,12 +197,30 @@ const releaseSnapshotCommand = Cli.Command.make(
 
 const releaseCommand = Cli.Command.make('release').pipe(Cli.Command.withSubcommands([releaseSnapshotCommand]))
 
+const examples = fs
+  .readdirSync(`${cwd}/examples/src`)
+  .filter((entry) => fs.statSync(`${cwd}/examples/src/${entry}`).isDirectory())
+
+const examplesRunCommand = Cli.Command.make(
+  'run',
+  {
+    example: Cli.Args.choice(
+      examples.map((example) => [example, example]),
+      { name: 'example' },
+    ),
+  },
+  Effect.fn(function* ({ example }) {
+    yield* cmd(`pnpm dev`, { cwd: `${cwd}/examples/src/${example}` })
+  }),
+)
+
 const examplesCommand = Cli.Command.make('examples').pipe(
   Cli.Command.withSubcommands([
     generateExamples.updatePatchesCommand,
     generateExamples.syncExamplesCommand,
     deployExamplesCommand,
     copyTodomvcSrc,
+    examplesRunCommand,
   ]),
 )
 

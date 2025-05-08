@@ -10,7 +10,6 @@ import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
-import { makeTracer } from './otel.js'
 import { getStoreId } from './util/store-id.js'
 
 const AppBody: React.FC = () => (
@@ -29,8 +28,6 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-const otelTracer = makeTracer('todomvc-sync-cf-main')
-
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
@@ -38,7 +35,6 @@ export const App: React.FC = () => (
     adapter={adapter}
     batchUpdates={batchUpdates}
     storeId={storeId}
-    otelOptions={{ tracer: otelTracer }}
     syncPayload={{ authToken: 'insecure-token-change-me' }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

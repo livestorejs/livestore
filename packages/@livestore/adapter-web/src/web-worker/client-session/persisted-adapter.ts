@@ -1,6 +1,5 @@
 import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import {
-  Devtools,
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
@@ -11,7 +10,6 @@ import {
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventSequenceNumber, SystemTables } from '@livestore/common/schema'
-import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -27,20 +25,18 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
-  WebChannel,
   WebLock,
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as Webmesh from '@livestore/webmesh'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
-import { logDevtoolsUrl } from './client-session-devtools.js'
+import { connectWebmeshNodeClientSession } from './client-session-devtools.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -426,6 +422,8 @@ export const makePersistedAdapter =
           ),
       }
 
+      const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
+
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
         sqliteDb,
@@ -436,55 +434,8 @@ export const makePersistedAdapter =
         isLeader: true,
         leaderThread,
         webmeshMode: 'direct',
-        connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode, sessionInfo }) {
-          if (devtoolsEnabled) {
-            yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
-
-            // This additional sessioninfo broadcast channel is needed since we can't use the shared worker
-            // as it's currently storeId-specific
-            yield* Devtools.SessionInfo.provideSessionInfo({
-              webChannel: yield* DevtoolsWeb.makeSessionInfoBroadcastChannel,
-              sessionInfo,
-            }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-
-            yield* Effect.gen(function* () {
-              const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
-
-              yield* clientSessionStaticChannel.send(
-                DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
-              )
-
-              const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
-                Stream.flatten(),
-                Stream.runHead,
-                Effect.flatten,
-              )
-
-              const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
-
-              const contentscriptMainChannel = yield* WebChannel.windowChannel({
-                listenWindow: window,
-                sendWindow: window,
-                schema: Webmesh.WebmeshSchema.Packet,
-                ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
-              })
-
-              yield* webmeshNode.addEdge({ target: contentscriptMainNodeName, edgeChannel: contentscriptMainChannel })
-            }).pipe(
-              Effect.withSpan('@livestore/adapter-web:client-session:devtools:browser-extension'),
-              Effect.tapCauseLogPretty,
-              Effect.forkScoped,
-            )
-
-            const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-
-            yield* DevtoolsWeb.connectViaWorker({
-              node: webmeshNode,
-              target: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }),
-              worker: sharedWorker,
-            })
-          }
-        }),
+        connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
+          connectWebmeshNodeClientSession({ webmeshNode, sessionInfo, sharedWorker, devtoolsEnabled, schema }),
         registerBeforeUnload: (onBeforeUnload) => {
           if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
             window.addEventListener('beforeunload', onBeforeUnload)

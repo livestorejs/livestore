@@ -208,8 +208,6 @@
 
 ### Still todo:
 
-- Web adapter:
-  - Same as node adapter
 - Syncing
   - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)

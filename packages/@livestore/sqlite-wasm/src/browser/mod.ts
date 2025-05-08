@@ -48,12 +48,14 @@ export type WebDatabaseInputOpfs = {
 
 export type WebDatabaseInput = WebDatabaseInputInMemory | WebDatabaseInputOpfs
 
+export type MakeWebSqliteDb = MakeSqliteDb<
+  { dbPointer: number; persistenceInfo: PersistenceInfo },
+  WebDatabaseInput,
+  WebDatabaseMetadata
+>
+
 export const sqliteDbFactory =
-  ({
-    sqlite3,
-  }: {
-    sqlite3: SQLiteAPI
-  }): MakeSqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }, WebDatabaseInput, WebDatabaseMetadata> =>
+  ({ sqlite3 }: { sqlite3: SQLiteAPI }): MakeWebSqliteDb =>
   (input: WebDatabaseInput) =>
     Effect.gen(function* () {
       if (input._tag === 'in-memory') {

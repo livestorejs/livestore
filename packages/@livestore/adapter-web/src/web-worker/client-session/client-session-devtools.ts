@@ -1,6 +1,10 @@
+import { Devtools } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import type { Worker } from '@livestore/utils/effect'
+import { Effect, Stream, WebChannel } from '@livestore/utils/effect'
+import * as Webmesh from '@livestore/webmesh'
 
 export const logDevtoolsUrl = ({
   schema,
@@ -29,3 +33,60 @@ export const logDevtoolsUrl = ({
       }
     }
   }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:devtools:logDevtoolsUrl'))
+
+export const connectWebmeshNodeClientSession = Effect.fn(function* ({
+  webmeshNode,
+  sessionInfo,
+  sharedWorker,
+  devtoolsEnabled,
+  schema,
+}: {
+  webmeshNode: Webmesh.MeshNode
+  sessionInfo: Devtools.SessionInfo.SessionInfo
+  sharedWorker: Worker.SerializedWorkerPool<typeof DevtoolsWeb.WorkerSchema.Request.Type>
+  devtoolsEnabled: boolean
+  schema: LiveStoreSchema
+}) {
+  if (devtoolsEnabled) {
+    const { clientId, sessionId, storeId } = sessionInfo
+    yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
+
+    // This additional sessioninfo broadcast channel is needed since we can't use the shared worker
+    // as it's currently storeId-specific
+    yield* Devtools.SessionInfo.provideSessionInfo({
+      webChannel: yield* DevtoolsWeb.makeSessionInfoBroadcastChannel,
+      sessionInfo,
+    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+    yield* Effect.gen(function* () {
+      const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
+
+      yield* clientSessionStaticChannel.send(
+        DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
+      )
+
+      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(Stream.flatten(), Stream.runHead, Effect.flatten)
+
+      const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
+
+      const contentscriptMainChannel = yield* WebChannel.windowChannel({
+        listenWindow: window,
+        sendWindow: window,
+        schema: Webmesh.WebmeshSchema.Packet,
+        ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
+      })
+
+      yield* webmeshNode.addEdge({ target: contentscriptMainNodeName, edgeChannel: contentscriptMainChannel })
+    }).pipe(
+      Effect.withSpan('@livestore/adapter-web:client-session:devtools:browser-extension'),
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
+
+    yield* DevtoolsWeb.connectViaWorker({
+      node: webmeshNode,
+      target: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }),
+      worker: sharedWorker,
+    })
+  }
+})

@@ -11,10 +11,6 @@
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
-    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
-    "@opentelemetry/resources": "2.0.0",
-    "@opentelemetry/sdk-trace-base": "2.0.0",
-    "@opentelemetry/sdk-trace-web": "2.0.0",
     "@overengineering/fps-meter": "0.1.2",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -35,7 +31,7 @@
     "build:analyze": "VITE_ANALYZE=1 run build",
     "dev": "concurrently \"pnpm run dev:vite\" \"pnpm run dev:wrangler\"",
     "dev:vite": "vite --force",
-    "dev:wrangler": "wrangler dev --inspector-port 9230",
+    "dev:wrangler": "wrangler dev --port 8787 --inspector-port 9230",
     "preview": "vite preview",
     "wrangler:deploy": "wrangler deploy"
   }

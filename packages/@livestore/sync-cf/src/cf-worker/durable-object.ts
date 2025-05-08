@@ -100,6 +100,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
 
     webSocketMessage = (ws: WebSocketClient, message: ArrayBuffer | string) => {
+      console.log('webSocketMessage', message)
       const decodedMessageRes = decodeIncomingMessage(message)
 
       if (decodedMessageRes._tag === 'Left') {

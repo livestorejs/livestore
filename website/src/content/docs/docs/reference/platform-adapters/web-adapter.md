@@ -38,6 +38,19 @@ import { makeSomeSyncBackend } from '@livestore/sync-some-sync-backend'
 makeWorker({ schema, sync: { backend: makeSomeSyncBackend('...') } })
 ```
 
+## In-memory adapter
+
+You can also use the in-memory adapter which can be useful in certain scenarios (e.g. testing).
+
+```ts
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+
+const adapter = makeInMemoryAdapter({
+  schema,
+  // sync: { backend: makeSomeSyncBackend('...') },
+})
+```
+
 ## Web worker
 
 - Make sure your schema doesn't depend on any code which needs to run in the main thread (e.g. avoid importing from files using React)
