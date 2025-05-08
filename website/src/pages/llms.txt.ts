@@ -1,7 +1,13 @@
 import type { APIRoute } from 'astro'
 import { getCollection } from 'astro:content'
 
-const docs = await getCollection('docs', (entry) => entry.id.startsWith('docs/'))
+const docs = await getCollection(
+  'docs',
+  (entry) =>
+    entry.id.startsWith('docs/') &&
+    // For now we're excluding the generated API docs
+    !entry.id.includes('docs/api'),
+)
 
 export const GET: APIRoute = async ({ site }) => {
   return new Response(

@@ -7,8 +7,8 @@
 Note you'll also need to run the Electric server locally for the app to work (see below).
 
 ```bash
-pnpm
-pnpm dev
+bun
+bun dev
 ```
 
 ### Running the Electric server locally

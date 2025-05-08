@@ -1,11 +1,7 @@
 ---
-import { execSync } from 'node:child_process'
 import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
 import { liveStoreVersion } from '@livestore/common'
-
-const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
-	? process.env.GITHUB_REF_NAME === 'main'
-	: execSync('git rev-parse --abbrev-ref HEAD').toString().trim() === 'main'
+import { IS_MAIN_BRANCH } from '../../data.js'
 
 const nextUrl = 'https://dev.livestore.dev'
 const latestUrl = 'https://livestore.dev'

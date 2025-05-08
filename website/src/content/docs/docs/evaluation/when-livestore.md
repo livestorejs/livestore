@@ -6,13 +6,12 @@ sidebar:
 description: Considerations when deciding to use LiveStore.
 ---
 
-- Choosing a data layer for a local-first app is a big decision and should be considered carefully.
-- On a high level, LiveStore can be a good fit if ...
-  - you are looking for a principled data layer that works across platforms
-  - you want to use SQLite for your queries
-  - you like [event sourcing](/docs/reference/event-sourcing) to model data changes
-  - you are working on a new app as LiveStore doesn't yet provide a way to [re-use an existing database](/docs/misc/faq#existing-database)
-  - the current [state of the project](/docs/evaluation/state-of-the-project) aligns with your own timeline and requirements
+Choosing a data layer for a local-first app is a big decision and should be considered carefully.  On a high level, LiveStore can be a good fit if ...
+- you are looking for a principled data layer that works across platforms
+- you want to use SQLite for your queries
+- you like [event sourcing](/docs/evaluation/event-sourcing) to model data changes
+- you are working on a new app as LiveStore doesn't yet provide a way to [re-use an existing database](/docs/misc/faq#existing-database)
+- the current [state of the project](/docs/evaluation/state-of-the-project) aligns with your own timeline and requirements
 
 ## Evaluation exercise
 

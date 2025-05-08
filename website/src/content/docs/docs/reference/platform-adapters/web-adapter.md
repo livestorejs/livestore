@@ -8,6 +8,7 @@ sidebar:
 ## Example
 
 ```ts
+// main.ts
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import LiveStoreWorker from './livestore.worker?worker'
@@ -20,11 +21,21 @@ const adapter = makePersistedAdapter({
 ```
 
 ```ts
+// livestore.worker.ts
 import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './schema/index.js'
 
 makeWorker({ schema })
+```
+
+## Adding a sync backend
+
+```ts
+// livestore.worker.ts
+import { makeSomeSyncBackend } from '@livestore/sync-some-sync-backend'
+
+makeWorker({ schema, sync: { backend: makeSomeSyncBackend('...') } })
 ```
 
 ## Web worker

@@ -27,9 +27,9 @@ The worker adapter can be used for more advanced scenarios where it's preferable
 
 ```ts
 // main.ts
-import { makeAdapterWorker } from '@livestore/adapter-node'
+import { makeWorkerAdapter } from '@livestore/adapter-node'
 
-const adapter = makeAdapterWorker({
+const adapter = makeWorkerAdapter({
 	workerUrl: new URL('./livestore.worker.js', import.meta.url),
 })
 

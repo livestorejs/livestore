@@ -19,6 +19,7 @@
     "react-dom": "19.0.0",
     "remark-custom-header-id": "1.0.0",
     "sharp": "0.33.5",
+    "starlight-auto-sidebar": "0.1.1",
     "starlight-links-validator": "0.16.0",
     "starlight-typedoc": "0.20.0",
     "tailwindcss": "4.0.12",

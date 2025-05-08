@@ -8,6 +8,7 @@ import { liveStoreVersion } from '@livestore/common'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import remarkCustomHeaderId from 'remark-custom-header-id'
+import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightTypeDoc from 'starlight-typedoc'
 
@@ -43,6 +44,10 @@ export default defineConfig({
         SocialIcons: './src/components/SocialIcons.astro',
       },
       plugins: [
+        // Used to adjust the order of sidebar items
+        // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
+        starlightAutoSidebar(),
+        // Only runs on `astro build`
         starlightLinksValidator({
           // `exclude` specifies the links to be excluded, not the files that contain the links
           exclude: [

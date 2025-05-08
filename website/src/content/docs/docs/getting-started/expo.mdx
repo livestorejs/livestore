@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
+import { makeTiged } from '../../../../../data.js'
 import babelConfigCode from '../../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
 import metroConfigCode from '../../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
 import eventsCode from '../../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
@@ -37,9 +38,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 1.  **Set up project from template**
 
-    ```bash
-    bunx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/expo-todomvc my-app
-    ```
+    <Code code={makeTiged('expo-todomvc')} lang="sh" />
 
     Replace `my-app` with your desired app name.
 
