@@ -2,8 +2,9 @@
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { Command, Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
+import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.
@@ -37,42 +38,40 @@ const buildAndDeployExample = ({
 }) =>
   Effect.gen(function* () {
     const cwd = `${EXAMPLES_SRC_DIR}/${example}`
-    yield* Command.make('pnpm', 'build').pipe(
-      Command.workingDirectory(cwd),
-      Command.stdout('inherit'), // Stream stdout to process.stdout)
-      Command.stderr('inherit'), // Stream stderr to process.stderr
-      Command.exitCode,
-      Effect.tap((exitCode) =>
-        exitCode === 0 ? Effect.logDebug(`Build succeeded for ${example}`) : Effect.die(`Build failed for ${example}`),
-      ),
+    yield* cmd(['pnpm', 'build'], { cwd })
+
+    const deployCommand = cmdText(
+      [
+        'bunx',
+        'netlify-cli',
+        'deploy',
+        '--json',
+        `--dir=${EXAMPLES_SRC_DIR}/${example}/dist`,
+        `--site=example-${example}`,
+        prod ? '--prod' : undefined,
+        Option.isSome(alias) ? `--alias=${alias.value}` : undefined,
+      ],
+      {
+        cwd,
+        // Prevent netlify from using TTY
+        env: { CI: '1' },
+      },
     )
 
-    const prodFlag = prod ? '--prod' : ''
-    const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
-    const deployCommand = Command.make(
-      'bunx',
-      'netlify-cli',
-      'deploy',
-      '--json',
-      `--dir=${EXAMPLES_SRC_DIR}/${example}/dist`,
-      `--site=example-${example}`,
-      prodFlag,
-      aliasFlag,
-    ).pipe(Command.workingDirectory(cwd))
-
     const result = yield* deployCommand.pipe(
-      Command.stderr('inherit'), // Stream stderr to process.stderr
-      Command.string,
       Effect.tap((result) => Effect.logDebug(`Deploy result for ${example}: ${result}`)),
       Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
-      Effect.retry({ times: 2 }),
+      // Effect.retry({ times: 2 }),
       Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     )
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
 
     return result
-  }).pipe(Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)))
+  }).pipe(
+    Effect.withSpan(`deploy-example-${example}`, { attributes: { example, prod, alias } }),
+    Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
+  )
 
 export const command = Cli.Command.make(
   'deploy',

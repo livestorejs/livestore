@@ -158,10 +158,14 @@ export const cmd: (
 )(function* (commandInput, options) {
   const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
   const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
-  const commandDebugStr = [command, ...args].join(' ')
+
+  const debugEnvStr = Object.entries(options?.env ?? {})
+    .map(([key, value]) => `${key}=${value} `)
+    .join('')
+  const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, commandStr: commandDebugStr, cwd, command, args })
+  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
 
   return yield* Command.make(command!, ...args).pipe(
     Command.stdout('inherit'), // Stream stdout to process.stdout
@@ -175,17 +179,25 @@ export const cmd: (
 })
 
 export const cmdText: (
-  commandStr: string,
+  commandInput: string | (string | undefined)[],
   options?: { cwd?: string; runInShell?: boolean; env?: Record<string, string | undefined> },
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
-  function* (commandStr, options) {
+  function* (commandInput, options) {
     const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-    const [command, ...args] = commandStr.split(' ')
+    const [command, ...args] = Array.isArray(commandInput)
+      ? commandInput.filter(isNotUndefined)
+      : commandInput.split(' ')
+    const debugEnvStr = Object.entries(options?.env ?? {})
+      .map(([key, value]) => `${key}=${value} `)
+      .join('')
 
-    yield* Effect.logDebug(`Running '${commandStr}' in '${cwd}'`)
-    yield* Effect.annotateCurrentSpan({ 'span.label': commandStr, commandStr, cwd })
+    const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+
+    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
+    yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
     return yield* Command.make(command!, ...args).pipe(
+      Command.stderr('inherit'), // Stream stderr to process.stderr
       Command.workingDirectory(cwd),
       options?.runInShell ? Command.runInShell(true) : identity,
       Command.env(options?.env ?? {}),
