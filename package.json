@@ -47,7 +47,7 @@
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "esbuild": "0.25.0",
+    "esbuild": "0.25.4",
     "react-native": "^0.79.2"
   },
   "resolutions#": {
