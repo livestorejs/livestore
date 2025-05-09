@@ -269,6 +269,15 @@ describe('query builder', () => {
           "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
         }
       `)
+      expect(dump(db.todos.where('completed', true).count())).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+          ],
+          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE completed = ?",
+          "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
+        }
+      `)
     })
 
     it('should handle NULL comparisons', () => {

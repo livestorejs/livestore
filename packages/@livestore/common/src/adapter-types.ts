@@ -37,6 +37,8 @@ export interface ClientSession {
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
+  /** A unique identifier for the current instance of the client session. Used for debugging purposes. */
+  debugInstanceId: string
 }
 
 export const LeaderPullCursor = Schema.Struct({

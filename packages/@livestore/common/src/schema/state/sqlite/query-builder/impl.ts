@@ -122,12 +122,13 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast)) return invalidQueryBuilder()
+      if (isRowQuery(ast) || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+        return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
         _tag: 'CountQuery',
         tableDef,
-        where: [],
+        where: ast.where,
         resultSchema: Schema.Struct({ count: Schema.Number }).pipe(
           Schema.pluck('count'),
           Schema.Array,

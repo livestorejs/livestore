@@ -7,11 +7,11 @@ import { events, tables } from '../livestore/schema.js'
 import { store } from '../livestore/store.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: undefined }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',
 })
 
-const completedCount$ = queryDb(tables.todos.count().where({ completed: true, deletedAt: undefined }), {
+const completedCount$ = queryDb(tables.todos.count().where({ completed: true, deletedAt: null }), {
   label: 'completedCount',
 })
 

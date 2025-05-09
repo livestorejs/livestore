@@ -5,6 +5,15 @@ sidebar:
   order: 8
 ---
 
+### Store / sync backend is stuck in a weird state
+
+While hopefully rare in practice, it might still happen that a client or a sync backend is stuck in a weird/invalid state. Please report such cases as a [GitHub issue](https://github.com/livestorejs/livestore/issues).
+
+To avoid being stuck, you can either:
+
+- use a different `storeId`
+- or reset the sync backend and local client for the given `storeId` 
+
 ## React related issues
 
 ### Query doesn't update properly

@@ -221,6 +221,7 @@
     - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
       - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
+    - Only use DO for write operations and pokes, use a separate way for pull-reqs
     - Bring back "broadcast" pull res terminology
   - Electric:
     - fix: connectivity state + offline handling
@@ -257,6 +258,7 @@
     - Make it store-agnostic (so it's reused across store instances)
     - Remove extra broadcast channel for session info in @livestore/adapter-web
 - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- SQLite rollback error: `RuntimeError: null function or function signature mismatch, "note": "Failed calling makeChangeset.apply` (needs repro info, probably requires property testing)
 - Refactor/improve event sequence number implementation
   - Current pain points/suboptimalities:
     - `syncstate.ts`: branching for global/client-only events

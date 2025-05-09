@@ -23,7 +23,7 @@ const adapter = makePersistedAdapter({
 const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements' })
 
 const appState$ = queryDb(tables.uiState.get())
-const todos$ = queryDb(tables.todos.where({ deletedAt: undefined }))
+const todos$ = queryDb(tables.todos.where({ deletedAt: null }))
 
 const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
 

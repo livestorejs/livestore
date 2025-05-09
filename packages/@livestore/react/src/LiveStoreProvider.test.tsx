@@ -3,12 +3,12 @@ import { sql } from '@livestore/common'
 import { rawSqlEvent } from '@livestore/common/schema'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
-import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
+import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { describe, expect, it } from 'vitest'
 
-import { schema, tables } from './__tests__/fixture.js'
+import { events, schema, tables } from './__tests__/fixture.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
 import * as LiveStoreReact from './mod.js'
 
@@ -59,24 +59,28 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
       )
     }
 
-    const { rerender } = render(<Root forceUpdate={1} />)
+    const { rerender } = ReactTesting.render(<Root forceUpdate={1} />)
 
     expect(appRenderCount).toBe(0)
 
-    await waitForElementToBeRemoved(() => screen.getByText((_) => _.startsWith('Loading LiveStore')))
+    await ReactTesting.waitForElementToBeRemoved(() =>
+      ReactTesting.screen.getByText((_) => _.startsWith('Loading LiveStore')),
+    )
 
     expect(appRenderCount).toBe(strictMode ? 2 : 1)
 
     rerender(<Root forceUpdate={2} />)
 
-    await waitFor(() => screen.getByText('Loading LiveStore: loading'))
-    await waitFor(() => screen.getByText((_) => _.includes('buy milk')))
+    await ReactTesting.waitFor(() => ReactTesting.screen.getByText('Loading LiveStore: loading'))
+    await ReactTesting.waitFor(() => ReactTesting.screen.getByText((_) => _.includes('buy milk')))
 
     expect(appRenderCount).toBe(strictMode ? 4 : 2)
 
     abortController.abort()
 
-    await waitFor(() => screen.getByText('LiveStore Shutdown due to interrupted', { exact: false }))
+    await ReactTesting.waitFor(() =>
+      ReactTesting.screen.getByText('LiveStore Shutdown due to interrupted', { exact: false }),
+    )
   })
 
   // TODO test aborting during boot
@@ -117,11 +121,11 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
       )
     }
 
-    render(<Root forceUpdate={1} />)
+    ReactTesting.render(<Root forceUpdate={1} />)
 
     expect(appRenderCount).toBe(0)
 
-    await waitFor(() => screen.getByText((_) => _.startsWith('LiveStore.UnexpectedError')))
+    await ReactTesting.waitFor(() => ReactTesting.screen.getByText((_) => _.startsWith('LiveStore.UnexpectedError')))
   })
 
   it('unmounts when store is shutdown', async () => {
@@ -164,16 +168,91 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
       )
     }
 
-    render(<Root />)
+    ReactTesting.render(<Root />)
 
     expect(appRenderCount).toBe(0)
 
-    await waitFor(() => screen.getByText('[]'))
+    await ReactTesting.waitFor(() => ReactTesting.screen.getByText('[]'))
 
     React.act(() => shutdownDeferred.resolve())
 
     expect(appRenderCount).toBe(strictMode ? 2 : 1)
 
-    await waitFor(() => screen.getByText('LiveStore Shutdown due to manual shutdown', { exact: false }))
+    await ReactTesting.waitFor(() =>
+      ReactTesting.screen.getByText('LiveStore Shutdown due to manual shutdown', { exact: false }),
+    )
   })
 })
+
+it('should work two stores with the same storeId', async () => {
+  const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+  const appRenderCount = {
+    store1: 0,
+    store2: 0,
+  }
+
+  const App = () => {
+    const { store } = LiveStoreReact.useStore()
+    const instanceId = store.clientSession.debugInstanceId as 'store1' | 'store2'
+    appRenderCount[instanceId]!++
+
+    const todos = store.useQuery(allTodos$)
+
+    return (
+      <div id={instanceId}>
+        <div role="heading">{instanceId}</div>
+        <div role="content">{JSON.stringify(todos)}</div>
+        <button onClick={() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))}>
+          create todo {instanceId}
+        </button>
+      </div>
+    )
+  }
+
+  const Root = () => {
+    const storeId = 'fixed-store-id'
+    return (
+      <div>
+        <LiveStoreProvider
+          storeId={storeId}
+          debug={{ instanceId: 'store1' }}
+          schema={schema}
+          adapter={makeInMemoryAdapter()}
+          batchUpdates={batchUpdates}
+        >
+          <App />
+        </LiveStoreProvider>
+        <LiveStoreProvider
+          storeId={storeId}
+          debug={{ instanceId: 'store2' }}
+          schema={schema}
+          adapter={makeInMemoryAdapter()}
+          batchUpdates={batchUpdates}
+        >
+          <App />
+        </LiveStoreProvider>
+      </div>
+    )
+  }
+
+  const { container } = ReactTesting.render(<Root />)
+
+  await ReactTesting.waitFor(() => ReactTesting.screen.getByRole('heading', { name: 'store1' }))
+  await ReactTesting.waitFor(() => ReactTesting.screen.getByRole('heading', { name: 'store2' }))
+
+  expect(appRenderCount.store1).toBe(1)
+  expect(appRenderCount.store2).toBe(1)
+
+  ReactTesting.fireEvent.click(ReactTesting.screen.getByText('create todo store1'))
+
+  expect(appRenderCount.store1).toBe(2)
+
+  expect(container.querySelector('#store1 > div[role="content"]')?.textContent).toBe(
+    '[{"id":"t1","text":"buy milk","completed":false}]',
+  )
+
+  expect(container.querySelector('#store2 > div[role="content"]')?.textContent).toBe('[]')
+})
+
+// TODO test that checks that there are no two exact same instances (i.e. same storeId, clientId, sessionId)

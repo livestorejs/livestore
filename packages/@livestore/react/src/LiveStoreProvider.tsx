@@ -79,6 +79,9 @@ export interface LiveStoreProviderProps {
    * @default undefined
    */
   syncPayload?: Schema.JsonValue
+  debug?: {
+    instanceId?: string
+  }
 }
 
 const defaultRenderError = (error: UnexpectedError | unknown) =>
@@ -119,6 +122,7 @@ export const LiveStoreProvider = ({
   signal,
   confirmUnsavedChanges = true,
   syncPayload,
+  debug,
 }: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
@@ -131,6 +135,7 @@ export const LiveStoreProvider = ({
     signal,
     confirmUnsavedChanges,
     syncPayload,
+    debug,
   })
 
   if (storeCtx.stage === 'error') {
@@ -149,21 +154,9 @@ export const LiveStoreProvider = ({
   if (Object.keys(globalThis.__debugLiveStore).length === 0) {
     globalThis.__debugLiveStore['_'] = storeCtx.store
   }
-  globalThis.__debugLiveStore[storeId] = storeCtx.store
+  globalThis.__debugLiveStore[debug?.instanceId ?? storeId] = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx as TODO}>{children}</LiveStoreContext.Provider>
-}
-
-type SchemaKey = string
-const semaphoreMap = new Map<SchemaKey, Effect.Semaphore>()
-
-const withSemaphore = (storeId: SchemaKey) => {
-  let semaphore = semaphoreMap.get(storeId)
-  if (!semaphore) {
-    semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
-    semaphoreMap.set(storeId, semaphore)
-  }
-  return semaphore.withPermits(1)
 }
 
 const useCreateStore = ({
@@ -179,6 +172,7 @@ const useCreateStore = ({
   params,
   confirmUnsavedChanges,
   syncPayload,
+  debug,
 }: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -188,13 +182,17 @@ const useCreateStore = ({
     value: StoreContext_ | BootStatus
     componentScope: Scope.CloseableScope | undefined
     shutdownDeferred: ShutdownDeferred | undefined
+    /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
+    previousShutdownDeferred: ShutdownDeferred | undefined
     counter: number
   }>({
     value: { stage: 'loading' },
     componentScope: undefined,
     shutdownDeferred: undefined,
+    previousShutdownDeferred: undefined,
     counter: 0,
   })
+  const debugInstanceId = debug?.instanceId
 
   // console.debug(`useCreateStore (${ctxValueRef.current.counter})`, ctxValueRef.current.value.stage)
 
@@ -210,6 +208,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    debugInstanceId,
   })
 
   const interrupt = (
@@ -238,6 +237,7 @@ const useCreateStore = ({
     params: inputPropsCacheRef.current.params !== params,
     confirmUnsavedChanges: inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges,
     syncPayload: inputPropsCacheRef.current.syncPayload !== syncPayload,
+    debugInstanceId: inputPropsCacheRef.current.debugInstanceId !== debugInstanceId,
   }
 
   if (
@@ -265,6 +265,7 @@ const useCreateStore = ({
       params,
       confirmUnsavedChanges,
       syncPayload,
+      debugInstanceId,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
       const changedInputProps = Object.keys(inputPropChanges).filter(
@@ -283,6 +284,7 @@ const useCreateStore = ({
       value: { stage: 'loading' },
       componentScope: undefined,
       shutdownDeferred: undefined,
+      previousShutdownDeferred: ctxValueRef.current.shutdownDeferred,
       counter: ctxValueRef.current.counter + 1,
     }
   }
@@ -313,6 +315,11 @@ const useCreateStore = ({
     })
 
     const cancel = Effect.gen(function* () {
+      // Wait for the previous store to fully shutdown before creating a new one
+      if (ctxValueRef.current.previousShutdownDeferred) {
+        yield* Deferred.await(ctxValueRef.current.previousShutdownDeferred)
+      }
+
       const componentScope = yield* Scope.make().pipe(Effect.acquireRelease(Scope.close))
       const shutdownDeferred = yield* makeShutdownDeferred
 
@@ -337,6 +344,7 @@ const useCreateStore = ({
             // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
             setContextValue(status)
           },
+          debug: { instanceId: debugInstanceId },
         }).pipe(Effect.tapErrorCause((cause) => Deferred.failCause(shutdownDeferred, cause)))
 
         setContextValue({ stage: 'running', store })
@@ -355,10 +363,6 @@ const useCreateStore = ({
       )
     }).pipe(
       Effect.scoped,
-      // NOTE we're running the code above in a semaphore to make sure a previous store is always fully
-      // shutdown before a new one is created - especially when shutdown logic is async. You can't trust `React.useEffect`.
-      // Thank you to Mattia Manzati for this idea.
-      withSemaphore(storeId),
       Effect.withSpan('@livestore/react:useCreateStore'),
       LS_DEV ? TaskTracing.withAsyncTaggingTracing((name: string) => (console as any).createTask(name)) : identity,
       provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
@@ -395,6 +399,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    debugInstanceId,
   ])
 
   return ctxValueRef.current.value

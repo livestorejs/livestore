@@ -33,6 +33,7 @@ export const makeClientSession = <R>({
   connectWebmeshNode,
   webmeshMode,
   registerBeforeUnload,
+  debugInstanceId,
 }: AdapterArgs & {
   clientId: string
   sessionId: string
@@ -130,5 +131,6 @@ export const makeClientSession = <R>({
       clientId,
       sessionId,
       shutdown,
+      debugInstanceId,
     } satisfies ClientSession
   })

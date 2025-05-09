@@ -528,8 +528,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)!
     commitsSpan.addEvent('commit')
 
-    // console.group('LiveStore.commit', { skipRefresh, wasSyncMessage, label })
-    // events.forEach((_) => console.debug(_.name, _.id, _.args))
+    // console.group('LiveStore.commit', { skipRefresh })
+    // events.forEach((_) => console.debug(_.name, _.args))
     // console.groupEnd()
 
     let durationMs: number
@@ -655,6 +655,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           Devtools.Leader.ResetAllData.Request.make({ liveStoreVersion, mode, requestId: nanoid(), clientId }),
         )
       }).pipe(this.runEffectFork)
+    },
+
+    overrideNetworkStatus: (status: 'online' | 'offline') => {
+      const clientId = this.clientSession.clientId
+      this.clientSession.leaderThread
+        .sendDevtoolsMessage(
+          Devtools.Leader.SetSyncLatch.Request.make({
+            clientId,
+            closeLatch: status === 'offline',
+            liveStoreVersion,
+            requestId: nanoid(),
+          }),
+        )
+        .pipe(this.runEffectFork)
     },
 
     syncStates: () => {

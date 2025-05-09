@@ -47,7 +47,8 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useQuery`)
 
-  const rcRefKey = `${store.storeId}_${queryDef.hash}`
+  // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
+  const rcRefKey = `${store.storeId}_${store.clientId}_${store.sessionId}_${queryDef.hash}`
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
