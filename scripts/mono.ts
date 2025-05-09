@@ -111,7 +111,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
           Effect.map((branchName) => branchName.trim()),
         )
 
-        const cwd = `${process.env.WORKSPACE_ROOT}/website`
+        const websitePath = `${process.env.WORKSPACE_ROOT}/website`
 
         yield* Effect.log(`Branch name: "${branchName}"`)
 
@@ -125,20 +125,20 @@ const websiteCommand = Cli.Command.make('website').pipe(
               : 'livestore-website-next' // Dev site
 
         // Check if netlify is logged in
-        yield* cmd('bunx netlify-cli status', { cwd }).pipe(Effect.ignoreLogged)
+        yield* cmd('bunx netlify-cli status', { cwd: websitePath }).pipe(Effect.ignoreLogged)
 
         const deployArgs = [
           'bunx',
           'netlify-cli',
           'deploy',
           '--no-build',
-          '--dir=dist',
+          `--dir=${websitePath}/dist`,
           `--site=${site}`,
           '--filter=website',
         ]
 
         yield* Effect.log(`Deploying to "${site}" for draft URL`)
-        yield* cmd([...deployArgs], { cwd })
+        yield* cmd([...deployArgs], { cwd: websitePath })
 
         const alias =
           aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
@@ -152,7 +152,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
 
         yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
-        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd })
+        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd: websitePath })
       }),
     ),
   ]),

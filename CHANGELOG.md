@@ -208,57 +208,43 @@
 
 ### Still todo:
 
-- Syncing
-  - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
-  - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
-  - More graceful handling when receiving a event that doesn't exist in the local schema
-    - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
-    - 2 solution paths:
-      - Render "upgrade app" screen
-      - Go offline until user upgrades the app
-  - introduce a way to know when an event is confirmed by the sync backend
-  - cf sync:
-    - use http for initial pull while WS connection is established
-    - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
-      - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
-    - Only use DO for write operations and pokes, use a separate way for pull-reqs
-    - Bring back "broadcast" pull res terminology
-  - Electric:
-    - fix: connectivity state + offline handling
-    - implement sync payload
-  - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
-    - possibly introduce a eventlog id in the global sync metadata
-- Expo:
-  - Fix memory leak in certain cases (needs repro info)
-- Devtools
-  - Fix: When resetting the database but keeping the eventlog
-    - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
-  - support app reloading in Expo (requires an equivalent of `beforeunload` to be triggered in `makeClientSession`)
-  - sync session appears for wrong storeid (needs repro info)
-  - sync view:
-    - different colors for when a node pulled/pushed
-    - show status indicators in each node: uptodate/syncing/error
-      - syncing should include the number of events still pending to push/pull
-      - maybe we can also figure out how to get the sync backend status?
-  - mutations explorer:
-    - show client events as tree
-    - always show root event s0
 - Release
   - Write blog post
   - Prepare X/Bluesky thread
 
 ### After release:
-- Get rid of `sql-queries` module
-- Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
-- Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-- Handle more gracefully: 2 different store instances with the same store id currently dead-lock on boot (probably related to semaphore in LiveStoreProvider)
+
+- Refactor: Get rid of `sql-queries` module
+- API improvement: Get rid of `queryDb` by exposing live queries directly on the query builder / state primitives
+- Optimization: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
 - Web adapter:
+  - Bug: `NotReadableError: The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.`
   - Refactor `shared-worker`
     - Make it optional (for Android support)
     - Make it store-agnostic (so it's reused across store instances)
     - Remove extra broadcast channel for session info in @livestore/adapter-web
-- Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-- SQLite rollback error: `RuntimeError: null function or function signature mismatch, "note": "Failed calling makeChangeset.apply` (needs repro info, probably requires property testing)
+- Bug fix + testing: SQLite rollback error: `RuntimeError: null function or function signature mismatch, "note": "Failed calling makeChangeset.apply` (needs repro info, probably requires property testing)
+- Syncing:
+  - introduce a way to know when an event is confirmed by the sync backend
+  - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
+  - Testing: Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+  - More graceful handling when receiving a event that doesn't exist in the local schema
+    - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
+    - 2 solution paths:
+      - Render "upgrade app" screen
+      - Go offline until user upgrades the app
+  - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
+    - possibly introduce a eventlog id in the global sync metadata
+  - `@livestore/sync-cf`:
+    - use http for initial pull while WS connection is established
+    - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
+      - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
+    - Only use DO for write operations and pokes, use a separate way for pull-reqs
+    - Bring back "broadcast" pull res terminology
+  - `@livestore/sync-electric`:
+    - fix: connectivity state + offline handling
+    - implement sync payload
+- Expo adapter: Fix memory leak in certain cases (needs repro info)
 - Refactor/improve event sequence number implementation
   - Current pain points/suboptimalities:
     - `syncstate.ts`: branching for global/client-only events
@@ -275,6 +261,22 @@
     - Unit of sharing/collaboration/auth
     - What if I want got my initial container design wrong and I want to change it?
       - Comparables: document databases, kafka streams, 
+- Devtools
+  - Redesign with left sidebar
+  - Databrowser:
+    - custom handling for client-documents (i.e. render value subfields as columns) + allow value editing
+  - Fix: When resetting the database but keeping the eventlog
+    - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
+  - support app reloading in Expo (requires an equivalent of `beforeunload` to be triggered in `makeClientSession`)
+  - sync session appears for wrong storeid (needs repro info)
+  - sync view:
+    - different colors for when a node pulled/pushed
+    - show status indicators in each node: uptodate/syncing/error
+      - syncing should include the number of events still pending to push/pull
+      - maybe we can also figure out how to get the sync backend status?
+  - mutations explorer:
+    - show client events as tree
+    - always show root event s0
 
 
 ## 0.2.0
