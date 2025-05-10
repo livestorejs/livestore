@@ -78,6 +78,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
       - name: Setup Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -97,7 +99,6 @@ jobs:
       - name: Run performance tests
         run: pnpm test:perf
         env:
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
 
