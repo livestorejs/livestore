@@ -323,8 +323,9 @@ const validateStoreId = (storeId: string) =>
   })
 
 const getDevtoolsEnabled = (disableDevtools: boolean | 'auto' | undefined) => {
-  if (disableDevtools === true) {
-    return false
+  // If an explicit value is provided, use that
+  if (disableDevtools === true || disableDevtools === false) {
+    return disableDevtools
   }
 
   if (isDevEnv() === true) {
