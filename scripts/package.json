@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "exports": {
+    "./examples": "./examples/mod.ts"
+  },
   "devDependencies": {
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",

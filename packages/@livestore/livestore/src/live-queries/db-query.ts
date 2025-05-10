@@ -41,6 +41,35 @@ export type QueryInput<TDecoded, TEncoded> = QueryInputRaw<TDecoded, TEncoded> |
 
 /**
  * NOTE `queryDb` is only supposed to read data. Don't use it to insert/update/delete data but use events instead.
+ *
+ * When using contextual data when constructing the query, please make sure to include it in the `deps` option.
+ *
+ * @example
+ * ```ts
+ * const todos$ = queryDb(tables.todos.where({ complete: true }))
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Group-by raw SQL query
+ * const colorCounts$ = queryDb({
+ *   query: sql`SELECT color, COUNT(*) as count FROM todos WHERE complete = ? GROUP BY color`,
+ *   schema: Schema.Array(Schema.Struct({
+ *     color: Schema.String,
+ *     count: Schema.Number,
+ *   })),
+ *   bindValues: [1],
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Using contextual data when constructing the query
+ * const makeFilteredQuery = (filter: string) =>
+ *   queryDb(tables.todos.where({ title: { op: 'like', value: filter } }), { deps: [filter] })
+ *
+ * const filteredTodos$ = makeFilteredQuery('buy coffee')
+ * ```
  */
 export const queryDb: {
   <TResultSchema, TResult = TResultSchema>(

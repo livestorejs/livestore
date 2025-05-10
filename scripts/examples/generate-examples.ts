@@ -15,25 +15,30 @@ if (!workspaceRoot) {
 }
 
 // Directories
-const STANDALONE_DIR = `${workspaceRoot}/examples/standalone`
-const PATCHES_DIR = `${workspaceRoot}/examples/patches`
-const SRC_DIR = `${workspaceRoot}/examples/src`
+const STANDALONE_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/standalone`
+const PATCHES_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/patches`
+const SRC_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/src`
 
 const EXCLUDE_EXAMPLES = ['node-effect-cli', 'node-todomvc-sync-cf']
 
-const checkDirs = Effect.gen(function* () {
-  // Fails if dirs don't exist
-  if (!fs.existsSync(PATCHES_DIR) || !fs.existsSync(SRC_DIR) || !fs.existsSync(STANDALONE_DIR)) {
-    console.error('Directories do not exist')
-    process.exit(1)
-  }
-})
+const checkDirs = (workspaceRoot: string) =>
+  Effect.gen(function* () {
+    // Fails if dirs don't exist
+    if (
+      !fs.existsSync(PATCHES_DIR(workspaceRoot)) ||
+      !fs.existsSync(SRC_DIR(workspaceRoot)) ||
+      !fs.existsSync(STANDALONE_DIR(workspaceRoot))
+    ) {
+      console.error('Directories do not exist')
+      process.exit(1)
+    }
+  })
 
 const SyncDirection = Schema.Literal('src-to-standalone', 'standalone-to-src')
 type SyncDirection = typeof SyncDirection.Type
 
 // Helper function to sync src to src-patched
-const syncDirectories = (direction: SyncDirection) =>
+const syncDirectories = (direction: SyncDirection, workspaceRoot: string) =>
   Effect.gen(function* () {
     const excludeArgs = EXCLUDE_EXAMPLES.map((pattern) => `--exclude=${pattern}`)
 
@@ -50,8 +55,8 @@ const syncDirectories = (direction: SyncDirection) =>
           `--exclude=.git`,
           `--exclude=README.md`,
           ...excludeArgs,
-          `${SRC_DIR}/`,
-          `${STANDALONE_DIR}/`,
+          `${SRC_DIR(workspaceRoot)}/`,
+          `${STANDALONE_DIR(workspaceRoot)}/`,
         ],
         { cwd: workspaceRoot },
       )
@@ -64,8 +69,8 @@ const syncDirectories = (direction: SyncDirection) =>
           if (entry.isDirectory()) {
             await applyPatches(fullPath)
           } else if (entry.isFile() && entry.name.endsWith('.patch')) {
-            const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
-            const targetFile = `${STANDALONE_DIR}${relativePath}`
+            const relativePath = fullPath.replace(PATCHES_DIR(workspaceRoot), '').replace('.patch', '')
+            const targetFile = `${STANDALONE_DIR(workspaceRoot)}${relativePath}`
             try {
               await cmd(`patch -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`, { cwd: workspaceRoot }).pipe(
                 Runtime.runPromise(runtime),
@@ -78,9 +83,11 @@ const syncDirectories = (direction: SyncDirection) =>
         }
       }
 
-      yield* Effect.promise(() => applyPatches(PATCHES_DIR))
+      yield* Effect.promise(() => applyPatches(PATCHES_DIR(workspaceRoot)))
 
-      console.log(`[${new Date().toISOString()}] Synced and patched ${SRC_DIR} to ${STANDALONE_DIR}`)
+      console.log(
+        `[${new Date().toISOString()}] Synced and patched ${SRC_DIR(workspaceRoot)} to ${STANDALONE_DIR(workspaceRoot)}`,
+      )
 
       if (process.env.CI) {
         // Exit with error if there are any unstaged changes
@@ -93,7 +100,7 @@ const syncDirectories = (direction: SyncDirection) =>
     } else {
       // Confirm before syncing from standalone to src since this is destructive
       const answer = prompt(
-        `Are you sure you want to sync from ${STANDALONE_DIR} to ${SRC_DIR}? This will overwrite files in ${SRC_DIR}. (y/N) `,
+        `Are you sure you want to sync from ${STANDALONE_DIR(workspaceRoot)} to ${SRC_DIR(workspaceRoot)}? This will overwrite files in ${SRC_DIR(workspaceRoot)}. (y/N) `,
       )
 
       if (answer?.toLowerCase() !== 'y') {
@@ -113,8 +120,8 @@ const syncDirectories = (direction: SyncDirection) =>
           `--exclude=.git`,
           `--exclude=README.md`,
           ...excludeArgs,
-          `${STANDALONE_DIR}/`,
-          `${SRC_DIR}/`,
+          `${STANDALONE_DIR(workspaceRoot)}/`,
+          `${SRC_DIR(workspaceRoot)}/`,
         ],
         { cwd: workspaceRoot },
       )
@@ -127,8 +134,8 @@ const syncDirectories = (direction: SyncDirection) =>
           if (entry.isDirectory()) {
             await reversePatches(fullPath)
           } else if (entry.isFile() && entry.name.endsWith('.patch')) {
-            const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
-            const targetFile = `${SRC_DIR}${relativePath}`
+            const relativePath = fullPath.replace(PATCHES_DIR(workspaceRoot), '').replace('.patch', '')
+            const targetFile = `${SRC_DIR(workspaceRoot)}${relativePath}`
             try {
               await cmd(`patch -R -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`, {
                 cwd: workspaceRoot,
@@ -141,9 +148,11 @@ const syncDirectories = (direction: SyncDirection) =>
         }
       }
 
-      yield* Effect.promise(() => reversePatches(PATCHES_DIR))
+      yield* Effect.promise(() => reversePatches(PATCHES_DIR(workspaceRoot)))
 
-      console.log(`[${new Date().toISOString()}] Synced and reversed patches from ${STANDALONE_DIR} to ${SRC_DIR}`)
+      console.log(
+        `[${new Date().toISOString()}] Synced and reversed patches from ${STANDALONE_DIR(workspaceRoot)} to ${SRC_DIR(workspaceRoot)}`,
+      )
     }
   })
 
@@ -153,12 +162,12 @@ const setupWatchman = (direction: SyncDirection) =>
     const watchDirs =
       direction === 'src-to-standalone'
         ? [
-            { dir: SRC_DIR, name: 'listen-src-changes' },
-            { dir: PATCHES_DIR, name: 'listen-patches-changes' },
+            { dir: SRC_DIR(workspaceRoot), name: 'listen-src-changes' },
+            { dir: PATCHES_DIR(workspaceRoot), name: 'listen-patches-changes' },
           ]
         : [
-            { dir: STANDALONE_DIR, name: 'listen-standalone-changes' },
-            { dir: PATCHES_DIR, name: 'listen-patch-changes' },
+            { dir: STANDALONE_DIR(workspaceRoot), name: 'listen-standalone-changes' },
+            { dir: PATCHES_DIR(workspaceRoot), name: 'listen-patch-changes' },
           ]
 
     const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
@@ -190,7 +199,7 @@ const setupWatchman = (direction: SyncDirection) =>
           const changes = JSON.parse(data.toString())
           if (changes.files) {
             console.log(`Changes detected in ${dir}:`, changes.files.map((f: { name: string }) => f.name).join(', '))
-            syncDirectories(direction).pipe(Runtime.runPromise(runtime))
+            syncDirectories(direction, workspaceRoot).pipe(Runtime.runPromise(runtime))
           }
         } catch (error) {
           console.error(`Error parsing Watchman output: ${error}`)
@@ -207,77 +216,57 @@ const setupWatchman = (direction: SyncDirection) =>
     }
 
     console.log(
-      `Watchman setup complete. Listening for file changes in ${PATCHES_DIR} and ${direction === 'src-to-standalone' ? SRC_DIR : STANDALONE_DIR}...`,
+      `Watchman setup complete. Listening for file changes in ${PATCHES_DIR(workspaceRoot)} and ${direction === 'src-to-standalone' ? SRC_DIR : STANDALONE_DIR}...`,
     )
   })
 
-const updatePatches = Effect.gen(function* () {
-  yield* checkDirs
+export const updatePatchesCommand = Cli.Command.make(
+  'update-patches',
+  {
+    workspaceRoot: Cli.Options.text('workspace-root').pipe(Cli.Options.withDefault(workspaceRoot)),
+  },
+  ({ workspaceRoot }) =>
+    Effect.gen(function* () {
+      yield* checkDirs(workspaceRoot)
 
-  yield* cmd(`rm -rf ${PATCHES_DIR}`, { cwd: workspaceRoot })
+      yield* cmd(`rm -rf ${PATCHES_DIR(workspaceRoot)}`, { cwd: workspaceRoot })
 
-  const exampleDirs = fs.readdirSync(SRC_DIR).filter((item) => fs.statSync(`${SRC_DIR}/${item}`).isDirectory())
-  const filesToPatch = [
-    'package.json',
-    'tsconfig.json',
-    'vite.config.ts',
-    'vite.config.js',
-    'metro.config.js',
-    'app.config.ts', // TanStack Start
-  ]
-  for (const exampleDir of exampleDirs) {
-    const patchDir = `${PATCHES_DIR}/${exampleDir}`
-    yield* cmd(`mkdir -p ${patchDir}`, { cwd: workspaceRoot })
+      const exampleDirs = fs
+        .readdirSync(SRC_DIR(workspaceRoot))
+        .filter((item) => fs.statSync(`${SRC_DIR(workspaceRoot)}/${item}`).isDirectory())
+      const filesToPatch = [
+        'package.json',
+        'tsconfig.json',
+        'vite.config.ts',
+        'vite.config.js',
+        'metro.config.js',
+        'app.config.ts', // TanStack Start
+      ]
+      for (const exampleDir of exampleDirs) {
+        const patchDir = `${PATCHES_DIR(workspaceRoot)}/${exampleDir}`
+        yield* cmd(`mkdir -p ${patchDir}`, { cwd: workspaceRoot })
 
-    for (const file of filesToPatch) {
-      const distFile = `${STANDALONE_DIR}/${exampleDir}/${file}`
-      const srcFile = `${SRC_DIR}/${exampleDir}/${file}`
-      const patchFile = `${patchDir}/${file}.patch`
+        for (const file of filesToPatch) {
+          const distFile = `${STANDALONE_DIR(workspaceRoot)}/${exampleDir}/${file}`
+          const srcFile = `${SRC_DIR(workspaceRoot)}/${exampleDir}/${file}`
+          const patchFile = `${patchDir}/${file}.patch`
 
-      if (fs.existsSync(distFile) && fs.existsSync(srcFile)) {
-        const diffResult = yield* cmdText(
-          `diff -u --minimal --unidirectional-new-file --label=${file} --label=${file} ${srcFile} ${distFile}`,
-        )
-        if (diffResult === '') {
-          console.log(`No changes detected for ${file} in ${exampleDir}`)
-        } else {
-          yield* Effect.promise(() => fs.promises.writeFile(patchFile, diffResult))
-          console.log(`Updated patch for ${file} in ${exampleDir}`)
+          if (fs.existsSync(distFile) && fs.existsSync(srcFile)) {
+            const diffResult = yield* cmdText(
+              `diff -u --minimal --unidirectional-new-file --label=${file} --label=${file} ${srcFile} ${distFile}`,
+            )
+            if (diffResult === '') {
+              console.log(`No changes detected for ${file} in ${exampleDir}`)
+            } else {
+              yield* Effect.promise(() => fs.promises.writeFile(patchFile, diffResult))
+              console.log(`Updated patch for ${file} in ${exampleDir}`)
+            }
+          }
         }
       }
-    }
-  }
-})
+    }),
+)
 
-const syncExamples = ({ direction, watch }: { direction: SyncDirection; watch: boolean }) =>
-  Effect.gen(function* () {
-    yield* checkDirs
-
-    const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
-
-    if (watch === false) {
-      yield* syncDirectories(direction)
-    } else {
-      yield* setupWatchman(direction)
-
-      // Set up signal handlers for graceful shutdown
-      const teardownWatchman = () =>
-        Effect.gen(function* () {
-          console.log('Tearing down Watchman...')
-          yield* cmd(`watchman shutdown-server`, { cwd: workspaceRoot }).pipe(Effect.ignoreLogged)
-          console.log('Watchman teardown complete')
-          process.exit(0)
-        }).pipe(Runtime.runFork(runtime))
-
-      process.on('SIGTERM', teardownWatchman)
-      process.on('SIGINT', teardownWatchman)
-
-      // Keep the script running
-      yield* Effect.never
-    }
-  })
-
-export const updatePatchesCommand = Cli.Command.make('update-patches', {}, () => updatePatches)
 export const syncExamplesCommand = Cli.Command.make(
   'sync',
   {
@@ -285,6 +274,33 @@ export const syncExamplesCommand = Cli.Command.make(
       Cli.Options.withSchema(SyncDirection),
     ),
     watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
+    workspaceRoot: Cli.Options.text('workspace-root').pipe(Cli.Options.withDefault(workspaceRoot)),
   },
-  syncExamples,
+  ({ direction, watch, workspaceRoot }) =>
+    Effect.gen(function* () {
+      yield* checkDirs(workspaceRoot)
+
+      const runtime = yield* Effect.runtime<CommandExecutor.CommandExecutor>()
+
+      if (watch === false) {
+        yield* syncDirectories(direction, workspaceRoot)
+      } else {
+        yield* setupWatchman(direction)
+
+        // Set up signal handlers for graceful shutdown
+        const teardownWatchman = () =>
+          Effect.gen(function* () {
+            console.log('Tearing down Watchman...')
+            yield* cmd(`watchman shutdown-server`, { cwd: workspaceRoot }).pipe(Effect.ignoreLogged)
+            console.log('Watchman teardown complete')
+            process.exit(0)
+          }).pipe(Runtime.runFork(runtime))
+
+        process.on('SIGTERM', teardownWatchman)
+        process.on('SIGINT', teardownWatchman)
+
+        // Keep the script running
+        yield* Effect.never
+      }
+    }),
 )
