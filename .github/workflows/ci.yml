@@ -97,6 +97,7 @@ jobs:
       - name: Run performance tests
         run: pnpm test:perf
         env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
 
