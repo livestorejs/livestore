@@ -52,7 +52,7 @@ export default defineConfig({
           // `exclude` specifies the links to be excluded, not the files that contain the links
           exclude: [
             '/examples', // Custom pages are not yet supported by this plugin https://github.com/HiDeoo/starlight-links-validator/issues/39
-            '/docs/api/**',
+            '/api/**',
           ],
           // Currently ignoring relative links as there are some problems with the generated api docs
           // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
@@ -63,27 +63,27 @@ export default defineConfig({
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
                 tsconfig: '../packages/@livestore/livestore/tsconfig.json',
-                output: 'docs/api/livestore',
+                output: 'api/livestore',
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/react/src/mod.ts'],
                 tsconfig: '../packages/@livestore/react/tsconfig.json',
-                output: 'docs/api/react',
+                output: 'api/react',
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-                output: 'docs/api/adapter-web',
+                output: 'api/adapter-web',
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-                output: 'docs/api/adapter-node',
+                output: 'api/adapter-node',
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-                output: 'docs/api/adapter-expo',
+                output: 'api/adapter-expo',
               }),
               starlightTypeDoc({
                 entryPoints: [
@@ -91,12 +91,12 @@ export default defineConfig({
                   '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
                 ],
                 tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
-                output: 'docs/api/sync-cf',
+                output: 'api/sync-cf',
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
                 tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
-                output: 'docs/api/sync-electric',
+                output: 'api/sync-electric',
               }),
             ]
           : []),
@@ -112,23 +112,23 @@ export default defineConfig({
         // },
         {
           label: 'Getting Started',
-          autogenerate: { directory: 'docs/getting-started' },
+          autogenerate: { directory: 'getting-started' },
         },
         {
           label: 'Evaluating LiveStore',
-          autogenerate: { directory: 'docs/evaluation' },
+          autogenerate: { directory: 'evaluation' },
         },
         {
           label: 'Reference',
-          autogenerate: { directory: 'docs/reference' },
+          autogenerate: { directory: 'reference' },
         },
         {
           label: 'Patterns',
-          autogenerate: { directory: 'docs/patterns' },
+          autogenerate: { directory: 'patterns' },
         },
         {
           label: 'Miscellaneous',
-          autogenerate: { directory: 'docs/misc' },
+          autogenerate: { directory: 'misc' },
         },
         {
           label: 'Changelog',
@@ -136,12 +136,12 @@ export default defineConfig({
         },
         {
           label: 'API Reference (generated)',
-          autogenerate: { directory: 'docs/api' },
+          autogenerate: { directory: 'api' },
           collapsed: true,
         },
         {
           label: 'Contributing',
-          autogenerate: { directory: 'docs/contributing' },
+          autogenerate: { directory: 'contributing' },
         },
       ],
       customCss: ['./src/tailwind.css'],

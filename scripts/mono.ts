@@ -111,6 +111,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
           Effect.map((branchName) => branchName.trim()),
         )
 
+        // TODO rename to `/docs`
         const websitePath = `${process.env.WORKSPACE_ROOT}/website`
 
         yield* Effect.log(`Branch name: "${branchName}"`)
@@ -121,8 +122,8 @@ const websiteCommand = Cli.Command.make('website').pipe(
           siteOption._tag === 'Some'
             ? siteOption.value
             : branchName === 'main'
-              ? 'livestore-website' // Prod site
-              : 'livestore-website-next' // Dev site
+              ? 'livestore-docs' // Prod site
+              : 'livestore-docs-dev' // Dev site
 
         // Check if netlify is logged in
         yield* cmd('bunx netlify-cli status', { cwd: websitePath }).pipe(Effect.ignoreLogged)

@@ -3,7 +3,7 @@ title: Docs
 description: Notes on contributing to the LiveStore docs
 ---
 
-Please follow LiveStore's [guiding principles](/docs/contributing/contributing#guiding-principles) when writing docs.
+Please follow LiveStore's [guiding principles](/contributing/contributing#guiding-principles) when writing docs.
 
 ## Writing style
 

@@ -6,7 +6,7 @@ import { Events, Schema } from '@livestore/livestore'
  * and materialize to state (i.e. SQLite tables).
  *
  * Once your app is in production, please make sure your event definitions evolve in a backwards compatible way.
- * It's recommended to version event definitions. Learn more: https://next.livestore.dev/docs/reference/events
+ * It's recommended to version event definitions. Learn more: https://docs.livestore.dev/reference/events
  */
 
 export const todoCreated = Events.synced({

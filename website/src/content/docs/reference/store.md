@@ -8,7 +8,7 @@ The `Store` is the most common way to interact with LiveStore from your applicat
 
 ## Creating a store
 
-For how to create a store in React, see the [React integration docs](/docs/reference/framework-integrations/react-integration). The following example shows how to create a store manually:
+For how to create a store in React, see the [React integration docs](/reference/framework-integrations/react-integration). The following example shows how to create a store manually:
 
 ```ts
 import { createStorePromise } from '@livestore/livestore'

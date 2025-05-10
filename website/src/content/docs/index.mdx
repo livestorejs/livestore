@@ -1,41 +1,55 @@
 ---
-title: LiveStore
-description: Local-first data layer for high-performance apps
-template: splash
-hero:
-  title: |
-    Welcome to
-    <span
-      class="font-black text-transparent
-        bg-clip-text bg-gradient-to-b
-        from-accent-700 to-accent-400
-        dark:from-accent-500 dark:to-accent-200"
-    >
-      LiveStore
-    </span>
-  tagline: LiveStore is currently in private preview.
-  image:
-    file: ../../assets/livestore.png
-  actions:
-    - text: Docs
-      link: /docs/
-      icon: right-arrow
-      variant: primary
-    - text: Join the waitlist (via form)
-      link: https://forms.gle/wZ4pWJr8gJAEwpXW6
-      icon: right-arrow
-      variant: secondary
-    - text: Request early access (via GitHub sponsors)
-      link: https://github.com/livestorejs
-      icon: right-arrow
-      variant: secondary
-    # - text: Read the Starlight docs
-    #   link: https://starlight.astro.build
-    #   icon: external
-
+title: Docs
 ---
 
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 import { officeHours } from '../../../data.js'
+
+<CardGrid>
+	<LinkCard
+		title="Getting Started"
+		description="Learn how to get started with LiveStore"
+		href="/docs/getting-started/react-web"
+	/>
+	<LinkCard
+		title="Evaluation"
+		description="Evaluate LiveStore for your use case"
+		href="/docs/evaluation/design-decisions"
+	/>
+	<LinkCard
+		title="Reference"
+		description="Reference documentation for LiveStore"
+		href="/docs/reference/concepts"
+	/>
+	<LinkCard
+		title="Patterns"
+		description="A collection of patterns for using LiveStore in different scenarios"
+		href="/docs/patterns/anonymous-user-transition/"
+	/>
+	<LinkCard
+		title="Community"
+		description="Community resources for LiveStore"
+		href="/docs/misc/community"
+	/>
+	<LinkCard
+		title="Contributing"
+		description="Contributing to LiveStore"
+		href="/docs/contributing/contributing"
+	/>
+</CardGrid>
+
+## State of the documentation
+
+Please note that the documentation is still work in progress with many parts missing and often only containing notes/bullet points.
+
+### Docs for LLMs
+
+We support the [llms.txt](https://llmstxt.org/) convention for making documentation available to large language models and the applications that make use of them.
+
+Currently, we have the following root-level files:
+
+- [/llms.txt](/llms.txt) — a listing of the available files
+- [/llms-full.txt](/llms-full.txt) — complete documentation for LiveStore
 
 ## Office Hours
 

@@ -6,7 +6,7 @@ sidebar:
 
 ## How it works
 
-LiveStore is based on [the idea of event-sourcing](/docs/evaluation/event-sourcing) which means it syncs mutation events across clients (via a central sync backend) and then applies the events to the local SQLite database. The syncing mechanism is similar to how Git works in that regard that it's based on a "push/pull" model. Upstream events always need to be pulled before a client can push its own mutation events to preserve a [global total order of events](https://medium.com/baseds/ordering-distributed-events-29c1dd9d1eff). Local pending events which haven't been pushed yet need to be rebased on top of the latest upstream events before they can be pushed.
+LiveStore is based on [the idea of event-sourcing](/evaluation/event-sourcing) which means it syncs mutation events across clients (via a central sync backend) and then applies the events to the local SQLite database. The syncing mechanism is similar to how Git works in that regard that it's based on a "push/pull" model. Upstream events always need to be pulled before a client can push its own mutation events to preserve a [global total order of events](https://medium.com/baseds/ordering-distributed-events-29c1dd9d1eff). Local pending events which haven't been pushed yet need to be rebased on top of the latest upstream events before they can be pushed.
 
 <iframe src='https://www.tldraw.com/p/CWLjWxk0On_rAtjsJ4vt2?d=v-480.-234.2966.2441.RaypXEQgx30bxQnCcVFAG' style={{ height: '400px', width: '100%' }} />
 

@@ -13,7 +13,7 @@ import * as eventsDefs from './events.js'
  * LiveStore doesn't sync tables directly, but syncs events instead which are then materialized into the tables
  * resulting in the same state.
  *
- * See docs to learn more: https://next.livestore.dev/docs/reference/state
+ * See docs to learn more: https://docs.livestore.dev/reference/state
  */
 
 const todos = State.SQLite.table({

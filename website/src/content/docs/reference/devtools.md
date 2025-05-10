@@ -4,7 +4,7 @@ sidebar:
   order: 10
 ---
 
-NOTE: Once LiveStore is open source, the devtools will be a [sponsor-only benefit](/docs/misc/sponsoring).
+NOTE: Once LiveStore is open source, the devtools will be a [sponsor-only benefit](/misc/sponsoring).
 
 ## Features
 

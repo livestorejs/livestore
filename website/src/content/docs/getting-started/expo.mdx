@@ -6,14 +6,14 @@ sidebar:
 ---
 
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
-import { makeTiged } from '../../../../../data.js'
-import babelConfigCode from '../../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
-import metroConfigCode from '../../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
-import eventsCode from '../../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
-import schemaCode from '../../../../../../examples/standalone/expo-todomvc/src/livestore/schema.ts?raw'
-import rootCode from '../../../../../../examples/standalone/expo-todomvc/src/Root.tsx?raw'
-import headerCode from '../../../../../../examples/standalone/expo-todomvc/src/components/NewTodo.tsx?raw'
-import mainSectionCode from '../../../../../../examples/standalone/expo-todomvc/src/components/ListTodos.tsx?raw'
+import { makeTiged } from '../../../../data.js'
+import babelConfigCode from '../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
+import metroConfigCode from '../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
+import eventsCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
+import schemaCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/schema.ts?raw'
+import rootCode from '../../../../../examples/standalone/expo-todomvc/src/Root.tsx?raw'
+import headerCode from '../../../../../examples/standalone/expo-todomvc/src/components/NewTodo.tsx?raw'
+import mainSectionCode from '../../../../../examples/standalone/expo-todomvc/src/components/ListTodos.tsx?raw'
 
 export const CODE = {
   babelConfig: babelConfigCode,
@@ -44,7 +44,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 2.  **Install dependencies**
 
-    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/misc/package-management) for more details).
+    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
 
     <Tabs syncKey="package-manager">
       <TabItem label="bun">
@@ -183,11 +183,11 @@ Here's an example:
 
 To open the devtools, run the app and from your terminal press `shift + m`, then select LiveStore Devtools and press `Enter`.
 
-![Expo Terminal Screenshot](../../../../assets/devtools-terminal-expo.png)
+![Expo Terminal Screenshot](../../../assets/devtools-terminal-expo.png)
 
 This will open the devtools in a new tab in your default browser.
 
-![Devtools Browser Screenshot](../../../../assets/devtools-browser-view.png)
+![Devtools Browser Screenshot](../../../assets/devtools-browser-view.png)
 
 Use the devtools to inspect the state of your LiveStore database, execute events, track performance, and more.
 

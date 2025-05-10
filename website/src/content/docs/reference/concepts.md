@@ -17,23 +17,23 @@ sidebar:
     - Store
     - Reactivity graph
     - Responsible for leader election
-- [Devtools](/docs/reference/devtools)
+- [Devtools](/reference/devtools)
 - Events
   - Event definition
   - Eventlog
   - Synced vs client-only events
 - Framework integration
   - A framework integration is a package that provides a way to integrate LiveStore with a framework (e.g. React, Solid, Svelte, etc.)
-- [Reactivity system](/docs/reference/reactivity-system)
+- [Reactivity system](/reference/reactivity-system)
   - Db queries `queryDb()`
   - Computed queries `computed()`
   - Signals `signal()`
 - Schema
   - LiveStore uses schema definitions for the following cases:
-    - [Event schema](/docs/reference/events/events-schema)
-    - [SQLite state schema](/docs/reference/state/sqlite-schema)
-    - [Query result schemas](/docs/reference/state/sql-queries)
-  - LiveStore uses the [Effect Schema module](/docs/patterns/effect) to define fine-granular schemas
+    - [Event schema](/reference/events/events-schema)
+    - [SQLite state schema](/reference/state/sqlite-schema)
+    - [Query result schemas](/reference/state/sql-queries)
+  - LiveStore uses the [Effect Schema module](/patterns/effect) to define fine-granular schemas
 - State
   - Derived from the eventlog via materializers
   - Materializer

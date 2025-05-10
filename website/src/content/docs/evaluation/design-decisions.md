@@ -16,7 +16,7 @@ sidebar:
 
 ## Major Design Decisions
 
-- Based on [event-sourcing](/docs/evaluation/event-sourcing) (implying a read/write model separation)
+- Based on [event-sourcing](/evaluation/event-sourcing) (implying a read/write model separation)
 - Using SQLite for state management over JavaScript implementations
   - There are many benefits to using SQLite for state management, including performance, reliability, and ease of use.
 - Run in-memory SQLite in main-thread to enable synchronous queries
