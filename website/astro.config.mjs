@@ -7,6 +7,7 @@ import clerk from '@clerk/astro'
 import { liveStoreVersion } from '@livestore/common'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
+import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
@@ -28,17 +29,17 @@ export default defineConfig({
   site,
   output: 'static',
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
-  experimental: process.env.NODE_ENV === 'production' ? { session: true } : undefined, // Required for Clerk+Netlify setup
+  // experimental: process.env.NODE_ENV === 'production' ? { session: true } : undefined, // Required for Clerk+Netlify setup
   integrations: [
     clerk(),
     react(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
-      social: {
-        github: 'https://github.com/livestorejs/livestore',
-        discord: DISCORD_INVITE_URL,
-        'x.com': 'https://x.com/livestoredev',
-      },
+      social: [
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/livestorejs/livestore' },
+        { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
+        { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
+      ],
 
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
@@ -152,6 +153,10 @@ export default defineConfig({
       },
     }),
   ],
+  redirects: {
+    '/getting-started': '/getting-started/react-web',
+    '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
+  },
   vite: {
     server: {
       fs: {
@@ -162,6 +167,11 @@ export default defineConfig({
     plugins: [tailwind()],
   },
   markdown: {
+    syntaxHighlight: {
+      type: 'shiki',
+      excludeLangs: ['mermaid', 'math'],
+    },
     remarkPlugins: [remarkCustomHeaderId],
+    rehypePlugins: [[rehypeMermaid, { strategy: 'img-svg', dark: true }]],
   },
 })

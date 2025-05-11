@@ -1,20 +1,22 @@
 ---
 title: 'ElectricSQL'
+sidebar:
+  order: 11
 ---
 
 ## Example
 
 See the [todomvc-sync-electric](https://github.com/livestorejs/livestore/tree/main/examples/src/web-todomvc-sync-electric) example.
 
-## How the sync backend works
+## How the sync provider works
 
-The initial version of the ElectricSQL sync backend will use the server-side Postgres DB as a store for the mutation event history.
+The initial version of the ElectricSQL sync provider will use the server-side Postgres DB as a store for the mutation event history.
 
 Events are stored in a table following the pattern `eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}` where `PERSISTENCE_FORMAT_VERSION` is a number that is incremented whenever the `sync-electric` internal storage format changes.
 
 ## F.A.Q.
 
-### Can I use my existing Postgres database with the sync backend?
+### Can I use my existing Postgres database with the sync provider?
 
 Unless the database is already modelled as a eventlog following the `@livestore/sync-electric` storage format, you won't be able to easily use your existing database with this sync backend implementation.
 

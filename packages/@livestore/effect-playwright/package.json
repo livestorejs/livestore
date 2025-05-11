@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "@types/node": "^22.13.10"
+    "@types/node": "^22.15.17"
   },
   "files": [
     "package.json",

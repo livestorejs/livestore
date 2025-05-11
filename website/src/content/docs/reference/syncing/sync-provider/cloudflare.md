@@ -1,10 +1,14 @@
 ---
 title: 'Cloudflare Workers'
+sidebar:
+  order: 10
 ---
+
+The `@livestore/sync-cf` package provides a LiveStore sync provider targeting Cloudflare Workers using Durable Objects (for websocket connections) and D1 (for persisting events).
 
 ## Example
 
-### Web adapter
+### Using the web adapter
 
 In your `livestore.worker.ts` file, you can use the `makeCfSync` function to create a sync backend.
 

@@ -35,6 +35,12 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
   args: MakeBackendArgs,
 ) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
 
+// TODO add more runtime sync metadata
+// - latency histogram
+// - number of events pushed/pulled
+// - dynamic sync backend data;
+//   - data center location (e.g. colo on CF workers)
+
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.

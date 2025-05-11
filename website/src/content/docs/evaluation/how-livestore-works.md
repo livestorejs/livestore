@@ -22,7 +22,7 @@ LiveStore uses event sourcing to sync events across clients and materialize stat
 
 WIP. See [Syncing](/reference/syncing/syncing) for more information.
 
-### Sync backend
+### Sync provider
 
 ### Conflict resolution
 

@@ -6,7 +6,9 @@ sidebar:
 
 ## How it works
 
-LiveStore is based on [the idea of event-sourcing](/evaluation/event-sourcing) which means it syncs mutation events across clients (via a central sync backend) and then applies the events to the local SQLite database. The syncing mechanism is similar to how Git works in that regard that it's based on a "push/pull" model. Upstream events always need to be pulled before a client can push its own mutation events to preserve a [global total order of events](https://medium.com/baseds/ordering-distributed-events-29c1dd9d1eff). Local pending events which haven't been pushed yet need to be rebased on top of the latest upstream events before they can be pushed.
+LiveStore is based on [the idea of event-sourcing](/evaluation/event-sourcing) which means it syncs events across clients (via a central sync backend) and then materializes the events in the local SQLite database. This means LiveStore isn't syncing the SQLite database itself directly but only the events that are used to materialize the database making sure it's kept in sync across clients.
+
+The syncing mechanism is similar to how Git works in that regard that it's based on a "push/pull" model. Upstream events always need to be pulled before a client can push its own events to preserve a [global total order of events](https://medium.com/baseds/ordering-distributed-events-29c1dd9d1eff). Local pending events which haven't been pushed yet need to be rebased on top of the latest upstream events before they can be pushed.
 
 <iframe src='https://www.tldraw.com/p/CWLjWxk0On_rAtjsJ4vt2?d=v-480.-234.2966.2441.RaypXEQgx30bxQnCcVFAG' style={{ height: '400px', width: '100%' }} />
 
@@ -25,17 +27,17 @@ A LiveStore event consists of the following data:
 
 ### Sync heads
 
-- The latest event in a mutation eventlog is referred to as the "head" (similar to how Git refers to the latest commit as the "head").
+- The latest event in a eventlog is referred to as the "head" (similar to how Git refers to the latest commit as the "head").
 - Given that LiveStore does hierarchical syncing between the client session, the client leader and the sync backend, there are three heads (i.e. the client session head, the client leader head, and the sync backend head).
 
 ## Sync backend
 
-The sync backend acts as the global authority and determines the total order of events ("causality"). It's responsible for storing and querying mutation events and for notifying clients when new events are available.
+The sync backend acts as the global authority and determines the total order of events ("causality"). It's responsible for storing and querying events and for notifying clients when new events are available.
 
 ### Requirements for sync backend
 
-- Needs to provide an efficient way to query an ordered list of mutation events given a starting event ID (often referred to as cursor).
-- Ideally provides a "reactivity" mechanism to notify clients when new mutation events are available (e.g. via WebSocket, HTTP long-polling, etc).
+- Needs to provide an efficient way to query an ordered list of events given a starting event ID (often referred to as cursor).
+- Ideally provides a "reactivity" mechanism to notify clients when new events are available (e.g. via WebSocket, HTTP long-polling, etc).
   - Alternatively, the client can periodically query for new events which is less efficient.
 
 ## Clients
@@ -58,10 +60,36 @@ The sync backend acts as the global authority and determines the total order of 
 
 ## Advanced
 
-### Example sequence diagram (TODO)
+### Sequence diagrams
+
+#### Pulling events (without unpushed events)
 
 ```mermaid
+sequenceDiagram
+    participant Client
+    participant Sync Backend
+    Client->>Sync Backend: `pull` request (head_cursor)
+    Sync Backend->>Sync Backend: Get new events (since head_cursor)
+    Sync Backend-->>Client: New events
+    activate Client
+    Note over Client: Client is in sync
+    deactivate Client
+```
 
+#### Pushing events
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Sync Backend
+
+    Client->>Client: Commits events
+    Client->>Sync Backend: `push` request (new_local_events)
+    activate Sync Backend
+    Sync Backend->>Sync Backend: Process push request (validate, persist)
+    Sync Backend-->>Client: Push Success
+    deactivate Sync Backend
+    Note over Client: Client is in sync
 ```
 
 ### Rebasing
@@ -78,7 +106,7 @@ The sync backend acts as the global authority and determines the total order of 
 
 ### Partitioning
 
-- Currently LiveStore assumes a 1:1 mapping between a mutation event log and a SQLite database.
+- Currently LiveStore assumes a 1:1 mapping between an eventlog and a SQLite database.
 - In the future, LiveStore aims to support multiple eventlogs (see [this issue](https://github.com/livestorejs/livestore/issues/255)).
 
 

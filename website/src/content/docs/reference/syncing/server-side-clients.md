@@ -1,5 +1,7 @@
 ---
 title: Server-side clients
+sidebar:
+  order: 20
 ---
 
 You can also use LiveStore on the server side e.g. via the `@livestore/adapter-node` adapter. This allows you to:

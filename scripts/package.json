@@ -10,7 +10,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@local/tests-integration": "workspace:*",
-    "@types/node": "^22.13.10",
+    "@types/node": "^22.15.17",
     "bun-types": "^1.2.4"
   }
 }

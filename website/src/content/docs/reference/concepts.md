@@ -47,8 +47,10 @@ sidebar:
   - A store exposes most of LiveStore's functionality to the application layer and is the main entry point for using LiveStore.
   - To create a store you need to provide a schema and a platform adapter which creates a client session.
   - A store is often created, managed and accessed through a framework integration (like React).
-- Sync backend
-  - A central server that is responsible for syncing the eventlog between clients
+- Sync provider
+  - A sync provider is a package that provides a sync backend and a sync client.
+  - Sync backend
+    - A central server that is responsible for syncing the eventlog between clients
 
 ### Implementation details
 
@@ -60,9 +62,9 @@ sidebar:
 
 ## Pluggable architecture
 
-LiveStore is pluggable in 3 ways:
+LiveStore is designed to be pluggable in various ways:
 
 - Platform adapters
-- Sync backends
+- Sync providers
 - Framework integrations
 
