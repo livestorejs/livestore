@@ -7,7 +7,7 @@ import {
   Effect,
   ManagedRuntime,
   Metric,
-  MetricState,
+  type MetricState,
   Option,
   ParseResult,
   Pretty,
@@ -245,7 +245,7 @@ export default class MeasurementsReporter implements Reporter {
 
             const isCi = yield* Config.boolean('CI').pipe(Config.withDefault(false))
             if (isCi) {
-              const commitSha = yield* Config.string('GITHUB_SHA')
+              const commitSha = yield* Config.string('COMMIT_SHA')
               const refName = yield* Config.string('GITHUB_REF_NAME')
               metric = metric.pipe(
                 Metric.tagged('github.commit_sha', commitSha),
