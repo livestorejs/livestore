@@ -74,6 +74,8 @@ pnpm test:profiler
 ## Future improvements
 
 ### General
+- [ ] Display the latest test results on the documentation website.
+  - To make this work, we would probably need to create a separate public grafana dashboard and panels due to the [Grafana limitations](https://grafana.com/docs/grafana/latest/dashboards/share-dashboards-panels/shared-dashboards/#limitations) around variables.
 - [ ] Automatically detect performance regressions and fail the workflow job on GitHub Actions if the performance is significantly degraded.
 - [ ] Being able to easily compare test results between branches on the dashboard.
 - [ ] Run the tests (on GitHub Actions) for old versions of LiveStore to see how the performance has changed between versions.
