@@ -80,7 +80,27 @@ const adapter = makeInMemoryAdapter({
 
 LiveStore currently only support OPFS to locally persist its data. In the future we might add support for other storage types (e.g. IndexedDB).
 
-LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads. 
+LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads.
+
+In case you want to reset the local persistence of a client, you can provide the `resetPersistence` option to the adapter.
+
+```ts
+// Example which resets the persistence when the URL contains a `reset` query param
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
+const adapter = makePersistedAdapter({
+  storage: { type: 'opfs' },
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+  resetPersistence
+})
+```
 
 ## Architecture diagram
 

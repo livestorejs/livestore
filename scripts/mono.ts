@@ -83,7 +83,11 @@ const websiteBuildCommand = Cli.Command.make(
   ({ apiDocs }) =>
     cmd('pnpm astro build', {
       cwd: `${process.env.WORKSPACE_ROOT}/website`,
-      env: { STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined },
+      env: {
+        STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
+        // Building the docs sometimes runs out of memory, so we give it more
+        NODE_OPTIONS: '--max_old_space_size=4096',
+      },
     }),
 )
 

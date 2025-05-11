@@ -4,9 +4,8 @@ import { getCollection } from 'astro:content'
 const docs = await getCollection(
   'docs',
   (entry) =>
-    entry.id.startsWith('docs/') &&
     // For now we're excluding the generated API docs
-    !entry.id.includes('docs/api'),
+    !entry.id.includes('api/'),
 )
 
 export const GET: APIRoute = async ({ site }) => {
@@ -19,6 +18,7 @@ ${docs
   .map((doc) => {
     const path = doc.id.replace(/\.(md|mdx)$/, '').replace(/\index$/, '')
     const url = new URL(path, site)
+    // TODO actually render the docs
     return `# [${doc.data.title}](${url.href}/)\n\n## Overview\n\n${doc.body}\n\n`
   })
   .join('')}
