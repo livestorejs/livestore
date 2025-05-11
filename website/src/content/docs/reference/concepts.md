@@ -18,7 +18,7 @@ sidebar:
     - Reactivity graph
     - Responsible for leader election
 - [Devtools](/reference/devtools)
-- Events
+- [Events](/reference/events)
   - Event definition
   - Eventlog
   - Synced vs client-only events
@@ -30,7 +30,7 @@ sidebar:
   - Signals `signal()`
 - Schema
   - LiveStore uses schema definitions for the following cases:
-    - [Event schema](/reference/events/events-schema)
+    - [Event definitions](/reference/events)
     - [SQLite state schema](/reference/state/sqlite-schema)
     - [Query result schemas](/reference/state/sql-queries)
   - LiveStore uses the [Effect Schema module](/patterns/effect) to define fine-granular schemas

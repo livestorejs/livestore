@@ -1,8 +1,6 @@
 ---
 title: Data Modeling
 description: How to model data in LiveStore.
-sidebar:
-  order: 9
 ---
 
 ## Core idea

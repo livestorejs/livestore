@@ -77,6 +77,16 @@ const lintCommand = Cli.Command.make(
   }),
 )
 
+const websiteBuildCommand = Cli.Command.make(
+  'build',
+  { apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)) },
+  ({ apiDocs }) =>
+    cmd('pnpm astro build', {
+      cwd: `${process.env.WORKSPACE_ROOT}/website`,
+      env: { STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined },
+    }),
+)
+
 const websiteCommand = Cli.Command.make('website').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make(
@@ -89,15 +99,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
           cwd: `${process.env.WORKSPACE_ROOT}/website`,
         }),
     ),
-    Cli.Command.make(
-      'build',
-      { apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)) },
-      ({ apiDocs }) =>
-        cmd('pnpm astro build', {
-          cwd: `${process.env.WORKSPACE_ROOT}/website`,
-          env: { STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined },
-        }),
-    ),
+    websiteBuildCommand,
     Cli.Command.make(
       'deploy',
       {
@@ -105,8 +107,13 @@ const websiteCommand = Cli.Command.make('website').pipe(
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
+        build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
       },
-      Effect.fn(function* ({ prod: prodOption, alias: aliasOption, site: siteOption }) {
+      Effect.fn(function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
+        if (shouldBuild) {
+          yield* websiteBuildCommand.handler({ apiDocs: true })
+        }
+
         const branchName = yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(
           Effect.map((branchName) => branchName.trim()),
         )

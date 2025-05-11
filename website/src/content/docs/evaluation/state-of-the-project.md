@@ -2,7 +2,7 @@
 title: State of the project
 description: A high-level overview of the current state of the project.
 sidebar:
-  order: 2
+  order: 4
 ---
 
 LiveStore is based on years of research (see [Riffle](https://riffle.systems/essays/prelude/)) and is used as the foundation for ambitious apps such as [Overtone](https://overtone.pro). LiveStore has been in development since 2021 and is getting closer to a stable release. LiveStore is not yet ready for production use but can already be used during development.
@@ -26,18 +26,20 @@ We try our best to minimize breaking changes and to provide a migration path whe
 
 See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more details. Get in touch if you have any questions or feedback.
 
-### Short-term
+### 2025 Q2
 
 - Rebase syncing protocol [#195](https://github.com/livestorejs/livestore/issues/195)
+- Support syncing in Expo adapter [#119](https://github.com/livestorejs/livestore/issues/119)
 - More testing
 
-### Mid-term
+### 2025 Q3
 
-- Support syncing in Expo adapter [#119](https://github.com/livestorejs/livestore/issues/119)
+- Adapter bug fixes & stability improvements
 - Performance improvements
+  - Syncing latency & throughput
 
 ### Long-term
 
-- Support more syncing backends
+- Support more syncing providers
 - Support more framework integrations
 - Support more platforms (e.g. Electron, Tauri)

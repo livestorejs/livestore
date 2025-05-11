@@ -1,0 +1,66 @@
+---
+title: Events
+sidebar:
+  order: 4
+---
+
+## Event definitions
+
+There are two types of events:
+
+- `synced`: Events that are synced across clients
+- `clientOnly`: Events that are only processed locally on the client (but still synced across client sessions e.g. across browser tabs/windows)
+
+An event definition consists of a unique name of the event and a schema for the event arguments. It's recommended to version event definitions to make it easier to evolve them over time.
+
+Events will be synced across clients and materialized into state (i.e. SQLite tables) via [materializers](/reference/state/materializers).
+
+### Example
+
+```ts
+// livestore/events.ts
+import { Events, Schema, sql } from '@livestore/livestore'
+
+export const todoCreated = Events.synced({
+  name: 'v1.TodoCreated',
+  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+})
+
+export const todoCompleted = Events.synced({
+  name: 'v1.TodoCompleted',
+  schema: Schema.Struct({ id: Schema.String }),
+})
+```
+
+### Best Practices
+
+- It's strongly recommended to use past-tense event names (e.g. `todoCreated`/`createdTodo` instead of `todoCreate`/`createTodo`) to indicate something already occurred.
+- TODO: write down more best practices
+- TODO: mention AI linting (either manually or via a CI step)
+  - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not
+- It's recommended to avoid `DELETE` events and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
+
+### Schema evolution
+
+- Event definitions can't be removed after they were added to your app.
+- Event schema definitions can be evolved as long as the changes are forward-compatible.
+  - That means data encoded with the old schema can be decoded with the new schema.
+  - In practice, this means ...
+    - for structs ...
+      - you can add new fields if they have default values or are optional
+      - you can remove fields
+
+## Commiting events
+
+```ts
+// somewhere in your app
+import * as events from './livestore/events.js'
+
+store.commit(
+	events.todoCreated({ id: '1', text: 'Buy milk' })
+)
+```
+
+## Eventlog
+
+The history of all events that have been committed is stored forms the "eventlog". It is persisted in the client as well as in the sync backend.

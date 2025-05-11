@@ -39,13 +39,34 @@ From this you might want to derive the following state (modeled as SQLite tables
   - `name`
   - `email`
 
+## Great use cases for LiveStore
+
+- High-performance desktop/web/mobile apps
+  - e.g. productivity apps like 
+- AI agents
+- Apps that need ...
+  - solid offline support
+  - audit logs
+
+## Benefits of LiveStore
+
+- Unified data layer combining local reactive state with globally synced data
+- Easy to ...
+  - reason about
+  - debug
+  - test
+  - evolve
+  - operate
+
 ## Reasons when not to use LiveStore
 
 - You have an existing database which is the source of truth of your data. (Better use [Zero](https://zero.rocicorp.dev) or [ElectricSQL](https://www.electricsql.com) for this.)
+- Your app data is highly connected across users (like a social network / marketplace / etc.) or modeling your data via read-write model separation/event sourcing doesn't seem feasible.
 - You want to build a more traditional client-server application with your primary data source being a remote server.
 - You want a full-stack batteries-included solution (e.g. auth, storage, etc.). (Technologies like [Jazz](https://jazz.tools) or [Instant](https://instantdb.com) might be a better fit.)
 - You don't like to model your data via read-write model separation/event sourcing or the trade-offs it involves.
 - You're a new developer and are just getting started. LiveStore is a relatively advanced technology with many design trade-offs that might make most sense after you have already experienced some of the problems LiveStore is trying to solve.
+- You want to keep your app bundle size as small as possible. LiveStore adds a few hundred kB to your app bundle size (mostly due to bundling SQLite).
 
 ## Considerations
 

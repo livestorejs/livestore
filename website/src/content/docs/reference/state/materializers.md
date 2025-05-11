@@ -4,7 +4,7 @@ sidebar:
   order: 4
 ---
 
-Materializers are functions that allow you to write to your database in response to events.
+Materializers are functions that allow you to write to your database in response to events. Materializers are executed in the order of the events in the eventlog.
 
 ## Example
 
@@ -91,5 +91,3 @@ const materializers = State.SQLite.materializers(events, {
 
 store.commit(events.todoCreated({ id: crypto.randomUUID(), text: 'Buy groceries' }))
 ```
-
-### Performance

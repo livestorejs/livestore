@@ -2,7 +2,7 @@
 title: Design Decisions
 description: Design decisions and trade-offs made in the development of LiveStore
 sidebar:
-  order: 1
+  order: 10
 ---
 
 ## Goals
