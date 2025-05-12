@@ -124,6 +124,10 @@ export default defineConfig({
           autogenerate: { directory: 'evaluation' },
         },
         {
+          label: 'Data Modeling',
+          autogenerate: { directory: 'data-modeling' },
+        },
+        {
           label: 'Reference',
           autogenerate: { directory: 'reference' },
         },
