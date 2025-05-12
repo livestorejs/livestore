@@ -118,9 +118,18 @@ const websiteCommand = Cli.Command.make('website').pipe(
           yield* websiteBuildCommand.handler({ apiDocs: true })
         }
 
-        const branchName = yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(
-          Effect.map((branchName) => branchName.trim()),
-        )
+        const branchName = yield* Effect.gen(function* () {
+          if (isGithubAction) {
+            const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
+            if (branchFromEnv !== undefined && branchFromEnv !== '') {
+              return branchFromEnv
+            }
+            yield* Effect.logWarning(
+              'Could not determine branch name from GITHUB_HEAD_REF or GITHUB_REF_NAME in GitHub Actions. Falling back to git command.',
+            )
+          }
+          return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
+        })
 
         // TODO rename to `/docs`
         const websitePath = `${process.env.WORKSPACE_ROOT}/website`
