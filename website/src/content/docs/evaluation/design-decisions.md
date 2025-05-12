@@ -26,6 +26,11 @@ sidebar:
 - LiveStore implements a Signals-based reactivity system based on the ideas of Adapton for incremental computation
 - The goal is to keep LiveStore syncing provider agnostic so you can use the right syncing provider for your use case.
 
+## Implementation decisions
+
+- Build most of the library in TypeScript. We might move more parts to Rust in the future.
+- Embrace and build on top of [Effect](https://effect.website) as a library of powerful primitives, particularly for IO/concurrency heavy parts of the library.
+
 ## Original motivation
 
 - Frustration with database schema migrations -> event sourcing to separate read and write model (avoid schema migrations for read model)

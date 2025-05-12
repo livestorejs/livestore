@@ -26,7 +26,7 @@ export const eventlogTable = State.SQLite.table({
     seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     name: State.SQLite.text({}),
-    args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any) }),
+    args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any), nullable: true }),
     /** ISO date format. Currently only used for debugging purposes. */
     createdAt: State.SQLite.text({}),
     clientId: State.SQLite.text({}),
@@ -269,6 +269,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           attributes: { requestId },
         }),
         Effect.tapCauseLogPretty,
+        Effect.tapErrorCause((cause) =>
+          Effect.sync(() =>
+            ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: cause.toString(), requestId }))),
+          ),
+        ),
         Logger.withMinimumLogLevel(LogLevel.Debug),
         Effect.provide(Logger.prettyWithThread('durable-object')),
         Effect.runPromise,
@@ -360,7 +365,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
         const params = chunk.flatMap((event) => [
           event.seqNum,
           event.parentSeqNum,
-          JSON.stringify(event.args),
+          event.args === undefined ? null : JSON.stringify(event.args),
           event.name,
           createdAt,
           event.clientId,

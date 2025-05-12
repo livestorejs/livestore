@@ -9,8 +9,9 @@ import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
-import starlightAutoSidebar from 'starlight-auto-sidebar'
+// import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
+import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 
 import { DISCORD_INVITE_URL } from '../CONSTANTS.js'
@@ -20,8 +21,14 @@ if (!process.env.PUBLIC_CLERK_PUBLISHABLE_KEY) {
   console.warn('PUBLIC_CLERK_PUBLISHABLE_KEY is not set')
 }
 
+const port = 5252
+
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
-const domain = process.env.DEPLOY_PRIME_URL ? new URL(process.env.DEPLOY_PRIME_URL).hostname : 'livestore.dev'
+const domain = process.env.DEPLOY_PRIME_URL
+  ? new URL(process.env.DEPLOY_PRIME_URL).hostname
+  : process.env.NODE_ENV === 'production'
+    ? 'livestore.dev'
+    : `localhost:${port}`
 
 const site = `https://${domain}`
 
@@ -29,6 +36,7 @@ const site = `https://${domain}`
 export default defineConfig({
   site,
   output: 'static',
+  server: { port },
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   // experimental: process.env.NODE_ENV === 'production' ? { session: true } : undefined, // Required for Clerk+Netlify setup
   integrations: [
@@ -48,10 +56,147 @@ export default defineConfig({
       editLink: {
         baseUrl: `https://github.com/livestorejs/livestore/edit/${getBranchName()}/website/`,
       },
+      routeMiddleware: './src/routeMiddleware.ts',
       plugins: [
+        starlightSidebarTopics([
+          {
+            label: 'Docs',
+            link: '/',
+            icon: 'open-book',
+            items: [
+              'index',
+              {
+                label: 'Getting Started',
+                autogenerate: { directory: 'getting-started' },
+              },
+              {
+                label: 'Evaluating LiveStore',
+                autogenerate: { directory: 'evaluation' },
+              },
+              {
+                label: 'Data Modeling',
+                autogenerate: { directory: 'data-modeling' },
+              },
+              // TODO bring back when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
+              // Until when we're manually maintaining the sidebar for reference
+              // {
+              //   label: 'Reference',
+              //   autogenerate: { directory: 'reference' },
+              // },
+              {
+                label: 'Reference',
+                items: [
+                  'reference/concepts',
+                  'reference/store',
+                  'reference/reactivity-system',
+                  'reference/events',
+                  'reference/devtools',
+                  'reference/debugging',
+                  'reference/opentelemetry',
+                  { label: 'State', autogenerate: { directory: 'reference/state' } },
+                  {
+                    label: 'Syncing',
+                    items: [
+                      'reference/syncing',
+                      'reference/syncing/server-side-clients',
+                      { label: 'Sync Provider', autogenerate: { directory: 'reference/syncing/sync-provider' } },
+                    ],
+                  },
+                  { label: 'Platform Adapters', autogenerate: { directory: 'reference/platform-adapters' } },
+                  { label: 'Framework Integrations', autogenerate: { directory: 'reference/framework-integrations' } },
+                ],
+              },
+              {
+                label: 'Patterns',
+                autogenerate: { directory: 'patterns' },
+              },
+              {
+                label: 'Miscellaneous',
+                autogenerate: { directory: 'misc' },
+              },
+              {
+                label: 'Changelog',
+                link: '/changelog',
+              },
+              {
+                label: 'Contributing',
+                autogenerate: { directory: 'contributing' },
+              },
+            ],
+          },
+          {
+            label: 'API',
+            link: '/api/',
+            icon: 'forward-slash',
+
+            items: [
+              'api', // 'api/index.mdx'
+              {
+                label: '@livestore/livestore',
+                autogenerate: { directory: 'api/livestore' },
+                collapsed: true,
+              },
+              {
+                label: '@livestore/react',
+                autogenerate: { directory: 'api/react' },
+                collapsed: true,
+              },
+              {
+                label: 'Adapters',
+                items: [
+                  {
+                    label: '@livestore/adapter-web',
+                    autogenerate: { directory: 'api/adapter-web' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/adapter-node',
+                    autogenerate: { directory: 'api/adapter-node' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/adapter-expo',
+                    autogenerate: { directory: 'api/adapter-expo' },
+                    collapsed: true,
+                  },
+                ],
+              },
+              {
+                label: 'Syncing',
+                items: [
+                  {
+                    label: '@livestore/sync-cf',
+                    autogenerate: { directory: 'api/sync-cf' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/sync-electric',
+                    autogenerate: { directory: 'api/sync-electric' },
+                    collapsed: true,
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            label: 'Examples',
+            link: '/examples/',
+            icon: 'rocket',
+            items: [
+              'examples', // 'examples/index.mdx'
+              {
+                label: 'Web',
+                autogenerate: { directory: 'examples/web-*' },
+              },
+            ],
+          },
+        ]),
+
         // Used to adjust the order of sidebar items
         // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
-        starlightAutoSidebar(),
+        // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
+        // starlightAutoSidebar(),
+
         // Only runs on `astro build`
         starlightLinksValidator({
           // `exclude` specifies the links to be excluded, not the files that contain the links
@@ -105,53 +250,6 @@ export default defineConfig({
               }),
             ]
           : []),
-      ],
-
-      sidebar: [
-        // {
-        // 	label: 'Guides',
-        // 	items: [
-        // 		// Each item here is one entry in the navigation menu.
-        // 		{ label: 'Example Guide', link: '/guides/example/' },
-        // 	],
-        // },
-        {
-          label: 'Getting Started',
-          autogenerate: { directory: 'getting-started' },
-        },
-        {
-          label: 'Evaluating LiveStore',
-          autogenerate: { directory: 'evaluation' },
-        },
-        {
-          label: 'Data Modeling',
-          autogenerate: { directory: 'data-modeling' },
-        },
-        {
-          label: 'Reference',
-          autogenerate: { directory: 'reference' },
-        },
-        {
-          label: 'Patterns',
-          autogenerate: { directory: 'patterns' },
-        },
-        {
-          label: 'Miscellaneous',
-          autogenerate: { directory: 'misc' },
-        },
-        {
-          label: 'Changelog',
-          link: '/changelog',
-        },
-        {
-          label: 'API Reference (generated)',
-          autogenerate: { directory: 'api' },
-          collapsed: true,
-        },
-        {
-          label: 'Contributing',
-          autogenerate: { directory: 'contributing' },
-        },
       ],
       customCss: ['./src/tailwind.css'],
       logo: {
