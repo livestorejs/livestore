@@ -14,6 +14,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightTypeDoc from 'starlight-typedoc'
 
 import { DISCORD_INVITE_URL } from '../CONSTANTS.js'
+import { getBranchName } from './data.js'
 
 if (!process.env.PUBLIC_CLERK_PUBLISHABLE_KEY) {
   console.warn('PUBLIC_CLERK_PUBLISHABLE_KEY is not set')
@@ -43,6 +44,9 @@ export default defineConfig({
 
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
+      },
+      editLink: {
+        baseUrl: `https://github.com/livestorejs/livestore/edit/${getBranchName()}/website/`,
       },
       plugins: [
         // Used to adjust the order of sidebar items

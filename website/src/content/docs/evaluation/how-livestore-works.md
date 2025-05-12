@@ -46,13 +46,14 @@ When concurrent operations from different clients lead to conflicting events, Li
 
 #### Overall Syncing Data Flow
 
-1.  A local event is committed, persisted, materialized, and triggers UI updates as per the client-side flow.
-2.  The client pulls the latest events from the sync backend and rebases any local, unpushed events.
-3.  The (rebased) local event is then asynchronously pushed to the sync provider.
-4.  The sync provider relays the event to other connected clients.
-5.  Receiving clients pull this event, persist it to their local eventlog, materialize the change into their SQLite database, and their UIs react to the new state.
+After a local event is committed and materialized (as per the client-side flow), LiveStore attempts to push this event to the sync backend. Simultaneously, LiveStore is pulling events from the sync backend in the background.
 
-This cycle ensures that all clients eventually converge to a consistent application state.
+Two main scenarios can occur during a push attempt:
+
+1.  **Client In Sync:** If the client's local eventlog is already up-to-date with the sync backend (i.e., no new remote events have arrived since the last pull/push), the local event is pushed directly.
+2.  **Concurrent Incoming Events:** If new remote events have been pulled in the background, or are discovered during the push attempt, the client first processes these incoming remote events. Any local, unpushed events are then rebased on top of these new remote events before being pushed to the sync backend.
+
+In both scenarios, once remote events are received (either through background pulling or during a push cycle), they are persisted to the local eventlog, materialized into the local SQLite database, and the UI reacts to the new state, ensuring eventual consistency.
 
 ## Platform Adapters
 
