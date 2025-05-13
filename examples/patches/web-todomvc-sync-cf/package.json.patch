@@ -27,7 +27,7 @@
      "@overengineering/fps-meter": "0.1.2",
      "react": "19.0.0",
      "react-dom": "19.0.0",
-@@ -31,7 +35,7 @@
+@@ -34,7 +38,7 @@
      "build:analyze": "VITE_ANALYZE=1 run build",
      "dev": "concurrently \"pnpm run dev:vite\" \"pnpm run dev:wrangler\"",
      "dev:vite": "vite --force",

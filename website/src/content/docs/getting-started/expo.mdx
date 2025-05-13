@@ -7,6 +7,7 @@ sidebar:
 
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 import { makeTiged } from '../../../../data.js'
+import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
 import babelConfigCode from '../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
 import eventsCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
@@ -25,6 +26,9 @@ export const CODE = {
 }
 
 ### Prerequisites
+
+- Recommended: Bun 1.2 or higher
+- Node.js {MIN_NODE_VERSION} or higher
 
 To use [LiveStore](/) with [Expo](https://docs.expo.dev/), ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates.
 

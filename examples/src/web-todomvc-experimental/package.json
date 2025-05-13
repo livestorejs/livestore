@@ -23,6 +23,9 @@
     "typescript": "^5.8.3",
     "vite": "^6.3.4"
   },
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",

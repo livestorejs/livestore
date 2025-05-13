@@ -23,11 +23,15 @@ if (!process.env.PUBLIC_CLERK_PUBLISHABLE_KEY) {
 
 const port = 5252
 
+const branch = getBranchName()
+
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain = process.env.DEPLOY_PRIME_URL
   ? new URL(process.env.DEPLOY_PRIME_URL).hostname
   : process.env.NODE_ENV === 'production'
-    ? 'livestore.dev'
+    ? branch === 'main'
+      ? 'docs.livestore.dev'
+      : 'dev.docs.livestore.dev'
     : `localhost:${port}`
 
 const site = `https://${domain}`
@@ -45,9 +49,10 @@ export default defineConfig({
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/livestorejs/livestore' },
+        { icon: 'github', label: 'GitHub', href: `https://github.com/livestorejs/livestore/tree/${branch}` },
         { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
         { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
+        { icon: 'blueSky', label: 'Bluesky', href: 'https://bsky.app/profile/livestore.dev' },
       ],
 
       components: {

@@ -56,6 +56,9 @@
     "react-test-renderer": "^19.0.0",
     "typescript": "^5.8.3"
   },
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "main": "expo-router/entry",
   "resolutions": {
     "@react-navigation/native": "7.1.6"

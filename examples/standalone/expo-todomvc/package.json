@@ -29,6 +29,9 @@
     "eas-cli": "^16.3.1",
     "typescript": "^5.8.3"
   },
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "main": "./src/AppEntry.ts",
   "scripts": {
     "android": "expo start --clear --android",

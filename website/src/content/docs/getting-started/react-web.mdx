@@ -8,6 +8,7 @@ sidebar:
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeTiged } from '../../../../data.js'
+import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
 import viteConfigCode from '../../../../../examples/standalone/web-todomvc/vite.config.js?raw'
 import eventsCode from '../../../../../examples/standalone/web-todomvc/src/livestore/events.ts?raw'
 import schemaCode from '../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
@@ -25,6 +26,11 @@ export const CODE = {
   header: headerCode,
   mainSection: mainSectionCode,
 }
+
+## Prerequisites
+
+- Recommended: Bun 1.2 or higher
+- Node.js {MIN_NODE_VERSION} or higher
 
 ### Option A: Quick start
 

@@ -26,6 +26,9 @@
     "vite": "^6.3.4",
     "wrangler": "^4.0.0"
   },
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",

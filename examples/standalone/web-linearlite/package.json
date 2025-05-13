@@ -60,6 +60,9 @@
     "vite": "^6.3.4",
     "vite-plugin-svgr": "^4.3.0"
   },
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite --force",
