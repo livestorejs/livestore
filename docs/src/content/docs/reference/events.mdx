@@ -18,18 +18,19 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 ### Example
 
 ```ts
-// livestore/events.ts
+// livestore/schema.ts
 import { Events, Schema, sql } from '@livestore/livestore'
 
-export const todoCreated = Events.synced({
-  name: 'v1.TodoCreated',
-  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-})
-
-export const todoCompleted = Events.synced({
-  name: 'v1.TodoCompleted',
-  schema: Schema.Struct({ id: Schema.String }),
-})
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'v1.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+}
 ```
 
 ### Best Practices
@@ -54,7 +55,7 @@ export const todoCompleted = Events.synced({
 
 ```ts
 // somewhere in your app
-import * as events from './livestore/events.js'
+import { events } from './livestore/schema.js'
 
 store.commit(
 	events.todoCreated({ id: '1', text: 'Buy milk' })
