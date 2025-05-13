@@ -96,6 +96,87 @@ importers:
         specifier: ^3.1.2
         version: 3.1.2(@types/debug@4.1.12)(@types/node@22.15.17)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
 
+  docs:
+    dependencies:
+      '@astrojs/check':
+        specifier: 0.9.4
+        version: 0.9.4(prettier@3.5.3)(typescript@5.8.3)
+      '@astrojs/netlify':
+        specifier: 6.3.2
+        version: 6.3.2(@types/node@22.15.17)(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
+      '@astrojs/react':
+        specifier: 4.2.7
+        version: 4.2.7(@types/node@22.15.17)(@types/react-dom@19.0.4(@types/react@19.1.2))(@types/react@19.1.2)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
+      '@astrojs/starlight':
+        specifier: 0.34.3
+        version: 0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))
+      '@astrojs/starlight-tailwind':
+        specifier: 4.0.1
+        version: 4.0.1(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))(tailwindcss@4.1.6)
+      '@clerk/astro':
+        specifier: 2.7.2
+        version: 2.7.2(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react':
+        specifier: 5.31.2
+        version: 5.31.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../packages/@livestore/common
+      '@tailwindcss/vite':
+        specifier: 4.1.6
+        version: 4.1.6(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
+      '@types/react':
+        specifier: 19.1.2
+        version: 19.1.2
+      astro:
+        specifier: 5.7.12
+        version: 5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)
+      astro-og-canvas:
+        specifier: 0.7.0
+        version: 0.7.0(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))
+      canvaskit-wasm:
+        specifier: 0.40.0
+        version: 0.40.0
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: 19.0.0
+        version: 19.0.0(react@19.0.0)
+      rehype-mermaid:
+        specifier: 3.0.0
+        version: 3.0.0(playwright@1.52.0)
+      remark-custom-header-id:
+        specifier: 1.0.0
+        version: 1.0.0
+      sharp:
+        specifier: 0.34.1
+        version: 0.34.1
+      starlight-auto-sidebar:
+        specifier: 0.1.1
+        version: 0.1.1(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
+      starlight-links-validator:
+        specifier: 0.16.0
+        version: 0.16.0(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
+      starlight-sidebar-topics:
+        specifier: 0.6.0
+        version: 0.6.0(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
+      starlight-typedoc:
+        specifier: 0.21.3
+        version: 0.21.3(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))(typedoc-plugin-markdown@4.6.3(typedoc@0.28.4(typescript@5.8.3)))(typedoc@0.28.4(typescript@5.8.3))
+      tailwindcss:
+        specifier: 4.1.6
+        version: 4.1.6
+      typedoc:
+        specifier: 0.28.4
+        version: 0.28.4(typescript@5.8.3)
+      typedoc-plugin-markdown:
+        specifier: 4.6.3
+        version: 4.6.3(typedoc@0.28.4(typescript@5.8.3))
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   examples/src/expo-linearlite:
     dependencies:
       '@expo/vector-icons':
@@ -2322,87 +2403,6 @@ importers:
         specifier: 6.3.4
         version: 6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
 
-  website:
-    dependencies:
-      '@astrojs/check':
-        specifier: 0.9.4
-        version: 0.9.4(prettier@3.5.3)(typescript@5.8.3)
-      '@astrojs/netlify':
-        specifier: 6.3.2
-        version: 6.3.2(@types/node@22.15.17)(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
-      '@astrojs/react':
-        specifier: 4.2.7
-        version: 4.2.7(@types/node@22.15.17)(@types/react-dom@19.0.4(@types/react@19.1.2))(@types/react@19.1.2)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
-      '@astrojs/starlight':
-        specifier: 0.34.3
-        version: 0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))
-      '@astrojs/starlight-tailwind':
-        specifier: 4.0.1
-        version: 4.0.1(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))(tailwindcss@4.1.6)
-      '@clerk/astro':
-        specifier: 2.7.2
-        version: 2.7.2(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/clerk-react':
-        specifier: 5.31.2
-        version: 5.31.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../packages/@livestore/common
-      '@tailwindcss/vite':
-        specifier: 4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
-      '@types/react':
-        specifier: 19.1.2
-        version: 19.1.2
-      astro:
-        specifier: 5.7.12
-        version: 5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)
-      astro-og-canvas:
-        specifier: 0.7.0
-        version: 0.7.0(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1))
-      canvaskit-wasm:
-        specifier: 0.40.0
-        version: 0.40.0
-      react:
-        specifier: 19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: 19.0.0
-        version: 19.0.0(react@19.0.0)
-      rehype-mermaid:
-        specifier: 3.0.0
-        version: 3.0.0(playwright@1.52.0)
-      remark-custom-header-id:
-        specifier: 1.0.0
-        version: 1.0.0
-      sharp:
-        specifier: 0.34.1
-        version: 0.34.1
-      starlight-auto-sidebar:
-        specifier: 0.1.1
-        version: 0.1.1(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
-      starlight-links-validator:
-        specifier: 0.16.0
-        version: 0.16.0(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
-      starlight-sidebar-topics:
-        specifier: 0.6.0
-        version: 0.6.0(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))
-      starlight-typedoc:
-        specifier: 0.21.3
-        version: 0.21.3(@astrojs/starlight@0.34.3(astro@5.7.12(@netlify/blobs@8.2.0)(@types/node@22.15.17)(db0@0.2.4)(ioredis@5.5.0)(jiti@2.4.2)(lightningcss@1.29.2)(rollup@4.35.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.7.1)))(typedoc-plugin-markdown@4.6.3(typedoc@0.28.4(typescript@5.8.3)))(typedoc@0.28.4(typescript@5.8.3))
-      tailwindcss:
-        specifier: 4.1.6
-        version: 4.1.6
-      typedoc:
-        specifier: 0.28.4
-        version: 0.28.4(typescript@5.8.3)
-      typedoc-plugin-markdown:
-        specifier: 4.6.3
-        version: 4.6.3(typedoc@0.28.4(typescript@5.8.3))
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-
 packages:
 
   '@0no-co/graphql.web@1.1.1':
@@ -2431,9 +2431,6 @@ packages:
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
-
-  '@astrojs/compiler@2.10.4':
-    resolution: {integrity: sha512-86B3QGagP99MvSNwuJGiYSBHnh8nLvm2Q1IFI15wIUJJsPeQTO3eb2uwBmrqRsXykeR/mBzH8XCgz5AAt1BJrQ==}
 
   '@astrojs/compiler@2.12.0':
     resolution: {integrity: sha512-7bCjW6tVDpUurQLeKBUN9tZ5kSv5qYrGmcn0sG0IwacL7isR2ZbyyA3AdZ4uxsuUFOS2SlgReTH7wkxO6zpqWA==}
@@ -3417,9 +3414,6 @@ packages:
 
   '@emmetio/stream-reader@2.2.0':
     resolution: {integrity: sha512-fXVXEyFA5Yv3M3n8sUGT7+fvecGrZP4k6FnWWMSZVQf69kAq0LLpaBQLGcPR30m3zMmKYhECP4k/ZkzvhEW5kw==}
-
-  '@emnapi/runtime@1.3.1':
-    resolution: {integrity: sha512-kEBmG8KyqtxJZv+ygbEim+KCGtIq1fC22Ms3S4ziXmYKm8uyoLX0MHONVKwp+9opg390VaKRNt4a7A9NwmpNhw==}
 
   '@emnapi/runtime@1.4.3':
     resolution: {integrity: sha512-pBPWdu6MLKROBX05wSNKcNb++m5Er+KQ9QkB+WVM+pW2Kx9hoSrVTnu3BdkI5eBLZoKu/J6mW/B6i6bJB2ytXQ==}
@@ -8111,10 +8105,6 @@ packages:
     resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
     engines: {node: '>=0.10'}
     hasBin: true
-
-  detect-libc@2.0.3:
-    resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
-    engines: {node: '>=8'}
 
   detect-libc@2.0.4:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
@@ -14326,15 +14316,13 @@ snapshots:
       - prettier
       - prettier-plugin-astro
 
-  '@astrojs/compiler@2.10.4': {}
-
   '@astrojs/compiler@2.12.0': {}
 
   '@astrojs/internal-helpers@0.6.1': {}
 
   '@astrojs/language-server@2.15.4(prettier@3.5.3)(typescript@5.8.3)':
     dependencies:
-      '@astrojs/compiler': 2.10.4
+      '@astrojs/compiler': 2.12.0
       '@astrojs/yaml2ts': 0.2.2
       '@jridgewell/sourcemap-codec': 1.5.0
       '@volar/kit': 2.4.11(typescript@5.8.3)
@@ -14516,7 +14504,7 @@ snapshots:
 
   '@astrojs/yaml2ts@0.2.2':
     dependencies:
-      yaml: 2.7.0
+      yaml: 2.7.1
 
   '@babel/code-frame@7.10.4':
     dependencies:
@@ -15545,11 +15533,6 @@ snapshots:
 
   '@emmetio/stream-reader@2.2.0': {}
 
-  '@emnapi/runtime@1.3.1':
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
   '@emnapi/runtime@1.4.3':
     dependencies:
       tslib: 2.8.1
@@ -16542,7 +16525,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.33.5':
     dependencies:
-      '@emnapi/runtime': 1.3.1
+      '@emnapi/runtime': 1.4.3
     optional: true
 
   '@img/sharp-wasm32@0.34.1':
@@ -16731,7 +16714,7 @@ snapshots:
 
   '@mapbox/node-pre-gyp@1.0.11':
     dependencies:
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
       https-proxy-agent: 5.0.1
       make-dir: 3.1.0
       node-fetch: 2.7.0
@@ -16747,7 +16730,7 @@ snapshots:
   '@mapbox/node-pre-gyp@2.0.0':
     dependencies:
       consola: 3.4.0
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
       https-proxy-agent: 7.0.6(supports-color@9.4.0)
       node-fetch: 2.7.0
       nopt: 8.1.0
@@ -20391,8 +20374,8 @@ snapshots:
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.0
       '@rollup/pluginutils': 5.1.4(rollup@4.35.0)
-      acorn: 8.14.0
-      acorn-import-attributes: 1.9.5(acorn@8.14.0)
+      acorn: 8.14.1
+      acorn-import-attributes: 1.9.5(acorn@8.14.1)
       async-sema: 3.1.1
       bindings: 1.5.0
       estree-walker: 2.0.2
@@ -20606,17 +20589,9 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
-  acorn-import-attributes@1.9.5(acorn@8.14.0):
-    dependencies:
-      acorn: 8.14.0
-
   acorn-import-attributes@1.9.5(acorn@8.14.1):
     dependencies:
       acorn: 8.14.1
-
-  acorn-jsx@5.3.2(acorn@8.14.0):
-    dependencies:
-      acorn: 8.14.0
 
   acorn-jsx@5.3.2(acorn@8.14.1):
     dependencies:
@@ -22172,8 +22147,6 @@ snapshots:
 
   detect-libc@1.0.3: {}
 
-  detect-libc@2.0.3: {}
-
   detect-libc@2.0.4: {}
 
   detect-newline@4.0.1: {}
@@ -22971,8 +22944,8 @@ snapshots:
 
   espree@9.6.1:
     dependencies:
-      acorn: 8.14.0
-      acorn-jsx: 5.3.2(acorn@8.14.0)
+      acorn: 8.14.1
+      acorn-jsx: 5.3.2(acorn@8.14.1)
       eslint-visitor-keys: 3.4.3
 
   esprima@4.0.1: {}
@@ -24943,7 +24916,7 @@ snapshots:
 
   lightningcss@1.29.2:
     dependencies:
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
     optionalDependencies:
       lightningcss-darwin-arm64: 1.29.2
       lightningcss-darwin-x64: 1.29.2
@@ -26201,7 +26174,7 @@ snapshots:
 
   node-gyp-build-optional-packages@5.2.2:
     dependencies:
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
     optional: true
 
   node-gyp-build@4.8.4: {}
@@ -28065,7 +28038,7 @@ snapshots:
   sharp@0.33.5:
     dependencies:
       color: 4.2.3
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
       semver: 7.7.1
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.33.5
@@ -28092,7 +28065,7 @@ snapshots:
   sharp@0.34.1:
     dependencies:
       color: 4.2.3
-      detect-libc: 2.0.3
+      detect-libc: 2.0.4
       semver: 7.7.1
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.1
@@ -28642,7 +28615,7 @@ snapshots:
   terser@5.39.0:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.0
+      acorn: 8.14.1
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -28942,7 +28915,7 @@ snapshots:
 
   unctx@2.4.1:
     dependencies:
-      acorn: 8.14.0
+      acorn: 8.14.1
       estree-walker: 3.0.3
       magic-string: 0.30.17
       unplugin: 2.2.0
@@ -29103,7 +29076,7 @@ snapshots:
 
   unplugin@2.2.0:
     dependencies:
-      acorn: 8.14.0
+      acorn: 8.14.1
       webpack-virtual-modules: 0.6.2
 
   unstorage@1.15.0(@netlify/blobs@8.2.0)(db0@0.2.4)(ioredis@5.5.0):
