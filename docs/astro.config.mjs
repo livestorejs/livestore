@@ -59,7 +59,7 @@ export default defineConfig({
         SocialIcons: './src/components/SocialIcons.astro',
       },
       editLink: {
-        baseUrl: `https://github.com/livestorejs/livestore/edit/${getBranchName()}/website/`,
+        baseUrl: `https://github.com/livestorejs/livestore/edit/${getBranchName()}/docs/`,
       },
       routeMiddleware: './src/routeMiddleware.ts',
       plugins: [

@@ -32,18 +32,18 @@
       }
     },
     {
-      "label": "dev:website",
+      "label": "dev:docs",
       "type": "shell",
       "command": "direnv exec . pnpm dev",
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/website"
+        "cwd": "${workspaceFolder}/docs"
       },
       "presentation": {
         "focus": false,
         "panel": "shared",
-        "group": "website",
+        "group": "docs",
         "showReuseMessage": false,
         "clear": false
       }

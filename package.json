@@ -61,8 +61,6 @@
     "build:examples:standalone": "pnpm --filter 'livestore-example-standalone-*' run build",
     "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
-    "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0 && syncpack lint",
-    "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "release:dev": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish  --tag dev --no-git-checks",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",

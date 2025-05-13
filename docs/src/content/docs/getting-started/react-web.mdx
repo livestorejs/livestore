@@ -10,7 +10,6 @@ import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeTiged } from '../../../../data.js'
 import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
 import viteConfigCode from '../../../../../examples/standalone/web-todomvc/vite.config.js?raw'
-import eventsCode from '../../../../../examples/standalone/web-todomvc/src/livestore/events.ts?raw'
 import schemaCode from '../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
 import workerCode from '../../../../../examples/standalone/web-todomvc/src/livestore.worker.ts?raw'
 import rootCode from '../../../../../examples/standalone/web-todomvc/src/Root.tsx?raw'
@@ -19,7 +18,6 @@ import mainSectionCode from '../../../../../examples/standalone/web-todomvc/src/
 
 export const CODE = {
   viteConfig: viteConfigCode,
-  events: eventsCode,
   schema: schemaCode,
   worker: workerCode,
   root: rootCode,
@@ -129,25 +127,11 @@ For existing projects, see [Existing project setup](#existing-project-setup).
    <Code code={viteConfigCode} lang="js" title="vite.config.js" />
 </Steps>
 
-## Events
+## Define Your Schema
 
-Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
+Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
 
-Use the `Events` and `Schema` modules from `@livestore/livestore` to define your events.
-
-Here's an example:
-
-<Code code={eventsCode} lang="ts" title="src/livestore/events.ts" />
-
-## Define your schema
-
-To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
-
-- In `src`, create a `livestore` folder and inside it create a file named `schema.ts`. This file defines the tables and data structures for your app.
-
-- In `schema.ts`, define a table to represent a data model, such as a `todos`.
-
-Here's an example:
+Here's an example schema:
 
 <Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
 
@@ -159,7 +143,7 @@ Create a file named `livestore.worker.ts` inside the `src/livestore` folder. Thi
 
 ## Add the LiveStore Provider
 
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app's data store, loading, and error states.
 
 Here's an example:
 

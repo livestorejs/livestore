@@ -10,7 +10,6 @@ import { makeTiged } from '../../../../data.js'
 import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
 import babelConfigCode from '../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
-import eventsCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/events.ts?raw'
 import schemaCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/schema.ts?raw'
 import rootCode from '../../../../../examples/standalone/expo-todomvc/src/Root.tsx?raw'
 import headerCode from '../../../../../examples/standalone/expo-todomvc/src/components/NewTodo.tsx?raw'
@@ -131,25 +130,11 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 </Steps>
 
-## Events
+## Define Your Schema
 
-Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
+Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
 
-Use the `Events` and `Schema` modules from `@livestore/livestore` to define your events.
-
-Here's an example:
-
-<Code code={eventsCode} lang="ts" title="src/livestore/events.ts" />
-
-## Define your schema
-
-To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
-
-- In `src`, create a `livestore` folder and inside it create a file named `schema.ts`. This file defines the tables and data structures for your app.
-
-- In `schema.ts`, define a table to represent a data model, such as a `todos`.
-
-Here's an example:
+Here's an example schema:
 
 <Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
 

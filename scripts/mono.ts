@@ -65,7 +65,7 @@ const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     const fixFlag = fix ? '--fix' : ''
-    yield* cmd(`eslint scripts examples packages website --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
+    yield* cmd(`eslint scripts examples packages docs --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
     if (fix) {
       yield* cmd('syncpack format', { cwd })
     }
@@ -77,12 +77,12 @@ const lintCommand = Cli.Command.make(
   }),
 )
 
-const websiteBuildCommand = Cli.Command.make(
+const docsBuildCommand = Cli.Command.make(
   'build',
   { apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)) },
   ({ apiDocs }) =>
     cmd('pnpm astro build', {
-      cwd: `${process.env.WORKSPACE_ROOT}/website`,
+      cwd: `${process.env.WORKSPACE_ROOT}/docs`,
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
@@ -91,7 +91,7 @@ const websiteBuildCommand = Cli.Command.make(
     }),
 )
 
-const websiteCommand = Cli.Command.make('website').pipe(
+const docsCommand = Cli.Command.make('docs').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make(
       'dev',
@@ -100,10 +100,10 @@ const websiteCommand = Cli.Command.make('website').pipe(
       },
       ({ open }) =>
         cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-          cwd: `${process.env.WORKSPACE_ROOT}/website`,
+          cwd: `${process.env.WORKSPACE_ROOT}/docs`,
         }),
     ),
-    websiteBuildCommand,
+    docsBuildCommand,
     Cli.Command.make(
       'deploy',
       {
@@ -115,7 +115,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
       },
       Effect.fn(function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
         if (shouldBuild) {
-          yield* websiteBuildCommand.handler({ apiDocs: true })
+          yield* docsBuildCommand.handler({ apiDocs: true })
         }
 
         const branchName = yield* Effect.gen(function* () {
@@ -132,7 +132,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
         })
 
         // TODO rename to `/docs`
-        const websitePath = `${process.env.WORKSPACE_ROOT}/website`
+        const docsPath = `${process.env.WORKSPACE_ROOT}/docs`
 
         yield* Effect.log(`Branch name: "${branchName}"`)
 
@@ -146,20 +146,20 @@ const websiteCommand = Cli.Command.make('website').pipe(
               : 'livestore-docs-dev' // Dev site
 
         // Check if netlify is logged in
-        yield* cmd('bunx netlify-cli status', { cwd: websitePath }).pipe(Effect.ignoreLogged)
+        yield* cmd('bunx netlify-cli status', { cwd: docsPath }).pipe(Effect.ignoreLogged)
 
         const deployArgs = [
           'bunx',
           'netlify-cli',
           'deploy',
           '--no-build',
-          `--dir=${websitePath}/dist`,
+          `--dir=${docsPath}/dist`,
           `--site=${site}`,
-          '--filter=website',
+          '--filter=docs',
         ]
 
         yield* Effect.log(`Deploying to "${site}" for draft URL`)
-        yield* cmd([...deployArgs], { cwd: websitePath })
+        yield* cmd([...deployArgs], { cwd: docsPath })
 
         const alias =
           aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
@@ -173,7 +173,7 @@ const websiteCommand = Cli.Command.make('website').pipe(
 
         yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
-        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd: websitePath })
+        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd: docsPath })
       }),
     ),
   ]),
@@ -251,7 +251,7 @@ const command = Cli.Command.make('mono').pipe(
     lintCommand,
     testCommand,
     circularCommand,
-    websiteCommand,
+    docsCommand,
     releaseCommand,
   ]),
 )

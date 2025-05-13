@@ -1,6 +1,6 @@
 packages:
   - scripts
-  - website
+  - docs
   - packages/@livestore/*
   - examples/src/*
   - examples/standalone/*

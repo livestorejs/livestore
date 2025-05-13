@@ -168,7 +168,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
-  build-deploy-website:
+  build-deploy-docs:
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -183,10 +183,10 @@ jobs:
         timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts # Needed for starlight-typedoc
-      - run: mono website build --api-docs
+      - run: mono docs build --api-docs
         env:
           PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      - run: mono website deploy
+      - run: mono docs deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 
