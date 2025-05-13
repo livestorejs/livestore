@@ -3,13 +3,13 @@ import { useQuery } from '@livestore/react'
 import React from 'react'
 import { FlatList } from 'react-native'
 
-import { app$ } from '../livestore/queries.ts'
+import { uiState$ } from '../livestore/queries.ts'
 import { tables } from '../livestore/schema.ts'
 import { Todo } from './Todo.tsx'
 
 const visibleTodos$ = queryDb(
   (get) => {
-    const { filter } = get(app$)
+    const { filter } = get(uiState$)
     return tables.todos.where({
       deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',

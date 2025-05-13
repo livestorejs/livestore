@@ -21,7 +21,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv } from '@livestore/utils'
+import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Fiber, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -41,7 +41,14 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import type { StackInfo } from '../utils/stack-info.js'
-import type { RefreshReason, StoreCommitOptions, StoreOptions, StoreOtel, Unsubscribe } from './store-types.js'
+import type {
+  RefreshReason,
+  StoreCommitOptions,
+  StoreEventsOptions,
+  StoreOptions,
+  StoreOtel,
+  Unsubscribe,
+} from './store-types.js'
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -598,6 +605,32 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     )
   }
   // #endregion commit
+
+  /**
+   * Returns an async iterable of events.
+   *
+   * @example
+   * ```ts
+   * for await (const event of store.events()) {
+   *   console.log(event)
+   * }
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Get all events from the beginning of time
+   * for await (const event of store.events({ cursor: EventSequenceNumber.ROOT })) {
+   *   console.log(event)
+   * }
+   * ```
+   */
+  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    return notYetImplemented(`store.events() is not yet implemented but planned soon`)
+  }
+
+  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+    return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
+  }
 
   /**
    * This can be used in combination with `skipRefresh` when committing events.

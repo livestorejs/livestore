@@ -1,5 +1,5 @@
 import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -93,6 +93,29 @@ export type StoreCommitOptions = {
   skipRefresh?: boolean
   spanLinks?: otel.Link[]
   otelContext?: otel.Context
+}
+
+export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
+  /**
+   * By default only new events are returned.
+   * Use this to get all events from a specific point in time.
+   */
+  cursor?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events of the given names
+   * @default undefined (include all)
+   */
+  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
+  /**
+   * Whether to include client-only events or only return synced events
+   * @default true
+   */
+  includeClientOnly?: boolean
+  /**
+   * Exclude own events that have not been pushed to the sync backend yet
+   * @default false
+   */
+  excludeUnpushed?: boolean
 }
 
 export type Unsubscribe = () => void

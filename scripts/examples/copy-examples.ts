@@ -12,6 +12,7 @@ export const copyTodomvcSrc = Cli.Command.make(
     const SRC_EXAMPLE_DIR = `${process.env.WORKSPACE_ROOT}/examples/src/web-todomvc`
     const targetExamples = [
       // 'node-todomvc-sync-cf', // Not included as it doesn't have `uiState`
+      // 'expo-todomvc', // Not included as it uses `.ts` imports
       'web-todomvc-custom-elements',
       'web-todomvc-experimental',
       'web-todomvc-solid',

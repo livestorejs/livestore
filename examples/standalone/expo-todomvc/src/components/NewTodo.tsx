@@ -3,12 +3,12 @@ import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
-import { app$ } from '../livestore/queries.ts'
+import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 
 export const NewTodo: React.FC = () => {
   const { store } = useStore()
-  const { newTodoText } = useQuery(app$)
+  const { newTodoText } = useQuery(uiState$)
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const todoCreated = () =>
@@ -38,7 +38,6 @@ export const NewTodo: React.FC = () => {
           value={newTodoText}
           onChangeText={updatedNewTodoText}
           onKeyPress={(e) => {
-            console.log(e.nativeEvent.key)
             if (e.nativeEvent.key === 'Escape' || e.nativeEvent.key === 'Tab') {
               Keyboard.dismiss()
               inputRef.current?.blur()
