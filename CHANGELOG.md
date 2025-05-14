@@ -236,6 +236,7 @@
   - Clients should detect and gracefully handle when a sync backend resets its eventlog (e.g. during debugging)
     - possibly introduce a eventlog id in the global sync metadata
   - `@livestore/sync-cf`:
+    - Opening the snyc HTTP endpoint in the browser should provide a helpful message
     - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
       - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
