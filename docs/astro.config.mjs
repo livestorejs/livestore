@@ -63,6 +63,66 @@ export default defineConfig({
       },
       routeMiddleware: './src/routeMiddleware.ts',
       plugins: [
+        // Used to adjust the order of sidebar items
+        // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
+        // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
+        // starlightAutoSidebar(),
+
+        // Only runs on `astro build`
+        starlightLinksValidator({
+          // `exclude` specifies the links to be excluded, not the files that contain the links
+          exclude: [
+            '/examples', // Custom pages are not yet supported by this plugin https://github.com/HiDeoo/starlight-links-validator/issues/39
+            '/api/**',
+          ],
+          // Currently ignoring relative links as there are some problems with the generated api docs
+          // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
+          errorOnRelativeLinks: false,
+        }),
+        ...(process.env.STARLIGHT_INCLUDE_API_DOCS
+          ? [
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
+                tsconfig: '../packages/@livestore/livestore/tsconfig.json',
+                output: 'api/livestore',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/react/src/mod.ts'],
+                tsconfig: '../packages/@livestore/react/tsconfig.json',
+                output: 'api/react',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
+                output: 'api/adapter-web',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
+                output: 'api/adapter-node',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
+                output: 'api/adapter-expo',
+              }),
+              starlightTypeDoc({
+                entryPoints: [
+                  '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
+                  '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
+                ],
+                tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
+                output: 'api/sync-cf',
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
+                tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
+                output: 'api/sync-electric',
+              }),
+            ]
+          : []),
+
+        // Important: Needs to be after the starlightTypeDoc plugins
         starlightSidebarTopics([
           {
             label: 'Docs',
@@ -196,65 +256,6 @@ export default defineConfig({
             ],
           },
         ]),
-
-        // Used to adjust the order of sidebar items
-        // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
-        // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
-        // starlightAutoSidebar(),
-
-        // Only runs on `astro build`
-        starlightLinksValidator({
-          // `exclude` specifies the links to be excluded, not the files that contain the links
-          exclude: [
-            '/examples', // Custom pages are not yet supported by this plugin https://github.com/HiDeoo/starlight-links-validator/issues/39
-            '/api/**',
-          ],
-          // Currently ignoring relative links as there are some problems with the generated api docs
-          // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
-          errorOnRelativeLinks: false,
-        }),
-        ...(process.env.STARLIGHT_INCLUDE_API_DOCS
-          ? [
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
-                tsconfig: '../packages/@livestore/livestore/tsconfig.json',
-                output: 'api/livestore',
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/react/src/mod.ts'],
-                tsconfig: '../packages/@livestore/react/tsconfig.json',
-                output: 'api/react',
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
-                tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-                output: 'api/adapter-web',
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
-                tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-                output: 'api/adapter-node',
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
-                tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-                output: 'api/adapter-expo',
-              }),
-              starlightTypeDoc({
-                entryPoints: [
-                  '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
-                  '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
-                ],
-                tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
-                output: 'api/sync-cf',
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
-                tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
-                output: 'api/sync-electric',
-              }),
-            ]
-          : []),
       ],
       customCss: ['./src/tailwind.css'],
       logo: {

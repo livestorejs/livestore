@@ -1,0 +1,9 @@
+---
+import { liveStoreVersion } from '@livestore/common'
+
+const { packageName, version = liveStoreVersion } = Astro.props
+---
+
+<a href={`https://www.npmjs.com/package/@livestore/${packageName}/v/${version}`} target="_blank" class="nav-link"
+  ><code>@livestore/{packageName}@{version}</code></a
+>

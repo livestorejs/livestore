@@ -4,38 +4,40 @@ title: Docs
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 import { officeHours } from '../../../data.js'
+import { liveStoreVersion } from '@livestore/common'
+import NpmLink from '../../components/NpmLink.astro'
 
 <CardGrid>
-	<LinkCard
-		title="Getting Started"
-		description="Learn how to get started with LiveStore"
-		href="/getting-started/react-web"
-	/>
-	<LinkCard
-		title="Evaluation"
-		description="Evaluate LiveStore for your use case"
-		href="/evaluation/design-decisions"
-	/>
-	<LinkCard
-		title="Reference"
-		description="Reference documentation for LiveStore"
-		href="/reference/concepts"
-	/>
-	<LinkCard
-		title="Patterns"
-		description="A collection of patterns for using LiveStore in different scenarios"
-		href="/patterns/anonymous-user-transition/"
-	/>
-	<LinkCard
-		title="Community"
-		description="Community resources for LiveStore"
-		href="/misc/community"
-	/>
-	<LinkCard
-		title="Contributing"
-		description="Contributing to LiveStore"
-		href="/contributing/contributing"
-	/>
+  <LinkCard
+    title="Getting Started"
+    description="Learn how to get started with LiveStore"
+    href="/getting-started/react-web"
+  />
+  <LinkCard
+    title="Evaluation"
+    description="Evaluate LiveStore for your use case"
+    href="/evaluation/design-decisions"
+  />
+  <LinkCard
+    title="Reference"
+    description="Reference documentation for LiveStore"
+    href="/reference/concepts"
+  />
+  <LinkCard
+    title="Patterns"
+    description="A collection of patterns for using LiveStore in different scenarios"
+    href="/patterns/anonymous-user-transition/"
+  />
+  <LinkCard
+    title="Community"
+    description="Community resources for LiveStore"
+    href="/misc/community"
+  />
+  <LinkCard
+    title="Contributing"
+    description="Contributing to LiveStore"
+    href="/contributing/contributing"
+  />
 </CardGrid>
 
 ## State of the documentation
@@ -50,3 +52,27 @@ Currently, we have the following root-level files:
 
 - [/llms.txt](/llms.txt) — a listing of the available files
 - [/llms-full.txt](/llms-full.txt) — complete documentation for LiveStore
+
+### NPM packages
+
+- Main package: <NpmLink packageName="livestore" />
+- Framework integrations:
+  - React: <NpmLink packageName="react" />
+  - Solid: <NpmLink packageName="solid" />
+- Platform adapters:
+  - Web: <NpmLink packageName="adapter-web" />
+  - Expo: <NpmLink packageName="adapter-expo" />
+  - Node: <NpmLink packageName="adapter-node" />
+- Sync provider:
+  - Cloudflare: <NpmLink packageName="sync-cf" />
+  - Electric: <NpmLink packageName="sync-electric" />
+- Devtools:
+  - Vite: <NpmLink packageName="devtools-vite" />
+  - Expo: <NpmLink packageName="devtools-expo" />
+- SQLite WASM: <NpmLink packageName="wa-sqlite" version="1.0.5-dev.2" />
+  - Note this package has a separate version from the rest of LiveStore
+- Internal packages:
+  - <NpmLink packageName="peer-deps" />
+  - <NpmLink packageName="utils" />
+  - <NpmLink packageName="common" />
+  
