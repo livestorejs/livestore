@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-web-common",
-  "version": "0.3.0-dev.49",
+  "version": "0.3.0-dev.50",
   "type": "module",
   "sideEffects": false,
   "exports": {

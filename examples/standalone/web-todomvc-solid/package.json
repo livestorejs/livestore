@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@livestore/adapter-web": "0.3.0-dev.49",
-    "@livestore/livestore": "0.3.0-dev.49",
-    "@livestore/peer-deps": "0.3.0-dev.49",
-    "@livestore/solid": "0.3.0-dev.49",
+    "@livestore/adapter-web": "0.3.0-dev.50",
+    "@livestore/livestore": "0.3.0-dev.50",
+    "@livestore/peer-deps": "0.3.0-dev.50",
+    "@livestore/solid": "0.3.0-dev.50",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "solid-js": "1.9.4",
     "todomvc-app-css": "2.4.3",
@@ -14,7 +14,7 @@
   },
   "description": "",
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.49",
+    "@livestore/devtools-vite": "0.3.0-dev.50",
     "solid-devtools": "^0.33.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
