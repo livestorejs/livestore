@@ -20,6 +20,7 @@ LiveStore is currently only available for [GitHub Sponsors](https://github.com/s
 - [ElectricSQL](https://www.electricsql.com/)
 - [Netlify](https://www.netlify.com/)
 - [Expo](https://expo.dev/)
+- [Axial](https://axial.work/)
 
 ### Individuals
 
