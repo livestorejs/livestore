@@ -8,12 +8,12 @@ sidebar:
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 import { makeTiged } from '../../../../data.js'
 import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
-import babelConfigCode from '../../../../../examples/standalone/expo-todomvc/babel.config.js?raw'
-import metroConfigCode from '../../../../../examples/standalone/expo-todomvc/metro.config.js?raw'
-import schemaCode from '../../../../../examples/standalone/expo-todomvc/src/livestore/schema.ts?raw'
-import rootCode from '../../../../../examples/standalone/expo-todomvc/src/Root.tsx?raw'
-import headerCode from '../../../../../examples/standalone/expo-todomvc/src/components/NewTodo.tsx?raw'
-import mainSectionCode from '../../../../../examples/standalone/expo-todomvc/src/components/ListTodos.tsx?raw'
+import babelConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/babel.config.js?raw'
+import metroConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/metro.config.js?raw'
+import schemaCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/livestore/schema.ts?raw'
+import rootCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/Root.tsx?raw'
+import headerCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/NewTodo.tsx?raw'
+import mainSectionCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/ListTodos.tsx?raw'
 
 export const CODE = {
   babelConfig: babelConfigCode,
@@ -41,7 +41,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 1.  **Set up project from template**
 
-    <Code code={makeTiged('expo-todomvc')} lang="sh" />
+    <Code code={makeTiged('expo-todomvc-sync-cf')} lang="sh" />
 
     Replace `my-app` with your desired app name.
 
@@ -89,10 +89,10 @@ For existing projects see [Existing project setup](#existing-project-setup).
 3.  **Run the app**
 
     <Tabs syncKey="package-manager">
-      <TabItem label="bun">`bun ios` or `bun android`</TabItem>
-      <TabItem label="pnpm">`pnpm ios` or `pnpm android`</TabItem>
-      <TabItem label="npm">`npm run ios` or `npm run android`</TabItem>
-      <TabItem label="yarn">`yarn ios` or `yarn android`</TabItem>
+      <TabItem label="bun">`bun dev`</TabItem>
+      <TabItem label="pnpm">`pnpm dev`</TabItem>
+      <TabItem label="npm">`npm run dev`</TabItem>
+      <TabItem label="yarn">`yarn dev`</TabItem>
     </Tabs>
 
 </Steps>

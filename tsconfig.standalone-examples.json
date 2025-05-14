@@ -3,7 +3,7 @@
   "compilerOptions": {},
   "include": [],
   "references": [
-    { "path": "./examples/standalone/expo-todomvc" },
+    { "path": "./examples/standalone/expo-todomvc-sync-cf" },
     { "path": "./examples/standalone/expo-linearlite" },
     { "path": "./examples/standalone/web-linearlite" },
     { "path": "./examples/standalone/web-todomvc" },

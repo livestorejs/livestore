@@ -11,7 +11,7 @@
     { "path": "./packages/@livestore/sync-cf" },
     { "path": "./examples/src/node-effect-cli" },
     { "path": "./examples/src/node-todomvc-sync-cf" },
-    { "path": "./examples/src/expo-todomvc" },
+    { "path": "./examples/src/expo-todomvc-sync-cf" },
     { "path": "./examples/src/expo-linearlite" },
     { "path": "./examples/src/web-linearlite" },
     { "path": "./examples/src/web-todomvc" },

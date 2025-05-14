@@ -2,8 +2,8 @@
 +++ package.json
 @@ -1,15 +1,15 @@
  {
--  "name": "livestore-example-src-expo-todomvc",
-+  "name": "livestore-example-standalone-expo-todomvc",
+-  "name": "livestore-example-src-expo-todomvc-sync-cf",
++  "name": "livestore-example-standalone-expo-todomvc-sync-cf",
    "version": "1.0.0",
    "private": true,
    "dependencies": {

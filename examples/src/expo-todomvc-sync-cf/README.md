@@ -1,0 +1,1 @@
+See the [Expo setup guide](https://docs.livestore.dev/getting-started/expo).

@@ -36,7 +36,7 @@
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "concurrently \"pnpm run dev:vite\" \"pnpm run dev:wrangler\"",
+    "dev": "concurrently --raw -i \"pnpm run dev:vite\" \"pnpm run dev:wrangler\"",
     "dev:vite": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite --force",
     "dev:wrangler": "wrangler dev --port 8787 --inspector-port 9230",
     "preview": "vite preview",

@@ -1,15 +1,15 @@
 {
-  "name": "livestore-example-standalone-expo-todomvc",
+  "name": "livestore-example-src-expo-todomvc-sync-cf",
   "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@expo/vector-icons": "14.1.0",
-    "@livestore/adapter-expo": "0.3.0-dev.50",
-    "@livestore/devtools-expo": "0.3.0-dev.50",
-    "@livestore/livestore": "0.3.0-dev.50",
-    "@livestore/peer-deps": "0.3.0-dev.50",
-    "@livestore/react": "0.3.0-dev.50",
-    "@livestore/sync-cf": "0.3.0-dev.50",
+    "@livestore/adapter-expo": "workspace:*",
+    "@livestore/devtools-expo": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
     "babel-preset-expo": "13.0.0",
     "expo": "53.0.7",
     "expo-application": "6.1.4",
@@ -26,17 +26,19 @@
     "@babel/runtime": "^7.26.10",
     "@types/react": "^19.1.2",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
+    "concurrently": "^9.1.2",
     "eas-cli": "^16.3.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.0.0"
   },
   "engines": {
     "node": ">=23.0.0"
   },
   "main": "./src/AppEntry.ts",
   "scripts": {
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
-    "start": "expo start",
-    "web": "expo start --web"
+    "dev": "concurrently --raw -i \"pnpm run dev:expo\" \"pnpm run dev:wrangler\"",
+    "dev:expo": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start",
+    "dev:wrangler": "wrangler dev --port 8787 --inspector-port 9230",
+    "wrangler:deploy": "wrangler deploy"
   }
 }

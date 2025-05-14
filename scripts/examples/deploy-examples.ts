@@ -83,7 +83,7 @@ export const command = Cli.Command.make(
   Effect.fn(function* ({ alias, exampleFilter, prod }) {
     const excludeDirs = new Set([
       'expo-linearlite',
-      'expo-todomvc',
+      'expo-todomvc-sync-cf',
       'node-effect-cli',
       'node-todomvc-sync-cf',
       'todomvc-sync-electric',
