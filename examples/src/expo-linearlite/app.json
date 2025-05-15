@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "expo-linearlite",
-    "slug": "expo-linearlite",
+    "slug": "linearlite-app",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.livestore.expo-linearlite",
+      "bundleIdentifier": "dev.betoatexpo.linearlite",
       "splash": {
         "image": "./src/assets/images/splash.png",
         "resizeMode": "cover",
@@ -25,6 +25,9 @@
           "resizeMode": "cover",
           "backgroundColor": "#18181B"
         }
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -32,7 +35,7 @@
         "foregroundImage": "./src/assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "dev.livestore.expo-linearlite",
+      "package": "dev.betoatexpo.linearlite",
       "splash": {
         "image": "./src/assets/images/splash.png",
         "resizeMode": "cover",
