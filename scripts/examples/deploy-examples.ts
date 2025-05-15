@@ -40,10 +40,15 @@ const buildAndDeployExample = ({
     const cwd = `${EXAMPLES_SRC_DIR}/${example}`
     yield* cmd(['pnpm', 'build'], { cwd })
 
+    // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
     const deployCommand = cmdText(
       [
-        'bunx',
-        'netlify-cli',
+        'pnpm',
+        '--package=netlify-cli',
+        'dlx',
+        'netlify',
+        // 'bunx',
+        // 'netlify-cli',
         'deploy',
         '--no-build',
         '--json',

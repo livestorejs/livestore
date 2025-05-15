@@ -23,5 +23,5 @@ pnpm-debug.log*
 .direnv
 
 # build output
-src/content/docs/api/
+src/content/docs/api/*
 !src/content/docs/api/index.md
