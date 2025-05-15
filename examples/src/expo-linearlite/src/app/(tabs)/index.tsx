@@ -3,7 +3,7 @@ import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
@@ -233,17 +233,17 @@ const HomeScreen = () => {
   )
 
   return (
-    <LegendList
+    <FlatList
       // TODO remove type-cast when LegendList supports immutable arrays
       data={issues as typeof issues extends (infer T)[] ? T[] : never}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
-      estimatedItemSize={40}
-      drawDistance={1000}
-      waitForInitialLayout
-      recycleItems
+      // estimatedItemSize={40}
+      // drawDistance={1000}
+      // waitForInitialLayout
+      // recycleItems
     />
   )
 }

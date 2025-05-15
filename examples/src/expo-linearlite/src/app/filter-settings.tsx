@@ -101,7 +101,23 @@ const FilterSettingsScreen = () => {
             <RowPropertySwitch
               key={property}
               onPress={() => {
-                // TODO re-implement this
+                const settingKey = `${selectedHomeTab}TabShow${property}`
+                const currentValue =
+                  selectedHomeTab === 'assigned'
+                    ? property === 'Assignee'
+                      ? assignedTabShowAssignee
+                      : property === 'Status'
+                        ? assignedTabShowStatus
+                        : assignedTabShowPriority
+                    : property === 'Assignee'
+                      ? createdTabShowAssignee
+                      : property === 'Status'
+                        ? createdTabShowStatus
+                        : createdTabShowPriority
+
+                setUiState({
+                  [settingKey]: !currentValue,
+                })
               }}
               label={property}
               isSelected={
