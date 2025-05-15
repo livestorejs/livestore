@@ -7,8 +7,8 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import { makeTiged } from '../../../../data.js'
-import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
+import { makeTiged, versionNpmSuffix } from '../../../../data.js'
+import { MIN_NODE_VERSION, LIVESTORE_WA_SQLITE_VERSION } from '../../../../../CONSTANTS.ts'
 import viteConfigCode from '../../../../../examples/standalone/web-todomvc/vite.config.js?raw'
 import schemaCode from '../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
 import workerCode from '../../../../../examples/standalone/web-todomvc/src/livestore.worker.ts?raw'
@@ -24,6 +24,17 @@ export const CODE = {
   header: headerCode,
   mainSection: mainSectionCode,
 }
+
+{/* We're adjusting the package to use the dev version on the dev branch */}
+export const manualInstallDepsStr = [
+  '@livestore/livestore' + versionNpmSuffix,
+  '@livestore/wa-sqlite@' + LIVESTORE_WA_SQLITE_VERSION,
+  '@livestore/adapter-web' + versionNpmSuffix,
+  '@livestore/react' + versionNpmSuffix,
+  '@livestore/utils' + versionNpmSuffix,
+  '@livestore/peer-deps' + versionNpmSuffix,
+  '@livestore/devtools-vite' + versionNpmSuffix,
+].join(' ')
 
 ## Prerequisites
 
@@ -42,7 +53,7 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
    <Code code={makeTiged('web-todomvc')} lang="sh" />
 
-   Replace `my-app` with your desired app name.
+   Replace `livestore-app` with your desired app name.
 
 2. **Install dependencies**
 
@@ -50,19 +61,13 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
-       ```bash
-       bun install
-       ```
+       <Code code="bun install" lang="sh" />
      </TabItem>
      <TabItem label="pnpm">
-       ```bash
-       pnpm install
-       ```
+       <Code code="pnpm install" lang="sh" />
      </TabItem>
      <TabItem label="npm">
-        ```bash
-        npm install
-        ```
+       <Code code="npm install" lang="sh" />
      </TabItem>
    </Tabs>
 
@@ -72,19 +77,13 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
-       ```shell
-       bun dev
-       ```
+       <Code code="bun dev" lang="sh" />
      </TabItem>
      <TabItem label="pnpm">
-       ```shell
-       pnpm dev
-       ```
+       <Code code="pnpm dev" lang="sh" />
      </TabItem>
      <TabItem label="npm">
-       ```shell
-       npm run dev
-       ```
+       <Code code="npm run dev" lang="sh" />
      </TabItem>
    </Tabs>
 
@@ -104,19 +103,13 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
-       ```shell
-       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
-       ```
+       <Code code={'bun install ' + manualInstallDepsStr} lang="sh" />
      </TabItem>
      <TabItem label="pnpm">
-       ```shell
-       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
-       ```
+       <Code code={'pnpm add ' + manualInstallDepsStr} lang="sh" />
      </TabItem>
      <TabItem label="npm">
-       ```shell
-       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
-       ```
+       <Code code={'npm install ' + manualInstallDepsStr} lang="sh" />
      </TabItem>
    </Tabs>
 

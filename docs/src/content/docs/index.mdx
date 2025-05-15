@@ -3,6 +3,7 @@ title: Docs
 ---
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { LIVESTORE_WA_SQLITE_VERSION } from '../../../../CONSTANTS.ts'
 import { officeHours } from '../../../data.js'
 import { liveStoreVersion } from '@livestore/common'
 import NpmLink from '../../components/NpmLink.astro'
@@ -69,7 +70,7 @@ Currently, we have the following root-level files:
 - Devtools:
   - Vite: <NpmLink packageName="devtools-vite" />
   - Expo: <NpmLink packageName="devtools-expo" />
-- SQLite WASM: <NpmLink packageName="wa-sqlite" version="1.0.5-dev.2" />
+- SQLite WASM: <NpmLink packageName="wa-sqlite" version={LIVESTORE_WA_SQLITE_VERSION} />
   - Note this package has a separate version from the rest of LiveStore
 - Internal packages:
   - <NpmLink packageName="peer-deps" />
