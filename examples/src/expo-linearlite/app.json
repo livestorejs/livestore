@@ -53,7 +53,9 @@
       "expo-router",
       "expo-asset",
       "expo-build-properties",
-      "expo-font"
+      "expo-font",
+      "expo-sqlite",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
