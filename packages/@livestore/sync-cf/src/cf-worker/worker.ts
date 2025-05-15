@@ -19,6 +19,13 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
   return {
     fetch: async (request, env, _ctx) =>
       Effect.gen(function* () {
+        if (request.method === 'GET') {
+          return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' },
+          })
+        }
+
         const url = new URL(request.url)
         const urlParams = UrlParams.fromInput(url.searchParams)
         const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)

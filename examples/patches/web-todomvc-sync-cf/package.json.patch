@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,16 +1,20 @@
+@@ -1,15 +1,15 @@
  {
 -  "name": "livestore-example-src-web-todomvc-sync-cf",
 +  "name": "livestore-example-standalone-web-todomvc-sync-cf",
@@ -20,10 +20,5 @@
 +    "@livestore/react": "0.3.0-dev.50",
 +    "@livestore/sync-cf": "0.3.0-dev.50",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
-+    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
-+    "@opentelemetry/resources": "2.0.0",
-+    "@opentelemetry/sdk-trace-base": "2.0.0",
-+    "@opentelemetry/sdk-trace-web": "2.0.0",
      "@overengineering/fps-meter": "0.1.2",
      "react": "19.0.0",
-     "react-dom": "19.0.0",

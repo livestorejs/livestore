@@ -1,30 +1,30 @@
-// @ts-check
-import path from 'node:path'
+import { spawn } from 'node:child_process'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import react from '@vitejs/plugin-react'
-import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
-const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
-const isProdBuild = process.env.NODE_ENV === 'production'
-
-// https://vitejs.dev/config
 export default defineConfig({
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 60_001,
   },
-  worker: isProdBuild ? { format: 'es' } : undefined,
-  optimizeDeps: {
-    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/wa-sqlite'],
-  },
+  worker: { format: 'es' },
   plugins: [
     react(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    // @ts-expect-error plugin types seem to be wrong
-    shouldAnalyze
-      ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
-      : undefined,
+    // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
+    {
+      name: 'wrangler-dev',
+      configureServer: async (server) => {
+        const wrangler = spawn('./node_modules/.bin/wrangler', ['dev', '--port', '8787'], {
+          stdio: ['ignore', 'inherit', 'inherit'],
+          shell: true,
+        })
+
+        server.httpServer?.on('close', () => wrangler.kill())
+
+        wrangler.on('exit', (code) => console.error(`wrangler dev exited with code ${code}`))
+      },
+    },
   ],
 })

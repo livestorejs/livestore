@@ -168,6 +168,8 @@ export const cmd: (
   yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
 
   return yield* Command.make(command!, ...args).pipe(
+    // TODO don't forward abort signal to the command
+    Command.stdin('inherit'), // Forward stdin to the command
     Command.stdout('inherit'), // Stream stdout to process.stdout
     Command.stderr('inherit'), // Stream stderr to process.stderr
     Command.workingDirectory(cwd),

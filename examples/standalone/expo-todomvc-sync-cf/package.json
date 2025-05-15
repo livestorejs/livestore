@@ -26,19 +26,17 @@
     "@babel/runtime": "^7.26.10",
     "@types/react": "^19.1.2",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "concurrently": "^9.1.2",
     "eas-cli": "^16.3.1",
     "typescript": "^5.8.3",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.14.4"
   },
   "engines": {
     "node": ">=23.0.0"
   },
   "main": "./src/AppEntry.ts",
   "scripts": {
-    "dev": "concurrently --raw -i \"pnpm run dev:expo\" \"pnpm run dev:wrangler\"",
-    "dev:expo": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start",
-    "dev:wrangler": "wrangler dev --port 8787 --inspector-port 9230",
-    "wrangler:deploy": "wrangler deploy"
+    "start": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start",
+    "wrangler:deploy": "wrangler deploy",
+    "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
   }
 }
