@@ -29,7 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "foregroundImage": "./src/assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "dev.livestore.expo-linearlite",
@@ -49,14 +49,7 @@
       "output": "static",
       "favicon": "./src/assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-asset",
-      "expo-build-properties",
-      "expo-font",
-      "expo-sqlite",
-      "expo-web-browser"
-    ],
+    "plugins": ["expo-router", "expo-asset", "expo-build-properties", "expo-font", "expo-sqlite", "expo-web-browser"],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
