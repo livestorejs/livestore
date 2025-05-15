@@ -2,7 +2,7 @@
   "expo": {
     "name": "expo-linearlite",
     "slug": "linearlite-app",
-    "version": "1.0.1",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
     "scheme": "linearlite",
