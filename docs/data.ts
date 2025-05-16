@@ -16,7 +16,7 @@ export const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
   ? process.env.GITHUB_REF_NAME === 'main'
   : getBranchName() === 'main'
 
-export const makeTiged = (example: string) => {
+export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {
   const hashSuffix = IS_MAIN_BRANCH ? '' : `#${getBranchName()}`
-  return `bunx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/${example}${hashSuffix} livestore-app`
+  return `${approach} tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/${example}${hashSuffix} livestore-app`
 }

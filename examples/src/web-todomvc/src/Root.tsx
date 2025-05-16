@@ -3,7 +3,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
-import React from 'react'
+import type React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { Footer } from './components/Footer.js'
@@ -38,8 +38,8 @@ const adapter = makePersistedAdapter({
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
-    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
+    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     batchUpdates={batchUpdates}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

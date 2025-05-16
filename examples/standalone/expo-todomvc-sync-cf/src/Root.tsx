@@ -26,6 +26,9 @@ export const Root = () => {
     <View style={styles.container}>
       <LiveStoreProvider
         schema={schema}
+        adapter={adapter}
+        storeId={storeId}
+        syncPayload={{ authToken: 'insecure-token-change-me' }}
         renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
         renderError={(error: any) => <Text>Error: {error.toString()}</Text>}
         renderShutdown={() => {
@@ -41,10 +44,7 @@ export const Root = () => {
             store.commit(events.todoCreated({ id: nanoid(), text: 'Make coffee' }))
           }
         }}
-        adapter={adapter}
         batchUpdates={batchUpdates}
-        storeId={storeId}
-        syncPayload={{ authToken: 'insecure-token-change-me' }}
       >
         <InnerApp />
       </LiveStoreProvider>
