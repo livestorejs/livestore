@@ -3,7 +3,6 @@
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
-import clerk from '@clerk/astro'
 import { liveStoreVersion } from '@livestore/common'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
@@ -16,10 +15,6 @@ import starlightTypeDoc from 'starlight-typedoc'
 
 import { DISCORD_INVITE_URL } from '../CONSTANTS.js'
 import { getBranchName } from './data.js'
-
-if (!process.env.PUBLIC_CLERK_PUBLISHABLE_KEY) {
-  console.warn('PUBLIC_CLERK_PUBLISHABLE_KEY is not set')
-}
 
 const port = 5252
 
@@ -42,9 +37,7 @@ export default defineConfig({
   output: 'static',
   server: { port },
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
-  // experimental: process.env.NODE_ENV === 'production' ? { session: true } : undefined, // Required for Clerk+Netlify setup
   integrations: [
-    clerk(),
     react(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,

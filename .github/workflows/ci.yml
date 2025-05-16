@@ -184,8 +184,6 @@ jobs:
       - run: pnpm install
       - run: pnpm build:ts # Needed for starlight-typedoc
       - run: mono docs build --api-docs
-        env:
-          PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY }}
       - run: mono docs deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
