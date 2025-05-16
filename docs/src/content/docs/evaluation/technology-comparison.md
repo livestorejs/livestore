@@ -21,6 +21,7 @@ LiveStore shares a lot of similarities with Redux in that sense that both are ba
 
 - Redux actions are similar to LiveStore events: Both are used to describe "things that have happened"
 - Redux views are similar to LiveStore's state (e.g. SQLite tables): Both are derived from the history of events/actions.
+  - A major difference here is that LiveStore's state materialized as a SQLite database allows for a lot more flexibility via dynamic queries and aggregations vs Redux's static views.
 - Redux reducers are similar to LiveStore's materializers: Both are used to transform events/actions into a final state.
 - Both Redux and LiveStore are client-centric.
 - Both Redux and LiveStore provide powerful [devtools](/reference/devtools).
