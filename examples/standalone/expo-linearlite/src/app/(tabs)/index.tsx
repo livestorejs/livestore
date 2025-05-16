@@ -1,4 +1,3 @@
-import { LegendList } from '@legendapp/list'
 import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
@@ -234,16 +233,11 @@ const HomeScreen = () => {
 
   return (
     <FlatList
-      // TODO remove type-cast when LegendList supports immutable arrays
-      data={issues as typeof issues extends (infer T)[] ? T[] : never}
+      data={issues}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
-      // estimatedItemSize={40}
-      // drawDistance={1000}
-      // waitForInitialLayout
-      // recycleItems
     />
   )
 }
