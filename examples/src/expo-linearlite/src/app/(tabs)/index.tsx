@@ -30,8 +30,6 @@ const getOrderingOptions = (
   let orderClause = 'ORDER BY '
   const orderFields = []
 
-  console.log(tab, 'grouping', grouping, 'ordering', ordering)
-
   // Handle grouping
   if (grouping !== 'NoGrouping') {
     const groupingField =
