@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "react",
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "resolveJsonModule": true,
     // "jsx": "preserve",

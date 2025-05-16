@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "resolveJsonModule": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src", "./scripts"],
