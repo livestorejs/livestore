@@ -18,6 +18,7 @@ module.exports = function (api) {
           // Web-only settings...
           // },
           // },
+          unstable_transformImportMeta: true,
         },
       ],
     ],

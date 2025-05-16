@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@expo/vector-icons": "14.1.0",
-    "@legendapp/list": "1.0.0-beta.2",
     "@livestore/adapter-expo": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
