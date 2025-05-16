@@ -70,12 +70,12 @@ const FilterSettingsScreen = () => {
         <SegmentedControl
           values={tabGroupingOptions}
           selectedIndex={tabGroupingOptions.indexOf(
-            selectedHomeTab === 'Assigned' ? assignedTabGrouping : createdTabGrouping,
+            selectedHomeTab === 'assigned' ? assignedTabGrouping : createdTabGrouping,
           )}
           onChange={(value) =>
-            selectedHomeTab === 'Assigned'
-              ? setUiState({ assignedTabGrouping: value.nativeEvent.value })
-              : setUiState({ createdTabGrouping: value.nativeEvent.value })
+            selectedHomeTab === 'assigned'
+              ? setUiState({ assignedTabGrouping: value.nativeEvent.value.toLowerCase() })
+              : setUiState({ createdTabGrouping: value.nativeEvent.value.toLowerCase() })
           }
         />
       </View>
@@ -85,12 +85,12 @@ const FilterSettingsScreen = () => {
         <SegmentedControl
           values={tabOrderingOptions}
           selectedIndex={tabOrderingOptions.indexOf(
-            selectedHomeTab === 'Assigned' ? assignedTabOrdering : createdTabOrdering,
+            selectedHomeTab === 'assigned' ? assignedTabOrdering : createdTabOrdering,
           )}
           onChange={(value) =>
-            selectedHomeTab === 'Assigned'
-              ? setUiState({ assignedTabOrdering: value.nativeEvent.value })
-              : setUiState({ createdTabOrdering: value.nativeEvent.value })
+            selectedHomeTab === 'assigned'
+              ? setUiState({ assignedTabOrdering: value.nativeEvent.value.toLowerCase() })
+              : setUiState({ createdTabOrdering: value.nativeEvent.value.toLowerCase() })
           }
         />
       </View>
