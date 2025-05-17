@@ -11,6 +11,9 @@ on:
   pull_request:
     branches: ['**']  # Run on PRs targeting any branch
 
+env:
+  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
 jobs:
   lint:
     strategy:

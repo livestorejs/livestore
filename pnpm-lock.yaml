@@ -116,6 +116,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../packages/@livestore/common
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../packages/@livestore/utils
       '@tailwindcss/vite':
         specifier: 4.1.6
         version: 4.1.6(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))

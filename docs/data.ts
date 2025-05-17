@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 
 import { liveStoreVersion } from '@livestore/common'
+import { isNonEmptyString } from '@livestore/utils'
 
 export const officeHours = [
   'https://www.youtube.com/embed/_VDSqi3k-gE', // 3
@@ -8,12 +9,15 @@ export const officeHours = [
   'https://www.youtube.com/embed/2GYKgI1GU8k', // 1
 ]
 
-export const getBranchName = () => execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
+export const getBranchName = () =>
+  isNonEmptyString(process.env.GITHUB_BRANCH_NAME)
+    ? process.env.GITHUB_BRANCH_NAME
+    : execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
 
 export const versionNpmSuffix = liveStoreVersion.includes('dev') ? `@${liveStoreVersion}` : ''
 
-export const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
-  ? process.env.GITHUB_REF_NAME === 'main'
+export const IS_MAIN_BRANCH = process.env.GITHUB_BRANCH_NAME
+  ? process.env.GITHUB_BRANCH_NAME === 'main'
   : getBranchName() === 'main'
 
 export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {

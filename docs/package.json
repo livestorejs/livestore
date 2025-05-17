@@ -10,6 +10,7 @@
     "@astrojs/starlight": "0.34.3",
     "@astrojs/starlight-tailwind": "4.0.1",
     "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@tailwindcss/vite": "4.1.6",
     "@types/react": "19.1.2",
     "astro": "5.7.12",
