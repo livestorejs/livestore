@@ -100,6 +100,23 @@ export type WebAdapterOptions = {
   }
 }
 
+/**
+ * Creates a web adapter with persistent storage (currently only supports OPFS).
+ * Requires both a web worker and a shared worker.
+ *
+ * @example
+ * ```ts
+ * import { makePersistedAdapter } from '@livestore/adapter-web'
+ * import LiveStoreWorker from './livestore.worker?worker'
+ * import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+ *
+ * const adapter = makePersistedAdapter({
+ *   worker: LiveStoreWorker,
+ *   sharedWorker: LiveStoreSharedWorker,
+ *   storage: { type: 'opfs' },
+ * })
+ * ```
+ */
 export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
   (adapterArgs) =>

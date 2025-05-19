@@ -168,8 +168,6 @@ const docsCommand = Cli.Command.make('docs').pipe(
           prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
             ? prodOption.value
             : branchName === 'main' || branchName === devBranchName
-              ? true
-              : false
 
         yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 

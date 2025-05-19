@@ -12,6 +12,10 @@ Yes and no. LiveStore doesn't have the concept of optimistic updates as you migh
 
 This provides the benefits of optimistic updates without the extra complexity by manually having to implement the logic for each individual data update (which can be very error prone).
 
+### Does LiveStore have database transactions?
+
+LiveStore runs on the client-side and handles transactions differently than traditional server-side databases. While materializers automatically run in transactions, global transactional behavior (often called "online transactions") needs to be explicitly modeled in your application logic.
+
 ### Can I use an ORM or query builder with LiveStore?
 
 It's possible to use most ORMs/query builders with LiveStore (as long as they are able to synchronously generate SQL statements). You should also give the built-in LiveStore query builder a try. See [the ORM page](/patterns/orm) for more information.

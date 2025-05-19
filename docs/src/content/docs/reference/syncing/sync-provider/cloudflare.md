@@ -53,6 +53,32 @@ export default makeWorker({
 
 ```
 
+#### Custom Cloudflare Worker handling
+
+If you want to embed the sync backend request handler in your own Cloudflare worker, you can do so by using the `handleWebSocket` function for the `/websocket` endpoint.
+
+```ts
+import { handleWebSocket } from '@livestore/sync-cf/cf-worker'
+
+export default {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    const url = new URL(request.url)
+
+    if (url.pathname.endsWith('/websocket')) {
+      return handleWebSocket(request, env, ctx, {
+        validatePayload: (payload: any) => {
+          if (payload?.authToken !== 'insecure-token-change-me') {
+            throw new Error('Invalid auth token')
+          }
+        },
+      })
+    }
+
+    return new Response('Invalid path', { status: 400 })
+  },
+}
+```
+
 ## Deployment
 
 The sync backend can be deployed to Cloudflare using the following command:

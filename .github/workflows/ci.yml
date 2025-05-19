@@ -128,8 +128,7 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
-      - run: pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
+      - run: mono release snapshot --git-sha=${{ github.sha }}
 
   generate-examples-standalone:
     strategy:
