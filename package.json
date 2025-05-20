@@ -40,6 +40,7 @@
     "@livestore/devtools-vite": "0.3.0-dev.52",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/solid": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
