@@ -161,6 +161,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         const ListItem: React.FC<{ data: ReadonlyArray<number>; index: number }> = ({ data: ids, index }) => {
           const id = ids[index]!
           const res = store.useQuery(LiveStore.computed(() => id, { label: `ListItem.${id}`, deps: id }))
+          // biome-ignore lint/a11y/useSemanticElements: <explanation>
           return <div role="listitem">{res}</div>
         }
 
@@ -171,6 +172,21 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         renderResult.rerender(<ListWrapper numItems={2} />)
 
         expect(renderResult.container.textContent).toBe('10')
+      }),
+    )
+
+    Vitest.scopedLive('should work with signal', () =>
+      Effect.gen(function* () {
+        const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
+        const num$ = signal(0)
+
+        const { result } = ReactTesting.renderHook(() => store.useQuery(num$), { wrapper })
+
+        expect(result.current).toBe(0)
+
+        ReactTesting.act(() => store.setSignal(num$, 1))
+
+        expect(result.current).toBe(1)
       }),
     )
   },

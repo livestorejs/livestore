@@ -116,8 +116,10 @@ export const startDevtoolsServer = ({
       ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
       : '?autoconnect'
 
+    // Use `localhost` instead of `0.0.0.0` as it doesn't have the `navigator.locks` web adapter limitation (https://share.cleanshot.com/nHBnmk6S)
+    const maybeLocalhost = host === '0.0.0.0' ? 'localhost' : host
     yield* Effect.logDebug(
-      `[@livestore/devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node${sessionSuffix}`,
+      `[@livestore/devtools] LiveStore devtools are available at http://${maybeLocalhost}:${port}/_livestore/node${sessionSuffix}`,
     )
 
     return HttpServer.serve(handler, HttpMiddleware.logger)

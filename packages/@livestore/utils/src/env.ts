@@ -18,7 +18,7 @@ export const env = (name: string): string | undefined => {
 export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
 
 /** Only set when developing LiveStore itself. */
-export const LS_DEV = env('LS_DEV') !== undefined || env('VITE_LS_DEV') !== undefined
+export const LS_DEV = envTruish(env('LS_DEV')) || envTruish(env('VITE_LS_DEV'))
 
 export const IS_CI = envTruish(env('CI'))
 

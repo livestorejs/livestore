@@ -16,11 +16,11 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
   if (process.env.CI || !process.stdout.isTTY) {
     return
   }
-  const host = options.host ?? 'localhost'
+  const host = options.host ?? '0.0.0.0' // Defaulting to a hostname that can be reached from the device
   const port = options.port ?? 4242
 
   // Needed for @livestore/adapter-expo
-  process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL = `http://${host}:${port}`
+  process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL = `ws://${host}:${port}`
 
   import('@livestore/adapter-node/devtools')
     .then(async ({ startDevtoolsServer }) => {
@@ -48,7 +48,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
 
   /** Redirects requests to LiveStore DevTools to `http://${host}:${port}/_livestore/${...}` */
   const redirectMiddleware: Middleware = (req, res, next) => {
-    if (req.url?.startsWith('/_livestore') == false) {
+    if (req.url?.startsWith('/_livestore') === false) {
       return next()
     }
 

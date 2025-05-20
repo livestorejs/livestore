@@ -102,8 +102,10 @@ export const queryDb: {
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
-  const hash =
-    (options?.deps ? queryString + '-' + depsToString(options.deps) : queryString) + '-' + depsToString(extraDeps)
+  const hash = [queryString, options?.deps ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
+    .filter(Boolean)
+    .join('-')
+
   if (isValidFunctionString(hash)._tag === 'invalid') {
     throw new Error(`On Expo/React Native, db queries must provide a \`deps\` option`)
   }
@@ -114,7 +116,7 @@ export const queryDb: {
 
   const label = options?.label ?? queryString
 
-  const def: LiveQueryDef.Any = {
+  const def: LiveQueryDef<any> = {
     _tag: 'def',
     make: withRCMap(hash, (ctx, otelContext) => {
       // TODO onDestroy
@@ -165,7 +167,7 @@ const getQueryStringAndExtraDeps = (
 
 /* An object encapsulating a reactive SQL query */
 export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends LiveStoreQueryBase<TResult> {
-  _tag: 'db' = 'db'
+  _tag = 'db' as const
 
   /** A reactive thunk representing the query text */
   queryInput$: Thunk<QueryInputRaw<any, any>, ReactivityGraphContext, RefreshReason> | undefined

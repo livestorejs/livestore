@@ -12,10 +12,7 @@ export const NewTodo: React.FC = () => {
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const todoCreated = () =>
-    store.commit(
-      events.todoCreated({ id: new Date().toISOString(), text: newTodoText }),
-      events.uiStateSet({ newTodoText: '' }),
-    )
+    store.commit(events.todoCreated({ id: nanoid(), text: newTodoText }), events.uiStateSet({ newTodoText: '' }))
   const addRandom50 = () => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
     store.commit(...todos.map((todo) => events.todoCreated(todo)))

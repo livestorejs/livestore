@@ -54,7 +54,7 @@ export const queryGraphQL = <
   const label = options.label ?? documentName ?? 'graphql'
   const map = options.map
 
-  const def: LiveQueries.LiveQueryDef.Any = {
+  const def: LiveQueries.LiveQueryDef<any> = {
     _tag: 'def',
     make: LiveQueries.withRCMap(hash, (ctx, _otelContext) => {
       return new LiveStoreGraphQLQuery({
@@ -78,7 +78,7 @@ export class LiveStoreGraphQLQuery<
   TVariableValues extends Record<string, any>,
   TResultMapped extends Record<string, any> = TResult,
 > extends LiveQueries.LiveStoreQueryBase<TResultMapped> {
-  _tag: 'graphql' = 'graphql'
+  _tag = 'graphql' as const
 
   /** The abstract GraphQL query */
   document: DocumentNode<TResult, TVariableValues>

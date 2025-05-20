@@ -13,7 +13,16 @@ export {
 
 export { SqliteDbWrapper, emptyDebugInfo } from './SqliteDbWrapper.js'
 
-export { queryDb, computed, signal, type LiveQuery, type LiveQueryDef } from './live-queries/mod.js'
+export {
+  queryDb,
+  computed,
+  signal,
+  type LiveQuery,
+  type LiveQueryDef,
+  type Signal,
+  type SignalDef,
+  type RcRef,
+} from './live-queries/mod.js'
 
 export * from '@livestore/common/schema'
 export {

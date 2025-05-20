@@ -75,7 +75,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = getDevtoolsUrl()
+      const devtoolsUrl = getDevtoolsUrl().toString()
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -149,7 +149,7 @@ const makeLeaderThread = ({
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
-    const subDirectory = storage.subDirectory ? storage.subDirectory.replace(/\/$/, '') + '/' : ''
+    const subDirectory = storage.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
     const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
     const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
 
@@ -250,7 +250,7 @@ const makeDevtoolsOptions = ({
   storeId: string
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
-  Effect.gen(function* () {
+  Effect.sync(() => {
     if (devtoolsEnabled === false) {
       return {
         enabled: false,
@@ -293,6 +293,19 @@ const getDeviceId = Effect.gen(function* () {
   }
 })
 
+/**
+ * Given that an Expo app is running in special environments (e.g. on a real device with separate IP address or in an Android emulator),
+ * we need to determine the correct URL to connect to the devtools server.
+ */
 const getDevtoolsUrl = () => {
-  return process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `http://localhost:4242`
+  const url = new URL(process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `ws://0.0.0.0:4242`)
+  const port = url.port
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
+  const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
+  const devServer = getDevServer().url.replace(/\/?$/, '') as string
+
+  const devServerUrl = new URL(devServer)
+
+  return new URL(`ws://${devServerUrl.hostname}:${port}`)
 }

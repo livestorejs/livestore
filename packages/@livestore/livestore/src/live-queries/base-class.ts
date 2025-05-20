@@ -1,4 +1,5 @@
 import { isNotNil } from '@livestore/utils'
+import { Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import * as RG from '../reactive.js'
@@ -22,18 +23,26 @@ export type ReactivityGraphContext = {
   effectsWrapper: (run: () => void) => void
 }
 
-export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any> =
-  TQuery extends LiveQuery<infer TResult> ? TResult : TQuery extends LiveQueryDef<infer TResult> ? TResult : unknown
+export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any | SignalDef<any>> =
+  TQuery extends LiveQuery<infer TResult>
+    ? TResult
+    : TQuery extends LiveQueryDef<infer TResult>
+      ? TResult
+      : TQuery extends SignalDef<infer TResult>
+        ? TResult
+        : unknown
 
 let queryIdCounter = 0
 
-export interface SignalDef<T> {
+export interface SignalDef<T> extends LiveQueryDef<T, 'signal-def'> {
   _tag: 'signal-def'
   defaultValue: T
+  hash: string
+  label: string
   make: (ctx: ReactivityGraphContext) => RcRef<ISignal<T>>
 }
 
-export interface ISignal<T> {
+export interface ISignal<T> extends LiveQuery<T> {
   _tag: 'signal'
   reactivityGraph: ReactivityGraph
   ref: RG.Ref<T, ReactivityGraphContext, RefreshReason>
@@ -60,16 +69,17 @@ export const depsToString = (deps: DepKey): string => {
   return deps.filter(isNotNil).join(',')
 }
 
-export interface LiveQueryDef<TResult> {
-  _tag: 'def'
+// TODO we should refactor/clean up how LiveQueryDef / SignalDef / LiveQuery / ISignal are defined (particularly on the type-level)
+export interface LiveQueryDef<TResult, TTag extends string = 'def'> {
+  _tag: TTag
   /** Creates a new LiveQuery instance bound to a specific store/reactivityGraph */
-  make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult>>
+  make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult> | ISignal<TResult>>
   label: string
   hash: string
 }
 
 export namespace LiveQueryDef {
-  export type Any = LiveQueryDef<any>
+  export type Any = LiveQueryDef<any, 'def' | 'signal-def'>
 }
 
 /**
@@ -77,7 +87,7 @@ export namespace LiveQueryDef {
  */
 export interface LiveQuery<TResult> {
   id: number
-  _tag: 'computed' | 'db' | 'graphql'
+  _tag: 'computed' | 'db' | 'graphql' | 'signal'
   [TypeId]: TypeId
 
   // reactivityGraph: ReactivityGraph
@@ -86,7 +96,7 @@ export interface LiveQuery<TResult> {
   '__result!': TResult
 
   /** A reactive thunk representing the query results */
-  results$: RG.Thunk<TResult, ReactivityGraphContext, RefreshReason>
+  results$: RG.Atom<TResult, ReactivityGraphContext, RefreshReason>
 
   label: string
 
@@ -106,7 +116,7 @@ export interface LiveQuery<TResult> {
   runs: number
 
   executionTimes: number[]
-  def: LiveQueryDef<TResult>
+  def: LiveQueryDef<TResult> | SignalDef<TResult>
 }
 
 export namespace LiveQuery {
@@ -117,21 +127,24 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
   '__result!'!: TResult
   id = queryIdCounter++;
   [TypeId]: TypeId = TypeId
-  abstract _tag: 'computed' | 'db' | 'graphql'
+  abstract _tag: 'computed' | 'db' | 'graphql' | 'signal'
 
   /** Human-readable label for the query for debugging */
   abstract label: string
 
-  abstract def: LiveQueryDef<TResult>
+  abstract def: LiveQueryDef<TResult> | SignalDef<TResult>
 
-  abstract results$: RG.Thunk<TResult, ReactivityGraphContext, RefreshReason>
+  abstract results$: RG.Atom<TResult, ReactivityGraphContext, RefreshReason>
 
   activeSubscriptions: Set<StackInfo> = new Set()
 
   abstract readonly reactivityGraph: ReactivityGraph
 
   get runs() {
-    return this.results$.recomputations
+    if (this.results$._tag === 'thunk') {
+      return this.results$.recomputations
+    }
+    return 0
   }
 
   executionTimes: number[] = []
@@ -183,7 +196,9 @@ export const makeGetAtomResult = (
     }
 
     // Signal case
-    if (atom._tag === 'signal') return get(atom.ref, otelContext, debugRefreshReason)
+    if (atom._tag === 'signal' && Predicate.hasProperty(atom, 'ref')) {
+      return get(atom.ref, otelContext, debugRefreshReason)
+    }
 
     // LiveQuery case
     return get(atom.results$, otelContext, debugRefreshReason)

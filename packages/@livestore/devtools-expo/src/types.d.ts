@@ -22,7 +22,7 @@ export type Options = {
   /**
    * The host to listen on for the devtools server
    *
-   * @default 'localhost'
+   * @default '0.0.0.0'
    */
   host: string
 }

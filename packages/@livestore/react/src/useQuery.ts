@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
@@ -42,10 +43,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>
 } => {
   const store =
-    options?.store ??
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useContext(LiveStoreContext)?.store ??
-    shouldNeverHappen(`No store provided to useQuery`)
+    options?.store ?? React.useContext(LiveStoreContext)?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
   // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
   const rcRefKey = `${store.storeId}_${store.clientId}_${store.sessionId}_${queryDef.hash}`
@@ -79,6 +77,11 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     // which takes care of disposing the queryRcRef
     () => {},
   )
+
+  // if (queryRcRef.value._tag === 'signal') {
+  //   const  queryRcRef.value.get()
+  // }
+
   const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>>
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
@@ -96,6 +99,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
         },
       })
     } catch (cause: any) {
+      console.error('[@livestore/react:useQuery] Error running query', cause)
       throw new Error(
         `\
 [@livestore/react:useQuery] Error running query: ${cause.name}

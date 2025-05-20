@@ -19,7 +19,7 @@ export const computed = <TResult>(
     throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
   }
 
-  const def: LiveQueryDef.Any = {
+  const def: LiveQueryDef<any> = {
     _tag: 'def',
     make: withRCMap(hash, (ctx, _otelContext) => {
       // TODO onDestroy
@@ -41,7 +41,7 @@ export const computed = <TResult>(
 }
 
 export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult> {
-  _tag: 'computed' = 'computed'
+  _tag = 'computed' as const
 
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, ReactivityGraphContext, RefreshReason>

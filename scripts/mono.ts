@@ -197,20 +197,34 @@ const releaseSnapshotCommand = Cli.Command.make(
     )
 
     const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD')
+    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
-    yield* cmd(`pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${gitSha}' --no-git-tag-version`, {
-      shell: true,
-    })
+    const snapshotVersion = `0.0.0-snapshot-${gitSha}`
 
-    yield* cmd(
-      `pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`,
-      { shell: true },
+    const versionFilePath = `${cwd}/packages/@livestore/common/src/version.ts`
+    fs.writeFileSync(
+      versionFilePath,
+      fs.readFileSync(versionFilePath, 'utf8').replace(originalVersion, snapshotVersion),
     )
 
-    // Rollback package.json versions
-    yield* cmd(`pnpm --filter '@livestore/*' exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
+    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
       shell: true,
     })
+
+    yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
+      shell: true,
+    })
+
+    // Rollback package.json versions
+    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
+      shell: true,
+    })
+
+    // Rollback version.ts
+    fs.writeFileSync(
+      versionFilePath,
+      fs.readFileSync(versionFilePath, 'utf8').replace(snapshotVersion, originalVersion),
+    )
   }),
 )
 

@@ -76,10 +76,11 @@ export const useRcResource = <T>(
   create: () => T,
   dispose: (resource: NoInfer<T>) => void,
   _options?: { debugPrint?: (resource: NoInfer<T>) => ReadonlyArray<any> },
-) => {
+): T => {
   const keyRef = React.useRef<string | undefined>(undefined)
   const didDisposeInMemo = React.useRef(false)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const resource = React.useMemo(() => {
     // console.debug('useMemo', key)
     if (didDisposeInMemo.current) {
@@ -128,6 +129,7 @@ export const useRcResource = <T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   React.useEffect(() => {
     return () => {
       if (didDisposeInMemo.current) {

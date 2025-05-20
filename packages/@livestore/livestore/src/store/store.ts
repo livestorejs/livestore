@@ -135,7 +135,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             this.sqliteDbWrapper.execute(statementSql, bindValues, { otelContext, writeTables })
 
             // durationMsTotal += durationMs
-            writeTables.forEach((table) => writeTablesForEvent.add(table))
+            for (const table of writeTables) {
+              writeTablesForEvent.add(table)
+            }
           }
         }
 
@@ -262,7 +264,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   subscribe = <TResult>(
-    query: LiveQueryDef<TResult> | LiveQuery<TResult>,
+    query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult>,
     options: {
       /** Called when the query result has changed */
       onUpdate: (value: TResult) => void
@@ -289,10 +291,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const queryRcRef =
-          query._tag === 'def'
+          query._tag === 'def' || query._tag === 'signal-def'
             ? query.make(this.reactivityGraph.context!)
             : {
-                value: query,
+                value: query as LiveQuery<TResult>,
                 deref: () => {},
               }
         const query$ = queryRcRef.value
