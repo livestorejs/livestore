@@ -1,4 +1,4 @@
-export const EFFECT_VERSION = '3.14.15'
+export const EFFECT_VERSION = '3.15.2'
 export const REACT_VERSION = '19.0.0'
 export const MIN_NODE_VERSION = '23.0.0'
 

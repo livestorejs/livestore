@@ -203,7 +203,7 @@
 - Upgrade to TypeScript 5.8
 - Upgraded dependencies
   - Now supports React 19
-  - `effect` (needs to be 3.14.15 or higher)
+  - `effect` (needs to be 3.15.2 or higher)
   - `@livestore/wa-sqlite` (needs to be 1.0.5-dev.2)
 
 ### Still todo:
