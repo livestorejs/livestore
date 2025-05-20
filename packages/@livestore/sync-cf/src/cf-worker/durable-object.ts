@@ -8,7 +8,6 @@ import { WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface Env {
-  WEBSOCKET_SERVER: DurableObjectNamespace
   DB: D1Database
   ADMIN_SECRET: string
 }
@@ -65,12 +64,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     /** Needed to prevent concurrent pushes */
     private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
 
-    constructor(ctx: DurableObjectState, env: Env) {
-      super(ctx, env)
-    }
-
     fetch = async (request: Request) =>
-      Effect.gen(this, function* () {
+      Effect.sync(() => {
         const storeId = getStoreId(request)
         const storage = makeStorage(this.ctx, this.env, storeId)
 

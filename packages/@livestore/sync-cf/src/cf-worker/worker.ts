@@ -13,6 +13,14 @@ export type MakeWorkerOptions = {
   validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
+  durableObject?: {
+    /**
+     * Needs to match the binding name from the wrangler config
+     *
+     * @default 'WEBSOCKET_SERVER'
+     */
+    name?: string
+  }
 }
 
 export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
@@ -43,7 +51,11 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
       }
 
       if (url.pathname.endsWith('/websocket')) {
-        return handleWebSocket(request, env, _ctx, { headers: corsHeaders, validatePayload: options.validatePayload })
+        return handleWebSocket(request, env, _ctx, {
+          headers: corsHeaders,
+          validatePayload: options.validatePayload,
+          durableObject: options.durableObject,
+        })
       }
 
       console.error('Invalid path', url.pathname)
@@ -88,7 +100,11 @@ export const handleWebSocket = (
   request: Request,
   env: Env,
   _ctx: ExecutionContext,
-  options: { headers?: HeadersInit; validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void> },
+  options: {
+    headers?: HeadersInit
+    durableObject?: MakeWorkerOptions['durableObject']
+    validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+  },
 ): Promise<Response> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
@@ -117,8 +133,11 @@ export const handleWebSocket = (
       }
     }
 
-    const id = env.WEBSOCKET_SERVER.idFromName(storeId)
-    const durableObject = env.WEBSOCKET_SERVER.get(id)
+    const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
+    const durableObjectNamespace = (env as any)[durableObjectName] as DurableObjectNamespace
+
+    const id = durableObjectNamespace.idFromName(storeId)
+    const durableObject = durableObjectNamespace.get(id)
 
     const upgradeHeader = request.headers.get('Upgrade')
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
