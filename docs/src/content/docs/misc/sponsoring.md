@@ -1,19 +1,74 @@
 ---
-title: Sponsoring
+title: Sponsoring LiveStore
 sidebar:
+  label: Sponsoring
   order: 25
 ---
 
-LiveStore is currently only available for [GitHub Sponsors](https://github.com/sponsors/schickling).
+## TLDR
+
+- Sponsoring LiveStore helps ensure long-term stability and improvements for the project you rely on.
+- Sponsors receive exclusive benefits, including a LiveStore Devtools license and access to sponsor-only resources.
+- LiveStore is fully open source and community-supported—your sponsorship directly enables its ongoing development.
+
+## Goal: Sustainable Open Source
+
+As the creator and maintainer of LiveStore, I'm often asked *"how do you make money with LiveStore?"*. That's a great question with a simple answer. I'm not building LiveStore to make a lot of money - my goal is to make LiveStore a sustainable open source project. I've been working on LiveStore since 2021 (mostly full-time) and hope you can help to keep the project sustainable.
+
+Open source has been a big part of my life - I've founded [Prisma](https://www.prisma.io/), created [Contentlayer](https://www.contentlayer.dev/), and built/maintained many other open source projects over the years. Through these experiences, I've seen firsthand how challenging it can be to keep open source projects healthy in the long run. Too often, maintainers burn out, and projects that many people depend on end up dying. My goal with LiveStore is to build an open source project that's sustainable and could possibly serve as an inspiration for other open source projects.
+
+I wanted LiveStore to exist for over a decade - something I felt was missing in the ecosystem and that I know others have wanted as well. But building and maintaining a project on that level of ambition is incredibly hard, especially without a clear path to monetization. I believe that's also why a technology like LiveStore didn't exist yet. 
+
+Particularly being concerned about the sustainability of open source projects, I was hesitant to start another open source project myself. Still, I believe deeply in the value LiveStore creates for developers, and I'm committed to making it the best it can be.
+
+The unfortunate reality is that there is no well-established way for open source creators to get paid for their work. While there are some great initiatives and platforms out there - like [Open Source Pledge](https://opensourcepledge.org/), [Generous](https://generous.builders/), [GitHub Sponsors](https://github.com/sponsors), [Polar](https://polar.sh/), [OpenCollective](https://opencollective.com/), and [thanks.dev](https://thanks.dev/) - most open source projects still struggle to capture even a fraction of the value they create. I believe in a positive-sum world, and I'm happy to contribute, but sustainability is essential if LiveStore is going to keep growing and improving.
+
+My mid-/long term goal is to bring in enough resources not just to support myself, but to pay others to work on LiveStore as well. I want to ensure that the project remains stable, well-maintained, and innovative - something you can truly rely on. Sponsorship is the most direct way to make this possible. It's not just about funding features or bug fixes; it's about creating a relationship where your support helps guarantee the future of a tool you depend on.
+
+I hope those words resonate with you and you'll understand why sponsoring LiveStore isn't just a nice gesture - it's essential for keeping the project going and a direct investment in the stability and evolution of a project that your application (and business) depends on. Your support ensures that LiveStore remains sustainable and healthy for the whole community.
+
+Thank you! 🧡
+
+## Related posts
+
+- [The Open Source Sustainability Crisis](https://openpath.quest/2024/the-open-source-sustainability-crisis/) by Chad Whitacre
+- [Entitlement in Open Source](https://mikemcquaid.com/entitlement-in-open-source/) by Homebrew lead Mike McQuaid
+
+## Aligned Incentives
+
+-	**Stability and Reliability:**
+  Your application depends on LiveStore as the core data foundation. Sponsorship ensures continuous, focused maintenance and improvement, directly benefiting you with increased stability, reliability, and performance.
+
+-	**Shared Investment in Long-term Success:**
+  Sponsorship creates mutual investment in the project's future. You sponsoring LiveStore signals that it is crucial to your business, motivating me (and other maintainers) to prioritize features, enhancements, and fixes that benefit you.
+
+-	**Avoiding Costly In-House Development:**
+  LiveStore offers a unique architectural design with (currently) no direct alternatives readily available. So the only alternative is building something similar in-house which is takes a lot of time and resources. Sponsorship aligns incentives by ensuring LiveStore remains an attractive and efficient alternative.
+
+-	**Transparent Sustainability:**
+  Open-source sustainability is a common challenge as projects stagnate without sustainable resources. Sponsorship transparently addresses this, providing maintainers with clarity and stability, ensuring the project thrives and evolves to users' benefit.
+
+-	**Healthy Community and Ecosystem**:
+  Sponsors actively contribute to fostering a healthy, collaborative ecosystem. Their direct involvement ensures responsiveness to real-world needs, creating an ongoing, beneficial dialogue between users and maintainers.
+
+-	**Focused Innovation and Quality**:
+  Regular sponsorship allows maintainers to allocate dedicated time to innovative research and high-quality development. This ultimately translates into more reliable software, fewer bugs, faster releases, and thoughtful features driven by actual user needs.
+
+-	**Ensuring Longevity and Avoiding Lock-In**:
+  By aligning financial incentives through sponsorship, maintainers avoid being forced into less favorable monetization methods (e.g., restrictive licensing or heavy commercial lock-ins), maintaining open access and flexibility for users.
 
 ## Sponsor Benefits
 
-- LiveStore Devtools License
+You can access your sponsor benefits via the [Sponsor dashboard](https://livestore.dev/sponsor).
+
+- [LiveStore Devtools](/reference/devtools) License
 - Access to
   - Sponsor-only Discord channels
   - LiveStore Office Hours
 
 ## Thanks to our Sponsors
+
+A big and heartfelt thank you to all our sponsors. Your support has been invaluable and LiveStore wouldn't be where it is without you.
 
 ### Partners
 
@@ -24,4 +79,28 @@ LiveStore is currently only available for [GitHub Sponsors](https://github.com/s
 
 ### Individuals
 
-A big thank you to all individual GitHub sponsors!
+A big thank you to all individual GitHub sponsors! 🧡
+
+## FAQ
+
+### Why not raise VC money for LiveStore?
+
+While raising venture capital for LiveStore might be possible, the challenge lies in building a VC-scale business around LiveStore. My current goal is to make and keep LiveStore sustainable without investor funding. (While I don't rule out this path in the future, it's currently not planned.)
+
+### Why not build a hosting service around LiveStore?
+
+While technically feasible, LiveStore embraces partnerships with other syncing services to create a win-win situation and minimize vendor lock-in for users.
+
+### Are free devtools licenses for students?
+
+Yes, please reach out via Discord.
+
+### Are there other ways to support LiveStore?
+
+Yes, there are many ways to support LiveStore:
+
+- Become a [contributor / maintainer](/contributing/contributing)
+- Help other community members (e.g. via Discord)
+- Spread the word
+  - Give talks, write blog posts, post on social media, ...
+- Provide feedback (e.g. via GitHub issues or Discord)
