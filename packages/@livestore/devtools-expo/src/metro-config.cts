@@ -52,7 +52,9 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
       return next()
     }
 
-    const redirectUrl = `http://${host}:${port}/_livestore/${req.url!.slice('/_livestore'.length)}`
+    // Use `localhost` instead of `0.0.0.0` as it doesn't have the `navigator.locks` web adapter limitation (https://share.cleanshot.com/nHBnmk6S)
+    const maybeLocalhost = host === '0.0.0.0' ? 'localhost' : host
+    const redirectUrl = `http://${maybeLocalhost}:${port}/_livestore/${req.url!.slice('/_livestore'.length)}`
     res.writeHead(302, { Location: redirectUrl })
     res.end()
   }
