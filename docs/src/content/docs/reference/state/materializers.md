@@ -83,6 +83,10 @@ The `context` object passed to each materializer provides `query` for database r
 
 If a materializer function throws an error, or if an `Effect` returned by a materializer fails, the entire transaction for that event will be rolled back. This means any database changes attempted by that materializer for the failing event will not be persisted. The error will be logged, and the system will typically halt or flag the event as problematic, depending on the specific LiveStore setup.
 
+If the error happens on the client which tries to commit the event, the event will never be committed and pushed to the sync backend.
+
+In the future there will be ways to configure the error-handling behaviour, e.g. to allow skipping an incoming event when a materializer fails in order to avoid the app getting stuck. However, skipping events might also lead to diverging state across clients and should be used with caution.
+
 ## Best practices
 
 ### Side-effect free / deterministic

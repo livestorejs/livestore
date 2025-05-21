@@ -22,7 +22,11 @@ export default defineConfig({
           shell: true,
         })
 
-        server.httpServer?.on('close', () => wrangler.kill())
+        const killWrangler = () => wrangler.killed === false && wrangler.kill()
+
+        server.httpServer?.on('close', killWrangler)
+        process.on('SIGTERM', killWrangler)
+        process.on('SIGINT', killWrangler)
 
         wrangler.on('exit', (code) => console.error(`wrangler dev exited with code ${code}`))
       },
