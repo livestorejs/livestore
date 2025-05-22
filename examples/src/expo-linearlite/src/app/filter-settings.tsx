@@ -74,8 +74,8 @@ const FilterSettingsScreen = () => {
           )}
           onChange={(value) =>
             selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabGrouping: value.nativeEvent.value })
-              : setUiState({ createdTabGrouping: value.nativeEvent.value })
+              ? setUiState({ assignedTabGrouping: value.nativeEvent.value.toLowerCase() })
+              : setUiState({ createdTabGrouping: value.nativeEvent.value.toLowerCase() })
           }
         />
       </View>
@@ -89,8 +89,8 @@ const FilterSettingsScreen = () => {
           )}
           onChange={(value) =>
             selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabOrdering: value.nativeEvent.value })
-              : setUiState({ createdTabOrdering: value.nativeEvent.value })
+              ? setUiState({ assignedTabOrdering: value.nativeEvent.value.toLowerCase() })
+              : setUiState({ createdTabOrdering: value.nativeEvent.value.toLowerCase() })
           }
         />
       </View>
@@ -101,7 +101,23 @@ const FilterSettingsScreen = () => {
             <RowPropertySwitch
               key={property}
               onPress={() => {
-                // TODO re-implement this
+                const settingKey = `${selectedHomeTab}TabShow${property}`
+                const currentValue =
+                  selectedHomeTab === 'assigned'
+                    ? property === 'Assignee'
+                      ? assignedTabShowAssignee
+                      : property === 'Status'
+                        ? assignedTabShowStatus
+                        : assignedTabShowPriority
+                    : property === 'Assignee'
+                      ? createdTabShowAssignee
+                      : property === 'Status'
+                        ? createdTabShowStatus
+                        : createdTabShowPriority
+
+                setUiState({
+                  [settingKey]: !currentValue,
+                })
               }}
               label={property}
               isSelected={

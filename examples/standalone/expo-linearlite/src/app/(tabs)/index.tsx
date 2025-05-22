@@ -1,9 +1,8 @@
-import { LegendList } from '@legendapp/list'
 import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
@@ -25,8 +24,8 @@ const getOrderingOptions = (
   createdTabGrouping: string,
   createdTabOrdering: string,
 ) => {
-  const grouping = tab === 'Assigned' ? assignedTabGrouping : createdTabGrouping
-  const ordering = tab === 'Assigned' ? assignedTabOrdering : createdTabOrdering
+  const grouping = tab === 'assigned' ? assignedTabGrouping : createdTabGrouping
+  const ordering = tab === 'assigned' ? assignedTabOrdering : createdTabOrdering
 
   let orderClause = 'ORDER BY '
   const orderFields = []
@@ -34,9 +33,9 @@ const getOrderingOptions = (
   // Handle grouping
   if (grouping !== 'NoGrouping') {
     const groupingField =
-      grouping === 'Assignee'
+      grouping === 'assignee'
         ? 'assigneeId ASC'
-        : grouping === 'Priority'
+        : grouping === 'priority'
           ? `CASE issues.priority
               WHEN 'urgent' THEN 1
               WHEN 'high' THEN 2
@@ -45,7 +44,7 @@ const getOrderingOptions = (
               WHEN 'none' THEN 5
               ELSE 6
             END ASC`
-          : grouping === 'Status'
+          : grouping === 'status'
             ? `CASE issues.status
                 WHEN 'triage' THEN 1
                 WHEN 'backlog' THEN 2
@@ -67,7 +66,7 @@ const getOrderingOptions = (
   // Handle ordering
   if (ordering) {
     const orderingField =
-      ordering === 'Priority'
+      ordering === 'priority'
         ? `CASE issues.priority
               WHEN 'urgent' THEN 1
               WHEN 'high' THEN 2
@@ -233,17 +232,12 @@ const HomeScreen = () => {
   )
 
   return (
-    <LegendList
-      // TODO remove type-cast when LegendList supports immutable arrays
-      data={issues as typeof issues extends (infer T)[] ? T[] : never}
+    <FlatList
+      data={issues}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
-      estimatedItemSize={40}
-      drawDistance={1000}
-      waitForInitialLayout
-      recycleItems
     />
   )
 }
