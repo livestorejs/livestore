@@ -89,6 +89,7 @@
     "src",
     "dist"
   ],
+  "license": "Apache-2.0",
   "peerDependencies": {
     "@effect/cli": "~0.61.4",
     "@effect/cluster": "~0.34.1",

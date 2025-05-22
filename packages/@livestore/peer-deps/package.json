@@ -22,6 +22,7 @@
   "files": [
     "package.json"
   ],
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

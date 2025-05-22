@@ -24,6 +24,7 @@
     "src",
     "dist"
   ],
+  "license": "Apache-2.0",
   "peerDependencies": {
     "graphql": "~16.10.0"
   },

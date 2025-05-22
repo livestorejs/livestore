@@ -19,6 +19,7 @@
     "src",
     "dist"
   ],
+  "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "peerDependencies": {
     "expo": "~53.0.9"
