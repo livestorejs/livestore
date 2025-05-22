@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "declaration": false,
+    "declarationMap": false,
+    "composite": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../packages/@livestore/livestore" },
+    { "path": "../../../packages/@livestore/react" },
+    { "path": "../../../packages/@livestore/adapter-web" },
+    { "path": "../../../packages/@livestore/sync-electric" }
+  ]
+}

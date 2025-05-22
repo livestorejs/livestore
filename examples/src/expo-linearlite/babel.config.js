@@ -7,7 +7,6 @@ module.exports = function (api) {
       [
         'babel-preset-expo',
         {
-          jsxImportSource: 'nativewind',
           // TODO: React compiler is not working because https://github.com/software-mansion/react-native-screens/issues/2302
           // 'react-compiler': {
           // Passed directly to the React Compiler Babel plugin.
@@ -19,9 +18,9 @@ module.exports = function (api) {
           // Web-only settings...
           // },
           // },
+          unstable_transformImportMeta: true,
         },
       ],
-      'nativewind/babel',
     ],
     plugins: ['babel-plugin-transform-vite-meta-env', '@babel/plugin-syntax-import-attributes'],
   }

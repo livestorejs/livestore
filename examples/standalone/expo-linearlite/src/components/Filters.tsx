@@ -1,14 +1,17 @@
-import { useRow, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
+import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { mutations, tables } from '../livestore/schema.ts'
+import { uiState$ } from '@/livestore/queries.ts'
+
+import { events } from '../livestore/schema.ts'
 import type { Filter } from '../types.ts'
 
 export const Filters: React.FC = () => {
   const { store } = useStore()
-  const [{ filter }] = useRow(tables.app)
+  const { filter } = useQuery(uiState$)
 
-  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter }))
+  const setFilter = (newFilter: Filter) => store.commit(events.uiStateSet({ filter: newFilter }))
 
   return (
     <View style={styles.container}>

@@ -1,9 +1,8 @@
-import type { LiveQuery } from '@livestore/livestore'
+import type { LiveQueryDef } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
 import React from 'react'
 
 import { useQuery } from '../../useQuery.js'
-import { useScopedQuery } from '../../useScopedQuery.js'
 
 /*
 TODO:
@@ -12,7 +11,7 @@ TODO:
 */
 
 export type LiveListProps<TItem> = {
-  items$: LiveQuery<ReadonlyArray<TItem>>
+  items$: LiveQueryDef<ReadonlyArray<TItem>>
   // TODO refactor render-flag to allow for transition animations on add/remove
   renderItem: (item: TItem, opts: { index: number; isInitialListRender: boolean }) => React.ReactNode
   /** Needs to be unique across all list items */
@@ -32,14 +31,18 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey }: LiveListProps<T
 
   React.useEffect(() => setHasMounted(true), [])
 
-  const keysCb = React.useCallback(() => computed((get) => get(items$).map(getKey)), [getKey, items$])
-  const keys = useScopedQuery(keysCb, 'fixed')
+  const keys = useQuery(computed((get) => get(items$).map(getKey)))
   const arr = React.useMemo(
     () =>
       keys.map(
         (key) =>
           // TODO figure out a way so that `item$` returns an ordered lookup map to more efficiently find the item by key
-          [key, computed((get) => get(items$).find((item) => getKey(item, 0) === key)!) as LiveQuery<TItem>] as const,
+          [
+            key,
+            computed((get) => get(items$).find((item) => getKey(item, 0) === key)!, {
+              deps: [key],
+            }) as LiveQueryDef<TItem>,
+          ] as const,
       ),
     [getKey, items$, keys],
   )
@@ -65,7 +68,7 @@ const ItemWrapper = <TItem,>({
   renderItem,
 }: {
   itemKey: string | number
-  item$: LiveQuery<TItem>
+  item$: LiveQueryDef<TItem>
   opts: { index: number; isInitialListRender: boolean }
   renderItem: (item: TItem, opts: { index: number; isInitialListRender: boolean }) => React.ReactNode
 }) => {

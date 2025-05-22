@@ -1,0 +1,171 @@
+---
+title: Getting started with LiveStore + React
+description: How to use LiveStore with React on the web.
+sidebar:
+  label: React Web
+  order: 1
+---
+
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import { makeTiged, versionNpmSuffix } from '../../../../data.js'
+import { MIN_NODE_VERSION, LIVESTORE_WA_SQLITE_VERSION } from '../../../../../CONSTANTS.ts'
+import viteConfigCode from '../../../../../examples/standalone/web-todomvc-sync-cf/vite.config.js?raw'
+import schemaCode from '../../../../../examples/standalone/web-todomvc-sync-cf/src/livestore/schema.ts?raw'
+import workerCode from '../../../../../examples/standalone/web-todomvc-sync-cf/src/livestore.worker.ts?raw'
+import rootCode from '../../../../../examples/standalone/web-todomvc-sync-cf/src/Root.tsx?raw'
+import headerCode from '../../../../../examples/standalone/web-todomvc-sync-cf/src/components/Header.tsx?raw'
+import mainSectionCode from '../../../../../examples/standalone/web-todomvc-sync-cf/src/components/MainSection.tsx?raw'
+
+export const CODE = {
+  viteConfig: viteConfigCode,
+  schema: schemaCode,
+  worker: workerCode,
+  root: rootCode,
+  header: headerCode,
+  mainSection: mainSectionCode,
+}
+
+{/* We're adjusting the package to use the dev version on the dev branch */}
+export const manualInstallDepsStr = [
+  '@livestore/livestore' + versionNpmSuffix,
+  '@livestore/wa-sqlite@' + LIVESTORE_WA_SQLITE_VERSION,
+  '@livestore/adapter-web' + versionNpmSuffix,
+  '@livestore/react' + versionNpmSuffix,
+  '@livestore/utils' + versionNpmSuffix,
+  '@livestore/peer-deps' + versionNpmSuffix,
+  '@livestore/devtools-vite' + versionNpmSuffix,
+].join(' ')
+
+## Prerequisites
+
+- Recommended: Bun 1.2 or higher
+- Node.js {MIN_NODE_VERSION} or higher
+
+### Option A: Quick start
+
+For a quick start, we recommend using our template app following the steps below.
+
+For existing projects, see [Existing project setup](#existing-project-setup).
+
+<Steps>
+
+1. **Set up project from template**
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code={makeTiged('web-todomvc-sync-cf', 'bunx')} lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code={makeTiged('web-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code={makeTiged('web-todomvc-sync-cf', 'npx')} lang="sh" />
+     </TabItem>
+   </Tabs>
+
+   Replace `livestore-app` with your desired app name.
+
+2. **Install dependencies**
+
+   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code="bun install" lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code="pnpm install" lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code="npm install" lang="sh" />
+     </TabItem>
+   </Tabs>
+
+   Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+
+3. **Run dev environment**
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code="bun dev" lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code="pnpm dev" lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code="npm run dev" lang="sh" />
+     </TabItem>
+   </Tabs>
+
+4. **Open browser**
+
+   Open `http://localhost:60000` in your browser.
+
+   You can also open the devtools by going to `http://localhost:60000/_livestore`.
+
+</Steps>
+
+### Option B: Existing project setup \{#existing-project-setup\}
+
+<Steps>
+
+1. **Install dependencies**
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code={'bun install ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code={'pnpm add ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code={'npm install ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+   </Tabs>
+
+2. **Update Vite config**
+
+   Add the following code to your `vite.config.js` file:
+
+   <Code code={viteConfigCode} lang="js" title="vite.config.js" />
+</Steps>
+
+## Define Your Schema
+
+Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
+
+Here's an example schema:
+
+<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
+
+## Create the LiveStore Worker
+
+Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
+
+<Code code={CODE.worker} lang="ts" title="src/livestore/livestore.worker.ts" />
+
+## Add the LiveStore Provider
+
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app's data store, loading, and error states.
+
+Here's an example:
+
+<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
+
+### Commit events
+
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
+
+Here's an example:
+
+<Code code={CODE.header} lang="tsx" title="src/components/Header.tsx" />
+
+## Queries
+
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+
+Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
+
+Here's an example:
+
+<Code code={CODE.mainSection} lang="tsx" title="src/components/MainSection.tsx" />

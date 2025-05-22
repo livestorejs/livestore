@@ -10,9 +10,9 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../db-schema" },
     { "path": "../common" },
-    { "path": "../web" },
-    { "path": "../utils" }
+    { "path": "../adapter-web" },
+    { "path": "../utils" },
+    { "path": "../utils-dev" },
   ]
 }

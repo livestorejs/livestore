@@ -25,3 +25,10 @@ dist
 .wrangler
 .vercel
 .netlify
+
+_tmp*
+
+.vinxi
+.output
+
+scripts/.completions

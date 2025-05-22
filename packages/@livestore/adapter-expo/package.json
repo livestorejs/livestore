@@ -1,0 +1,42 @@
+{
+  "name": "@livestore/adapter-expo",
+  "version": "0.3.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "expo-application": "^6.1.4",
+    "expo-file-system": "^18.1.8",
+    "expo-sqlite": "^15.2.10",
+    "react-native": "^0.79.2"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "expo-application": "~6.1.4",
+    "expo-file-system": "~18.1.8",
+    "expo-sqlite": "~15.2.10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  }
+}

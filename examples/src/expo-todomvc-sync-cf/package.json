@@ -1,0 +1,42 @@
+{
+  "name": "livestore-example-src-expo-todomvc-sync-cf",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@expo/vector-icons": "14.1.0",
+    "@livestore/adapter-expo": "workspace:*",
+    "@livestore/devtools-expo": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "babel-preset-expo": "13.0.0",
+    "expo": "53.0.9",
+    "expo-application": "6.1.4",
+    "expo-asset": "11.1.5",
+    "expo-crypto": "14.1.4",
+    "expo-sqlite": "15.2.10",
+    "expo-status-bar": "2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/plugin-syntax-import-attributes": "^7.26.0",
+    "@babel/runtime": "^7.26.10",
+    "@types/react": "^19.1.2",
+    "babel-plugin-transform-vite-meta-env": "^1.0.3",
+    "eas-cli": "^16.3.1",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.14.4"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "main": "./src/AppEntry.ts",
+  "scripts": {
+    "start": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start",
+    "wrangler:deploy": "wrangler deploy",
+    "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
+  }
+}

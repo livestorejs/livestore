@@ -12,7 +12,7 @@ import React from 'react'
  */
 export const useStateRefWithReactiveInput = <T>(
   inputState: T,
-): [React.MutableRefObject<T>, (newState: T | ((prev: T) => T)) => void] => {
+): [React.RefObject<T>, (newState: T | ((prev: T) => T)) => void] => {
   const [_, rerender] = React.useState(0)
 
   const lastKnownInputStateRef = React.useRef<T>(inputState)

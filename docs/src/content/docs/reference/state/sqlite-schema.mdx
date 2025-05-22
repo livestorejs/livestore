@@ -1,0 +1,88 @@
+---
+title: SQLite State Schema
+sidebar:
+  order: 2
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
+import schemaCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
+
+LiveStore provides a schema definition language for defining your database tables and mutation definitions. LiveStore automatically migrates your database schema when you change your schema definitions.
+
+### Example
+
+
+<Tabs syncKey="package-manager">
+  <TabItem label="schema.ts">
+    <Code lang="ts" code={schemaCode} />
+  </TabItem>
+</Tabs>
+
+
+### Schema migrations
+
+Migration strategies:
+
+- `auto`: Automatically migrate the database to the newest schema and rematerializes the state from the eventlog.
+- `manual`: Manually migrate the database to the newest schema.
+
+### Client documents
+
+- Meant for convenience
+- Client-only
+- Goal: Similar ease of use as `React.useState`
+- When schema changes in a non-backwards compatible way, previous events are dropped and the state is reset
+  - Don't use client documents for sensitive data which must not be lost
+- Implies
+  - Table with `id` and `value` columns
+  - `${MyTable}Set` event + materializer (which are auto-registered)
+
+### Column types
+
+#### Core SQLite column types
+
+- `State.SQLite.text`: A text field, returns `string`.
+- `State.SQLite.integer`: An integer field, returns `number`.
+- `State.SQLite.real`: A real field (floating point number), returns `number`.
+- `State.SQLite.blob`: A blob field (binary data), returns `Uint8Array`.
+
+#### Higher level column types
+
+- `State.SQLite.boolean`: An integer field that stores `0` for `false` and `1` for `true` and returns a `boolean`.
+- `State.SQLite.json`: A text field that stores a stringified JSON object and returns a decoded JSON value.
+- `State.SQLite.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
+- `State.SQLite.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
+
+
+#### Custom column schemas
+
+You can also provide a custom schema for a column which is used to automatically encode and decode the column value.
+
+#### Example: JSON-encoded struct
+
+```ts
+import { State, Schema } from '@livestore/livestore'
+
+export const UserMetadata = Schema.Struct({ 
+  petName: Schema.String,
+  favoriteColor: Schema.Literal('red', 'blue', 'green'),
+ })
+
+export const userTable = State.SQLite.table({
+  name: 'user',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    name: State.SQLite.text(),
+    metadata: State.SQLite.json({ schema: UserMetadata }),
+  }
+})
+```
+
+## Best Practices
+
+- It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
+	- This means you'll rarely use `React.useState` when using LiveStore
+- In some cases for "fast changing values" it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations. Cases where this can make sense can include:
+  - Text input / rich text editing
+  - Scroll position tracking, resize events, move/drag events
+  - ...

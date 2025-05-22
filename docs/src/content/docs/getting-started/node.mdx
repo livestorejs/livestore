@@ -1,0 +1,16 @@
+---
+title: Node
+description: Learn how to use LiveStore with Node.
+sidebar:
+  order: 3
+---
+
+```ts
+import { makeAdapter } from '@livestore/adapter-node'
+
+const adapter = makeAdapter({
+  storage: { type: 'fs' },
+  // sync: { backend: makeCfSync({ url: '...' }) },
+})
+```
+

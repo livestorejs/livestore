@@ -1,27 +1,33 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.2.0",
-  "main": "./dist/index.cjs",
+  "version": "0.3.0",
+  "sideEffects": false,
   "types": "./dist/index.d.cts",
-  "scripts": {
-    "test": "echo No tests yet"
-  },
   "dependencies": {
-    "@livestore/devtools-react": "0.2.0",
-    "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "workspace:*",
-    "vite": "^5.4.10",
-    "ws": "^8.18.0"
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.8.5",
-    "@types/ws": "8.5.12",
-    "expo": "51.0.32"
+    "@types/node": "^22.15.17",
+    "expo": "^53.0.9",
+    "vite": "^6.3.4"
   },
+  "files": [
+    "package.json",
+    "expo-module.config.json",
+    "webui",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "51.0.32"
+    "expo": "~53.0.9"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }

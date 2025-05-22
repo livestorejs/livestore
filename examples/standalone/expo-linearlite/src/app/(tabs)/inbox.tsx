@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
@@ -7,8 +7,6 @@ import { Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-nati
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
-import { issuesMutations, tables, userMutations } from '@/livestore/schema.ts'
 import {
   createRandomComment,
   createRandomIssue,
@@ -17,13 +15,17 @@ import {
   randomValueFromArray,
 } from '@/utils/generate-fake-data.ts'
 
+import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
+import { events, tables } from '../../livestore/schema.ts'
+
 const COMMENTS_PER_ISSUE = 10
+const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
   const { store } = useStore()
 
-  const users = useScopedQuery(() => queryDb(tables.users.query.where({}), { label: 'inbox-users' }), ['inbox-users'])
+  const users = useQuery(users$)
 
   const generateRandomData = (numUsers: number, numIssuesPerUser: number) => {
     const users: User[] = []
@@ -57,11 +59,11 @@ const InboxScreen = () => {
       }
     }
     // Add generated data to the store
-    store.mutate(
-      ...users.map((user) => userMutations.createUser(user)),
-      ...issues.map((issue) => issuesMutations.createIssue(issue)),
-      ...comments.map((comment) => issuesMutations.createComment(comment)),
-      ...reactions.map((reaction) => issuesMutations.createReaction(reaction)),
+    store.commit(
+      ...users.map((user) => events.userCreated(user)),
+      ...issues.map((issue) => events.issueCreated(issue)),
+      ...comments.map((comment) => events.commentCreated(comment)),
+      ...reactions.map((reaction) => events.reactionCreated(reaction)),
     )
   }
 
@@ -88,19 +90,18 @@ const InboxScreen = () => {
       }
     }
 
-    store.mutate(
-      ...issues.map((issue) => issuesMutations.createIssue(issue)),
-      ...comments.map((comment) => issuesMutations.createComment(comment)),
-      ...reactions.map((reaction) => issuesMutations.createReaction(reaction)),
+    store.commit(
+      ...issues.map((issue) => events.issueCreated(issue)),
+      ...comments.map((comment) => events.commentCreated(comment)),
+      ...reactions.map((reaction) => events.reactionCreated(reaction)),
     )
   }
 
-  const reset = () => store.mutate(issuesMutations.clearAll({ deleted: Date.now() }))
+  const reset = () => store.commit(events.allCleared({ deletedAt: new Date() }))
 
-  const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
+  const issuesCount$ = queryDb(tables.issues.count().where({ deletedAt: null }))
+  const issuesDeletedCount$ = queryDb(tables.issues.count().where({ deletedAt: { op: '!=', value: null } }))
   const issuesCount = useQuery(issuesCount$)
-
-  const issuesDeletedCount$ = queryDb(tables.issues.query.count().where({ deletedAt: { op: '!=', value: null } }))
   const issuesDeletedCount = useQuery(issuesDeletedCount$)
 
   const isDarkMode = useColorScheme() === 'dark'

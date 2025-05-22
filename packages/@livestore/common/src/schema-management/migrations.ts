@@ -1,42 +1,41 @@
-import { SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
-import type { SynchronousDatabase } from '../adapter-types.js'
-import type { LiveStoreSchema } from '../schema/index.js'
-import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
+import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
+import type { LiveStoreSchema } from '../schema/mod.js'
+import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
+import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'
 import {
+  isStateSystemTable,
+  SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
-  SCHEMA_MUTATIONS_META_TABLE,
-  schemaMetaTable,
-  schemaMutationsMetaTable,
-  systemTables,
-} from '../schema/system-tables.js'
+  schemaEventDefsMetaTable,
+  stateSystemTables,
+} from '../schema/state/sqlite/system-tables.js'
 import { sql } from '../util.js'
 import type { SchemaManager } from './common.js'
 import { dbExecute, dbSelect } from './common.js'
-import { validateSchema } from './validate-mutation-defs.js'
+import { validateSchema } from './validate-schema.js'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
-export const makeSchemaManager = (db: SynchronousDatabase): Effect.Effect<SchemaManager> =>
+export const makeSchemaManager = (db: SqliteDb): Effect.Effect<SchemaManager> =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
-      tableAst: schemaMutationsMetaTable.sqliteDef.ast,
+      tableAst: schemaEventDefsMetaTable.sqliteDef.ast,
       behaviour: 'create-if-not-exists',
     })
 
     return {
-      getMutationDefInfos: () =>
-        dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
+      getEventDefInfos: () => dbSelect<SchemaEventDefsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_EVENT_DEFS_META_TABLE}`),
 
-      setMutationDefInfo: (info) => {
+      setEventDefInfo: (info) => {
         dbExecute(
           db,
-          sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, updatedAt) VALUES ($mutationName, $schemaHash, $updatedAt)`,
+          sql`INSERT OR REPLACE INTO ${SCHEMA_EVENT_DEFS_META_TABLE} (eventName, schemaHash, updatedAt) VALUES ($eventName, $schemaHash, $updatedAt)`,
           {
-            mutationName: info.mutationName,
+            eventName: info.eventName,
             schemaHash: info.schemaHash,
             updatedAt: new Date().toISOString(),
           },
@@ -51,16 +50,18 @@ export const migrateDb = ({
   schema,
   onProgress,
 }: {
-  db: SynchronousDatabase
+  db: SqliteDb
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
-}) =>
+}): Effect.Effect<MigrationsReport, UnexpectedError> =>
   Effect.gen(function* () {
-    yield* migrateTable({
-      db,
-      tableAst: schemaMetaTable.sqliteDef.ast,
-      behaviour: 'create-if-not-exists',
-    })
+    for (const tableDef of stateSystemTables) {
+      yield* migrateTable({
+        db,
+        tableAst: tableDef.sqliteDef.ast,
+        behaviour: 'create-if-not-exists',
+      })
+    }
 
     // TODO enforce that migrating tables isn't allowed once the store is running
 
@@ -73,14 +74,15 @@ export const migrateDb = ({
       schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
     )
 
-    const tableDefs = new Set([
+    const tableDefs = [
       // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
-      ...systemTables,
-      ...Array.from(schema.tables.values()).filter((_) => _.sqliteDef.name !== SCHEMA_META_TABLE),
-    ])
+      ...stateSystemTables,
+      ...Array.from(schema.state.sqlite.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
+    ]
 
     const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()
 
+    const migrationsReportEntries: MigrationsReportEntry[] = []
     for (const tableDef of tableDefs) {
       const tableAst = tableDef.sqliteDef.ast
       const tableName = tableAst.name
@@ -90,9 +92,10 @@ export const migrateDb = ({
       if (schemaHash !== dbSchemaHash) {
         tablesToMigrate.add({ tableAst, schemaHash })
 
-        console.log(
-          `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
-        )
+        migrationsReportEntries.push({
+          tableName,
+          hashes: { expected: schemaHash, actual: dbSchemaHash },
+        })
       }
     }
 
@@ -107,6 +110,8 @@ export const migrateDb = ({
         yield* onProgress({ done: processedTables, total: tablesCount })
       }
     }
+
+    return { migrations: migrationsReportEntries }
   })
 
 export const migrateTable = ({
@@ -116,7 +121,7 @@ export const migrateTable = ({
   behaviour,
   skipMetaTable = false,
 }: {
-  db: SynchronousDatabase
+  db: SqliteDb
   tableAst: SqliteAst.Table
   schemaHash?: number
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'
@@ -129,10 +134,10 @@ export const migrateTable = ({
 
     if (behaviour === 'drop-and-recreate') {
       // TODO need to possibly handle cascading deletes due to foreign keys
-      dbExecute(db, sql`drop table if exists ${tableName}`)
-      dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec}) strict`)
+      dbExecute(db, sql`drop table if exists '${tableName}'`)
+      dbExecute(db, sql`create table if not exists '${tableName}' (${columnSpec}) strict`)
     } else if (behaviour === 'create-if-not-exists') {
-      dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec}) strict`)
+      dbExecute(db, sql`create table if not exists '${tableName}' (${columnSpec}) strict`)
     }
 
     for (const index of tableAst.indexes) {
@@ -151,15 +156,22 @@ export const migrateTable = ({
         { tableName, schemaHash, updatedAt },
       )
     }
-  }).pipe(Effect.withSpan('@livestore/common:migrateTable', { attributes: { tableName: tableAst.name } }))
+  }).pipe(
+    Effect.withSpan('@livestore/common:migrateTable', {
+      attributes: {
+        'span.label': tableAst.name,
+        tableName: tableAst.name,
+      },
+    }),
+  )
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''
-  return sql`create ${uniqueStr} index if not exists ${index.name} on ${tableName} (${index.columns.join(', ')})`
+  return sql`create ${uniqueStr} index if not exists '${index.name}' on '${tableName}' (${index.columns.join(', ')})`
 }
 
 export const makeColumnSpec = (tableAst: SqliteAst.Table) => {
-  const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => _.name)
+  const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => `'${_.name}'`)
   const columnDefStrs = tableAst.columns.map(toSqliteColumnSpec)
   if (primaryKeys.length > 0) {
     columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
@@ -175,6 +187,7 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
   const defaultValueStr = (() => {
     if (column.default._tag === 'None') return ''
 
+    if (column.default.value === null) return 'default null'
     if (SqliteDsl.isSqlDefaultValue(column.default.value)) return `default ${column.default.value.sql}`
 
     const encodeValue = EffectSchema.encodeSync(column.schema)
@@ -184,5 +197,5 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
     return `default ${encodedDefaultValue}`
   })()
 
-  return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
+  return `'${column.name}' ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
 }

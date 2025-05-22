@@ -1,0 +1,20 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "types": ["vite/client"],
+    "declaration": false,
+    "declarationMap": false,
+    "composite": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../packages/@livestore/livestore" },
+    { "path": "../../../packages/@livestore/solid" },
+    { "path": "../../../packages/@livestore/adapter-web" }
+  ]
+}

@@ -1,22 +1,30 @@
 {
   "name": "@livestore/sync-electric",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
-  "scripts": {
-    "test": "echo 'No tests yet'"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {},
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "build": "",
+    "test": "echo 'No tests yet'"
   }
 }

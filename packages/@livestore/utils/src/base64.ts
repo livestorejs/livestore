@@ -76,7 +76,7 @@ const textEncoder = new TextEncoder()
  * Encodes a given Uint8Array, ArrayBuffer or string into RFC4648 base64 representation
  * @param data
  */
-export const encode = (data: ArrayBuffer | string): string => {
+export const encode = (data: Uint8Array | string): string => {
   const uint8 =
     typeof data === 'string' ? textEncoder.encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data)
   let result = '',

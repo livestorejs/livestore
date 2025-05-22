@@ -1,11 +1,11 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import type { Context, Duration, Scope } from 'effect'
-import { Cause, Deferred, Effect, Fiber, pipe } from 'effect'
+import type { Context, Duration, Stream } from 'effect'
+import { Cause, Deferred, Effect, Fiber, FiberRef, HashSet, Logger, pipe, Scope } from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isNonEmptyString, isPromise } from '../index.js'
+import { isPromise } from '../index.js'
 import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
@@ -25,6 +25,18 @@ export * from 'effect/Effect'
 //     console.error(message, ...rest)
 //   })
 
+/** Same as `Effect.scopeWith` but with a `CloseableScope` instead of a `Scope`. */
+export const scopeWithCloseable = <R, E, A>(
+  fn: (scope: Scope.CloseableScope) => Effect.Effect<A, E, R | Scope.Scope>,
+): Effect.Effect<A, E, R | Scope.Scope> =>
+  Effect.gen(function* () {
+    // const parentScope = yield* Scope.Scope
+    // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
+    const scope = yield* Scope.make()
+    yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
+    return yield* fn(scope).pipe(Scope.extend(scope))
+  })
+
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E, never>
@@ -42,19 +54,10 @@ export const tryAll = <Res>(
     ),
   ) as any
 
-const getThreadName = () => {
-  // @ts-expect-error TODO fix types
-  const globalName = globalThis.name
-  return isNonEmptyString(globalName)
-    ? globalName
-    : // eslint-disable-next-line unicorn/prefer-global-this
-      typeof window === 'object'
-      ? 'Main Thread'
-      : 'unknown-thread'
-}
-
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
+
+export const addFinalizerLog = (...msgs: any[]) => Effect.addFinalizer(() => Effect.log(...msgs))
 
 export const logBefore =
   (...msgs: any[]) =>
@@ -74,14 +77,34 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
         Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
       )
 
-      const threadName = getThreadName()
       const firstErrLine = cause.toString().split('\n')[0]
-      yield* Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause).pipe((_) =>
+      yield* Effect.logError(firstErrLine, cause).pipe((_) =>
         span === undefined
           ? _
           : Effect.annotateLogs({ spanId: span.spanContext().spanId, traceId: span.spanContext().traceId })(_),
       )
     }),
+  )
+
+export const eventListener = <TEvent = unknown>(
+  target: Stream.EventListener<TEvent>,
+  type: string,
+  handler: (event: TEvent) => Effect.Effect<void, never, never>,
+  options?: { once?: boolean },
+) =>
+  Effect.gen(function* () {
+    const runtime = yield* Effect.runtime<never>()
+
+    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
+
+    target.addEventListener(type, handlerFn, { once: options?.once ?? false })
+
+    yield* Effect.addFinalizer(() => Effect.sync(() => target.removeEventListener(type, handlerFn)))
+  })
+
+export const spanEvent = (message: any, attributes?: Record<string, any>) =>
+  Effect.locallyWith(Effect.log(message).pipe(Effect.annotateLogs(attributes ?? {})), FiberRef.currentLoggers, () =>
+    HashSet.make(Logger.tracerLogger),
   )
 
 export const logWarnIfTakesLongerThan =
@@ -90,11 +113,11 @@ export const logWarnIfTakesLongerThan =
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<never>()
 
-      let timedOut = false
+      let tookLongerThanTimer = false
 
       const timeoutFiber = Effect.sleep(duration).pipe(
         Effect.tap(() => {
-          timedOut = true
+          tookLongerThanTimer = true
           // TODO include span info
           return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
         }),
@@ -103,16 +126,29 @@ export const logWarnIfTakesLongerThan =
       )
 
       const start = Date.now()
-      const res = yield* eff
+      const res = yield* eff.pipe(
+        Effect.exit,
+        Effect.onInterrupt(
+          Effect.fn(function* () {
+            const end = Date.now()
 
-      if (timedOut) {
+            yield* Fiber.interrupt(timeoutFiber)
+
+            if (tookLongerThanTimer) {
+              yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
+            }
+          }),
+        ),
+      )
+
+      if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
       }
 
       yield* Fiber.interrupt(timeoutFiber)
 
-      return res
+      return yield* res
     })
 
 export const logDuration =
@@ -185,19 +221,20 @@ const getSpanTrace = () => {
     return 'No current fiber'
   }
 
-  const msg = Effect.runSync(
-    Effect.fail({ message: '' }).pipe(
-      Effect.withParentSpan(fiberOption.value.currentSpan),
-      Effect.catchAllCause((cause) => Effect.succeed(cause.toString())),
-    ),
-  )
+  return ''
+  // const msg = Effect.runSync(
+  //   Effect.fail({ message: '' }).pipe(
+  //     Effect.withParentSpan(fiberOption.value.currentSpan),
+  //     Effect.catchAllCause((cause) => Effect.succeed(cause.toString())),
+  //   ),
+  // )
 
-  // remove the first line
-  return msg
-    .split('\n')
-    .slice(1)
-    .map((_) => _.trim().replace('at ', ''))
-    .join('\n')
+  // // remove the first line
+  // return msg
+  //   .split('\n')
+  //   .slice(1)
+  //   .map((_) => _.trim().replace('at ', ''))
+  //   .join('\n')
 }
 
 const logSpanTrace = () => console.log(getSpanTrace())

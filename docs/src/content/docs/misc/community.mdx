@@ -1,0 +1,87 @@
+---
+title: Community
+sidebar:
+  order: 6
+---
+
+import { DISCORD_INVITE_URL } from '../../../../../CONSTANTS.js'
+import { officeHours } from '../../../../data.js'
+
+## Discord
+
+You can join the Discord server <a href={DISCORD_INVITE_URL}>here</a>.
+
+## Office hours
+
+You can join future office hour events [here](https://lu.ma/livestore).
+
+{
+  officeHours.map((url) => (
+    <iframe
+      width="560"
+      height="315"
+      src={url}
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+      style={{ aspectRatio: '16 / 9' }}
+    />
+  ))
+}
+
+{/* TODO add conference talks */}
+{/* ## Conference talks */}
+
+## RFX: Request for exploration \{#rfx\}
+
+LiveStore opens the door to many new possibilities. Many more than I could explore or build myself, so I invite you to explore some of the ideas below.
+
+### Technological ideas
+
+- Auth
+  - Authn
+  - Authz
+  - e2ee
+- Server side
+  - React server rendering
+  - Centralized read models
+- Integrating with existing databases / systems
+- CRDTs for text editing
+  - Automerge / YJS as embedded data
+- Collaboration
+  - Presence features
+  - Blob files
+- Version control
+  - Manual push/pull + git-like commits of multiple events
+- Event-sourcing
+  - Schema evolution: migrating events (e.g. cambria)
+- Cross-app data interop
+- AI
+  - Local RAG
+  - Agents
+
+### Application ideas
+
+It would be great to see a new generation of apps built with LiveStore - ideally each app being:
+
+- [Local-first](https://www.inkandswitch.com/essay/local-first/)
+- Open-source
+- Self-hostable
+
+Here are some app ideas:
+
+- Replacement for Doodle
+- Replacement for Canny (feature requests)
+- Replacement for Splitwise
+- Replacement for Wunderlist
+- GitHub client
+- A secret Santa app
+- Movie / TV tracking app
+- Fitness app
+
+### LiveStore internals
+
+- Explore and improve multi-store ergonomics
+- Diff queries in SQLite
+- IVM

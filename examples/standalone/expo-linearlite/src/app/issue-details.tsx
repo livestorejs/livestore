@@ -1,26 +1,153 @@
-import { queryDb, sql } from '@livestore/livestore'
-import { useScopedQuery, useStore } from '@livestore/react'
-import { Schema } from 'effect'
+import { queryDb, Schema, sql } from '@livestore/livestore'
+import { useQuery, useStore } from '@livestore/react'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
-import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
+import React from 'react'
+import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import { issuesMutations, tables } from '@/livestore/schema.ts'
+import { events, tables } from '@/livestore/schema.ts'
 import type { Priority, Status } from '@/types.ts'
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontWeight: 'bold',
+    fontSize: 24,
+    color: '#000',
+  },
+  titleDark: {
+    color: '#fff',
+  },
+  metadataContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#e4e4e7',
+    marginVertical: 8,
+    borderRadius: 6,
+    padding: 4,
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  metadataContainerDark: {
+    borderColor: '#3f3f46',
+  },
+  metadataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metadataText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  avatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  commentsContainer: {
+    gap: 16,
+    marginTop: 16,
+  },
+  commentCard: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 8,
+    paddingHorizontal: 12,
+  },
+  commentCardDark: {
+    backgroundColor: '#171717',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  commentDate: {
+    fontSize: 12,
+  },
+  commentContent: {
+    fontSize: 14,
+  },
+  reactionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  reactionBadge: {
+    backgroundColor: '#e5e5e5',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    alignSelf: 'flex-start',
+  },
+  reactionBadgeDark: {
+    backgroundColor: '#262626',
+  },
+  reactionText: {
+    fontSize: 12,
+    lineHeight: 22,
+  },
+  deletedNotice: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e4e4e7',
+    marginVertical: 8,
+    borderRadius: 6,
+    padding: 8,
+    gap: 8,
+  },
+  deletedNoticeDark: {
+    borderColor: '#3f3f46',
+  },
+  deletedText: {
+    color: 'red',
+  },
+  undoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  undoButtonActive: {
+    backgroundColor: '#f5f5f5',
+  },
+  undoButtonActiveDark: {
+    backgroundColor: '#262626',
+  },
+  undoText: {
+    color: '#007AFF',
+  },
+})
 
 const IssueDetailsScreen = () => {
   const issueId = useGlobalSearchParams().issueId as string
   const store = useStore()
   const router = useRouter()
+  const theme = useColorScheme()
+  const isDark = theme === 'dark'
 
-  const issue = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const issue = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT 
               issues.*,
               users.name as assigneeName,
@@ -29,22 +156,20 @@ const IssueDetailsScreen = () => {
             LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.id = '${issueId}'
           `,
-          schema: tables.issues.schema.pipe(
-            Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
-            Schema.Array,
-            Schema.headOrElse(),
-          ),
-        },
-        { label: 'issue' },
-      ),
-    ['issue-details', issueId],
+        schema: tables.issues.rowSchema.pipe(
+          Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
+          Schema.Array,
+          Schema.headOrElse(),
+        ),
+      },
+      { label: 'issue', deps: `issue-details-${issueId}` },
+    ),
   )
 
-  const comments = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const comments = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT 
               comments.*,
               users.name as authorName,
@@ -66,20 +191,19 @@ const IssueDetailsScreen = () => {
             GROUP BY comments.id
             ORDER BY comments.createdAt DESC
           `,
-          schema: tables.comments.schema.pipe(
-            Schema.extend(
-              Schema.Struct({
-                authorName: Schema.String,
-                authorPhotoUrl: Schema.String,
-                reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
-              }),
-            ),
-            Schema.Array,
+        schema: tables.comments.rowSchema.pipe(
+          Schema.extend(
+            Schema.Struct({
+              authorName: Schema.String,
+              authorPhotoUrl: Schema.String,
+              reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
+            }),
           ),
-        },
-        { label: 'comments' },
-      ),
-    ['issue-details-comments', issueId],
+          Schema.Array,
+        ),
+      },
+      { label: 'comments', deps: `issue-details-comments-${issueId}` },
+    ),
   )
 
   if (!issueId) {
@@ -96,81 +220,69 @@ const IssueDetailsScreen = () => {
           headerLeft: () => <></>,
         }}
       />
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView style={{ flex: 1 }}>
-          <View className="px-5">
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.contentContainer}>
             {issue.deletedAt ? (
-              <View className="flex-row justify-between border my-2 border-zinc-200 dark:border-zinc-700 rounded-md p-2 gap-2">
-                <ThemedText style={{ color: 'red' }}>
-                  Deleted on{' '}
-                  {new Date(issue.deletedAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at{' '}
-                  {new Date(issue.deletedAt * 1000).toLocaleTimeString('en-US', {
+              <View style={[styles.deletedNotice, issue.deletedAt && styles.deletedNoticeDark]}>
+                <ThemedText style={styles.deletedText}>
+                  Deleted on {new Date(issue.deletedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+                  at{' '}
+                  {new Date(issue.deletedAt).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: 'numeric',
                     hour12: true,
                   })}{' '}
                 </ThemedText>
                 <Pressable
-                  onPress={() => store.store.mutate(issuesMutations.restoreIssue({ id: issue.id }))}
-                  className="flex-row items-center gap-2 active:bg-zinc-100 dark:active:bg-zinc-800"
+                  onPress={() => store.store.commit(events.issueRestored({ id: issue.id }))}
+                  style={styles.undoButton}
                 >
                   <Undo2Icon size={18} />
-                  <ThemedText style={{ color: '#007AFF' }}>Undo</ThemedText>
+                  <ThemedText style={styles.undoText}>Undo</ThemedText>
                 </Pressable>
               </View>
             ) : null}
             <Pressable onPress={() => router.push(`/edit-issue?issueId=${issue.id}`)}>
-              <Text className="font-bold text-2xl dark:text-white">{issue.title}</Text>
+              <Text style={[styles.title, styles.titleDark]}>{issue.title}</Text>
 
-              <View className="flex-row border my-2 border-zinc-200 dark:border-zinc-700 rounded-md p-1 px-2 gap-2">
-                <View className="flex-row items-center gap-2">
+              <View style={[styles.metadataContainer, styles.metadataContainerDark]}>
+                <View style={styles.metadataItem}>
                   <IssueStatusIcon status={issue.status as Status} />
-                  <ThemedText style={{ fontSize: 14, fontWeight: '500' }}>{issue.status}</ThemedText>
+                  <ThemedText style={styles.metadataText}>{issue.status}</ThemedText>
                 </View>
 
-                <View className="flex-row items-center gap-2">
+                <View style={styles.metadataItem}>
                   <PriorityIcon priority={issue.priority as Priority} />
-                  <ThemedText style={{ fontSize: 14, fontWeight: '500' }}>{issue.priority}</ThemedText>
+                  <ThemedText style={styles.metadataText}>{issue.priority}</ThemedText>
                 </View>
 
-                <View className="flex-row items-center gap-2">
-                  <Image source={{ uri: issue.assigneePhotoUrl! }} className="w-5 h-5 rounded-full" />
-                  <ThemedText style={{ fontSize: 14, fontWeight: '500' }}>{issue.assigneeName}</ThemedText>
+                <View style={styles.metadataItem}>
+                  <Image source={{ uri: issue.assigneePhotoUrl! }} style={styles.avatar} />
+                  <ThemedText style={styles.metadataText}>{issue.assigneeName}</ThemedText>
                 </View>
               </View>
 
               {issue.description ? <ThemedText>{issue.description}</ThemedText> : null}
             </Pressable>
 
-            <View className="gap-4 mt-4">
+            <View style={styles.commentsContainer}>
               <ThemedText>{comments.length} comments</ThemedText>
               {comments.map((comment) => (
-                <View key={comment.id} className="bg-neutral-100 dark:bg-neutral-900 rounded-xl p-2 px-3">
-                  <View className="flex-row items-center gap-2 flex-shrink">
-                    <Image source={{ uri: comment.authorPhotoUrl }} className="w-5 h-5 rounded-full" />
-                    <ThemedText className="line-clamp-1 flex-shrink" style={{ fontSize: 14, fontWeight: '500' }}>
+                <View key={comment.id} style={[styles.commentCard, isDark && styles.commentCardDark]}>
+                  <View style={styles.commentHeader}>
+                    <Image source={{ uri: comment.authorPhotoUrl }} style={styles.avatar} />
+                    <ThemedText style={styles.commentAuthor} numberOfLines={1}>
                       {comment.authorName}
                     </ThemedText>
-                    <ThemedText style={{ fontSize: 12 }}>{new Date(comment.createdAt!).toDateString()}</ThemedText>
+                    <ThemedText style={styles.commentDate}>{new Date(comment.createdAt!).toDateString()}</ThemedText>
                   </View>
-                  <ThemedText className="" style={{ fontSize: 14 }}>
-                    {comment.content}
-                  </ThemedText>
+                  <ThemedText style={styles.commentContent}>{comment.content}</ThemedText>
 
-                  <View className="flex-row items-center gap-2 mt-1">
+                  <View style={styles.reactionsContainer}>
                     {comment.reactions.map((reaction) => (
-                      <View
-                        key={reaction.id}
-                        className="bg-neutral-200 dark:bg-neutral-800 rounded-full px-2 self-start"
-                      >
-                        <ThemedText
-                          style={{
-                            fontSize: 12,
-                            lineHeight: 22,
-                          }}
-                        >
-                          {reaction.emoji} 1
-                        </ThemedText>
+                      <View key={reaction.id} style={[styles.reactionBadge, isDark && styles.reactionBadgeDark]}>
+                        <ThemedText style={styles.reactionText}>{reaction.emoji} 1</ThemedText>
                       </View>
                     ))}
                   </View>

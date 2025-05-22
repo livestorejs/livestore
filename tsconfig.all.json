@@ -4,13 +4,6 @@
   "include": [],
   "references": [
     { "path": "./tsconfig.dev.json" },
-    { "path": "./examples/standalone/expo-todomvc" },
-    { "path": "./examples/standalone/expo-linearlite" },
-    { "path": "./examples/standalone/linearlite" },
-    { "path": "./examples/standalone/todomvc" },
-    { "path": "./examples/standalone/todomvc-custom-elements" },
-    { "path": "./examples/standalone/todomvc-experimental" },
-    { "path": "./examples/standalone/todomvc-sync-cf" },
-    { "path": "./examples/standalone/todomvc-sync-electric" },
+    { "path": "./tsconfig.standalone-examples.json" }
   ]
 }

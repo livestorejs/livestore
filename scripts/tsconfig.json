@@ -3,8 +3,14 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
     "noEmit": true,
     "types": ["bun-types"]
   },
-  "include": ["./*.ts"]
+  "include": ["./**/*.ts"],
+  "references": [
+    { "path": "../packages/@livestore/utils" },
+    { "path": "../packages/@livestore/utils-dev" },
+    { "path": "../tests/integration" }
+  ]
 }

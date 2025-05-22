@@ -1,15 +1,15 @@
-import { queryDb, sql } from '@livestore/livestore'
-import { useRow, useScopedQuery, useStore } from '@livestore/react'
-import { Schema } from 'effect'
+import { queryDb, Schema, sql } from '@livestore/livestore'
+import { useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
-import { FlatList, Pressable, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 
-import IssueItem from '@/components/IssueItem.tsx'
+import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import { updateSelectedHomeTab } from '@/livestore/mutations.ts'
-import { tables } from '@/livestore/schema.ts'
+import { uiState$ } from '@/livestore/queries.ts'
+
+import { events, tables } from '../../livestore/schema.ts'
 
 // const homeTabs = ['Assigned', 'Created']
 // For reference
@@ -24,8 +24,8 @@ const getOrderingOptions = (
   createdTabGrouping: string,
   createdTabOrdering: string,
 ) => {
-  const grouping = tab === 'Assigned' ? assignedTabGrouping : createdTabGrouping
-  const ordering = tab === 'Assigned' ? assignedTabOrdering : createdTabOrdering
+  const grouping = tab === 'assigned' ? assignedTabGrouping : createdTabGrouping
+  const ordering = tab === 'assigned' ? assignedTabOrdering : createdTabOrdering
 
   let orderClause = 'ORDER BY '
   const orderFields = []
@@ -33,9 +33,9 @@ const getOrderingOptions = (
   // Handle grouping
   if (grouping !== 'NoGrouping') {
     const groupingField =
-      grouping === 'Assignee'
+      grouping === 'assignee'
         ? 'assigneeId ASC'
-        : grouping === 'Priority'
+        : grouping === 'priority'
           ? `CASE issues.priority
               WHEN 'urgent' THEN 1
               WHEN 'high' THEN 2
@@ -44,7 +44,7 @@ const getOrderingOptions = (
               WHEN 'none' THEN 5
               ELSE 6
             END ASC`
-          : grouping === 'Status'
+          : grouping === 'status'
             ? `CASE issues.status
                 WHEN 'triage' THEN 1
                 WHEN 'backlog' THEN 2
@@ -66,7 +66,7 @@ const getOrderingOptions = (
   // Handle ordering
   if (ordering) {
     const orderingField =
-      ordering === 'Priority'
+      ordering === 'priority'
         ? `CASE issues.priority
               WHEN 'urgent' THEN 1
               WHEN 'high' THEN 2
@@ -97,7 +97,9 @@ const getOrderingOptions = (
 const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
-  const [appSettings] = useRow(tables.app)
+  const appSettings = useQuery(uiState$)
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
 
   // Memoize selected settings
   const {
@@ -124,17 +126,16 @@ const HomeScreen = () => {
     [appSettings],
   )
 
-  const issues = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const issues = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT issues.title, issues.id, issues.assigneeId, issues.status, issues.priority, users.photoUrl as assigneePhotoUrl
             FROM issues 
             LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.deletedAt IS NULL 
             AND (
-              ${selectedHomeTab === 'Assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
+              ${selectedHomeTab === 'assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
             )
             ${getOrderingOptions(
               selectedHomeTab,
@@ -145,19 +146,25 @@ const HomeScreen = () => {
             )}
             LIMIT 50
           `,
-          schema: Schema.Any,
-        },
-        { label: `issues-${selectedHomeTab}-${user.id}` },
-      ),
-    [
-      'issues',
-      selectedHomeTab,
-      user.id,
-      assignedTabGrouping,
-      assignedTabOrdering,
-      createdTabGrouping,
-      createdTabOrdering,
-    ],
+        schema: tables.issues.rowSchema.pipe(
+          Schema.pick('title', 'id', 'assigneeId', 'status', 'priority'),
+          Schema.extend(Schema.Struct({ assigneePhotoUrl: Schema.String })),
+          Schema.Array,
+        ),
+      },
+      {
+        label: `issues-${selectedHomeTab}-${user.id}`,
+        deps: [
+          'issues',
+          selectedHomeTab,
+          user.id,
+          assignedTabGrouping,
+          assignedTabOrdering,
+          createdTabGrouping,
+          createdTabOrdering,
+        ],
+      },
+    ),
   )
 
   // Memoize the renderItem function
@@ -166,15 +173,15 @@ const HomeScreen = () => {
       <IssueItem
         issue={item}
         showAssignee={
-          selectedHomeTab === 'Assigned'
+          selectedHomeTab === 'assigned'
             ? displaySettings.assignedTabShowAssignee
             : displaySettings.createdTabShowAssignee
         }
         showStatus={
-          selectedHomeTab === 'Assigned' ? displaySettings.assignedTabShowStatus : displaySettings.createdTabShowStatus
+          selectedHomeTab === 'assigned' ? displaySettings.assignedTabShowStatus : displaySettings.createdTabShowStatus
         }
         showPriority={
-          selectedHomeTab === 'Assigned'
+          selectedHomeTab === 'assigned'
             ? displaySettings.assignedTabShowPriority
             : displaySettings.createdTabShowPriority
         }
@@ -186,53 +193,85 @@ const HomeScreen = () => {
   // Memoize the header component
   const ListHeaderComponent = useMemo(
     () => (
-      <View className="px-3 bg-white dark:bg-[#0C0D0D]">
-        <View className="flex-row gap-2 my-3">
+      <View style={[styles.headerContainer, isDark && styles.headerContainerDark]}>
+        <View style={styles.tabContainer}>
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.mutate(updateSelectedHomeTab({ tab: 'Assigned' }))
+              store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
             }}
-            style={{
-              opacity: selectedHomeTab === 'Assigned' ? 1 : 0.5,
-            }}
-            className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
+            style={[
+              styles.tabButton,
+              isDark && styles.tabButtonDark,
+              { opacity: selectedHomeTab === 'assigned' ? 1 : 0.5 },
+            ]}
           >
-            <ThemedText className="text-center" type="defaultSemiBold">
+            <ThemedText style={styles.tabText} type="defaultSemiBold">
               Assigned
             </ThemedText>
           </Pressable>
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.mutate(updateSelectedHomeTab({ tab: 'Created' }))
+              store.commit(events.uiStateSet({ selectedHomeTab: 'created' }))
             }}
-            style={{
-              opacity: selectedHomeTab === 'Created' ? 1 : 0.5,
-            }}
-            className="flex-1 items-center rounded-lg p-2 bg-zinc-200 dark:bg-zinc-800"
+            style={[
+              styles.tabButton,
+              isDark && styles.tabButtonDark,
+              { opacity: selectedHomeTab === 'created' ? 1 : 0.5 },
+            ]}
           >
-            <ThemedText className="text-center" type="defaultSemiBold">
+            <ThemedText style={styles.tabText} type="defaultSemiBold">
               Created
             </ThemedText>
           </Pressable>
         </View>
       </View>
     ),
-    [selectedHomeTab, store],
+    [selectedHomeTab, store, isDark],
   )
 
   return (
     <FlatList
       data={issues}
       renderItem={renderItem}
-      contentContainerClassName="gap-1 px-2"
-      initialNumToRender={100}
+      contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
-      stickyHeaderIndices={[0]}
     />
   )
 }
+
+const styles = StyleSheet.create({
+  headerContainer: {
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+  },
+  headerContainerDark: {
+    backgroundColor: '#0C0D0D',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 12,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#e4e4e7', // zinc-200
+  },
+  tabButtonDark: {
+    backgroundColor: '#27272a', // zinc-800
+  },
+  tabText: {
+    textAlign: 'center',
+  },
+  listContent: {
+    gap: 1,
+    paddingHorizontal: 2,
+  },
+})
 
 export default HomeScreen

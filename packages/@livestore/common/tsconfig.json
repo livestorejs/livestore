@@ -1,11 +1,12 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["ES2023"], // Needed for `Array.toSorted`
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../db-schema" }, { "path": "../utils" }]
+  "references": [{ "path": "../utils" }, { "path": "../utils-dev" }, { "path": "../webmesh" }]
 }

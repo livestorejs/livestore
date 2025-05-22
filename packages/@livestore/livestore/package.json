@@ -1,61 +1,65 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/mod.d.ts",
+      "default": "./dist/mod.js"
+    },
+    "./internal": {
+      "types": "./dist/internal/mod.d.ts",
+      "default": "./dist/internal/mod.js"
     },
     "./internal/testing-utils": {
       "types": "./dist/utils/tests/mod.d.ts",
       "default": "./dist/utils/tests/mod.js"
     },
     "./effect": {
-      "types": "./dist/effect/index.d.ts",
-      "default": "./dist/effect/index.js"
+      "types": "./dist/effect/mod.d.ts",
+      "default": "./dist/effect/mod.js"
     }
   },
-  "types": "./dist/index.d.ts",
+  "types": "./dist/mod.d.ts",
   "typesVersions": {
     "*": {
+      "internal": [
+        "./dist/internal/mod.d.ts"
+      ],
       "testing-utils": [
         "./dist/utils/tests/mod.d.ts"
       ],
       "effect": [
-        "./dist/effect/index.d.ts"
+        "./dist/effect/mod.d.ts"
       ]
     }
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4",
+    "vitest": "^3.1.2"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest"
-  },
-  "dependencies": {
-    "@graphql-typed-document-node/core": "^3.2.0",
-    "@livestore/common": "workspace:*",
-    "@livestore/db-schema": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0"
-  },
-  "devDependencies": {
-    "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.27.0",
-    "jsdom": "^25.0.1",
-    "typescript": "5.5.4",
-    "vite": "5.4.10",
-    "vitest": "^2.1.4"
-  },
-  "peerDependencies": {
-    "graphql": "16.x"
-  },
-  "peerDependenciesMeta": {
-    "graphql": {
-      "optional": true
-    }
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

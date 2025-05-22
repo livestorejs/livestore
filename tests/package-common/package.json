@@ -1,0 +1,20 @@
+{
+  "name": "@local/tests-package-common",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "^3.1.2"
+  },
+  "scripts": {
+    "test": "vitest"
+  }
+}

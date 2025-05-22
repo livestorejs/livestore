@@ -1,0 +1,35 @@
+{
+  "name": "@livestore/webmesh",
+  "version": "0.3.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "default": "./dist/mod.js"
+    },
+    "./websocket-server": {
+      "types": "./dist/websocket-server.d.ts",
+      "default": "./dist/websocket-server.js"
+    }
+  },
+  "types": "./dist/mod.d.ts",
+  "dependencies": {
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "^3.1.2"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "vitest"
+  }
+}

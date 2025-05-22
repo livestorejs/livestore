@@ -1,24 +1,35 @@
-import type { Adapter, BootStatus, IntentionalShutdownCause } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport } from '@livestore/common'
+import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
-  BaseGraphQLContext,
   CreateStoreOptions,
-  GraphQLOptions,
   LiveStoreContext as StoreContext_,
   OtelOptions,
+  ShutdownDeferred,
   Store,
 } from '@livestore/livestore'
-import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
-import { errorToString } from '@livestore/utils'
-import { Effect, FiberSet, Logger, LogLevel, Schema } from '@livestore/utils/effect'
+import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
+import { errorToString, IS_REACT_NATIVE, LS_DEV } from '@livestore/utils'
+import type { OtelTracer } from '@livestore/utils/effect'
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Exit,
+  identity,
+  Logger,
+  LogLevel,
+  Schema,
+  Scope,
+  TaskTracing,
+} from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.js'
 
-interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
+export interface LiveStoreProviderProps {
   schema: LiveStoreSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -26,23 +37,22 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
    *
    * The `storeId` is also used for persistence.
    *
-   * Make sure to also provide `storeId` to `mountDevtools` in `_devtools.html`.
+   * Make sure to also configure `storeId` in LiveStore Devtools (e.g. in Vite plugin).
    *
    * @default 'default'
    */
   storeId?: string
   boot?: (
-    store: Store<GraphQLContext, LiveStoreSchema>,
-    parentSpan: otel.Span,
-  ) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
-  graphQLOptions?: GraphQLOptions<GraphQLContext>
-  otelOptions?: OtelOptions
-  renderLoading: (status: BootStatus) => ReactElement
+    store: Store<LiveStoreSchema>,
+    ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
+  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
+  otelOptions?: Partial<OtelOptions>
+  renderLoading?: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
-  renderShutdown?: (cause: IntentionalShutdownCause | StoreAbort) => ReactElement
+  renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => ReactElement
   adapter: Adapter
   /**
-   * In order for LiveStore to apply multiple mutations in a single render,
+   * In order for LiveStore to apply multiple events in a single render,
    * you need to pass the `batchUpdates` function from either `react-dom` or `react-native`.
    *
    * ```ts
@@ -56,29 +66,51 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
   batchUpdates: (run: () => void) => void
   disableDevtools?: boolean
   signal?: AbortSignal
+  /**
+   * Currently only used in the web adapter:
+   * If true, registers a beforeunload event listener to confirm unsaved changes.
+   *
+   * @default true
+   */
+  confirmUnsavedChanges?: boolean
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
+  syncPayload?: Schema.JsonValue
+  debug?: {
+    instanceId?: string
+  }
 }
 
-const defaultRenderError = (error: UnexpectedError | unknown) => (
-  <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
-)
-const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreAbort) => {
+const defaultRenderError = (error: UnexpectedError | unknown) =>
+  IS_REACT_NATIVE ? <></> : <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
+
+const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted) => {
   const reason =
-    cause._tag === 'LiveStore.StoreAbort'
-      ? 'abort signal'
+    cause._tag === 'LiveStore.StoreInterrupted'
+      ? `interrupted due to: ${cause.reason}`
       : cause.reason === 'devtools-import'
         ? 'devtools import'
         : cause.reason === 'devtools-reset'
           ? 'devtools reset'
-          : 'unknown reason'
+          : cause.reason === 'adapter-reset'
+            ? 'adapter reset'
+            : cause.reason === 'manual'
+              ? 'manual shutdown'
+              : 'unknown reason'
 
-  return <>LiveStore Shutdown due to {reason}</>
+  return IS_REACT_NATIVE ? <></> : <>LiveStore Shutdown due to {reason}</>
 }
 
-export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
-  renderLoading,
+const defaultRenderLoading = (status: BootStatus) =>
+  IS_REACT_NATIVE ? <></> : <>LiveStore is loading ({status.stage})...</>
+
+export const LiveStoreProvider = ({
+  renderLoading = defaultRenderLoading,
   renderError = defaultRenderError,
   renderShutdown = defaultRenderShutdown,
-  graphQLOptions,
   otelOptions,
   children,
   schema,
@@ -88,17 +120,22 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   batchUpdates,
   disableDevtools,
   signal,
-}: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
+  confirmUnsavedChanges = true,
+  syncPayload,
+  debug,
+}: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
-    graphQLOptions,
     otelOptions,
     boot,
     adapter,
     batchUpdates,
     disableDevtools,
     signal,
+    confirmUnsavedChanges,
+    syncPayload,
+    debug,
   })
 
   if (storeCtx.stage === 'error') {
@@ -114,96 +151,142 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   }
 
   globalThis.__debugLiveStore ??= {}
-  globalThis.__debugLiveStore[storeId] = storeCtx.store
-
-  return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
-}
-
-type SchemaKey = string
-const semaphoreMap = new Map<SchemaKey, Effect.Semaphore>()
-
-const withSemaphore = (storeId: SchemaKey) => {
-  let semaphore = semaphoreMap.get(storeId)
-  if (!semaphore) {
-    semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
-    semaphoreMap.set(storeId, semaphore)
+  if (Object.keys(globalThis.__debugLiveStore).length === 0) {
+    globalThis.__debugLiveStore['_'] = storeCtx.store
   }
-  return semaphore.withPermits(1)
+  globalThis.__debugLiveStore[debug?.instanceId ?? storeId] = storeCtx.store
+
+  return <LiveStoreContext.Provider value={storeCtx as TODO}>{children}</LiveStoreContext.Provider>
 }
 
-const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
+const useCreateStore = ({
   schema,
   storeId,
-  graphQLOptions,
   otelOptions,
   boot,
   adapter,
   batchUpdates,
   disableDevtools,
-  reactivityGraph,
   signal,
-}: CreateStoreOptions<GraphQLContext, LiveStoreSchema> & { signal?: AbortSignal }) => {
+  context,
+  params,
+  confirmUnsavedChanges,
+  syncPayload,
+  debug,
+}: CreateStoreOptions<LiveStoreSchema> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
+}) => {
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<{
     value: StoreContext_ | BootStatus
-    fiberSet: FiberSet.FiberSet | undefined
+    componentScope: Scope.CloseableScope | undefined
+    shutdownDeferred: ShutdownDeferred | undefined
+    /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
+    previousShutdownDeferred: ShutdownDeferred | undefined
     counter: number
   }>({
     value: { stage: 'loading' },
-    fiberSet: undefined,
+    componentScope: undefined,
+    shutdownDeferred: undefined,
+    previousShutdownDeferred: undefined,
     counter: 0,
   })
+  const debugInstanceId = debug?.instanceId
 
   // console.debug(`useCreateStore (${ctxValueRef.current.counter})`, ctxValueRef.current.value.stage)
 
   const inputPropsCacheRef = React.useRef({
     schema,
-    graphQLOptions,
     otelOptions,
     boot,
     adapter,
     batchUpdates,
     disableDevtools,
-    reactivityGraph,
     signal,
+    context,
+    params,
+    confirmUnsavedChanges,
+    syncPayload,
+    debugInstanceId,
   })
 
-  const interrupt = (fiberSet: FiberSet.FiberSet, error: StoreAbort | StoreInterrupted) =>
+  const interrupt = (
+    componentScope: Scope.CloseableScope,
+    shutdownDeferred: ShutdownDeferred,
+    error: StoreInterrupted,
+  ) =>
     Effect.gen(function* () {
-      yield* FiberSet.clear(fiberSet)
-      yield* FiberSet.run(fiberSet, Effect.fail(error))
+      // console.log('[@livestore/livestore/react] interupting', error)
+      yield* Scope.close(componentScope, Exit.fail(error))
+      yield* Deferred.fail(shutdownDeferred, error)
     }).pipe(
-      Effect.tapErrorCause((cause) => Effect.logDebug(`[@livestore/livestore/react] interupting`, cause)),
+      Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] interupting', cause)),
       Effect.runFork,
     )
 
+  const inputPropChanges = {
+    schema: inputPropsCacheRef.current.schema !== schema,
+    otelOptions: inputPropsCacheRef.current.otelOptions !== otelOptions,
+    boot: inputPropsCacheRef.current.boot !== boot,
+    adapter: inputPropsCacheRef.current.adapter !== adapter,
+    batchUpdates: inputPropsCacheRef.current.batchUpdates !== batchUpdates,
+    disableDevtools: inputPropsCacheRef.current.disableDevtools !== disableDevtools,
+    signal: inputPropsCacheRef.current.signal !== signal,
+    context: inputPropsCacheRef.current.context !== context,
+    params: inputPropsCacheRef.current.params !== params,
+    confirmUnsavedChanges: inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges,
+    syncPayload: inputPropsCacheRef.current.syncPayload !== syncPayload,
+    debugInstanceId: inputPropsCacheRef.current.debugInstanceId !== debugInstanceId,
+  }
+
   if (
-    inputPropsCacheRef.current.schema !== schema ||
-    inputPropsCacheRef.current.graphQLOptions !== graphQLOptions ||
-    inputPropsCacheRef.current.otelOptions !== otelOptions ||
-    inputPropsCacheRef.current.boot !== boot ||
-    inputPropsCacheRef.current.adapter !== adapter ||
-    inputPropsCacheRef.current.batchUpdates !== batchUpdates ||
-    inputPropsCacheRef.current.disableDevtools !== disableDevtools ||
-    inputPropsCacheRef.current.reactivityGraph !== reactivityGraph ||
-    inputPropsCacheRef.current.signal !== signal
+    inputPropChanges.schema ||
+    inputPropChanges.otelOptions ||
+    inputPropChanges.boot ||
+    inputPropChanges.adapter ||
+    inputPropChanges.batchUpdates ||
+    inputPropChanges.disableDevtools ||
+    inputPropChanges.signal ||
+    inputPropChanges.context ||
+    inputPropChanges.params ||
+    inputPropChanges.confirmUnsavedChanges ||
+    inputPropChanges.syncPayload
   ) {
     inputPropsCacheRef.current = {
       schema,
-      graphQLOptions,
       otelOptions,
       boot,
       adapter,
       batchUpdates,
       disableDevtools,
-      reactivityGraph,
       signal,
+      context,
+      params,
+      confirmUnsavedChanges,
+      syncPayload,
+      debugInstanceId,
     }
-    if (ctxValueRef.current.fiberSet !== undefined) {
-      interrupt(ctxValueRef.current.fiberSet, new StoreInterrupted())
-      ctxValueRef.current.fiberSet = undefined
+    if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
+      const changedInputProps = Object.keys(inputPropChanges).filter(
+        (key) => inputPropChanges[key as keyof typeof inputPropChanges],
+      )
+
+      interrupt(
+        ctxValueRef.current.componentScope,
+        ctxValueRef.current.shutdownDeferred,
+        new StoreInterrupted({ reason: `re-rendering due to changed input props: ${changedInputProps.join(', ')}` }),
+      )
+      ctxValueRef.current.componentScope = undefined
+      ctxValueRef.current.shutdownDeferred = undefined
     }
-    ctxValueRef.current = { value: { stage: 'loading' }, fiberSet: undefined, counter: ctxValueRef.current.counter + 1 }
+    ctxValueRef.current = {
+      value: { stage: 'loading' },
+      componentScope: undefined,
+      shutdownDeferred: undefined,
+      previousShutdownDeferred: ctxValueRef.current.shutdownDeferred,
+      counter: ctxValueRef.current.counter + 1,
+    }
   }
 
   React.useEffect(() => {
@@ -216,83 +299,107 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     }
 
     signal?.addEventListener('abort', () => {
-      if (ctxValueRef.current.fiberSet !== undefined && ctxValueRef.current.counter === counter) {
-        interrupt(ctxValueRef.current.fiberSet, new StoreAbort())
-        ctxValueRef.current.fiberSet = undefined
+      if (
+        ctxValueRef.current.componentScope !== undefined &&
+        ctxValueRef.current.shutdownDeferred !== undefined &&
+        ctxValueRef.current.counter === counter
+      ) {
+        interrupt(
+          ctxValueRef.current.componentScope,
+          ctxValueRef.current.shutdownDeferred,
+          new StoreInterrupted({ reason: 'Aborted via provided AbortController' }),
+        )
+        ctxValueRef.current.componentScope = undefined
+        ctxValueRef.current.shutdownDeferred = undefined
       }
     })
 
-    Effect.gen(function* () {
-      const fiberSet = yield* FiberSet.make<
-        unknown,
-        UnexpectedError | IntentionalShutdownCause | StoreAbort | StoreInterrupted
-      >()
+    const cancel = Effect.gen(function* () {
+      // Wait for the previous store to fully shutdown before creating a new one
+      if (ctxValueRef.current.previousShutdownDeferred) {
+        yield* Deferred.await(ctxValueRef.current.previousShutdownDeferred)
+      }
 
-      ctxValueRef.current.fiberSet = fiberSet
+      const componentScope = yield* Scope.make().pipe(Effect.acquireRelease(Scope.close))
+      const shutdownDeferred = yield* makeShutdownDeferred
+
+      ctxValueRef.current.componentScope = componentScope
+      ctxValueRef.current.shutdownDeferred = shutdownDeferred
 
       yield* Effect.gen(function* () {
         const store = yield* createStore({
-          fiberSet,
           schema,
           storeId,
-          graphQLOptions,
-          otelOptions,
           boot,
           adapter,
-          reactivityGraph,
           batchUpdates,
           disableDevtools,
+          shutdownDeferred,
+          context,
+          params,
+          confirmUnsavedChanges,
+          syncPayload,
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
+            // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
             setContextValue(status)
           },
-        })
+          debug: { instanceId: debugInstanceId },
+        }).pipe(Effect.tapErrorCause((cause) => Deferred.failCause(shutdownDeferred, cause)))
 
         setContextValue({ stage: 'running', store })
+      }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
-        yield* Effect.never
-      }).pipe(Effect.scoped, FiberSet.run(fiberSet))
-
-      const shutdownContext = (cause: IntentionalShutdownCause | StoreAbort) =>
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted) =>
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
-      yield* FiberSet.join(fiberSet).pipe(
+      yield* Deferred.await(shutdownDeferred).pipe(
+        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', Cause.pretty(cause))),
         Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
-        Effect.catchTag('LiveStore.StoreAbort', (cause) => shutdownContext(cause)),
+        Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
         Effect.exit,
       )
     }).pipe(
       Effect.scoped,
-      // NOTE we're running the code above in a semaphore to make sure a previous store is always fully
-      // shutdown before a new one is created - especially when shutdown logic is async. You can't trust `React.useEffect`.
-      // Thank you to Mattia Manzati for this idea.
-      withSemaphore(storeId),
+      Effect.withSpan('@livestore/react:useCreateStore'),
+      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name: string) => (console as any).createTask(name)) : identity,
+      provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
-      Effect.provide(Logger.pretty),
+      Effect.provide(Logger.prettyWithThread('window')),
       Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.runFork,
+      Effect.runCallback,
     )
 
     return () => {
-      if (ctxValueRef.current.fiberSet !== undefined) {
-        interrupt(ctxValueRef.current.fiberSet, new StoreInterrupted())
-        ctxValueRef.current.fiberSet = undefined
+      cancel()
+
+      if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
+        interrupt(
+          ctxValueRef.current.componentScope,
+          ctxValueRef.current.shutdownDeferred,
+          new StoreInterrupted({ reason: 'unmounting component' }),
+        )
+        ctxValueRef.current.componentScope = undefined
+        ctxValueRef.current.shutdownDeferred = undefined
       }
     }
   }, [
     schema,
-    graphQLOptions,
     otelOptions,
     boot,
     adapter,
     batchUpdates,
     disableDevtools,
     signal,
-    reactivityGraph,
     storeId,
+    context,
+    params,
+    confirmUnsavedChanges,
+    syncPayload,
+    debugInstanceId,
   ])
 
   return ctxValueRef.current.value

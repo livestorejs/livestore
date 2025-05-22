@@ -6,7 +6,7 @@
     <title>LiveStore DevTools Redirect</title>
     <script>
         const currentUrl = new URL(window.location.href);
-        const redirectUrl = `http://localhost:${currentUrl.port}/livestore-devtools/`;
+        const redirectUrl = `http://localhost:${currentUrl.port}/_livestore/node?autoconnect`;
         window.location.href = redirectUrl;
     </script>
 </head>

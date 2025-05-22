@@ -1,0 +1,10 @@
+--- vite.config.ts
++++ vite.config.ts
+@@ -15,7 +15,6 @@
+ export default defineConfig({
+   server: {
+     port: 60_000,
+-    fs: { strict: false },
+   },
+   worker: isProdBuild ? { format: 'es' } : undefined,
+   optimizeDeps: {

@@ -32,18 +32,18 @@
       }
     },
     {
-      "label": "dev:website",
+      "label": "dev:docs",
       "type": "shell",
       "command": "direnv exec . pnpm dev",
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/website"
+        "cwd": "${workspaceFolder}/docs"
       },
       "presentation": {
         "focus": false,
         "panel": "shared",
-        "group": "website",
+        "group": "docs",
         "showReuseMessage": false,
         "clear": false
       }
@@ -111,7 +111,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/todomvc"
+        "cwd": "${workspaceFolder}/examples/src/web-todomvc"
       },
       "presentation": {
         "focus": false,
@@ -132,7 +132,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/todomvc-custom-elements"
+        "cwd": "${workspaceFolder}/examples/src/web-todomvc-custom-elements"
       },
       "presentation": {
         "focus": false,
@@ -153,7 +153,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/linearlite"
+        "cwd": "${workspaceFolder}/examples/src/web-linearlite"
       },
       "presentation": {
         "focus": false,

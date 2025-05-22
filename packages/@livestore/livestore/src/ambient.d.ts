@@ -5,7 +5,7 @@ interface Window {
 }
 
 var __debugLiveStore: any
-var __debugDownloadBlob: any
+var __debugLiveStoreUtils: any
 
 interface ImportMeta {
   readonly env: ImportMetaEnv

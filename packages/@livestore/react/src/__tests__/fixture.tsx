@@ -1,8 +1,9 @@
-import { DbSchema, makeSchema } from '@livestore/common/schema'
-import type { LiveStoreContextRunning } from '@livestore/livestore'
-import { createStore, globalReactivityGraph, makeReactivityGraph } from '@livestore/livestore'
-import { Effect, FiberSet } from '@livestore/utils/effect'
-import { makeInMemoryAdapter } from '@livestore/web'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { provideOtel } from '@livestore/common'
+import { Events, makeSchema, State } from '@livestore/common/schema'
+import type { Store } from '@livestore/livestore'
+import { createStore } from '@livestore/livestore'
+import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
@@ -21,55 +22,78 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+const todos = State.SQLite.table({
+  name: 'todos',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: true, isSingleton: false },
-)
+})
 
-export const app = DbSchema.table(
-  'app',
-  {
-    id: DbSchema.text({ primaryKey: true, default: 'static' }),
-    newTodoText: DbSchema.text({ default: '', nullable: true }),
-    filter: DbSchema.text({ default: 'all', nullable: false }),
+const app = State.SQLite.table({
+  name: 'app',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true, default: 'static' }),
+    newTodoText: State.SQLite.text({ default: '', nullable: true }),
+    filter: State.SQLite.text({ default: 'all', nullable: false }),
   },
-  { isSingleton: true },
-)
+})
 
-export const AppComponentSchema = DbSchema.table(
-  'UserInfo',
-  {
-    username: DbSchema.text({ default: '' }),
-    text: DbSchema.text({ default: '' }),
+const userInfo = State.SQLite.clientDocument({
+  name: 'UserInfo',
+  schema: Schema.Struct({
+    username: Schema.String,
+    text: Schema.String,
+  }),
+  default: { value: { username: '', text: '' } },
+})
+
+const AppRouterSchema = State.SQLite.clientDocument({
+  name: 'AppRouter',
+  schema: Schema.Struct({
+    currentTaskId: Schema.String.pipe(Schema.NullOr),
+  }),
+  default: {
+    value: { currentTaskId: null },
+    id: 'singleton',
   },
-  { deriveMutations: true },
-)
+})
 
-export const AppRouterSchema = DbSchema.table(
-  'AppRouter',
-  {
-    currentTaskId: DbSchema.text({ default: null, nullable: true }),
-  },
-  { isSingleton: true, deriveMutations: true },
-)
+export const events = {
+  todoCreated: Events.synced({
+    name: 'todoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean }),
+  }),
+  todoUpdated: Events.synced({
+    name: 'todoUpdated',
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String.pipe(Schema.optional),
+      completed: Schema.Boolean.pipe(Schema.optional),
+    }),
+  }),
+  AppRouterSet: AppRouterSchema.set,
+  UserInfoSet: userInfo.set,
+}
 
-export const tables = { todos, app, AppComponentSchema, AppRouterSchema }
-export const schema = makeSchema({ tables })
+const materializers = State.SQLite.materializers(events, {
+  todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
+  todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
+})
+
+export const tables = { todos, app, userInfo, AppRouterSchema }
+
+const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ state, events })
 
 export const makeTodoMvcReact = ({
   otelTracer,
   otelContext,
-  useGlobalReactivityGraph = true,
-  strictMode = process.env.REACT_STRICT_MODE !== undefined,
+  strictMode,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
-  useGlobalReactivityGraph?: boolean
   strictMode?: boolean
 } = {}) =>
   Effect.gen(function* () {
@@ -88,24 +112,20 @@ export const makeTodoMvcReact = ({
       }
     }
 
-    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
-
-    const fiberSet = yield* FiberSet.make()
-
-    const store = yield* createStore({
+    const store: Store<any> = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
-      reactivityGraph,
-      otelOptions: {
-        tracer: otelTracer,
-        rootSpanContext: otelContext,
-      },
-      fiberSet,
+      debug: { instanceId: 'test' },
     })
 
+    const storeWithReactApi = LiveStoreReact.withReactApi(store)
+
     // TODO improve typing of `LiveStoreContext`
-    const storeContext = { stage: 'running', store } as any as LiveStoreContextRunning
+    const storeContext = {
+      stage: 'running' as const,
+      store: storeWithReactApi,
+    }
 
     const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
@@ -117,5 +137,7 @@ export const makeTodoMvcReact = ({
       </MaybeStrictMode>
     )
 
-    return { wrapper, store, reactivityGraph, makeRenderCount, strictMode }
-  })
+    const renderCount = makeRenderCount()
+
+    return { wrapper, store: storeWithReactApi, renderCount }
+  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))

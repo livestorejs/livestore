@@ -1,7 +1,8 @@
 {
   "name": "@livestore/common",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,9 +12,13 @@
       "types": "./dist/sql-queries/index.d.ts",
       "default": "./dist/sql-queries/index.js"
     },
+    "./leader-thread": {
+      "types": "./dist/leader-thread/mod.d.ts",
+      "default": "./dist/leader-thread/mod.js"
+    },
     "./schema": {
-      "types": "./dist/schema/index.d.ts",
-      "default": "./dist/schema/index.js"
+      "types": "./dist/schema/mod.d.ts",
+      "default": "./dist/schema/mod.js"
     },
     "./sync/next": {
       "types": "./dist/sync/next/mod.d.ts",
@@ -28,10 +33,13 @@
   "typesVersions": {
     "*": {
       "schema": [
-        "./dist/schema/index.d.ts"
+        "./dist/schema/mod.d.ts"
       ],
       "sql-queries": [
         "./dist/sql-queries/index.d.ts"
+      ],
+      "leader-thread": [
+        "./dist/leader-thread/mod.d.ts"
       ],
       "sync/next": [
         "./dist/sync/next/mod.d.ts"
@@ -41,21 +49,28 @@
       ]
     }
   },
-  "scripts": {
-    "test": "vitest"
-  },
   "dependencies": {
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "@livestore/db-schema": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "@opentelemetry/api": "1.9.0",
     "graphology": "0.26.0-alpha1",
     "graphology-dag": "0.4.1",
-    "graphology-types": "0.24.7"
+    "graphology-types": "0.24.8"
   },
   "devDependencies": {
-    "vitest": "^2.1.4"
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "^3.1.2"
   },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "vitest"
   }
 }

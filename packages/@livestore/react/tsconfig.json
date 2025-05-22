@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "react",
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "resolveJsonModule": true,
     // "jsx": "preserve",
@@ -11,10 +11,10 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../db-schema" },
     { "path": "../common" },
-    { "path": "../web" },
+    { "path": "../adapter-web" },
     { "path": "../livestore" },
-    { "path": "../utils" }
+    { "path": "../utils" },
+    { "path": "../utils-dev" },
   ]
 }

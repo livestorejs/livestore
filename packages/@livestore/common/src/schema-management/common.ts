@@ -1,4 +1,4 @@
-import type { SynchronousDatabase } from '../adapter-types.js'
+import type { SqliteDb } from '../adapter-types.js'
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 
@@ -6,7 +6,7 @@ import { prepareBindValues } from '../util.js'
 // will require proper scope-aware cleanup etc (for testing and apps with multiple LiveStore instances)
 // const cachedStmts = new Map<string, PreparedStatement>()
 
-export const dbExecute = (db: SynchronousDatabase, queryStr: string, bindValues?: ParamsObject) => {
+export const dbExecute = (db: SqliteDb, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
   const stmt = db.prepare(queryStr)
@@ -20,7 +20,7 @@ export const dbExecute = (db: SynchronousDatabase, queryStr: string, bindValues?
   stmt.finalize()
 }
 
-export const dbSelect = <T>(db: SynchronousDatabase, queryStr: string, bindValues?: ParamsObject) => {
+export const dbSelect = <T>(db: SqliteDb, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
   const stmt = db.prepare(queryStr)
@@ -33,12 +33,12 @@ export const dbSelect = <T>(db: SynchronousDatabase, queryStr: string, bindValue
 }
 
 export interface SchemaManager {
-  getMutationDefInfos: () => ReadonlyArray<MutationDefInfo>
+  getEventDefInfos: () => ReadonlyArray<EventDefInfo>
 
-  setMutationDefInfo: (mutationDefInfo: MutationDefInfo) => void
+  setEventDefInfo: (eventDefInfo: EventDefInfo) => void
 }
 
-export type MutationDefInfo = {
-  mutationName: string
+export type EventDefInfo = {
+  eventName: string
   schemaHash: number
 }

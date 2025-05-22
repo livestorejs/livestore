@@ -1,0 +1,264 @@
+---
+title: Expo
+description: Learn how to use LiveStore with Expo.
+sidebar:
+  order: 2
+---
+
+import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
+import { makeTiged, versionNpmSuffix } from '../../../../data.js'
+import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
+import babelConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/babel.config.js?raw'
+import metroConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/metro.config.js?raw'
+import schemaCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/livestore/schema.ts?raw'
+import rootCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/Root.tsx?raw'
+import headerCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/NewTodo.tsx?raw'
+import mainSectionCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/ListTodos.tsx?raw'
+
+export const CODE = {
+  babelConfig: babelConfigCode,
+  metroConfig: metroConfigCode,
+  schema: schemaCode,
+  root: rootCode,
+  header: headerCode,
+  mainSection: mainSectionCode,
+}
+
+{/* We're adjusting the package to use the dev version on the dev branch */}
+export const manualInstallDepsStr = [
+  '@livestore/devtools-expo' + versionNpmSuffix,
+  '@livestore/adapter-expo' + versionNpmSuffix,
+  '@livestore/livestore' + versionNpmSuffix,
+  '@livestore/react' + versionNpmSuffix,
+  '@livestore/utils' + versionNpmSuffix,
+  '@livestore/peer-deps' + versionNpmSuffix,
+  'expo-sqlite',
+].join(' ')
+
+### Prerequisites
+
+- Recommended: Bun 1.2 or higher
+- Node.js {MIN_NODE_VERSION} or higher
+
+To use [LiveStore](/) with [Expo](https://docs.expo.dev/), ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates.
+
+### Option A: Quick start
+
+For a quick start we recommend using our template app following the steps below.
+
+For existing projects see [Existing project setup](#existing-project-setup).
+
+<Steps>
+
+1.  **Set up project from template**
+
+    <Code code={makeTiged('expo-todomvc-sync-cf')} lang="sh" />
+
+    Replace `livestore-app` with your desired app name.
+
+2.  **Install dependencies**
+
+    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        ```bash
+        bun install
+        ```
+      </TabItem>
+      <TabItem label="pnpm">
+        ```bash
+        pnpm install --node-linker=hoisted
+        ```
+
+        Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
+        ```
+        # .npmrc
+        nodeLinker=hoisted
+        ```
+
+        Hopefully Expo will also support non-hoisted setups in the future.
+      </TabItem>
+      <TabItem label="npm">
+        ```bash
+        npm install
+        ```
+      </TabItem>
+      <TabItem label="yarn">
+        When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
+
+        ```bash
+        yarn set version stable
+        yarn config set nodeLinker node-modules
+        yarn install
+        ```
+      </TabItem>
+    </Tabs>
+
+    Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+
+3.  **Run the app**
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        <Code code="bun start" lang="sh" />
+      </TabItem>
+      <TabItem label="pnpm">
+        <Code code="pnpm start" lang="sh" />
+      </TabItem>
+      <TabItem label="npm">
+        <Code code="npm run start" lang="sh" />
+      </TabItem>
+      <TabItem label="yarn">
+        <Code code="yarn start" lang="sh" />
+      </TabItem>
+    </Tabs>
+
+    In a new terminal, start the Cloudflare Worker (for the sync backend):
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        <Code code="bun wrangler:dev" lang="sh" />
+      </TabItem>
+      <TabItem label="pnpm">
+        <Code code="pnpm wrangler:dev" lang="sh" />
+      </TabItem>
+      <TabItem label="npm">
+        <Code code="npm run wrangler:dev" lang="sh" />
+      </TabItem>
+      <TabItem label="yarn">
+        <Code code="yarn wrangler:dev" lang="sh" />
+      </TabItem>
+    </Tabs>
+</Steps>
+
+### Option B: Existing project setup \{#existing-project-setup\}
+
+<Steps>
+
+1.  **Install dependencies**
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        <Code code={'bun install ' + manualInstallDepsStr} lang="sh" />
+      </TabItem>
+      <TabItem label="pnpm">
+        <Code code={'pnpm install ' + manualInstallDepsStr} lang="sh" />
+      </TabItem>
+      <TabItem label="npm">
+        <Code code={'npm install ' + manualInstallDepsStr} lang="sh" />
+      </TabItem>
+      <TabItem label="yarn">
+        <Code code={'yarn add ' + manualInstallDepsStr} lang="sh" />
+      </TabItem>
+    </Tabs>
+
+2.  **Add Vite meta plugin to babel config file**
+
+    LiveStore Devtools uses Vite. This plugin emulates Vite's `import.meta.env` functionality.
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        <Code code="bun add -d babel-plugin-transform-vite-meta-env" lang="sh" />
+      </TabItem>
+      <TabItem label="pnpm">
+        <Code code="pnpm add -D babel-plugin-transform-vite-meta-env" lang="sh" />
+      </TabItem>
+      <TabItem label="yarn">
+        <Code code="yarn add -D babel-plugin-transform-vite-meta-env" lang="sh" />
+      </TabItem>
+      <TabItem label="npm">
+        <Code code="npm install --save-dev babel-plugin-transform-vite-meta-env" lang="sh" />
+      </TabItem>
+    </Tabs>
+
+    In your `babel.config.js` file, add the plugin as follows:
+
+    <Code code={CODE.babelConfig} lang="js" title="babel.config.js" />
+
+3.  **Update Metro config**
+
+    Add the following code to your `metro.config.js` file:
+
+    <Code code={CODE.metroConfig} lang="js" title="metro.config.js" />
+
+</Steps>
+
+## Define Your Schema
+
+Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
+
+Here's an example schema:
+
+<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
+
+## Add the LiveStore Provider
+
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+
+## Add the LiveStore Provider
+
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+
+Here's an example:
+
+<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
+
+### Commit events
+
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
+
+Here's an example:
+
+<Code code={CODE.header} lang="tsx" title="src/components/NewTodo.tsx" />
+
+## Queries
+
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+
+Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
+
+Here's an example:
+
+<Code code={CODE.mainSection} lang="tsx" title="src/components/ListTodos.tsx" />
+
+## Devtools
+
+To open the devtools, run the app and from your terminal press `shift + m`, then select LiveStore Devtools and press `Enter`.
+
+![Expo Terminal Screenshot](../../../assets/devtools-terminal-expo.png)
+
+This will open the devtools in a new tab in your default browser.
+
+![Devtools Browser Screenshot](../../../assets/devtools-browser-view.png)
+
+Use the devtools to inspect the state of your LiveStore database, execute events, track performance, and more.
+
+## Database location
+
+### With Expo Go
+
+To open the database in Finder, run the following command in your terminal:
+
+```bash
+open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite
+```
+
+### With development builds
+
+For development builds, the app SQLite database is stored in the app's Library directory.
+
+Example:
+`/Users/<USERNAME>/Library/Developer/CoreSimulator/Devices/<DEVICE_ID>/data/Containers/Data/Application/<APP_ID>/Documents/SQLite/app.db`
+
+To open the database in Finder, run the following command in your terminal:
+
+```bash
+open $(xcrun simctl get_app_container booted [APP_BUNDLE_ID] data)/Documents/SQLite
+```
+
+Replace `[APP_BUNDLE_ID]` with your app's bundle ID. e.g. `dev.livestore.livestore-expo`.
+
+## Further notes
+
+- LiveStore doesn't yet support Expo Web (see [#130](https://github.com/livestorejs/livestore/issues/130))

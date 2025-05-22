@@ -1,5 +1,7 @@
-import type { Prettify, SqliteDsl } from '@livestore/db-schema'
+import type { Prettify } from '@livestore/utils'
 import type { Schema } from '@livestore/utils/effect'
+
+import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
 
 export type DecodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
   [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.Type<GetColumn<TSchema, TTableName, K>['schema']>

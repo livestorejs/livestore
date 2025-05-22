@@ -1,3 +1,6 @@
+import { isDevEnv } from '@livestore/utils'
+import { Effect } from '@livestore/utils/effect'
+
 /* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
@@ -24,7 +27,11 @@ export const downloadURL = (data: string, fileName: string) => {
 }
 
 export const exposeDebugUtils = () => {
-  if (import.meta.env.DEV) {
-    globalThis.__debugDownloadBlob = downloadBlob
+  if (isDevEnv()) {
+    globalThis.__debugLiveStoreUtils = {
+      downloadBlob,
+      runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
+      runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    }
   }
 }

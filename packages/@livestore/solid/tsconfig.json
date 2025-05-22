@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsxImportSource": "solid-js",
+    // "jsx": "preserve",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["./src"],
+  "references": [
+    { "path": "../common" },
+    { "path": "../livestore" },
+    { "path": "../utils" }
+  ]
+}

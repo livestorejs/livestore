@@ -1,80 +1,83 @@
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
 export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
   requestId: Schema.String,
   /** Omitting the cursor will start from the beginning */
   cursor: Schema.optional(Schema.Number),
-})
+}).annotations({ title: '@livestore/sync-cf:PullReq' })
 
 export type PullReq = typeof PullReq.Type
 
+export const SyncMetadata = Schema.Struct({
+  /** ISO date format */
+  createdAt: Schema.String,
+}).annotations({ title: '@livestore/sync-cf:SyncMetadata' })
+
+export type SyncMetadata = typeof SyncMetadata.Type
+
 export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
-  requestId: Schema.String,
-  // /** The  */
-  // cursor: Schema.String,
-  events: Schema.Array(mutationEventSchemaEncodedAny),
-  hasMore: Schema.Boolean,
-})
+  batch: Schema.Array(
+    Schema.Struct({
+      eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
+      metadata: Schema.Option(SyncMetadata),
+    }),
+  ),
+  requestId: Schema.Struct({ context: Schema.Literal('pull', 'push'), requestId: Schema.String }),
+  remaining: Schema.Number,
+}).annotations({ title: '@livestore/sync-cf:PullRes' })
 
 export type PullRes = typeof PullRes.Type
 
-export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
-  persisted: Schema.Boolean,
-})
-
-export type PushBroadcast = typeof PushBroadcast.Type
-
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
-  persisted: Schema.Boolean,
-})
+  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+}).annotations({ title: '@livestore/sync-cf:PushReq' })
 
 export type PushReq = typeof PushReq.Type
 
 export const PushAck = Schema.TaggedStruct('WSMessage.PushAck', {
   requestId: Schema.String,
-  mutationId: Schema.Number,
-})
+}).annotations({ title: '@livestore/sync-cf:PushAck' })
 
 export type PushAck = typeof PushAck.Type
 
 export const Error = Schema.TaggedStruct('WSMessage.Error', {
   requestId: Schema.String,
   message: Schema.String,
-})
+}).annotations({ title: '@livestore/sync-cf:Error' })
+
+export type Error = typeof Error.Type
 
 export const Ping = Schema.TaggedStruct('WSMessage.Ping', {
   requestId: Schema.Literal('ping'),
-})
+}).annotations({ title: '@livestore/sync-cf:Ping' })
 
 export type Ping = typeof Ping.Type
 
 export const Pong = Schema.TaggedStruct('WSMessage.Pong', {
   requestId: Schema.Literal('ping'),
-})
+}).annotations({ title: '@livestore/sync-cf:Pong' })
 
 export type Pong = typeof Pong.Type
 
 export const AdminResetRoomReq = Schema.TaggedStruct('WSMessage.AdminResetRoomReq', {
   requestId: Schema.String,
   adminSecret: Schema.String,
-})
+}).annotations({ title: '@livestore/sync-cf:AdminResetRoomReq' })
 
 export type AdminResetRoomReq = typeof AdminResetRoomReq.Type
 
 export const AdminResetRoomRes = Schema.TaggedStruct('WSMessage.AdminResetRoomRes', {
   requestId: Schema.String,
-})
+}).annotations({ title: '@livestore/sync-cf:AdminResetRoomRes' })
 
 export type AdminResetRoomRes = typeof AdminResetRoomRes.Type
 
 export const AdminInfoReq = Schema.TaggedStruct('WSMessage.AdminInfoReq', {
   requestId: Schema.String,
   adminSecret: Schema.String,
-})
+}).annotations({ title: '@livestore/sync-cf:AdminInfoReq' })
 
 export type AdminInfoReq = typeof AdminInfoReq.Type
 
@@ -83,14 +86,13 @@ export const AdminInfoRes = Schema.TaggedStruct('WSMessage.AdminInfoRes', {
   info: Schema.Struct({
     durableObjectId: Schema.String,
   }),
-})
+}).annotations({ title: '@livestore/sync-cf:AdminInfoRes' })
 
 export type AdminInfoRes = typeof AdminInfoRes.Type
 
 export const Message = Schema.Union(
   PullReq,
   PullRes,
-  PushBroadcast,
   PushReq,
   PushAck,
   Error,
@@ -100,19 +102,12 @@ export const Message = Schema.Union(
   AdminResetRoomRes,
   AdminInfoReq,
   AdminInfoRes,
-)
+).annotations({ title: '@livestore/sync-cf:Message' })
+
 export type Message = typeof Message.Type
 export type MessageEncoded = typeof Message.Encoded
 
-export const BackendToClientMessage = Schema.Union(
-  PullRes,
-  PushBroadcast,
-  PushAck,
-  AdminResetRoomRes,
-  AdminInfoRes,
-  Error,
-  Pong,
-)
+export const BackendToClientMessage = Schema.Union(PullRes, PushAck, AdminResetRoomRes, AdminInfoRes, Error, Pong)
 export type BackendToClientMessage = typeof BackendToClientMessage.Type
 
 export const ClientToBackendMessage = Schema.Union(PullReq, PushReq, AdminResetRoomReq, AdminInfoReq, Ping)

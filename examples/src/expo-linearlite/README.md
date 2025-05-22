@@ -12,15 +12,15 @@ An example app built with [LiveStore](https://livestore.dev/) and [Expo](https:/
    ```
 4. Create a development build by running
    ```
-   npx expo prebuild
+   bunx expo prebuild
    ```
 5. Run the app
    ```
    # iOS
-   npx expo run:ios
+   bunx expo run:ios
 
    # Android
-   npx expo run:android
+   bunx expo run:android
    ```
 
 Learn more about [LiveStore](https://livestore.dev/) and [Expo](https://docs.expo.dev/)

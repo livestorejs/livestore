@@ -8,16 +8,17 @@ export * from './set.js'
 export * from './browser.js'
 export * from './Deferred.js'
 export * from './misc.js'
+export * from './env.js'
 export * from './fast-deep-equal.js'
 export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 
 import type * as otel from '@opentelemetry/api'
+import type { Types } from 'effect'
 
 import { objectToString } from './misc.js'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
-export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 
 export type TypeEq<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 
@@ -28,11 +29,15 @@ export type AssertTrue<T extends true> = T
 export type Writeable<T> = { -readonly [P in keyof T]: T[P] }
 export type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> }
 
+export type Nullable<T> = { [K in keyof T]: T[K] | null }
+
 export type Primitive = null | undefined | string | number | boolean | symbol | bigint
 
 export type LiteralUnion<LiteralType, BaseType extends Primitive> = LiteralType | (BaseType & Record<never, never>)
 
 export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
+
+export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -86,15 +91,6 @@ export function casesHandled(unexpectedCase: never): never {
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
 
-export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
-  console.error(msg, ...args)
-  if (isDev()) {
-    debugger
-  }
-
-  throw new Error(`This should never happen: ${msg}`)
-}
-
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
     debugger
@@ -132,7 +128,7 @@ export const unwrapThunk = <T>(_: T | (() => T)): T => {
   }
 }
 
-export type NullableFieldsToOptional<T> = PrettifyFlat<
+export type NullableFieldsToOptional<T> = Types.Simplify<
   Partial<T> & {
     [K in keyof T as null extends T[K] ? K : never]?: Exclude<T[K], null>
   } & {
@@ -228,13 +224,3 @@ export const isPromise = (value: any): value is Promise<unknown> => typeof value
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
 export { objectToString as errorToString } from './misc.js'
-
-const isDev = memoizeByRef(() => {
-  if (import.meta.env !== undefined) {
-    return import.meta.env.DEV || import.meta.env.VITE_DEV
-  } else if (typeof process !== 'undefined' && process.env !== undefined) {
-    return process.env.DEV
-  } else {
-    return false
-  }
-})

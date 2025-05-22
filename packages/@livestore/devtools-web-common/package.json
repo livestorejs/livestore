@@ -1,0 +1,34 @@
+{
+  "name": "@livestore/devtools-web-common",
+  "version": "0.3.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./web-channel": {
+      "types": "./dist/web-channel/index.d.ts",
+      "default": "./dist/web-channel/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/mod.d.ts",
+      "default": "./dist/worker/mod.js"
+    }
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*"
+  },
+  "devDependencies": {},
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  }
+}

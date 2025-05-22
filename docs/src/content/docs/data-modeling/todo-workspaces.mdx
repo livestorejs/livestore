@@ -1,0 +1,208 @@
+---
+title: Todo app with shared workspaces
+description: How to model a todo workspace app with shared workspaces in LiveStore.
+sidebar:
+  label: Todo app with workspaces
+  order: 2
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Let's consider a fairly common application scenario: An app (in this case a todo app) with shared workspaces. For the sake of this guide, we'll keep things simple but you should be able to nicely extend this to a more complex app.
+
+## Requirements
+
+- There are multiple independent todo workspaces
+- Each workspace is initially created by a single user
+- Users can join the workspace by knowing the workspace id and get read and write access
+- For simplicity, the user identity is chosen when the app initially starts (i.e. a username) but in a real app this would be handled by a proper auth setup
+
+## Data model
+
+- We are splitting up our data model into two kinds of stores (with respective eventlogs and SQLite databases): The `workspace` store and the `user` store.
+
+### `workspace` store (one per workspace)
+
+For the `workspace` store we have the following events:
+
+- `workspaceCreated`
+- `todoAdded`
+- `todoCompleted`
+- `todoDeleted`
+- `userJoined`
+
+And the following state model:
+
+- `workspace` table (with a single row for the workspace itself)
+- `todo` table (with one row per todo item)
+- `member` table (with one row per user who has joined the workspace)
+
+### `user` store (one per user)
+
+For the `user` store we have the following events:
+
+- `workspaceCreated`
+- `workspaceJoined`
+
+And the following state model:
+
+- `user` table (with a single row for the user itself)
+
+Note that the `workspaceCreated` event is used both in the `workspace` and the `user` store. This is because each eventlog should be "self-sufficient" and not rely on other eventlogs to be present to fulfill its purpose.
+
+![](https://share.cleanshot.com/yCbKjvRP+)
+
+## Schema
+
+<Tabs>
+  <TabItem label="user-schema.ts">
+    <Code lang="ts" code={`\
+  import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+  // Emitted when this user creates a new workspace
+  const workspaceCreated = Events.synced({
+    name: 'v1.ListCreated',
+    schema: Schema.Struct({ workspaceId: Schema.String }),
+  })
+
+  // Emitted when this user joins an existing workspace
+  const workspaceJoined = Events.synced({
+    name: 'v1.ListJoined',
+    schema: Schema.Struct({ workspaceId: Schema.String }),
+  })
+
+  const events = { workspaceCreated, workspaceJoined }
+
+  // Table to store basic user info
+  // Contains only one row as this store is per-user.
+  const userTable = State.SQLite.table({
+    name: 'user',
+    columns: {
+      // Assuming username is unique and used as the identifier
+      username: State.SQLite.text({ primaryKey: true }),
+    },
+  })
+
+  // Table to track which workspaces this user is part of
+  const userListTable = State.SQLite.table({
+    name: 'userList',
+    columns: {
+      workspaceId: State.SQLite.text({ primaryKey: true }),
+      // Could add role/permissions here later
+    },
+  })
+
+  const tables = { user: userTable, userList: userListTable }
+
+  const materializers = State.SQLite.materializers(events, {
+    // When the user creates or joins a workspace, add it to their workspace table
+    workspaceCreated: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
+    workspaceJoined: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
+  })
+
+  const state = State.SQLite.makeState({ tables, materializers })
+
+  export const schema = makeSchema({ events, state })
+    `} />
+  </TabItem>
+  <TabItem label="workspace-schema.ts">
+    <Code lang="ts" code={`\
+  import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+  // Emitted when a new workspace is created (originates this store)
+  const workspaceCreated = Events.synced({
+    name: 'v1.ListCreated',
+    schema: Schema.Struct({
+      workspaceId: Schema.String,
+      name: Schema.String,
+      createdByUsername: Schema.String, 
+    }),
+  })
+
+  // Emitted when a todo item is added to this workspace
+  const todoAdded = Events.synced({
+    name: 'v1.TodoAdded',
+    schema: Schema.Struct({ todoId: Schema.String, text: Schema.String }),
+  })
+
+  // Emitted when a todo item is marked as completed
+  const todoCompleted = Events.synced({
+    name: 'v1.TodoCompleted',
+    schema: Schema.Struct({ todoId: Schema.String }),
+  })
+
+  // Emitted when a todo item is deleted (soft delete)
+  const todoDeleted = Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ todoId: Schema.String, deletedAt: Schema.Date }),
+  })
+
+  // Emitted when a new user joins this workspace
+  const userJoined = Events.synced({
+    name: 'v1.UserJoined',
+    schema: Schema.Struct({ username: Schema.String }),
+  })
+
+  const events = { workspaceCreated, todoAdded, todoCompleted, todoDeleted, userJoined }
+
+  // Table for the workspace itself (only one row as this store is per-workspace)
+  const workspaceTable = State.SQLite.table({
+    name: 'workspace',
+    columns: {
+      workspaceId: State.SQLite.text({ primaryKey: true }),
+      name: State.SQLite.text(),
+      createdByUsername: State.SQLite.text(),
+    },
+  })
+
+  // Table for the todo items in this workspace
+  const todoTable = State.SQLite.table({
+    name: 'todo',
+    columns: {
+      todoId: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text(),
+      completed: State.SQLite.boolean({ default: false }),
+      // Using soft delete by adding a deletedAt timestamp
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    },
+  })
+
+  // Table for members of this workspace
+  const memberTable = State.SQLite.table({
+    name: 'member',
+    columns: {
+      username: State.SQLite.text({ primaryKey: true }),
+      // Could add role/permissions here later
+    },
+  })
+
+  const tables = { workspace: workspaceTable, todo: todoTable, member: memberTable }
+
+  const materializers = State.SQLite.materializers(events, {
+    workspaceCreated: ({ workspaceId, name, createdByUsername }) => [
+      tables.workspace.insert({ workspaceId, name, createdByUsername }),
+      // Add the creator as the first member
+      tables.member.insert({ username: createdByUsername }),
+    ],
+    todoAdded: ({ todoId, text }) => tables.todo.insert({ todoId, text }),
+    todoCompleted: ({ todoId }) => tables.todo.update({ completed: true }).where({ todoId }),
+    todoDeleted: ({ todoId, deletedAt }) =>
+      tables.todo.update({ deletedAt }).where({ todoId }),
+    userJoined: ({ username }) => tables.member.insert({ username }),
+  })
+
+  const state = State.SQLite.makeState({ tables, materializers })
+
+  export const schema = makeSchema({ events, state })
+    `} />
+  </TabItem>
+</Tabs>
+
+## Further notes
+
+To make this app more production-ready, we might want to do the following:
+- Use a proper auth setup to enforce a trusted user identity
+- Introduce a proper user invite process
+- Introduce access levels (e.g. read-only, read-write)
+- Introduce end-to-end encryption
+- If each todo item has a lot of data (e.g. think of a GitHub/Linear issue with lots of details), it might make sense to split up each todo item into its own store.

@@ -3,7 +3,7 @@ import { Image } from 'expo-image'
 import type { LinkProps } from 'expo-router'
 import { Link } from 'expo-router'
 import React, { memo } from 'react'
-import { Image as RNImage, Pressable, useColorScheme, View } from 'react-native'
+import { Image as RNImage, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { iconBase64 } from '@/assets/Icons/iconBase64.ts'
 import type { Issue } from '@/livestore/schema.ts'
@@ -12,7 +12,7 @@ import type { Priority, Status } from '@/types.ts'
 import { ThemedText } from './ThemedText.tsx'
 
 export interface IssueItemProps {
-  issue: Issue & {
+  issue: Pick<Issue, 'id' | 'title' | 'priority' | 'status'> & {
     assigneePhotoUrl?: string
   }
   showAssignee?: boolean
@@ -23,36 +23,76 @@ export interface IssueItemProps {
 const blurhash =
   '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6fQfQfQIpWXofj[ayj[j[fQayWCoeoeaya}j[ayfQa{oLj?j[WVj[ayayj[fQoff7azayj[ayj[j[ayofayayayj[fQj[ayayj[ayfjj[j[ayjuayj['
 
-const IssueItem = memo(({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
-  const linkHref = `/issue-details?issueId=${issue.id}`
+export const IssueItem = memo(
+  ({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
+    const linkHref = `/issue-details?issueId=${issue.id}`
+    const isDarkMode = useColorScheme() === 'dark'
 
-  return (
-    <Link href={linkHref as LinkProps['href']} asChild>
-      <Pressable className="flex-row items-center justify-between gap-2 active:bg-zinc-100 dark:active:bg-zinc-800 rounded-md p-2 px-3">
-        <View className="w-full flex-1 flex-row items-center justify-between gap-2">
-          <View className="flex-row items-center gap-2 flex-shrink">
-            {showPriority && <PriorityIcon priority={issue.priority as Priority} />}
-            {showStatus && <IssueStatusIcon status={issue.status as Status} />}
-            <ThemedText className="line-clamp-1 flex-shrink font-medium">{issue.title}</ThemedText>
+    return (
+      <Link href={linkHref as LinkProps['href']} asChild>
+        <Pressable
+          style={[styles.pressable, { backgroundColor: isDarkMode ? '#27272a' : '#fafafa' }]}
+          android_ripple={{ color: isDarkMode ? '#333' : '#eee' }}
+        >
+          <View style={styles.container}>
+            <View style={styles.leftContainer}>
+              {showPriority && <PriorityIcon priority={issue.priority as Priority} />}
+              {showStatus && <IssueStatusIcon status={issue.status as Status} />}
+              <ThemedText style={styles.title}>{issue.title}</ThemedText>
+            </View>
+            {showAssignee && issue.assigneePhotoUrl && (
+              <Image
+                source={issue.assigneePhotoUrl}
+                style={styles.avatar}
+                placeholder={blurhash}
+                transition={500}
+                cachePolicy={'memory-disk'}
+              />
+            )}
           </View>
-          {showAssignee && issue.assigneePhotoUrl && (
-            <Image
-              source={issue.assigneePhotoUrl}
-              style={{ width: 20, height: 20, borderRadius: 10 }}
-              placeholder={blurhash}
-              transition={500}
-              cachePolicy={'memory-disk'}
-            />
-          )}
-        </View>
-      </Pressable>
-    </Link>
-  )
+        </Pressable>
+      </Link>
+    )
+  },
+)
+
+const styles = StyleSheet.create({
+  pressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 6,
+    padding: 8,
+    paddingHorizontal: 12,
+  },
+  container: {
+    width: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  leftContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  title: {
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  avatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
 })
 
 IssueItem.displayName = 'IssueItem'
-
-export default IssueItem
 
 export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
   const isDarkMode = useColorScheme() === 'dark'

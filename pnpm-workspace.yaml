@@ -1,8 +1,7 @@
 packages:
   - scripts
-  - website
-  - packages/*
+  - docs
   - packages/@livestore/*
   - examples/src/*
   - examples/standalone/*
-  - integration-tests
+  - tests/*

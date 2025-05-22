@@ -1,13 +1,14 @@
-import type { EventId } from '../../adapter-types.js'
-import type { MutationDef, MutationEvent, MutationEventFactsSnapshot } from '../../schema/mutations.js'
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
+import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
 import {
   applyFactGroups,
   factsIntersect,
   type FactValidationResult,
-  getFactsGroupForMutationArgs,
+  getFactsGroupForEventArgs,
   validateFacts,
 } from './facts.js'
-import type { HistoryDagNode } from './history-dag.js'
+import type { HistoryDagNode } from './history-dag-common.js'
 
 export type RebaseEventWithConflict = HistoryDagNode & {
   conflictType: 'overlap' | 'missing-requirement'
@@ -18,13 +19,13 @@ export type RebaseInput = {
   newRemoteEvents: RebaseEventWithConflict[]
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
-    rebasedLocalEvents: MutationEvent.PartialAny[]
-    mutationDefs: Record<string, MutationDef.Any>
+    rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+    eventDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 
 export type RebaseOutput = {
-  rebasedLocalEvents: MutationEvent.PartialAny[]
+  rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
 }
 
 export type RebaseFn = (input: RebaseInput) => RebaseOutput
@@ -42,12 +43,16 @@ export const rebaseEvents = ({
   pendingLocalEvents,
   newRemoteEvents,
   currentFactsSnapshot,
+  clientId,
+  sessionId,
 }: {
   pendingLocalEvents: HistoryDagNode[]
   newRemoteEvents: HistoryDagNode[]
   rebaseFn: RebaseFn
-  currentFactsSnapshot: MutationEventFactsSnapshot
-}): MutationEvent.Any[] => {
+  currentFactsSnapshot: EventDefFactsSnapshot
+  clientId: string
+  sessionId: string
+}): ReadonlyArray<LiveStoreEvent.AnyDecoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
     newRemoteEvents.map((event) => event.factsGroup),
@@ -71,11 +76,11 @@ export const rebaseEvents = ({
         factsIntersect(pending.factsGroup.modifySet, remote.factsGroup.modifySet),
       ),
     })),
-    validate: ({ rebasedLocalEvents, mutationDefs }) =>
+    validate: ({ rebasedLocalEvents, eventDefs }) =>
       validateFacts({
         factGroups: rebasedLocalEvents.map((event) =>
-          getFactsGroupForMutationArgs({
-            factsCallback: mutationDefs[event.mutation]!.options.facts,
+          getFactsGroupForEventArgs({
+            factsCallback: eventDefs[event.name]!.options.facts,
             args: event.args,
             currentFacts: new Map(),
           }),
@@ -83,15 +88,23 @@ export const rebaseEvents = ({
         initialSnapshot,
       }),
   })
-  const headGlobalId = newRemoteEvents.at(-1)!.id.global
+  const headGlobalId = newRemoteEvents.at(-1)!.seqNum.global
 
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        id: { global: headGlobalId + index + 1, local: 0 } satisfies EventId,
-        parentId: { global: headGlobalId + index, local: 0 } satisfies EventId,
-        mutation: event.mutation,
+        seqNum: EventSequenceNumber.make({
+          global: headGlobalId + index + 1,
+          client: EventSequenceNumber.clientDefault,
+        }),
+        parentSeqNum: EventSequenceNumber.make({
+          global: headGlobalId + index,
+          client: EventSequenceNumber.clientDefault,
+        }),
+        name: event.name,
         args: event.args,
-      }) satisfies MutationEvent.Any,
+        clientId,
+        sessionId,
+      }) satisfies LiveStoreEvent.AnyDecoded,
   )
 }

@@ -1,20 +1,29 @@
-import '../global.css'
 import '../polyfill.ts'
 import 'react-native-reanimated'
 
-import { makeAdapter } from '@livestore/expo'
-import type { BaseGraphQLContext, LiveStoreSchema, Store } from '@livestore/livestore'
+import { makePersistedAdapter } from '@livestore/adapter-expo'
+import type { Store } from '@livestore/livestore'
+import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { nanoid } from '@livestore/utils/nanoid'
 import { Stack } from 'expo-router'
 import React from 'react'
-import { Button, LogBox, Platform, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
+import {
+  Button,
+  LogBox,
+  Platform,
+  StyleSheet,
+  Text,
+  unstable_batchedUpdates as batchUpdates,
+  useColorScheme,
+  View,
+} from 'react-native'
 
 import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
+import { darkBackground, darkText, nordicGray } from '@/constants/Colors.ts'
 import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
 import ThemeProvider from '@/context/ThemeProvider.tsx'
 
-import { schema, tables, userMutations } from '../livestore/schema.ts'
+import { events, schema, tables } from '../livestore/schema.ts'
 
 // export const unstable_settings = {
 //   // Ensure any route can link back to `/`
@@ -24,8 +33,22 @@ import { schema, tables, userMutations } from '../livestore/schema.ts'
 LogBox.ignoreAllLogs()
 
 const RootLayout = () => {
-  const adapter = makeAdapter()
+  const adapter = makePersistedAdapter()
   const [, rerender] = React.useState({})
+  const colorScheme = useColorScheme()
+  const isDark = colorScheme === 'dark'
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? darkBackground : 'white',
+    },
+    text: {
+      color: isDark ? darkText : nordicGray,
+    },
+  })
 
   return (
     <LiveStoreProvider
@@ -33,14 +56,14 @@ const RootLayout = () => {
       renderLoading={(_) => <LoadingLiveStore stage={_.stage} />}
       // disableDevtools={true}
       renderError={(error: any) => (
-        <View className="flex-1 items-center justify-center">
-          <Text>Error: {JSON.stringify(error, null, 2)}</Text>
+        <View style={styles.container}>
+          <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
         </View>
       )}
       renderShutdown={() => {
         return (
-          <View className="flex-1 items-center justify-center">
-            <Text>LiveStore Shutdown</Text>
+          <View style={styles.container}>
+            <Text style={styles.text}>LiveStore Shutdown</Text>
             <Button title="Reload" onPress={() => rerender({})} />
           </View>
         )
@@ -57,7 +80,7 @@ const RootLayout = () => {
             name="filter-settings"
             options={{
               presentation: Platform.OS === 'ios' ? 'formSheet' : 'modal',
-              sheetAllowedDetents: [0.4],
+              sheetAllowedDetents: [0.4, 0.8],
               sheetCornerRadius: 16,
               sheetGrabberVisible: true,
               headerShown: Platform.OS === 'android',
@@ -76,15 +99,14 @@ const RootLayout = () => {
     </LiveStoreProvider>
   )
 }
-
 /**
  * This function is called when the app is booted.
  * It is used to initialize the database with some data.
  */
-const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
-  if (store.query(tables.users.query.count()) === 0) {
-    store.mutate(
-      userMutations.createUser({
+const boot = (store: Store) => {
+  if (store.query(tables.users.count()) === 0) {
+    store.commit(
+      events.userCreated({
         id: nanoid(),
         name: 'Beto',
         email: 'beto@expo.io',

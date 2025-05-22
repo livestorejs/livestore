@@ -1,8 +1,7 @@
-import type { FromInputSchema } from '@livestore/common/schema'
-import type { Store } from '@livestore/livestore'
-import { createStore, DbSchema, globalReactivityGraph, makeReactivityGraph, makeSchema } from '@livestore/livestore'
-import { Effect, FiberSet } from '@livestore/utils/effect'
-import { makeInMemoryAdapter } from '@livestore/web'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { provideOtel } from '@livestore/common'
+import { createStore, makeSchema, State } from '@livestore/livestore'
+import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 export type Todo = {
@@ -18,56 +17,43 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+export const todos = State.SQLite.table({
+  name: 'todos',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: true, isSingleton: false },
-)
+})
 
-export const app = DbSchema.table(
-  'app',
-  {
-    id: DbSchema.text({ primaryKey: true, default: 'static' }),
-    newTodoText: DbSchema.text({ default: '', nullable: true }),
-    filter: DbSchema.text({ default: 'all', nullable: false }),
-  },
-  { isSingleton: true },
-)
+export const app = State.SQLite.clientDocument({
+  name: 'app',
+  schema: Schema.Struct({
+    newTodoText: Schema.String,
+    filter: Schema.String,
+  }),
+  default: { value: { newTodoText: '', filter: 'all' } },
+})
 
 export const tables = { todos, app }
-export const schema = makeSchema({ tables })
 
-export interface FixtureSchema extends FromInputSchema.DeriveSchema<{ tables: typeof tables }> {}
+export const state = State.SQLite.makeState({ tables, materializers: {} })
+export const schema = makeSchema({ state, events: {} })
 
 export const makeTodoMvc = ({
   otelTracer,
   otelContext,
-  useGlobalReactivityGraph = true,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
-  useGlobalReactivityGraph?: boolean
 } = {}) =>
   Effect.gen(function* () {
-    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
-
-    const fiberSet = yield* FiberSet.make()
-
-    const store: Store<any, FixtureSchema> = yield* createStore({
+    const store = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
-      reactivityGraph,
-      otelOptions: {
-        tracer: otelTracer,
-        rootSpanContext: otelContext,
-      },
-      fiberSet,
+      debug: { instanceId: 'test' },
     })
 
-    return { store, reactivityGraph }
-  })
+    return store
+  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer: otelTracer }))

@@ -1,0 +1,50 @@
+--- tsconfig.json
++++ tsconfig.json
+@@ -1,22 +1,31 @@
+ {
+-  "extends": "../../../tsconfig.base.json",
+   "compilerOptions": {
++    "target": "ES2022",
++    "useDefineForClassFields": true,
++    "lib": ["ES2020", "DOM", "DOM.Iterable"],
++    "module": "ESNext",
++    "skipLibCheck": true,
++
++    /* Bundler mode */
++    "moduleResolution": "bundler",
++    "allowImportingTsExtensions": true,
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "noEmit": true,
+     "jsx": "react-jsx",
+-    "declaration": false,
+-    "declarationMap": false,
+-    "composite": false,
+-    "outDir": "./dist",
+-    "rootDir": "./src",
+-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
++
++    /* Linting */
++    "strict": true,
++    "strictNullChecks": true,
++    "noUncheckedIndexedAccess": true,
++    // "noUnusedLocals": true,
++    // "noUnusedParameters": true,
++    "noFallthroughCasesInSwitch": true,
++
+     "paths": {
+       "@/*": ["./src/*"]
+     }
+   },
+-  "include": ["src"],
+-  "references": [
+-    { "path": "../../../packages/@livestore/livestore" },
+-    { "path": "../../../packages/@livestore/react" },
+-    { "path": "../../../packages/@livestore/adapter-web" },
+-    { "path": "../../../packages/@livestore/sync-electric" }
+-  ]
+-}
+\ No newline at end of file
++  "include": ["./src"],
++  "exclude": ["node_modules"]
++}

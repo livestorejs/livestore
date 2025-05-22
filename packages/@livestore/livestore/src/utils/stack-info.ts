@@ -34,15 +34,20 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo =>
 
   while ((match = namePattern.exec(stackTrace)) !== null) {
     const [, name, filePath] = match as any as [string, string, string]
+    // console.debug(name, filePath)
 
     // NOTE No idea where this `Module.` comes from - possibly a Vite thing?
     if ((name.startsWith('use') || name.startsWith('Module.use')) && name.endsWith('QueryRef') === false) {
       hasReachedStart = true
+      // console.debug('hasReachedStart. adding one more frame.')
 
       frames.unshift({ name: name.replace(/^Module\./, ''), filePath })
     } else if (hasReachedStart) {
       // We've reached the end of the `use*` functions, so we're adding the component name and stop
-      frames.unshift({ name, filePath })
+      // Unless it's `react-stack-bottom-frame`, which we skip
+      if (name !== 'Object.react-stack-bottom-frame') {
+        frames.unshift({ name, filePath })
+      }
       break
     }
   }

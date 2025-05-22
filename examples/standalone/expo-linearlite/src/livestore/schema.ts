@@ -1,147 +1,145 @@
-import { DbSchema, makeSchema } from '@livestore/livestore'
+import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-import { Filter, PRIORITIES, STATUSES } from '../types.ts'
-import * as issuesMutations from './issues-mutations.ts'
-import * as mutations from './mutations.ts'
-import * as userMutations from './user-mutations.ts'
+import { Filter } from '../types.ts'
+import * as eventsDefs from './events.ts'
 
-const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '' }),
-    completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true }),
+// Table Definitions
+const users = State.SQLite.table({
+  name: 'users',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    name: State.SQLite.text(),
+    email: State.SQLite.text({ nullable: true }),
+    photoUrl: State.SQLite.text({ nullable: true }),
   },
-  { deriveMutations: true },
-)
-
-const app = DbSchema.table(
-  'app',
-  {
-    newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.text({ schema: Filter, default: 'all' }),
-    newIssueText: DbSchema.text({ default: '' }),
-    newIssueDescription: DbSchema.text({ default: '' }),
-    selectedHomeTab: DbSchema.text({ default: 'Assigned' }), // Assigned, Created, Subscribed
-
-    // Assigned tab config
-    assignedTabGrouping: DbSchema.text({ default: 'Status' }), // NoGrouping, Assignee, Priority, Status
-    assignedTabOrdering: DbSchema.text({ default: 'Priority' }), // Priority, Last Updated, Last Created
-    assignedTabCompletedIssues: DbSchema.text({ default: 'None' }), // None, Past Week, Past Month, Past Year
-    assignedTabShowAssignee: DbSchema.boolean({ default: false }),
-    assignedTabShowStatus: DbSchema.boolean({ default: true }),
-    assignedTabShowPriority: DbSchema.boolean({ default: true }),
-
-    // Created tab config
-    createdTabGrouping: DbSchema.text({ default: 'Assignee' }), // NoGrouping, Assignee, Priority, Status
-    createdTabOrdering: DbSchema.text({ default: 'Last Updated' }), // Last Updated, Last Created, Priority
-    createdTabCompletedIssues: DbSchema.text({ default: 'Past Month' }), // None, Past Week, Past Month, Past Year
-    createdTabShowAssignee: DbSchema.boolean({ default: true }),
-    createdTabShowStatus: DbSchema.boolean({ default: true }),
-    createdTabShowPriority: DbSchema.boolean({ default: false }),
-
-    navigationHistory: DbSchema.text({ default: '/' }),
-  },
-  { isSingleton: true, deriveMutations: true },
-)
-
-// Linearlite ↓
-
-const users = DbSchema.table(
-  'users',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    name: DbSchema.text({ nullable: false }),
-    email: DbSchema.text({ nullable: true }),
-    photoUrl: DbSchema.text({ nullable: true }),
-  },
-  { deriveMutations: true },
-)
-
-const issues = DbSchema.table(
-  'issues',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    title: DbSchema.text({ nullable: false }),
-    description: DbSchema.text({ nullable: true }),
-    parentIssueId: DbSchema.text({ nullable: true }),
-    assigneeId: DbSchema.text({ nullable: true }),
-    status: DbSchema.text({ default: STATUSES.TODO }), // todo
-    priority: DbSchema.text({ default: PRIORITIES.NONE }), // no priority
-    deletedAt: DbSchema.integer({ nullable: true }),
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
-    updatedAt: DbSchema.integer({ default: null, nullable: true }),
-  },
-  { deriveMutations: true },
-)
-
-const comments = DbSchema.table(
-  'comments',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    content: DbSchema.text({ nullable: false }),
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
-    updatedAt: DbSchema.integer({ default: null, nullable: true }),
-  },
-  { deriveMutations: true },
-)
-
-const reactions = DbSchema.table(
-  'reactions',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    commentId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    emoji: DbSchema.text(),
-  },
-  { deriveMutations: true },
-)
-
-// Activity related to a specific issue
-const activity = DbSchema.table(
-  'activity',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    type: DbSchema.text({ nullable: false }),
-    data: DbSchema.json({ nullable: true }), // extra json data of the activity e.g. { type: 'STATUS_CHANGED', from: 'open', to: 'closed' }
-    commentId: DbSchema.text({ nullable: true }), // if it's a comment we can get it by id directly
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
-  },
-  { deriveMutations: true },
-)
-
-export type User = DbSchema.FromTable.RowDecoded<typeof users>
-export type Issue = DbSchema.FromTable.RowDecoded<typeof issues>
-export type Comment = DbSchema.FromTable.RowDecoded<typeof comments>
-export type Reaction = DbSchema.FromTable.RowDecoded<typeof reactions>
-export type Activity = DbSchema.FromTable.RowDecoded<typeof activity>
-
-export const tables = {
-  todos,
-  app,
-  users,
-  issues,
-  comments,
-  reactions,
-  activity,
-}
-
-export const schema = makeSchema({
-  tables,
-  mutations: {
-    ...mutations,
-    ...userMutations,
-    ...issuesMutations,
-  },
-  migrations: { strategy: 'from-mutation-log' },
 })
 
-export * as mutations from './mutations.ts'
-export * as userMutations from './user-mutations.ts'
-export * as issuesMutations from './issues-mutations.ts'
+const issues = State.SQLite.table({
+  name: 'issues',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    title: State.SQLite.text(),
+    description: State.SQLite.text({ nullable: true }),
+    parentIssueId: State.SQLite.text({ nullable: true }),
+    assigneeId: State.SQLite.text({ nullable: true }),
+    status: State.SQLite.text(),
+    priority: State.SQLite.text(),
+    createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+  },
+})
+
+const comments = State.SQLite.table({
+  name: 'comments',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    issueId: State.SQLite.text(),
+    userId: State.SQLite.text(),
+    content: State.SQLite.text(),
+    createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+  },
+})
+
+const reactions = State.SQLite.table({
+  name: 'reactions',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    issueId: State.SQLite.text(),
+    commentId: State.SQLite.text(),
+    userId: State.SQLite.text(),
+    emoji: State.SQLite.text(),
+  },
+})
+
+export type Issue = typeof issues.Type
+export type User = typeof users.Type
+export type Comment = typeof comments.Type
+export type Reaction = typeof reactions.Type
+
+const uiState = State.SQLite.clientDocument({
+  name: 'uiState',
+  // TODO refine schemas (e.g. via literals)
+  schema: Schema.Struct({
+    newIssueText: Schema.String,
+    newIssueDescription: Schema.String,
+    filter: Filter,
+    selectedHomeTab: Schema.Literal('assigned', 'created'),
+    assignedTabGrouping: Schema.String,
+    assignedTabOrdering: Schema.String,
+    assignedTabCompletedIssues: Schema.String,
+    createdTabGrouping: Schema.String,
+    createdTabOrdering: Schema.String,
+    createdTabCompletedIssues: Schema.String,
+    assignedTabShowAssignee: Schema.Boolean,
+    assignedTabShowStatus: Schema.Boolean,
+    assignedTabShowPriority: Schema.Boolean,
+    createdTabShowAssignee: Schema.Boolean,
+    createdTabShowStatus: Schema.Boolean,
+    createdTabShowPriority: Schema.Boolean,
+    navigationHistory: Schema.String,
+  }),
+  default: {
+    id: SessionIdSymbol,
+    value: {
+      newIssueText: '',
+      newIssueDescription: '',
+      filter: 'all',
+      selectedHomeTab: 'assigned',
+      assignedTabGrouping: 'status',
+      assignedTabOrdering: 'priority',
+      assignedTabCompletedIssues: 'week',
+      createdTabGrouping: 'status',
+      createdTabOrdering: 'priority',
+      createdTabCompletedIssues: 'week',
+      assignedTabShowAssignee: true,
+      assignedTabShowStatus: true,
+      assignedTabShowPriority: true,
+      createdTabShowAssignee: true,
+      createdTabShowStatus: true,
+      createdTabShowPriority: true,
+      navigationHistory: '',
+    },
+  },
+})
+
+export type UiState = typeof uiState.Value
+
+export const tables = { issues, users, comments, reactions, uiState }
+
+export const events = {
+  ...eventsDefs,
+  uiStateSet: uiState.set,
+}
+
+const materializers = State.SQLite.materializers(events, {
+  'v1.IssueCreated': ({ id, title, description, parentIssueId, assigneeId, status, priority, createdAt, updatedAt }) =>
+    issues.insert({
+      id,
+      title,
+      description,
+      parentIssueId,
+      assigneeId,
+      status,
+      priority,
+      createdAt,
+      updatedAt,
+    }),
+  'v1.IssueDeleted': ({ id, deletedAt }) => issues.update({ deletedAt }).where({ id }),
+  'v1.IssueTitleUpdated': ({ id, title, updatedAt }) => issues.update({ title, updatedAt }).where({ id }),
+  'v1.IssueDescriptionUpdated': ({ id, description, updatedAt }) =>
+    issues.update({ description, updatedAt }).where({ id }),
+  'v1.IssueRestored': ({ id }) => issues.update({ deletedAt: null }).where({ id }),
+  'v1.UserCreated': ({ id, name, email, photoUrl }) => users.insert({ id, name, email, photoUrl }),
+  'v1.UserDeleted': ({ id }) => users.delete().where({ id }),
+  'v1.CommentCreated': ({ id, issueId, userId, content, createdAt, updatedAt }) =>
+    comments.insert({ id, issueId, userId, content, createdAt, updatedAt }),
+  'v1.ReactionCreated': ({ id, issueId, commentId, userId, emoji }) =>
+    reactions.insert({ id, issueId, commentId, userId, emoji }),
+  'v1.AllCleared': ({ deletedAt }) => issues.update({ deletedAt }).where({ deletedAt: null }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ events, state })

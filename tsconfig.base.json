@@ -10,22 +10,16 @@
     "incremental": true,
     "composite": true,
     "allowJs": true,
+    "stripInternal": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "noErrorTruncation": false,
+    "noErrorTruncation": true,
     "isolatedModules": true,
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "plugins": [
-      {
-        "name": "@effect/language-service",
-        "diagnostics": {
-          "1002": "none"
-        }
-      }
-    ],
+    "plugins": [{ "name": "@effect/language-service" }],
     "paths": {
       "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],
       "@livestore/*": ["./packages/@livestore/*"]

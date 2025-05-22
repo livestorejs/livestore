@@ -1,0 +1,44 @@
+{
+  "name": "@livestore/sqlite-wasm",
+  "version": "0.3.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./load-wasm": {
+      "types": "./dist/load-wasm/mod.browser.d.ts",
+      "node": "./dist/load-wasm/mod.node.js",
+      "browser": "./dist/load-wasm/mod.browser.js"
+    },
+    "./node": {
+      "types": "./dist/node/mod.d.ts",
+      "default": "./dist/node/mod.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/mod.d.ts",
+      "default": "./dist/browser/mod.js"
+    }
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/wa-sqlite": "1.0.5-dev.2"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.304",
+    "@types/node": "^22.15.17",
+    "@types/wicg-file-system-access": "^2023.10.5"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {}
+}

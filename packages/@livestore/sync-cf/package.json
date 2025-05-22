@@ -1,26 +1,36 @@
 {
   "name": "@livestore/sync-cf",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/sync-impl/index.d.ts",
-      "default": "./dist/sync-impl/index.js"
+      "types": "./dist/sync-impl/mod.d.ts",
+      "default": "./dist/sync-impl/mod.js"
+    },
+    "./cf-worker": {
+      "types": "./dist/cf-worker/mod.d.ts",
+      "default": "./dist/cf-worker/mod.js"
     }
-  },
-  "scripts": {
-    "deploy": "wrangler publish",
-    "test": "echo 'No tests yet'"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20241022.0",
-    "wrangler": "^3.84.0"
+    "@cloudflare/workers-types": "^4.20250303.0"
   },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'"
   }
 }

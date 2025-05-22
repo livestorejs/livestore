@@ -1,13 +1,10 @@
-import type { ClientSession, EventId, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import type { FiberSet, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
+import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
 
-import type { ReactivityGraph } from '../live-queries/base-class.js'
 import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import type { StackInfo } from '../utils/stack-info.js'
 import type { Store } from './store.js'
 
@@ -19,26 +16,18 @@ export type LiveStoreContext =
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreAbort
+      cause: IntentionalShutdownCause | StoreInterrupted
     }
 
-export class StoreAbort extends Schema.TaggedError<StoreAbort>()('LiveStore.StoreAbort', {}) {}
-export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {}) {}
+export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
+export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
+  void,
+  UnexpectedError | IntentionalShutdownCause | StoreInterrupted
+>()
 
 export type LiveStoreContextRunning = {
   stage: 'running'
   store: Store
-}
-
-export type BaseGraphQLContext = {
-  queriedTables: Set<string>
-  /** Needed by Pothos Otel plugin for resolver tracing to work */
-  otelContext?: otel.Context
-}
-
-export type GraphQLOptions<TContext> = {
-  schema: GraphQLSchema
-  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => TContext
 }
 
 export type OtelOptions = {
@@ -46,30 +35,30 @@ export type OtelOptions = {
   rootSpanContext: otel.Context
 }
 
-export type StoreOptions<
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
-> = {
+export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> = {
   clientSession: ClientSession
   schema: TSchema
   storeId: string
-  // TODO remove graphql-related stuff from store and move to GraphQL query directly
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
+  context: TContext
   otelOptions: OtelOptions
-  reactivityGraph: ReactivityGraph
-  disableDevtools?: boolean
-  fiberSet: FiberSet.FiberSet
-  runtime: Runtime.Runtime<Scope.Scope>
+  effectContext: {
+    runtime: Runtime.Runtime<Scope.Scope>
+    lifetimeScope: Scope.Scope
+  }
+  confirmUnsavedChanges: boolean
   batchUpdates: (runUpdates: () => void) => void
-  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId, MutationEvent.ForSchema<TSchema>>
+  params: {
+    leaderPushBatchSize: number
+  }
+  __runningInDevtools: boolean
 }
 
 export type RefreshReason =
   | DebugRefreshReasonBase
   | {
-      _tag: 'mutate'
-      /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationEvent.Any>
+      _tag: 'commit'
+      /** The events that were applied */
+      events: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -81,10 +70,12 @@ export type RefreshReason =
       label?: string
       stackInfo?: StackInfo
     }
+  | { _tag: 'subscribe.initial'; label?: string }
+  | { _tag: 'subscribe.update'; label?: string }
   | { _tag: 'manual'; label?: string }
 
 export type QueryDebugInfo = {
-  _tag: 'graphql' | 'db' | 'computed' | 'unknown'
+  _tag: string
   label: string
   query: string
   durationMs: number
@@ -92,19 +83,39 @@ export type QueryDebugInfo = {
 
 export type StoreOtel = {
   tracer: otel.Tracer
-  mutationsSpanContext: otel.Context
+  rootSpanContext: otel.Context
+  commitsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }
 
-export type StoreMutateOptions = {
+export type StoreCommitOptions = {
   label?: string
   skipRefresh?: boolean
-  wasSyncMessage?: boolean
+  spanLinks?: otel.Link[]
+  otelContext?: otel.Context
+}
+
+export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   /**
-   * When set to `false` the mutation won't be persisted in the mutation log and sync server (but still synced).
-   * This can be useful e.g. for fine-granular update events (e.g. position updates during drag & drop)
-   *
+   * By default only new events are returned.
+   * Use this to get all events from a specific point in time.
+   */
+  cursor?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events of the given names
+   * @default undefined (include all)
+   */
+  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
+  /**
+   * Whether to include client-only events or only return synced events
    * @default true
    */
-  persisted?: boolean
+  includeClientOnly?: boolean
+  /**
+   * Exclude own events that have not been pushed to the sync backend yet
+   * @default false
+   */
+  excludeUnpushed?: boolean
 }
+
+export type Unsubscribe = () => void
