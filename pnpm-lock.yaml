@@ -10,7 +10,7 @@ overrides:
   '@livestore/adapter-web': workspace:*
   '@livestore/common': workspace:*
   '@livestore/devtools-expo': workspace:*
-  '@livestore/devtools-vite': 0.3.0
+  '@livestore/devtools-vite': ^0.3.0
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/peer-deps': workspace:*
@@ -455,7 +455,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -615,7 +615,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -664,7 +664,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -716,7 +716,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -790,7 +790,7 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       solid-devtools:
         specifier: ^0.33.0
@@ -811,7 +811,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -869,7 +869,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1175,7 +1175,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1335,7 +1335,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1384,7 +1384,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1436,7 +1436,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1510,7 +1510,7 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       solid-devtools:
         specifier: ^0.33.0
@@ -1531,7 +1531,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1589,7 +1589,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
@@ -1690,7 +1690,7 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/sqlite-wasm':
         specifier: workspace:*
@@ -2216,7 +2216,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/effect-playwright':
         specifier: workspace:*
