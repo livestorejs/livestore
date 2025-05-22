@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/no-process-exit */
 import { spawn } from 'node:child_process'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
@@ -18,14 +19,18 @@ export default defineConfig({
       configureServer: async (server) => {
         const wrangler = spawn('./node_modules/.bin/wrangler', ['dev', '--port', '8787'], {
           stdio: ['ignore', 'inherit', 'inherit'],
-          shell: true,
         })
 
-        const killWrangler = () => wrangler.killed === false && wrangler.kill()
+        const shutdown = () => {
+          if (wrangler.killed === false) {
+            wrangler.kill()
+          }
+          process.exit(0)
+        }
 
-        server.httpServer?.on('close', killWrangler)
-        process.on('SIGTERM', killWrangler)
-        process.on('SIGINT', killWrangler)
+        server.httpServer?.on('close', shutdown)
+        process.on('SIGTERM', shutdown)
+        process.on('SIGINT', shutdown)
 
         wrangler.on('exit', (code) => console.error(`wrangler dev exited with code ${code}`))
       },
