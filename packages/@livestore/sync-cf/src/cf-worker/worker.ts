@@ -28,6 +28,8 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
 
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
       if (request.method === 'GET' && url.pathname === '/') {
         return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
           status: 200,

@@ -46,7 +46,7 @@ export const PULL_CHUNK_SIZE = 100
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 6
+export const PERSISTENCE_FORMAT_VERSION = 7
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
@@ -63,6 +63,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase extends DurableObject<Env> {
     /** Needed to prevent concurrent pushes */
     private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+
+    private currentHead: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' = 'uninitialized'
 
     fetch = async (request: Request) =>
       Effect.sync(() => {
@@ -167,14 +169,31 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               }
 
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-              const expectedParentNum = yield* storage.getHead
+              // const expectedParentNum = yield* storage.getHead
+
+              let currentHead: EventSequenceNumber.GlobalEventSequenceNumber
+              if (this.currentHead === 'uninitialized') {
+                const currentHeadFromStorage = yield* Effect.promise(() => this.ctx.storage.get('currentHead'))
+                // console.log('currentHeadFromStorage', currentHeadFromStorage)
+                if (currentHeadFromStorage === undefined) {
+                  // console.log('currentHeadFromStorage is null, getting from D1')
+                  // currentHead = yield* storage.getHead
+                  // console.log('currentHeadFromStorage is null, using root')
+                  currentHead = EventSequenceNumber.ROOT.global
+                } else {
+                  currentHead = currentHeadFromStorage as EventSequenceNumber.GlobalEventSequenceNumber
+                }
+              } else {
+                // console.log('currentHead is already initialized', this.currentHead)
+                currentHead = this.currentHead
+              }
 
               // TODO handle clientId unique conflict
               // Validate the batch
               const firstEvent = decodedMessage.batch[0]!
-              if (firstEvent.parentSeqNum !== expectedParentNum) {
+              if (firstEvent.parentSeqNum !== currentHead) {
                 const err = WSMessage.Error.make({
-                  message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${expectedParentNum}`,
+                  message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHead}`,
                   requestId,
                 })
 
@@ -187,13 +206,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
               yield* respond(WSMessage.PushAck.make({ requestId }))
 
-              yield* this.pushSemaphore.release(1)
-
               const createdAt = new Date().toISOString()
 
               // NOTE we're not waiting for this to complete yet to allow the broadcast to happen right away
               // while letting the async storage write happen in the background
               const storeFiber = yield* storage.appendEvents(decodedMessage.batch, createdAt).pipe(Effect.fork)
+
+              this.currentHead = decodedMessage.batch.at(-1)!.seqNum
+              yield* Effect.promise(() => this.ctx.storage.put('currentHead', this.currentHead))
+
+              yield* this.pushSemaphore.release(1)
 
               const connectedClients = this.ctx.getWebSockets()
 
@@ -284,7 +306,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
 type SyncStorage = {
   dbName: string
-  getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError>
+  // getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError>
   getEvents: (
     cursor: number | undefined,
   ) => Effect.Effect<
@@ -310,15 +332,15 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       Effect.withSpan('@livestore/sync-cf:durable-object:execDb'),
     )
 
-  const getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError> = Effect.gen(
-    function* () {
-      const result = yield* execDb<{ seqNum: EventSequenceNumber.GlobalEventSequenceNumber }>((db) =>
-        db.prepare(`SELECT seqNum FROM ${dbName} ORDER BY seqNum DESC LIMIT 1`).all(),
-      )
+  // const getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError> = Effect.gen(
+  //   function* () {
+  //     const result = yield* execDb<{ seqNum: EventSequenceNumber.GlobalEventSequenceNumber }>((db) =>
+  //       db.prepare(`SELECT seqNum FROM ${dbName} ORDER BY seqNum DESC LIMIT 1`).all(),
+  //     )
 
-      return result[0]?.seqNum ?? EventSequenceNumber.ROOT.global
-    },
-  ).pipe(UnexpectedError.mapToUnexpectedError)
+  //     return result[0]?.seqNum ?? EventSequenceNumber.ROOT.global
+  //   },
+  // ).pipe(UnexpectedError.mapToUnexpectedError)
 
   const getEvents = (
     cursor: number | undefined,
@@ -380,7 +402,13 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
     yield* Effect.promise(() => ctx.storage.deleteAll())
   }).pipe(UnexpectedError.mapToUnexpectedError)
 
-  return { dbName, getHead, getEvents, appendEvents, resetStore }
+  return {
+    dbName,
+    // getHead,
+    getEvents,
+    appendEvents,
+    resetStore,
+  }
 }
 
 const getStoreId = (request: Request) => {
