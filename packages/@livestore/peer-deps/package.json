@@ -1,6 +1,6 @@
 {
   "name": "@livestore/peer-deps",
-  "version": "0.3.0-dev.53",
+  "version": "0.3.0-dev.54",
   "type": "module",
   "sideEffects": false,
   "dependencies": {
