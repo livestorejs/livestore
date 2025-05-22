@@ -1,6 +1,6 @@
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-// You can model your state as SQLite tables (https://dev.docs.livestore.dev/reference/state/sqlite-schema)
+// You can model your state as SQLite tables (https://docs.livestore.dev/reference/state/sqlite-schema)
 export const tables = {
   todos: State.SQLite.table({
     name: 'todos',
@@ -19,7 +19,7 @@ export const tables = {
   }),
 }
 
-// Events describe data changes (https://dev.docs.livestore.dev/reference/events)
+// Events describe data changes (https://docs.livestore.dev/reference/events)
 export const events = {
   todoCreated: Events.synced({
     name: 'v1.TodoCreated',
@@ -44,7 +44,7 @@ export const events = {
   uiStateSet: tables.uiState.set,
 }
 
-// Materializers are used to map events to state (https://dev.docs.livestore.dev/reference/state/materializers)
+// Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
   'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
   'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
