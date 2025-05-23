@@ -5,20 +5,21 @@ sidebar:
   order: 4
 ---
 
-LiveStore is based on years of research (see [Riffle](https://riffle.systems/essays/prelude/)) and is used as the foundation for ambitious apps such as [Overtone](https://overtone.pro). LiveStore has been in development since 2021 and is getting closer to a stable release. LiveStore is not yet ready for production use but can already be used during development.
+LiveStore is based on years of research (see [Riffle](https://riffle.systems/essays/prelude/)) and is used as the foundation for ambitious apps such as [Overtone](https://overtone.pro). LiveStore has been in development since 2021 and is making good progress towards a stable release. LiveStore is not yet ready for all production scenarios.
 
 ## Current state
 
-- LiveStore is currently in *private early access* and available as an *alpha release*.
-- **private early access**: To keep the development sustainable and level of feedback manageable, LiveStore is currently only available in early access to GitHub sponsors. We plan to offer public access to LiveStore mid 2025.
-- **alpha release**: LiveStore is still under heavy development which includes breaking changes and database resets during version upgrades. We expect LiveStore to reach a relatively stable state (beta) in the first half of 2025 and aiming for a 1.0 release in 2026.
+LiveStore is currently in **beta** with most APIs being fairly stable (there might still be some breaking changes in coming releases). Most work is currently focussed on reliability and performance improvements.
+
+There is currently no specific timeline for a 1.0 release but we are making good progress in that direction.
 
 ### On breaking changes
 
-While LiveStore is in alpha there can be two kinds of breaking changes:
+While LiveStore is in beta there can be three kinds of breaking changes:
 
-- Breaking API change
-- Storage format changes (whenever `liveStoreStorageFormatVersion` is updated)
+- Breaking API changes
+- Client storage format changes (whenever `liveStoreStorageFormatVersion` is updated)
+- Sync backend storage format changes (e.g. when a sync backend implementation changes the way how it stores data)
 
 We try our best to minimize breaking changes and to provide a migration path whenever possible.
 
@@ -26,20 +27,16 @@ We try our best to minimize breaking changes and to provide a migration path whe
 
 See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more details. Get in touch if you have any questions or feedback.
 
-### 2025 Q2
-
-- Rebase syncing protocol [#195](https://github.com/livestorejs/livestore/issues/195)
-- Support syncing in Expo adapter [#119](https://github.com/livestorejs/livestore/issues/119)
-- More testing
-
 ### 2025 Q3
 
 - Adapter bug fixes & stability improvements
 - Performance improvements
   - Syncing latency & throughput
+- More testing
 
 ### Long-term
 
+- Eventlog compaction [#136](https://github.com/livestorejs/livestore/issues/136)
 - Support more syncing providers
 - Support more framework integrations
 - Support more platforms (e.g. Electron, Tauri)

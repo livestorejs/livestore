@@ -131,12 +131,11 @@ const docsCommand = Cli.Command.make('docs').pipe(
           return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
         })
 
-        // TODO rename to `/docs`
         const docsPath = `${process.env.WORKSPACE_ROOT}/docs`
 
         yield* Effect.log(`Branch name: "${branchName}"`)
 
-        const devBranchName = 'wip/0.3.0'
+        const devBranchName = 'dev'
 
         const site =
           siteOption._tag === 'Some'
