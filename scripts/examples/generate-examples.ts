@@ -19,10 +19,13 @@ const STANDALONE_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/sta
 const PATCHES_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/patches`
 const SRC_DIR = (workspaceRoot: string) => `${workspaceRoot}/examples/src`
 
-const EXCLUDE_EXAMPLES = ['node-effect-cli', 'node-todomvc-sync-cf']
+const EXCLUDE_EXAMPLES = [
+  'node-effect-cli',
+  // 'node-todomvc-sync-cf'
+]
 
 const checkDirs = (workspaceRoot: string) =>
-  Effect.gen(function* () {
+  Effect.sync(() => {
     // Fails if dirs don't exist
     if (
       !fs.existsSync(PATCHES_DIR(workspaceRoot)) ||

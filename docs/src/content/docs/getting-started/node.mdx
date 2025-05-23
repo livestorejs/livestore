@@ -5,12 +5,77 @@ sidebar:
   order: 3
 ---
 
+## Minimal example
+
 ```ts
 import { makeAdapter } from '@livestore/adapter-node'
+import { createStorePromise } from '@livestore/livestore'
+import { tables, schema } from './livestore/schema.js'
 
 const adapter = makeAdapter({
   storage: { type: 'fs' },
   // sync: { backend: makeCfSync({ url: '...' }) },
 })
+
+const store = await createStorePromise({ adapter, schema })
+
+const todos = store.query(tables.todos)
 ```
 
+### Option A: Quick start
+
+For a quick start, we recommend using our template app following the steps below.
+
+{/* For existing projects, see [Existing project setup](#existing-project-setup). */}
+
+<Steps>
+
+1. **Set up project from template**
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code={makeTiged('node-todomvc-sync-cf', 'bunx')} lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code={makeTiged('node-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code={makeTiged('node-todomvc-sync-cf', 'npx')} lang="sh" />
+     </TabItem>
+   </Tabs>
+
+   Replace `livestore-app` with your desired app name.
+
+2. **Install dependencies**
+
+   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code="bun install" lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code="pnpm install" lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code="npm install" lang="sh" />
+     </TabItem>
+   </Tabs>
+
+   Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+
+3. **Run dev environment**
+
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code="bun start" lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code="pnpm start" lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code="npm run start" lang="sh" />
+     </TabItem>
+   </Tabs>
+
+</Steps>

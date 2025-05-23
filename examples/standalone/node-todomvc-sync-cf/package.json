@@ -1,0 +1,20 @@
+{
+  "name": "livestore-example-src-node-todomvc-sync-cf",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-node": "0.3.0",
+    "@livestore/livestore": "0.3.0",
+    "@livestore/sync-cf": "0.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "start": "bun src/main.ts"
+  }
+}
