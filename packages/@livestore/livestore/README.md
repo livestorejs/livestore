@@ -29,7 +29,7 @@ LiveStore is a fully-featured, client-centric data layer (replacing libraries li
 
 ## How Livestore works conceptually
 
-![How Livestore works](https://share.cleanshot.com/k7y2486X+)
+![How Livestore works](https://share.cleanshot.com/j1h8Z1P5)
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/RbMcjUAPd7)
 
