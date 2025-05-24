@@ -16,7 +16,7 @@ LiveStore is a next-generation state management framework based on reactive SQLi
 
 LiveStore is a fully-featured, client-centric data layer (replacing libraries like Redux, MobX, etc.) with a reactive embedded SQLite database powered by real-time sync (via event-sourcing).
 
-![How LiveStore works](https://share.cleanshot.com/j1h8Z1P5)
+![How LiveStore works](https://share.cleanshot.com/j1h8Z1P5+)
 
 1. Instant, reactive queries to your local SQLite database (via built-in query builder or raw SQL).
 2. Data changes are commited to the store, applied instantly and synced across clients.
@@ -27,9 +27,8 @@ LiveStore is a fully-featured, client-centric data layer (replacing libraries li
 
 ## Getting Started
 
-## How Livestore works conceptually
+TBD
 
-![How Livestore works](https://share.cleanshot.com/j1h8Z1P5)
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/RbMcjUAPd7)
 
