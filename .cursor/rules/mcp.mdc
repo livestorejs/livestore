@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Use the `livestorejs/livestore` repo (unless asked differently) for GitHub repo management (e.g. issues, PRs...)

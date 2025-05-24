@@ -6,6 +6,7 @@ sidebar:
 ---
 
 - Similar to Redux but persisted and synced across devices
+- Provides a more principled way to handle data instead of relying on mutable state
 - Core idea: Separate read vs write model
   - Read model: App database (i.e. SQLite)
   - Write model: Ordered log of all mutation events

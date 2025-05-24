@@ -9,6 +9,7 @@
     "@livestore/sync-cf": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22.15.17",
     "typescript": "^5.8.3"
   },
   "engines": {
