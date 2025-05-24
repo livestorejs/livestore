@@ -1,4 +1,4 @@
-# @livestore/livestore
+![LiveStore Logo](https://share.cleanshot.com/NrN10xL9+)
 
 LiveStore is a next-generation state management framework based on reactive SQLite and git-inspired syncing (via event-sourcing).
 
