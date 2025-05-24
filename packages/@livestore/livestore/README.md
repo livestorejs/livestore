@@ -57,6 +57,7 @@ LiveStore is a fully-featured, client-centric data layer (replacing libraries li
 5. Query results are reactively and synchronously updated in the next render.
 6. The LiveStore sync backend propagates changes to all connected clients.
 
+If you’d like to learn more about how LiveStore works under the hood, feel free to check out our in-depth guides in the [documentation](https://docs.livestore.dev/evaluation/how-livestore-works/).
 
 ## License
 
