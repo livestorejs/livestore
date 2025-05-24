@@ -510,6 +510,7 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof navigator === 'undefined', 'navigator'),
     validate(navigator.locks === undefined, 'navigator.locks'),
     validate(navigator.storage === undefined, 'navigator.storage'),
+    validate(crypto.randomUUID === undefined, 'crypto.randomUUID'),
     validate(typeof window === 'undefined', 'window'),
     validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
