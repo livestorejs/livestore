@@ -52,7 +52,20 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 1.  **Set up project from template**
 
-    <Code code={makeTiged('expo-todomvc-sync-cf')} lang="sh" />
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        <Code code={makeTiged('expo-todomvc-sync-cf', 'bunx')} lang="sh" />
+      </TabItem>
+      <TabItem label="pnpm">
+        <Code code={makeTiged('expo-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+      </TabItem>
+      <TabItem label="npm">
+        <Code code={makeTiged('expo-todomvc-sync-cf', 'npx')} lang="sh" />
+      </TabItem>
+      <TabItem label="yarn">
+        <Code code={makeTiged('expo-todomvc-sync-cf', 'yarn dlx')} lang="sh" />
+      </TabItem>
+    </Tabs>
 
     Replace `livestore-app` with your desired app name.
 
