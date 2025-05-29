@@ -24,6 +24,8 @@ export const facts = defineFacts({
   inputValue: (id: string) => `input-value-${id}`,
 })
 
+// TODO also consider the case of "OR" in `require`
+// TODO compaction strategy: "make more coarse" (one data point per hour)
 export const events = {
   createTodo: defineEvent({
     name: 'createTodo',
