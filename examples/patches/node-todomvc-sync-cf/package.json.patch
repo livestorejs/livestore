@@ -1,6 +1,10 @@
 --- package.json
 +++ package.json
-@@ -4,9 +4,9 @@
+@@ -1,12 +1,12 @@
+ {
+-  "name": "livestore-example-src-node-todomvc-sync-cf",
++  "name": "livestore-example-standalone-node-todomvc-sync-cf",
+   "version": "0.0.0",
    "type": "module",
    "private": true,
    "dependencies": {
