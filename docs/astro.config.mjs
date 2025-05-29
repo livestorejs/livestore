@@ -275,7 +275,11 @@ export default defineConfig({
       type: 'shiki',
       excludeLangs: ['mermaid', 'math'],
     },
-    remarkPlugins: [remarkCustomHeaderId],
+    remarkPlugins: [
+      // MD: {#custom-id}
+      // MDX: \{#custom-id\}
+      remarkCustomHeaderId,
+    ],
     rehypePlugins: [[rehypeMermaid, { strategy: 'img-svg', dark: true }]],
   },
 })
