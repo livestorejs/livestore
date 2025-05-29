@@ -54,8 +54,8 @@ const buildAndDeployExample = ({
         '--json',
         `--dir=${EXAMPLES_SRC_DIR}/${example}/dist`,
         `--site=example-${example}`,
-        prod ? '--prod' : undefined,
-        Option.isSome(alias) ? `--alias=${alias.value}` : undefined,
+        // Either use `--prod` or `--alias`
+        prod ? '--prod' : Option.isSome(alias) ? `--alias=${alias.value}` : undefined,
       ],
       {
         cwd,
