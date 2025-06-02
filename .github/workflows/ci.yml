@@ -203,7 +203,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
@@ -233,7 +233,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
@@ -263,7 +263,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
