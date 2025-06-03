@@ -177,7 +177,7 @@ export namespace FromColumns {
   export type InsertRowDecoded<TColumns extends SqliteDsl.Columns> = SqliteDsl.FromColumns.InsertRowDecoded<TColumns>
 }
 
-type SqliteTableDefForInput<
+export type SqliteTableDefForInput<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
 > = SqliteDsl.TableDefinition<TName, PrettifyFlat<ToColumns<TColumns>>>
