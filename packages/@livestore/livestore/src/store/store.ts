@@ -1,16 +1,17 @@
-import type {
-  ClientSession,
-  ClientSessionSyncProcessor,
-  ParamsObject,
-  PreparedBindValues,
-  QueryBuilder,
+import {
+  type ClientSession,
+  type ClientSessionSyncProcessor,
+  type ParamsObject,
+  type PreparedBindValues,
+  type QueryBuilder,
   UnexpectedError,
 } from '@livestore/common'
 import {
   Devtools,
   getDurationMsFromSpan,
-  getExecArgsFromEvent,
+  getExecStatementsFromMaterializer,
   getResultSchema,
+  hashMaterializerResults,
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
@@ -23,7 +24,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Fiber, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -114,15 +115,32 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       schema,
       clientSession,
       runtime: effectContext.runtime,
-      materializeEvent: (eventDecoded, { otelContext, withChangeset }) => {
+      materializeEvent: (eventDecoded, { otelContext, withChangeset, materializerHashLeader }) => {
         const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
 
-        const execArgsArr = getExecArgsFromEvent({
+        const execArgsArr = getExecStatementsFromMaterializer({
           eventDef,
           materializer,
-          db: this.sqliteDbWrapper,
+          dbState: this.sqliteDbWrapper,
           event: { decoded: eventDecoded, encoded: undefined },
         })
+
+        const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+
+        if (
+          materializerHashLeader._tag === 'Some' &&
+          materializerHash._tag === 'Some' &&
+          materializerHashLeader.value !== materializerHash.value
+        ) {
+          void this.shutdown(
+            Cause.fail(
+              UnexpectedError.make({
+                cause: `Materializer hash mismatch detected for event "${eventDecoded.name}".`,
+                note: `Please make sure your event materializer is a pure function without side effects.`,
+              }),
+            ),
+          )
+        }
 
         const writeTablesForEvent = new Set<string>()
 
@@ -132,7 +150,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             bindValues,
             writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
           } of execArgsArr) {
-            this.sqliteDbWrapper.execute(statementSql, bindValues, { otelContext, writeTables })
+            this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
 
             // durationMsTotal += durationMs
             for (const table of writeTables) {
@@ -151,7 +169,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           exec()
         }
 
-        return { writeTables: writeTablesForEvent, sessionChangeset }
+        return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
       },
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
@@ -389,7 +407,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.sqliteDbWrapper.select(query.query, prepareBindValues(query.bindValues, query.query), {
+      return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
     } else if (isQueryBuilder(query)) {
@@ -405,7 +423,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
-      const rawRes = this.sqliteDbWrapper.select(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
+      const rawRes = this.sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })

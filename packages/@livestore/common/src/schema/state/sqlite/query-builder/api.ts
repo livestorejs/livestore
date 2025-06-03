@@ -117,7 +117,7 @@ export type QueryBuilder<
 > = {
   readonly [QueryBuilderTypeId]: QueryBuilderTypeId
   readonly [QueryBuilderAstSymbol]: QueryBuilderAst
-  readonly ['ResultType']: TResult
+  readonly ResultType: TResult
   readonly asSql: () => { query: string; bindValues: SqlValue[] }
   readonly toString: () => string
 } & Omit<QueryBuilder.ApiFull<TResult, TTableDef, TWithout>, TWithout>

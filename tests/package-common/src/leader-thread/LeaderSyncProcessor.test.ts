@@ -65,8 +65,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
 
       expect(result).toEqual([
-        { id: '1', text: 't1', completed: 0 },
-        { id: '2', text: 't2', completed: 0 },
+        { id: '1', text: 't1', completed: 0, deletedAt: null },
+        { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
@@ -99,7 +99,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
-      expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
+      expect(result).toEqual([{ id: '2', text: 't2', completed: 0, deletedAt: null }])
 
       // This will cause a rebase given mismatch: local insert(id: '2') vs remote insert(id: '1')
       yield* testContext.mockSyncBackend.connect
@@ -108,8 +108,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       const rebasedResult = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(rebasedResult).toEqual([
-        { id: '1', text: 't1', completed: 0 },
-        { id: '2', text: 't2', completed: 0 },
+        { id: '1', text: 't1', completed: 0, deletedAt: null },
+        { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))

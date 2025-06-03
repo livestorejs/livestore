@@ -223,6 +223,22 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       ])
     }).pipe(withCtx(test)),
   )
+
+  // In cases where the materializer is non-pure (e.g. for events.todoDeletedNonPure calling `new Date()`),
+  // the ClientSessionSyncProcessor will fail gracefully when detecting a materializer hash mismatch.
+  Vitest.scopedLive('should fail gracefully if materializer is side effecting', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, shutdownDeferred } = yield* TestContext
+      const store = yield* makeStore
+
+      store.commit(events.todoDeletedNonPure({ id: '1' }))
+
+      const error = yield* shutdownDeferred.pipe(Effect.flip)
+
+      expect(error._tag).toEqual('LiveStore.UnexpectedError')
+      expect(error.cause).includes('Materializer hash mismatch detected for event')
+    }).pipe(withCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -242,7 +258,7 @@ const TestContextLive = Layer.scoped(
 
     const adapter = makeAdapter({
       storage: { type: 'in-memory' },
-      sync: { backend: () => mockSyncBackend.makeSyncBackend },
+      sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
     })
     const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test', shutdownDeferred })
 

@@ -52,10 +52,10 @@ export const connectDevtoolsToStore = ({
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
-        reactivityGraphSubcriptions.forEach((unsub) => unsub())
-        liveQueriesSubscriptions.forEach((unsub) => unsub())
-        debugInfoHistorySubscriptions.forEach((unsub) => unsub())
-        syncHeadClientSessionSubscriptions.forEach((unsub) => unsub())
+        for (const unsub of reactivityGraphSubcriptions.values()) unsub()
+        for (const unsub of liveQueriesSubscriptions.values()) unsub()
+        for (const unsub of debugInfoHistorySubscriptions.values()) unsub()
+        for (const unsub of syncHeadClientSessionSubscriptions.values()) unsub()
       }),
     )
 
@@ -202,7 +202,7 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.sqliteDbWrapper.select(queryStr, bindValues, { queriedTables, skipCache: true })
+          store.sqliteDbWrapper.cachedSelect(queryStr, bindValues, { queriedTables, skipCache: true })
           sendToDevtools(
             Devtools.ClientSession.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
           )

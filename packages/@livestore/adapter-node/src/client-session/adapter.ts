@@ -131,21 +131,16 @@ const makeAdapterImpl = ({
       //   yield* Effect.logWarning('Failed to load database file', fileData.left)
       // }
 
-      if (leaderThreadInput._tag === 'multi-threaded') {
-        // TODO make static import again once BroadcastChannel is stable in Deno
-        //
-        // const { makeShutdownChannel } = yield* Effect.promise(() => import('../shutdown-channel.js'))
-        const shutdownChannel = yield* makeShutdownChannel(storeId)
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-        yield* shutdownChannel.listen.pipe(
-          Stream.flatten(),
-          Stream.tap((error) => shutdown(Cause.fail(error))),
-          Stream.runDrain,
-          Effect.interruptible,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-        )
-      }
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 

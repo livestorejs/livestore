@@ -5,7 +5,7 @@ import type {
   SqliteDb,
   SqliteDbChangeset,
 } from '@livestore/common'
-import { SqliteError } from '@livestore/common'
+import { SqliteDbHelper, SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { makeInMemoryDb } from './in-memory-vfs.js'
@@ -130,17 +130,17 @@ export const makeSqliteDb = <
       }
     },
     export: () => sqlite3.serialize(dbPointer, 'main'),
-    execute: (queryStr, bindValues, options) => {
+    execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
       const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
       stmt.finalize()
-    },
-    select: (queryStr, bindValues) => {
+    }),
+    select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const results = stmt.select(bindValues)
       stmt.finalize()
       return results as ReadonlyArray<any>
-    },
+    }),
     destroy: () => {
       sqliteDb.close()
 
@@ -209,6 +209,7 @@ export const makeSqliteDb = <
           try {
             sqlite3.changeset_apply(dbPointer, data)
             // @ts-expect-error data should be garbage collected after use
+            // biome-ignore lint/style/noParameterAssign:
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

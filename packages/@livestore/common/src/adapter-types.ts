@@ -4,6 +4,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import type * as Devtools from './devtools/mod.js'
 import * as EventSequenceNumber from './schema/EventSequenceNumber.js'
 import type { LiveStoreEvent, LiveStoreSchema } from './schema/mod.js'
+import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -84,7 +85,11 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
     bindValues?: PreparedBindValues | undefined,
     options?: { onRowsChanged?: (rowsChanged: number) => void },
   ): void
+  execute(queryBuilder: QueryBuilder.Any, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
+
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
+  select<T>(queryBuilder: QueryBuilder<T, any, any>): ReadonlyArray<T>
+
   export(): Uint8Array
   import: (data: Uint8Array | SqliteDb<TReq>) => void
   close(): void

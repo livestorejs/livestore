@@ -1,26 +1,27 @@
-import { isNil, isReadonlyArray } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
+import { Hash, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.js'
 import { SessionIdSymbol } from './adapter-types.js'
 import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.js'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
+import { getEventDef, type LiveStoreSchema } from './schema/schema.js'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.js'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.js'
-import { type BindValues } from './sql-queries/sql-queries.js'
+import type { BindValues } from './sql-queries/sql-queries.js'
 import type { ParamsObject, PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
-export const getExecArgsFromEvent = ({
+export const getExecStatementsFromMaterializer = ({
   eventDef,
   materializer,
-  db,
+  dbState,
   event,
 }: {
   eventDef: EventDef.AnyWithoutFn
   materializer: Materializer
-  db: SqliteDb
+  dbState: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
     | {
@@ -53,25 +54,25 @@ export const getExecArgsFromEvent = ({
   ) => {
     if (isQueryBuilder(rawQueryOrQueryBuilder)) {
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-      const rawResults = db.select(query, prepareBindValues(bindValues, query))
+      const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
       return Schema.decodeSync(resultSchema)(rawResults)
     } else {
       const { query, bindValues } = rawQueryOrQueryBuilder
-      return db.select(query, prepareBindValues(bindValues, query))
+      return dbState.select(query, prepareBindValues(bindValues, query))
     }
   }
 
-  const res = materializer(eventArgsDecoded, {
-    eventDef,
-    query,
-    // TODO properly implement this
-    currentFacts: new Map(),
-  })
+  const statementResults = fromMaterializerResult(
+    materializer(eventArgsDecoded, {
+      eventDef,
+      query,
+      // TODO properly implement this
+      currentFacts: new Map(),
+    }),
+  )
 
-  const statementRes = mapMaterializerResult(res)
-
-  return statementRes.map((statementRes) => {
+  return statementResults.map((statementRes) => {
     const statementSql = statementRes.sql
 
     const bindValues = typeof statementRes === 'string' ? eventArgsEncoded : statementRes.bindValues
@@ -82,7 +83,32 @@ export const getExecArgsFromEvent = ({
   })
 }
 
-const mapMaterializerResult = (
+export const makeMaterializerHash =
+  ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
+  (event: LiveStoreEvent.AnyEncodedGlobal): Option.Option<number> => {
+    if (isDevEnv()) {
+      const { eventDef, materializer } = getEventDef(schema, event.name)
+      const materializerResults = getExecStatementsFromMaterializer({
+        eventDef,
+        materializer,
+        dbState,
+        event: { decoded: undefined, encoded: event },
+      })
+      return Option.some(Hash.string(JSON.stringify(materializerResults)))
+    }
+
+    return Option.none()
+  }
+
+export const hashMaterializerResults = (
+  materializerResults: ReadonlyArray<{
+    statementSql: string
+    bindValues: PreparedBindValues
+    writeTables: ReadonlySet<string> | undefined
+  }>,
+) => Hash.string(JSON.stringify(materializerResults))
+
+const fromMaterializerResult = (
   materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
 ): ReadonlyArray<{
   sql: string
@@ -90,7 +116,7 @@ const mapMaterializerResult = (
   writeTables: ReadonlySet<string> | undefined
 }> => {
   if (isReadonlyArray(materializerResult)) {
-    return materializerResult.flatMap(mapMaterializerResult)
+    return materializerResult.flatMap(fromMaterializerResult)
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues } = materializerResult.asSql()

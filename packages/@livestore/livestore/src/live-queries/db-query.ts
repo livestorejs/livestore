@@ -372,7 +372,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store.sqliteDbWrapper.select<any>(
+            const rawDbResults = store.sqliteDbWrapper.cachedSelect<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {
