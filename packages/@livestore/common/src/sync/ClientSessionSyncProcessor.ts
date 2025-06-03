@@ -121,12 +121,16 @@ export const makeClientSessionSyncProcessor = ({
     for (const event of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
       const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-      const { writeTables, sessionChangeset, materializerHash } = materializeEvent(decodedEventDef, {
+      const {
+        writeTables: newWriteTables,
+        sessionChangeset,
+        materializerHash,
+      } = materializeEvent(decodedEventDef, {
         otelContext,
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
-      for (const table of writeTables) {
+      for (const table of newWriteTables) {
         writeTables.add(table)
       }
       event.meta.sessionChangeset = sessionChangeset
