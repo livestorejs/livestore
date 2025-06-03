@@ -272,12 +272,16 @@ export const makeClientSessionSyncProcessor = ({
           for (const event of mergeResult.newEvents) {
             // TODO apply changeset if available (will require tracking of write tables as well)
             const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-            const { writeTables, sessionChangeset, materializerHash } = materializeEvent(decodedEventDef, {
+            const {
+              writeTables: newWriteTables,
+              sessionChangeset,
+              materializerHash,
+            } = materializeEvent(decodedEventDef, {
               otelContext,
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
-            for (const table of writeTables) {
+            for (const table of newWriteTables) {
               writeTables.add(table)
             }
 
