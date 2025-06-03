@@ -6,6 +6,7 @@ import {
   Effect,
   Exit,
   FiberHandle,
+  Option,
   OtelTracer,
   Queue,
   ReadonlyArray,
@@ -17,6 +18,7 @@ import type * as otel from '@opentelemetry/api'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
+import { makeMaterializerHash } from '../materializer-helper.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.js'
 import { LeaderAheadError } from '../sync/sync.js'
@@ -317,6 +319,7 @@ export const makeLeaderSyncProcessor = ({
         syncStateSref,
         localPushesLatch,
         pullLatch,
+        dbState,
         otelSpan,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
@@ -493,6 +496,7 @@ const backgroundApplyLocalPushes = ({
           // TODO we still need to better understand and handle this scenario
           if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
             console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
+            // biome-ignore lint/suspicious/noDebugger: <explanation>
             debugger
           }
 
@@ -584,8 +588,9 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     )
 
     for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset } = yield* materializeEvent(batchItems[i]!)
+      const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
+      batchItems[i]!.meta.materializerHashLeader = hash
 
       if (deferreds?.[i] !== undefined) {
         yield* Deferred.succeed(deferreds[i]!, void 0)
@@ -609,6 +614,7 @@ const backgroundBackendPulling = ({
   isClientEvent,
   restartBackendPushing,
   otelSpan,
+  dbState,
   syncStateSref,
   localPushesLatch,
   pullLatch,
@@ -626,6 +632,7 @@ const backgroundBackendPulling = ({
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
+  dbState: SqliteDb
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
   devtoolsLatch: Effect.Latch | undefined
@@ -758,6 +765,8 @@ const backgroundBackendPulling = ({
 
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo(initialBackendHead)
 
+    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
+
     yield* syncBackend.pull(cursorInfo).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, remaining }) =>
@@ -775,7 +784,13 @@ const backgroundBackendPulling = ({
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
           yield* onNewPullChunk(
-            batch.map((_) => LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, _.metadata)),
+            batch.map((_) =>
+              LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, {
+                syncMetadata: _.metadata,
+                materializerHashLeader: hashMaterializerResult(_.eventEncoded),
+                materializerHashSession: Option.none(),
+              }),
+            ),
             remaining,
           )
 

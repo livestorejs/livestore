@@ -171,12 +171,25 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
       Schema.TaggedStruct('unset', {}),
     ),
     syncMetadata: Schema.Option(Schema.JsonValue),
+    /** Used to detect if the materializer is side effecting (during dev) */
+    materializerHashLeader: Schema.Option(Schema.Number),
+    materializerHashSession: Schema.Option(Schema.Number),
   }).pipe(
     Schema.mutable,
     Schema.optional,
     Schema.withDefaults({
-      constructor: () => ({ sessionChangeset: { _tag: 'unset' as const }, syncMetadata: Option.none() }),
-      decoding: () => ({ sessionChangeset: { _tag: 'unset' as const }, syncMetadata: Option.none() }),
+      constructor: () => ({
+        sessionChangeset: { _tag: 'unset' as const },
+        syncMetadata: Option.none(),
+        materializerHashLeader: Option.none(),
+        materializerHashSession: Option.none(),
+      }),
+      decoding: () => ({
+        sessionChangeset: { _tag: 'unset' as const },
+        syncMetadata: Option.none(),
+        materializerHashLeader: Option.none(),
+        materializerHashSession: Option.none(),
+      }),
     }),
   ),
 }) {
@@ -214,12 +227,24 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
       ...EventSequenceNumber.nextPair(parentSeqNum, isClient),
     })
 
-  static fromGlobal = (event: AnyEncodedGlobal, syncMetadata: Option.Option<Schema.JsonValue>) =>
+  static fromGlobal = (
+    event: AnyEncodedGlobal,
+    meta: {
+      syncMetadata: Option.Option<Schema.JsonValue>
+      materializerHashLeader: Option.Option<number>
+      materializerHashSession: Option.Option<number>
+    },
+  ) =>
     new EncodedWithMeta({
       ...event,
       seqNum: { global: event.seqNum, client: EventSequenceNumber.clientDefault },
       parentSeqNum: { global: event.parentSeqNum, client: EventSequenceNumber.clientDefault },
-      meta: { sessionChangeset: { _tag: 'unset' as const }, syncMetadata },
+      meta: {
+        sessionChangeset: { _tag: 'unset' as const },
+        syncMetadata: meta.syncMetadata,
+        materializerHashLeader: meta.materializerHashLeader,
+        materializerHashSession: meta.materializerHashSession,
+      },
     })
 
   toGlobal = (): AnyEncodedGlobal => ({

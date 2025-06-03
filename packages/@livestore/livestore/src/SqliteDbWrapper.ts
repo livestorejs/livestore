@@ -1,13 +1,14 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
-import type {
-  DebugInfo,
-  MutableDebugInfo,
-  PreparedBindValues,
-  PreparedStatement,
-  SqliteDb,
-  SqliteDbChangeset,
-  SqliteDbSession,
+import {
+  type DebugInfo,
+  type MutableDebugInfo,
+  type PreparedBindValues,
+  type PreparedStatement,
+  type SqliteDb,
+  type SqliteDbChangeset,
+  SqliteDbHelper,
+  type SqliteDbSession,
 } from '@livestore/common'
 import {
   BoundArray,
@@ -75,10 +76,10 @@ export class SqliteDbWrapper implements SqliteDb {
     return this.db.import(data)
   }
   close(): void {
-    return this.db.close()
+    this.db.close()
   }
   destroy(): void {
-    return this.db.destroy()
+    this.db.destroy()
   }
   session(): SqliteDbSession {
     return this.db.session()
@@ -157,7 +158,7 @@ export class SqliteDbWrapper implements SqliteDb {
     return tablesUsed
   }
 
-  execute(
+  cachedExecute(
     queryStr: string,
     bindValues?: PreparedBindValues | undefined,
     options?: {
@@ -213,6 +214,7 @@ export class SqliteDbWrapper implements SqliteDb {
           span.recordException(cause)
           span.end()
           if (LS_DEV) {
+            // biome-ignore lint/suspicious/noDebugger: <explanation>
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })
@@ -221,7 +223,11 @@ export class SqliteDbWrapper implements SqliteDb {
     )
   }
 
-  select<T = any>(
+  execute = SqliteDbHelper.makeExecute((queryStr, bindValues) => this.cachedExecute(queryStr, bindValues))
+
+  select = SqliteDbHelper.makeSelect((queryStr, bindValues) => this.cachedSelect(queryStr, bindValues))
+
+  cachedSelect<T = any>(
     queryStr: string,
     bindValues?: PreparedBindValues | undefined,
     options?: {

@@ -1,8 +1,8 @@
-import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
+import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from '../adapter-types.js'
-import { getExecArgsFromEvent } from '../materializer-helper.js'
+import { type SqliteDb, UnexpectedError } from '../adapter-types.js'
+import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
@@ -13,13 +13,13 @@ import type { MaterializeEvent } from './types.js'
 
 export const makeMaterializeEvent = ({
   schema,
-  dbState: db,
+  dbState,
   dbEventlog,
 }: {
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent, never> =>
+}): Effect.Effect<MaterializeEvent, UnexpectedError> =>
   Effect.gen(function* () {
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -35,12 +35,25 @@ export const makeMaterializeEvent = ({
         const eventName = eventEncoded.name
         const { eventDef, materializer } = getEventDef(schema, eventName)
 
-        const execArgsArr = getExecArgsFromEvent({
+        const execArgsArr = getExecStatementsFromMaterializer({
           eventDef,
           materializer,
-          db,
+          dbState,
           event: { decoded: undefined, encoded: eventEncoded },
         })
+
+        const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+
+        if (
+          materializerHash._tag === 'Some' &&
+          eventEncoded.meta.materializerHashSession._tag === 'Some' &&
+          eventEncoded.meta.materializerHashSession.value !== materializerHash.value
+        ) {
+          yield* UnexpectedError.make({
+            cause: `Materializer hash mismatch detected for event "${eventEncoded.name}".`,
+            note: `Please make sure your event materializer is a pure function without side effects.`,
+          })
+        }
 
         // NOTE we might want to bring this back if we want to debug no-op events
         // const makeExecuteOptions = (statementSql: string, bindValues: any) => ({
@@ -53,12 +66,12 @@ export const makeMaterializeEvent = ({
 
         // console.group('[@livestore/common:leader-thread:materializeEvent]', { eventName })
 
-        const session = db.session()
+        const session = dbState.session()
 
         for (const { statementSql, bindValues } of execArgsArr) {
           // console.debug(eventName, statementSql, bindValues)
           // TODO use cached prepared statements instead of exec
-          yield* execSqlPrepared(db, statementSql, bindValues)
+          yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
         const changeset = session.changeset()
@@ -66,7 +79,7 @@ export const makeMaterializeEvent = ({
 
         // TODO use prepared statements
         yield* execSql(
-          db,
+          dbState,
           ...insertRow({
             tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
             columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
@@ -107,6 +120,7 @@ export const makeMaterializeEvent = ({
                 debug: LS_DEV ? execArgsArr : null,
               }
             : { _tag: 'no-op' as const },
+          hash: materializerHash,
         }
       }).pipe(
         Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {

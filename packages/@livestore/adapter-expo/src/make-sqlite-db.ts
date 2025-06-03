@@ -3,6 +3,7 @@ import {
   type PersistenceInfo,
   type PreparedStatement,
   type SqliteDb,
+  SqliteDbHelper,
   SqliteError,
 } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -107,7 +108,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         return shouldNeverHappen(`Error preparing statement: ${queryStr}`)
       }
     },
-    execute: (queryStr, bindValues) => {
+    execute: SqliteDbHelper.makeExecute((queryStr, bindValues) => {
       const stmt = db.prepareSync(queryStr)
       try {
         const res = stmt.executeSync(bindValues ?? ([] as any))
@@ -115,16 +116,16 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       } finally {
         stmt.finalizeSync()
       }
-    },
+    }),
     export: () => {
       return db.serializeSync()
     },
-    select: (queryStr, bindValues) => {
+    select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
       stmt.finalize()
       return res as any
-    },
+    }),
     destroy: () => {
       sqliteDb.close()
 
