@@ -75,16 +75,14 @@ jobs:
         run: |
           bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
   perf-test:
-    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    runs-on: ubuntu-latest # Prefer a specific version for more consistent performance measurements between runs
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-      - name: Setup Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - name: Use FlakeHub Cache for Nix binaries
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Load environment with direnv
