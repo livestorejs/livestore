@@ -22,9 +22,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -39,9 +38,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -115,9 +113,8 @@ jobs:
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -137,9 +134,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -154,9 +150,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -177,9 +172,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
