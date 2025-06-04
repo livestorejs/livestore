@@ -75,7 +75,7 @@ jobs:
         run: |
           bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
   perf-test:
-    runs-on: ubuntu-latest # Prefer a specific version for more consistent performance measurements between runs
+    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
