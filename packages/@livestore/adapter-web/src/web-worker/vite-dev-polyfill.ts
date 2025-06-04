@@ -8,6 +8,7 @@ globalThis.process = globalThis.process ?? { env: {} }
 
 globalThis.document = (globalThis as any)?.document ?? {
   querySelectorAll: () => [],
+  querySelector: () => null,
   addEventListener: () => {},
   createElement: () => ({
     setAttribute: () => {},
