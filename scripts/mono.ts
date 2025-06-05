@@ -169,7 +169,7 @@ const docsCommand = Cli.Command.make('docs').pipe(
             ? prodOption.value
             : branchName === 'main' || branchName === devBranchName
 
-        if (prod && liveStoreVersion.includes('dev')) {
+        if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
           yield* Effect.fail('Cannot deploy docs for dev version of LiveStore to prod')
         }
 
