@@ -67,23 +67,23 @@ type LocalPushQueueItem = [
  */
 export const makeLeaderSyncProcessor = ({
   schema,
-  dbEventlogMissing,
-  dbEventlog,
   dbState,
-  dbStateMissing,
   initialBlockingSyncContext,
+  initialMergeCounter,
+  initialEventlogState,
   onError,
   params,
   testing,
 }: {
   schema: LiveStoreSchema
-  /** Only used to know whether we can safely query dbEventlog during setup execution */
-  dbEventlogMissing: boolean
-  dbEventlog: SqliteDb
   dbState: SqliteDb
-  /** Only used to know whether we can safely query dbState during setup execution */
-  dbStateMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
+  initialMergeCounter: number
+  initialEventlogState: {
+    localHead: EventSequenceNumber.EventSequenceNumber
+    backendHead: EventSequenceNumber.GlobalEventSequenceNumber
+    pendingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
+  }
   onError: 'shutdown' | 'ignore'
   params: {
     /**
@@ -124,7 +124,7 @@ export const makeLeaderSyncProcessor = ({
     const currentLocalPushGenerationRef = { current: 0 }
 
     type MergeCounter = number
-    const mergeCounterRef = { current: dbStateMissing ? 0 : yield* getMergeCounterFromDb(dbState) }
+    const mergeCounterRef = { current: initialMergeCounter }
     const mergePayloads = new Map<MergeCounter, typeof SyncState.PayloadUpstream.Type>()
 
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
@@ -150,7 +150,7 @@ export const makeLeaderSyncProcessor = ({
      * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
      * - client session B also pushes e1 (which should be rejected)
      *
-     * Thus the purpoe of the pushHeadRef is the guard the integrity of the local push queue
+     * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
      */
     const pushHeadRef = { current: EventSequenceNumber.ROOT }
     const advancePushHead = (eventNum: EventSequenceNumber.EventSequenceNumber) => {
@@ -225,34 +225,18 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
-      const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
-
-      const initialBackendHead = dbEventlogMissing
-        ? EventSequenceNumber.ROOT.global
-        : Eventlog.getBackendHeadFromDb(dbEventlog)
-
-      if (initialBackendHead > initialLocalHead.global) {
-        return shouldNeverHappen(
-          `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
-        )
-      }
-
-      const pendingEvents = dbEventlogMissing
-        ? []
-        : yield* Eventlog.getEventsSince({ global: initialBackendHead, client: EventSequenceNumber.clientDefault })
-
       const initialSyncState = new SyncState.SyncState({
-        pending: pendingEvents,
-        upstreamHead: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
-        localHead: initialLocalHead,
+        pending: initialEventlogState.pendingEvents,
+        upstreamHead: { global: initialEventlogState.backendHead, client: EventSequenceNumber.clientDefault },
+        localHead: initialEventlogState.localHead,
       })
 
       /** State transitions need to happen atomically, so we use a Ref to track the state */
       yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
       // Rehydrate sync queue
-      if (pendingEvents.length > 0) {
-        const globalPendingEvents = pendingEvents
+      if (initialEventlogState.pendingEvents.length > 0) {
+        const globalPendingEvents = initialEventlogState.pendingEvents
           // Don't sync clientOnly events
           .filter((eventEncoded) => {
             const { eventDef } = getEventDef(schema, eventEncoded.name)
@@ -302,7 +286,7 @@ export const makeLeaderSyncProcessor = ({
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
-        initialBackendHead,
+        initialBackendHead: initialEventlogState.backendHead,
         isClientEvent,
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
@@ -329,7 +313,7 @@ export const makeLeaderSyncProcessor = ({
         advancePushHead,
       }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
-      return { initialLeaderHead: initialLocalHead }
+      return { initialLeaderHead: initialEventlogState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
     const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
@@ -919,7 +903,7 @@ const incrementMergeCounter = (mergeCounterRef: { current: number }) =>
     return mergeCounterRef.current
   })
 
-const getMergeCounterFromDb = (dbState: SqliteDb) =>
+export const getMergeCounterFromDb = (dbState: SqliteDb) =>
   Effect.gen(function* () {
     const result = dbState.select<{ mergeCounter: number }>(
       sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
