@@ -8,6 +8,7 @@ import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
+import { SyncState } from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import * as Eventlog from './eventlog.js'
 import { bootDevtools } from './leader-worker-devtools.js'
@@ -92,7 +93,7 @@ export const makeLeaderThreadLayer = ({
       schema,
       dbState,
       initialMergeCounter: dbStateMissing ? 0 : yield* getMergeCounterFromDb(dbState),
-      initialEventlogState: yield* getInitialEventlogState({ dbEventlog, dbState, dbEventlogMissing }),
+      initialSyncState: yield* getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       params: {
@@ -158,7 +159,7 @@ export const makeLeaderThreadLayer = ({
     Layer.unwrapScoped,
   )
 
-const getInitialEventlogState = ({
+const getInitialSyncState = ({
   dbEventlog,
   dbState,
   dbEventlogMissing,
@@ -180,17 +181,17 @@ const getInitialEventlogState = ({
       )
     }
 
-    return {
+    return SyncState.make({
       localHead: initialLocalHead,
-      backendHead: initialBackendHead,
-      pendingEvents: dbEventlogMissing
+      upstreamHead: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
+      pending: dbEventlogMissing
         ? []
         : yield* Eventlog.getEventsSince({
             dbEventlog,
             dbState,
             since: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
           }),
-    }
+    })
   })
 
 const makeInitialBlockingSyncContext = ({

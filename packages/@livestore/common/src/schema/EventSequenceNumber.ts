@@ -19,7 +19,10 @@ export const clientDefault = 0 as any as ClientEventSequenceNumber
 export type EventSequenceNumber = {
   global: GlobalEventSequenceNumber
   client: ClientEventSequenceNumber
-  /** Generation number that tracks how often the client has already rebased */
+  /**
+   * Generation integer that is incremented whenever the client rebased.
+   * Starts from 0
+   */
   // clientRebaseGeneration: number
 }
 

@@ -70,7 +70,7 @@ export const makeLeaderSyncProcessor = ({
   dbState,
   initialBlockingSyncContext,
   initialMergeCounter,
-  initialEventlogState,
+  initialSyncState,
   onError,
   params,
   testing,
@@ -79,11 +79,8 @@ export const makeLeaderSyncProcessor = ({
   dbState: SqliteDb
   initialBlockingSyncContext: InitialBlockingSyncContext
   initialMergeCounter: number
-  initialEventlogState: {
-    localHead: EventSequenceNumber.EventSequenceNumber
-    backendHead: EventSequenceNumber.GlobalEventSequenceNumber
-    pendingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  }
+  /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
+  initialSyncState: SyncState.SyncState
   onError: 'shutdown' | 'ignore'
   params: {
     /**
@@ -225,18 +222,12 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
-      const initialSyncState = new SyncState.SyncState({
-        pending: initialEventlogState.pendingEvents,
-        upstreamHead: { global: initialEventlogState.backendHead, client: EventSequenceNumber.clientDefault },
-        localHead: initialEventlogState.localHead,
-      })
-
       /** State transitions need to happen atomically, so we use a Ref to track the state */
       yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
       // Rehydrate sync queue
-      if (initialEventlogState.pendingEvents.length > 0) {
-        const globalPendingEvents = initialEventlogState.pendingEvents
+      if (initialSyncState.pending.length > 0) {
+        const globalPendingEvents = initialSyncState.pending
           // Don't sync clientOnly events
           .filter((eventEncoded) => {
             const { eventDef } = getEventDef(schema, eventEncoded.name)
@@ -286,7 +277,7 @@ export const makeLeaderSyncProcessor = ({
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
-        initialBackendHead: initialEventlogState.backendHead,
+        initialBackendHead: initialSyncState.upstreamHead.global,
         isClientEvent,
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
@@ -313,7 +304,7 @@ export const makeLeaderSyncProcessor = ({
         advancePushHead,
       }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
-      return { initialLeaderHead: initialEventlogState.localHead }
+      return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
     const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
