@@ -584,12 +584,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         try {
+          // Materialize events to state
           const { writeTables } = (() => {
             try {
               const materializeEvents = () => this.syncProcessor.push(events, { otelContext })
 
               if (events.length > 1) {
-                // TODO: what to do about leader transaction here?
                 return this.sqliteDbWrapper.txn(materializeEvents)
               } else {
                 return materializeEvents()

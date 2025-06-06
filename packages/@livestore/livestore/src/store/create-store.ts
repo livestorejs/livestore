@@ -38,7 +38,7 @@ import type {
 } from './store-types.js'
 
 export const DEFAULT_PARAMS = {
-  leaderPushBatchSize: 1,
+  leaderPushBatchSize: 100,
 }
 
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<

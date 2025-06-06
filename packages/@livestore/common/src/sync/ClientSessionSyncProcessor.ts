@@ -68,6 +68,7 @@ export const makeClientSessionSyncProcessor = ({
     }),
   }
 
+  /** Only used for debugging / observability, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
     getEventDef(schema, eventEncoded.name).eventDef.options.clientOnly
@@ -117,6 +118,7 @@ export const makeClientSessionSyncProcessor = ({
     syncStateRef.current = mergeResult.newSyncState
     syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
+    // Materialize events to state
     const writeTables = new Set<string>()
     for (const event of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
@@ -137,6 +139,7 @@ export const makeClientSessionSyncProcessor = ({
       event.meta.materializerHashSession = materializerHash
     }
 
+    // Trigger push to leader
     // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
     BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
 
@@ -341,6 +344,9 @@ export interface ClientSessionSyncProcessor {
     writeTables: Set<string>
   }
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  /**
+   * Only used for debugging / observability.
+   */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   debug: {
     print: () => void
