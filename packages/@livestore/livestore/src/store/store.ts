@@ -150,7 +150,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             bindValues,
             writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
           } of execArgsArr) {
-            this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+            try {
+              this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+            } catch (cause) {
+              throw UnexpectedError.make({
+                cause,
+                note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+              })
+            }
 
             // durationMsTotal += durationMs
             for (const table of writeTables) {
@@ -163,6 +170,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
           | { _tag: 'no-op' }
           | { _tag: 'unset' } = { _tag: 'unset' }
+
         if (withChangeset === true) {
           sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
         } else {
@@ -576,12 +584,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         try {
+          // Materialize events to state
           const { writeTables } = (() => {
             try {
               const materializeEvents = () => this.syncProcessor.push(events, { otelContext })
 
               if (events.length > 1) {
-                // TODO: what to do about leader transaction here?
                 return this.sqliteDbWrapper.txn(materializeEvents)
               } else {
                 return materializeEvents()

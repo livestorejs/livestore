@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 
+import { liveStoreVersion } from '@livestore/common'
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -167,6 +168,10 @@ const docsCommand = Cli.Command.make('docs').pipe(
           prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
             ? prodOption.value
             : branchName === 'main' || branchName === devBranchName
+
+        if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
+          yield* Effect.fail('Cannot deploy docs for dev version of LiveStore to prod')
+        }
 
         yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
