@@ -19,16 +19,9 @@ export const clientDefault = 0 as any as ClientEventSequenceNumber
 export type EventSequenceNumber = {
   global: GlobalEventSequenceNumber
   client: ClientEventSequenceNumber
-  /**
-   * TODO add generation number in favour of LEADER_MERGE_COUNTER_TABLE
-   */
-  // generation: number
+  /** Generation number that tracks how often the client has already rebased */
+  // clientRebaseGeneration: number
 }
-
-// export const EventSequenceNumber = Schema.Struct({})
-// export const EventSequenceNumber = Schema.Struct({})
-// export const ClientEventSequenceNumber = Schema.Struct({})
-// export const GlobalEventSequenceNumber = Schema.Struct({})
 
 /**
  * NOTE: Client mutation events with a non-0 client id, won't be synced to the sync backend.
@@ -43,7 +36,10 @@ export const EventSequenceNumber = Schema.Struct({
   // TODO: actually add this field
   // Client only
   // generation: Schema.Number.pipe(Schema.optional),
-}).annotations({ title: 'LiveStore.EventSequenceNumber' })
+}).annotations({
+  title: 'LiveStore.EventSequenceNumber',
+  pretty: () => (seqNum) => toString(seqNum),
+})
 
 /**
  * Compare two event sequence numbers i.e. checks if the first event sequence number is less than the second.
