@@ -41,12 +41,16 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
   })
 
 /** Exclusive of the "since event" */
-export const getEventsSince = (
-  since: EventSequenceNumber.EventSequenceNumber,
-): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
+export const getEventsSince = ({
+  dbEventlog,
+  dbState,
+  since,
+}: {
+  dbEventlog: SqliteDb
+  dbState: SqliteDb
+  since: EventSequenceNumber.EventSequenceNumber
+}): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>> =>
   Effect.gen(function* () {
-    const { dbEventlog, dbState } = yield* LeaderThreadCtx
-
     const query = eventlogMetaTable.where('seqNumGlobal', '>=', since.global).asSql()
     const pendingEventsRaw = dbEventlog.select(query.query, prepareBindValues(query.bindValues, query.query))
     const pendingEvents = Schema.decodeUnknownSync(eventlogMetaTable.rowSchema.pipe(Schema.Array))(pendingEventsRaw)
