@@ -13,7 +13,7 @@ Generally any kind of changes to your state schema (e.g. SQLite tables, ...) can
 
 ### Event schema changes
 
-Event schema changes require a bit more consideration. Changes to the event schema should generally be done in a backwards-compatible way. See [Event schema evolution](../reference/events.mdx#schema-evolution) for more details.
+Event schema changes require a bit more consideration. Changes to the event schema should generally be done in a backwards-compatible way. See [Event schema evolution](/reference/events/#schema-evolution) for more details.
 
 ## Parallel different app versions
 
