@@ -457,9 +457,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -548,6 +545,9 @@ importers:
         specifier: 0.8.10
         version: 0.8.10(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
@@ -617,9 +617,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -645,6 +642,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -666,9 +666,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -688,6 +685,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@tailwindcss/vite':
         specifier: ^4.1.6
         version: 4.1.6(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
@@ -718,9 +718,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -746,6 +743,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -813,9 +813,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -844,6 +841,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -871,9 +871,6 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -908,6 +905,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@tanstack/react-router':
         specifier: ^1.119.0
         version: 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1196,9 +1196,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1287,6 +1284,9 @@ importers:
         specifier: 0.8.10
         version: 0.8.10(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
@@ -1356,9 +1356,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1384,6 +1381,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1405,9 +1405,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1427,6 +1424,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@tailwindcss/vite':
         specifier: ^4.1.6
         version: 4.1.6(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
@@ -1457,9 +1457,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1485,6 +1482,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1552,9 +1552,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1583,6 +1580,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1610,9 +1610,6 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
-      '@livestore/devtools-vite':
-        specifier: 0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1647,6 +1644,9 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.3.1
+        version: 0.3.1(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1))
       '@tanstack/react-router':
         specifier: ^1.119.0
         version: 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)

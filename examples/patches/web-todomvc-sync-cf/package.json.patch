@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-web-todomvc-sync-cf",
 +  "name": "livestore-example-standalone-web-todomvc-sync-cf",
@@ -9,12 +9,11 @@
    "private": true,
    "dependencies": {
 -    "@livestore/adapter-web": "workspace:*",
-+    "@livestore/adapter-web": "0.3.1",
-     "@livestore/devtools-vite": "0.3.1",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
 -    "@livestore/sync-cf": "workspace:*",
++    "@livestore/adapter-web": "0.3.1",
 +    "@livestore/livestore": "0.3.1",
 +    "@livestore/peer-deps": "0.3.1",
 +    "@livestore/react": "0.3.1",

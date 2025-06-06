@@ -5,7 +5,6 @@
   "private": true,
   "dependencies": {
     "@livestore/adapter-web": "0.3.1",
-    "@livestore/devtools-vite": "0.3.1",
     "@livestore/livestore": "0.3.1",
     "@livestore/peer-deps": "0.3.1",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
@@ -14,6 +13,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
+    "@livestore/devtools-vite": "^0.3.1",
     "@tailwindcss/vite": "^4.1.6",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",

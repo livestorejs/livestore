@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,14 +1,14 @@
+@@ -1,13 +1,13 @@
  {
 -  "name": "livestore-example-src-web-todomvc-experimental",
 +  "name": "livestore-example-standalone-web-todomvc-experimental",
@@ -9,11 +9,10 @@
    "private": true,
    "dependencies": {
 -    "@livestore/adapter-web": "workspace:*",
-+    "@livestore/adapter-web": "0.3.1",
-     "@livestore/devtools-vite": "0.3.1",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
++    "@livestore/adapter-web": "0.3.1",
 +    "@livestore/livestore": "0.3.1",
 +    "@livestore/peer-deps": "0.3.1",
 +    "@livestore/react": "0.3.1",
