@@ -67,6 +67,31 @@ const todos = useQuery(visibleTodos$)
 </template>
 ```
 
+### useClientDocument
+
+**[!] The interface for useClientDocument is experimental and might change**
+
+Since it's more common in Vue to work with a single writable ref (as compared to state, setState in React) the useClientDocument composable for Vue tries to make that easier by directly returning a collection of refs.
+
+The current implementation destructures all client state variables into the return object which allows directly binding to v-model or editing the .value reactivly.
+
+```vue
+<script setup lang="ts">
+import { tables } from '../livestore/schema'
+
+const { newTodoText, filters } = useClientDocument(tables.uiState)
+</script>
+
+<template>
+<input type="text" v-model="newTodoText">
+
+<select v-model="filters">
+  <option value="all">All</option>
+  ...
+<select>
+</template>
+```
+
 ## Usage with ...
 
 ### Vite
@@ -75,7 +100,7 @@ LiveStore and vue-livestore works with Vite out of the box.
 
 ### Nuxt.js
 
-Should work with Nuxt out of the box if SSR is disabled. It's on the road-map to figure out best way to approach integration. A good starting point for reference would be to look at [hello-zero-nuxt](https://github.com/danielroe/hello-zero-nuxt).
+Works out of the box with Nuxt if SSR is disabled by just wrapping the main content in a LiveStoreProvider. Example repo upcoming.
 
 ## Technical notes
 
