@@ -13,16 +13,14 @@
     worker: LiveStoreWorker,
     sharedWorker: LiveStoreSharedWorker,
   })
-
-  const store = await createStore({
-    adapter,
-    schema,
-    storeId: 'default',
-  })
 </script>
 
-<section class="todoapp">
-  <Header {store} />
-  <MainSection {store} />
-  <Footer {store} />
-</section>
+{#await createStore({ adapter, schema, storeId: 'default' })}
+  <div>Loading LiveStore...</div>
+{:then store}
+  <section class="todoapp">
+    <Header {store} />
+    <MainSection {store} />
+    <Footer {store} />
+  </section>
+{/await}

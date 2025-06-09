@@ -23,10 +23,6 @@
     store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
 
   const visibleTodos = $derived.by(store.createQuery(visibleTodos$))
-
-  $effect(() => {
-    console.log(visibleTodos)
-  })
 </script>
 
 <section class="main">

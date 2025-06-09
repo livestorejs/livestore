@@ -23,8 +23,7 @@
     class="new-todo"
     placeholder="What needs to be done?"
     autofocus
-    value={newTodoText}
-    onchange={(e) => updatedNewTodoText(e.currentTarget.value)}
+    bind:value={() => newTodoText, (v) => updatedNewTodoText(v)}
     onkeydown={(e) => {
       if (e.key === 'Enter') {
         todoCreated()

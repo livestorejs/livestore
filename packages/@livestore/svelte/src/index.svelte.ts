@@ -43,15 +43,11 @@ Stack trace:
 const withSvelteApi = <S extends LiveStoreSchema>(store: CoreStore<S>): SvelteStore<S> => {
   // @ts-expect-error TODO not sure of a better way to implement this -- maybe extend the CoreStore?
   store.createQuery = <TQuery extends LiveQueryDef.Any>(queryDef: TQuery) => {
-    console.log('createQuery')
     const query$ = queryDef.make(store.reactivityGraph.context!).value // TODO otel stuff?
     let result = $state.raw(runQuery<TQuery>(query$)) // todo otel stuff?
     $effect(() => {
-      throw new Error('this')
-      console.log('subscribing')
       return store.subscribe(query$, {
         onUpdate: (newValue) => {
-          console.log(newValue)
           result = newValue
         },
         label: query$.label,
@@ -67,7 +63,7 @@ export const createStore = async <S extends LiveStoreSchema>(
   ...args: Parameters<typeof createStorePromise<S>>
 ): Promise<SvelteStore<S>> => {
   let shutdown = $state.raw(() => {})
-  // we need to register the effect prior to the store creation -- the effect will rerun when we assign to `shutdown` and then never thereafer
+  // we need to register the effect prior to the store creation -- the effect will rerun when we assign to `shutdown` and then never thereafter
   $effect(() => shutdown)
   const store = await createStorePromise<S>(...args).then(withSvelteApi)
   shutdown = store.shutdown
