@@ -189,4 +189,143 @@ Vitest.describe('otel', () => {
       ),
     ),
   )
+
+  Vitest.scopedLive('QueryBuilder subscription - basic functionality', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const callbackResults: any[] = []
+      const defaultTodo = { id: '', text: '', completed: false }
+
+      const filter = computed(() => ({ completed: false }))
+      const queryBuilder = tables.todos.where((get) => get(filter)).first({ fallback: () => defaultTodo })
+
+      const unsubscribe = store.subscribe(queryBuilder, {
+        onUpdate: (result) => {
+          callbackResults.push(result)
+        },
+      })
+
+      expect(callbackResults).toHaveLength(1)
+      expect(callbackResults[0]).toMatchObject(defaultTodo)
+
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+
+      expect(callbackResults).toHaveLength(2)
+      expect(callbackResults[1]).toMatchObject({
+        id: 't1',
+        text: 'buy milk',
+        completed: false,
+      })
+
+      unsubscribe()
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
+  Vitest.scopedLive('QueryBuilder subscription - unsubscribe functionality', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const callbackResults1: any[] = []
+      const callbackResults2: any[] = []
+      const defaultTodo = { id: '', text: '', completed: false }
+
+      const filter = computed(() => ({ completed: false }))
+      const queryBuilder = tables.todos.where((get) => get(filter)).first({ fallback: () => defaultTodo })
+
+      const unsubscribe1 = store.subscribe(queryBuilder, {
+        onUpdate: (result) => {
+          callbackResults1.push(result)
+        },
+      })
+
+      const unsubscribe2 = store.subscribe(queryBuilder, {
+        onUpdate: (result) => {
+          callbackResults2.push(result)
+        },
+      })
+
+      expect(callbackResults1).toHaveLength(1)
+      expect(callbackResults2).toHaveLength(1)
+
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)` }))
+
+      expect(callbackResults1).toHaveLength(2)
+      expect(callbackResults2).toHaveLength(2)
+
+      unsubscribe1()
+
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)` }))
+
+      expect(callbackResults1).toHaveLength(2)
+      expect(callbackResults2).toHaveLength(3)
+
+      unsubscribe2()
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
+  Vitest.scopedLive('QueryBuilder subscription - direct table subscription', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const callbackResults: any[] = []
+
+      const unsubscribe = store.subscribe(tables.todos, {
+        onUpdate: (result) => {
+          callbackResults.push(result)
+        },
+      })
+
+      expect(callbackResults).toHaveLength(1)
+      expect(callbackResults[0]).toEqual([])
+
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)` }))
+
+      expect(callbackResults).toHaveLength(2)
+      expect(callbackResults[1]).toHaveLength(1)
+      expect(callbackResults[1][0]).toMatchObject({
+        id: 't5',
+        text: 'clean house',
+        completed: true,
+      })
+
+      unsubscribe()
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
 })
