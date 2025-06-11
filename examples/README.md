@@ -5,4 +5,4 @@
 
 ## For contributors
 
-- Please use the `pnpm -w generate:examples:standalone` command to keep the `src`, `patches` and `standalone` directories in sync.
+- Please use the `mono examples sync --direction src-to-standalone` command to keep the `src`, `patches` and `standalone` directories in sync.
