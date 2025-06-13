@@ -37,7 +37,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
+        "code.stacktrace": "at <REPO_DIR>/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:<LINE>:<COLUMN>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
@@ -263,7 +263,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
+        "code.stacktrace": "at <REPO_DIR>/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:<LINE>:<COLUMN>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
