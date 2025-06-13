@@ -4,10 +4,11 @@ import { Option, type Runtime, type Scope } from '@livestore/utils/effect'
 import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.js'
+import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { getEventDef, type LiveStoreSchema } from '../schema/mod.js'
+import { getEventDef, type LiveStoreSchema, SystemTables } from '../schema/mod.js'
+import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
 /**
@@ -20,10 +21,6 @@ import * as SyncState from './syncstate.js'
  * - We might need to make the rebase behaviour configurable e.g. to let users manually trigger a rebase
  *
  * Longer term we should evalutate whether we can unify the ClientSessionSyncProcessor with the LeaderSyncProcessor.
- *
- * The session and leader sync processor are different in the following ways:
- * - The leader sync processor pulls regular LiveStore events, while the session sync processor pulls SyncState.PayloadUpstream items
- * - The session sync processor has no downstream nodes.
  */
 export const makeClientSessionSyncProcessor = ({
   schema,
@@ -40,7 +37,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventDecoded: LiveStoreEvent.AnyDecoded,
+    eventDecoded: LiveStoreEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => {
     writeTables: Set<string>
@@ -79,16 +76,16 @@ export const makeClientSessionSyncProcessor = ({
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
-  const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
+    batch,
+    { otelContext },
+  ) {
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
     const encodedEventDefs = batch.map(({ name, args }) => {
       const eventDef = getEventDef(schema, name)
-      const nextNumPair = EventSequenceNumber.nextPair({
-        seqNum: baseEventSequenceNumber,
-        isClient: eventDef.eventDef.options.clientOnly,
-      })
+      const nextNumPair = EventSequenceNumber.nextPair(baseEventSequenceNumber, eventDef.eventDef.options.clientOnly)
       baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(eventSchema)({
@@ -100,29 +97,29 @@ export const makeClientSessionSyncProcessor = ({
         }),
       )
     })
+    yield* Effect.annotateCurrentSpan({ batchSize: encodedEventDefs.length })
 
-    const mergeResult = SyncState.merge({
-      syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
-      isClientEvent,
-      isEqualEvent: LiveStoreEvent.isEqualEncoded,
-    })
+    const mergeResult = yield* Effect.sync(() =>
+      SyncState.merge({
+        syncState: syncStateRef.current,
+        payload: { _tag: 'local-push', newEvents: encodedEventDefs },
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.isEqualEncoded,
+      }),
+    )
 
     if (mergeResult._tag === 'unexpected-error') {
-      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
+      return yield* Effect.die(new Error(`Unexpected error in client-session-sync-processor: ${mergeResult.cause}`))
     }
 
-    span.addEvent('local-push', {
-      batchSize: encodedEventDefs.length,
-      mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-    })
+    if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
+      return yield* Effect.die(new Error(`Expected advance, got ${mergeResult._tag}`))
     }
 
     syncStateRef.current = mergeResult.newSyncState
-    syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
+    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
 
     // Materialize events to state
     const writeTables = new Set<string>()
@@ -141,16 +138,18 @@ export const makeClientSessionSyncProcessor = ({
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = sessionChangeset
-      event.meta.materializerHashSession = materializerHash
+      yield* Effect.sync(() => {
+        event.meta.sessionChangeset = sessionChangeset
+        event.meta.materializerHashSession = materializerHash
+      })
     }
 
     // Trigger push to leader
     // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
-    BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
+    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs)
 
     return { writeTables }
-  }
+  })
 
   const debugInfo = {
     rebaseCount: 0,
@@ -190,11 +189,18 @@ export const makeClientSessionSyncProcessor = ({
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
+    const getMergeCounter = () =>
+      clientSession.sqliteDb.select<{ mergeCounter: number }>(
+        sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
+      )[0]?.mergeCounter ?? 0
+
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
-      clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
+      clientSession.leaderThread.events.pull({
+        cursor: { mergeCounter: getMergeCounter(), eventNum: syncStateRef.current.localHead },
+      }),
     ).pipe(
-      Stream.tap(({ payload }) =>
+      Stream.tap(({ payload, mergeCounter: leaderMergeCounter }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
@@ -210,13 +216,13 @@ export const makeClientSessionSyncProcessor = ({
           })
 
           if (mergeResult._tag === 'unexpected-error') {
-            return yield* new SyncError({ cause: mergeResult.message })
+            return yield* Effect.fail(mergeResult.cause)
           } else if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
 
           syncStateRef.current = mergeResult.newSyncState
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
           if (mergeResult._tag === 'rebase') {
             span.addEvent('merge:pull:rebase', {
@@ -225,7 +231,7 @@ export const makeClientSessionSyncProcessor = ({
               newEventsCount: mergeResult.newEvents.length,
               rollbackCount: mergeResult.rollbackEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              rebaseGeneration: mergeResult.newSyncState.localHead.rebaseGeneration,
+              leaderMergeCounter,
             })
 
             debugInfo.rebaseCount++
@@ -242,6 +248,7 @@ export const makeClientSessionSyncProcessor = ({
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
                 ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+                { leaderMergeCounter },
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
@@ -261,6 +268,7 @@ export const makeClientSessionSyncProcessor = ({
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: mergeResult.newEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              leaderMergeCounter,
             })
 
             debugInfo.advanceCount++
@@ -337,9 +345,12 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
-  ) => {
-    writeTables: Set<string>
-  }
+  ) => Effect.Effect<
+    {
+      writeTables: Set<string>
+    },
+    never
+  >
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
    * Only used for debugging / observability.
