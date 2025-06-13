@@ -438,6 +438,11 @@ exports[`otel > otel 3`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -719,6 +724,11 @@ exports[`otel > with thunks 7`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -834,6 +844,11 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",

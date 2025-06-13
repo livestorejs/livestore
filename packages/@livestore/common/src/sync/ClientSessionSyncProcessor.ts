@@ -52,11 +52,11 @@ export const makeClientSessionSyncProcessor = ({
   materializeEvent: (
     eventDecoded: LiveStoreEvent.AnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
-  ) => {
+  ) => Effect.Effect<{
     writeTables: Set<string>
     sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } | { _tag: 'unset' }
     materializerHash: Option.Option<number>
-  }
+  }>
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
@@ -146,7 +146,7 @@ export const makeClientSessionSyncProcessor = ({
         writeTables: newWriteTables,
         sessionChangeset,
         materializerHash,
-      } = materializeEvent(decodedEventDef, {
+      } = yield* materializeEvent(decodedEventDef, {
         otelContext,
         withChangeset: true,
         materializerHashLeader: Option.none(),
@@ -291,7 +291,7 @@ export const makeClientSessionSyncProcessor = ({
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
-            } = materializeEvent(decodedEventDef, {
+            } = yield* materializeEvent(decodedEventDef, {
               otelContext,
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,

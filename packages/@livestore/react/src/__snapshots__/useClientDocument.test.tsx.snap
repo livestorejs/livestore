@@ -25,12 +25,22 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -263,12 +273,22 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
