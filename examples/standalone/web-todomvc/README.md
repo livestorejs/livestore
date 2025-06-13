@@ -1,6 +1,6 @@
 # TodoMVC Example
 
-[Demo](https://todovmc.livestore.dev)
+[Demo](https://web-todomvc.livestore.dev)
 
 ## Running locally
 
