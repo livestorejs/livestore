@@ -632,7 +632,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           // Materialize events to state
           const { writeTables } = (() => {
             try {
-              const materializeEvents = () => this.syncProcessor.push(events, { otelContext })
+              const materializeEvents = () => {
+                return Runtime.runSync(this.effectContext.runtime, this.syncProcessor.push(events, { otelContext }))
+              }
 
               if (events.length > 1) {
                 return this.sqliteDbWrapper.txn(materializeEvents)
