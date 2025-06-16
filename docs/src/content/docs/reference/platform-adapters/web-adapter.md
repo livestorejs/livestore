@@ -102,6 +102,18 @@ const adapter = makePersistedAdapter({
 })
 ```
 
+If you want to reset persistence manually, you can:
+
+1. **Clear site data** in Chrome DevTools (Application tab > Storage > Clear site data)
+2. **Use console command** if the above doesn't work due to a Chrome OPFS bug:
+
+```javascript
+const opfsRoot = await navigator.storage.getDirectory();
+await opfsRoot.remove();
+```
+
+Note: Only use this during development while the app is running.
+
 ## Architecture diagram
 
 Assuming the web adapter in a multi-client, multi-tab browser application, a diagram looks like this:
