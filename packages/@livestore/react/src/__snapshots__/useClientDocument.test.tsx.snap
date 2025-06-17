@@ -21,52 +21,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -93,17 +47,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "UserInfoSet",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -121,16 +64,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 "sql.cached": false,
                 "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 0,
-              },
-            },
-            {
-              "_name": "LiveStore:commit",
-              "attributes": {
-                "livestore.commitLabel": "UserInfo.set:u1",
-                "livestore.eventTags": [
-                  "UserInfoSet",
-                ],
-                "livestore.eventsCount": 1,
               },
             },
             {
@@ -269,52 +202,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -341,17 +228,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "UserInfoSet",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -369,16 +245,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 "sql.cached": false,
                 "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 0,
-              },
-            },
-            {
-              "_name": "LiveStore:commit",
-              "attributes": {
-                "livestore.commitLabel": "UserInfo.set:u1",
-                "livestore.eventTags": [
-                  "UserInfoSet",
-                ],
-                "livestore.eventsCount": 1,
               },
             },
             {
