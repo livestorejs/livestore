@@ -8,7 +8,6 @@ import {
 } from '@livestore/common'
 import {
   Devtools,
-  getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
   getResultSchema,
   hashMaterializerResults,
@@ -553,89 +552,80 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    for (const event of events) {
-      replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
-    }
+    Runtime.runSync(
+      this.effectContext.runtime,
+      Effect.gen(this, function* () {
+        yield* Effect.sync(() => {
+          for (const event of events) {
+            replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
+          }
+        })
 
-    if (events.length === 0) return
+        if (events.length === 0) return
 
-    const skipRefresh = options?.skipRefresh ?? false
+        const localRuntime = yield* Effect.runtime()
 
-    const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)!
-    commitsSpan.addEvent('commit')
+        const materializeEventsTx = Effect.try({
+          try: () => {
+            const materializeEvents = this.syncProcessor.push(events)
 
-    // console.group('LiveStore.commit', { skipRefresh })
-    // events.forEach((_) => console.debug(_.name, _.args))
-    // console.groupEnd()
-
-    let durationMs: number
-
-    return this.otel.tracer.startActiveSpan(
-      'LiveStore:commit',
-      {
-        attributes: {
-          'livestore.eventsCount': events.length,
-          'livestore.eventTags': events.map((_) => _.name),
-          'livestore.commitLabel': options?.label,
-        },
-        links: options?.spanLinks,
-      },
-      options?.otelContext ?? this.otel.commitsSpanContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-        try {
-          const { writeTables } = (() => {
-            try {
-              const materializeEvents = () => {
-                return Runtime.runSync(this.effectContext.runtime, this.syncProcessor.push(events))
-              }
-
-              if (events.length > 1) {
-                // TODO: what to do about leader transaction here?
-                return this.sqliteDbWrapper.txn(materializeEvents)
-              } else {
-                return materializeEvents()
-              }
-            } catch (e: any) {
-              console.error(e)
-              span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-              throw e
-            } finally {
-              span.end()
+            const runMaterializeEvents = () => {
+              return Runtime.runSync(localRuntime, materializeEvents)
             }
-          })()
 
-          const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
-          for (const tableName of writeTables) {
-            const tableRef = this.tableRefs[tableName]
-            assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-            tablesToUpdate.push([tableRef!, null])
-          }
+            if (events.length > 1) {
+              // TODO: what to do about leader transaction here?
+              return this.sqliteDbWrapper.txn(runMaterializeEvents)
+            } else {
+              return runMaterializeEvents()
+            }
+          },
+          catch: (cause) => UnexpectedError.make({ cause }),
+        })
 
-          const debugRefreshReason = {
-            _tag: 'commit' as const,
-            events,
-            writeTables: Array.from(writeTables),
-          }
+        const { writeTables } = yield* materializeEventsTx
 
-          // Update all table refs together in a batch, to only trigger one reactive update
-          this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
-        } catch (e: any) {
-          console.error(e)
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-          throw e
-        } finally {
-          span.end()
-
-          durationMs = getDurationMsFromSpan(span)
+        const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
+        for (const tableName of writeTables) {
+          const tableRef = this.tableRefs[tableName]
+          assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+          tablesToUpdate.push([tableRef!, null])
         }
 
-        return { durationMs }
-      },
+        const debugRefreshReason: RefreshReason = {
+          _tag: 'commit',
+          events,
+          writeTables: Array.from(writeTables),
+        }
+        const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        const skipRefresh = options?.skipRefresh ?? false
+
+        // Update all table refs together in a batch, to only trigger one reactive update
+        yield* Effect.sync(() => {
+          this.reactivityGraph.setRefs(tablesToUpdate, {
+            debugRefreshReason,
+            otelContext,
+            skipRefresh,
+          })
+        })
+      }).pipe(
+        Effect.withSpan('LiveStore:commit', {
+          root: true,
+          attributes: {
+            'livestore.eventsCount': events.length,
+            'livestore.eventTags': events.map((_) => _.name),
+            'livestore.commitLabel': options?.label,
+          },
+          links: options?.spanLinks?.map((link) => ({
+            _tag: 'SpanLink',
+            span: OtelTracer.makeExternalSpan(link.context),
+            attributes: link.attributes ?? {},
+          })),
+        }),
+      ),
     )
   }
-  // #endregion commit
 
   /**
    * Returns an async iterable of events.
