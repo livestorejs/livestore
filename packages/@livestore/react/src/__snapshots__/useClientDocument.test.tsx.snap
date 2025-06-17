@@ -28,6 +28,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "children": [
         {
           "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+              },
+            },
+          ],
         },
       ],
     },
@@ -39,6 +51,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "children": [
         {
           "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+              },
+            },
+          ],
         },
       ],
     },
@@ -78,18 +102,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-              },
-            },
-          ],
         },
       ],
     },
@@ -120,18 +132,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 ],
                 "livestore.eventsCount": 1,
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-                  },
-                },
-              ],
             },
             {
               "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
@@ -276,6 +276,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "children": [
         {
           "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+              },
+            },
+          ],
         },
       ],
     },
@@ -287,6 +299,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "children": [
         {
           "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+              },
+            },
+          ],
         },
       ],
     },
@@ -326,18 +350,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-              },
-            },
-          ],
         },
       ],
     },
@@ -368,18 +380,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 ],
                 "livestore.eventsCount": 1,
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-                  },
-                },
-              ],
             },
             {
               "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",

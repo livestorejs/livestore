@@ -129,7 +129,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       clientSession,
       runtime: effectContext.runtime,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
-        (eventDecoded, { otelContext, withChangeset, materializerHashLeader }) =>
+        (eventDecoded, { withChangeset, materializerHashLeader }) =>
           Effect.gen(this, function* () {
             const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
 
@@ -161,6 +161,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               )
             }
 
+            const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
             return yield* Effect.sync(() => {
               const writeTablesForEvent = new Set<string>()
 
@@ -641,7 +643,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           const { writeTables } = (() => {
             try {
               const materializeEvents = () => {
-                return Runtime.runSync(this.effectContext.runtime, this.syncProcessor.push(events, { otelContext }))
+                return Runtime.runSync(this.effectContext.runtime, this.syncProcessor.push(events))
               }
 
               if (events.length > 1) {
