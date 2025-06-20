@@ -4,12 +4,36 @@ import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.js'
 import type { Env } from './durable-object.js'
+import type {
+  ExecutionContext,
+  Request,
+  Rpc,
+  DurableObjectNamespace,
+  HeadersInit,
+  Response as CFResponse,
+} from '@cloudflare/workers-types'
 
-export type CFWorker = {
-  fetch: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>
+type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
+  ? [keyof TEnv] extends [keyof Env]
+    ? string
+    : keyof {
+        [K in keyof TEnv as K extends keyof Env
+          ? never
+          : TEnv[K] extends DurableObjectNamespace<any>
+            ? K
+            : never]: TEnv[K]
+      }
+  : never
+
+export type CFWorker<TEnv extends Env = Env, T extends Rpc.DurableObjectBranded | undefined = undefined> = {
+  fetch: <CFHostMetada = unknown>(
+    request: Request<CFHostMetada>,
+    env: TEnv,
+    ctx: ExecutionContext,
+  ) => Promise<CFResponse>
 }
 
-export type MakeWorkerOptions = {
+export type MakeWorkerOptions<TEnv extends Env = Env> = {
   validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
@@ -19,11 +43,16 @@ export type MakeWorkerOptions = {
      *
      * @default 'WEBSOCKET_SERVER'
      */
-    name?: string
+    name?: ExtractDurableObjectKeys<TEnv>
   }
 }
 
-export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
+export const makeWorker = <
+  TEnv extends Env = Env,
+  TDurableObjectRpc extends Rpc.DurableObjectBranded | undefined = undefined,
+>(
+  options: MakeWorkerOptions<TEnv> = {},
+): CFWorker<TEnv, TDurableObjectRpc> => {
   return {
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
@@ -34,7 +63,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
         return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
           status: 200,
           headers: { 'Content-Type': 'text/plain' },
-        })
+        }) as unknown as CFResponse
       }
 
       const corsHeaders: HeadersInit = options.enableCORS
@@ -49,7 +78,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
-        })
+        }) as unknown as CFResponse
       }
 
       if (url.pathname.endsWith('/websocket')) {
@@ -69,7 +98,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
           ...corsHeaders,
           'Content-Type': 'text/plain',
         },
-      })
+      }) as unknown as CFResponse
     },
   }
 }
@@ -98,16 +127,20 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
  *
  * @throws {UnexpectedError} If the payload is invalid
  */
-export const handleWebSocket = (
-  request: Request,
-  env: Env,
+export const handleWebSocket = <
+  TEnv extends Env = Env,
+  TDurableObjectRpc extends Rpc.DurableObjectBranded | undefined = undefined,
+  CFHostMetada = unknown,
+>(
+  request: Request<CFHostMetada>,
+  env: TEnv,
   _ctx: ExecutionContext,
   options: {
     headers?: HeadersInit
-    durableObject?: MakeWorkerOptions['durableObject']
+    durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   },
-): Promise<Response> =>
+): Promise<CFResponse> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
 
@@ -117,7 +150,7 @@ export const handleWebSocket = (
     if (paramsResult._tag === 'Left') {
       return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
         status: 500,
-        headers: options?.headers,
+        headers: options?.headers as any,
       })
     }
 
@@ -131,20 +164,30 @@ export const handleWebSocket = (
 
       if (result._tag === 'Left') {
         console.error('Invalid payload', result.left)
-        return new Response(result.left.toString(), { status: 400, headers: options.headers })
+        return new Response(result.left.toString(), { status: 400, headers: options.headers as any })
       }
     }
 
     const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
-    const durableObjectNamespace = (env as any)[durableObjectName] as DurableObjectNamespace
+    if (!(durableObjectName in env)) {
+      return new Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
+        status: 424,
+        headers: options.headers as any,
+      })
+    }
+
+    const durableObjectNamespace = env[durableObjectName as keyof TEnv] as DurableObjectNamespace<TDurableObjectRpc>
 
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)
 
     const upgradeHeader = request.headers.get('Upgrade')
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Durable Object expected Upgrade: websocket', { status: 426, headers: options?.headers })
+      return new Response('Durable Object expected Upgrade: websocket', {
+        status: 426,
+        headers: options?.headers as any,
+      })
     }
 
-    return yield* Effect.promise(() => durableObject.fetch(request))
-  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+    return yield* Effect.promise(() => durableObject.fetch(request as any))
+  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise) as unknown as Promise<CFResponse>
