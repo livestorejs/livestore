@@ -189,16 +189,5 @@ export const handleWebSocket = <
       })
     }
 
-    return yield* Effect.promise(() =>
-      durableObject.fetch(request.url, {
-        method: request.method,
-        body: request.body,
-        cf: request.cf,
-        fetcher: request.fetcher,
-        headers: request.headers,
-        integrity: request.integrity,
-        redirect: request.redirect,
-        signal: request.signal,
-      }),
-    )
+    return yield* Effect.promise(() => durableObject.fetch(request as any))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise) as unknown as Promise<CFResponse>
