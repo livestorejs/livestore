@@ -1,1 +1,1 @@
-website/src/content/docs/docs/contributing/contributing.md
+docs/src/content/docs/contributing/contributing.md
