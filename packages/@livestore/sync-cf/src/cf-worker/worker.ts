@@ -4,15 +4,24 @@ import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.js'
 import type { Env } from './durable-object.js'
-import type {
-  ExecutionContext,
-  Request,
-  Rpc,
-  DurableObjectNamespace,
-  HeadersInit,
-  Response as CFResponse,
-} from '@cloudflare/workers-types'
+import type * as CfWorker from '@cloudflare/workers-types'
 
+
+/**
+ * Helper type to extract DurableObject keys from Env to give consumer type safety.
+ *
+ * @example
+ * ```ts
+ *  type PlatformEnv = {
+ *    DB: D1Database
+ *    ADMIN_TOKEN: string
+ *    WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
+ * } 
+ *  export default makeWorker<PlatformEnv>({
+ *    durableObject: { name: "WEBSOCKET_SERVER" },
+ *    // ^ (property) name?: "WEBSOCKET_SERVER" | undefined
+ *  });
+ */
 type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
   ? [keyof TEnv] extends [keyof Env]
     ? string
@@ -25,12 +34,12 @@ type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
       }
   : never
 
-export type CFWorker<TEnv extends Env = Env, T extends Rpc.DurableObjectBranded | undefined = undefined> = {
+export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
   fetch: <CFHostMetada = unknown>(
-    request: Request<CFHostMetada>,
+    request: CfWorker.Request<CFHostMetada>,
     env: TEnv,
-    ctx: ExecutionContext,
-  ) => Promise<CFResponse>
+    ctx: CfWorker.ExecutionContext,
+  ) => Promise<CfWorker.Response>
 }
 
 export type MakeWorkerOptions<TEnv extends Env = Env> = {
@@ -49,7 +58,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
 
 export const makeWorker = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
 >(
   options: MakeWorkerOptions<TEnv> = {},
 ): CFWorker<TEnv, TDurableObjectRpc> => {
@@ -63,10 +72,10 @@ export const makeWorker = <
         return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
           status: 200,
           headers: { 'Content-Type': 'text/plain' },
-        }) as unknown as CFResponse
+        }) as unknown as CfWorker.Response
       }
 
-      const corsHeaders: HeadersInit = options.enableCORS
+      const corsHeaders: CfWorker.HeadersInit = options.enableCORS
         ? {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -78,7 +87,7 @@ export const makeWorker = <
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
-        }) as unknown as CFResponse
+        }) as unknown as CfWorker.Response
       }
 
       if (url.pathname.endsWith('/websocket')) {
@@ -98,7 +107,7 @@ export const makeWorker = <
           ...corsHeaders,
           'Content-Type': 'text/plain',
         },
-      }) as unknown as CFResponse
+      }) as unknown as CfWorker.Response
     },
   }
 }
@@ -129,18 +138,18 @@ export const makeWorker = <
  */
 export const handleWebSocket = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
 >(
-  request: Request<CFHostMetada>,
+  request: CfWorker.Request<CFHostMetada>,
   env: TEnv,
-  _ctx: ExecutionContext,
+  _ctx: CfWorker.ExecutionContext,
   options: {
-    headers?: HeadersInit
+    headers?: CfWorker.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   },
-): Promise<CFResponse> =>
+): Promise<CfWorker.Response> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
 
@@ -190,4 +199,4 @@ export const handleWebSocket = <
     }
 
     return yield* Effect.promise(() => durableObject.fetch(request as any))
-  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise) as unknown as Promise<CFResponse>
+  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise) as unknown as Promise<CfWorker.Response>
