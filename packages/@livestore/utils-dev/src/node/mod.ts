@@ -182,7 +182,12 @@ export const cmd: (
 
 export const cmdText: (
   commandInput: string | (string | undefined)[],
-  options?: { cwd?: string; runInShell?: boolean; env?: Record<string, string | undefined> },
+  options?: {
+    cwd?: string
+    stderr?: 'inherit' | 'pipe'
+    runInShell?: boolean
+    env?: Record<string, string | undefined>
+  },
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
   function* (commandInput, options) {
     const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
@@ -199,7 +204,8 @@ export const cmdText: (
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
     return yield* Command.make(command!, ...args).pipe(
-      Command.stderr('inherit'), // Stream stderr to process.stderr
+      // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
+      Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),
       options?.runInShell ? Command.runInShell(true) : identity,
       Command.env(options?.env ?? {}),
