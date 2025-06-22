@@ -68,8 +68,16 @@ The `.envrc` file contains all necessary environment variables for the project. 
 
 - This project is primarily developed in VSCode and makes use of [tasks](https://code.visualstudio.com/docs/editor/tasks) to run commands.
 - Common tasks are:
-  - `dev:ts` to run the TypeScript compiler in watch mode for the entire monorepo
+  - `dev:ts:watch` to run the TypeScript compiler in watch mode for the entire monorepo
   - `pnpm:install` to install all dependencies (e.g. when changing a `package.json`)
+
+## Tasks to run before committing
+
+Please run the following tasks before committing & pushing:
+
+- `mono ts` to build the TypeScript code
+- `mono lint` to run the linting checks
+- `mono test` to run the tests
 
 ## Examples
 
