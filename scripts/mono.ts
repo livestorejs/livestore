@@ -187,6 +187,21 @@ const docsCommand = Cli.Command.make('docs').pipe(
   ]),
 )
 
+const tsCommand = Cli.Command.make(
+  'ts',
+  {
+    watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
+  },
+  Effect.fn(function* ({ watch }) {
+    if (watch) {
+      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
+    } else {
+      yield* cmd('tsc --build tsconfig.dev.json', { cwd })
+      yield* cmd('tsc --build tsconfig.all.json', { cwd })
+    }
+  }),
+)
+
 const circularCommand = Cli.Command.make(
   'circular',
   {},
@@ -272,6 +287,7 @@ const command = Cli.Command.make('mono').pipe(
     examplesCommand,
     lintCommand,
     testCommand,
+    tsCommand,
     circularCommand,
     docsCommand,
     releaseCommand,
