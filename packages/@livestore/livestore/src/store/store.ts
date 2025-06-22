@@ -36,8 +36,8 @@ import type {
   SignalDef,
 } from '../live-queries/base-class.js'
 import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { queryDb } from '../live-queries/db-query.js'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
+import { queryDb } from '../live-queries/db-query.js'
 import type { Ref } from '../reactive.js'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
@@ -311,7 +311,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   ): Unsubscribe =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? undefined : (query as any).label } },
+      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
         // console.debug('store sub', query$.id, query$.label)
@@ -319,8 +319,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
         const queryRcRef = isQueryBuilder(query)
           ? queryDb(query).make(this.reactivityGraph.context!)
-          : (query as any)._tag === 'def' || (query as any)._tag === 'signal-def'
-          ? (query as any).make(this.reactivityGraph.context!)
+          : query._tag === 'def' || query._tag === 'signal-def'
+            ? query.make(this.reactivityGraph.context!)
             : {
                 value: query as LiveQuery<TResult>,
                 deref: () => {},
