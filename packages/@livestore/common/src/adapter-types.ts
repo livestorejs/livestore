@@ -1,13 +1,22 @@
-import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import { Effect, Schema, Stream } from '@livestore/utils/effect'
+import {
+  type Cause,
+  type Effect,
+  type Queue,
+  Schema,
+  type Scope,
+  type SubscriptionRef,
+  type WebChannel,
+} from '@livestore/utils/effect'
 
+import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.js'
 import type * as Devtools from './devtools/mod.js'
-import * as EventSequenceNumber from './schema/EventSequenceNumber.js'
-import type { LiveStoreEvent, LiveStoreSchema } from './schema/mod.js'
+import type { IntentionalShutdownCause, SqliteError, UnexpectedError } from './errors.js'
+import type { LiveStoreSchema } from './schema/mod.js'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import type { LeaderAheadError } from './sync/sync.js'
-import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
+export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.js'
+export * from './defs.js'
+export * from './errors.js'
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
@@ -40,35 +49,6 @@ export interface ClientSession {
   leaderThread: ClientSessionLeaderThreadProxy
   /** A unique identifier for the current instance of the client session. Used for debugging purposes. */
   debugInstanceId: string
-}
-
-export const LeaderPullCursor = Schema.Struct({
-  mergeCounter: Schema.Number,
-  eventNum: EventSequenceNumber.EventSequenceNumber,
-})
-
-export type LeaderPullCursor = typeof LeaderPullCursor.Type
-
-export interface ClientSessionLeaderThreadProxy {
-  events: {
-    pull: (args: {
-      cursor: LeaderPullCursor
-    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
-    /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
-  }
-  /** The initial state after the leader thread has booted */
-  readonly initialState: {
-    /** The latest event sequence number during boot. Used for the client session to resume syncing. */
-    readonly leaderHead: EventSequenceNumber.EventSequenceNumber
-    /** The migrations report from the leader thread */
-    readonly migrationsReport: MigrationsReport
-  }
-  export: Effect.Effect<Uint8Array, UnexpectedError>
-  getEventlogData: Effect.Effect<Uint8Array, UnexpectedError>
-  getSyncState: Effect.Effect<SyncState, UnexpectedError>
-  /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
-  sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
 }
 
 /**
@@ -164,50 +144,6 @@ export type SessionIdSymbol = typeof SessionIdSymbol
 
 export type LockStatus = 'has-lock' | 'no-lock'
 
-export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
-  cause: Schema.Defect,
-  note: Schema.optional(Schema.String),
-  payload: Schema.optional(Schema.Any),
-}) {
-  static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    effect.pipe(
-      Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
-      Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
-    )
-
-  static mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
-    stream.pipe(
-      Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
-    )
-}
-
-export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
-  'LiveStore.IntentionalShutdownCause',
-  {
-    reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual'),
-  },
-) {}
-
-export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {
-  reason: Schema.String,
-}) {}
-
-export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
-  query: Schema.optional(
-    Schema.Struct({
-      sql: Schema.String,
-      bindValues: Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Any }), Schema.Array(Schema.Any)),
-    }),
-  ),
-  /** The SQLite result code */
-  // code: Schema.optional(Schema.Number),
-  // Added string support for Expo SQLite (we should refactor this to have a unified error type)
-  code: Schema.optional(Schema.Union(Schema.Number, Schema.String)),
-  /** The original SQLite3 error */
-  cause: Schema.Defect,
-  note: Schema.optional(Schema.String),
-}) {}
-
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
 export type MigrationOptions =
@@ -258,19 +194,3 @@ export interface AdapterArgs {
    */
   syncPayload: Schema.JsonValue | undefined
 }
-
-export const MigrationsReportEntry = Schema.Struct({
-  tableName: Schema.String,
-  hashes: Schema.Struct({
-    expected: Schema.Number,
-    actual: Schema.optional(Schema.Number),
-  }),
-})
-
-export const MigrationsReport = Schema.Struct({
-  migrations: Schema.Array(MigrationsReportEntry),
-})
-
-export type MigrationsReport = typeof MigrationsReport.Type
-
-export type MigrationsReportEntry = typeof MigrationsReportEntry.Type

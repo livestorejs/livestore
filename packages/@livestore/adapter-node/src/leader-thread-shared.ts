@@ -21,7 +21,9 @@ import type * as WorkerSchema from './worker-schema.js'
 
 export type TestingOverrides = {
   clientSession?: {
-    leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
+    leaderThreadProxy?: (
+      original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
+    ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
   }
   makeLeaderThread?: {
     dbEventlog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>

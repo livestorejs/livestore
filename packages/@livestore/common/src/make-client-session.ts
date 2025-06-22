@@ -39,7 +39,7 @@ export const makeClientSession = <R>({
   sessionId: string
   isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  leaderThread: ClientSessionLeaderThreadProxy
+  leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy
   sqliteDb: SqliteDb
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode

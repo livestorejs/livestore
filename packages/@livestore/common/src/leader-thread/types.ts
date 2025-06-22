@@ -12,13 +12,13 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
+import type { LeaderPullCursor, MigrationsReport } from '../defs.js'
+import type { SqliteError } from '../errors.js'
 import type {
   BootStatus,
   Devtools,
   LeaderAheadError,
   MakeSqliteDb,
-  MigrationsReport,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
