@@ -197,8 +197,7 @@ Vitest.describe('otel', () => {
       const callbackResults: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const filter = computed(() => ({ completed: false }))
-      const queryBuilder = tables.todos.where((get) => get(filter)).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
 
       const unsubscribe = store.subscribe(queryBuilder, {
         onUpdate: (result) => {
@@ -242,8 +241,7 @@ Vitest.describe('otel', () => {
       const callbackResults2: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const filter = computed(() => ({ completed: false }))
-      const queryBuilder = tables.todos.where((get) => get(filter)).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
 
       const unsubscribe1 = store.subscribe(queryBuilder, {
         onUpdate: (result) => {
