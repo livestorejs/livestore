@@ -68,7 +68,7 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   execute(queryBuilder: QueryBuilder.Any, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
 
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
-  select<T>(queryBuilder: QueryBuilder<T, any, any>): ReadonlyArray<T>
+  select<T>(queryBuilder: QueryBuilder<T, any, any>): T
 
   export(): Uint8Array
   import: (data: Uint8Array | SqliteDb<TReq>) => void

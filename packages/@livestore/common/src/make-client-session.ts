@@ -133,4 +133,4 @@ export const makeClientSession = <R>({
       shutdown,
       debugInstanceId,
     } satisfies ClientSession
-  })
+  }).pipe(Effect.withSpan('@livestore/common:make-client-session'))

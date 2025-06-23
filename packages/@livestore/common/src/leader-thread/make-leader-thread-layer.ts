@@ -259,11 +259,13 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbEventlog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
+    const { dbEventlog, bootStatusQueue, syncProcessor, schema, materializeEvent, dbState } = yield* LeaderThreadCtx
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
-    const { migrationsReport } = dbStateMissing ? yield* recreateDb : { migrationsReport: { migrations: [] } }
+    const { migrationsReport } = dbStateMissing
+      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      : { migrationsReport: { migrations: [] } }
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot
