@@ -51,18 +51,11 @@ export const getEventsSince = ({
   since: EventSequenceNumber.EventSequenceNumber
 }): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>> =>
   Effect.gen(function* () {
-    const query = eventlogMetaTable.where('seqNumGlobal', '>=', since.global).asSql()
-    const pendingEventsRaw = dbEventlog.select(query.query, prepareBindValues(query.bindValues, query.query))
-    const pendingEvents = Schema.decodeUnknownSync(eventlogMetaTable.rowSchema.pipe(Schema.Array))(pendingEventsRaw)
+    const pendingEvents = dbEventlog.select(eventlogMetaTable.where('seqNumGlobal', '>=', since.global))
 
-    const sessionChangesetRows = sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global).asSql()
-    const sessionChangesetRowsRaw = dbState.select(
-      sessionChangesetRows.query,
-      prepareBindValues(sessionChangesetRows.bindValues, sessionChangesetRows.query),
+    const sessionChangesetRowsDecoded = dbState.select(
+      sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
     )
-    const sessionChangesetRowsDecoded = Schema.decodeUnknownSync(
-      sessionChangesetMetaTable.rowSchema.pipe(Schema.Array),
-    )(sessionChangesetRowsRaw)
 
     return pendingEvents
       .map((eventlogEvent) => {
