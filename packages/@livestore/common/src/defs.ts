@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { EventSequenceNumber } from './schema/mod.js'
+import * as EventSequenceNumber from './schema/EventSequenceNumber.js'
 
 export const MigrationsReportEntry = Schema.Struct({
   tableName: Schema.String,
