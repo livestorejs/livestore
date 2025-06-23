@@ -72,7 +72,7 @@ export const stateSystemTables = [
   schemaEventDefsMetaTable,
   sessionChangesetMetaTable,
   leaderMergeCounterTable,
-]
+] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
 
@@ -114,4 +114,4 @@ export const syncStatusTable = table({
 
 export type SyncStatusRow = typeof syncStatusTable.Type
 
-export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable]
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable] as const
