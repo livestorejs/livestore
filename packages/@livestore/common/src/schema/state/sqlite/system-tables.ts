@@ -105,6 +105,7 @@ export type EventlogMetaRow = typeof eventlogMetaTable.Type
 
 export const SYNC_STATUS_TABLE = '__livestore_sync_status'
 
+// TODO support sync backend identity (to detect if sync backend changes)
 export const syncStatusTable = table({
   name: SYNC_STATUS_TABLE,
   columns: {

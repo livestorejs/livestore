@@ -37,7 +37,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventDecoded: LiveStoreEvent.PartialAnyDecoded,
+    eventDecoded: LiveStoreEvent.AnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => {
     writeTables: Set<string>
@@ -217,7 +217,7 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           syncStateRef.current = mergeResult.newSyncState
-          syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
+          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
 
           if (mergeResult._tag === 'rebase') {
             span.addEvent('merge:pull:rebase', {

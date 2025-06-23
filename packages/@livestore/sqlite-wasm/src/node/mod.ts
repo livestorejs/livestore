@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { type MakeSqliteDb, type PersistenceInfo, type SqliteDb, UnexpectedError } from '@livestore/common'
+import type { EventSequenceNumber } from '@livestore/common/schema'
 import { Effect, FileSystem } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
@@ -9,6 +10,8 @@ import { makeInMemoryDb } from '../in-memory-vfs.js'
 import { makeSqliteDb } from '../make-sqlite-db.js'
 import { NodeFS } from './NodeFS.js'
 
+type DebugInfo = { _tag: 'state'; head: EventSequenceNumber.EventSequenceNumber } | { _tag: 'eventlog' }
+
 export type NodeDatabaseMetadataInMemory = {
   _tag: 'in-memory'
   vfs: MemoryVFS
@@ -16,6 +19,7 @@ export type NodeDatabaseMetadataInMemory = {
   persistenceInfo: PersistenceInfo
   deleteDb: () => void
   configureDb: (db: SqliteDb) => void
+  debug: DebugInfo
 }
 
 export type NodeDatabaseMetadataFs = {
@@ -25,6 +29,7 @@ export type NodeDatabaseMetadataFs = {
   persistenceInfo: PersistenceInfo<{ directory: string }>
   deleteDb: () => void
   configureDb: (db: SqliteDb) => void
+  debug: DebugInfo
 }
 
 export type NodeDatabaseMetadata = NodeDatabaseMetadataInMemory | NodeDatabaseMetadataFs
@@ -32,6 +37,7 @@ export type NodeDatabaseMetadata = NodeDatabaseMetadataInMemory | NodeDatabaseMe
 export type NodeDatabaseInputInMemory = {
   _tag: 'in-memory'
   configureDb?: (db: SqliteDb) => void
+  debug: DebugInfo
 }
 
 export type NodeDatabaseInputFs = {
@@ -39,6 +45,7 @@ export type NodeDatabaseInputFs = {
   directory: string
   fileName: string
   configureDb?: (db: SqliteDb) => void
+  debug: DebugInfo
 }
 
 export type NodeDatabaseInput = NodeDatabaseInputInMemory | NodeDatabaseInputFs
@@ -69,6 +76,7 @@ export const sqliteDbFactory = ({
               persistenceInfo: { fileName: ':memory:' },
               deleteDb: () => {},
               configureDb: input.configureDb ?? (() => {}),
+              debug: input.debug,
             },
           }) as any
         }
@@ -91,6 +99,7 @@ export const sqliteDbFactory = ({
             persistenceInfo: { fileName: input.fileName, directory: input.directory },
             deleteDb: () => vfs.deleteDb(filePath),
             configureDb: input.configureDb ?? (() => {}),
+            debug: input.debug,
           },
         })
       }),
