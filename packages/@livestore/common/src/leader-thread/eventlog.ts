@@ -14,7 +14,7 @@ import {
 import { migrateTable } from '../schema-management/migrations.js'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.js'
 import type { PreparedBindValues } from '../util.js'
-import { prepareBindValues, sql } from '../util.js'
+import { sql } from '../util.js'
 import { execSql } from './connection.js'
 import type { InitialSyncInfo } from './types.js'
 import { LeaderThreadCtx } from './types.js'

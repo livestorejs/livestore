@@ -164,6 +164,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             for (const table of writeTables) {
               writeTablesForEvent.add(table)
             }
+
+            if (this.sqliteDbWrapper.metadata.debug._tag === 'state') {
+              this.sqliteDbWrapper.metadata.debug.head = eventDecoded.seqNum
+            }
           }
         }
 

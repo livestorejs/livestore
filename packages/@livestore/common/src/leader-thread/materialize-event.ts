@@ -74,6 +74,10 @@ export const makeMaterializeEvent = ({
           yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
+        if (dbState.metadata.debug._tag === 'state') {
+          dbState.metadata.debug.head = eventEncoded.seqNum
+        }
+
         const changeset = session.changeset()
         session.finish()
 
