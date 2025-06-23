@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",

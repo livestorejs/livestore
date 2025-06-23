@@ -82,7 +82,7 @@
     "@types/web": "^0.0.203",
     "effect": "^3.15.2",
     "jsdom": "^26.0.0",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
