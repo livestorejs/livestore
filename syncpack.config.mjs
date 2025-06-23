@@ -1,7 +1,19 @@
 // @ts-check
 import fs from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
+
+import { parse } from 'yaml'
+
+const getPnpmCatalogDependencies = () => {
+  const workspaceConfig = readFileSync('pnpm-workspace.yaml', 'utf8')
+  const pnpmWorkspaceConfig = parse(workspaceConfig)
+
+  return Object.keys(pnpmWorkspaceConfig.catalog)
+}
+
+console.log(getPnpmCatalogDependencies())
 
 /*
 Semver calculator: https://semver.npmjs.com
@@ -54,6 +66,7 @@ const config = {
     },
     {
       label: 'default all to minor range for dev deps',
+      dependencies: getPnpmCatalogDependencies().map((dep) => `!${dep}`),
       range: '^',
       dependencyTypes: ['dev'],
       packages: ['**'],
@@ -67,6 +80,12 @@ const config = {
       // Except for standalone examples
       packages: ['!livestore-example-standalone-**'],
       pinVersion: 'workspace:*',
+    },
+    {
+      label: 'Enforce pnpm default catalog',
+      dependencies: getPnpmCatalogDependencies(),
+      dependencyTypes: ['!local'],
+      pinVersion: 'catalog:',
     },
   ],
 }
