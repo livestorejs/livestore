@@ -6,7 +6,7 @@
     "@effect/language-service": "^0.16.5",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
-    "@vitest/ui": "^3.1.1",
+    "@vitest/ui": "catalog:",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
@@ -23,7 +23,8 @@
     "syncpack": "^13.0.2",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:",
+    "yaml": "^2.8.0"
   },
   "packageManager": "pnpm@10.2.1",
   "pnpm": {

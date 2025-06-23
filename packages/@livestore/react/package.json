@@ -41,7 +41,7 @@
     "react-window": "^1.8.11",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
