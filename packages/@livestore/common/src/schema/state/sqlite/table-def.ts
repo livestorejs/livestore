@@ -1,4 +1,4 @@
-import { type Nullable } from '@livestore/utils'
+import type { Nullable } from '@livestore/utils'
 import type { Schema, Types } from '@livestore/utils/effect'
 
 import { SqliteDsl } from './db-schema/mod.js'

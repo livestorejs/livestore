@@ -1,4 +1,4 @@
-import { type BroadcastChannel as NodeBroadcastChannel } from 'node:worker_threads'
+import type { BroadcastChannel as NodeBroadcastChannel } from 'node:worker_threads'
 
 import type { Either, ParseResult } from '@livestore/utils/effect'
 import { Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'

@@ -55,10 +55,10 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
 
     for (i = length; i-- !== 0; )
       // @ts-expect-error ...
-      if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false
+      if (!Object.hasOwn(b, keys[i])) return false
 
     for (i = length; i-- !== 0; ) {
-      var key = keys[i]
+      const key = keys[i]
 
       // @ts-expect-error ...
       if (!deepEqual(a[key], b[key])) return false
@@ -68,5 +68,6 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
   }
 
   // true if both NaN, false otherwise
+  // biome-ignore lint/suspicious/noSelfCompare: comparing to itself is fine here
   return a !== a && b !== b
 }

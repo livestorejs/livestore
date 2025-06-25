@@ -6,10 +6,9 @@ import type {
   SqliteDbChangeset,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
-import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
-
-import { makeInMemoryDb } from './in-memory-vfs.js'
 import { EventSequenceNumber } from '@livestore/common/schema'
+import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+import { makeInMemoryDb } from './in-memory-vfs.js'
 
 export const makeSqliteDb = <
   TMetadata extends {
@@ -80,7 +79,7 @@ export const makeSqliteDb = <
 
             try {
               // NOTE `column_names` only works for `SELECT` statements, ignoring other statements for now
-              let columns = undefined
+              let columns
               try {
                 columns = sqlite3.column_names(stmt)
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
