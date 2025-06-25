@@ -80,7 +80,7 @@ export const useRcResource = <T>(
   const keyRef = React.useRef<string | undefined>(undefined)
   const didDisposeInMemo = React.useRef(false)
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Dependency is deliberately limited to `key` to avoid unintended re-creations.
   const resource = React.useMemo(() => {
     // console.debug('useMemo', key)
     if (didDisposeInMemo.current) {
@@ -125,11 +125,9 @@ export const useRcResource = <T>(
     const resource = create()
     cache.set(key, { _tag: 'active', rc: 1, resource })
     return resource
-    // Dependency is deliberately limited to `key` to avoid unintended re-creations.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
   React.useEffect(() => {
     return () => {
       if (didDisposeInMemo.current) {
@@ -152,8 +150,6 @@ export const useRcResource = <T>(
         cache.delete(key)
       }
     }
-    // We assume the `dispose` function is stable and won't change across renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
   keyRef.current = key

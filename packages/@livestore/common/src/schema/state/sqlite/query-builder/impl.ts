@@ -250,7 +250,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   return {
     [QueryBuilderTypeId]: QueryBuilderTypeId,
     [QueryBuilderAstSymbol]: ast,
-    ['ResultType']: 'only-for-type-inference' as TResult,
+    ResultType: 'only-for-type-inference' as TResult,
     asSql: () => astToSql(ast),
     toString: () => {
       try {
@@ -281,28 +281,28 @@ const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
 // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 function assertSelectQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
   if (ast._tag !== 'SelectQuery') {
-    return shouldNeverHappen('Expected SelectQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected SelectQuery but got ${ast._tag}`)
   }
 }
 
 // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 function assertInsertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.InsertQuery {
   if (ast._tag !== 'InsertQuery') {
-    return shouldNeverHappen('Expected InsertQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected InsertQuery but got ${ast._tag}`)
   }
 }
 
 // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 function assertWriteQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.WriteQuery {
   if (ast._tag !== 'InsertQuery' && ast._tag !== 'UpdateQuery' && ast._tag !== 'DeleteQuery') {
-    return shouldNeverHappen('Expected WriteQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected WriteQuery but got ${ast._tag}`)
   }
 }
 
 const isRowQuery = (ast: QueryBuilderAst): ast is QueryBuilderAst.RowQuery => ast._tag === 'RowQuery'
 
 export const invalidQueryBuilder = (msg?: string) => {
-  return shouldNeverHappen('Invalid query builder' + (msg ? `: ${msg}` : ''))
+  return shouldNeverHappen(`Invalid query builder${msg ? `: ${msg}` : ''}`)
 }
 
 export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<any> => {

@@ -1,6 +1,5 @@
 // @ts-check
-import fs from 'node:fs'
-import { readFileSync } from 'node:fs'
+import fs, { readFileSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
 
@@ -12,8 +11,6 @@ const getPnpmCatalogDependencies = () => {
 
   return Object.keys(pnpmWorkspaceConfig.catalog)
 }
-
-console.log(getPnpmCatalogDependencies())
 
 /*
 Semver calculator: https://semver.npmjs.com
@@ -51,27 +48,6 @@ const config = {
     'production',
     'default',
   ],
-  semverGroups: [
-    {
-      label: 'default all to exact version for prod deps',
-      range: '',
-      dependencyTypes: ['prod'],
-      packages: ['**'],
-    },
-    {
-      label: 'default all to patch range for peer deps',
-      range: '~',
-      dependencyTypes: ['peer'],
-      packages: ['**'],
-    },
-    {
-      label: 'default all to minor range for dev deps',
-      dependencies: getPnpmCatalogDependencies().map((dep) => `!${dep}`),
-      range: '^',
-      dependencyTypes: ['dev'],
-      packages: ['**'],
-    },
-  ],
   versionGroups: [
     {
       label: 'use workspace protocol for local packages',
@@ -86,6 +62,32 @@ const config = {
       dependencies: getPnpmCatalogDependencies(),
       dependencyTypes: ['!local'],
       pinVersion: 'catalog:',
+    },
+  ],
+  semverGroups: [
+    {
+      label: 'ignore catalog dependencies',
+      dependencies: getPnpmCatalogDependencies(),
+      isIgnored: true,
+      packages: ['**'],
+    },
+    {
+      label: 'default all to exact version for prod deps',
+      range: '',
+      dependencyTypes: ['prod'],
+      packages: ['**'],
+    },
+    {
+      label: 'default all to patch range for peer deps',
+      range: '~',
+      dependencyTypes: ['peer'],
+      packages: ['**'],
+    },
+    {
+      label: 'default all to minor range for dev deps',
+      range: '^',
+      dependencyTypes: ['dev'],
+      packages: ['**'],
     },
   ],
 }
