@@ -68,7 +68,12 @@ export class SqliteDbWrapper implements SqliteDb {
 
     configureSQLite(this)
   }
-  metadata: any
+  get debug() {
+    return this.db.debug
+  }
+  get metadata() {
+    return this.db.metadata
+  }
   prepare(queryStr: string): PreparedStatement {
     return this.db.prepare(queryStr)
   }

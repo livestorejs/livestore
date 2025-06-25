@@ -427,7 +427,7 @@ export const makeProxyChannel = ({
         debugInfo,
         ...({
           debug: {
-            ping: (message: string = 'ping') =>
+            ping: (message = 'ping') =>
               send(WebChannel.DebugPingMessage.make({ message })).pipe(
                 Effect.provide(runtime),
                 Effect.tapCauseLogPretty,

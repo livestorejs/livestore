@@ -1,12 +1,18 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
 import { makeAdapter } from '@livestore/adapter-node'
-import { SyncState, type UnexpectedError } from '@livestore/common'
-import { Eventlog } from '@livestore/common/leader-thread'
+import {
+  type BootStatus,
+  type ClientSessionLeaderThreadProxy,
+  SyncState,
+  type UnexpectedError,
+} from '@livestore/common'
+import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
+import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { IS_CI } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
 import {
@@ -20,6 +26,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -35,15 +42,52 @@ const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
 ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
 const encode = Schema.encodeSync(eventSchema)
 
-Vitest.describe('ClientSessionSyncProcessor', () => {
+Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('from scratch', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore
+      const store = yield* makeStore()
 
       store.commit(events.todoCreated({ id: '1', text: 't1', completed: false }))
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+    }).pipe(withCtx(test)),
+  )
+
+  // TODO also add a test where there's a merge conflict in the leader <> backend
+  Vitest.scopedLive('commits during boot', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore({
+        boot: (store) => {
+          store.commit(events.todoCreated({ id: '0', text: 't0', completed: false }))
+        },
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                events: {
+                  pull: ({ cursor }) =>
+                    Effect.gen(function* () {
+                      yield* Effect.sleep(1000)
+                      return leader.events.pull({ cursor })
+                    }).pipe(Stream.unwrap),
+                  push: leader.events.push,
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+
+      // Make sure pending events are processed
+      yield* store.syncProcessor.syncState.changes.pipe(
+        Stream.filter((_) => _.pending.length === 0),
+        Stream.take(1),
+        Stream.runDrain,
+      )
     }).pipe(withCtx(test)),
   )
 
@@ -52,7 +96,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const encoded = encode(events.todoCreated({ id: '1', text: 't1', completed: false }))
 
-      const store = yield* makeStore
+      const store = yield* makeStore()
 
       store.commit(events.todoCreated({ id: '2', text: 't2', completed: false }))
 
@@ -72,7 +116,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
 
-      const store = yield* makeStore
+      const store = yield* makeStore()
 
       for (let i = 0; i < 5; i++) {
         yield* mockSyncBackend
@@ -104,18 +148,17 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         testing: {
           overrides: {
             clientSession: {
-              leaderThreadProxy: {
+              leaderThreadProxy: () => ({
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
                       Stream.map((item) => ({
                         payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
-                        mergeCounter: 0,
                       })),
                     ),
                   push: () => Effect.void,
                 },
-              },
+              }),
             },
           },
         },
@@ -124,7 +167,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       const _store = yield* createStore({
         schema: schema as LiveStoreSchema,
         adapter,
-        storeId: 'test',
+        storeId: nanoid(),
         shutdownDeferred,
       })
 
@@ -144,9 +187,12 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         }),
       ).pipe(Effect.repeatN(1))
 
-      const exit = yield* shutdownDeferred.pipe(Effect.exit)
+      const exit = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(exit._tag).toEqual('Failure')
+      expect(exit._tag).toEqual('LiveStore.SyncError')
+      expect(exit.cause).toEqual(
+        'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
+      )
     }).pipe(withCtx(test)),
   )
 
@@ -156,7 +202,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
   // - the client needs to rebase and those rebased changes need to be propagated to the client session
   //
   // related problem: the same might happen during leader re-election in the web adapter (will need proper tests as well some day)
-  Vitest.scopedLive('client should push pending persisted events on boot', (test) =>
+  Vitest.scopedLive('client should push pending persisted events on start', (test) =>
     Effect.gen(function* () {
       const { mockSyncBackend } = yield* TestContext
       const shutdownDeferred = yield* makeShutdownDeferred
@@ -167,8 +213,39 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
           seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
           parentSeqNum: EventSequenceNumber.ROOT.global,
           clientId: 'other-client',
-          sessionId: 'static-session-id',
+          sessionId: 'other-client-session1',
         }),
+      )
+
+      const makeLeaderThread = yield* Effect.cachedFunction(
+        Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
+          const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+
+          yield* Eventlog.initEventlogDb(dbEventlog)
+
+          yield* Eventlog.insertIntoEventlog(
+            LiveStoreEvent.EncodedWithMeta.make({
+              ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
+              clientId: 'client',
+              seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+              parentSeqNum: EventSequenceNumber.ROOT,
+              sessionId: 'client-session1',
+            }),
+            dbEventlog,
+            0, // unused mutation def schema hash
+            'client',
+            'client-session1',
+          )
+
+          const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+
+          const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+          const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+          yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+
+          return { dbEventlog, dbState }
+        }, Effect.orDie),
+        () => true, // always cache
       )
 
       const adapter = makeAdapter({
@@ -177,39 +254,13 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
           backend: () => mockSyncBackend.makeSyncBackend,
           initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
         },
-        testing: {
-          overrides: {
-            makeLeaderThread: {
-              dbEventlog: Effect.fn(function* (makeSqliteDb) {
-                const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
-
-                yield* Eventlog.initEventlogDb(dbEventlog)
-
-                yield* Eventlog.insertIntoEventlog(
-                  LiveStoreEvent.EncodedWithMeta.make({
-                    ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
-                    clientId: 'client',
-                    seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-                    parentSeqNum: EventSequenceNumber.ROOT,
-                    sessionId: 'static-session-id',
-                  }),
-                  dbEventlog,
-                  0, // unused mutation def schema hash
-                  'client',
-                  'static-session-id',
-                )
-
-                return dbEventlog
-              }, Effect.orDie),
-            },
-          },
-        },
+        testing: { overrides: { makeLeaderThread } },
       })
 
       const store = yield* createStore({
         schema: schema as LiveStoreSchema,
         adapter,
-        storeId: 'test',
+        storeId: nanoid(),
         shutdownDeferred,
       })
 
@@ -229,7 +280,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('should fail gracefully if materializer is side effecting', (test) =>
     Effect.gen(function* () {
       const { makeStore, shutdownDeferred } = yield* TestContext
-      const store = yield* makeStore
+      const store = yield* makeStore()
 
       store.commit(events.todoDeletedNonPure({ id: '1' }))
 
@@ -239,12 +290,26 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       expect(error.cause).includes('Materializer hash mismatch detected for event')
     }).pipe(withCtx(test)),
   )
+
+  // TODO write tests for:
+  // - leader re-election
 })
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
-    makeStore: Effect.Effect<Store, UnexpectedError, Scope.Scope | OtelTracer.OtelTracer>
+    makeStore: (args?: {
+      boot?: (store: Store) => void
+      testing?: {
+        overrides?: {
+          clientSession?: {
+            leaderThreadProxy?: (
+              original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
+            ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
+          }
+        }
+      }
+    }) => Effect.Effect<Store, UnexpectedError, Scope.Scope | OtelTracer.OtelTracer>
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
@@ -256,11 +321,20 @@ const TestContextLive = Layer.scoped(
     const mockSyncBackend = yield* makeMockSyncBackend
     const shutdownDeferred = yield* makeShutdownDeferred
 
-    const adapter = makeAdapter({
-      storage: { type: 'in-memory' },
-      sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
-    })
-    const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test', shutdownDeferred })
+    const makeStore: typeof TestContext.Service.makeStore = (args) => {
+      const adapter = makeAdapter({
+        storage: { type: 'in-memory' },
+        sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
+        testing: args?.testing,
+      })
+      return createStore({
+        schema: schema as LiveStoreSchema,
+        adapter,
+        storeId: nanoid(),
+        shutdownDeferred,
+        boot: args?.boot,
+      })
+    }
 
     return { makeStore, mockSyncBackend, shutdownDeferred }
   }),

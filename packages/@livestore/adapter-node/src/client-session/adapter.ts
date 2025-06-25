@@ -13,7 +13,7 @@ import {
 import { makeClientSession, UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
@@ -142,10 +142,7 @@ const makeAdapterImpl = ({
         Effect.forkScoped,
       )
 
-      const syncInMemoryDb = yield* makeSqliteDb({
-        _tag: 'in-memory',
-        debug: { _tag: 'state', head: EventSequenceNumber.ROOT },
-      }).pipe(Effect.orDie)
+      const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
@@ -191,9 +188,7 @@ const makeAdapterImpl = ({
             })
 
       syncInMemoryDb.import(initialSnapshot)
-      if (syncInMemoryDb.metadata.debug._tag === 'state') {
-        syncInMemoryDb.metadata.debug.head = leaderThread.initialState.leaderHead
-      }
+      syncInMemoryDb.debug.head = leaderThread.initialState.leaderHead
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,

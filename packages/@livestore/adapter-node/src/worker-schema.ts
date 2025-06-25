@@ -1,12 +1,4 @@
-import {
-  BootStatus,
-  Devtools,
-  LeaderAheadError,
-  LeaderPullCursor,
-  MigrationsReport,
-  SyncState,
-  UnexpectedError,
-} from '@livestore/common'
+import { BootStatus, Devtools, LeaderAheadError, MigrationsReport, SyncState, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -91,11 +83,10 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {
-      cursor: LeaderPullCursor,
+      cursor: EventSequenceNumber.EventSequenceNumber,
     },
     success: Schema.Struct({
       payload: SyncState.PayloadUpstream,
-      mergeCounter: Schema.Number,
     }),
     failure: UnexpectedError,
   }) {}

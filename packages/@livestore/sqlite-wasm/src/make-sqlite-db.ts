@@ -9,6 +9,7 @@ import { SqliteDbHelper, SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { makeInMemoryDb } from './in-memory-vfs.js'
+import { EventSequenceNumber } from '@livestore/common/schema'
 
 export const makeSqliteDb = <
   TMetadata extends {
@@ -32,6 +33,10 @@ export const makeSqliteDb = <
   const sqliteDb: SqliteDb<TMetadata> = {
     _tag: 'SqliteDb',
     metadata,
+    debug: {
+      // Setting initially to root but will be set to correct value shortly after
+      head: EventSequenceNumber.ROOT,
+    },
     prepare: (queryStr) => {
       try {
         const stmts = sqlite3.statements(dbPointer, queryStr.trim(), { unscoped: true })

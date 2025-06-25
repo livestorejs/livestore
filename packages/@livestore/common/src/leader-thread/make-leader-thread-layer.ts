@@ -12,7 +12,7 @@ import { SyncState } from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import * as Eventlog from './eventlog.js'
 import { bootDevtools } from './leader-worker-devtools.js'
-import { getMergeCounterFromDb, makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
+import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
 import { makeMaterializeEvent } from './materialize-event.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
@@ -92,8 +92,7 @@ export const makeLeaderThreadLayer = ({
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
       dbState,
-      initialMergeCounter: dbStateMissing ? 0 : yield* getMergeCounterFromDb(dbState),
-      initialSyncState: yield* getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
+      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       params: {
@@ -167,32 +166,39 @@ const getInitialSyncState = ({
   dbEventlog: SqliteDb
   dbState: SqliteDb
   dbEventlogMissing: boolean
-}) =>
-  Effect.gen(function* () {
-    const initialBackendHead = dbEventlogMissing
-      ? EventSequenceNumber.ROOT.global
-      : Eventlog.getBackendHeadFromDb(dbEventlog)
+}) => {
+  const initialBackendHead = dbEventlogMissing
+    ? EventSequenceNumber.ROOT.global
+    : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-    const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+  const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
-    if (initialBackendHead > initialLocalHead.global) {
-      return shouldNeverHappen(
-        `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
-      )
-    }
+  if (initialBackendHead > initialLocalHead.global) {
+    return shouldNeverHappen(
+      `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
+    )
+  }
 
-    return SyncState.make({
-      localHead: initialLocalHead,
-      upstreamHead: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
-      pending: dbEventlogMissing
-        ? []
-        : yield* Eventlog.getEventsSince({
-            dbEventlog,
-            dbState,
-            since: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
-          }),
-    })
+  return SyncState.make({
+    localHead: initialLocalHead,
+    upstreamHead: {
+      global: initialBackendHead,
+      client: EventSequenceNumber.clientDefault,
+      rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+    },
+    pending: dbEventlogMissing
+      ? []
+      : Eventlog.getEventsSince({
+          dbEventlog,
+          dbState,
+          since: {
+            global: initialBackendHead,
+            client: EventSequenceNumber.clientDefault,
+            rebaseGeneration: initialLocalHead.rebaseGeneration,
+          },
+        }),
   })
+}
 
 const makeInitialBlockingSyncContext = ({
   initialSyncOptions,
