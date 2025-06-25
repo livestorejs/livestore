@@ -1,6 +1,7 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/FacadeVFS.js
 /** biome-ignore-all lint/complexity/useLiteralKeys: not needed for this file */
 /** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
+/** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
 
 /* eslint-disable unicorn/prefer-code-point */
 /* eslint-disable @typescript-eslint/no-unused-vars */

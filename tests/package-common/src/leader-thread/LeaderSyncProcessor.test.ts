@@ -46,7 +46,7 @@ TODO:
 - make connected state settable
 */
 
-Vitest.describe('LeaderSyncProcessor', () => {
+Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx

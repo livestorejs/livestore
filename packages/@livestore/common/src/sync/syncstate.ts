@@ -189,7 +189,7 @@ export const payloadFromMergeResult = (
 
 const unexpectedError = (message: string): MergeResultUnexpectedError => {
   if (LS_DEV) {
-    // biome-ignore lint/suspicious/noDebugger: <explanation>
+    // biome-ignore lint/suspicious/noDebugger: debug
     debugger
   }
 

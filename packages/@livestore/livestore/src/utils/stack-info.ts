@@ -32,7 +32,11 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo =>
   const frames: StackFrame[] = []
   let hasReachedStart = false
 
-  while ((match = namePattern.exec(stackTrace)) !== null) {
+  while (true) {
+    match = namePattern.exec(stackTrace)
+    if (match === null) {
+      break
+    }
     const [, name, filePath] = match as any as [string, string, string]
     // console.debug(name, filePath)
 

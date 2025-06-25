@@ -1,7 +1,11 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import {
+  BoundArray,
+  BoundMap,
   type DebugInfo,
+  getDurationMsFromSpan,
+  getStartTimeHighResFromSpan,
   type MutableDebugInfo,
   type PreparedBindValues,
   type PreparedStatement,
@@ -9,14 +13,8 @@ import {
   type SqliteDbChangeset,
   SqliteDbHelper,
   type SqliteDbSession,
-} from '@livestore/common'
-import {
-  BoundArray,
-  BoundMap,
-  getDurationMsFromSpan,
-  getStartTimeHighResFromSpan,
-  sql,
   SqliteError,
+  sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
@@ -219,7 +217,7 @@ export class SqliteDbWrapper implements SqliteDb {
           span.recordException(cause)
           span.end()
           if (LS_DEV) {
-            // biome-ignore lint/suspicious/noDebugger: <explanation>
+            // biome-ignore lint/suspicious/noDebugger: debug
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })

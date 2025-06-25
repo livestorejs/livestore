@@ -79,8 +79,8 @@ const textEncoder = new TextEncoder()
 export const encode = (data: Uint8Array | string): string => {
   const uint8 =
     typeof data === 'string' ? textEncoder.encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data)
-  let result = '',
-    i
+  let result = ''
+  let i: number
   const l = uint8.length
   for (i = 2; i < l; i += 3) {
     result += base64abc[uint8[i - 2]! >> 2]

@@ -79,7 +79,7 @@ export const makeSqliteDb = <
 
             try {
               // NOTE `column_names` only works for `SELECT` statements, ignoring other statements for now
-              let columns
+              let columns: string[] | undefined
               try {
                 columns = sqlite3.column_names(stmt)
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -213,7 +213,7 @@ export const makeSqliteDb = <
           try {
             sqlite3.changeset_apply(dbPointer, data)
             // @ts-expect-error data should be garbage collected after use
-            // biome-ignore lint/style/noParameterAssign:
+            // biome-ignore lint/style/noParameterAssign: ...
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

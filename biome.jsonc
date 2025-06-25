@@ -7,7 +7,21 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/dist/**"]
+    "includes": [
+      "**",
+      "!**/dist/**",
+      "!**/.wrangler/**",
+      "!**/node_modules/**",
+      "!**/tmp/**",
+      "!**/.output/**",
+      "!**/.vercel/**",
+      "!**/.netlify/**",
+      "!**/.astro/**",
+      "!**/.vinxi/**",
+      "!**/playwright-report/**",
+      // https://github.com/biomejs/biome/issues/6528
+      "!**/*.astro"
+    ]
   },
   "formatter": {
     "enabled": true,
