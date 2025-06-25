@@ -1,6 +1,6 @@
 import type { Effect, Stream } from '@livestore/utils/effect'
 
-import type { LeaderPullCursor, MigrationsReport } from './defs.js'
+import type { MigrationsReport } from './defs.js'
 import type * as Devtools from './devtools/mod.js'
 import type { UnexpectedError } from './errors.js'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.js'
@@ -11,8 +11,8 @@ import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 export interface ClientSessionLeaderThreadProxy {
   events: {
     pull: (args: {
-      cursor: LeaderPullCursor
-    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
+      cursor: EventSequenceNumber.EventSequenceNumber
+    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }

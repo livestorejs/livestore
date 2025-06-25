@@ -10,7 +10,7 @@ import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOption
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, type LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
@@ -79,7 +79,6 @@ export const makeLeaderThread = ({
             _tag: 'in-memory',
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-            debug: kind === 'state' ? { _tag: 'state', head: EventSequenceNumber.ROOT } : { _tag: 'eventlog' },
           })
         : makeSqliteDb({
             _tag: 'fs',
@@ -89,7 +88,6 @@ export const makeLeaderThread = ({
             // TODO enable WAL for nodejs
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-            debug: kind === 'state' ? { _tag: 'state', head: EventSequenceNumber.ROOT } : { _tag: 'eventlog' },
           }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
     }
 

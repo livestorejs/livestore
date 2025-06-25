@@ -1,11 +1,11 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
-import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
+import type { LeaderAheadError, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { IS_CI } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -76,6 +76,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
   // TODO property based testing to test following cases:
   // push first, then pull + latency in between (need to adjust the backend id accordingly)
   // pull first, then push + latency in between
+
   // In this test we're simulating a client leader that is behind the backend
   Vitest.scopedLive('invalid push', (test) =>
     Effect.gen(function* () {
@@ -207,6 +208,12 @@ Vitest.describe('LeaderSyncProcessor', () => {
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
+  // - test for filtering out local push queue items with an older rebase generation
+  //   this can happen in a scenario like this
+  //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)
+  //   2) pulling from backend -> causes rebase (rebase generation 1)
+  //   3) new local push events are queued (rebase generation 1)
+  //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -216,7 +223,7 @@ class TestContext extends Context.Tag('TestContext')<
     encodeLiveStoreEvent: (
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
-    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>
+    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
     localPush: (
       ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
@@ -237,7 +244,7 @@ const LeaderThreadCtxLive = ({
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
+    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
@@ -273,7 +280,7 @@ const LeaderThreadCtxLive = ({
       const currentLiveStoreEventSequenceNumber = { current: EventSequenceNumber.ROOT }
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
-        cursor: { mergeCounter: 0, eventNum: EventSequenceNumber.ROOT },
+        cursor: EventSequenceNumber.ROOT,
       })
 
       const toEncodedLiveStoreEvent = (event: LiveStoreEvent.PartialAnyDecoded | LiveStoreEvent.AnyDecoded) => {
@@ -281,7 +288,10 @@ const LeaderThreadCtxLive = ({
           return encodeLiveStoreEvent(event)
         }
 
-        const nextNumPair = EventSequenceNumber.nextPair(currentLiveStoreEventSequenceNumber.current, false)
+        const nextNumPair = EventSequenceNumber.nextPair({
+          seqNum: currentLiveStoreEventSequenceNumber.current,
+          isClient: false,
+        })
         currentLiveStoreEventSequenceNumber.current = nextNumPair.seqNum
         return encodeLiveStoreEvent({ ...event, ...nextNumPair })
       }

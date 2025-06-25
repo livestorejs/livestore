@@ -12,7 +12,7 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { LeaderPullCursor, MigrationsReport } from '../defs.js'
+import type { MigrationsReport } from '../defs.js'
 import type { SqliteError } from '../errors.js'
 import type {
   BootStatus,
@@ -136,16 +136,12 @@ export type InitialBlockingSyncContext = {
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    cursor: LeaderPullCursor
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: LeaderPullCursor
-  }) => Effect.Effect<
-    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
-    UnexpectedError,
-    Scope.Scope
-  >
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnexpectedError, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -173,5 +169,4 @@ export interface LeaderSyncProcessor {
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  getMergeCounter: () => number
 }

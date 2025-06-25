@@ -1,7 +1,6 @@
 import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { UnexpectedError } from '../adapter-types.js'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 
@@ -162,7 +161,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
 
 export class MergeResultUnexpectedError extends Schema.Class<MergeResultUnexpectedError>('MergeResultUnexpectedError')({
   _tag: Schema.Literal('unexpected-error'),
-  cause: UnexpectedError,
+  message: Schema.String,
 }) {}
 
 export class MergeResult extends Schema.Union(
@@ -172,15 +171,29 @@ export class MergeResult extends Schema.Union(
   MergeResultUnexpectedError,
 ) {}
 
-const unexpectedError = (cause: unknown): MergeResultUnexpectedError => {
+export const payloadFromMergeResult = (
+  mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
+): typeof PayloadUpstream.Type =>
+  Match.value(mergeResult).pipe(
+    Match.tag('advance', (result) => ({
+      _tag: 'upstream-advance' as const,
+      newEvents: result.newEvents,
+    })),
+    Match.tag('rebase', (result) => ({
+      _tag: 'upstream-rebase' as const,
+      newEvents: result.newEvents,
+      rollbackEvents: result.rollbackEvents,
+    })),
+    Match.exhaustive,
+  )
+
+const unexpectedError = (message: string): MergeResultUnexpectedError => {
   if (LS_DEV) {
+    // biome-ignore lint/suspicious/noDebugger: <explanation>
     debugger
   }
 
-  return MergeResultUnexpectedError.make({
-    _tag: 'unexpected-error',
-    cause: new UnexpectedError({ cause }),
-  })
+  return MergeResultUnexpectedError.make({ _tag: 'unexpected-error', message })
 }
 
 // TODO Idea: call merge recursively through hierarchy levels
@@ -382,7 +395,10 @@ export const merge = ({
         EventSequenceNumber.isGreaterThan(newEventsFirst.seqNum, syncState.localHead) === false
 
       if (invalidEventSequenceNumber) {
-        const expectedMinimumId = EventSequenceNumber.nextPair(syncState.localHead, true).seqNum
+        const expectedMinimumId = EventSequenceNumber.nextPair({
+          seqNum: syncState.localHead,
+          isClient: true,
+        }).seqNum
         return validateMergeResult(
           MergeResultReject.make({
             _tag: 'reject',
@@ -466,9 +482,14 @@ const rebaseEvents = ({
   isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
 }): ReadonlyArray<LiveStoreEvent.EncodedWithMeta> => {
   let prevEventSequenceNumber = baseEventSequenceNumber
+  const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
-    const isLocal = isClientEvent(event)
-    const newEvent = event.rebase(prevEventSequenceNumber, isLocal)
+    const isClient = isClientEvent(event)
+    const newEvent = event.rebase({
+      parentSeqNum: prevEventSequenceNumber,
+      isClient,
+      rebaseGeneration,
+    })
     prevEventSequenceNumber = newEvent.seqNum
     return newEvent
   })
