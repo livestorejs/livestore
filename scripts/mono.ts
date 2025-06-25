@@ -53,6 +53,7 @@ const testUnitCommand = Cli.Command.make(
   }),
 )
 
+// TODO when tests fail, print a command per failed test which allows running the test separately
 const testCommand = Cli.Command.make(
   'test',
   {},
@@ -66,8 +67,9 @@ const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix' : ''
-    yield* cmd(`eslint scripts examples packages docs --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
+    const fixFlag = fix ? '--fix --unsafe' : ''
+    // TODO bring back `examples` as well
+    yield* cmd(`biome lint scripts tests packages docs ${fixFlag}`, { shell: true })
     if (fix) {
       yield* cmd('syncpack format', { cwd })
     }

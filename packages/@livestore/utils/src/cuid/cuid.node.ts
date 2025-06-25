@@ -22,7 +22,7 @@ const getRandomValue = () => {
 }
 
 const pad = (num: number | string, size: number) => {
-  const s = '000000000' + num
+  const s = `000000000${num}`
   return s.slice(s.length - size)
 }
 

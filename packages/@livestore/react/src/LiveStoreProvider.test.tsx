@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y: test */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { sql } from '@livestore/common'
 import { rawSqlEvent } from '@livestore/common/schema'
@@ -41,7 +42,8 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
           ),
         [],
       )
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+
+      // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate is used to force a re-render
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
         <WithStrictMode>
@@ -104,7 +106,7 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
           ),
         [],
       )
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate is used to force a re-render
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
         <WithStrictMode>
