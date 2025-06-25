@@ -1,7 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
 
-import * as EventSequenceNumber from './schema/EventSequenceNumber.js'
-
 export const MigrationsReportEntry = Schema.Struct({
   tableName: Schema.String,
   hashes: Schema.Struct({
@@ -17,10 +15,3 @@ export const MigrationsReport = Schema.Struct({
 export type MigrationsReport = typeof MigrationsReport.Type
 
 export type MigrationsReportEntry = typeof MigrationsReportEntry.Type
-
-export const LeaderPullCursor = Schema.Struct({
-  mergeCounter: Schema.Number,
-  eventNum: EventSequenceNumber.EventSequenceNumber,
-})
-
-export type LeaderPullCursor = typeof LeaderPullCursor.Type

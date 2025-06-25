@@ -17,6 +17,10 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
     )
 }
 
+export class SyncError extends Schema.TaggedError<SyncError>()('LiveStore.SyncError', {
+  cause: Schema.Defect,
+}) {}
+
 export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
   'LiveStore.IntentionalShutdownCause',
   {

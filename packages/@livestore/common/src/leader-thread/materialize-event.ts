@@ -74,9 +74,7 @@ export const makeMaterializeEvent = ({
           yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
-        if (dbState.metadata.debug._tag === 'state') {
-          dbState.metadata.debug.head = eventEncoded.seqNum
-        }
+        dbState.debug.head = eventEncoded.seqNum
 
         const changeset = session.changeset()
         session.finish()
@@ -90,6 +88,7 @@ export const makeMaterializeEvent = ({
             values: {
               seqNumGlobal: eventEncoded.seqNum.global,
               seqNumClient: eventEncoded.seqNum.client,
+              seqNumRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
               // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
               debug: LS_DEV ? execArgsArr : null,
@@ -153,7 +152,11 @@ export const rollback = ({
         sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
       .map((_) => ({
-        seqNum: { global: _.seqNumGlobal, client: _.seqNumClient },
+        seqNum: {
+          global: _.seqNumGlobal,
+          client: _.seqNumClient,
+          rebaseGeneration: -1, // unused in this code path
+        },
         changeset: _.changeset,
         debug: _.debug,
       }))
