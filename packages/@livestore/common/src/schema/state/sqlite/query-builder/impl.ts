@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
 
@@ -36,7 +37,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         select: { columns },
       }) as any
     },
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+    // biome-ignore lint/complexity/useArrowFunction: prefer function over arrow function for this case
     where: function () {
       if (ast._tag === 'InsertQuery') return invalidQueryBuilder('Cannot use where with insert')
       if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')

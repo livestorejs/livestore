@@ -17,7 +17,7 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition<an
     typeof value === 'object' &&
     value !== null &&
     'columnType' in value &&
-    validColumnTypes.includes(value['columnType'] as any)
+    validColumnTypes.includes(value.columnType as any)
   )
 }
 

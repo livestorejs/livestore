@@ -216,90 +216,87 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           ),
         // { fastCheck: { numRuns: 20 } },
       )
+      // const waitForOfflineDelay = undefined
+      // const sleepDelay = 0
+      // const channelType = 'direct'
+      // Vitest.scopedLive(
+      //   'b reconnects',
+      //   (test) =>
+      Vitest.scopedLive.prop(
+        'b reconnects',
+        [Delay, Delay, ChannelType],
+        ([waitForOfflineDelay, sleepDelay, channelType], test) =>
+          Effect.gen(function* () {
+            // console.log({ waitForOfflineDelay, sleepDelay, channelType })
 
-      {
-        // const waitForOfflineDelay = undefined
-        // const sleepDelay = 0
-        // const channelType = 'direct'
-        // Vitest.scopedLive(
-        //   'b reconnects',
-        //   (test) =>
-        Vitest.scopedLive.prop(
-          'b reconnects',
-          [Delay, Delay, ChannelType],
-          ([waitForOfflineDelay, sleepDelay, channelType], test) =>
-            Effect.gen(function* () {
-              // console.log({ waitForOfflineDelay, sleepDelay, channelType })
+            if (waitForOfflineDelay === undefined) {
+              // TODO we still need to fix this scenario but it shouldn't really be common in practice
+              return
+            }
 
-              if (waitForOfflineDelay === undefined) {
-                // TODO we still need to fix this scenario but it shouldn't really be common in practice
-                return
+            const nodeA = yield* makeMeshNode('A')
+            const nodeB = yield* makeMeshNode('B')
+
+            const { mode, connectNodes } = fromChannelType(channelType)
+
+            // TODO also optionally delay the edge
+            yield* connectNodes(nodeA, nodeB)
+
+            const waitForBToBeOffline =
+              waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void, never>()
+
+            const nodeACode = Effect.gen(function* () {
+              const channelAToB = yield* createChannel(nodeA, 'B', { mode })
+              yield* channelAToB.send({ message: 'A1' })
+              expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+
+              console.log('nodeACode:waiting for B to be offline')
+              if (waitForBToBeOffline !== undefined) {
+                yield* waitForBToBeOffline
               }
 
-              const nodeA = yield* makeMeshNode('A')
-              const nodeB = yield* makeMeshNode('B')
+              yield* channelAToB.send({ message: 'A2' })
+              expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B2' })
+            })
 
-              const { mode, connectNodes } = fromChannelType(channelType)
+            // Simulating node b going offline and then coming back online
+            // This test also illustrates why we need a ack-message channel since otherwise
+            // sent messages might get lost
+            const nodeBCode = Effect.gen(function* () {
+              yield* Effect.gen(function* () {
+                const channelBToA = yield* createChannel(nodeB, 'A', { mode })
 
-              // TODO also optionally delay the edge
-              yield* connectNodes(nodeA, nodeB)
+                yield* channelBToA.send({ message: 'B1' })
+                expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A1' })
+              }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part1'))
 
-              const waitForBToBeOffline =
-                waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void, never>()
+              console.log('nodeBCode:B node going offline')
+              if (waitForBToBeOffline !== undefined) {
+                yield* Deferred.succeed(waitForBToBeOffline, void 0)
+              }
 
-              const nodeACode = Effect.gen(function* () {
-                const channelAToB = yield* createChannel(nodeA, 'B', { mode })
-                yield* channelAToB.send({ message: 'A1' })
-                expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+              if (sleepDelay !== undefined) {
+                yield* Effect.sleep(sleepDelay).pipe(Effect.withSpan(`B:sleep(${sleepDelay})`))
+              }
 
-                console.log('nodeACode:waiting for B to be offline')
-                if (waitForBToBeOffline !== undefined) {
-                  yield* waitForBToBeOffline
-                }
+              // Recreating the channel
+              yield* Effect.gen(function* () {
+                const channelBToA = yield* createChannel(nodeB, 'A', { mode })
 
-                yield* channelAToB.send({ message: 'A2' })
-                expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B2' })
-              })
+                yield* channelBToA.send({ message: 'B2' })
+                expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A2' })
+              }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part2'))
+            })
 
-              // Simulating node b going offline and then coming back online
-              // This test also illustrates why we need a ack-message channel since otherwise
-              // sent messages might get lost
-              const nodeBCode = Effect.gen(function* () {
-                yield* Effect.gen(function* () {
-                  const channelBToA = yield* createChannel(nodeB, 'A', { mode })
-
-                  yield* channelBToA.send({ message: 'B1' })
-                  expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A1' })
-                }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part1'))
-
-                console.log('nodeBCode:B node going offline')
-                if (waitForBToBeOffline !== undefined) {
-                  yield* Deferred.succeed(waitForBToBeOffline, void 0)
-                }
-
-                if (sleepDelay !== undefined) {
-                  yield* Effect.sleep(sleepDelay).pipe(Effect.withSpan(`B:sleep(${sleepDelay})`))
-                }
-
-                // Recreating the channel
-                yield* Effect.gen(function* () {
-                  const channelBToA = yield* createChannel(nodeB, 'A', { mode })
-
-                  yield* channelBToA.send({ message: 'B2' })
-                  expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A2' })
-                }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part2'))
-              })
-
-              yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' }).pipe(Effect.withSpan('test'))
-            }).pipe(
-              withCtx(test, {
-                skipOtel: true,
-                suffix: `waitForOfflineDelay=${waitForOfflineDelay} sleepDelay=${sleepDelay} channelType=${channelType}`,
-              }),
-            ),
-          { fastCheck: { numRuns: 20 } },
-        )
-      }
+            yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' }).pipe(Effect.withSpan('test'))
+          }).pipe(
+            withCtx(test, {
+              skipOtel: true,
+              suffix: `waitForOfflineDelay=${waitForOfflineDelay} sleepDelay=${sleepDelay} channelType=${channelType}`,
+            }),
+          ),
+        { fastCheck: { numRuns: 20 } },
+      )
 
       Vitest.scopedLive('reconnect with re-created node', (test) =>
         Effect.gen(function* () {
