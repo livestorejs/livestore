@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
+    "@biomejs/biome": "^2.0.5",
     "@effect/language-service": "^0.16.5",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",

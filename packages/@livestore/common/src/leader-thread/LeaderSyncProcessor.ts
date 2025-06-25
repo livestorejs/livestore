@@ -431,7 +431,7 @@ const backgroundApplyLocalPushes = ({
           // TODO we still need to better understand and handle this scenario
           if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
             console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
-            // biome-ignore lint/suspicious/noDebugger: <explanation>
+            // biome-ignore lint/suspicious/noDebugger: debugging
             debugger
           }
 

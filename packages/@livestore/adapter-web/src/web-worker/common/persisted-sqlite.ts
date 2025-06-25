@@ -47,7 +47,7 @@ export const readPersistedAppDbFromClientSession = ({
 
     const fileResults = await Promise.all(files.map(tryGetDbFile))
 
-    const appDbFileName = '/' + getStateDbFileName(schema)
+    const appDbFileName = `/${getStateDbFileName(schema)}`
 
     const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
     // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
