@@ -12,7 +12,7 @@ const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).
   Cli.Options.withDefault('headless'),
 )
 
-const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
+const viteDevServer = (_app: 'todomvc', useWorkspacePort: boolean) =>
   Effect.gen(function* () {
     const devPort = useWorkspacePort
       ? '4444'

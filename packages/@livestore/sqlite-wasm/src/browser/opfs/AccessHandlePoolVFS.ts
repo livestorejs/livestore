@@ -164,7 +164,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 
-  jAccess(zName: string, flags: number, pResOut: DataView): number {
+  jAccess(zName: string, _flags: number, pResOut: DataView): number {
     const path = this.#getPath(zName)
     pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
     return VFS.SQLITE_OK
@@ -236,7 +236,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   async removeCapacity(n: number): Promise<number> {
     let nRemoved = 0
     for (const accessHandle of Array.from(this.#availableAccessHandles)) {
-      if (nRemoved == n || this.getSize() === this.getCapacity()) return nRemoved
+      if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
       const name = this.#mapAccessHandleToName.get(accessHandle)!
       accessHandle.close()

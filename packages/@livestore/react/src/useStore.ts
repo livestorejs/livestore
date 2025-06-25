@@ -21,7 +21,7 @@ export const useStore = (options?: { store?: Store }): { store: Store & ReactApi
     return { store: withReactApi(options.store) }
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
   const storeContext = React.useContext(LiveStoreContext)
 
   if (storeContext === undefined) {

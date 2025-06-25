@@ -28,10 +28,10 @@ export default class QueryCache {
     }
 
     if (Array.isArray(bindValues)) {
-      return (sql + '\n' + bindValues.join('\n')) as CacheKey
+      return (`${sql}\n${bindValues.join('\n')}`) as CacheKey
     }
 
-    return (sql + '\n' + Object.values(bindValues).join('\n')) as CacheKey
+    return (`${sql}\n${Object.values(bindValues).join('\n')}`) as CacheKey
   }
 
   get = (key: CacheKey) => {
