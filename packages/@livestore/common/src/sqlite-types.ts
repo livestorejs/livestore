@@ -1,8 +1,8 @@
 import { type Effect, Schema } from '@livestore/utils/effect'
-import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import type { PreparedBindValues } from './util.js'
 import type { SqliteError, UnexpectedError } from './errors.js'
 import type { EventSequenceNumber } from './schema/mod.js'
+import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
+import type { PreparedBindValues } from './util.js'
 
 /**
  * Common interface for SQLite databases used by LiveStore to facilitate a consistent API across different platforms.
