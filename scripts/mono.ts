@@ -48,7 +48,22 @@ const testUnitCommand = Cli.Command.make(
       // Run the rest of the tests in parallel
       yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
     } else {
-      yield* cmd('vitest run')
+      const paths = [
+        `packages/@livestore/webmesh`,
+        `tests/package-common`,
+        `packages/@livestore/utils`,
+        `packages/@livestore/common`,
+        `packages/@livestore/livestore`,
+      ]
+
+      yield* Effect.forEach(
+        paths,
+        (vitestPath) =>
+          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
+            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
+          ),
+        { concurrency: 'unbounded' },
+      )
     }
   }),
 )
@@ -59,7 +74,10 @@ const testCommand = Cli.Command.make(
   {},
   Effect.fn(function* () {
     yield* testUnitCommand.handler({})
-    yield* integrationTests.runAll.handler({ concurrency: isGithubAction ? 'sequential' : 'parallel' })
+    yield* integrationTests.runAll.handler({
+      concurrency: isGithubAction ? 'sequential' : 'parallel',
+      localDevtoolsPreview: false,
+    })
   }),
 ).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
 

@@ -14,6 +14,7 @@ export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
+  // NOTE empty string is also supported here (Playwright will create a temporary directory in that case)
   persistentContextPath: string
   launchOptions?: Omit<PW.LaunchOptions, 'headless'>
 }
@@ -40,6 +41,8 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
     // let backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
 
     if (extensionPath === undefined) {
+      // TODO keep browser open on error
+      // Persistent context is needed for some browser APIs to work (e.g. OPFS)
       browserContext = yield* Effect.promise(() =>
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
@@ -201,7 +204,12 @@ export const pageConsole = ({
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-              emit.fail(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))
+              emit.fail(
+                new SiteError({
+                  label,
+                  messages: errorGroupRef.current.errorMessages,
+                }),
+              )
             } else if (
               message.type === 'error' &&
               message.message.includes(

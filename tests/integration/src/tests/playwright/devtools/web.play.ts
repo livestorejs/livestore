@@ -23,15 +23,15 @@ const makeTabPair = (url: string, tabName: string) =>
 
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
-    const newPage = Effect.promise(() => browserContext.newPage()).pipe(
+    const newPage = Effect.tryPromise(() => browserContext.newPage()).pipe(
       Effect.acquireRelease(
         Effect.fn('close-page')(function* (page, exit) {
           const reason =
             exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
 
           yield* Effect.log(reason)
-          yield* Effect.promise(() => page.close({ reason }))
-        }),
+          yield* Effect.tryPromise(() => page.close({ reason }))
+        }, Effect.orDie),
       ),
     )
 
@@ -41,6 +41,14 @@ const makeTabPair = (url: string, tabName: string) =>
         .pages()
         .filter(isUnused)
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
+
+    const session = yield* Effect.tryPromise(() => page.context().newCDPSession(page))
+
+    yield* Effect.tryPromise(() => session.send('Debugger.enable'))
+
+    session.on('Debugger.paused', async (_event) => {
+      await page.pause()
+    })
 
     // NOTE we need to start the console listening right away, otherwise we might miss some messages
     const pageConsoleFiber = yield* Playwright.handlePageConsole({
@@ -52,16 +60,19 @@ const makeTabPair = (url: string, tabName: string) =>
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
 
-    yield* Effect.promise(() => page.goto(`${url}/devtools/todomvc#${tabName}`))
+    yield* Effect.tryPromise(() => page.goto(`${url}/devtools/todomvc?sessionId=${tabName}`))
 
-    const rootSpanContext = yield* Effect.promise(() =>
+    const rootSpanContext = yield* Effect.tryPromise(() =>
       page
         .waitForFunction('window.__debugLiveStore?.default !== undefined')
         .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
     ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
     yield* Effect.linkSpanCurrent(
-      Tracer.externalSpan({ traceId: rootSpanContext.traceId, spanId: rootSpanContext.spanId }),
+      Tracer.externalSpan({
+        traceId: rootSpanContext.traceId,
+        spanId: rootSpanContext.spanId,
+      }),
     )
 
     const devtools = yield* newPage
@@ -72,7 +83,7 @@ const makeTabPair = (url: string, tabName: string) =>
       shouldEvaluateArgs: false,
     }).pipe(Effect.forkScoped)
 
-    yield* Effect.promise(() => devtools.goto(`${url}_livestore/web#${tabName}`))
+    yield* Effect.tryPromise(() => devtools.goto(`${url}_livestore/web#${tabName}`))
 
     usedPages.add(devtools)
 
@@ -121,8 +132,8 @@ test(
       const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
 
       yield* Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          const el = tab1.page.locator('.new-todo')
+        yield* Effect.tryPromise(async () => {
+          const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
           await el.waitFor({ timeout: 3000 })
 
           await el.fill('Buy milk')
@@ -130,15 +141,25 @@ test(
 
           await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-          await tab1.devtools.locator('a').click()
+          await tab1.devtools.locator('a').describe('devtools-tab-1:click').click()
 
           const tables = ['uiState (1)', 'todos (1)']
 
-          await checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } })
+          await checkDevtoolsState({
+            devtools: tab1.devtools,
+            label: 'devtools-tab-1',
+            expect: { leader: true, alreadyLoaded: false, tables },
+          })
 
-          await tab1.page.reload()
+          await test.step('devtools-tab-1:reload', async () => {
+            await tab1.page.reload()
+          })
 
-          await checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } })
+          await checkDevtoolsState({
+            devtools: tab1.devtools,
+            label: 'devtools-tab-1',
+            expect: { leader: true, alreadyLoaded: false, tables },
+          })
         })
 
         yield* shutdownTab(tab1.page)
@@ -170,10 +191,12 @@ test(
 
       yield* Effect.gen(function* () {
         yield* Effect.addFinalizer(() =>
-          Effect.all([shutdownTab(tab1.page), shutdownTab(tab2.page)], { concurrency: 'unbounded' }).pipe(Effect.orDie),
+          Effect.all([shutdownTab(tab1.page), shutdownTab(tab2.page)], {
+            concurrency: 'unbounded',
+          }).pipe(Effect.orDie),
         )
 
-        yield* Effect.promise(async () => {
+        yield* Effect.tryPromise(async () => {
           await tab1.page.focus('body')
 
           const el = tab1.page.locator('.new-todo')
@@ -201,16 +224,23 @@ test(
           await Promise.all([
             tab1.devtools
               .locator(`a:text("${tab1ChannelId}")`)
+              .describe('devtools-tab-1:click')
               .click()
               .then(() =>
-                checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } }),
+                checkDevtoolsState({
+                  devtools: tab1.devtools,
+                  label: 'devtools-tab-1',
+                  expect: { leader: true, alreadyLoaded: false, tables },
+                }),
               ),
             tab2.devtools
               .locator(`a:text("${tab2ChannelId}")`)
+              .describe('devtools-tab-2:click')
               .click()
               .then(() =>
                 checkDevtoolsState({
                   devtools: tab2.devtools,
+                  label: 'devtools-tab-2',
                   expect: { leader: false, alreadyLoaded: false, tables },
                 }),
               ),
@@ -220,9 +250,17 @@ test(
 
           // try {
           await Promise.all([
-            tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor(),
-            checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: false, alreadyLoaded: true, tables } }),
-            checkDevtoolsState({ devtools: tab2.devtools, expect: { leader: true, alreadyLoaded: true, tables } }),
+            tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor(),
+            checkDevtoolsState({
+              devtools: tab1.devtools,
+              label: 'devtools-tab-1',
+              expect: { leader: false, alreadyLoaded: true, tables },
+            }),
+            checkDevtoolsState({
+              devtools: tab2.devtools,
+              label: 'devtools-tab-2',
+              expect: { leader: true, alreadyLoaded: true, tables },
+            }),
           ])
           // } catch (e) {
           //   console.log('pausing devtools', e)

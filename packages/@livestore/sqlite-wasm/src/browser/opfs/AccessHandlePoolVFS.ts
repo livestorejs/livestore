@@ -1,8 +1,8 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
+import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
-
 import { FacadeVFS } from '../../FacadeVFS.js'
 
 const SECTOR_SIZE = 4096
@@ -123,7 +123,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.read(pData.subarray(), { at: HEADER_OFFSET_DATA + iOffset })
+    const nBytes = file.accessHandle.read(pData.subarray(), {
+      at: HEADER_OFFSET_DATA + iOffset,
+    })
     if (nBytes < pData.byteLength) {
       pData.fill(0, nBytes, pData.byteLength)
       return VFS.SQLITE_IOERR_SHORT_READ
@@ -133,7 +135,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.write(pData.subarray(), { at: HEADER_OFFSET_DATA + iOffset })
+    const nBytes = file.accessHandle.write(pData.subarray(), {
+      at: HEADER_OFFSET_DATA + iOffset,
+    })
     return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
   }
 
@@ -219,8 +223,14 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   async addCapacity(n: number): Promise<number> {
     for (let i = 0; i < n; ++i) {
       const name = Math.random().toString(36).replace('0.', '')
-      const handle = await this.#directoryHandle!.getFileHandle(name, { create: true })
-      const accessHandle = await handle.createSyncAccessHandle()
+      const handle = await this.#directoryHandle!.getFileHandle(name, {
+        create: true,
+      })
+
+      const accessHandle = await Effect.tryPromise({
+        try: () => handle.createSyncAccessHandle(),
+        catch: (cause) => new OpfsError({ cause, path: name }),
+      }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
       this.#mapAccessHandleToName.set(accessHandle, name)
 
       this.#setAssociatedPath(accessHandle, '', 0)
@@ -260,7 +270,10 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     // Open access handles in parallel, separating associated and unassociated.
     await Promise.all(
       files.map(async ([name, handle]) => {
-        const accessHandle = await handle.createSyncAccessHandle()
+        const accessHandle = await Effect.tryPromise({
+          try: () => handle.createSyncAccessHandle(),
+          catch: (cause) => new OpfsError({ cause, path: name }),
+        }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
         this.#mapAccessHandleToName.set(accessHandle, name)
         const path = this.#getAssociatedPath(accessHandle)
         if (path) {
@@ -402,3 +415,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }
   }
 }
+
+export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
+  cause: Schema.Defect,
+  path: Schema.String,
+}) {}

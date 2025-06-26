@@ -22,10 +22,11 @@ const AppBody: React.FC = () => (
   </section>
 )
 
-const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+const searchParams = new URLSearchParams(window.location.search)
+const resetPersistence = import.meta.env.DEV && searchParams.get('reset') !== null
+const sessionId = searchParams.get('sessionId') ?? undefined
 
 if (resetPersistence) {
-  const searchParams = new URLSearchParams(window.location.search)
   searchParams.delete('reset')
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
 }
@@ -35,6 +36,7 @@ const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   resetPersistence,
+  sessionId,
 })
 
 const otelTracer = makeTracer('todomvc-main')
