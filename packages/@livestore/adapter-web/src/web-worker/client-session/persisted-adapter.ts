@@ -3,8 +3,8 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
-  sessionChangesetMetaTable,
   StoreInterrupted,
+  sessionChangesetMetaTable,
   UnexpectedError,
 } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
@@ -68,7 +68,9 @@ export type WebAdapterOptions = {
    */
   sharedWorker:
     | ((options: { name: string }) => globalThis.SharedWorker)
-    | (new (options: { name: string }) => globalThis.SharedWorker)
+    | (new (options: {
+        name: string
+      }) => globalThis.SharedWorker)
   /**
    * Specifies where to persist data for this adapter
    */
