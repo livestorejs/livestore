@@ -34,7 +34,7 @@ export const makeExecBeforeFirstRun =
 
     const idVal = id === SessionIdSymbol ? store.sessionId : id!
     const rowExists =
-      store.sqliteDbWrapper.select(
+      store.sqliteDbWrapper.cachedSelect(
         `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
         [idVal] as any as PreparedBindValues,
         { otelContext },

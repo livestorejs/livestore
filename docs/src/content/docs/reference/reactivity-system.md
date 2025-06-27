@@ -103,6 +103,26 @@ const MyComponent = () => {
 }
 ```
 
+### Reacting to changing variables passed to queries
+
+If your query depends on a variable passed in by the component, use the deps array to react to changes in this variable.
+
+```ts
+const todos$ = ({ showCompleted } ) => queryDb((get) => {
+  return tables.todos.where(showCompleted ? { completed: true } : {})
+}, {
+  label: 'todos$',
+  deps: [showCompleted] // 👈 add to deps array
+})
+
+const MyComponent = ({ showCompleted }) => {
+  const todos = store.useQuery(todos$({ showCompleted }))
+
+  return <div>{todos.length} Done</div>
+}
+
+``` 
+
 ## Further reading
 
 - [Riffle](https://riffle.systems/essays/prelude/): Building data-centric apps with a reactive relational database

@@ -37,7 +37,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "at /Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:281:14",
+        "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
@@ -263,7 +263,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "at /Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:281:14",
+        "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },

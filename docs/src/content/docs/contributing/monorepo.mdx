@@ -33,12 +33,8 @@ You'll need to have a recent version the following tools installed:
 ```bash
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
-# Load environment variables (including Nix dependencies)
-direnv allow
-# Install dependencies
-pnpm install
-# Build the project
-pnpm build
+# Loads env vars, installs deps and builds the project
+./bootstrap.sh
 ```
 
 ## General notes

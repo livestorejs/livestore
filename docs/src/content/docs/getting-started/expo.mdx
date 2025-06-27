@@ -30,7 +30,7 @@ export const manualInstallDepsStr = [
   '@livestore/adapter-expo' + versionNpmSuffix,
   '@livestore/livestore' + versionNpmSuffix,
   '@livestore/react' + versionNpmSuffix,
-  '@livestore/utils' + versionNpmSuffix,
+  '@livestore/sync-cf' + versionNpmSuffix,
   '@livestore/peer-deps' + versionNpmSuffix,
   'expo-sqlite',
 ].join(' ')
@@ -204,10 +204,6 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 Here's an example schema:
 
 <Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
-
-## Add the LiveStore Provider
-
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
 
 ## Add the LiveStore Provider
 

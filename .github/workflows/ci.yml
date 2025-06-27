@@ -22,9 +22,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -39,9 +38,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -75,7 +73,11 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           # TODO surface deploy url in github UI via environments
         run: |
-          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          else
+            echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+          fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
     steps:
@@ -83,10 +85,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-      - name: Setup Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - name: Use FlakeHub Cache for Nix binaries
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Load environment with direnv
@@ -115,9 +115,8 @@ jobs:
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -137,9 +136,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -154,9 +152,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -177,9 +174,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
@@ -203,7 +199,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
@@ -233,7 +229,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
@@ -263,7 +259,7 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
+      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo

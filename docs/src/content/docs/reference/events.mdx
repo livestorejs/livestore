@@ -41,7 +41,7 @@ export const events = {
   - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not
 - It's recommended to avoid `DELETE` events and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
 
-### Schema evolution
+### Schema evolution \{#schema-evolution\}
 
 - Event definitions can't be removed after they were added to your app.
 - Event schema definitions can be evolved as long as the changes are forward-compatible.

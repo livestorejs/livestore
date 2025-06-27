@@ -84,6 +84,8 @@ export const getEventsSince = (
                   }
                 : { _tag: 'unset' as const },
             syncMetadata: eventlogEvent.syncMetadataJson,
+            materializerHashLeader: Option.none(),
+            materializerHashSession: Option.none(),
           },
         })
       })

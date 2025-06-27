@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-web-linearlite",
 +  "name": "livestore-example-standalone-web-linearlite",
@@ -10,14 +10,13 @@
      "@headlessui/react": "2.2.1",
      "@heroicons/react": "2.2.0",
 -    "@livestore/adapter-web": "workspace:*",
-+    "@livestore/adapter-web": "0.3.0",
-     "@livestore/devtools-vite": "0.3.0",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
-+    "@livestore/livestore": "0.3.0",
-+    "@livestore/peer-deps": "0.3.0",
-+    "@livestore/react": "0.3.0",
++    "@livestore/adapter-web": "0.3.1",
++    "@livestore/livestore": "0.3.1",
++    "@livestore/peer-deps": "0.3.1",
++    "@livestore/react": "0.3.1",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
      "@tailwindcss/forms": "0.5.10",

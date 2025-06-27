@@ -7,6 +7,7 @@ const todos = State.SQLite.table({
     id: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
     completed: State.SQLite.boolean({ default: false, nullable: false }),
+    deletedAt: State.SQLite.datetime({ default: null, nullable: true }),
   },
 })
 
@@ -26,10 +27,16 @@ export const events = {
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
   }),
+  todoDeletedNonPure: Events.synced({
+    name: 'todoDeletedNonPure',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
+  // This materialize is non-pure as `new Date()` is side effecting
+  todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
 })
 
 export const tables = { todos, appConfig }

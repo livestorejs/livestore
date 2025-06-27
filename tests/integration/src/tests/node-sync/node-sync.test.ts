@@ -16,7 +16,7 @@ import * as WorkerSchema from './worker-schema.js'
 const testTimeout = IS_CI ? 120_000 : 15_000
 const propTestTimeout = IS_CI ? 300_000 : 120_000
 
-const DEBUGGER_ACTIVE = process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined
+const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
 Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
@@ -120,7 +120,7 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
       }).pipe(
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withCtx(test, {
-          skipOtel: DEBUGGER_ACTIVE ? false : true,
+          skipOtel: !DEBUGGER_ACTIVE,
           suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
         }),
       ),

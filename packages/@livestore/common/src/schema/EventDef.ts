@@ -27,10 +27,16 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
     derived: TDerived
   }
 
-  /** Helper function to construct a partial mutation event */
+  /** Helper function to construct a partial event */
   (args: TType): {
     name: TName
     args: TType
+  }
+
+  /** Helper function to construct a partial encoded event */
+  encoded: (args: TEncoded) => {
+    name: TName
+    args: TEncoded
   }
 
   readonly Event: {
@@ -123,6 +129,10 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
 
   Object.defineProperty(makePartialEvent, 'name', { value: name })
   Object.defineProperty(makePartialEvent, 'schema', { value: schema })
+  Object.defineProperty(makePartialEvent, 'encoded', {
+    value: (args: TEncoded) => ({ name: name, args }),
+  })
+
   Object.defineProperty(makePartialEvent, 'options', {
     value: {
       clientOnly: options?.clientOnly ?? false,

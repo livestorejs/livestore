@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import type { Runtime, Scope } from '@livestore/utils/effect'
+import { Option, type Runtime, type Scope } from '@livestore/utils/effect'
 import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
@@ -38,10 +38,11 @@ export const makeClientSessionSyncProcessor = ({
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
     eventDecoded: LiveStoreEvent.PartialAnyDecoded,
-    options: { otelContext: otel.Context; withChangeset: boolean },
+    options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => {
     writeTables: Set<string>
     sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } | { _tag: 'unset' }
+    materializerHash: Option.Option<number>
   }
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
@@ -67,6 +68,7 @@ export const makeClientSessionSyncProcessor = ({
     }),
   }
 
+  /** Only used for debugging / observability, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
     getEventDef(schema, eventEncoded.name).eventDef.options.clientOnly
@@ -116,17 +118,28 @@ export const makeClientSessionSyncProcessor = ({
     syncStateRef.current = mergeResult.newSyncState
     syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
+    // Materialize events to state
     const writeTables = new Set<string>()
     for (const event of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
       const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-      const res = materializeEvent(decodedEventDef, { otelContext, withChangeset: true })
-      for (const table of res.writeTables) {
+      const {
+        writeTables: newWriteTables,
+        sessionChangeset,
+        materializerHash,
+      } = materializeEvent(decodedEventDef, {
+        otelContext,
+        withChangeset: true,
+        materializerHashLeader: Option.none(),
+      })
+      for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = res.sessionChangeset
+      event.meta.sessionChangeset = sessionChangeset
+      event.meta.materializerHashSession = materializerHash
     }
 
+    // Trigger push to leader
     // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
     BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
 
@@ -242,6 +255,7 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
+            // Pushing rebased pending events to leader
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
           } else {
             span.addEvent('merge:pull:advance', {
@@ -261,12 +275,21 @@ export const makeClientSessionSyncProcessor = ({
           for (const event of mergeResult.newEvents) {
             // TODO apply changeset if available (will require tracking of write tables as well)
             const decodedEventDef = Schema.decodeSync(eventSchema)(event)
-            const res = materializeEvent(decodedEventDef, { otelContext, withChangeset: true })
-            for (const table of res.writeTables) {
+            const {
+              writeTables: newWriteTables,
+              sessionChangeset,
+              materializerHash,
+            } = materializeEvent(decodedEventDef, {
+              otelContext,
+              withChangeset: true,
+              materializerHashLeader: event.meta.materializerHashLeader,
+            })
+            for (const table of newWriteTables) {
               writeTables.add(table)
             }
 
-            event.meta.sessionChangeset = res.sessionChangeset
+            event.meta.sessionChangeset = sessionChangeset
+            event.meta.materializerHashSession = materializerHash
           }
 
           refreshTables(writeTables)
@@ -321,6 +344,9 @@ export interface ClientSessionSyncProcessor {
     writeTables: Set<string>
   }
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  /**
+   * Only used for debugging / observability.
+   */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   debug: {
     print: () => void

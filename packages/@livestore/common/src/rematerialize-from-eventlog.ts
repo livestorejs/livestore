@@ -27,13 +27,13 @@ export const rematerializeFromEventlog = ({
       `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
     )[0]!.count
 
-    const hashEvent = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
+    const hashEventDef = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
 
     const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
         const eventDef = getEventDef(schema, row.name)
 
-        if (hashEvent(eventDef.eventDef) !== row.schemaHash) {
+        if (hashEventDef(eventDef.eventDef) !== row.schemaHash) {
           yield* Effect.logWarning(
             `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
           )

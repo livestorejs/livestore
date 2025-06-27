@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type { Devtools } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
@@ -25,8 +24,6 @@ export type ViteDevtoolsOptions = {
   mode: Extract<Devtools.DevtoolsMode, { _tag: 'node' }>
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
 // NOTE this is currently also used in @livestore/devtools-expo
 export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
   Effect.gen(function* () {
@@ -44,7 +41,6 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
         fs: { strict: process.env.LS_DEV ? false : true },
       },
       appType: 'spa',
-      root: __dirname,
       base: '/_livestore/',
       plugins: [
         livestoreDevtoolsPlugin({

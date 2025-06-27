@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 
+import { liveStoreVersion } from '@livestore/common'
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -8,6 +9,7 @@ import * as integrationTests from '@local/tests-integration/run-tests'
 import { copyTodomvcSrc } from './examples/copy-examples.js'
 import { command as deployExamplesCommand } from './examples/deploy-examples.js'
 import * as generateExamples from './examples/generate-examples.js'
+import { deployToNetlify } from './shared/netlify.js'
 
 const cwd = process.env.WORKSPACE_ROOT
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
@@ -113,65 +115,74 @@ const docsCommand = Cli.Command.make('docs').pipe(
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
         build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
       },
-      Effect.fn(function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
-        if (shouldBuild) {
-          yield* docsBuildCommand.handler({ apiDocs: true })
-        }
-
-        const branchName = yield* Effect.gen(function* () {
-          if (isGithubAction) {
-            const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
-            if (branchFromEnv !== undefined && branchFromEnv !== '') {
-              return branchFromEnv
-            }
-            yield* Effect.logWarning(
-              'Could not determine branch name from GITHUB_HEAD_REF or GITHUB_REF_NAME in GitHub Actions. Falling back to git command.',
-            )
+      Effect.fn(
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
+          if (shouldBuild) {
+            yield* docsBuildCommand.handler({ apiDocs: true })
           }
-          return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
-        })
 
-        const docsPath = `${process.env.WORKSPACE_ROOT}/docs`
+          const branchName = yield* Effect.gen(function* () {
+            if (isGithubAction) {
+              const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
+              if (branchFromEnv !== undefined && branchFromEnv !== '') {
+                return branchFromEnv
+              }
+              yield* Effect.logWarning(
+                'Could not determine branch name from GITHUB_HEAD_REF or GITHUB_REF_NAME in GitHub Actions. Falling back to git command.',
+              )
+            }
+            return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
+          })
 
-        yield* Effect.log(`Branch name: "${branchName}"`)
+          const docsPath = `${process.env.WORKSPACE_ROOT}/docs`
 
-        const devBranchName = 'dev'
+          yield* Effect.log(`Branch name: "${branchName}"`)
 
-        const site =
-          siteOption._tag === 'Some'
-            ? siteOption.value
-            : branchName === 'main'
-              ? 'livestore-docs' // Prod site
-              : 'livestore-docs-dev' // Dev site
+          const devBranchName = 'dev'
 
-        // Check if netlify is logged in
-        yield* cmd('bunx netlify-cli status', { cwd: docsPath }).pipe(Effect.ignoreLogged)
+          const site =
+            siteOption._tag === 'Some'
+              ? siteOption.value
+              : branchName === 'main'
+                ? 'livestore-docs' // Prod site
+                : 'livestore-docs-dev' // Dev site
 
-        const deployArgs = [
-          'bunx',
-          'netlify-cli',
-          'deploy',
-          '--no-build',
-          `--dir=${docsPath}/dist`,
-          `--site=${site}`,
-          '--filter=docs',
-        ]
+          yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
-        yield* Effect.log(`Deploying to "${site}" for draft URL`)
-        yield* cmd([...deployArgs], { cwd: docsPath })
+          yield* deployToNetlify({
+            site,
+            dir: `${docsPath}/dist`,
+            target: { _tag: 'draft' },
+            cwd: docsPath,
+            filter: 'docs',
+          })
 
-        const alias =
-          aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+          const alias =
+            aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
 
-        const prod =
-          prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
-            ? prodOption.value
-            : branchName === 'main' || branchName === devBranchName
+          const prod =
+            prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
+              ? prodOption.value
+              : branchName === 'main' || branchName === devBranchName
 
-        yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
+          if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
+            yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
+          }
 
-        yield* cmd([...deployArgs, prod ? '--prod' : `--alias=${alias}`], { cwd: docsPath })
-      }),
+          yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
+
+          yield* deployToNetlify({
+            site,
+            dir: `${docsPath}/dist`,
+            target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
+            cwd: docsPath,
+          })
+        },
+        Effect.catchIf(
+          (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
+          () => Effect.logWarning('::warning Not logged in to Netlify'),
+        ),
+      ),
     ),
   ]),
 )

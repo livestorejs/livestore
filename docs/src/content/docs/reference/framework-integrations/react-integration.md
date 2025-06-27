@@ -34,6 +34,23 @@ const Root = () => {
 }
 ```
 
+For scenarios where you have an existing store instance, you can manually create a `LiveStoreContext.Provider`:
+
+```tsx
+import { LiveStoreContext } from '@livestore/react'
+import { createStorePromise } from '@livestore/livestore'
+
+const store = createStorePromise({ /* ... */ })
+
+const Root = () => {
+  return (
+    <LiveStoreContext.Provider value={{ stage: 'running', store }}>
+      <App />
+    </LiveStoreContext.Provider>
+  )
+}
+```
+
 ### useStore
 
 ```tsx
