@@ -419,7 +419,7 @@ importers:
         version: link:../../../packages/@livestore/sync-cf
     devDependencies:
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       typescript:
         specifier: ^5.8.3
@@ -540,7 +540,7 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -891,7 +891,7 @@ importers:
         specifier: ^1.119.0
         version: 1.121.41(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -1158,7 +1158,7 @@ importers:
         version: link:../../../packages/@livestore/sync-cf
     devDependencies:
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       typescript:
         specifier: ^5.8.3
@@ -1279,7 +1279,7 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -1630,7 +1630,7 @@ importers:
         specifier: ^1.119.0
         version: 1.121.41(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -1791,7 +1791,7 @@ importers:
         version: link:../utils
     devDependencies:
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       expo:
         specifier: ^53.0.9
@@ -1822,7 +1822,7 @@ importers:
         specifier: ^1.53.1
         version: 1.53.1
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
 
   packages/@livestore/graphql:
@@ -2031,7 +2031,7 @@ importers:
         specifier: ^0.0.304
         version: 0.0.304
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
@@ -2129,7 +2129,7 @@ importers:
         specifier: ^21.1.7
         version: 21.1.7
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/web':
         specifier: ^0.0.203
@@ -2204,7 +2204,7 @@ importers:
         specifier: workspace:*
         version: link:../tests/integration
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       bun-types:
         specifier: ^1.2.4
@@ -2274,7 +2274,7 @@ importers:
         specifier: ^1.119.0
         version: 1.121.41(@tanstack/react-router@1.121.41(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.7(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -2359,11 +2359,11 @@ importers:
         specifier: 2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.52.0
-        version: 1.52.0
+        specifier: 1.53.1
+        version: 1.53.1
       '@types/node':
-        specifier: 22.15.17
-        version: 22.15.17
+        specifier: 22.15.33
+        version: 22.15.33
       '@types/react':
         specifier: 19.1.2
         version: 19.1.2
@@ -2372,7 +2372,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: 4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
+        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -2384,7 +2384,7 @@ importers:
         version: 5.8.3
       vite:
         specifier: 6.3.4
-        version: 6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)
+        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)
 
 packages:
 
@@ -3562,7 +3562,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.24.13':
     resolution: {integrity: sha512-2LSdbvYs+WmUljnplQXMCUyNzyX4H+F4l8uExfA1hud25Bl5kyaGrx1jjtgNxMTXmfmMjvgBdK798R50imEhkA==}
@@ -4498,11 +4498,6 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
-
-  '@playwright/test@1.52.0':
-    resolution: {integrity: sha512-uh6W7sb55hl7D6vsAeA+V2p5JnlAqzhqFyF0VcJkKZXkgnFcVG9PziERRHQfPLfNGx1C292a4JqbWzhR8L4R1g==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   '@playwright/test@1.53.1':
     resolution: {integrity: sha512-Z4c23LHV0muZ8hfv4jw6HngPJkbbtZxTkxPNIg7cJcTc9C28N/p2q7g3JZS2SiKBBHJ3uM1dgDye66bB7LEk5w==}
@@ -6398,9 +6393,6 @@ packages:
 
   '@types/node@17.0.45':
     resolution: {integrity: sha512-w+tIMs3rq2afQdsPJlODhoUEKzFP1ayaoyl1CcnwtIlsVe7K7bA1NGm4s3PraqTLlXnbIN84zuBlxBWo1u9BLw==}
-
-  '@types/node@22.15.17':
-    resolution: {integrity: sha512-wIX2aSZL5FE+MR0JlvF87BNVrtFWf6AE6rxSE9X7OwnVvoyCQjpzSRJ+M87se/4QCkCiebQAqrJ0y6fwIyi7nw==}
 
   '@types/node@22.15.33':
     resolution: {integrity: sha512-wzoocdnnpSxZ+6CjW4ADCK1jVmd1S/J3ArNWfn8FDDQtRm8dkDg7TA+mvek2wNrfCgwuZxqEOiB9B1XCJ6+dbw==}
@@ -11492,18 +11484,8 @@ packages:
   pkg-types@2.1.1:
     resolution: {integrity: sha512-eY0QFb6eSwc9+0d/5D2lFFUq+A3n3QNGSy/X2Nvp+6MfzGw2u6EbA7S80actgjY1lkvvI0pqB+a4hioMh443Ew==}
 
-  playwright-core@1.52.0:
-    resolution: {integrity: sha512-l2osTgLXSMeuLZOML9qYODUQoPPnUsKsb5/P6LJ2e6uPKXUdPK5WYhN4z03G+YNbWmGDY4YENauNu4ZKczreHg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   playwright-core@1.53.1:
     resolution: {integrity: sha512-Z46Oq7tLAyT0lGoFx4DOuB1IA9D1TPj0QkYxpPVUnGDqHHvDpCftu1J2hM2PiWsNMoZh8+LQaarAWcDfPBc6zg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  playwright@1.52.0:
-    resolution: {integrity: sha512-JAwMNMBlxJ2oD1kce4KPtMkDeKGHQstdpFPcPH3maElAXon/QZeTvtsfXmTMRyO9TslfoYOXkSsvao2nE1ilTw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -16869,10 +16851,6 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/test@1.52.0':
-    dependencies:
-      playwright: 1.52.0
-
   '@playwright/test@1.53.1':
     dependencies:
       playwright: 1.53.1
@@ -19736,10 +19714,6 @@ snapshots:
 
   '@types/node@17.0.45': {}
 
-  '@types/node@22.15.17':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@22.15.33':
     dependencies:
       undici-types: 6.21.0
@@ -20141,17 +20115,6 @@ snapshots:
       ufo: 1.6.1
       untun: 0.1.3
       uqr: 0.1.2
-
-  '@vitejs/plugin-react@4.3.4(vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))':
-    dependencies:
-      '@babel/core': 7.27.7
-      '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.27.7)
-      '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.27.7)
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.14.2
-      vite: 6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)
-    transitivePeerDependencies:
-      - supports-color
 
   '@vitejs/plugin-react@4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))':
     dependencies:
@@ -26298,15 +26261,7 @@ snapshots:
       exsolve: 1.0.7
       pathe: 2.0.3
 
-  playwright-core@1.52.0: {}
-
   playwright-core@1.53.1: {}
-
-  playwright@1.52.0:
-    dependencies:
-      playwright-core: 1.52.0
-    optionalDependencies:
-      fsevents: 2.3.2
 
   playwright@1.53.1:
     dependencies:
@@ -29048,23 +29003,6 @@ snapshots:
       - rollup
       - supports-color
       - typescript
-
-  vite@6.3.4(@types/node@22.15.17)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0):
-    dependencies:
-      esbuild: 0.25.4
-      fdir: 6.4.6(picomatch@4.0.2)
-      picomatch: 4.0.2
-      postcss: 8.5.6
-      rollup: 4.44.1
-      tinyglobby: 0.2.14
-    optionalDependencies:
-      '@types/node': 22.15.17
-      fsevents: 2.3.3
-      jiti: 2.4.2
-      lightningcss: 1.30.1
-      terser: 5.43.1
-      tsx: 4.20.3
-      yaml: 2.8.0
 
   vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0):
     dependencies:
