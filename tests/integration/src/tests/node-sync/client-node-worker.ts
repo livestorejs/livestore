@@ -129,5 +129,5 @@ runner.pipe(
   Effect.annotateSpans({ clientId }),
   Effect.provide(Logger.prettyWithThread(serviceName)),
   Logger.withMinimumLogLevel(LogLevel.Debug),
-  Effect.runFork,
+  PlatformNode.NodeRuntime.runMain,
 )
