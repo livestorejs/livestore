@@ -57,7 +57,7 @@ const materializers: State.SQLite.Materializers<typeof events> = {
 Sometimes it can be useful to query your current state when executing a materializer. This can be done by using `ctx.query` in your materializer function.
 
 ```ts
-const materializers: State.SQLite.Materializers = {
+const materializers: State.SQLite.Materializers<typeof events> = {
   todoCreated: ({ id, text, completed }, ctx) => {
     const previousIds = ctx.query(todos.select('id'))
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
@@ -129,7 +129,7 @@ const events = {
   }),
 }
 
-const materializers: State.SQLite.materializers<typeof events> = {
+const materializers: State.SQLite.Materializers<typeof events> = {
   "v1.TodoCreated": ({ text }) =>
     tables.todos.insert({ id: crypto.randomUUID(), text }),
   //                          ^^^^^^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ const events = {
   }),
 }
 
-const materializers: State.SQLite.materializers<typeof events> = {
+const materializers: State.SQLite.Materializers<typeof events> = {
   "v1.TodoCreated": ({ id, text }) => tables.todos.insert({ id, text }),
 }
 
