@@ -71,13 +71,15 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
         const combinedLaunchOptions: PW.LaunchOptions = {
           ...launchOptions,
           headless,
-          channel: 'chromium', // Needed for proper headless support
+          channel: 'chrome', // Needed for proper headless support
           args: [
-            '--enable-unsafe-extension-debugging', // Needed for new extension loading support
+            // '--enable-unsafe-extension-debugging', // Needed for new extension loading support
+            `--disable-extensions-except=${extensionPath}`,
+            `--load-extension=${extensionPath}`,
           ],
-          ignoreDefaultArgs: [
-            '--disable-extensions', // Needed for new extension loading support
-          ],
+          // ignoreDefaultArgs: [
+          //   '--disable-extensions', // Needed for new extension loading support
+          // ],
           ...{
             _userDataDir: '', // Equivalent to `persistentContextPath`
             _sharedBrowser: true,
@@ -105,11 +107,16 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
         return await PW.chromium.connect(wsEndpoint)
       })
 
-      const browserSession = yield* Effect.tryPromise(() => browser.newBrowserCDPSession())
+      // const browserSession = yield* Effect.tryPromise(() => browser.newBrowserCDPSession()).pipe(
+      //   Effect.withSpan('newBrowserCDPSession'),
+      // )
 
-      yield* Effect.tryPromise(() => browserSession.send('Extensions.loadUnpacked', { path: extensionPath }))
+      // yield* Effect.tryPromise(() => browserSession.send('Extensions.loadUnpacked', { path: extensionPath })).pipe(
+      //   Effect.withSpan('loadUnpacked'),
+      // )
 
-      browserContext = yield* Effect.promise(() => browser.newContext())
+      // browserContext = yield* Effect.promise(() => browser.newContext()).pipe(Effect.withSpan('newContext'))
+      browserContext = browser.contexts()[0]!
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
