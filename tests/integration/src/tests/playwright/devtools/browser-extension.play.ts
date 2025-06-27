@@ -4,13 +4,24 @@ import os from 'node:os'
 import path from 'node:path'
 
 import * as Playwright from '@livestore/effect-playwright'
-import { envTruish, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Fiber, identity, Layer, Logger, OtelTracer } from '@livestore/utils/effect'
+import { shouldNeverHappen } from '@livestore/utils'
+import {
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  FileSystem,
+  identity,
+  Layer,
+  Logger,
+  OtelTracer,
+} from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
-
+import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.js'
 import { checkDevtoolsState } from './shared.js'
 
 const usedPages = new Set<PW.Page>()
@@ -101,44 +112,75 @@ const runTest =
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
-  ) => {
-    if (envTruish(process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH) === false) {
-      console.log('LIVESTORE_DEVTOOLS_CHROME_DIST_PATH is not set, skipping test')
-    }
+  ) =>
+    Effect.gen(function* () {
+      const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+      const parentSpan = OtelTracer.makeExternalSpan({
+        traceId: parentSpanContext.traceId,
+        spanId: parentSpanContext.spanId,
+      })
 
-    const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
-    const parentSpan = OtelTracer.makeExternalSpan({
-      traceId: parentSpanContext.traceId,
-      spanId: parentSpanContext.spanId,
-    })
+      const thread = `playwright-worker-${testInfo.workerIndex}`
+      // @ts-expect-error TODO fix types
+      globalThis.name = thread
 
-    const thread = `playwright-worker-${testInfo.workerIndex}`
-    // @ts-expect-error TODO fix types
-    globalThis.name = thread
+      const extensionPath = yield* getExtensionPath
 
-    const layer = Layer.mergeAll(PWLive, OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }))
+      const layer = Layer.mergeAll(
+        PWLive({ extensionPath }),
+        OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }),
+      )
 
-    return eff.pipe(
-      Effect.withSpan(testInfo.title),
-      Effect.scoped,
-      Effect.provide(layer),
+      yield* eff.pipe(
+        Effect.withSpan(testInfo.title),
+        Effect.scoped,
+        Effect.annotateLogs({ thread }),
+        Effect.provide(layer),
+      )
+    }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.annotateLogs({ thread }),
       Effect.provide(Logger.pretty),
+      Effect.provide(PlatformNode.NodeContext.layer),
+      Effect.provide(FetchHttpClient.layer),
       Effect.runPromise,
     )
+
+const getExtensionPath = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+
+  const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  if (extensionPathFromEnv) {
+    yield* Effect.logInfo(`Using extension path from env LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: ${extensionPathFromEnv}`)
+    return extensionPathFromEnv
   }
 
-const PWLive = Effect.gen(function* () {
-  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
-  const extensionPath = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  const defaultExtensionPath = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  if ((yield* fs.exists(defaultExtensionPath)) === false) {
+    yield* Effect.logInfo(`Downloading Chrome extension to ${defaultExtensionPath}`)
+    yield* downloadChromeExtension({ targetDir: defaultExtensionPath })
+  }
+  return defaultExtensionPath
+}).pipe(
+  Effect.tap((path) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      if ((yield* fs.exists(path)) === false) {
+        yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+      }
+    }),
+  ),
+)
 
-  return Playwright.browserContextLayer({
-    persistentContextPath,
-    extensionPath,
-    launchOptions: { devtools: true },
-  })
-}).pipe(Layer.unwrapEffect)
+const PWLive = ({ extensionPath }: { extensionPath: string }) =>
+  Effect.gen(function* () {
+    const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+
+    return Playwright.browserContextLayer({
+      persistentContextPath,
+      extensionPath,
+      launchOptions: { devtools: true },
+    })
+  }).pipe(Layer.unwrapEffect)
 
 test(
   'single tab',
