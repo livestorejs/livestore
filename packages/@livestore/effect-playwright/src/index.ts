@@ -53,17 +53,63 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
     } else {
       process.env.PW_CHROMIUM_ATTACH_TO_OTHER = '1'
 
-      browserContext = yield* Effect.promise(() =>
-        PW.chromium.launchPersistentContext(persistentContextPath, {
+      // browserContext = yield* Effect.promise(() =>
+      //   PW.chromium.launchPersistentContext(persistentContextPath, {
+      //     ...launchOptions,
+      //     headless,
+      //     channel: 'chromium', // Needed for proper headless support
+      //     args: [
+      //       '--enable-unsafe-extension-debugging', // Needed for new extension loading support
+      //     ],
+      //     ignoreDefaultArgs: [
+      //       '--disable-extensions', // Needed for new extension loading support
+      //     ],
+      //   }),
+      // )
+
+      const browser = yield* Effect.promise(async () => {
+        const combinedLaunchOptions: PW.LaunchOptions = {
           ...launchOptions,
-          headless: false, // Using `--headless` flag below instead
+          headless,
+          channel: 'chromium', // Needed for proper headless support
           args: [
-            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
-            `--disable-extensions-except=${extensionPath}`,
-            `--load-extension=${extensionPath}`,
+            '--enable-unsafe-extension-debugging', // Needed for new extension loading support
           ],
-        }),
-      )
+          ignoreDefaultArgs: [
+            '--disable-extensions', // Needed for new extension loading support
+          ],
+          ...{
+            _userDataDir: '', // Equivalent to `persistentContextPath`
+            _sharedBrowser: true,
+          },
+        }
+
+        // First, launch the browser via HTTP request
+        const response = await fetch('http://localhost:8080/launch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-launch-options': JSON.stringify(combinedLaunchOptions),
+          },
+          body: JSON.stringify(combinedLaunchOptions),
+        })
+
+        if (!response.ok) {
+          console.log(await response.text())
+          throw new Error(`Failed to launch browser: ${response.statusText}`)
+        }
+
+        const { wsEndpoint } = await response.json()
+
+        // Connect directly to the browser server
+        return await PW.chromium.connect(wsEndpoint)
+      })
+
+      const browserSession = yield* Effect.tryPromise(() => browser.newBrowserCDPSession())
+
+      yield* Effect.tryPromise(() => browserSession.send('Extensions.loadUnpacked', { path: extensionPath }))
+
+      browserContext = yield* Effect.promise(() => browser.newContext())
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
