@@ -19,7 +19,7 @@
     "./cf-worker/worker": {
       "types": "./dist/cf-worker/worker.d.ts",
       "default": "./dist/cf-worker/worker.js"
-    }  
+    }
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
