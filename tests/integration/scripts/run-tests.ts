@@ -2,9 +2,11 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
+import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
+import { downloadChromeExtension } from './download-chrome-extension.js'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
@@ -136,6 +138,25 @@ export const todomvcTest: Cli.Command.Command<
   ),
 )
 
+export const setupDevtools: Cli.Command.Command<
+  'setup-devtools',
+  CommandExecutor.CommandExecutor,
+  UnexpectedError | PlatformError.PlatformError,
+  {}
+> = Cli.Command.make(
+  'setup-devtools',
+  {},
+  Effect.fn(function* () {
+    const targetDir = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+
+    yield* downloadChromeExtension({
+      targetDir,
+    }).pipe(Effect.provide(FetchHttpClient.layer), Effect.provide(PlatformNode.NodeContext.layer))
+
+    yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
+  }, UnexpectedError.mapToUnexpectedError),
+)
+
 export const devtoolsTest: Cli.Command.Command<
   'devtools',
   CommandExecutor.CommandExecutor,
@@ -215,7 +236,7 @@ export const runAll: Cli.Command.Command<
   }, Effect.withSpan('integration-tests:run-all')),
 )
 
-export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll] as const
+export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll, setupDevtools] as const
 
 export const command: Cli.Command.Command<
   'integration',

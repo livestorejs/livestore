@@ -9,6 +9,7 @@
   },
   "include": ["./src", "./scripts"],
   "references": [
+    { "path": "../../packages/@local/shared" },
     { "path": "../../packages/@livestore/effect-playwright" },
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/react" },
@@ -17,6 +18,6 @@
     { "path": "../../packages/@livestore/sync-cf" },
     { "path": "../../packages/@livestore/utils" },
     { "path": "../../packages/@livestore/utils-dev" },
-    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/adapter-web" }
   ]
 }
