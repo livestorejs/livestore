@@ -2,6 +2,7 @@ packages:
   - scripts
   - docs
   - packages/@livestore/*
+  - packages/@local/*
   - examples/src/*
   - examples/standalone/*
   - tests/*
