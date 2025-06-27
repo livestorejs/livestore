@@ -28,7 +28,7 @@
   "files.exclude": {
     "**/prettier.config.cjs": true,
     "**/node_modules/**/dist": false,
-    "**/{examples,packages}/**/dist": true,
+    // "**/{examples,packages}/**/dist": true,
     "**/.git": true,
     "**/.vercel": true,
     "**/.netlify": true,
@@ -43,7 +43,7 @@
     "**/examples/standalone/**": false,
     "**/.vercel": true,
     "**/.direnv": true,
-    "**/dist": true,
+    // "**/dist": true,
     "pnpm-lock.yaml": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
@@ -51,5 +51,5 @@
   "workbench.editor.customLabels.patterns": {
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
-  },
+  }
 }
