@@ -31,7 +31,7 @@ export const events = {
 
 export const tables = { items, uiState }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   'v1.ThousandItemsCreated': (thousandItems) => [items.delete(), ...thousandItems.map((item) => items.insert(item))],
   'v1.TenThousandItemsCreated': (tenThousandItems) => [
     items.delete(),
@@ -50,7 +50,7 @@ const materializers = State.SQLite.materializers(events, {
     return updates
   },
   'v1.AllItemsDeleted': () => items.delete(),
-})
+}
 
 const state = State.SQLite.makeState({ tables, materializers })
 

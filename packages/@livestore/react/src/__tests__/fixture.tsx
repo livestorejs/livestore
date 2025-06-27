@@ -77,10 +77,10 @@ export const events = {
   UserInfoSet: userInfo.set,
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
   todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
-})
+}
 
 export const tables = { todos, app, userInfo, AppRouterSchema }
 

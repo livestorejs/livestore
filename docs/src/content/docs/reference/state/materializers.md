@@ -33,7 +33,7 @@ const events = {
  *    - `db`: The raw database instance (e.g., a Drizzle instance for SQLite).
  *    - `event`: The full event object, including metadata like event ID and timestamp.
  */
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   // Example of a single database write
   todoCreated: ({ id, text, completed }, ctx) => todos.insert({ id, text, completed: completed ?? false }),
 
@@ -57,7 +57,7 @@ const materializers = State.SQLite.materializers(events, {
 Sometimes it can be useful to query your current state when executing a materializer. This can be done by using `ctx.query` in your materializer function.
 
 ```ts
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers = {
   todoCreated: ({ id, text, completed }, ctx) => {
     const previousIds = ctx.query(todos.select('id'))
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
@@ -87,6 +87,31 @@ If the error happens on the client which tries to commit the event, the event wi
 
 In the future there will be ways to configure the error-handling behaviour, e.g. to allow skipping an incoming event when a materializer fails in order to avoid the app getting stuck. However, skipping events might also lead to diverging state across clients and should be used with caution.
 
+## Materializer Return Types
+
+Materializers can return raw SQL strings and bind values, as well as arrays of those values. In these cases, you may also specify the `writeTables` (a `Set<string>` of table names), which ensures observers of the table(s) are notified.
+
+```ts
+const materializers: State.SQLite.Materializers<typeof events> = {
+  // Returning a raw SQL string.
+  "v1.TodoCreated": ({ id, text }) => `INSERT INTO todos (id, text) VALUES ("${id}", "${text}")`,
+  // Returning a raw SQL string and bind values.
+  "v1.TodoCompleted": ({ id }) => ({
+    sql: "UPDATE todos SET completed = 1 WHERE id = ?",
+    bindValues: [id],
+    writeTables: new Set(["todos"]),
+  }),
+  // Returning a list.
+  "v1.TodoCompleted": ({id}) => [
+    {
+      sql: "UPDATE todos SET completed = 1 WHERE id = ?",
+      bindValues: [id],
+      writeTables: new Set(["todos"]),
+    },
+  ]
+})
+```
+
 ## Best practices
 
 ### Side-effect free / deterministic
@@ -104,12 +129,12 @@ const events = {
   }),
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.materializers<typeof events> = {
   "v1.TodoCreated": ({ text }) =>
     tables.todos.insert({ id: crypto.randomUUID(), text }),
   //                          ^^^^^^^^^^^^^^^^^^^
   //                          This is non-deterministic
-})
+}
 
 store.commit(events.todoCreated({ text: 'Buy groceries' }))
 
@@ -123,9 +148,9 @@ const events = {
   }),
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.materializers<typeof events> = {
   "v1.TodoCreated": ({ id, text }) => tables.todos.insert({ id, text }),
-})
+}
 
 store.commit(events.todoCreated({ id: crypto.randomUUID(), text: 'Buy groceries' }))
 ```

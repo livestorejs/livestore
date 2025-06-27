@@ -113,7 +113,7 @@ export const events = {
   uiStateSet: uiState.set,
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   'v1.IssueCreated': ({ id, title, description, parentIssueId, assigneeId, status, priority, createdAt, updatedAt }) =>
     issues.insert({
       id,
@@ -138,7 +138,7 @@ const materializers = State.SQLite.materializers(events, {
   'v1.ReactionCreated': ({ id, issueId, commentId, userId, emoji }) =>
     reactions.insert({ id, issueId, commentId, userId, emoji }),
   'v1.AllCleared': ({ deletedAt }) => issues.update({ deletedAt }).where({ deletedAt: null }),
-})
+}
 
 const state = State.SQLite.makeState({ tables, materializers })
 

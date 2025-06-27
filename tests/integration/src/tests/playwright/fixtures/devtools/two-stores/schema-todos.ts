@@ -18,9 +18,9 @@ const tables = {
   }),
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   TodoCreated: ({ id, title }) => tables.todos.insert({ id, title }),
-})
+}
 
 const state = State.SQLite.makeState({ tables, materializers })
 

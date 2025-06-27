@@ -33,11 +33,11 @@ export const events = {
   }),
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
-})
+}
 
 export const tables = { todos, appConfig }
 

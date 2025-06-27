@@ -46,13 +46,13 @@ export const events = {
 
 export const tables = { todos, uiState }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   'v1.TodoCreated': ({ id, text }) => todos.insert({ id, text, completed: false }),
   'v1.TodoCompleted': ({ id }) => todos.update({ completed: true }).where({ id }),
   'v1.TodoUncompleted': ({ id }) => todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => todos.update({ deletedAt }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => todos.update({ deletedAt }).where({ completed: true }),
-})
+}
 
 const state = State.SQLite.makeState({ tables, materializers })
 
