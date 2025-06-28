@@ -1,12 +1,7 @@
 import {
+  type Bindable,
   type ClientSession,
   type ClientSessionSyncProcessor,
-  type ParamsObject,
-  type PreparedBindValues,
-  type QueryBuilder,
-  UnexpectedError,
-} from '@livestore/common'
-import {
   Devtools,
   getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
@@ -16,9 +11,12 @@ import {
   isQueryBuilder,
   liveStoreVersion,
   makeClientSessionSyncProcessor,
+  type PreparedBindValues,
   prepareBindValues,
+  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
@@ -415,13 +413,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | LiveQuery<TResult>
       | LiveQueryDef<TResult>
       | SignalDef<TResult>
-      | { query: string; bindValues: ParamsObject },
+      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
+      const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
+      if (query.schema) {
+        return Schema.decodeSync(query.schema)(res)
+      }
+      return res
     } else if (isQueryBuilder(query)) {
       const ast = query[QueryBuilderAstSymbol]
       if (ast._tag === 'RowQuery') {
