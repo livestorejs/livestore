@@ -5,5 +5,8 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17"
   }
 }
