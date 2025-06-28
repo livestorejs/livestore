@@ -8,6 +8,16 @@
 - Detection of non-pure materializers (during development)
 - fix: store.subscribe() QueryBuilder support #371 (thanks @rgbkrk)
 
+- Breaking: Adjusted `QueryBuilder.first()` API and default behaviour
+  - Before: `first()` without arguments would throw an error if the query didn't match any rows
+  - Now: `first()` without arguments will return `undefined` if the query didn't match any rows
+  - New API: 
+    ```ts
+    table.query.first() // returns undefined if the query didn't match any rows
+    table.query.first({ behaviour: 'error' }) // throws an error if the query didn't match any rows
+    table.query.first({ behaviour: 'fallback', fallback: () => ({ id: '123', name: 'Alice' }) }) // returns a fallback value if the query didn't match any rows
+    ```
+
 ### Todo
 
 - Fix: Rolling back empty materializers currently fails

@@ -137,7 +137,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         ),
       })
     },
-    first: (options) => {
+    first: (behaviour) => {
       assertSelectQueryBuilderAst(ast)
 
       if (ast.limit._tag === 'Some') return invalidQueryBuilder(`.first() can't be called after .limit()`)
@@ -145,8 +145,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         limit: Option.some(1),
-        pickFirst:
-          options?.fallback !== undefined && options.fallback !== 'throws' ? { fallback: options.fallback } : 'throws',
+        pickFirst: { _tag: 'enabled', ...(behaviour ?? { behaviour: 'undefined' }) },
       })
     },
     // // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
@@ -267,7 +266,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
 const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
   _tag: 'SelectQuery',
   columns: [],
-  pickFirst: false,
+  pickFirst: { _tag: 'disabled' },
   select: { columns: [] },
   orderBy: [],
   offset: Option.none(),
@@ -310,9 +309,11 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
   switch (queryAst._tag) {
     case 'SelectQuery': {
       const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
-      if (queryAst.pickFirst === false) {
+      if (queryAst.pickFirst._tag === 'disabled') {
         return arraySchema
-      } else if (queryAst.pickFirst === 'throws') {
+      } else if (queryAst.pickFirst.behaviour === 'undefined') {
+        return arraySchema.pipe(Schema.headOrElse(() => undefined))
+      } else if (queryAst.pickFirst.behaviour === 'error') {
         // Will throw if the array is empty
         return arraySchema.pipe(Schema.headOrElse())
       } else {
