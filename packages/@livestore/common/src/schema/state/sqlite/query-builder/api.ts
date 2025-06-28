@@ -19,7 +19,11 @@ export namespace QueryBuilderAst {
   export interface SelectQuery {
     readonly _tag: 'SelectQuery'
     readonly columns: string[]
-    readonly pickFirst: false | { fallback: () => any } | 'throws'
+    readonly pickFirst:
+      | { _tag: 'disabled' }
+      | { _tag: 'enabled'; behaviour: 'undefined' }
+      | { _tag: 'enabled'; behaviour: 'error' }
+      | { _tag: 'enabled'; behaviour: 'fallback'; fallback: () => any }
     readonly select: {
       columns: ReadonlyArray<string>
     }
@@ -167,6 +171,21 @@ export namespace QueryBuilder {
     direction: 'asc' | 'desc'
   }>
 
+  export type FirstQueryBehaviour =
+    | {
+        /** Will error if no matching row was found */
+        behaviour: 'error'
+      }
+    | {
+        /** Will return `undefined` if no matching row was found */
+        behaviour: 'undefined'
+      }
+    | {
+        /** Will return a fallback value if no matching row was found */
+        behaviour: 'fallback'
+        fallback: () => any
+      }
+
   export type ApiFull<TResult, TTableDef extends TableDefBase, TWithout extends ApiFeature> = {
     /**
      * `SELECT *` is the default
@@ -285,16 +304,24 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.first()
-     * db.todos.where('id', '123').first()
+     * db.todos.where('id', '123').first() // will return `undefined` if no rows are returned
+     * db.todos.where('id', '123').first({ behaviour: 'error' }) // will throw if no rows are returned
+     * db.todos.first({ behaviour: 'fallback', fallback: () => ({ id: '123', text: 'Buy milk', status: 'active' }) })
      * ```
      *
-     * Query will throw if no rows are returned and no fallback is provided.
+     * Behaviour:
+     * - `undefined`: Will return `undefined` if no rows are returned (default behaviour)
+     * - `error`: Will throw if no rows are returned
+     * - `fallback`: Will return a fallback value if no rows are returned
      */
-    readonly first: <TFallback = never>(options?: {
-      /** @default 'throws' */
-      fallback?: (() => TFallback | GetSingle<TResult>) | 'throws'
-    }) => QueryBuilder<
-      TFallback | GetSingle<TResult>,
+    readonly first: <TBehaviour extends QueryBuilder.FirstQueryBehaviour = { behaviour: 'undefined' }>(
+      behaviour?: TBehaviour,
+    ) => QueryBuilder<
+      TBehaviour extends { behaviour: 'fallback' }
+        ? ReturnType<TBehaviour['fallback']> | GetSingle<TResult>
+        : TBehaviour extends { behaviour: 'undefined' }
+          ? undefined | GetSingle<TResult>
+          : GetSingle<TResult>,
       TTableDef,
       TWithout | 'row' | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where' | 'returning' | 'onConflict'
     >

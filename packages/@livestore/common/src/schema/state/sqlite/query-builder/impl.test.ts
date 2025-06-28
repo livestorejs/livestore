@@ -120,7 +120,19 @@ describe('query builder', () => {
         }
       `)
 
-      expect(dump(db.todos.select('id', 'text').first({ fallback: () => undefined }))).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').first({ behaviour: 'error' }))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+          ],
+          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
+        }
+      `)
+
+      expect(
+        dump(db.todos.select('id', 'text').first({ behaviour: 'fallback', fallback: () => undefined })),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
