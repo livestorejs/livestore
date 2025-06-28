@@ -47,7 +47,7 @@ export type WorkerOptions = {
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(Effect.runFork)
+  makeWorkerEffect(options).pipe(PlatformNode.NodeRuntime.runMain)
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {

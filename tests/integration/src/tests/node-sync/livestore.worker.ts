@@ -2,7 +2,7 @@ import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
 import { makeCfSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-import { OtelLiveDummy } from '@livestore/utils/node'
+import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 import { schema } from './schema.js'
@@ -20,5 +20,5 @@ makeWorkerEffect({
       ? OtelLiveDummy
       : OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true }),
   ),
-  Effect.runFork,
+  PlatformNode.NodeRuntime.runMain,
 )
