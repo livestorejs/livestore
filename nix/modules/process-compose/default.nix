@@ -1,0 +1,6 @@
+{
+  imports = [
+    ../services
+    ./settings.nix
+  ];
+}

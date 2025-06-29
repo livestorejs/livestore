@@ -3,13 +3,14 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
     playwright-web-flake = {
       url = "github:pietdevries94/playwright-web-flake";
       inputs.nixpkgs.follows = "nixpkgsUnstable";
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgsUnstable, flake-utils, playwright-web-flake }:
+  outputs = inputs@{ self, nixpkgs, nixpkgsUnstable, flake-utils, playwright-web-flake, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = final: prev: {
@@ -25,19 +26,20 @@
         };
         corepack = pkgs.runCommand "corepack-enable" {} ''
           mkdir -p $out/bin
-          ${pkgsUnstable.nodejs_23}/bin/corepack enable --install-directory $out/bin
+          ${pkgsUnstable.nodejs_24}/bin/corepack enable --install-directory $out/bin
         '';
       in
       {
 
         packages = {
-          find-free-port = pkgsUnstable.callPackage ./find-free-port.nix { };
+          find-free-port = pkgsUnstable.callPackage ./packages/find-free-port.nix { };
+          monitoring = import ./packages/grafana-lgtm.nix { inherit inputs; pkgs = pkgsUnstable; }; 
         };
 
         devShell = with pkgs; pkgs.mkShell {
 
           buildInputs = [
-            pkgsUnstable.nodejs_23
+            pkgsUnstable.nodejs_24
             corepack
             pkgsUnstable.bun
             pkgsUnstable.esbuild
