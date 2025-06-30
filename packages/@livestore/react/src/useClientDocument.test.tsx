@@ -282,7 +282,9 @@ Vitest.describe('useClientDocument', () => {
 
         const mapAttributes = (attributes: otel.Attributes) => {
           return ReadonlyRecord.map(attributes, (val, key) => {
-            if (key === 'firstStackInfo') {
+            if (key === 'code.stacktrace') {
+              return '<STACKTRACE>'
+            } else if (key === 'firstStackInfo') {
               const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
               // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
               stackInfo.frames.forEach((_) => {

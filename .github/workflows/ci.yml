@@ -73,7 +73,11 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           # TODO surface deploy url in github UI via environments
         run: |
-          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          else
+            echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+          fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
     steps:
