@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05-small";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
@@ -33,7 +33,7 @@
 
         packages = {
           find-free-port = pkgsUnstable.callPackage ./packages/find-free-port.nix { };
-          monitoring = import ./packages/grafana-lgtm.nix { inherit inputs; pkgs = pkgsUnstable; }; 
+          monitoring = import ./packages/grafana-lgtm.nix { inherit inputs pkgs; }; 
         };
 
         devShell = with pkgs; pkgs.mkShell {
