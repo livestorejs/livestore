@@ -1,4 +1,4 @@
-import type { Adapter, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
+import { type Adapter, ClientSessionLeaderThreadProxy, type LockStatus, type SyncOptions } from '@livestore/common'
 import { Devtools, makeClientSession, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
@@ -196,7 +196,7 @@ const makeLeaderThread = ({
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
@@ -210,7 +210,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+      })
 
       const initialSnapshot = dbState.export()
 

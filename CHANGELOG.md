@@ -3,6 +3,25 @@
 > NOTE: LiveStore is still in beta and releases can include breaking changes. See [state of the project](https://docs.livestore.dev/evaluating/state-of-the-project/) for more info.
 > LiveStore is following a semver-like release strategy where breaking changes are released in minor versions before the 1.0 release.
 
+## 0.4.0
+
+- Detection of non-pure materializers (during development)
+- fix: store.subscribe() QueryBuilder support #371 (thanks @rgbkrk)
+
+- Breaking: Adjusted `QueryBuilder.first()` API and default behaviour
+  - Before: `first()` without arguments would throw an error if the query didn't match any rows
+  - Now: `first()` without arguments will return `undefined` if the query didn't match any rows
+  - New API: 
+    ```ts
+    table.query.first() // returns undefined if the query didn't match any rows
+    table.query.first({ behaviour: 'error' }) // throws an error if the query didn't match any rows
+    table.query.first({ behaviour: 'fallback', fallback: () => ({ id: '123', name: 'Alice' }) }) // returns a fallback value if the query didn't match any rows
+    ```
+
+### Todo
+
+- Fix: Rolling back empty materializers currently fails
+
 ## 0.3.0
 
 ### New features

@@ -279,7 +279,7 @@ export class ReactiveGraph<
             return compute(atom, otelContext, debugRefreshReason)
           }
 
-          let debugInfo: TDebugThunkInfo | undefined = undefined
+          let debugInfo: TDebugThunkInfo | undefined 
           const setDebugInfo = (debugInfo_: TDebugThunkInfo) => {
             debugInfo = debugInfo_
           }
