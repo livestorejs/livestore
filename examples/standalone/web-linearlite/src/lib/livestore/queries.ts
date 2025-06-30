@@ -1,7 +1,7 @@
-import { tables } from '@/lib/livestore/schema'
 import { queryDb } from '@livestore/livestore'
 import { useClientDocument } from '@livestore/react'
 import React from 'react'
+import { tables } from '@/lib/livestore/schema'
 
 export const useFilterState = () => useClientDocument(tables.filterState)
 
@@ -35,7 +35,7 @@ export const highestIssueId$ = queryDb(
   tables.issue
     .select('id')
     .orderBy('id', 'desc')
-    .first({ fallback: () => 0 }),
+    .first({ behaviour: 'fallback', fallback: () => 0 }),
   {
     label: 'global.highestIssueId',
   },
@@ -44,7 +44,7 @@ export const highestKanbanOrder$ = queryDb(
   tables.issue
     .select('kanbanorder')
     .orderBy('kanbanorder', 'desc')
-    .first({ fallback: () => 'a1' }),
+    .first({ behaviour: 'fallback', fallback: () => 'a1' }),
   {
     label: 'global.highestKanbanOrder',
   },

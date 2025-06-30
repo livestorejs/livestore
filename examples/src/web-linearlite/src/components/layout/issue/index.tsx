@@ -1,3 +1,8 @@
+import { ChevronRightIcon } from '@heroicons/react/16/solid'
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
+import { Button } from 'react-aria-components'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Avatar } from '@/components/common/avatar'
 import { MenuButton } from '@/components/common/menu-button'
 import { PriorityMenu } from '@/components/common/priority-menu'
@@ -9,22 +14,16 @@ import { DeleteButton } from '@/components/layout/issue/delete-button'
 import { DescriptionInput } from '@/components/layout/issue/description-input'
 import { TitleInput } from '@/components/layout/issue/title-input'
 import { events, tables } from '@/lib/livestore/schema'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
+import type { Priority } from '@/types/priority'
+import type { Status } from '@/types/status'
 import { formatDate } from '@/utils/format-date'
 import { getIssueTag } from '@/utils/get-issue-tag'
-import { ChevronRightIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
-import { queryDb } from '@livestore/livestore'
-import React from 'react'
-import { Button } from 'react-aria-components'
-import { useNavigate, useParams } from 'react-router-dom'
 
 export const Issue = () => {
   const id = Number(useParams().id ?? 0)
   const navigate = useNavigate()
   const { store } = useStore()
-  const issue = store.useQuery(queryDb(tables.issue.where({ id }).first(), { deps: [id] }))
+  const issue = store.useQuery(queryDb(tables.issue.where({ id }).first({ behaviour: 'error' }), { deps: [id] }))
 
   const close = () => {
     if (window.history.length > 2) navigate(-1)
@@ -44,7 +43,13 @@ export const Issue = () => {
   }
 
   const description = store.useQuery(
-    queryDb(tables.description.select('body').where({ id: issue.id }).first(), { deps: [issue.id] }),
+    queryDb(
+      tables.description
+        .select('body')
+        .where({ id: issue.id })
+        .first({ behaviour: 'fallback', fallback: () => '' }),
+      { deps: [issue.id] },
+    ),
   )
 
   return (
