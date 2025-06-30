@@ -171,7 +171,7 @@ export namespace QueryBuilder {
     direction: 'asc' | 'desc'
   }>
 
-  export type FirstQueryBehaviour =
+  export type FirstQueryBehaviour<TResult, TFallback> =
     | {
         /** Will error if no matching row was found */
         behaviour: 'error'
@@ -183,7 +183,7 @@ export namespace QueryBuilder {
     | {
         /** Will return a fallback value if no matching row was found */
         behaviour: 'fallback'
-        fallback: () => any
+        fallback: () => TResult | TFallback
       }
 
   export type ApiFull<TResult, TTableDef extends TableDefBase, TWithout extends ApiFeature> = {
@@ -314,8 +314,11 @@ export namespace QueryBuilder {
      * - `error`: Will throw if no rows are returned
      * - `fallback`: Will return a fallback value if no rows are returned
      */
-    readonly first: <TBehaviour extends QueryBuilder.FirstQueryBehaviour = { behaviour: 'undefined' }>(
-      behaviour?: TBehaviour,
+    readonly first: <
+      TBehaviour extends QueryBuilder.FirstQueryBehaviour<GetSingle<TResult>, TFallback>,
+      TFallback = never,
+    >(
+      behaviour?: QueryBuilder.FirstQueryBehaviour<GetSingle<TResult>, TFallback> & TBehaviour,
     ) => QueryBuilder<
       TBehaviour extends { behaviour: 'fallback' }
         ? ReturnType<TBehaviour['fallback']> | GetSingle<TResult>
