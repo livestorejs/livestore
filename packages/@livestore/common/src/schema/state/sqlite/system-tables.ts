@@ -4,7 +4,7 @@ import * as EventSequenceNumber from '../../EventSequenceNumber.js'
 import { SqliteDsl } from './db-schema/mod.js'
 import { table } from './table-def.js'
 
-/// Read model DB
+/// State DB
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
 
@@ -46,6 +46,7 @@ export const sessionChangesetMetaTable = table({
     // TODO bring back primary key
     seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    seqNumRebaseGeneration: SqliteDsl.integer({}),
     changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),
   },
@@ -54,25 +55,7 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
-export const LEADER_MERGE_COUNTER_TABLE = '__livestore_leader_merge_counter'
-
-// TODO get rid of this table in favour of client-only merge generation
-export const leaderMergeCounterTable = table({
-  name: LEADER_MERGE_COUNTER_TABLE,
-  columns: {
-    id: SqliteDsl.integer({ primaryKey: true, schema: Schema.Literal(0) }),
-    mergeCounter: SqliteDsl.integer({ primaryKey: true }),
-  },
-})
-
-export type LeaderMergeCounterRow = typeof leaderMergeCounterTable.Type
-
-export const stateSystemTables = [
-  schemaMetaTable,
-  schemaEventDefsMetaTable,
-  sessionChangesetMetaTable,
-  leaderMergeCounterTable,
-]
+export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
 
@@ -86,8 +69,11 @@ export const eventlogMetaTable = table({
     // TODO Adjust modeling so a global event never needs a client id component
     seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    seqNumRebaseGeneration: SqliteDsl.integer({ primaryKey: true }),
     parentSeqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     parentSeqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    parentSeqNumRebaseGeneration: SqliteDsl.integer({}),
+    /** Event definition name */
     name: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
@@ -97,7 +83,7 @@ export const eventlogMetaTable = table({
   },
   indexes: [
     { columns: ['seqNumGlobal'], name: 'idx_eventlog_seqNumGlobal' },
-    { columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_eventlog_seqNum' },
+    { columns: ['seqNumGlobal', 'seqNumClient', 'seqNumRebaseGeneration'], name: 'idx_eventlog_seqNum' },
   ],
 })
 
@@ -105,6 +91,7 @@ export type EventlogMetaRow = typeof eventlogMetaTable.Type
 
 export const SYNC_STATUS_TABLE = '__livestore_sync_status'
 
+// TODO support sync backend identity (to detect if sync backend changes)
 export const syncStatusTable = table({
   name: SYNC_STATUS_TABLE,
   columns: {
@@ -114,4 +101,4 @@ export const syncStatusTable = table({
 
 export type SyncStatusRow = typeof syncStatusTable.Type
 
-export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable]
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable] as const

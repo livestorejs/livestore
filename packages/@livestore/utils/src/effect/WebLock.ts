@@ -12,7 +12,7 @@ export const withLock =
     onTaken?: Effect.Effect<void, E2>
     options?: Omit<LockOptions, 'signal'>
   }) =>
-  <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A | void, E | E2, Ctx> =>
+  <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A, E | E2, Ctx> =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<Ctx>()
 

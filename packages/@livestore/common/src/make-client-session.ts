@@ -39,7 +39,7 @@ export const makeClientSession = <R>({
   sessionId: string
   isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  leaderThread: ClientSessionLeaderThreadProxy
+  leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy
   sqliteDb: SqliteDb
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
@@ -133,4 +133,4 @@ export const makeClientSession = <R>({
       shutdown,
       debugInstanceId,
     } satisfies ClientSession
-  })
+  }).pipe(Effect.withSpan('@livestore/common:make-client-session'))

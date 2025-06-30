@@ -106,6 +106,7 @@ export const insertRows = <TColumns extends SqliteDsl.Columns>({
 
   const bindValues = valuesArray.reduce(
     (acc, values, itemIndex) => ({
+      // biome-ignore lint/performance/noAccumulatingSpread: TODO improve this some day
       ...acc,
       ...makeBindValues({ columns, values, variablePrefix: `item_${itemIndex}_` }),
     }),
@@ -292,6 +293,7 @@ Error: ${parseErrorStr}
 Value:`,
             value,
           )
+          // biome-ignore lint/suspicious/noDebugger: debug
           debugger
           throw res.left
         } else {

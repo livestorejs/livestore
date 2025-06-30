@@ -2,7 +2,6 @@ import {
   BootStatus,
   Devtools,
   LeaderAheadError,
-  LeaderPullCursor,
   liveStoreVersion,
   MigrationsReport,
   SyncState,
@@ -85,11 +84,10 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {
-      cursor: LeaderPullCursor,
+      cursor: EventSequenceNumber.EventSequenceNumber,
     },
     success: Schema.Struct({
       payload: SyncState.PayloadUpstream,
-      mergeCounter: Schema.Number,
     }),
     failure: UnexpectedError,
   }) {}

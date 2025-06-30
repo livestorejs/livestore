@@ -80,6 +80,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
   reason: Schema.Union(
     Schema.TaggedStruct('Unexpected', {
@@ -92,10 +93,12 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
   ),
 }) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
   message: Schema.String,
 }) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.EventSequenceNumber,
   providedNum: EventSequenceNumber.EventSequenceNumber,

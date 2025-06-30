@@ -1,26 +1,26 @@
-import { Icon } from '@/components/icons'
-import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
-import { StatusDetails } from '@/data/status-options'
-import { filterState$, useFilterState, useDebouncedScrollState } from '@/lib/livestore/queries'
-import { events, tables } from '@/lib/livestore/schema'
-import { filterStateToWhere } from '@/lib/livestore/utils'
-import { Status } from '@/types/status'
 import { queryDb } from '@livestore/livestore'
 import * as LiveStoreReact from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
   DropIndicator,
-  DropPosition,
-  DroppableCollectionReorderEvent,
+  type DropPosition,
+  type DroppableCollectionReorderEvent,
   GridList,
   GridListItem,
-  ListLayout,
-  Virtualizer,
   isTextDropItem,
+  ListLayout,
   useDragAndDrop,
+  Virtualizer,
 } from 'react-aria-components'
 import AutoSizer from 'react-virtualized-auto-sizer'
+import { Icon } from '@/components/icons'
+import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
+import type { StatusDetails } from '@/data/status-options'
+import { filterState$, useDebouncedScrollState, useFilterState } from '@/lib/livestore/queries'
+import { events, tables } from '@/lib/livestore/schema'
+import { filterStateToWhere } from '@/lib/livestore/utils'
+import type { Status } from '@/types/status'
 import { Card } from './card'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
@@ -45,7 +45,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
       tables.issue
         .select('kanbanorder')
         .where({ id: Number(targetId) })
-        .first(),
+        .first({ behaviour: 'error' }),
     )
     const nearestKanbanOrder = store.query(
       tables.issue

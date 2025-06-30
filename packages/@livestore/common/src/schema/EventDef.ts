@@ -28,7 +28,9 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
   }
 
   /** Helper function to construct a partial event */
-  (args: TType): {
+  (
+    args: TType,
+  ): {
     name: TName
     args: TType
   }
@@ -194,14 +196,14 @@ export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyW
 ) => SingleOrReadonlyArray<MaterializerResult>
 
 export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
-  eventDef: TEventDef,
+  _eventDef: TEventDef,
   materializer: Materializer<TEventDef>,
 ): Materializer<TEventDef> => {
   return materializer
 }
 
 export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
-  eventDefRecord: TInputRecord,
+  _eventDefRecord: TInputRecord,
   handlers: {
     [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
       TInputRecord[keyof TInputRecord],

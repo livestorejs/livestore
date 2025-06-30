@@ -1,3 +1,7 @@
+import { useStore } from '@livestore/react'
+import { generateKeyBetween } from 'fractional-indexing'
+import React from 'react'
+import { Button } from 'react-aria-components'
 import { NewIssueModalContext } from '@/app/contexts'
 import { Modal } from '@/components/common/modal'
 import { PriorityMenu } from '@/components/common/priority-menu'
@@ -6,12 +10,8 @@ import { DescriptionInput } from '@/components/layout/issue/description-input'
 import { TitleInput } from '@/components/layout/issue/title-input'
 import { highestIssueId$, useFrontendState } from '@/lib/livestore/queries'
 import { events, tables } from '@/lib/livestore/schema'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
-import { useStore } from '@livestore/react'
-import { generateKeyBetween } from 'fractional-indexing'
-import React from 'react'
-import { Button } from 'react-aria-components'
+import type { Priority } from '@/types/priority'
+import type { Status } from '@/types/status'
 
 export const NewIssueModal = () => {
   const [frontendState] = useFrontendState()
@@ -38,7 +38,7 @@ export const NewIssueModal = () => {
         .select('kanbanorder')
         .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
         .orderBy('kanbanorder', 'desc')
-        .first({ fallback: () => 'a1' }),
+        .first({ behaviour: 'fallback', fallback: () => 'a1' }),
     )
     const kanbanorder = generateKeyBetween(highestKanbanOrder, null)
     store.commit(

@@ -8,13 +8,14 @@ import * as Stream from '../Stream.js'
 import {
   DebugPingMessage,
   type InputSchema,
+  listenToDebugPing,
+  mapSchema,
   type WebChannel,
   WebChannelHeartbeat,
   WebChannelPing,
   WebChannelPong,
   WebChannelSymbol,
 } from './common.js'
-import { listenToDebugPing, mapSchema } from './common.js'
 
 export const shutdown = <MsgListen, MsgSend>(webChannel: WebChannel<MsgListen, MsgSend>): Effect.Effect<void> =>
   Deferred.done(webChannel.closedDeferred, Exit.void)
@@ -158,13 +159,11 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
     }).pipe(Effect.withSpan(`WebChannel:windowChannel`)),
   )
 
-export const messagePortChannel: {
-  <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
-    port: MessagePort
-    schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
-  }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
-} = ({ port, schema: inputSchema, debugId }) =>
+export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
+  port: MessagePort
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
+  debugId?: string | number
+}) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
@@ -247,13 +246,11 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
     }),
   )
 
-export const messagePortChannelWithAck: {
-  <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
-    port: MessagePort
-    schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
-  }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
-} = ({ port, schema: inputSchema, debugId }) =>
+export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
+  port: MessagePort
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
+  debugId?: string | number
+}) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
@@ -273,7 +270,6 @@ export const messagePortChannelWithAck: {
       const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck).annotations({
         title: 'webmesh.ChannelMessage',
       })
-      type ChannelMessage = typeof ChannelMessage.Type
 
       const debugInfo = {
         sendTotal: 0,

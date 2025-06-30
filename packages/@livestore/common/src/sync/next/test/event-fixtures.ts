@@ -144,7 +144,10 @@ export const toEventNodes = (
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const eventDef = eventDefs[partialEvent.name]!
-    const eventNum = EventSequenceNumber.nextPair(currentEventSequenceNumber, eventDef.options.clientOnly).seqNum
+    const eventNum = EventSequenceNumber.nextPair({
+      seqNum: currentEventSequenceNumber,
+      isClient: eventDef.options.clientOnly,
+    }).seqNum
     currentEventSequenceNumber = eventNum
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
@@ -221,8 +224,14 @@ const getParentNum = (eventNum: EventSequenceNumber.EventSequenceNumber): EventS
   const clientParentNum = eventNum.client - 1
 
   if (clientParentNum < 0) {
-    return EventSequenceNumber.make({ global: globalParentNum - 1, client: EventSequenceNumber.clientDefault })
+    return EventSequenceNumber.make({
+      global: globalParentNum - 1,
+      client: EventSequenceNumber.clientDefault,
+    })
   }
 
-  return EventSequenceNumber.make({ global: globalParentNum, client: clientParentNum })
+  return EventSequenceNumber.make({
+    global: globalParentNum,
+    client: clientParentNum,
+  })
 }

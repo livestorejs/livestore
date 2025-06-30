@@ -56,8 +56,16 @@ This likely means the schema has changed in an incompatible way.
         )
 
         const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
-          seqNum: { global: row.seqNumGlobal, client: row.seqNumClient },
-          parentSeqNum: { global: row.parentSeqNumGlobal, client: row.parentSeqNumClient },
+          seqNum: {
+            global: row.seqNumGlobal,
+            client: row.seqNumClient,
+            rebaseGeneration: row.seqNumRebaseGeneration,
+          },
+          parentSeqNum: {
+            global: row.parentSeqNumGlobal,
+            client: row.parentSeqNumClient,
+            rebaseGeneration: row.parentSeqNumRebaseGeneration,
+          },
           name: row.name,
           args,
           clientId: row.clientId,

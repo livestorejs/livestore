@@ -1,8 +1,8 @@
+import { DurableObject } from 'cloudflare:workers'
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
-import { DurableObject } from 'cloudflare:workers'
 
 import { WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
@@ -20,7 +20,7 @@ const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMess
 
 export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime
-  name: 'eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
+  name: 'eventlog_$PERSISTENCE_FORMAT_VERSION_$storeId',
   columns: {
     seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
     parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),

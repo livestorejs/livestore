@@ -64,7 +64,7 @@ const factsSetToString = (facts: EventDefFacts, prefix: string) =>
 export const customSerializer = {
   test: (val: unknown) => Array.isArray(val),
   print: (val: unknown[], _serialize: (item: unknown) => string) => {
-    return '[\n' + (val as any[]).map((item) => '  ' + customStringify(item)).join('\n') + '\n]'
+    return `[\n${(val as any[]).map((item) => `  ${customStringify(item)}`).join('\n')}\n]`
   },
 } as any
 

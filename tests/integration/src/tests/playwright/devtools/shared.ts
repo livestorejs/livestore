@@ -3,28 +3,32 @@ import { expect } from '@playwright/test'
 
 const checkDevtoolsState_ = async (options: {
   devtools: PW.Frame | PW.Page
+  label: string
   expect: {
     leader: boolean
     alreadyLoaded: boolean
     tables: string[]
   }
 }) => {
-  const loading = options.devtools.getByText('Loading LiveStore')
+  const loading = options.devtools.getByText('Loading LiveStore').describe(`${options.label}:Loading LiveStore`)
   // if (options.expect.alreadyLoaded === false) {
   //   // Sometimes this case is flaky. TODO improve some day.
   //   await loading.waitFor({ timeout: 5000 }).catch(() => {})
   // }
   await loading.waitFor({ state: 'detached' })
 
-  await options.devtools.getByRole('tab', { name: 'Data Browser' }).waitFor({ state: 'attached', timeout: 3000 })
+  await options.devtools
+    .getByRole('tab', { name: 'Data Browser' })
+    .describe(`${options.label}:Data Browser`)
+    .waitFor({ state: 'attached', timeout: 3000 })
 
   // expect(await options.devtools.getByRole('status', { name: 'Leader Tab' }).isVisible()).toBe(options.expect.leader)
 
-  const tablesList = options.devtools.getByRole('treegrid', { name: 'Tables' })
+  const tablesList = options.devtools.getByRole('treegrid', { name: 'Tables' }).describe(`${options.label}:Tables`)
   await tablesList.waitFor({ timeout: 1000 })
 
   for (const table of options.expect.tables) {
-    await expect(tablesList.getByText(table)).toBeVisible()
+    await expect(tablesList.getByText(table).describe(`${options.label}:${table}`)).toBeVisible()
   }
 }
 

@@ -44,7 +44,7 @@ const materializers = State.SQLite.materializers(events, {
 
     const updates = []
     for (let i = 0; i < allItems.length; i += 10) {
-      updates.push(items.update({ label: allItems[i]!.label + ' !!!' }).where({ id: allItems[i]!.id }))
+      updates.push(items.update({ label: `${allItems[i]!.label} !!!` }).where({ id: allItems[i]!.id }))
     }
 
     return updates

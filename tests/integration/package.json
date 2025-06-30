@@ -17,7 +17,8 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.2"
+    "@livestore/wa-sqlite": "1.0.5-dev.2",
+    "@local/shared": "workspace:*"
   },
   "devDependencies": {
     "@opentelemetry/api": "^1.9.0",
@@ -25,17 +26,17 @@
     "@opentelemetry/resources": "^2.0.0",
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.53.1",
     "@tanstack/react-router": "^1.119.0",
     "@tanstack/router-plugin": "^1.119.0",
-    "@types/node": "^22.15.17",
+    "@types/node": "^22.15.33",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "todomvc-app-css": "^2.4.3",
     "vite": "^6.3.4",
-    "vitest": "^3.1.2",
+    "vitest": "catalog:",
     "wrangler": "^4.14.4"
   },
   "scripts": {

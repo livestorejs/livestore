@@ -38,6 +38,7 @@ export const defaultRebaseFn: RebaseFn = ({ pendingLocalEvents }) => {
   return { rebasedLocalEvents: pendingLocalEvents }
 }
 
+// TODO replace in favour of current rebase impl
 export const rebaseEvents = ({
   rebaseFn,
   pendingLocalEvents,

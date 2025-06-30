@@ -21,11 +21,17 @@ import type * as WorkerSchema from './worker-schema.js'
 
 export type TestingOverrides = {
   clientSession?: {
-    leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
+    leaderThreadProxy?: (
+      original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
+    ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
   }
-  makeLeaderThread?: {
-    dbEventlog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
-  }
+  makeLeaderThread?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<
+    {
+      dbEventlog: SqliteDb
+      dbState: SqliteDb
+    },
+    UnexpectedError
+  >
 }
 
 export interface MakeLeaderThreadArgs {
@@ -62,8 +68,10 @@ export const makeLeaderThread = ({
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread?.dbEventlog && kind === 'eventlog') {
-        return testing.makeLeaderThread.dbEventlog(makeSqliteDb)
+      if (testing?.makeLeaderThread) {
+        return testing
+          .makeLeaderThread(makeSqliteDb)
+          .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
       }
 
       return storage.type === 'in-memory'

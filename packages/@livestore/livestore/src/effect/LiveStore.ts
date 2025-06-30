@@ -35,7 +35,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
 
       globalThis.__debugLiveStore ??= {}
       if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-        globalThis.__debugLiveStore['_'] = store
+        globalThis.__debugLiveStore._ = store
       }
       globalThis.__debugLiveStore[storeId] = store
 

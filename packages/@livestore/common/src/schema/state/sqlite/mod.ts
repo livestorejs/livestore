@@ -6,7 +6,7 @@ import type { InternalState } from '../../schema.js'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
 import { SqliteAst } from './db-schema/mod.js'
 import { stateSystemTables } from './system-tables.js'
-import { type TableDef, type TableDefBase } from './table-def.js'
+import type { TableDef, TableDefBase } from './table-def.js'
 
 export * from './table-def.js'
 export {

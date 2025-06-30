@@ -98,7 +98,7 @@ export const useClientDocument: {
 
   const store =
     storeArg?.store ??
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useClientDocument`)
 

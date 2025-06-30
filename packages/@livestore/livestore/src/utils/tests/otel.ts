@@ -24,7 +24,7 @@ export const getSimplifiedRootSpan = (
   const createStoreSpanData = spans.find((_) => _.name === 'createStore')
   if (createStoreSpanData === undefined) {
     throw new Error(
-      "Could not find the root span named 'createStore'. Available spans: " + spans.map((s) => s.name).join(', '),
+      `Could not find the root span named 'createStore'. Available spans: ${spans.map((s) => s.name).join(', ')}`,
     )
   }
   const rootSpan = spansMap.get(createStoreSpanData.spanContext().spanId)!

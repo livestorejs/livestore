@@ -1,7 +1,9 @@
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
-import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
+import type { SqliteDb } from '../adapter-types.js'
+import type { MigrationsReport, MigrationsReportEntry } from '../defs.js'
+import type { UnexpectedError } from '../errors.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
 import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'

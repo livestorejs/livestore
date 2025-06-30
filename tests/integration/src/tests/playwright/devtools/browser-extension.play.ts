@@ -1,15 +1,27 @@
+/** biome-ignore-all lint/correctness/noEmptyPattern: playwright expects destructuring */
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
 import * as Playwright from '@livestore/effect-playwright'
-import { envTruish, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Fiber, Layer, Logger, OtelTracer } from '@livestore/utils/effect'
+import { shouldNeverHappen } from '@livestore/utils'
+import {
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  FileSystem,
+  identity,
+  Layer,
+  Logger,
+  OtelTracer,
+} from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
-
+import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.js'
 import { checkDevtoolsState } from './shared.js'
 
 const usedPages = new Set<PW.Page>()
@@ -26,7 +38,7 @@ const makeTabPair = (url: string, tabName: string) =>
       //   browserContext.on('page', () => cb(Effect.void))
       // }).pipe(Effect.fork)
 
-      const page = yield* Effect.promise(() => browserContext.newPage())
+      const page = yield* Effect.tryPromise(() => browserContext.newPage())
       // yield* Fiber.await(pageEventFiber)
 
       return page
@@ -48,7 +60,7 @@ const makeTabPair = (url: string, tabName: string) =>
 
     usedPages.add(page)
 
-    yield* Effect.promise(() => page.goto(url))
+    yield* Effect.tryPromise(() => page.goto(`${url}?sessionId=${tabName}`))
 
     const devtools =
       browserContext.pages().filter(isUnused).find(isDevtools) ??
@@ -62,28 +74,37 @@ const makeTabPair = (url: string, tabName: string) =>
 
     usedPages.add(devtools)
 
-    const liveStoreDevtools = yield* getLiveStoreDevtoolsFrame(devtools)
+    const liveStoreDevtools = yield* getLiveStoreDevtoolsFrame(devtools, `${tabName}-devtools`)
 
-    return { page, devtools, liveStoreDevtools, pageConsoleFiber, devtoolsConsoleFiber }
+    return {
+      page,
+      devtools,
+      liveStoreDevtools,
+      pageConsoleFiber,
+      devtoolsConsoleFiber,
+    }
   })
 
 // Based on https://gist.github.com/mxschmitt/f891a2f8fb37ce01ed026627f75d7ce6
-const getLiveStoreDevtoolsFrame = (devtools: PW.Page) =>
-  Effect.promise(async () => {
-    await devtools.getByRole('button', { name: 'Customize and control DevTools' }).first().click()
-    await devtools.getByTitle('Undock into separate window').click()
+const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
+  Effect.tryPromise(async () => {
+    return await test.step(`${label}:getLiveStoreDevtoolsFrame`, async () => {
+      await devtools.getByRole('button', { name: 'Customize and control DevTools' }).first().click()
+      // TODO sometimes (fairly rarely) gets stuck in this step
+      await devtools.getByTitle('Undock into separate window').describe(`${label}:Undock into separate window`).click()
 
-    const liveStoreDevtoolsPromise = new Promise<PW.Frame>((resolve) => {
-      devtools.on('framenavigated', (frame) => {
-        if (frame.url().includes('_livestore/browser-extension')) {
-          resolve(frame)
-        }
+      const liveStoreDevtoolsPromise = new Promise<PW.Frame>((resolve) => {
+        devtools.on('framenavigated', (frame) => {
+          if (frame.url().includes('_livestore/browser-extension')) {
+            resolve(frame)
+          }
+        })
       })
+
+      await devtools.getByRole('tab', { name: 'LiveStore' }).click()
+
+      return await liveStoreDevtoolsPromise
     })
-
-    await devtools.getByRole('tab', { name: 'LiveStore' }).click()
-
-    return await liveStoreDevtoolsPromise
   })
 
 const runTest =
@@ -91,40 +112,75 @@ const runTest =
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
-  ) => {
-    if (envTruish(process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH) === false) {
-      console.log('LIVESTORE_DEVTOOLS_CHROME_DIST_PATH is not set, skipping test')
-    }
+  ) =>
+    Effect.gen(function* () {
+      const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+      const parentSpan = OtelTracer.makeExternalSpan({
+        traceId: parentSpanContext.traceId,
+        spanId: parentSpanContext.spanId,
+      })
 
-    const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
-    const parentSpan = OtelTracer.makeExternalSpan({
-      traceId: parentSpanContext.traceId,
-      spanId: parentSpanContext.spanId,
-    })
+      const thread = `playwright-worker-${testInfo.workerIndex}`
+      // @ts-expect-error TODO fix types
+      globalThis.name = thread
 
-    const thread = `playwright-worker-${testInfo.workerIndex}`
-    // @ts-expect-error TODO fix types
-    globalThis.name = thread
+      const extensionPath = yield* getExtensionPath
 
-    const layer = Layer.mergeAll(PWLive, OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }))
+      const layer = Layer.mergeAll(
+        PWLive({ extensionPath }),
+        OtelLiveHttp({ serviceName: 'playwright', parentSpan, skipLogUrl: true }),
+      )
 
-    return eff.pipe(
-      Effect.withSpan(testInfo.title),
-      Effect.scoped,
-      Effect.provide(layer),
+      yield* eff.pipe(
+        Effect.withSpan(testInfo.title),
+        Effect.scoped,
+        Effect.annotateLogs({ thread }),
+        Effect.provide(layer),
+      )
+    }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.annotateLogs({ thread }),
       Effect.provide(Logger.pretty),
+      Effect.provide(PlatformNode.NodeContext.layer),
+      Effect.provide(FetchHttpClient.layer),
       Effect.runPromise,
     )
+
+const getExtensionPath = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+
+  const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  if (extensionPathFromEnv) {
+    yield* Effect.logInfo(`Using extension path from env LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: ${extensionPathFromEnv}`)
+    return extensionPathFromEnv
   }
 
-const PWLive = Effect.gen(function* () {
-  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
-  const extensionPath = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  const defaultExtensionPath = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  if ((yield* fs.exists(defaultExtensionPath)) === false) {
+    yield* Effect.logInfo(`Downloading Chrome extension to ${defaultExtensionPath}`)
+    yield* downloadChromeExtension({ targetDir: defaultExtensionPath })
+  }
+  return defaultExtensionPath
+}).pipe(
+  Effect.tap((path) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      if ((yield* fs.exists(path)) === false) {
+        yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+      }
+    }),
+  ),
+)
 
-  return Playwright.browserContextLayer({ persistentContextPath, extensionPath, launchOptions: { devtools: true } })
-}).pipe(Layer.unwrapEffect)
+const PWLive = ({ extensionPath }: { extensionPath: string }) =>
+  Effect.gen(function* () {
+    const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+
+    return Playwright.browserContextLayer({
+      persistentContextPath,
+      extensionPath,
+      launchOptions: { devtools: true },
+    })
+  }).pipe(Layer.unwrapEffect)
 
 test(
   'single tab',
@@ -135,7 +191,7 @@ test(
         'tab-1',
       )
 
-      yield* Effect.promise(async () => {
+      yield* Effect.tryPromise(async () => {
         const el = tab1.page.locator('.new-todo')
         await el.waitFor({ timeout: 10_000 })
 
@@ -146,7 +202,12 @@ test(
 
         await checkDevtoolsState({
           devtools: tab1.liveStoreDevtools,
-          expect: { leader: true, alreadyLoaded: false, tables: ['uiState (1)', 'todos (1)'] },
+          label: 'devtools-tab-1',
+          expect: {
+            leader: true,
+            alreadyLoaded: false,
+            tables: ['uiState (1)', 'todos (1)'],
+          },
         })
       }).pipe(
         Effect.raceFirst(
@@ -172,7 +233,7 @@ test.skip(
         'tab-1',
       )
 
-      yield* Effect.promise(async () => {
+      yield* Effect.tryPromise(async () => {
         await tab1.page.getByText('Notes').waitFor()
         await tab1.page.getByText('Todos').waitFor()
 
@@ -210,44 +271,59 @@ test(
         'tab-2',
       )
 
-      yield* Effect.promise(async () => {
+      yield* Effect.tryPromise(async () => {
         await tab1.page.focus('body')
 
-        const el = tab1.page.locator('.new-todo')
+        const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
         await el.waitFor({ timeout: 10_000 })
 
         await el.fill('Buy milk')
         await el.press('Enter')
 
-        await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
-        await tab2.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+        await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+        await tab2.page.locator('.todo-list li label:text("Buy milk")').describe('tab-2:Buy milk').waitFor()
 
         const tables = ['uiState (2)', 'todos (1)']
 
         await checkDevtoolsState({
           devtools: tab1.liveStoreDevtools,
+          label: 'devtools-tab-1',
           expect: { leader: true, alreadyLoaded: false, tables },
         })
         await checkDevtoolsState({
           devtools: tab2.liveStoreDevtools,
+          label: 'devtools-tab-2',
           expect: { leader: false, alreadyLoaded: false, tables },
         })
 
-        await tab1.page.reload()
-        await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+        await test.step('tab-1:reload', async () => {
+          await tab1.page.reload()
+        })
 
-        await tab2.devtools.reload()
-        tab2.liveStoreDevtools = await getLiveStoreDevtoolsFrame(tab2.devtools).pipe(Effect.runPromise)
+        await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+
+        await test.step('devtools-tab-2:reload', async () => {
+          await tab2.devtools.reload()
+        })
+
+        tab2.liveStoreDevtools = await getLiveStoreDevtoolsFrame(tab2.devtools, 'devtools-tab-2').pipe(
+          Effect.runPromise,
+        )
 
         await checkDevtoolsState({
           devtools: tab1.liveStoreDevtools,
+          label: 'devtools-tab-1',
           expect: { leader: false, alreadyLoaded: false, tables },
         })
         await checkDevtoolsState({
           devtools: tab2.liveStoreDevtools,
+          label: 'devtools-tab-2',
           expect: { leader: true, alreadyLoaded: false, tables },
         })
       }).pipe(
+        process.env.CI
+          ? identity
+          : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
         Effect.raceFirst(
           Fiber.joinAll([
             tab1.pageConsoleFiber,
@@ -273,7 +349,7 @@ test(
         'tab-1',
       )
 
-      yield* Effect.promise(async () => {
+      yield* Effect.tryPromise(async () => {
         await tab1.page.getByText('No Livestore').waitFor()
 
         // TODO bring back once we restructured the playwright tests

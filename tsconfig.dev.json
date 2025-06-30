@@ -3,6 +3,7 @@
   "compilerOptions": {},
   "include": [],
   "references": [
+    { "path": "./packages/@local/shared" },
     { "path": "./scripts" },
     { "path": "./tests/integration" },
     { "path": "./tests/perf" },
@@ -19,6 +20,6 @@
     { "path": "./examples/src/web-todomvc-experimental" },
     { "path": "./examples/src/web-todomvc-solid" },
     { "path": "./examples/src/web-todomvc-sync-cf" },
-    { "path": "./examples/src/web-todomvc-sync-electric" },
+    { "path": "./examples/src/web-todomvc-sync-electric" }
   ]
 }

@@ -18,7 +18,7 @@ const propTestTimeout = IS_CI ? 300_000 : 120_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
-Vitest.describe('node-sync', { timeout: testTimeout }, () => {
+Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.StorageType, WorkerSchema.AdapterType],

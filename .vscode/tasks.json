@@ -78,9 +78,9 @@
       }
     },
     {
-      "label": "dev:ts",
+      "label": "dev:ts:watch",
       "type": "shell",
-      "command": "direnv exec . pnpm dev:ts",
+      "command": "direnv exec . mono ts --watch",
       "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {
@@ -103,7 +103,7 @@
     {
       "label": "dev:example:todomvc",
       "dependsOn": [
-        "dev:ts",
+        "dev:ts:watch",
         "dev:proxy",
       ],
       "type": "shell",
@@ -124,7 +124,7 @@
     {
       "label": "dev:example:todomvc-custom-elements",
       "dependsOn": [
-        "dev:ts",
+        "dev:ts:watch",
         "dev:proxy",
       ],
       "type": "shell",
@@ -145,7 +145,7 @@
     {
       "label": "dev:example:linearlite",
       "dependsOn": [
-        "dev:ts",
+        "dev:ts:watch",
         "dev:proxy",
       ],
       "type": "shell",

@@ -3,10 +3,10 @@ import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
   CreateStoreOptions,
-  LiveStoreContext as StoreContext_,
   OtelOptions,
   ShutdownDeferred,
   Store,
+  LiveStoreContext as StoreContext_,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
 import { errorToString, IS_REACT_NATIVE, LS_DEV } from '@livestore/utils'
@@ -24,7 +24,6 @@ import {
   TaskTracing,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.js'
@@ -47,9 +46,9 @@ export interface LiveStoreProviderProps {
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   otelOptions?: Partial<OtelOptions>
-  renderLoading?: (status: BootStatus) => ReactElement
-  renderError?: (error: UnexpectedError | unknown) => ReactElement
-  renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => ReactElement
+  renderLoading?: (status: BootStatus) => React.ReactNode
+  renderError?: (error: UnexpectedError | unknown) => React.ReactNode
+  renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => React.ReactNode
   adapter: Adapter
   /**
    * In order for LiveStore to apply multiple events in a single render,
@@ -85,7 +84,7 @@ export interface LiveStoreProviderProps {
 }
 
 const defaultRenderError = (error: UnexpectedError | unknown) =>
-  IS_REACT_NATIVE ? <></> : <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
+  IS_REACT_NATIVE ? null : Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted) => {
   const reason =
@@ -101,11 +100,11 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
               ? 'manual shutdown'
               : 'unknown reason'
 
-  return IS_REACT_NATIVE ? <></> : <>LiveStore Shutdown due to {reason}</>
+  return IS_REACT_NATIVE ? null : <>LiveStore Shutdown due to {reason}</>
 }
 
 const defaultRenderLoading = (status: BootStatus) =>
-  IS_REACT_NATIVE ? <></> : <>LiveStore is loading ({status.stage})...</>
+  IS_REACT_NATIVE ? null : <>LiveStore is loading ({status.stage})...</>
 
 export const LiveStoreProvider = ({
   renderLoading = defaultRenderLoading,
@@ -123,7 +122,7 @@ export const LiveStoreProvider = ({
   confirmUnsavedChanges = true,
   syncPayload,
   debug,
-}: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
+}: LiveStoreProviderProps & { children?: React.ReactNode }): React.ReactNode => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
@@ -152,7 +151,7 @@ export const LiveStoreProvider = ({
 
   globalThis.__debugLiveStore ??= {}
   if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-    globalThis.__debugLiveStore['_'] = storeCtx.store
+    globalThis.__debugLiveStore._ = storeCtx.store
   }
   globalThis.__debugLiveStore[debug?.instanceId ?? storeId] = storeCtx.store
 
@@ -211,19 +210,18 @@ const useCreateStore = ({
     debugInstanceId,
   })
 
-  const interrupt = (
-    componentScope: Scope.CloseableScope,
-    shutdownDeferred: ShutdownDeferred,
-    error: StoreInterrupted,
-  ) =>
-    Effect.gen(function* () {
-      // console.log('[@livestore/livestore/react] interupting', error)
-      yield* Scope.close(componentScope, Exit.fail(error))
-      yield* Deferred.fail(shutdownDeferred, error)
-    }).pipe(
-      Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] interupting', cause)),
-      Effect.runFork,
-    )
+  const interrupt = React.useCallback(
+    (componentScope: Scope.CloseableScope, shutdownDeferred: ShutdownDeferred, error: StoreInterrupted) =>
+      Effect.gen(function* () {
+        // console.log('[@livestore/livestore/react] interupting', error)
+        yield* Scope.close(componentScope, Exit.fail(error))
+        yield* Deferred.fail(shutdownDeferred, error)
+      }).pipe(
+        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] interupting', cause)),
+        Effect.runFork,
+      ),
+    [],
+  )
 
   const inputPropChanges = {
     schema: inputPropsCacheRef.current.schema !== schema,
@@ -400,6 +398,7 @@ const useCreateStore = ({
     confirmUnsavedChanges,
     syncPayload,
     debugInstanceId,
+    interrupt,
   ])
 
   return ctxValueRef.current.value

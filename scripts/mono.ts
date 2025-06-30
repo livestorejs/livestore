@@ -48,17 +48,36 @@ const testUnitCommand = Cli.Command.make(
       // Run the rest of the tests in parallel
       yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
     } else {
-      yield* cmd('vitest run')
+      const paths = [
+        `packages/@livestore/webmesh`,
+        `tests/package-common`,
+        `packages/@livestore/utils`,
+        `packages/@livestore/common`,
+        `packages/@livestore/livestore`,
+      ]
+
+      yield* Effect.forEach(
+        paths,
+        (vitestPath) =>
+          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
+            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
+          ),
+        { concurrency: 'unbounded' },
+      )
     }
   }),
 )
 
+// TODO when tests fail, print a command per failed test which allows running the test separately
 const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
     yield* testUnitCommand.handler({})
-    yield* integrationTests.runAll.handler({ concurrency: isGithubAction ? 'sequential' : 'parallel' })
+    yield* integrationTests.runAll.handler({
+      concurrency: isGithubAction ? 'sequential' : 'parallel',
+      localDevtoolsPreview: false,
+    })
   }),
 ).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
 
@@ -66,8 +85,9 @@ const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix' : ''
-    yield* cmd(`eslint scripts examples packages docs --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
+    const fixFlag = fix ? '--fix --unsafe' : ''
+    // TODO bring back `examples` as well
+    yield* cmd(`biome lint scripts tests packages docs ${fixFlag}`, { shell: true })
     if (fix) {
       yield* cmd('syncpack format', { cwd })
     }
@@ -187,6 +207,21 @@ const docsCommand = Cli.Command.make('docs').pipe(
   ]),
 )
 
+const tsCommand = Cli.Command.make(
+  'ts',
+  {
+    watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
+  },
+  Effect.fn(function* ({ watch }) {
+    if (watch) {
+      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
+    } else {
+      yield* cmd('tsc --build tsconfig.dev.json', { cwd })
+      yield* cmd('tsc --build tsconfig.all.json', { cwd })
+    }
+  }),
+)
+
 const circularCommand = Cli.Command.make(
   'circular',
   {},
@@ -272,6 +307,7 @@ const command = Cli.Command.make('mono').pipe(
     examplesCommand,
     lintCommand,
     testCommand,
+    tsCommand,
     circularCommand,
     docsCommand,
     releaseCommand,

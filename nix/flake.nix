@@ -25,7 +25,7 @@
         };
         corepack = pkgs.runCommand "corepack-enable" {} ''
           mkdir -p $out/bin
-          ${pkgsUnstable.nodejs_23}/bin/corepack enable --install-directory $out/bin
+          ${pkgsUnstable.nodejs_24}/bin/corepack enable --install-directory $out/bin
         '';
       in
       {
@@ -37,7 +37,7 @@
         devShell = with pkgs; pkgs.mkShell {
 
           buildInputs = [
-            pkgsUnstable.nodejs_23
+            pkgsUnstable.nodejs_24
             corepack
             pkgsUnstable.bun
             pkgsUnstable.esbuild
