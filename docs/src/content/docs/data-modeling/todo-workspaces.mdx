@@ -94,11 +94,11 @@ Note that the `workspaceCreated` event is used both in the `workspace` and the `
 
   const tables = { user: userTable, userList: userListTable }
 
-  const materializers = State.SQLite.materializers(events, {
+  const materializers: State.SQLite.Materializers<typeof events> = {
     // When the user creates or joins a workspace, add it to their workspace table
     workspaceCreated: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
     workspaceJoined: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
-  })
+  }
 
   const state = State.SQLite.makeState({ tables, materializers })
 
@@ -178,7 +178,7 @@ Note that the `workspaceCreated` event is used both in the `workspace` and the `
 
   const tables = { workspace: workspaceTable, todo: todoTable, member: memberTable }
 
-  const materializers = State.SQLite.materializers(events, {
+  const materializers: State.SQLite.Materializers<typeof events> = {
     workspaceCreated: ({ workspaceId, name, createdByUsername }) => [
       tables.workspace.insert({ workspaceId, name, createdByUsername }),
       // Add the creator as the first member
@@ -189,7 +189,7 @@ Note that the `workspaceCreated` event is used both in the `workspace` and the `
     todoDeleted: ({ todoId, deletedAt }) =>
       tables.todo.update({ deletedAt }).where({ todoId }),
     userJoined: ({ username }) => tables.member.insert({ username }),
-  })
+  }
 
   const state = State.SQLite.makeState({ tables, materializers })
 

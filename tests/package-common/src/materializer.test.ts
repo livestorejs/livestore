@@ -35,7 +35,7 @@ const todos = State.SQLite.table({
 
 const tables = { todos }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   todoCreated: ({ id, text, completed }, ctx) => {
     const previousIds = ctx.query(todos.select('id'))
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
@@ -45,7 +45,7 @@ const materializers = State.SQLite.materializers(events, {
     return todos.insert({ id, text, completed: completed ?? false, previousIds })
   },
   emptyEventPayload: () => [],
-})
+}
 
 const schema = makeSchema({ events, state: State.SQLite.makeState({ tables, materializers }) })
 

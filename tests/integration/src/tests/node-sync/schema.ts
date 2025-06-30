@@ -16,9 +16,9 @@ export const events = {
   }),
 }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   todoCreated: ({ id, title }) => todo.insert({ id, title }),
-})
+}
 
 export const tables = { todo }
 const state = State.SQLite.makeState({ tables, materializers })
