@@ -11,14 +11,22 @@
     "./cf-worker": {
       "types": "./dist/cf-worker/mod.d.ts",
       "default": "./dist/cf-worker/mod.js"
-    }
+    },
+    "./cf-worker/durable-object": {
+      "types": "./dist/cf-worker/durable-object.d.ts",
+      "default": "./dist/cf-worker/durable-object.js"
+    },
+    "./cf-worker/worker": {
+      "types": "./dist/cf-worker/worker.d.ts",
+      "default": "./dist/cf-worker/worker.js"
+    }  
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250303.0"
+    "@cloudflare/workers-types": "^4.20250702.0"
   },
   "files": [
     "dist",

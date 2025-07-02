@@ -1,3 +1,4 @@
+import type * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
@@ -5,11 +6,46 @@ import { Effect, UrlParams } from '@livestore/utils/effect'
 import { SearchParamsSchema } from '../common/mod.js'
 import type { Env } from './durable-object.js'
 
-export type CFWorker = {
-  fetch: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>
+// Redeclaring Response to Cloudflare Worker Response type to avoid lib.dom type clashing
+declare const Response: typeof CfWorker.Response
+
+/**
+ * Helper type to extract DurableObject keys from Env to give consumer type safety.
+ *
+ * @example
+ * ```ts
+ *  type PlatformEnv = {
+ *    DB: D1Database
+ *    ADMIN_TOKEN: string
+ *    WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
+ * }
+ *  export default makeWorker<PlatformEnv>({
+ *    durableObject: { name: "WEBSOCKET_SERVER" },
+ *    // ^ (property) name?: "WEBSOCKET_SERVER" | undefined
+ *  });
+ */
+type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
+  ? [keyof TEnv] extends [keyof Env]
+    ? string
+    : keyof {
+        [K in keyof TEnv as K extends keyof Env
+          ? never
+          : TEnv[K] extends CfWorker.DurableObjectNamespace<any>
+            ? K
+            : never]: TEnv[K]
+      }
+  : never
+
+// HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
+export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
+  fetch: <CFHostMetada = unknown>(
+    request: CfWorker.Request<CFHostMetada>,
+    env: TEnv,
+    ctx: CfWorker.ExecutionContext,
+  ) => Promise<CfWorker.Response>
 }
 
-export type MakeWorkerOptions = {
+export type MakeWorkerOptions<TEnv extends Env = Env> = {
   validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
@@ -19,11 +55,16 @@ export type MakeWorkerOptions = {
      *
      * @default 'WEBSOCKET_SERVER'
      */
-    name?: string
+    name?: ExtractDurableObjectKeys<TEnv>
   }
 }
 
-export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
+export const makeWorker = <
+  TEnv extends Env = Env,
+  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+>(
+  options: MakeWorkerOptions<TEnv> = {},
+): CFWorker<TEnv, TDurableObjectRpc> => {
   return {
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
@@ -37,7 +78,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
         })
       }
 
-      const corsHeaders: HeadersInit = options.enableCORS
+      const corsHeaders: CfWorker.HeadersInit = options.enableCORS
         ? {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -53,7 +94,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
       }
 
       if (url.pathname.endsWith('/websocket')) {
-        return handleWebSocket(request, env, _ctx, {
+        return handleWebSocket<TEnv, TDurableObjectRpc>(request, env, _ctx, {
           headers: corsHeaders,
           validatePayload: options.validatePayload,
           durableObject: options.durableObject,
@@ -98,16 +139,20 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
  *
  * @throws {UnexpectedError} If the payload is invalid
  */
-export const handleWebSocket = (
-  request: Request,
-  env: Env,
-  _ctx: ExecutionContext,
+export const handleWebSocket = <
+  TEnv extends Env = Env,
+  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  CFHostMetada = unknown,
+>(
+  request: CfWorker.Request<CFHostMetada>,
+  env: TEnv,
+  _ctx: CfWorker.ExecutionContext,
   options: {
-    headers?: HeadersInit
-    durableObject?: MakeWorkerOptions['durableObject']
+    headers?: CfWorker.HeadersInit
+    durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
   },
-): Promise<Response> =>
+): Promise<CfWorker.Response> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
 
@@ -136,15 +181,28 @@ export const handleWebSocket = (
     }
 
     const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
-    const durableObjectNamespace = (env as any)[durableObjectName] as DurableObjectNamespace
+    if (!(durableObjectName in env)) {
+      return new Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
+        status: 424,
+        headers: options.headers,
+      })
+    }
+
+    const durableObjectNamespace = env[
+      durableObjectName as keyof TEnv
+    ] as CfWorker.DurableObjectNamespace<TDurableObjectRpc>
 
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)
 
     const upgradeHeader = request.headers.get('Upgrade')
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Durable Object expected Upgrade: websocket', { status: 426, headers: options?.headers })
+      return new Response('Durable Object expected Upgrade: websocket', {
+        status: 426,
+        headers: options?.headers,
+      })
     }
 
-    return yield* Effect.promise(() => durableObject.fetch(request))
+    // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
+    return yield* Effect.promise(() => durableObject.fetch(request as any) as unknown as Promise<CfWorker.Response>)
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
