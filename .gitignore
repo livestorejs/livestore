@@ -32,3 +32,5 @@ _tmp*
 .output
 
 scripts/.completions
+
+.svelte-kit
