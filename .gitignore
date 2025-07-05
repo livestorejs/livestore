@@ -32,3 +32,6 @@ _tmp*
 .output
 
 scripts/.completions
+
+# Process Compose 
+data
