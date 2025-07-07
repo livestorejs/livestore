@@ -18,14 +18,14 @@ const EditIssueScreen = () => {
   const textColor = useThemeColor({}, 'text')
 
   const issue = useQuery(
-    queryDb(tables.issues.where({ id: issueId }).first(), {
+    queryDb(tables.issues.where({ id: issueId }).first({ behaviour: 'error' }), {
       label: 'edit-issue',
       deps: `edit-issue-${issueId}`,
     }),
   )
 
   const assignee = useQuery(
-    queryDb(tables.users.where({ id: issue.assigneeId! }).first(), {
+    queryDb(tables.users.where({ id: issue.assigneeId! }).first({ behaviour: 'error' }), {
       label: 'assignee',
       deps: `edit-issue-assignee-${issue.assigneeId}`,
     }),
