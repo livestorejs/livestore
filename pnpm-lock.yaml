@@ -46,8 +46,8 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
       '@effect/language-service':
-        specifier: ^0.16.5
-        version: 0.16.7
+        specifier: ^0.23.3
+        version: 0.23.3
       '@types/node':
         specifier: ^22.15.33
         version: 22.15.33
@@ -64,8 +64,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
@@ -101,7 +101,7 @@ importers:
         version: link:../packages/@local/shared
       '@tailwindcss/vite':
         specifier: 4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: 19.1.2
         version: 19.1.2
@@ -526,7 +526,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
@@ -538,7 +538,7 @@ importers:
         version: 0.5.16(tailwindcss@4.1.6)
       '@tailwindcss/vite':
         specifier: ^4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/node':
         specifier: ^22.15.33
         version: 22.15.33
@@ -565,7 +565,7 @@ importers:
         version: 8.26.1(eslint@8.57.1)(typescript@5.8.3)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -585,11 +585,11 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vite-plugin-svgr:
         specifier: ^4.3.0
-        version: 4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
 
   examples/src/web-todomvc:
     dependencies:
@@ -623,7 +623,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -632,13 +632,13 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/src/web-todomvc-custom-elements:
     dependencies:
@@ -666,10 +666,10 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tailwindcss/vite':
         specifier: ^4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -678,7 +678,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       rollup-plugin-visualizer:
         specifier: ^5.14.0
         version: 5.14.0(rollup@4.40.2)
@@ -689,8 +689,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/src/web-todomvc-experimental:
     dependencies:
@@ -724,7 +724,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -733,7 +733,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       rollup-plugin-visualizer:
         specifier: ^5.14.0
         version: 5.14.0(rollup@4.40.2)
@@ -741,8 +741,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/src/web-todomvc-solid:
     dependencies:
@@ -773,19 +773,19 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       solid-devtools:
         specifier: ^0.33.0
-        version: 0.33.0(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.33.0(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vite-plugin-solid:
         specifier: ^2.11.6
-        version: 2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
 
   examples/src/web-todomvc-sync-cf:
     dependencies:
@@ -822,7 +822,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -831,13 +831,13 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       wrangler:
         specifier: ^4.14.4
         version: 4.14.4(@cloudflare/workers-types@4.20250705.0)
@@ -870,7 +870,7 @@ importers:
         version: 0.1.2(react@19.0.0)
       '@tanstack/react-start':
         specifier: 1.119.0
-        version: 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
+        version: 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -886,7 +886,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tanstack/react-router':
         specifier: ^1.119.0
         version: 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -901,7 +901,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       postgres:
         specifier: ^3.4.5
         version: 3.4.5
@@ -915,8 +915,8 @@ importers:
         specifier: ^0.5.3
         version: 0.5.3(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/standalone/expo-linearlite:
     dependencies:
@@ -1265,7 +1265,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
@@ -1277,7 +1277,7 @@ importers:
         version: 0.5.16(tailwindcss@4.1.6)
       '@tailwindcss/vite':
         specifier: ^4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/node':
         specifier: ^22.15.33
         version: 22.15.33
@@ -1304,7 +1304,7 @@ importers:
         version: 8.26.1(eslint@8.57.1)(typescript@5.8.3)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -1324,11 +1324,11 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vite-plugin-svgr:
         specifier: ^4.3.0
-        version: 4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
 
   examples/standalone/web-todomvc:
     dependencies:
@@ -1362,7 +1362,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1371,13 +1371,13 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/standalone/web-todomvc-custom-elements:
     dependencies:
@@ -1405,10 +1405,10 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tailwindcss/vite':
         specifier: ^4.1.6
-        version: 4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1417,7 +1417,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       rollup-plugin-visualizer:
         specifier: ^5.14.0
         version: 5.14.0(rollup@4.40.2)
@@ -1428,8 +1428,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/standalone/web-todomvc-experimental:
     dependencies:
@@ -1463,7 +1463,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1472,7 +1472,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       rollup-plugin-visualizer:
         specifier: ^5.14.0
         version: 5.14.0(rollup@4.40.2)
@@ -1480,8 +1480,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   examples/standalone/web-todomvc-solid:
     dependencies:
@@ -1512,19 +1512,19 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       solid-devtools:
         specifier: ^0.33.0
-        version: 0.33.0(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.33.0(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vite-plugin-solid:
         specifier: ^2.11.6
-        version: 2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
 
   examples/standalone/web-todomvc-sync-cf:
     dependencies:
@@ -1561,7 +1561,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -1570,13 +1570,13 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       wrangler:
         specifier: ^4.14.4
         version: 4.14.4(@cloudflare/workers-types@4.20250705.0)
@@ -1609,7 +1609,7 @@ importers:
         version: 0.1.2(react@19.0.0)
       '@tanstack/react-start':
         specifier: 1.119.0
-        version: 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
+        version: 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -1625,7 +1625,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tanstack/react-router':
         specifier: ^1.119.0
         version: 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1640,7 +1640,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       postgres:
         specifier: ^3.4.5
         version: 3.4.5
@@ -1654,8 +1654,8 @@ importers:
         specifier: ^0.5.3
         version: 0.5.3(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   packages/@livestore/adapter-expo:
     dependencies:
@@ -1692,7 +1692,7 @@ importers:
         version: link:../common
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -1706,8 +1706,8 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
       vite:
-        specifier: 6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: 7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     devDependencies:
       '@rollup/plugin-commonjs':
         specifier: ^28.0.3
@@ -1797,8 +1797,8 @@ importers:
         specifier: ^53.0.9
         version: 53.0.9(@babel/core@7.26.10)(@expo/metro-runtime@5.0.4(react-native@0.79.2(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0)))(graphql@16.10.0)(react-native@0.79.2(@babel/core@7.26.10)(@types/react@19.1.2)(react@19.0.0))(react@19.0.0)
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   packages/@livestore/devtools-web-common:
     dependencies:
@@ -1875,8 +1875,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
@@ -1884,35 +1884,35 @@ importers:
   packages/@livestore/peer-deps:
     dependencies:
       '@effect/cli':
-        specifier: 0.61.4
-        version: 0.61.4(@effect/platform@0.82.4(effect@3.15.2))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.66.1
+        version: 0.66.1(@effect/platform@0.87.1(effect@3.16.10))(@effect/printer-ansi@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(@effect/printer@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/experimental':
-        specifier: 0.46.4
-        version: 0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0)
+        specifier: 0.51.1
+        version: 0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0)
       '@effect/opentelemetry':
-        specifier: 0.48.4
-        version: 0.48.4(@effect/platform@0.82.4(effect@3.15.2))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.15.2)
+        specifier: 0.53.1
+        version: 0.53.1(@effect/platform@0.87.1(effect@3.16.10))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.16.10)
       '@effect/platform':
-        specifier: 0.82.4
-        version: 0.82.4(effect@3.15.2)
+        specifier: 0.87.1
+        version: 0.87.1(effect@3.16.10)
       '@effect/platform-browser':
-        specifier: 0.62.4
-        version: 0.62.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.67.1
+        version: 0.67.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
       '@effect/platform-bun':
-        specifier: 0.65.1
-        version: 0.65.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.72.3
+        version: 0.72.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/platform-node':
-        specifier: 0.81.1
-        version: 0.81.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.88.3
+        version: 0.88.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/printer':
-        specifier: 0.43.2
-        version: 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.44.10
+        version: 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
       '@effect/printer-ansi':
-        specifier: 0.43.2
-        version: 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
+        specifier: 0.44.10
+        version: 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
       '@effect/typeclass':
-        specifier: 0.34.2
-        version: 0.34.2(effect@3.15.2)
+        specifier: 0.35.10
+        version: 0.35.10(effect@3.16.10)
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1920,8 +1920,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: 3.15.2
-        version: 3.15.2
+        specifier: 3.16.10
+        version: 3.16.10
 
   packages/@livestore/react:
     dependencies:
@@ -1975,8 +1975,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
@@ -2009,8 +2009,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
@@ -2075,47 +2075,47 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/cli':
-        specifier: ^0.61.4
-        version: 0.61.4(@effect/platform@0.82.4(effect@3.15.2))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.66.1
+        version: 0.66.1(@effect/platform@0.87.1(effect@3.16.10))(@effect/printer-ansi@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(@effect/printer@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/cluster':
-        specifier: ^0.34.1
-        version: 0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.41.3
+        version: 0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/experimental':
-        specifier: ^0.46.4
-        version: 0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0)
+        specifier: ^0.51.1
+        version: 0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0)
       '@effect/opentelemetry':
-        specifier: ^0.48.4
-        version: 0.48.4(@effect/platform@0.82.4(effect@3.15.2))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.15.2)
+        specifier: ^0.53.1
+        version: 0.53.1(@effect/platform@0.87.1(effect@3.16.10))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.16.10)
       '@effect/platform':
-        specifier: ^0.82.4
-        version: 0.82.4(effect@3.15.2)
+        specifier: ^0.87.1
+        version: 0.87.1(effect@3.16.10)
       '@effect/platform-browser':
-        specifier: ^0.62.4
-        version: 0.62.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.67.1
+        version: 0.67.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
       '@effect/platform-bun':
-        specifier: ^0.65.1
-        version: 0.65.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.72.3
+        version: 0.72.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/platform-node':
-        specifier: ^0.81.1
-        version: 0.81.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.88.3
+        version: 0.88.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
       '@effect/printer':
-        specifier: ^0.43.2
-        version: 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.44.10
+        version: 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
       '@effect/printer-ansi':
-        specifier: ^0.43.2
-        version: 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.44.10
+        version: 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
       '@effect/rpc':
-        specifier: ^0.59.5
-        version: 0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.64.2
+        version: 0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
       '@effect/sql':
-        specifier: ^0.35.4
-        version: 0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
+        specifier: ^0.40.1
+        version: 0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
       '@effect/typeclass':
-        specifier: ^0.34.2
-        version: 0.34.2(effect@3.15.2)
+        specifier: ^0.35.10
+        version: 0.35.10(effect@3.16.10)
       '@effect/vitest':
-        specifier: ^0.22.2
-        version: 0.22.2(effect@3.15.2)(vitest@3.2.4)
+        specifier: ^0.23.10
+        version: 0.23.10(effect@3.16.10)(vitest@3.2.4)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -2135,8 +2135,8 @@ importers:
         specifier: ^0.0.203
         version: 0.0.203
       effect:
-        specifier: ^3.15.2
-        version: 3.15.2
+        specifier: ^3.16.10
+        version: 3.16.10
       jsdom:
         specifier: ^26.0.0
         version: 26.0.0
@@ -2147,11 +2147,11 @@ importers:
   packages/@livestore/utils-dev:
     dependencies:
       '@effect/opentelemetry':
-        specifier: 0.48.4
-        version: 0.48.4(@effect/platform@0.82.4(effect@3.15.2))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.15.2)
+        specifier: 0.53.1
+        version: 0.53.1(@effect/platform@0.87.1(effect@3.16.10))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.16.10)
       '@effect/vitest':
-        specifier: 0.22.2
-        version: 0.22.2(effect@3.15.2)(vitest@3.2.4)
+        specifier: 0.23.10
+        version: 0.23.10(effect@3.16.10)(vitest@3.2.4)
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2190,7 +2190,7 @@ importers:
   packages/@local/shared:
     devDependencies:
       '@types/node':
-        specifier: ^22.15.17
+        specifier: ^22.15.33
         version: 22.15.33
 
   scripts:
@@ -2227,7 +2227,7 @@ importers:
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: ^0.3.1
-        version: 0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@livestore/effect-playwright':
         specifier: workspace:*
         version: link:../../packages/@livestore/effect-playwright
@@ -2276,7 +2276,7 @@ importers:
         version: 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/router-plugin':
         specifier: ^1.119.0
-        version: 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/node':
         specifier: ^22.15.33
         version: 22.15.33
@@ -2296,8 +2296,8 @@ importers:
         specifier: ^2.4.3
         version: 2.4.3
       vite:
-        specifier: ^6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
@@ -2376,7 +2376,7 @@ importers:
         version: 19.0.4(@types/react@19.1.2)
       '@vitejs/plugin-react':
         specifier: 4.3.4
-        version: 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        version: 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -2387,8 +2387,8 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
       vite:
-        specifier: 6.3.4
-        version: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+        specifier: 7.0.0
+        version: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
 packages:
 
@@ -3189,27 +3189,28 @@ packages:
     resolution: {integrity: sha512-KrkT6qO5NxqNfy68sBl6CTSoJ4SNDIS5iQArkibhlbGU4LaDukZ3q2HIkh8aUKDio6o4itU4xDR7t82Y2eP1Bg==}
     engines: {node: '>=14'}
 
-  '@effect/cli@0.61.4':
-    resolution: {integrity: sha512-MZgeRuV0m6SANHIIXc6fbz69XNbYe79gkyCEN2z3Z6+dSwW/yxzY2pSv5zRAaN5bS/BWYfP1wnThQEkQtwtcxw==}
+  '@effect/cli@0.66.1':
+    resolution: {integrity: sha512-FXXVNoMgrwf57dCTe8w/fqlZkr+MYNyNLxVHg2jYFUUWTFCzOTcj2myNEs5loVvJ5CmH2kvaylmM9ZRb+U6o1w==}
     peerDependencies:
-      '@effect/platform': ^0.82.4
-      '@effect/printer': ^0.43.2
-      '@effect/printer-ansi': ^0.43.2
-      effect: ^3.15.2
+      '@effect/platform': ^0.87.1
+      '@effect/printer': ^0.44.10
+      '@effect/printer-ansi': ^0.44.10
+      effect: ^3.16.10
 
-  '@effect/cluster@0.34.5':
-    resolution: {integrity: sha512-QlXfP8sTTijyw0XQdMFmjIVywqhrbrIuQ64RIazuNdiHkBMLGqkXPerFXdQwaeDeCb8iWy4vAUZSPqThCeHIdw==}
+  '@effect/cluster@0.41.3':
+    resolution: {integrity: sha512-J9IYEdyW23ZKSbVs4AV8AZnfBX/mkOtpMAGq7iIKwt+HTblFVTIM0bXT/2/nQ+h5bxywj1wk3yB9oznxvn2uqg==}
     peerDependencies:
-      '@effect/platform': ^0.82.8
-      '@effect/rpc': ^0.59.9
-      '@effect/sql': ^0.35.8
-      effect: ^3.15.4
+      '@effect/platform': ^0.87.1
+      '@effect/rpc': ^0.64.2
+      '@effect/sql': ^0.40.1
+      '@effect/workflow': ^0.4.2
+      effect: ^3.16.10
 
-  '@effect/experimental@0.46.4':
-    resolution: {integrity: sha512-jKym3mkV7Z1fK7Kg+Wuv3XnV/DqjSRBNdWFCAz7NHAn8noGccXp3eWVui5JP/7KOZJ9gXj52ESJzkgk9PBy1rw==}
+  '@effect/experimental@0.51.1':
+    resolution: {integrity: sha512-R+j+oI1nSigKPxDxcfDK60dASFkDQRMOfmBZCLRY7lDtK4xBeCrUK//fHX5QhO/dOpyqpTsoQsCzNPRHo+7NrQ==}
     peerDependencies:
-      '@effect/platform': ^0.82.4
-      effect: ^3.15.2
+      '@effect/platform': ^0.87.1
+      effect: ^3.16.10
       ioredis: ^5
       lmdb: ^3
     peerDependenciesMeta:
@@ -3218,13 +3219,13 @@ packages:
       lmdb:
         optional: true
 
-  '@effect/language-service@0.16.7':
-    resolution: {integrity: sha512-qr2PmUGXlBEG34xmihInI8+2ft5k2WDemxdz+YtxwyhDImqHGFPZmi2xESRw1ANzSoYiJ6eoyNZ1YaVlY3Qefg==}
+  '@effect/language-service@0.23.3':
+    resolution: {integrity: sha512-yurF+FHd1HwM/3Mh7kQCea+z4wvbs2/NLPyk6FiEWA2sppRKv4Kp4luwfUqWqyd9/uyScWJcHX7WK1caLpx4Pw==}
 
-  '@effect/opentelemetry@0.48.4':
-    resolution: {integrity: sha512-f84T7ZJHLtZKGjyjjJxJReTrLLJTcXw+YFDGpCxB/rt0a1xzX/tcjY37pel3Fu0eL3cR5unmhirTSZZoGzkyAg==}
+  '@effect/opentelemetry@0.53.1':
+    resolution: {integrity: sha512-T8miKh8Z/28/KWvt8dV/xIWtR+PsGAxlmssFLXLgO4LQzYp+5YlVXC5BkmP20BTXTFEsXv0K1zA401ddE76mmA==}
     peerDependencies:
-      '@effect/platform': ^0.82.4
+      '@effect/platform': ^0.87.1
       '@opentelemetry/api': ^1.9
       '@opentelemetry/resources': ^2.0.0
       '@opentelemetry/sdk-logs': '*'
@@ -3233,7 +3234,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^2.0.0
       '@opentelemetry/sdk-trace-web': ^2.0.0
       '@opentelemetry/semantic-conventions': ^1.33.0
-      effect: ^3.15.2
+      effect: ^3.16.10
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
@@ -3250,61 +3251,61 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.62.4':
-    resolution: {integrity: sha512-3sI8LEFWwtgbXyz2MBlK7yNCm4QYgr5jY6ep7jadBD1drYhujgH0Rz4zClcfMTVrbBEQATH66/lZXEyqOqzm1w==}
+  '@effect/platform-browser@0.67.1':
+    resolution: {integrity: sha512-ylH5E9JIe1QxV6NpnIJ7Mnf47+lN9yF0U6wyEL1u8QRl7XtZsgFkQsRnVYpl6LXN8pdhc85NPzVeXo6UznFNJA==}
     peerDependencies:
-      '@effect/platform': ^0.82.4
-      effect: ^3.15.2
+      '@effect/platform': ^0.87.1
+      effect: ^3.16.10
 
-  '@effect/platform-bun@0.65.1':
-    resolution: {integrity: sha512-pt5fUx8Nc4p7YnB6X5CdpgwfGD/uEJKJ1O2Fn7fkDQ7S0BKdewnPn0VeWDIv25xlUqkX0fvJtoFw25aTRtYh8A==}
+  '@effect/platform-bun@0.72.3':
+    resolution: {integrity: sha512-HhYq/QZx0wPtJgCCmg1r70V9mKeccxvVH/Q5Y/wpFyoul+KD318EhO9xKDe3dSa+dxGwTEpfWfNP+7MLfTPqwg==}
     peerDependencies:
-      '@effect/cluster': ^0.34.1
-      '@effect/platform': ^0.82.4
-      '@effect/rpc': ^0.59.5
-      '@effect/sql': ^0.35.4
-      effect: ^3.15.2
+      '@effect/cluster': ^0.41.3
+      '@effect/platform': ^0.87.1
+      '@effect/rpc': ^0.64.2
+      '@effect/sql': ^0.40.1
+      effect: ^3.16.10
 
-  '@effect/platform-node-shared@0.35.5':
-    resolution: {integrity: sha512-F0Hh+aueRxOw2vqo9LNqWh31ch5WBhz0Hp0vYQ8jntjLOsvN5oX/0JbGO4E5BNsMZV5HCraP6I4ACjP3KUnvCQ==}
+  '@effect/platform-node-shared@0.42.3':
+    resolution: {integrity: sha512-3mV3lIeS/nSRbZuNb/64UfHDKf1k3IjCiBE8rajgbvOwMB+Fk5m/9ZPdDVoj/pkGE68EmDoVkbI1ysIiyUm0cg==}
     peerDependencies:
-      '@effect/cluster': ^0.34.5
-      '@effect/platform': ^0.82.8
-      '@effect/rpc': ^0.59.9
-      '@effect/sql': ^0.35.8
-      effect: ^3.15.4
+      '@effect/cluster': ^0.41.3
+      '@effect/platform': ^0.87.1
+      '@effect/rpc': ^0.64.2
+      '@effect/sql': ^0.40.1
+      effect: ^3.16.10
 
-  '@effect/platform-node@0.81.1':
-    resolution: {integrity: sha512-Nf+s3HgUKfdndOA3sNzaAqhnuWNyhwTmWQ3VFhNZm660ts7e1axg7VBHuINw3R81U93mLAMwMdaTmOVLKT+/ow==}
+  '@effect/platform-node@0.88.3':
+    resolution: {integrity: sha512-ChJxjjpT/pSmBpWgyKVHG1m8J8tEtPaKc160FFjNz/HGVmhBSsWce9Vro9Z13mQvsm2K5SZkET2pyQX8Rw60Yw==}
     peerDependencies:
-      '@effect/cluster': ^0.34.1
-      '@effect/platform': ^0.82.4
-      '@effect/rpc': ^0.59.5
-      '@effect/sql': ^0.35.4
-      effect: ^3.15.2
+      '@effect/cluster': ^0.41.3
+      '@effect/platform': ^0.87.1
+      '@effect/rpc': ^0.64.2
+      '@effect/sql': ^0.40.1
+      effect: ^3.16.10
 
-  '@effect/platform@0.82.4':
-    resolution: {integrity: sha512-og5DIzx4wz7nIXd/loDfenXvV3c/NT+NDG+YJsi3g6a5Xb6xwrNJuX97sDaV2LJ29G3LroeVJCmYUmfdf/h5Vg==}
+  '@effect/platform@0.87.1':
+    resolution: {integrity: sha512-OJmdAOle5ZYExJIppBh2+N3RHCAdn3WdtxvLgkECI0aJLjpEy/O88XdkkLmRKrVPFByxsShfVUEhZyKtVdHA8A==}
     peerDependencies:
-      effect: ^3.15.2
+      effect: ^3.16.10
 
-  '@effect/printer-ansi@0.43.2':
-    resolution: {integrity: sha512-tvMTWwyLAnmTc4RkOc13lEsE+Xw1/GFVQKUmePnOcNupKaYZqz0d777/PDCG9AmLRXZ9ZExGiOHDjXlNdDwWBA==}
+  '@effect/printer-ansi@0.44.10':
+    resolution: {integrity: sha512-jV8Mq4523Gw0XtPQ3nwOHlcS3O9TSvRB8h7ZWoBQHDdw7hKvfa/vt3bVC3kCAVr6Z4Zplh2hoxYUDkN25QAcew==}
     peerDependencies:
-      '@effect/typeclass': ^0.34.2
-      effect: ^3.15.2
+      '@effect/typeclass': ^0.35.10
+      effect: ^3.16.10
 
-  '@effect/printer@0.43.2':
-    resolution: {integrity: sha512-1NqSWITRlGOL0k1bMG18KLu/EkavcZru4PM7q6mqLumQrHldp0QCfCwMp+h1u8FyG4C1PuHTkmr6xxBsaNX+ZA==}
+  '@effect/printer@0.44.10':
+    resolution: {integrity: sha512-XXYcYQqp1Puv0qTSL9L3J8ppxoGTQLE3MtRgzLKaehP/2/7pq1YmqrX/tncc1LLb/HdX/ES71Aam5oAa1P1brA==}
     peerDependencies:
-      '@effect/typeclass': ^0.34.2
-      effect: ^3.15.2
+      '@effect/typeclass': ^0.35.10
+      effect: ^3.16.10
 
-  '@effect/rpc@0.59.9':
-    resolution: {integrity: sha512-9Nw6YRBbTgsCyVb7/AMCTML7cE6v38cN0I7tP05XAlvKdmCroifaNopDCO7w1C3EPeNBG42nYuYnwU6L0Atnhg==}
+  '@effect/rpc@0.64.2':
+    resolution: {integrity: sha512-cpJo/z5AfAy2pJUWFqfx9bScZEMYfAKQKhx57QuTu6m8+sNAXm2hBPh+0MOZnsMxlxUUUyKoh9I8RQWgD472NQ==}
     peerDependencies:
-      '@effect/platform': ^0.82.8
-      effect: ^3.15.4
+      '@effect/platform': ^0.87.1
+      effect: ^3.16.10
 
   '@effect/schema@0.75.5':
     resolution: {integrity: sha512-TQInulTVCuF+9EIbJpyLP6dvxbQJMphrnRqgexm/Ze39rSjfhJuufF7XvU3SxTgg3HnL7B/kpORTJbHhlE6thw==}
@@ -3312,22 +3313,22 @@ packages:
     peerDependencies:
       effect: ^3.9.2
 
-  '@effect/sql@0.35.8':
-    resolution: {integrity: sha512-M1x6XMWkIHMY7iHbZgHVpq1jhhX+oFBN5LcL7Oc7cy3h2rtWf9VH2WvC2ivc2gscoKSpITlxEhGNHDFy9YrCSw==}
+  '@effect/sql@0.40.1':
+    resolution: {integrity: sha512-yvAgaPotWz72h5WOh2sqckUk1rCNmcaWQJR9MW5v+KPMUryK5+BR2hnhPO5Lz+TKAOIcdBoQOwsdLCw/Y0zg3A==}
     peerDependencies:
-      '@effect/experimental': ^0.46.8
-      '@effect/platform': ^0.82.8
-      effect: ^3.15.4
+      '@effect/experimental': ^0.51.1
+      '@effect/platform': ^0.87.1
+      effect: ^3.16.10
 
-  '@effect/typeclass@0.34.2':
-    resolution: {integrity: sha512-ZxBux2HoYi4TLDkNAKppUJjceFAS+Q4qAe4lZw80dFFXqqd+61CVzALMyzayK57qTma0IihOQHX7kbyuZ7MMLA==}
+  '@effect/typeclass@0.35.10':
+    resolution: {integrity: sha512-gVMjIR6k4M+5KDi97SaGF145C3idK7N/I4SZIt1JT0R3kcAjRjK0F5t0I8L/bPrqYGzA85AipClnQ1tKXSSg6g==}
     peerDependencies:
-      effect: ^3.15.2
+      effect: ^3.16.10
 
-  '@effect/vitest@0.22.2':
-    resolution: {integrity: sha512-EZudN92GRXqD1FLk7wW5yjW3HN5BEWnDoBoi01Pn5os+8+RxLU8Bk4cXcjhgWUDsHjoPzGRJTn42x6GvR7lTkA==}
+  '@effect/vitest@0.23.10':
+    resolution: {integrity: sha512-XdaA67TzoA61BtMRSQ9q77CGcNTiRPVNTeTHRYUM5scXQH+U3gH7RRFFG7PgmYNZp5WEeXg6VCAHV4+fGEdyZg==}
     peerDependencies:
-      effect: ^3.15.2
+      effect: ^3.16.10
       vitest: ^3.0.0
 
   '@egjs/hammerjs@2.0.17':
@@ -8275,8 +8276,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.15.2:
-    resolution: {integrity: sha512-0JNwvfs4Wwbo3f6IOydBFlp+zxuO8Iny2UAWNW3+FNn9x8FJf7q67QnQagUZgPl/BLl/xuPLVksrmNyIrJ8k/Q==}
+  effect@3.16.10:
+    resolution: {integrity: sha512-F0hDCOLax7i3SOy5wQnJZTzKP9aGg8OQNUJ2s8YoL5fVcCgRCgE+Ky+Hfz5qC7LgVVOWDDbRpCh5MPB20wRI8Q==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -10842,6 +10843,9 @@ packages:
 
   msgpackr@1.11.2:
     resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
+
+  msgpackr@1.11.4:
+    resolution: {integrity: sha512-uaff7RG9VIC4jacFW9xzL3jc0iM32DNHe4jYVycBcjUePT/Klnfj7pqtWJt9khvDFizmjN2TlYniYmSS2LIaZg==}
 
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
@@ -13521,6 +13525,46 @@ packages:
       yaml:
         optional: true
 
+  vite@7.0.0:
+    resolution: {integrity: sha512-ixXJB1YRgDIw2OszKQS9WxGHKwLdCsbQNkpJN171udl6szi/rIySHL6/Os3s2+oE4P/FLD4dxg4mD7Wust+u5g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^20.19.0 || >=22.12.0
+      jiti: '>=1.21.0'
+      less: ^4.0.0
+      lightningcss: ^1.21.0
+      sass: ^1.70.0
+      sass-embedded: ^1.70.0
+      stylus: '>=0.54.8'
+      sugarss: ^5.0.0
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      yaml:
+        optional: true
+
   vitefu@1.0.6:
     resolution: {integrity: sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==}
     peerDependencies:
@@ -15031,38 +15075,38 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 6.0.2
 
-  '@effect/cli@0.61.4(@effect/platform@0.82.4(effect@3.15.2))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)':
+  '@effect/cli@0.66.1(@effect/platform@0.87.1(effect@3.16.10))(@effect/printer-ansi@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(@effect/printer@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
-      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      '@effect/printer': 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
+      '@effect/printer-ansi': 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
+      effect: 3.16.10
       ini: 4.1.3
       toml: 3.0.0
       yaml: 2.8.0
 
-  '@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)':
+  '@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      '@effect/rpc': 0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      '@effect/sql': 0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      '@effect/rpc': 0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      '@effect/sql': 0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      effect: 3.16.10
 
-  '@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0)':
+  '@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      effect: 3.16.10
       uuid: 11.0.5
     optionalDependencies:
       ioredis: 5.6.0
 
-  '@effect/language-service@0.16.7': {}
+  '@effect/language-service@0.23.3': {}
 
-  '@effect/opentelemetry@0.48.4(@effect/platform@0.82.4(effect@3.15.2))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.15.2)':
+  '@effect/opentelemetry@0.53.1(@effect/platform@0.87.1(effect@3.16.10))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.33.0)(effect@3.16.10)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
+      '@effect/platform': 0.87.1(effect@3.16.10)
       '@opentelemetry/semantic-conventions': 1.33.0
-      effect: 3.15.2
+      effect: 3.16.10
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.0.0(@opentelemetry/api@1.9.0)
@@ -15071,47 +15115,47 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.0.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-web': 2.0.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.62.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)':
+  '@effect/platform-browser@0.67.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      effect: 3.16.10
       multipasta: 0.2.5
 
-  '@effect/platform-bun@0.65.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)':
+  '@effect/platform-bun@0.72.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/cluster': 0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      '@effect/platform-node-shared': 0.35.5(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
-      '@effect/rpc': 0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      '@effect/sql': 0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/cluster': 0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      '@effect/platform-node-shared': 0.42.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
+      '@effect/rpc': 0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      '@effect/sql': 0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      effect: 3.16.10
       multipasta: 0.2.5
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node-shared@0.35.5(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)':
+  '@effect/platform-node-shared@0.42.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/cluster': 0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      '@effect/rpc': 0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      '@effect/sql': 0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
+      '@effect/cluster': 0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      '@effect/rpc': 0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      '@effect/sql': 0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
       '@parcel/watcher': 2.5.1
-      effect: 3.15.2
+      effect: 3.16.10
       multipasta: 0.2.5
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@0.81.1(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)':
+  '@effect/platform-node@0.88.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/cluster': 0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      '@effect/platform-node-shared': 0.35.5(@effect/cluster@0.34.5(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2))(@effect/platform@0.82.4(effect@3.15.2))(@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2))(effect@3.15.2)
-      '@effect/rpc': 0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      '@effect/sql': 0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/cluster': 0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      '@effect/platform-node-shared': 0.42.3(@effect/cluster@0.41.3(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10))(@effect/platform@0.87.1(effect@3.16.10))(@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10))(effect@3.16.10)
+      '@effect/rpc': 0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      '@effect/sql': 0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)
+      effect: 3.16.10
       mime: 3.0.0
       undici: 7.11.0
       ws: 8.18.3
@@ -15119,49 +15163,49 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform@0.82.4(effect@3.15.2)':
+  '@effect/platform@0.87.1(effect@3.16.10)':
     dependencies:
-      effect: 3.15.2
+      effect: 3.16.10
       find-my-way-ts: 0.1.5
-      msgpackr: 1.11.2
+      msgpackr: 1.11.4
       multipasta: 0.2.5
 
-  '@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)':
+  '@effect/printer-ansi@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)
-      '@effect/typeclass': 0.34.2(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/printer': 0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)
+      '@effect/typeclass': 0.35.10(effect@3.16.10)
+      effect: 3.16.10
 
-  '@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@3.15.2))(effect@3.15.2)':
+  '@effect/printer@0.44.10(@effect/typeclass@0.35.10(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/typeclass': 0.34.2(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/typeclass': 0.35.10(effect@3.16.10)
+      effect: 3.16.10
 
-  '@effect/rpc@0.59.9(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)':
+  '@effect/rpc@0.64.2(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@3.15.2)
-      effect: 3.15.2
+      '@effect/platform': 0.87.1(effect@3.16.10)
+      effect: 3.16.10
 
-  '@effect/schema@0.75.5(effect@3.15.2)':
+  '@effect/schema@0.75.5(effect@3.16.10)':
     dependencies:
-      effect: 3.15.2
+      effect: 3.16.10
       fast-check: 3.23.2
 
-  '@effect/sql@0.35.8(@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0))(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)':
+  '@effect/sql@0.40.1(@effect/experimental@0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0))(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)':
     dependencies:
-      '@effect/experimental': 0.46.4(@effect/platform@0.82.4(effect@3.15.2))(effect@3.15.2)(ioredis@5.6.0)
-      '@effect/platform': 0.82.4(effect@3.15.2)
+      '@effect/experimental': 0.51.1(@effect/platform@0.87.1(effect@3.16.10))(effect@3.16.10)(ioredis@5.6.0)
+      '@effect/platform': 0.87.1(effect@3.16.10)
       '@opentelemetry/semantic-conventions': 1.33.0
-      effect: 3.15.2
+      effect: 3.16.10
       uuid: 11.0.5
 
-  '@effect/typeclass@0.34.2(effect@3.15.2)':
+  '@effect/typeclass@0.35.10(effect@3.16.10)':
     dependencies:
-      effect: 3.15.2
+      effect: 3.16.10
 
-  '@effect/vitest@0.22.2(effect@3.15.2)(vitest@3.2.4)':
+  '@effect/vitest@0.23.10(effect@3.16.10)(vitest@3.2.4)':
     dependencies:
-      effect: 3.15.2
+      effect: 3.16.10
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   '@egjs/hammerjs@2.0.17':
@@ -16275,11 +16319,11 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@livestore/devtools-vite@0.3.1(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@livestore/devtools-vite@0.3.1(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
       '@livestore/utils': link:packages/@livestore/utils
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
@@ -18586,12 +18630,12 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 4.1.6
 
-  '@tailwindcss/vite@4.1.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@tailwindcss/vite@4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@tailwindcss/node': 4.1.6
       '@tailwindcss/oxide': 4.1.6
       tailwindcss: 4.1.6
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   '@tanstack/directive-functions-plugin@1.115.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)':
     dependencies:
@@ -18690,22 +18734,22 @@ snapshots:
       - xml2js
       - yaml
 
-  '@tanstack/react-start-config@1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)':
+  '@tanstack/react-start-config@1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)':
     dependencies:
       '@tanstack/react-start-plugin': 1.115.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       '@tanstack/router-core': 1.119.0
       '@tanstack/router-generator': 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
-      '@tanstack/router-plugin': 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+      '@tanstack/router-plugin': 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tanstack/server-functions-plugin': 1.115.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       '@tanstack/start-server-functions-handler': 1.119.0
-      '@vitejs/plugin-react': 4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+      '@vitejs/plugin-react': 4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       import-meta-resolve: 4.1.0
       nitropack: 2.11.6(@netlify/blobs@8.2.0)(typescript@5.8.3)
       ofetch: 1.4.1
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       vinxi: 0.5.3(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       zod: 3.24.4
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -18845,10 +18889,10 @@ snapshots:
       tiny-warning: 1.0.3
       unctx: 2.4.1
 
-  '@tanstack/react-start@1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)':
+  '@tanstack/react-start@1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)':
     dependencies:
       '@tanstack/react-start-client': 1.119.0(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
-      '@tanstack/react-start-config': 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
+      '@tanstack/react-start-config': 1.119.0(@netlify/blobs@8.2.0)(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))(yaml@2.8.0)
       '@tanstack/react-start-router-manifest': 1.119.0(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
       '@tanstack/react-start-server': 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/start-api-routes': 1.119.0(@netlify/blobs@8.2.0)(@types/node@22.15.33)(db0@0.3.1)(ioredis@5.6.0)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -18858,7 +18902,7 @@ snapshots:
       '@tanstack/start-server-functions-ssr': 1.119.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -18935,7 +18979,7 @@ snapshots:
     optionalDependencies:
       '@tanstack/react-router': 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
-  '@tanstack/router-plugin@1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@tanstack/router-plugin@1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/plugin-syntax-jsx': 7.25.9(@babel/core@7.26.10)
@@ -18956,8 +19000,8 @@ snapshots:
       zod: 3.24.4
     optionalDependencies:
       '@tanstack/react-router': 1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
-      vite-plugin-solid: 2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite-plugin-solid: 2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -20019,14 +20063,14 @@ snapshots:
       untun: 0.1.3
       uqr: 0.1.2
 
-  '@vitejs/plugin-react@4.3.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@vitejs/plugin-react@4.3.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.10)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.10)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -20049,13 +20093,13 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.2.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@vitest/mocker@3.2.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@vitest/spy': 3.2.4
       estree-walker: 3.0.3
       magic-string: 0.30.17
     optionalDependencies:
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   '@vitest/pretty-format@3.2.4':
     dependencies:
@@ -22080,7 +22124,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.15.2:
+  effect@3.16.10:
     dependencies:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
@@ -25527,6 +25571,10 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
+  msgpackr@1.11.4:
+    optionalDependencies:
+      msgpackr-extract: 3.0.3
+
   muggle-string@0.4.1: {}
 
   multipasta@0.2.5: {}
@@ -27691,7 +27739,7 @@ snapshots:
       dot-case: 3.0.4
       tslib: 2.8.1
 
-  solid-devtools@0.33.0(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
+  solid-devtools@0.33.0(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
     dependencies:
       '@babel/core': 7.26.10
       '@babel/plugin-syntax-typescript': 7.25.9(@babel/core@7.26.10)
@@ -27700,7 +27748,7 @@ snapshots:
       '@solid-devtools/shared': 0.19.0(solid-js@1.9.4)
       solid-js: 1.9.4
     optionalDependencies:
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -28021,12 +28069,12 @@ snapshots:
 
   syncpack@13.0.3(typescript@5.8.3):
     dependencies:
-      '@effect/schema': 0.75.5(effect@3.15.2)
+      '@effect/schema': 0.75.5(effect@3.16.10)
       chalk: 5.4.1
       chalk-template: 1.1.0
       commander: 13.1.0
       cosmiconfig: 9.0.0(typescript@5.8.3)
-      effect: 3.15.2
+      effect: 3.16.10
       enquirer: 2.4.1
       fast-check: 3.23.2
       globby: 14.1.0
@@ -28747,7 +28795,7 @@ snapshots:
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -28762,7 +28810,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
+  vite-plugin-solid@2.11.6(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
     dependencies:
       '@babel/core': 7.26.10
       '@types/babel__core': 7.20.5
@@ -28770,17 +28818,17 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.4
       solid-refresh: 0.6.3(solid-js@1.9.4)
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
-      vitefu: 1.0.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vitefu: 1.0.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-svgr@4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
+  vite-plugin-svgr@4.3.0(rollup@4.40.2)(typescript@5.8.3)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
     dependencies:
       '@rollup/pluginutils': 5.1.4(rollup@4.40.2)
       '@svgr/core': 8.1.0(typescript@5.8.3)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
     transitivePeerDependencies:
       - rollup
       - supports-color
@@ -28817,15 +28865,36 @@ snapshots:
       tsx: 4.19.3
       yaml: 2.8.0
 
+  vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0):
+    dependencies:
+      esbuild: 0.25.4
+      fdir: 6.4.6(picomatch@4.0.2)
+      picomatch: 4.0.2
+      postcss: 8.5.6
+      rollup: 4.40.2
+      tinyglobby: 0.2.14
+    optionalDependencies:
+      '@types/node': 22.15.33
+      fsevents: 2.3.3
+      jiti: 2.4.2
+      lightningcss: 1.29.2
+      terser: 5.39.0
+      tsx: 4.19.3
+      yaml: 2.8.0
+
   vitefu@1.0.6(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
     optionalDependencies:
       vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+
+  vitefu@1.0.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)):
+    optionalDependencies:
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
   vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.15.33)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+      '@vitest/mocker': 3.2.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -28843,7 +28912,7 @@ snapshots:
       tinyglobby: 0.2.14
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 6.3.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
+      vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       vite-node: 3.2.4(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
