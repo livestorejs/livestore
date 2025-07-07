@@ -31,7 +31,7 @@ export const events = {
 
 export const tables = { issue, description, comment, filterState, frontendState, scrollState }
 
-const materializers = State.SQLite.materializers(events, {
+const materializers: State.SQLite.Materializers<typeof events> = {
   'v1.CreateIssueWithDescription': (data) => [
     tables.issue.insert({
       id: data.id,
@@ -72,7 +72,7 @@ const materializers = State.SQLite.materializers(events, {
     tables.issue.update({ kanbanorder, status, modified }).where({ id }),
   'v1.UpdateIssuePriority': ({ id, priority, modified }) => tables.issue.update({ priority, modified }).where({ id }),
   'v1.UpdateDescription': ({ id, body }) => tables.description.update({ body }).where({ id }),
-})
+}
 
 const state = State.SQLite.makeState({ tables, materializers })
 

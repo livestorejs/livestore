@@ -202,21 +202,20 @@ export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
   return materializer
 }
 
-export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
-  _eventDefRecord: TInputRecord,
-  handlers: {
-    [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
-      TInputRecord[keyof TInputRecord],
-      { name: TEventName }
-    >['options']['derived'] extends true
-      ? never
-      : TEventName]: Materializer<Extract<TInputRecord[keyof TInputRecord], { name: TEventName }>>
-    // [K in TInputRecord[keyof TInputRecord]['name']]: Materializer<
-    //   Extract<TInputRecord[keyof TInputRecord], { name: K }>
-    // >
-  },
-) => {
-  return handlers
+/**
+  * A record of materializer arms, each of which returns either a query builder, SQL string or object
+  * containing SQL string, bind values and affected table names (for ensuring subscribers are notified).
+  */
+export type Materializers<TInputRecord extends Record<string, EventDef.AnyWithoutFn>> = {
+  [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
+    TInputRecord[keyof TInputRecord],
+    { name: TEventName }
+  >['options']['derived'] extends true
+    ? never
+    : TEventName]: Materializer<Extract<TInputRecord[keyof TInputRecord], { name: TEventName }>>
+  // [K in TInputRecord[keyof TInputRecord]['name']]: Materializer<
+  //   Extract<TInputRecord[keyof TInputRecord], { name: K }>
+  // >
 }
 
 export const rawSqlEvent = defineEvent({
