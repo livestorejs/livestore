@@ -20,8 +20,8 @@
     }
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.48.4",
-    "@effect/vitest": "0.22.2",
+    "@effect/opentelemetry": "0.53.1",
+    "@effect/vitest": "0.23.10",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",

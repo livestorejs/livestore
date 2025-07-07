@@ -4,13 +4,13 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.0.5",
-    "@effect/language-service": "^0.16.5",
+    "@effect/language-service": "^0.23.3",
     "@types/node": "^22.15.33",
     "@vitest/ui": "catalog:",
     "madge": "^6.1.0",
     "syncpack": "^13.0.2",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
+    "vite": "^7.0.0",
     "vitest": "catalog:",
     "yaml": "^2.8.0"
   },

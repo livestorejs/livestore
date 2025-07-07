@@ -21,7 +21,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "typescript": "5.8.3",
-    "vite": "6.3.4"
+    "vite": "7.0.0"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",

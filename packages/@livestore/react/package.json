@@ -40,7 +40,7 @@
     "react-dom": "^19.0.0",
     "react-window": "^1.8.11",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
+    "vite": "^7.0.0",
     "vitest": "catalog:"
   },
   "files": [
