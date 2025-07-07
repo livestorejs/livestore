@@ -11,8 +11,8 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
-export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
+export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
 export const OtelLiveHttp = ({
   serviceName,
