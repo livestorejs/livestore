@@ -37,7 +37,7 @@ type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
   : never
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
-export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
+export type CFWorker<TEnv extends Env = Env, _T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
   fetch: <CFHostMetada = unknown>(
     request: CfWorker.Request<CFHostMetada>,
     env: TEnv,
