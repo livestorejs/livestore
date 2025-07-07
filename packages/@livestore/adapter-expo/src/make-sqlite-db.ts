@@ -38,7 +38,7 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
   Effect.gen(function* () {
     // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
-      const db = SQLite.openDatabaseSync(':memory:')
+      const db = SQLite.openDatabaseSync(':memory:', { useNewConnection: true })
 
       return makeSqliteDb_({
         db,
