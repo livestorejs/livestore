@@ -25,6 +25,12 @@ const runTestGroup =
       console.log(`::endgroup::`)
     }).pipe(Effect.withSpan(`test-group(${name})`))
 
+// TODO: Consider replacing hardcoded package targeting with Vitest CLI flag passthrough
+// This would allow more flexible test targeting using standard Vitest options like:
+// - File patterns as positional arguments (e.g., mono test unit packages/@livestore/common)
+// - --testNamePattern/-t for filtering tests by name
+// - --exclude for excluding files
+// - Other standard Vitest CLI flags for more precise test control
 const testUnitCommand = Cli.Command.make(
   'unit',
   {},
@@ -60,6 +66,7 @@ const testUnitCommand = Cli.Command.make(
       yield* Effect.forEach(
         paths,
         (vitestPath) =>
+          // TODO use this https://x.com/luxdav/status/1942532247833436656
           cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
             Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
           ),
@@ -187,7 +194,7 @@ const docsCommand = Cli.Command.make('docs').pipe(
               : branchName === 'main' || branchName === devBranchName
 
           if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
-            yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
+            return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
           }
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)

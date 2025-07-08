@@ -116,7 +116,7 @@ describe('query builder', () => {
             1,
           ],
           "query": "SELECT id, text FROM 'todos' LIMIT ?",
-          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string } | undefined> <-> { readonly id: string; readonly text: string } | undefined)",
         }
       `)
 
