@@ -18,8 +18,7 @@ import * as otel from '@opentelemetry/api'
 import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
-import { getEventDef, type LiveStoreSchema, SystemTables } from '../schema/mod.ts'
-import { sql } from '../util.ts'
+import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /**
@@ -217,7 +216,7 @@ export const makeClientSessionSyncProcessor = ({
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
-      clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
+        clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
