@@ -43,8 +43,5 @@
   },
   "node": {
     "enabled": false
-  },
-  "pnpm": {
-    "enabled": true
   }
 }
