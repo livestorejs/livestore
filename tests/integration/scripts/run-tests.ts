@@ -14,13 +14,15 @@ const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).
   Cli.Options.withDefault('headless'),
 )
 
-// Removed localDevtoolsPreviewOption since we always enable local preview mode in tests
+const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(Cli.Options.withDefault(false))
 
 const viteDevServer = ({
   useWorkspacePort,
+  useDevtoolsLocalPreview,
 }: {
   app: 'todomvc'
   useWorkspacePort: boolean
+  useDevtoolsLocalPreview: boolean
 }) =>
   Effect.gen(function* () {
     const devPort = useWorkspacePort
@@ -31,14 +33,7 @@ const viteDevServer = ({
       env: {
         // Relative to vite config
         TEST_LIVESTORE_SCHEMA_PATH_JSON: JSON.stringify('./devtools/todomvc/livestore/schema.ts'),
-        // Enable devtools local preview mode to avoid licensing issues
-        LSD_DEVTOOLS_LOCAL_PREVIEW: '1',
-        // Use sandbox licensing mode for CI compatibility
-        LIVESTORE_DEVTOOLS_SANDBOX: '1',
-        // Enable development mode
-        LS_DEV: '1',
-        // Disable OTEL export to avoid connection refused errors
-        VITE_OTEL_EXPORTER_OTLP_ENDPOINT: '',
+        LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview ? '1' : undefined,
       },
       cwd,
     }).pipe(Effect.forkScoped)
@@ -52,17 +47,20 @@ export const miscTest: Cli.Command.Command<
   UnexpectedError | PlatformError.PlatformError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'misc',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
+    function* ({ mode, localDevtoolsPreview }) {
       const { devPort } = yield* viteDevServer({
         app: 'todomvc',
         useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
       })
 
       yield* cmd(
@@ -106,17 +104,20 @@ export const todomvcTest: Cli.Command.Command<
   UnexpectedError | PlatformError.PlatformError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'todomvc',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
+    function* ({ mode, localDevtoolsPreview }) {
       const { devPort } = yield* viteDevServer({
         app: 'todomvc',
         useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
       })
 
       yield* cmd(
@@ -162,17 +163,20 @@ export const devtoolsTest: Cli.Command.Command<
   UnexpectedError | PlatformError.PlatformError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'devtools',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
+    function* ({ mode, localDevtoolsPreview }) {
       const { devPort } = yield* viteDevServer({
         app: 'todomvc',
         useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
       })
 
       const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
@@ -209,6 +213,7 @@ export const runAll: Cli.Command.Command<
   UnexpectedError | PlatformError.PlatformError,
   {
     readonly concurrency: 'sequential' | 'parallel'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'all',
@@ -216,14 +221,15 @@ export const runAll: Cli.Command.Command<
     concurrency: Cli.Options.choice('concurrency', ['sequential', 'parallel']).pipe(
       Cli.Options.withDefault('parallel'),
     ),
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
-  Effect.fn(function* ({ concurrency }) {
+  Effect.fn(function* ({ concurrency, localDevtoolsPreview }) {
     yield* Effect.all(
       [
-        miscTest.handler({ mode: 'headless' }),
+        miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         nodeSyncTest.handler({}),
-        todomvcTest.handler({ mode: 'headless' }),
-        devtoolsTest.handler({ mode: 'headless' }),
+        todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
+        devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
       ],
       { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
     )
