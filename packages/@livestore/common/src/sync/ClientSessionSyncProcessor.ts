@@ -14,11 +14,10 @@ import {
 } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { ClientSession, UnexpectedError } from '../adapter-types.js'
+import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.js'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { getEventDef, type LiveStoreSchema, SystemTables } from '../schema/mod.js'
-import { sql } from '../util.js'
+import { getEventDef, type LiveStoreSchema } from '../schema/mod.js'
 import * as SyncState from './syncstate.js'
 
 /**
@@ -31,6 +30,10 @@ import * as SyncState from './syncstate.js'
  * - We might need to make the rebase behaviour configurable e.g. to let users manually trigger a rebase
  *
  * Longer term we should evalutate whether we can unify the ClientSessionSyncProcessor with the LeaderSyncProcessor.
+ *
+ * The session and leader sync processor are different in the following ways:
+ * - The leader sync processor pulls regular LiveStore events, while the session sync processor pulls SyncState.PayloadUpstream items
+ * - The session sync processor has no downstream nodes.
  */
 export const makeClientSessionSyncProcessor = ({
   schema,
@@ -47,7 +50,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventDecoded: LiveStoreEvent.PartialAnyDecoded,
+    eventDecoded: LiveStoreEvent.AnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => {
     writeTables: Set<string>
@@ -95,7 +98,10 @@ export const makeClientSessionSyncProcessor = ({
     let baseEventSequenceNumber = syncStateRef.current.localHead
     const encodedEventDefs = batch.map(({ name, args }) => {
       const eventDef = getEventDef(schema, name)
-      const nextNumPair = EventSequenceNumber.nextPair(baseEventSequenceNumber, eventDef.eventDef.options.clientOnly)
+      const nextNumPair = EventSequenceNumber.nextPair({
+        seqNum: baseEventSequenceNumber,
+        isClient: eventDef.eventDef.options.clientOnly
+      })
       baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(eventSchema)({
@@ -119,7 +125,7 @@ export const makeClientSessionSyncProcessor = ({
     )
 
     if (mergeResult._tag === 'unexpected-error') {
-      return yield* Effect.die(new Error(`Unexpected error in client-session-sync-processor: ${mergeResult.cause}`))
+      return yield* Effect.die(new Error(`Unexpected error in client-session-sync-processor: ${mergeResult.message}`))
     }
 
     if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
@@ -198,18 +204,11 @@ export const makeClientSessionSyncProcessor = ({
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    const getMergeCounter = () =>
-      clientSession.sqliteDb.select<{ mergeCounter: number }>(
-        sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
-      )[0]?.mergeCounter ?? 0
-
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
-      clientSession.leaderThread.events.pull({
-        cursor: { mergeCounter: getMergeCounter(), eventNum: syncStateRef.current.localHead },
-      }),
+        clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
-      Stream.tap(({ payload, mergeCounter: leaderMergeCounter }) =>
+      Stream.tap(({ payload }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
@@ -225,7 +224,7 @@ export const makeClientSessionSyncProcessor = ({
           })
 
           if (mergeResult._tag === 'unexpected-error') {
-            return yield* Effect.fail(mergeResult.cause)
+            return yield* new SyncError({ cause: mergeResult.message })
           } else if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
@@ -240,7 +239,7 @@ export const makeClientSessionSyncProcessor = ({
               newEventsCount: mergeResult.newEvents.length,
               rollbackCount: mergeResult.rollbackEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              leaderMergeCounter,
+              rebaseGeneration: mergeResult.newSyncState.localHead.rebaseGeneration,
             })
 
             debugInfo.rebaseCount++
@@ -257,7 +256,6 @@ export const makeClientSessionSyncProcessor = ({
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
                 ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
-                { leaderMergeCounter },
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
@@ -277,7 +275,6 @@ export const makeClientSessionSyncProcessor = ({
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: mergeResult.newEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              leaderMergeCounter,
             })
 
             debugInfo.advanceCount++
