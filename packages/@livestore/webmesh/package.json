@@ -5,14 +5,14 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "bun": "./src/mod.ts",
       "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
+      "default": "./dist/mod.js",
+      "bun": "./src/mod.ts"
     },
     "./websocket-server": {
-      "bun": "./src/websocket-server.ts",
       "types": "./dist/websocket-server.d.ts",
-      "default": "./dist/websocket-server.js"
+      "default": "./dist/websocket-server.js",
+      "bun": "./src/websocket-server.ts"
     }
   },
   "types": "./dist/mod.d.ts",

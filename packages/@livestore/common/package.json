@@ -5,9 +5,9 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.js",
+      "bun": "./src/index.ts"
     },
     "./sql-queries": {
       "types": "./dist/sql-queries/index.d.ts",
