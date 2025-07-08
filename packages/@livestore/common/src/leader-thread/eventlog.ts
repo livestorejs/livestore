@@ -8,8 +8,8 @@ import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
   eventlogSystemTables,
-  sessionChangesetMetaTable,
   SYNC_STATUS_TABLE,
+  sessionChangesetMetaTable,
 } from '../schema/state/sqlite/system-tables.js'
 import { migrateTable } from '../schema-management/migrations.js'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.js'

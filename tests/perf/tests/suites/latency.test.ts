@@ -175,7 +175,9 @@ repeatSuite(
           await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
             itemToClick.toString(),
           )
-          await page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
+          await page
+            .locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`)
+            .click()
           await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
             `${itemsToSkip + warmupCount + 1}`,
           )
@@ -183,7 +185,9 @@ repeatSuite(
         await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 1})>td:nth-of-type(1)`)).toHaveText(
           `${itemsToSkip + warmupCount + 1}`,
         )
-        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(`${itemsToSkip}`)
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip}`,
+        )
 
         // Click on a item the second time
         await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(
