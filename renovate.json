@@ -48,6 +48,14 @@
       ]
     },
     {
+      "description": "Exclude graphology packages (as we need a patched version and will replace graphology with Effect's graph library soon)",
+      "enabled": false,
+      "matchPackageNames": [
+        "graphology",
+        "graphology-*"
+      ]
+    },
+    {
       "description": "Auto-merge patch and minor updates",
       "matchUpdateTypes": [
         "patch",
