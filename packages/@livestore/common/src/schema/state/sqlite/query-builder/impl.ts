@@ -312,6 +312,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       if (queryAst.pickFirst._tag === 'disabled') {
         return arraySchema
       } else if (queryAst.pickFirst.behaviour === 'undefined') {
+        const arraySchema = Schema.Array(Schema.UndefinedOr(queryAst.resultSchemaSingle))
         return arraySchema.pipe(Schema.headOrElse(() => undefined))
       } else if (queryAst.pickFirst.behaviour === 'error') {
         // Will throw if the array is empty
