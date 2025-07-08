@@ -132,13 +132,13 @@ export const makeClientSessionSyncProcessor = ({
     )
 
     if (mergeResult._tag === 'unexpected-error') {
-      return yield* new SyncError({ cause: mergeResult.message })
+      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
     }
 
     if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
-      return yield* new SyncError({ cause: `Expected advance, got ${mergeResult._tag}` })
+      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
     }
 
     syncStateRef.current = mergeResult.newSyncState
@@ -370,7 +370,7 @@ export interface ClientSessionSyncProcessor {
     {
       writeTables: Set<string>
     },
-    SyncError
+    never
   >
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
