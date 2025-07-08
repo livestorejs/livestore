@@ -253,7 +253,7 @@ export const makePersistedAdapter =
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
-        yield* Effect.never
+        return yield* Effect.never
       }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
@@ -361,7 +361,7 @@ export const makePersistedAdapter =
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
-        yield* UnexpectedError.make({
+        return yield* UnexpectedError.make({
           cause: `Encountered empty or corrupted database`,
           payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
         })
@@ -501,7 +501,7 @@ const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
       if (condition) {
-        yield* UnexpectedError.make({
+        return yield* UnexpectedError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })
       }
