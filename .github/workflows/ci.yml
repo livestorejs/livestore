@@ -53,7 +53,8 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
-          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - run: mono test unit
       - run: mono test integration misc
       - run: mono test integration todomvc
