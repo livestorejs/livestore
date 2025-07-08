@@ -19,7 +19,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "^0.3.1",
+    "@livestore/devtools-vite": "0.3.2-dev.0",
     "@tanstack/react-router": "^1.119.0",
     "@types/node": "^22.15.33",
     "@types/react": "^19.1.2",

@@ -37,7 +37,7 @@
     "tiptap-markdown": "0.8.10"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "^0.3.1",
+    "@livestore/devtools-vite": "0.3.2-dev.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.16",
