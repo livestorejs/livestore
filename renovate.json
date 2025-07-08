@@ -4,7 +4,8 @@
     "config:recommended",
     "schedule:daily",
     ":enableVulnerabilityAlertsWithLabel(security)",
-    ":semanticPrefixFixDepsChoreOthers"
+    ":semanticPrefixFixDepsChoreOthers",
+    "group:allNonMajor"
   ],
   "baseBranches": [
     "dev"
