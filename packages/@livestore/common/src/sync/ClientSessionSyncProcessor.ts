@@ -100,7 +100,7 @@ export const makeClientSessionSyncProcessor = ({
       const eventDef = getEventDef(schema, name)
       const nextNumPair = EventSequenceNumber.nextPair({
         seqNum: baseEventSequenceNumber,
-        isClient: eventDef.eventDef.options.clientOnly
+        isClient: eventDef.eventDef.options.clientOnly,
       })
       baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(
@@ -125,13 +125,13 @@ export const makeClientSessionSyncProcessor = ({
     )
 
     if (mergeResult._tag === 'unexpected-error') {
-      return yield* Effect.die(new Error(`Unexpected error in client-session-sync-processor: ${mergeResult.message}`))
+      return yield* new SyncError({ cause: mergeResult.message })
     }
 
     if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
-      return yield* Effect.die(new Error(`Expected advance, got ${mergeResult._tag}`))
+      return yield* new SyncError({ cause: `Expected advance, got ${mergeResult._tag}` })
     }
 
     syncStateRef.current = mergeResult.newSyncState
@@ -206,7 +206,7 @@ export const makeClientSessionSyncProcessor = ({
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
-        clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
+      clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
@@ -230,7 +230,7 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           syncStateRef.current = mergeResult.newSyncState
-          syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
+          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
 
           if (mergeResult._tag === 'rebase') {
             span.addEvent('merge:pull:rebase', {
@@ -355,7 +355,7 @@ export interface ClientSessionSyncProcessor {
     {
       writeTables: Set<string>
     },
-    never
+    SyncError
   >
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
