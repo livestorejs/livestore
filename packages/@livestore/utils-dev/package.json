@@ -7,14 +7,17 @@
   ],
   "exports": {
     "./node": {
+      "bun": "./src/node/mod.ts",
       "types": "./dist/node/mod.d.ts",
       "default": "./dist/node/mod.js"
     },
     "./node-vitest": {
+      "bun": "./src/node-vitest/mod.ts",
       "types": "./dist/node-vitest/mod.d.ts",
       "default": "./dist/node-vitest/mod.js"
     },
     "./node-vitest-polyfill": {
+      "bun": "./src/node-vitest/polyfill.ts",
       "types": "./dist/node-vitest/polyfill.d.ts",
       "default": "./dist/node-vitest/polyfill.js"
     }
