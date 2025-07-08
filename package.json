@@ -1,56 +1,56 @@
 {
-	"name": "@livestore/monorepo",
-	"version": "0.0.0",
-	"private": true,
-	"devDependencies": {
-		"@biomejs/biome": "^2.1.0",
-		"@effect/language-service": "^0.23.3",
-		"@types/node": "^22.15.33",
-		"@vitest/ui": "catalog:",
-		"madge": "^6.1.0",
-		"syncpack": "^13.0.2",
-		"typescript": "^5.8.3",
-		"vite": "^7.0.0",
-		"vitest": "catalog:",
-		"yaml": "^2.8.0"
-	},
-	"packageManager": "pnpm@10.2.1",
-	"pnpm": {
-		"patchedDependencies": {
-			"graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
-		}
-	},
-	"resolutions": {
-		"@livestore/adapter-expo": "workspace:*",
-		"@livestore/adapter-node": "workspace:*",
-		"@livestore/adapter-web": "workspace:*",
-		"@livestore/common": "workspace:*",
-		"@livestore/devtools-expo": "workspace:*",
-		"@livestore/devtools-vite": "^0.3.1",
-		"@livestore/devtools-web-common": "workspace:*",
-		"@livestore/livestore": "workspace:*",
-		"@livestore/peer-deps": "workspace:*",
-		"@livestore/react": "workspace:*",
-		"@livestore/solid": "workspace:*",
-		"@livestore/sqlite-wasm": "workspace:*",
-		"@livestore/sync-cf": "workspace:*",
-		"@livestore/sync-electric": "workspace:*",
-		"@livestore/utils": "workspace:*",
-		"@livestore/webmesh": "workspace:*",
-		"esbuild": "0.25.4",
-		"react-native": "^0.79.2"
-	},
-	"resolutions#": {
-		"esbuild": "Needed for CF Wrangler / vinxi build",
-		"@livestore/*": "Needed to force PNPM to install local packages"
-	},
-	"scripts": {
-		"build": "pnpm run build:ts",
-		"build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
-		"build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
-		"pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
-		"test": "CI=1 pnpm --parallel run test",
-		"test:perf": "pnpm --filter '@local/tests-perf' test",
-		"update-lockfile": "CI=1 pnpm install --lockfile-only"
-	}
+  "name": "@livestore/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.0",
+    "@effect/language-service": "^0.23.3",
+    "@types/node": "^22.15.33",
+    "@vitest/ui": "catalog:",
+    "madge": "^6.1.0",
+    "syncpack": "^13.0.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "catalog:",
+    "yaml": "^2.8.0"
+  },
+  "packageManager": "pnpm@10.2.1",
+  "pnpm": {
+    "patchedDependencies": {
+      "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
+    }
+  },
+  "resolutions": {
+    "@livestore/adapter-expo": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/devtools-expo": "workspace:*",
+    "@livestore/devtools-vite": "0.3.2-dev.0",
+    "@livestore/devtools-web-common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/solid": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/sync-electric": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "esbuild": "0.25.4",
+    "react-native": "^0.79.2"
+  },
+  "resolutions#": {
+    "esbuild": "Needed for CF Wrangler / vinxi build",
+    "@livestore/*": "Needed to force PNPM to install local packages"
+  },
+  "scripts": {
+    "build": "pnpm run build:ts",
+    "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
+    "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
+    "test": "CI=1 pnpm --parallel run test",
+    "test:perf": "pnpm --filter '@local/tests-perf' test",
+    "update-lockfile": "CI=1 pnpm install --lockfile-only"
+  }
 }
