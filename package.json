@@ -47,8 +47,6 @@
 	"scripts": {
 		"build": "pnpm run build:ts",
 		"build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
-		"build:examples:src": "pnpm --filter 'livestore-example-src-*' run build",
-		"build:examples:standalone": "pnpm --filter 'livestore-example-standalone-*' run build",
 		"build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
 		"pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
 		"test": "CI=1 pnpm --parallel run test",
