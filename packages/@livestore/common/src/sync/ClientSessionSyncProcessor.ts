@@ -1,18 +1,8 @@
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import {
-  BucketQueue,
-  Effect,
-  FiberHandle,
-  Option,
-  Queue,
-  type Runtime,
-  Schema,
-  type Scope,
-  Stream,
-  Subscribable,
-} from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
+import { Option, type Runtime, type Scope } from '@livestore/utils/effect'
+import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.js'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
@@ -51,12 +41,12 @@ export const makeClientSessionSyncProcessor = ({
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
     eventDecoded: LiveStoreEvent.AnyDecoded,
-    options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
-  ) => {
+    options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
+  ) => Effect.Effect<{
     writeTables: Set<string>
     sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } | { _tag: 'unset' }
     materializerHash: Option.Option<number>
-  }
+  }>
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
@@ -89,10 +79,7 @@ export const makeClientSessionSyncProcessor = ({
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
-    batch,
-    { otelContext },
-  ) {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
@@ -125,13 +112,13 @@ export const makeClientSessionSyncProcessor = ({
     )
 
     if (mergeResult._tag === 'unexpected-error') {
-      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
+      return yield* new SyncError({ cause: mergeResult.message })
     }
 
     if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
+      return yield* new SyncError({ cause: `Expected advance, got ${mergeResult._tag}` })
     }
 
     syncStateRef.current = mergeResult.newSyncState
@@ -146,8 +133,7 @@ export const makeClientSessionSyncProcessor = ({
         writeTables: newWriteTables,
         sessionChangeset,
         materializerHash,
-      } = materializeEvent(decodedEventDef, {
-        otelContext,
+      } = yield* materializeEvent(decodedEventDef, {
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
@@ -172,8 +158,6 @@ export const makeClientSessionSyncProcessor = ({
     advanceCount: 0,
     rejectCount: 0,
   }
-
-  const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     // eslint-disable-next-line unicorn/prefer-global-this
@@ -291,8 +275,7 @@ export const makeClientSessionSyncProcessor = ({
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
-            } = materializeEvent(decodedEventDef, {
-              otelContext,
+            } = yield* materializeEvent(decodedEventDef, {
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
@@ -349,14 +332,11 @@ export const makeClientSessionSyncProcessor = ({
 }
 
 export interface ClientSessionSyncProcessor {
-  push: (
-    batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
-    options: { otelContext: otel.Context },
-  ) => Effect.Effect<
+  push: (batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>) => Effect.Effect<
     {
       writeTables: Set<string>
     },
-    never
+    SyncError
   >
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**

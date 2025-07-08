@@ -25,6 +25,19 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -55,14 +68,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
         },
       ],
     },
@@ -144,6 +149,19 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -174,14 +192,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)",
-              },
-            },
-          ],
         },
       ],
     },
@@ -263,12 +273,38 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -306,14 +342,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)",
-              },
-            },
-          ],
         },
         {
           "_name": "LiveStore:commit",
@@ -323,14 +351,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)",
-              },
-            },
-          ],
         },
       ],
     },
@@ -438,6 +458,19 @@ exports[`otel > otel 3`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -468,14 +501,6 @@ exports[`otel > otel 3`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
         },
       ],
     },
@@ -719,6 +744,19 @@ exports[`otel > with thunks 7`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -749,14 +787,6 @@ exports[`otel > with thunks 7`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
         },
       ],
     },
@@ -834,6 +864,19 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "attributes": {
         "batchSize": 1,
       },
+      "children": [
+        {
+          "_name": "client-session-sync-processor:materialize-event",
+          "children": [
+            {
+              "_name": "livestore.in-memory-db:execute",
+              "attributes": {
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -864,14 +907,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
             ],
             "livestore.eventsCount": 1,
           },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
         },
       ],
     },
