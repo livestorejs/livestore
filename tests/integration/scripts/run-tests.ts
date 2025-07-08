@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, HttpClient, Logger, LogLevel, OtelTracer, Schedule, Duration, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
@@ -15,6 +15,26 @@ const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).
 )
 
 const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(Cli.Options.withDefault(false))
+
+const waitForServerReady = (port: string) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    const filteredClient = HttpClient.filterStatus(client, status => status === 200 || status === 404)
+    yield* filteredClient.get(`http://localhost:${port}/`)
+  }).pipe(
+    Effect.tapError(error => Effect.logDebug(`Health check failed: ${error}`)),
+    Effect.retry({
+      schedule: Schedule.spaced(Duration.seconds(1)).pipe(
+        Schedule.upTo(Duration.seconds(30))
+      ),
+    }),
+    Effect.tap(() => Effect.logInfo(`Vite dev server is ready on port ${port}`)),
+    Effect.catchAll(error => 
+      Effect.die(`Vite dev server failed to start on port ${port}: ${error}`)
+    ),
+    Effect.provide(FetchHttpClient.layer),
+    Effect.withSpan('wait-for-server-ready')
+  )
 
 const viteDevServer = ({
   useWorkspacePort,
@@ -29,6 +49,7 @@ const viteDevServer = ({
       ? '4444'
       : yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError)
 
+    // Start the Vite dev server in the background
     yield* cmd(`vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
@@ -37,6 +58,9 @@ const viteDevServer = ({
       },
       cwd,
     }).pipe(Effect.forkScoped)
+
+    // Wait for server to be ready before returning
+    yield* waitForServerReady(devPort)
 
     return { devPort }
   })
