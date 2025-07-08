@@ -12,6 +12,6 @@
     { "path": "../utils" },
     { "path": "../sqlite-wasm" },
     { "path": "../webmesh" },
-    { "path": "../devtools-web-common" },
+    { "path": "../devtools-web-common" }
   ]
 }

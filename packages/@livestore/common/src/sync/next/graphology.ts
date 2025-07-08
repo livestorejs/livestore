@@ -13,11 +13,9 @@ export declare class IGraph<
   constructor(options?: graphologyTypes.GraphOptions)
 }
 
-export const DirectedGraph = class DirectedGraph extends graphology.DirectedGraph {
-} as typeof IGraph
+export const DirectedGraph = class DirectedGraph extends graphology.DirectedGraph {} as typeof IGraph
 
-export const Graph = class Graph extends graphology.Graph {
-} as typeof IGraph
+export const Graph = class Graph extends graphology.Graph {} as typeof IGraph
 
 // export const graphology = graphology_ as graphologyTypes
 

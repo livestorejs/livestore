@@ -1,6 +1,5 @@
 import { hostname } from 'node:os'
 import * as WT from 'node:worker_threads'
-
 import {
   type Adapter,
   type BootStatus,
@@ -8,9 +7,10 @@ import {
   type IntentionalShutdownCause,
   type LockStatus,
   type MakeSqliteDb,
+  makeClientSession,
   type SyncOptions,
+  UnexpectedError,
 } from '@livestore/common'
-import { makeClientSession, UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'

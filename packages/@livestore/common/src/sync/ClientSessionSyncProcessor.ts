@@ -1,7 +1,17 @@
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import { Option, type Runtime, type Scope } from '@livestore/utils/effect'
-import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import {
+  BucketQueue,
+  Effect,
+  FiberHandle,
+  Option,
+  Queue,
+  type Runtime,
+  Schema,
+  type Scope,
+  Stream,
+  Subscribable,
+} from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.js'
