@@ -9,8 +9,9 @@
     },
     "./load-wasm": {
       "types": "./dist/load-wasm/mod.browser.d.ts",
-      "node": "./dist/load-wasm/mod.node.js",
       "browser": "./dist/load-wasm/mod.browser.js",
+      "worker": "./dist/load-wasm/mod.browser.js",
+      "node": "./dist/load-wasm/mod.node.js",
       "default": "./dist/load-wasm/mod.browser.js"
     },
     "./node": {
