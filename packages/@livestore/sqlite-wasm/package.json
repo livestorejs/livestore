@@ -10,7 +10,8 @@
     "./load-wasm": {
       "types": "./dist/load-wasm/mod.browser.d.ts",
       "node": "./dist/load-wasm/mod.node.js",
-      "browser": "./dist/load-wasm/mod.browser.js"
+      "browser": "./dist/load-wasm/mod.browser.js",
+      "default": "./dist/load-wasm/mod.browser.js"
     },
     "./node": {
       "types": "./dist/node/mod.d.ts",
