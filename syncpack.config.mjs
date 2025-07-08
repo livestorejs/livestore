@@ -38,9 +38,10 @@ const config = {
   sortFirst: ['name', 'version', 'type', 'sideEffects', 'private', 'exports', 'types', 'typesVersions'],
   sortExports: [
     'types',
+    'browser',
+    'worker',
     'node-addons',
     'node',
-    'browser',
     'react-native',
     'import',
     'require',
