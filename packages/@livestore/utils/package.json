@@ -7,28 +7,34 @@
   ],
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./cuid": {
+      "bun": "./src/cuid/cuid.node.ts",
       "types": "./dist/cuid/cuid.node.d.ts",
       "node": "./dist/cuid/cuid.node.js",
       "browser": "./dist/cuid/cuid.browser.js",
       "react-native": "./dist/cuid/cuid.browser.js"
     },
     "./nanoid": {
+      "bun": "./src/nanoid/index.ts",
       "types": "./dist/nanoid/index.d.ts",
       "default": "./dist/nanoid/index.js"
     },
     "./effect": {
+      "bun": "./src/effect/index.ts",
       "types": "./dist/effect/index.d.ts",
       "default": "./dist/effect/index.js"
     },
     "./node": {
+      "bun": "./src/node/mod.ts",
       "types": "./dist/node/mod.d.ts",
       "default": "./dist/node/mod.js"
     },
     "./bun": {
+      "bun": "./src/bun/mod.ts",
       "types": "./dist/bun/mod.d.ts",
       "default": "./dist/bun/mod.js"
     }

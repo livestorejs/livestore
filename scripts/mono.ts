@@ -1,17 +1,18 @@
 import fs from 'node:fs'
 
 import { liveStoreVersion } from '@livestore/common'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
-
 import { copyTodomvcSrc } from './examples/copy-examples.js'
 import { command as deployExamplesCommand } from './examples/deploy-examples.js'
 import * as generateExamples from './examples/generate-examples.js'
 import { deployToNetlify } from './shared/netlify.js'
 
-const cwd = process.env.WORKSPACE_ROOT
+const cwd =
+  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 // GitHub actions log groups
