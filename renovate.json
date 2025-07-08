@@ -6,42 +6,63 @@
     ":enableVulnerabilityAlertsWithLabel(security)",
     ":semanticPrefixFixDepsChoreOthers"
   ],
-  "baseBranches": ["dev"],
+  "baseBranches": [
+    "dev"
+  ],
   "platformAutomerge": true,
   "automerge": true,
   "automergeType": "pr",
   "packageRules": [
     {
-      "description": "Exclude Expo / React Native packages",
-      "matchPackagePatterns": ["^expo-", "^@expo/", "^react-native-", "^@react-native/"],
+      "matchCategories": [
+        "node"
+      ],
       "enabled": false
     },
     {
+      "description": "Exclude Expo / React Native packages",
+      "enabled": false,
+      "matchPackageNames": [
+        "/^expo-/",
+        "/^@expo//",
+        "/^react-native-/",
+        "/^@react-native//"
+      ]
+    },
+    {
       "description": "Exclude React packages",
-      "matchPackagePatterns": ["^react-", "^@react-"],
-      "matchPackageNames": ["react", "react-dom"],
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "/^react-/",
+        "/^@react-/"
+      ],
       "enabled": false
     },
     {
       "description": "Exclude workspace packages",
-      "matchPackagePatterns": ["^@livestore/"],
-      "enabled": false
+      "enabled": false,
+      "matchPackageNames": [
+        "/^@livestore//"
+      ]
     },
     {
       "description": "Auto-merge patch and minor updates",
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
       "automerge": true
     },
     {
       "description": "Manual review for major updates",
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false
     }
   ],
   "lockFileMaintenance": {
-    "enabled": false
-  },
-  "node": {
     "enabled": false
   },
   "nix": {
