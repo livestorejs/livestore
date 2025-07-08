@@ -412,8 +412,7 @@ export namespace ClientDocumentTableDef {
     TName extends string,
     TType,
     TOptions extends ClientDocumentTableOptions<TType>,
-  > = // Helper to create partial event
-  (TOptions['default']['id'] extends undefined
+  > = (TOptions['default']['id'] extends undefined // Helper to create partial event
     ? (
         args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
         id: string | SessionIdSymbol,
