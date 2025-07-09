@@ -215,7 +215,6 @@ const makeAdapterImpl = ({
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-node:adapter'),
-      Effect.parallelFinalizers,
       Effect.provide(PlatformNode.NodeFileSystem.layer),
       Effect.provide(FetchHttpClient.layer),
     )) satisfies Adapter
@@ -336,20 +335,6 @@ const makeWorkerLeaderThread = ({
       UnexpectedError.mapToUnexpectedError,
       Effect.tapErrorCause(shutdown),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
-    )
-
-    yield* Effect.addFinalizer(() =>
-      Effect.gen(function* () {
-        // We first try to gracefully shutdown the leader worker and then forcefully terminate it
-        yield* Effect.raceFirst(
-          runInWorker(new WorkerSchema.LeaderWorkerInner.Shutdown()).pipe(Effect.andThen(() => nodeWorker.terminate())),
-
-          Effect.sync(() => {
-            console.warn('[@livestore/adapter-node:adapter] Worker did not gracefully shutdown in time, terminating it')
-            nodeWorker.terminate()
-          }).pipe(Effect.delay(1000)),
-        ).pipe(Effect.exit) // The disconnect is to prevent the interrupt to bubble out
-      }).pipe(Effect.withSpan('@livestore/adapter-node:adapter:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
     )
 
     const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
