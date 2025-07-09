@@ -1,10 +1,10 @@
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Logger, LogLevel, Option, Schema, UrlParams } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
 
-import { WSMessage } from '../common/mod.js'
+import { SearchParamsSchema, WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface Env {
@@ -36,6 +36,7 @@ export const eventlogTable = State.SQLite.table({
 const WebSocketAttachmentSchema = Schema.parseJson(
   Schema.Struct({
     storeId: Schema.String,
+    payload: Schema.optional(Schema.JsonValue),
   }),
 )
 
@@ -49,9 +50,15 @@ export const PULL_CHUNK_SIZE = 100
 export const PERSISTENCE_FORMAT_VERSION = 7
 
 export type MakeDurableObjectClassOptions = {
-  onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
+  onPush?: (
+    message: WSMessage.PushReq,
+    context: { storeId: string; payload?: Schema.JsonValue },
+  ) => Effect.Effect<void> | Promise<void>
   onPushRes?: (message: WSMessage.PushAck | WSMessage.Error) => Effect.Effect<void> | Promise<void>
-  onPull?: (message: WSMessage.PullReq) => Effect.Effect<void> | Promise<void>
+  onPull?: (
+    message: WSMessage.PullReq,
+    context: { storeId: string; payload?: Schema.JsonValue },
+  ) => Effect.Effect<void> | Promise<void>
   onPullRes?: (message: WSMessage.PullRes | WSMessage.Error) => Effect.Effect<void> | Promise<void>
 }
 
@@ -68,13 +75,13 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
     fetch = async (request: Request) =>
       Effect.sync(() => {
-        const storeId = getStoreId(request)
+        const { storeId, payload } = getRequestSearchParams(request)
         const storage = makeStorage(this.ctx, this.env, storeId)
 
         const { 0: client, 1: server } = new WebSocketPair()
 
         // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
-        server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId }))
+        server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload }))
 
         // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
@@ -109,7 +116,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       const requestId = decodedMessage.requestId
 
       return Effect.gen(this, function* () {
-        const { storeId } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
+        const { storeId, payload } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
         const storage = makeStorage(this.ctx, this.env, storeId)
 
         try {
@@ -117,7 +124,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             // TODO allow pulling concurrently to not block incoming push requests
             case 'WSMessage.PullReq': {
               if (options?.onPull) {
-                yield* Effect.tryAll(() => options.onPull!(decodedMessage))
+                yield* Effect.tryAll(() => options.onPull!(decodedMessage, { storeId, payload }))
               }
 
               const respond = (message: WSMessage.PullRes) =>
@@ -165,7 +172,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               yield* this.pushSemaphore.take(1)
 
               if (options?.onPush) {
-                yield* Effect.tryAll(() => options.onPush!(decodedMessage))
+                yield* Effect.tryAll(() => options.onPush!(decodedMessage, { storeId, payload }))
               }
 
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
@@ -411,14 +418,11 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
   }
 }
 
-const getStoreId = (request: Request) => {
+const getRequestSearchParams = (request: Request) => {
   const url = new URL(request.url)
-  const searchParams = url.searchParams
-  const storeId = searchParams.get('storeId')
-  if (storeId === null) {
-    throw new Error('storeId search param is required')
-  }
-  return storeId
+  const urlParams = UrlParams.fromInput(url.searchParams)
+  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.runSync)
+  return paramsResult
 }
 
 const toValidTableName = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_')

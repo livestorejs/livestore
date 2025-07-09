@@ -46,7 +46,12 @@ export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjec
 }
 
 export type MakeWorkerOptions<TEnv extends Env = Env> = {
-  validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+  /**
+   * Validates the payload during WebSocket connection establishment.
+   * Note: This runs only at connection time, not for individual push events.
+   * For push event validation, use the `onPush` callback in the durable object.
+   */
+  validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
   durableObject?: {
@@ -120,7 +125,8 @@ export const makeWorker = <
  *
  * @example
  * ```ts
- * const validatePayload = (payload: Schema.JsonValue | undefined) => {
+ * const validatePayload = (payload: Schema.JsonValue | undefined, context: { storeId: string }) => {
+ *   console.log(`Validating connection for store: ${context.storeId}`)
  *   if (payload?.authToken !== 'insecure-token-change-me') {
  *     throw new Error('Invalid auth token')
  *   }
@@ -150,7 +156,7 @@ export const handleWebSocket = <
   options: {
     headers?: CfWorker.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
-    validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+    validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   },
 ): Promise<CfWorker.Response> =>
   Effect.gen(function* () {
@@ -169,7 +175,7 @@ export const handleWebSocket = <
     const { storeId, payload } = paramsResult.right
 
     if (options.validatePayload !== undefined) {
-      const result = yield* Effect.promise(async () => options.validatePayload!(payload)).pipe(
+      const result = yield* Effect.promise(async () => options.validatePayload!(payload, { storeId })).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.either,
       )
