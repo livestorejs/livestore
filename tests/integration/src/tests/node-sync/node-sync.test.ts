@@ -4,7 +4,7 @@ import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
 
 import { IS_CI } from '@livestore/utils'
-import { Effect, identity, Layer, Logger, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, identity, Layer, Logger, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -175,11 +175,15 @@ const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-t
 const withCtx =
   (testContext: Vitest.TestContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
-      Effect.provide(Logger.prettyWithThread('runner')),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      Effect.annotateLogs({ suffix }),
-      skipOtel ? identity : Effect.provide(otelLayer),
-    )
+    {
+      const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
+      return self.pipe(
+        DEBUGGER_ACTIVE ? identity : Effect.logWarnIfTakesLongerThan({ duration: testTimeout * 0.8, label: `${spanName} approaching timeout (timeout: ${Duration.format(testTimeout)})` }),
+        DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
+        Effect.provide(Logger.prettyWithThread('runner')),
+        Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
+        Effect.withSpan(spanName),
+        Effect.annotateLogs({ suffix }),
+        skipOtel ? identity : Effect.provide(otelLayer)
+      )
+    }
