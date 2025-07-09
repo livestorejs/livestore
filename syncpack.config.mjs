@@ -42,6 +42,7 @@ const config = {
     'worker',
     'node-addons',
     'node',
+    'bun',
     'react-native',
     'import',
     'require',

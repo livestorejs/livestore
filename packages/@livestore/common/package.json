@@ -6,8 +6,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js",
-      "bun": "./src/index.ts"
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
     },
     "./sql-queries": {
       "types": "./dist/sql-queries/index.d.ts",
