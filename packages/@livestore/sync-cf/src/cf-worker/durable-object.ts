@@ -3,7 +3,6 @@ import { makeColumnSpec, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema, UrlParams } from '@livestore/utils/effect'
-import { DurableObject } from 'cloudflare:workers'
 
 import { SearchParamsSchema, WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
