@@ -10,6 +10,7 @@ import { copyTodomvcSrc } from './examples/copy-examples.js'
 import { command as deployExamplesCommand } from './examples/deploy-examples.js'
 import * as generateExamples from './examples/generate-examples.js'
 import { deployToNetlify } from './shared/netlify.js'
+import { command as syncToDistCommand } from './sync-to-dist.js'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -318,6 +319,7 @@ const command = Cli.Command.make('mono').pipe(
     circularCommand,
     docsCommand,
     releaseCommand,
+    syncToDistCommand,
   ]),
 )
 

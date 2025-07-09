@@ -8,7 +8,7 @@ import { makeNoopTracer } from '../NoopTracer.js'
 export * as Cli from '@effect/cli'
 export * as SocketServer from '@effect/platform/SocketServer'
 export * as PlatformNode from '@effect/platform-node'
-
+export * as ParcelWatcher from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.js'
 export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.js'
 
