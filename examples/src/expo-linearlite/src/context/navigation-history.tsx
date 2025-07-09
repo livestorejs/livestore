@@ -47,9 +47,7 @@ export const NavigationHistoryTracker = () => {
     setTimeout(() => {
       router.push(path as any)
     }, 100)
-    // eslint-disable-next-line react-compiler/react-compiler
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty dependency array ensures this only runs once on mount
+  }, [constructPathWithParams, globalParams, navigationHistory, pathname, router.push]) // Empty dependency array ensures this only runs once on mount
 
   return null
 }

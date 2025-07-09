@@ -3,10 +3,6 @@
 /** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
 /** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
 
-/* eslint-disable unicorn/prefer-code-point */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 

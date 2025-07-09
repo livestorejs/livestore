@@ -1,7 +1,7 @@
-import { Issue } from '@/lib/livestore/schema'
 import type { CSSProperties } from 'react'
 import React, { memo } from 'react'
 import { DragPreview, useDrag } from 'react-aria'
+import type { Issue } from '@/lib/livestore/schema'
 import { Card } from './card'
 
 export const Draggable = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {

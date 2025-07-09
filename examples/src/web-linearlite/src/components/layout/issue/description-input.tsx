@@ -1,5 +1,4 @@
 import Editor from '@/components/common/editor'
-import React from 'react'
 
 export const DescriptionInput = ({
   description,

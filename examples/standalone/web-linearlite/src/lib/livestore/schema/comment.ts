@@ -1,4 +1,4 @@
-import { State, Schema } from '@livestore/livestore'
+import { Schema, State } from '@livestore/livestore'
 
 export const comment = State.SQLite.table({
   name: 'comment',

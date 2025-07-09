@@ -1,13 +1,12 @@
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
 import { Column } from '@/components/layout/board/column'
 import { Filters } from '@/components/layout/filters'
 import { statusOptions } from '@/data/status-options'
 import { filterState$ } from '@/lib/livestore/queries'
 import { tables } from '@/lib/livestore/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
-import { Status } from '@/types/status'
-import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
-import React from 'react'
+import type { Status } from '@/types/status'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
@@ -28,7 +27,7 @@ export const Board = () => {
       <div className="grow overflow-x-auto">
         <div className="flex gap-4 p-4 h-full">
           {statusOptions.map((statusDetails, statusOption) => (
-            <Column key={statusOption} status={statusOption as Status} statusDetails={statusDetails} />
+            <Column key={statusDetails.id} status={statusOption as Status} statusDetails={statusDetails} />
           ))}
           <div className="w-4 -ml-4 shrink-0" />
         </div>

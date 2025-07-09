@@ -1,11 +1,11 @@
-import Editor from '@/components/common/editor'
-import { useFrontendState } from '@/lib/livestore/queries'
-import { events } from '@/lib/livestore/schema'
 import { ArrowUpIcon } from '@heroicons/react/20/solid'
 import { useStore } from '@livestore/react'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
+import Editor from '@/components/common/editor'
+import { useFrontendState } from '@/lib/livestore/queries'
+import { events } from '@/lib/livestore/schema'
 
 export const CommentInput = ({ issueId, className }: { issueId: number; className?: string }) => {
   // TODO move this into LiveStore

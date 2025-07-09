@@ -1,7 +1,6 @@
+import { Button } from 'react-aria-components'
 import { Icon } from '@/components/icons'
 import { useFrontendState } from '@/lib/livestore/queries'
-import React from 'react'
-import { Button } from 'react-aria-components'
 
 export const ToolbarButton = () => {
   const [frontendState, setFrontendState] = useFrontendState()

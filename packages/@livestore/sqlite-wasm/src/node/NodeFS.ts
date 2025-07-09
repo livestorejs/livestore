@@ -1,6 +1,5 @@
 /// <reference types="node" />
 
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import * as fs from 'node:fs'
 import path from 'node:path'
 

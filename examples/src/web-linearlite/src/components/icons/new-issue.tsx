@@ -1,18 +1,22 @@
-import React from 'react'
-
 export const NewIssueIcon = ({ className }: { className?: string }) => {
   return (
-    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={`fill-current ${className}`}>
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`fill-current ${className}`}
+      aria-hidden="true"
+    >
       <path
         fillRule="evenodd"
         clipRule="evenodd"
         d="M1 5.25C1 2.90279 2.90279 1 5.25 1H7.25C7.66421 1 8 1.33579 8 1.75C8 2.16421 7.66421 2.5 7.25 2.5H5.25C3.73122 2.5 2.5 3.73122 2.5 5.25V10.75C2.5 12.2688 3.73122 13.5 5.25 13.5H10.75C12.2688 13.5 13.5 12.2688 13.5 10.75V8.75287C13.5 8.33865 13.8358 8.00287 14.25 8.00287C14.6642 8.00287 15 8.33865 15 8.75287V10.75C15 13.0972 13.0972 15 10.75 15H5.25C2.90279 15 1 13.0972 1 10.75V5.25Z"
-      ></path>
+      />
       <path
         fillRule="evenodd"
         clipRule="evenodd"
         d="M14.6974 1.30263C15.1009 1.70613 15.1009 2.36032 14.6974 2.76382L8.51745 8.94384C7.89159 9.56972 7.05852 9.94524 6.17507 9.99968C6.07614 10.0058 5.99421 9.92385 6.00032 9.82491C6.05485 8.94154 6.43036 8.10855 7.05618 7.48271L13.2362 1.30263C13.6397 0.899124 14.2939 0.899124 14.6974 1.30263Z"
-      ></path>
+      />
     </svg>
   )
 }

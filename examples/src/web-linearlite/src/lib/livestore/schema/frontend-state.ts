@@ -1,4 +1,4 @@
-import { State, Schema, SessionIdSymbol } from '@livestore/livestore'
+import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 const Theme = Schema.Literal('dark', 'light', 'system').annotations({ title: 'Theme' })
 export type Theme = typeof Theme.Type

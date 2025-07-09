@@ -31,16 +31,19 @@ export const MainSection: Component = () => {
           {(todo) => (
             <li onClick={() => toggleTodo(todo())}>
               <div class="view">
-                <input title="check " type="checkbox" class="toggle" checked={todo().completed} />
-                <label>{todo().text}</label>
+                <label>
+                  <input title="check " type="checkbox" class="toggle" checked={todo().completed} />
+                  {todo().text}
+                </label>
                 <button
+                  type="button"
                   title="button"
                   class="destroy"
                   onClick={(e) => {
                     e.stopPropagation()
                     store()?.commit(events.todoDeleted({ id: todo().id, deletedAt: new Date() }))
                   }}
-                ></button>
+                />
               </div>
             </li>
           )}

@@ -9,11 +9,11 @@ import { Stack } from 'expo-router'
 import React from 'react'
 import {
   Button,
+  unstable_batchedUpdates as batchUpdates,
   LogBox,
   Platform,
   StyleSheet,
   Text,
-  unstable_batchedUpdates as batchUpdates,
   useColorScheme,
   View,
 } from 'react-native'

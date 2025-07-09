@@ -1,13 +1,13 @@
-import EditorMenu from '@/components/common/editor-menu'
 import Placeholder from '@tiptap/extension-placeholder'
 import Table from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
-import { BubbleMenu, EditorContent, useEditor, type Extensions } from '@tiptap/react'
+import { BubbleMenu, EditorContent, type Extensions, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Markdown } from 'tiptap-markdown'
+import EditorMenu from '@/components/common/editor-menu'
 
 const Editor = ({
   value,

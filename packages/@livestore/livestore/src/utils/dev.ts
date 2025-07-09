@@ -1,7 +1,6 @@
 import { isDevEnv } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
-/* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
   fileName: string,

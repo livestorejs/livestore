@@ -48,12 +48,7 @@
     "@types/react-dom": "^19.0.4",
     "@types/react-router-dom": "^5.3.3",
     "@types/react-window": "^1.8.8",
-    "@typescript-eslint/eslint-plugin": "^8.26.0",
-    "@typescript-eslint/parser": "^8.26.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^8.57.1",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
     "prompt": "^1.3.0",
     "tailwindcss": "^4.1.6",
     "typescript": "^5.8.3",
@@ -66,7 +61,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --force",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "biome lint .",
     "preview": "vite preview",
     "vite": "vite"
   }

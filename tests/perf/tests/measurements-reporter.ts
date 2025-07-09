@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/throw-new-error */
 import os from 'node:os'
 
 import {

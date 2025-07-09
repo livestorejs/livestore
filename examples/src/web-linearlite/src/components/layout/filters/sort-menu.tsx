@@ -1,10 +1,10 @@
-import { Shortcut } from '@/components/common/shortcut'
-import { SortingDirection, SortingOption, sortingOptions } from '@/data/sorting-options'
-import { useFilterState } from '@/lib/livestore/queries'
 import { ArrowsUpDownIcon, BarsArrowDownIcon, BarsArrowUpIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
+import { Shortcut } from '@/components/common/shortcut'
+import { type SortingDirection, type SortingOption, sortingOptions } from '@/data/sorting-options'
+import { useFilterState } from '@/lib/livestore/queries'
 
 export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
   const [filterState, setFilterState] = useFilterState()
@@ -61,12 +61,10 @@ export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
                   >
                     <span>{name}</span>
                     {filterState.orderBy === sortingOption && (
-                      <>
-                        <div className="absolute right-10">
-                          {filterState.orderDirection === 'asc' && <BarsArrowDownIcon className="size-4" />}
-                          {filterState.orderDirection === 'desc' && <BarsArrowUpIcon className="size-4" />}
-                        </div>
-                      </>
+                      <div className="absolute right-10">
+                        {filterState.orderDirection === 'asc' && <BarsArrowDownIcon className="size-4" />}
+                        {filterState.orderDirection === 'desc' && <BarsArrowUpIcon className="size-4" />}
+                      </div>
                     )}
                     <Shortcut keys={[shortcut]} className="absolute right-3" />
                   </MenuItem>

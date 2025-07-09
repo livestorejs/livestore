@@ -1,4 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 /** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 import type * as otel from '@opentelemetry/api'
 

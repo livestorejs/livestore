@@ -27,7 +27,7 @@ export const Header: Component = () => {
             )
           }
         }}
-      ></input>
+      />
     </header>
   )
 }

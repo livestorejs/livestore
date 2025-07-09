@@ -1,5 +1,5 @@
 import { ScrollViewStyleReset } from 'expo-router/html'
-import { type PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 
 /**
  * This file is web-only and used to configure the root HTML for every web page during static rendering.
@@ -20,6 +20,7 @@ const Root = ({ children }: PropsWithChildren) => {
         <ScrollViewStyleReset />
 
         {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: intentional for dark mode CSS */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
         {/* Add any additional <head> elements that you want globally available on web... */}
       </head>

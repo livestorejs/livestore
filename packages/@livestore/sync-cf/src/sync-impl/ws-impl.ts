@@ -235,10 +235,10 @@ const connect = (wsUrl: string) =>
 
       // NOTE it seems that this callback doesn't work reliably on a worker but only via `window.addEventListener`
       // We might need to proxy the event from the main thread to the worker if we want this to work reliably.
-      // eslint-disable-next-line unicorn/prefer-global-this
+
       if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') {
         // TODO support an Expo equivalent for this
-        // eslint-disable-next-line unicorn/prefer-global-this
+
         yield* Effect.eventListener(self, 'offline', () => Deferred.succeed(connectionClosed, void 0))
       }
 

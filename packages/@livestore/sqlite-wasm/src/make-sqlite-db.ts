@@ -82,7 +82,6 @@ export const makeSqliteDb = <
               let columns: string[] | undefined
               try {
                 columns = sqlite3.column_names(stmt)
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
               } catch (_e) {}
 
               while (sqlite3.step(stmt) === SqliteConstants.SQLITE_ROW) {

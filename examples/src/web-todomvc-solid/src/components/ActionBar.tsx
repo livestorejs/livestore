@@ -29,23 +29,32 @@ export const ActionBar: Component = () => {
       </span>
       <ul class="filters">
         <li>
-          <a href="#/" classList={{ selected: filter().filter === 'all' }} onClick={() => setFilter('all')}>
+          <button type="button" classList={{ selected: filter().filter === 'all' }} onClick={() => setFilter('all')}>
             All
-          </a>
+          </button>
         </li>
         <li>
-          <a href="#/" classList={{ selected: filter().filter === 'active' }} onClick={() => setFilter('active')}>
+          <button
+            type="button"
+            classList={{ selected: filter().filter === 'active' }}
+            onClick={() => setFilter('active')}
+          >
             Active
-          </a>
+          </button>
         </li>
         <li>
-          <a href="#/" classList={{ selected: filter().filter === 'completed' }} onClick={() => setFilter('completed')}>
+          <button
+            type="button"
+            classList={{ selected: filter().filter === 'completed' }}
+            onClick={() => setFilter('completed')}
+          >
             Completed
-          </a>
+          </button>
         </li>
       </ul>
       <Show when={completedCount() > 0}>
         <button
+          type="button"
           class="clear-completed"
           onClick={() => store()?.commit(events.todoClearedCompleted({ deletedAt: new Date() }))}
         >
