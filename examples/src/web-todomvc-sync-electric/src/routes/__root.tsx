@@ -4,7 +4,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import * as React from 'react'
+import type * as React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
@@ -40,7 +40,7 @@ const RootComponent = () => {
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html>
+    <html lang="en">
       <head>
         <HeadContent />
       </head>

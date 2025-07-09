@@ -1,7 +1,6 @@
 import { useClientDocument } from '@livestore/react'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
-import React from 'react'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { RowPropertySwitch } from '@/components/RowPropertySwitch.tsx'

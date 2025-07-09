@@ -3,8 +3,8 @@ import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
 import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
 import {
   applyFactGroups,
-  factsIntersect,
   type FactValidationResult,
+  factsIntersect,
   getFactsGroupForEventArgs,
   validateFacts,
 } from './facts.js'

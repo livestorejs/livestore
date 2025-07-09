@@ -1,4 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import { describe, expect, it } from 'vitest'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'

@@ -1,5 +1,4 @@
 import { getAcronym } from '@/utils/get-acronym'
-import React from 'react'
 
 export const Avatar = ({ name }: { name?: string }) => {
   if (!name) name = 'Me'

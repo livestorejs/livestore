@@ -3,7 +3,6 @@ import { CodeBracketIcon, ListBulletIcon, NumberedListIcon, StrikethroughIcon } 
 import { CodeBracketSquareIcon } from '@heroicons/react/24/outline'
 import { BoldIcon } from '@heroicons/react/24/solid'
 import type { Editor as TipTapEditor } from '@tiptap/react'
-import React from 'react'
 import { Button } from 'react-aria-components'
 
 export interface EditorMenuProps {

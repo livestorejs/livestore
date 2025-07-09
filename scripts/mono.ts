@@ -94,8 +94,7 @@ const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     const fixFlag = fix ? '--fix --unsafe' : ''
-    // TODO bring back `examples` as well
-    yield* cmd(`biome lint scripts tests packages docs ${fixFlag}`, { shell: true })
+    yield* cmd(`biome lint scripts tests packages docs examples ${fixFlag}`, { shell: true })
     if (fix) {
       yield* cmd('syncpack format', { cwd })
     }

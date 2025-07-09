@@ -14,7 +14,6 @@ import * as Devtools from './devtools/mod.js'
 import { liveStoreVersion } from './version.js'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __debugWebmeshNode: any
 }
 

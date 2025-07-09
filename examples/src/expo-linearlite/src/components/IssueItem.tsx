@@ -1,9 +1,8 @@
-/* eslint-disable react/display-name */
 import { Image } from 'expo-image'
 import type { LinkProps } from 'expo-router'
 import { Link } from 'expo-router'
-import React, { memo } from 'react'
-import { Image as RNImage, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
+import { memo } from 'react'
+import { Pressable, Image as RNImage, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { iconBase64 } from '@/assets/Icons/iconBase64.ts'
 import type { Issue } from '@/livestore/schema.ts'

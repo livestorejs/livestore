@@ -386,37 +386,49 @@ export namespace ClientDocumentTableDef {
     }
   }
 
-  export type GetOptions<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions> ? TOptions : never
+  export type GetOptions<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions
+    : never
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type DefaultIdType<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
-      ? TOptions['default']['id'] extends SessionIdSymbol | string
-        ? TOptions['default']['id']
-        : never
+  export type DefaultIdType<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions['default']['id'] extends SessionIdSymbol | string
+      ? TOptions['default']['id']
       : never
+    : never
 
-  export type SetEventDefLike<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> =
-    // Helper to create partial event
-    (TOptions['default']['id'] extends undefined
-      ? (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }
-      : (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id?: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+  export type SetEventDefLike<
+    TName extends string,
+    TType,
+    TOptions extends ClientDocumentTableOptions<TType>,
+  > = (TOptions['default']['id'] extends undefined // Helper to create partial event
+    ? (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }
+    : (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id?: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+    readonly name: `${TName}Set`
+    readonly schema: Schema.Schema<any>
+    readonly Event: {
       readonly name: `${TName}Set`
-      readonly schema: Schema.Schema<any>
-      readonly Event: {
-        readonly name: `${TName}Set`
-        readonly args: { id: string; value: TType }
-      }
-      readonly options: { derived: true; clientOnly: true; facts: undefined }
+      readonly args: { id: string; value: TType }
     }
+    readonly options: { derived: true; clientOnly: true; facts: undefined }
+  }
 
   export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<
     TName,

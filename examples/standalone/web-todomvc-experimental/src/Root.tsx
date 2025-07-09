@@ -2,14 +2,14 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
-import React from 'react'
+import type React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
-import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
+import LiveStoreWorker from './livestore.worker?worker'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">

@@ -1,6 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
-import * as React from 'react'
+import type * as React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { tables } from '../livestore/schema.ts'

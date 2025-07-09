@@ -2,11 +2,11 @@ import { type IntentionalShutdownCause, provideOtel, StoreInterrupted } from '@l
 import type {
   BootStatus,
   CreateStoreOptions,
-  LiveStoreContext as StoreContext_,
   LiveStoreContextRunning,
   LiveStoreSchema,
   ShutdownDeferred,
   Store,
+  LiveStoreContext as StoreContext_,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { LS_DEV } from '@livestore/utils'

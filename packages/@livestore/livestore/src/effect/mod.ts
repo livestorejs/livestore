@@ -1,7 +1,7 @@
-export { LiveStoreContextLayer, LiveStoreContextDeferred } from './LiveStore.js'
 export {
-  LiveStoreContextRunning as LiveStoreContext,
-  LiveStoreContextRunning,
   DeferredStoreContext,
   type LiveStoreContextProps,
+  LiveStoreContextRunning as LiveStoreContext,
+  LiveStoreContextRunning,
 } from '../store/create-store.js'
+export { LiveStoreContextDeferred, LiveStoreContextLayer } from './LiveStore.js'

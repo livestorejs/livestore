@@ -18,6 +18,7 @@
       "!**/.netlify/**",
       "!**/.astro/**",
       "!**/.vinxi/**",
+      "!**/.direnv/**",
       "!**/playwright-report/**",
       // https://github.com/biomejs/biome/issues/6528
       "!**/*.astro"

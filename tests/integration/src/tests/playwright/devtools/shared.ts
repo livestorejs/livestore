@@ -36,7 +36,7 @@ const checkDevtoolsState_ = async (options: {
 export const checkDevtoolsState: typeof checkDevtoolsState_ = async (options) => {
   // try {
   await checkDevtoolsState_(options)
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //
   // } catch (error) {
   //   console.warn('Hit flaky databrowser snapshot request bug, retrying after reload...')
   //   if ('reload' in options.devtools) {

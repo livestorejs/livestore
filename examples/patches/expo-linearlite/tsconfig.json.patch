@@ -1,6 +1,6 @@
 --- tsconfig.json
 +++ tsconfig.json
-@@ -1,26 +1,27 @@
+@@ -1,20 +1,27 @@
  {
 -  "extends": "../../../tsconfig.base.json",
 +  "$schema": "https://json.schemastore.org/tsconfig",
@@ -30,15 +30,7 @@
 -    "resolveJsonModule": true
 +    }
    },
--  "include": [
--    "**/*.ts",
--    "**/*.tsx",
--    ".expo/types/**/*.ts",
--    "expo-env.d.ts",
--    "nativewind-env.d.ts"
--  ]
--}
+-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]
 +
 +  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
-+}
-\ No newline at end of file
+ }

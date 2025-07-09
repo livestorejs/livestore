@@ -1,3 +1,6 @@
+import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
+import React from 'react'
+import { Link } from 'react-router-dom'
 import { MenuContext } from '@/app/contexts'
 import { AboutMenu } from '@/components/layout/sidebar/about-menu'
 import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
@@ -5,9 +8,6 @@ import { SearchButton } from '@/components/layout/sidebar/search-button'
 import { ThemeButton } from '@/components/layout/sidebar/theme-button'
 import { ToolbarButton } from '@/components/layout/toolbar/toolbar-button'
 import { useFilterState } from '@/lib/livestore/queries'
-import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
-import React from 'react'
-import { Link } from 'react-router-dom'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()
@@ -44,9 +44,9 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, href, onClick }, index) => (
+          {navItems.map(({ title, icon: Icon, href, onClick }) => (
             <Link
-              key={index}
+              key={href}
               to={href}
               onClick={() => {
                 onClick()

@@ -1,6 +1,5 @@
 import { ArrowDownIcon } from '@heroicons/react/16/solid'
 import { useStore } from '@livestore/react'
-import React from 'react'
 import { Button } from 'react-aria-components'
 
 export const DownloadButton = ({ className }: { className?: string }) => {

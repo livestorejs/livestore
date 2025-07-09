@@ -1,5 +1,3 @@
-import React from 'react'
-
 export const Shortcut = ({ keys, className }: { keys: string[]; className?: string }) => {
   return (
     <div className={`flex items-center gap-1 ${className}`}>
