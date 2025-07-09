@@ -1,16 +1,18 @@
+import { shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, SqliteError } from '../adapter-types.js'
+import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { LiveStoreEvent } from '../schema/mod.js'
+import { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
+import { SyncState } from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import * as Eventlog from './eventlog.js'
-import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
+import { bootDevtools } from './leader-worker-devtools.js'
 import { makeMaterializeEvent } from './materialize-event.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
@@ -89,10 +91,8 @@ export const makeLeaderThreadLayer = ({
 
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
-      dbEventlogMissing,
-      dbEventlog,
       dbState,
-      dbStateMissing,
+      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       params: {
@@ -157,6 +157,48 @@ export const makeLeaderThreadLayer = ({
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
+
+const getInitialSyncState = ({
+  dbEventlog,
+  dbState,
+  dbEventlogMissing,
+}: {
+  dbEventlog: SqliteDb
+  dbState: SqliteDb
+  dbEventlogMissing: boolean
+}) => {
+  const initialBackendHead = dbEventlogMissing
+    ? EventSequenceNumber.ROOT.global
+    : Eventlog.getBackendHeadFromDb(dbEventlog)
+
+  const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+
+  if (initialBackendHead > initialLocalHead.global) {
+    return shouldNeverHappen(
+      `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
+    )
+  }
+
+  return SyncState.make({
+    localHead: initialLocalHead,
+    upstreamHead: {
+      global: initialBackendHead,
+      client: EventSequenceNumber.clientDefault,
+      rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+    },
+    pending: dbEventlogMissing
+      ? []
+      : Eventlog.getEventsSince({
+          dbEventlog,
+          dbState,
+          since: {
+            global: initialBackendHead,
+            client: EventSequenceNumber.clientDefault,
+            rebaseGeneration: initialLocalHead.rebaseGeneration,
+          },
+        }),
+  })
+}
 
 const makeInitialBlockingSyncContext = ({
   initialSyncOptions,
@@ -223,11 +265,13 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbEventlog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
+    const { dbEventlog, bootStatusQueue, syncProcessor, schema, materializeEvent, dbState } = yield* LeaderThreadCtx
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
-    const { migrationsReport } = dbStateMissing ? yield* recreateDb : { migrationsReport: { migrations: [] } }
+    const { migrationsReport } = dbStateMissing
+      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      : { migrationsReport: { migrations: [] } }
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot

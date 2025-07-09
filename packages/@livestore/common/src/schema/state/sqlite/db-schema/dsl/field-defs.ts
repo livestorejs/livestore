@@ -17,7 +17,7 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition<an
     typeof value === 'object' &&
     value !== null &&
     'columnType' in value &&
-    validColumnTypes.includes(value['columnType'] as any)
+    validColumnTypes.includes(value.columnType as any)
   )
 }
 
@@ -36,7 +36,7 @@ export type SqlDefaultValue = {
 }
 
 export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
-  return typeof value === 'object' && value !== null && 'sql' in value && typeof value['sql'] === 'string'
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof value.sql === 'string'
 }
 
 export type ColDefFn<TColumnType extends FieldColumnType> = {

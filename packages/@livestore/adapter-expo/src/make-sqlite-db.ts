@@ -6,6 +6,7 @@ import {
   SqliteDbHelper,
   SqliteError,
 } from '@livestore/common'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 // TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
@@ -37,7 +38,7 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
   Effect.gen(function* () {
     // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
-      const db = SQLite.openDatabaseSync(':memory:')
+      const db = SQLite.openDatabaseSync(':memory:', { useNewConnection: true })
 
       return makeSqliteDb_({
         db,
@@ -77,6 +78,10 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
   const sqliteDb: SqliteDb<TMetadata> = {
     metadata,
     _tag: 'SqliteDb',
+    debug: {
+      // Setting initially to root but will be set to correct value shortly after
+      head: EventSequenceNumber.ROOT,
+    },
     prepare: (queryStr) => {
       try {
         const dbStmt = db.prepareSync(queryStr)

@@ -1,17 +1,18 @@
 import fs from 'node:fs'
 
 import { liveStoreVersion } from '@livestore/common'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
-
 import { copyTodomvcSrc } from './examples/copy-examples.js'
 import { command as deployExamplesCommand } from './examples/deploy-examples.js'
 import * as generateExamples from './examples/generate-examples.js'
 import { deployToNetlify } from './shared/netlify.js'
 
-const cwd = process.env.WORKSPACE_ROOT
+const cwd =
+  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 // GitHub actions log groups
@@ -24,6 +25,12 @@ const runTestGroup =
       console.log(`::endgroup::`)
     }).pipe(Effect.withSpan(`test-group(${name})`))
 
+// TODO: Consider replacing hardcoded package targeting with Vitest CLI flag passthrough
+// This would allow more flexible test targeting using standard Vitest options like:
+// - File patterns as positional arguments (e.g., mono test unit packages/@livestore/common)
+// - --testNamePattern/-t for filtering tests by name
+// - --exclude for excluding files
+// - Other standard Vitest CLI flags for more precise test control
 const testUnitCommand = Cli.Command.make(
   'unit',
   {},
@@ -48,17 +55,37 @@ const testUnitCommand = Cli.Command.make(
       // Run the rest of the tests in parallel
       yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
     } else {
-      yield* cmd('vitest run')
+      const paths = [
+        `packages/@livestore/webmesh`,
+        `tests/package-common`,
+        `packages/@livestore/utils`,
+        `packages/@livestore/common`,
+        `packages/@livestore/livestore`,
+      ]
+
+      yield* Effect.forEach(
+        paths,
+        (vitestPath) =>
+          // TODO use this https://x.com/luxdav/status/1942532247833436656
+          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
+            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
+          ),
+        { concurrency: 'unbounded' },
+      )
     }
   }),
 )
 
+// TODO when tests fail, print a command per failed test which allows running the test separately
 const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
     yield* testUnitCommand.handler({})
-    yield* integrationTests.runAll.handler({ concurrency: isGithubAction ? 'sequential' : 'parallel' })
+    yield* integrationTests.runAll.handler({
+      concurrency: isGithubAction ? 'sequential' : 'parallel',
+      localDevtoolsPreview: false,
+    })
   }),
 ).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
 
@@ -66,8 +93,8 @@ const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix' : ''
-    yield* cmd(`eslint scripts examples packages docs --ext .ts,.tsx --max-warnings=0 ${fixFlag}`, { shell: true })
+    const fixFlag = fix ? '--fix --unsafe' : ''
+    yield* cmd(`biome check scripts tests packages docs examples ${fixFlag}`, { shell: true })
     if (fix) {
       yield* cmd('syncpack format', { cwd })
     }
@@ -166,7 +193,7 @@ const docsCommand = Cli.Command.make('docs').pipe(
               : branchName === 'main' || branchName === devBranchName
 
           if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
-            yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
+            return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
           }
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
@@ -185,6 +212,21 @@ const docsCommand = Cli.Command.make('docs').pipe(
       ),
     ),
   ]),
+)
+
+const tsCommand = Cli.Command.make(
+  'ts',
+  {
+    watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
+  },
+  Effect.fn(function* ({ watch }) {
+    if (watch) {
+      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
+    } else {
+      yield* cmd('tsc --build tsconfig.dev.json', { cwd })
+      yield* cmd('tsc --build tsconfig.all.json', { cwd })
+    }
+  }),
 )
 
 const circularCommand = Cli.Command.make(
@@ -272,6 +314,7 @@ const command = Cli.Command.make('mono').pipe(
     examplesCommand,
     lintCommand,
     testCommand,
+    tsCommand,
     circularCommand,
     docsCommand,
     releaseCommand,

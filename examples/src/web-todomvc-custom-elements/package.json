@@ -13,7 +13,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "^0.3.1",
+    "@livestore/devtools-vite": "0.3.2-dev.0",
     "@tailwindcss/vite": "^4.1.6",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",
@@ -21,7 +21,7 @@
     "rollup-plugin-visualizer": "^5.14.0",
     "tailwindcss": "^4.1.6",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4"
+    "vite": "^7.0.0"
   },
   "engines": {
     "node": ">=23.0.0"

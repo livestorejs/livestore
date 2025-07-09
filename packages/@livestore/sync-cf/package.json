@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sync-cf",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -19,7 +19,7 @@
     "./cf-worker/worker": {
       "types": "./dist/cf-worker/worker.d.ts",
       "default": "./dist/cf-worker/worker.js"
-    }  
+    }
   },
   "dependencies": {
     "@livestore/common": "workspace:*",

@@ -1,6 +1,5 @@
-import { Modal } from '@/components/common/modal'
-import React from 'react'
 import { Link } from 'react-router-dom'
+import { Modal } from '@/components/common/modal'
 
 export const AboutModal = ({ show, setShow }: { show: boolean; setShow: (show: boolean) => void }) => {
   return (

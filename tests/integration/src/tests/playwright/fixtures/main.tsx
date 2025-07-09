@@ -1,5 +1,3 @@
-/* eslint-disable unicorn/prefer-global-this */
-
 import { createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider } from '@tanstack/react-router'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -98,7 +96,7 @@ const rootElement = document.getElementById('root')
 if (rootElement !== null && rootElement !== undefined) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <RouterProvider router={router}></RouterProvider>
+      <RouterProvider router={router} />
     </React.StrictMode>,
   )
 } else {

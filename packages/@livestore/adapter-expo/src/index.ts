@@ -1,7 +1,16 @@
 import './polyfill.js'
 
-import type { Adapter, BootStatus, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, makeClientSession, UnexpectedError } from '@livestore/common'
+import {
+  type Adapter,
+  type BootStatus,
+  ClientSessionLeaderThreadProxy,
+  Devtools,
+  type LockStatus,
+  liveStoreStorageFormatVersion,
+  makeClientSession,
+  type SyncOptions,
+  UnexpectedError,
+} from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -37,7 +46,6 @@ export type MakeDbOptions = {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var RN$Bridgeless: boolean | undefined
 }
 
@@ -211,7 +219,7 @@ const makeLeaderThread = ({
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
@@ -227,7 +235,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+      })
 
       const initialSnapshot = db.export()
 
@@ -301,7 +309,6 @@ const getDevtoolsUrl = () => {
   const url = new URL(process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `ws://0.0.0.0:4242`)
   const port = url.port
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
   const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
   const devServer = getDevServer().url.replace(/\/?$/, '') as string
 

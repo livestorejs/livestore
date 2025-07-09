@@ -1,3 +1,5 @@
+import { useStore } from '@livestore/react'
+import { Button } from 'react-aria-components'
 import { Icon } from '@/components/icons'
 import { FilterMenu } from '@/components/layout/filters/filter-menu'
 import { Header } from '@/components/layout/filters/header'
@@ -7,10 +9,7 @@ import { StatusFilter } from '@/components/layout/filters/status-filter'
 import { SearchBar } from '@/components/layout/search/search-bar'
 import { statusOptions } from '@/data/status-options'
 import { issueCount$, useFilterState } from '@/lib/livestore/queries'
-import { Status } from '@/types/status'
-import { useStore } from '@livestore/react'
-import React from 'react'
-import { Button } from 'react-aria-components'
+import type { Status } from '@/types/status'
 
 export const Filters = ({
   filteredCount,

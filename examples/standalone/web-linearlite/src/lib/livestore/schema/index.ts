@@ -1,11 +1,11 @@
-import * as eventsDefs from '@/lib/livestore/events'
-import { comment, type Comment } from '@/lib/livestore/schema/comment'
-import { description, type Description } from '@/lib/livestore/schema/description'
-import { filterState, type FilterState } from '@/lib/livestore/schema/filter-state'
-import { frontendState, type FrontendState } from '@/lib/livestore/schema/frontend-state'
-import { issue, type Issue } from '@/lib/livestore/schema/issue'
 import { makeSchema, State } from '@livestore/livestore'
-import { scrollState, type ScrollState } from './scroll-state'
+import * as eventsDefs from '@/lib/livestore/events'
+import { type Comment, comment } from '@/lib/livestore/schema/comment'
+import { type Description, description } from '@/lib/livestore/schema/description'
+import { type FilterState, filterState } from '@/lib/livestore/schema/filter-state'
+import { type FrontendState, frontendState } from '@/lib/livestore/schema/frontend-state'
+import { type Issue, issue } from '@/lib/livestore/schema/issue'
+import { type ScrollState, scrollState } from './scroll-state'
 
 export {
   comment,

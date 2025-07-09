@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": [
     "./dist/node-vitest/polyfill.js"
@@ -8,20 +8,23 @@
   "exports": {
     "./node": {
       "types": "./dist/node/mod.d.ts",
+      "bun": "./src/node/mod.ts",
       "default": "./dist/node/mod.js"
     },
     "./node-vitest": {
       "types": "./dist/node-vitest/mod.d.ts",
+      "bun": "./src/node-vitest/mod.ts",
       "default": "./dist/node-vitest/mod.js"
     },
     "./node-vitest-polyfill": {
       "types": "./dist/node-vitest/polyfill.d.ts",
+      "bun": "./src/node-vitest/polyfill.ts",
       "default": "./dist/node-vitest/polyfill.js"
     }
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.48.4",
-    "@effect/vitest": "0.22.2",
+    "@effect/opentelemetry": "0.53.11",
+    "@effect/vitest": "0.23.12",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",

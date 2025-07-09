@@ -4,12 +4,13 @@ import {
   liveStoreVersion,
   makeClientSession,
   StoreInterrupted,
+  sessionChangesetMetaTable,
   UnexpectedError,
 } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventSequenceNumber, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -67,7 +68,9 @@ export type WebAdapterOptions = {
    */
   sharedWorker:
     | ((options: { name: string }) => globalThis.SharedWorker)
-    | (new (options: { name: string }) => globalThis.SharedWorker)
+    | (new (options: {
+        name: string
+      }) => globalThis.SharedWorker)
   /**
    * Specifies where to persist data for this adapter
    */
@@ -250,7 +253,7 @@ export const makePersistedAdapter =
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
-        yield* Effect.never
+        return yield* Effect.never
       }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
@@ -358,7 +361,7 @@ export const makePersistedAdapter =
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
-        yield* UnexpectedError.make({
+        return yield* UnexpectedError.make({
           cause: `Encountered empty or corrupted database`,
           payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
         })
@@ -366,17 +369,15 @@ export const makePersistedAdapter =
 
       // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
       // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
-      const initialLeaderHeadRes = sqliteDb.select<{
-        seqNumGlobal: EventSequenceNumber.GlobalEventSequenceNumber
-        seqNumClient: EventSequenceNumber.ClientEventSequenceNumber
-      }>(
-        `select seqNumGlobal, seqNumClient from ${SystemTables.SESSION_CHANGESET_META_TABLE} order by seqNumGlobal desc, seqNumClient desc limit 1`,
-      )[0]
+      const initialLeaderHeadRes = sqliteDb.select(
+        sessionChangesetMetaTable.select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration').first(),
+      )
 
       const initialLeaderHead = initialLeaderHeadRes
         ? EventSequenceNumber.make({
             global: initialLeaderHeadRes.seqNumGlobal,
             client: initialLeaderHeadRes.seqNumClient,
+            rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
           })
         : EventSequenceNumber.ROOT
 
@@ -500,7 +501,7 @@ const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
       if (condition) {
-        yield* UnexpectedError.make({
+        return yield* UnexpectedError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })
       }

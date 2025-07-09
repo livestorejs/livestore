@@ -1,6 +1,6 @@
 import { XIcon } from 'lucide-react-native'
-import React from 'react'
-import { Modal as RNModal, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
+import type React from 'react'
+import { Pressable, Modal as RNModal, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { Colors } from '@/constants/Colors.ts'
 
@@ -14,7 +14,7 @@ export const Modal = ({ visible, onClose, children }: CustomModalProps) => {
   const theme = useColorScheme()
   return (
     <RNModal transparent={true} animationType="slide" visible={visible} onRequestClose={onClose}>
-      <Pressable style={{ flex: 1 }} onPress={onClose}></Pressable>
+      <Pressable style={{ flex: 1 }} onPress={onClose} />
       <View style={[styles.modalContainer, { backgroundColor: Colors[theme!].background }]}>
         <Pressable style={styles.closeButton} onPress={onClose}>
           <XIcon color="gray" />

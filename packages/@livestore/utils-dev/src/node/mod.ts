@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
-import { IS_BUN, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
+import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
 import { Command, Config, Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
@@ -11,8 +11,8 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
-export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
+export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
 export const OtelLiveHttp = ({
   serviceName,
@@ -31,7 +31,9 @@ export const OtelLiveHttp = ({
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan, never, never> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT'),
+      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
+        Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
+      ),
       serviceName: serviceName
         ? Config.succeed(serviceName)
         : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),

@@ -8,10 +8,10 @@ import { useQuery } from './useQuery.js'
 
 export const withReactApi = (store: Store): Store & ReactApi => {
   // @ts-expect-error TODO properly implement this
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+
   store.useQuery = (queryDef) => useQuery(queryDef, { store })
   // @ts-expect-error TODO properly implement this
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+
   store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })
   return store as Store & ReactApi
 }
@@ -21,7 +21,7 @@ export const useStore = (options?: { store?: Store }): { store: Store & ReactApi
     return { store: withReactApi(options.store) }
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
   const storeContext = React.useContext(LiveStoreContext)
 
   if (storeContext === undefined) {

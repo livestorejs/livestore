@@ -298,7 +298,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           yield* edgeChannel.send({ ...packet, hops })
         }
         // In this case we have an expected route back we should follow
-        // eslint-disable-next-line unicorn/no-negated-condition
         else if (packet.remainingHops !== undefined) {
           const hopTarget =
             packet.remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)

@@ -1,9 +1,6 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
+import type * as ChildProcess from 'node:child_process'
 import * as Worker from '@effect/platform/Worker'
 import { WorkerError } from '@effect/platform/WorkerError'
-// eslint-disable-next-line unicorn/prefer-node-protocol
-import type * as ChildProcess from 'child_process'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'

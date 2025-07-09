@@ -60,6 +60,7 @@ export const ShareButton = ({ className }: { className?: string }) => {
         <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border overflow-hidden border-neutral-200 p-4">
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURI(window.location.href)}`}
+            alt="QR code for sharing workspace URL"
             crossOrigin="anonymous"
             width="200"
             height="200"

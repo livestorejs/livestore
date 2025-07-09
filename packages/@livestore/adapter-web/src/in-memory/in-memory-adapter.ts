@@ -1,5 +1,13 @@
-import type { Adapter, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { Devtools, makeClientSession, UnexpectedError } from '@livestore/common'
+import {
+  type Adapter,
+  ClientSessionLeaderThreadProxy,
+  Devtools,
+  type LockStatus,
+  makeClientSession,
+  migrateDb,
+  type SyncOptions,
+  UnexpectedError,
+} from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -41,7 +49,9 @@ export interface InMemoryAdapterOptions {
   devtools?: {
     sharedWorker:
       | ((options: { name: string }) => globalThis.SharedWorker)
-      | (new (options: { name: string }) => globalThis.SharedWorker)
+      | (new (options: {
+          name: string
+        }) => globalThis.SharedWorker)
   }
 }
 
@@ -165,6 +175,8 @@ const makeLeaderThread = ({
 
     if (importSnapshot) {
       dbState.import(importSnapshot)
+
+      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -196,7 +208,7 @@ const makeLeaderThread = ({
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
@@ -210,7 +222,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+      })
 
       const initialSnapshot = dbState.export()
 

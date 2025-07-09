@@ -1,19 +1,19 @@
-/* eslint-disable no-var */
-
 // Copied from fast-deep-equal
 // MIT License
 
 export const deepEqual = <T>(a: T, b: T): boolean => {
   if (a === b) return true
 
-  if (a && b && typeof a == 'object' && typeof b == 'object') {
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
     if (a.constructor !== b.constructor) return false
 
-    var length, i, keys
+    let length: number
+    let i: any
+    let keys: any
     if (Array.isArray(a)) {
       length = a.length
       // @ts-expect-error ...
-      if (length != b.length) return false
+      if (length !== b.length) return false
       for (i = length; i-- !== 0; )
         // @ts-expect-error ...
         if (!deepEqual(a[i], b[i])) return false
@@ -37,7 +37,7 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
       // @ts-expect-error ...
       length = a.length
       // @ts-expect-error ...
-      if (length != b.length) return false
+      if (length !== b.length) return false
       for (i = length; i-- !== 0; )
         // @ts-expect-error ...
         if (a[i] !== b[i]) return false
@@ -53,12 +53,10 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    for (i = length; i-- !== 0; )
-      // @ts-expect-error ...
-      if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false
+    for (i = length; i-- !== 0; ) if (!Object.hasOwn(b, keys[i])) return false
 
     for (i = length; i-- !== 0; ) {
-      var key = keys[i]
+      const key = keys[i]
 
       // @ts-expect-error ...
       if (!deepEqual(a[key], b[key])) return false
@@ -68,5 +66,6 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
   }
 
   // true if both NaN, false otherwise
+  // biome-ignore lint/suspicious/noSelfCompare: comparing to itself is fine here
   return a !== a && b !== b
 }

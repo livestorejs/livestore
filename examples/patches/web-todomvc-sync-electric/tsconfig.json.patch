@@ -43,8 +43,6 @@
 -    { "path": "../../../packages/@livestore/adapter-web" },
 -    { "path": "../../../packages/@livestore/sync-electric" }
 -  ]
--}
-\ No newline at end of file
 +  "include": ["./src"],
 +  "exclude": ["node_modules"]
-+}
+ }

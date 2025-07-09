@@ -1,9 +1,11 @@
+/// <reference lib="dom" />
+
 // @ts-expect-error TODO remove when Vite does proper treeshaking during dev
 globalThis.$RefreshReg$ = () => {}
 // @ts-expect-error TODO remove when Vite does proper treeshaking during dev
 globalThis.$RefreshSig$ = () => (type: any) => type
 
-// @ts-expect-error Needed for React
+// @ts-ignore
 globalThis.process = globalThis.process ?? { env: {} }
 
 globalThis.document = (globalThis as any)?.document ?? {

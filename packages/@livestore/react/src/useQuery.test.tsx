@@ -1,7 +1,8 @@
+/** biome-ignore-all lint/a11y: test */
 import '@livestore/utils-dev/node-vitest-polyfill'
 
-import { queryDb, signal } from '@livestore/livestore'
 import * as LiveStore from '@livestore/livestore'
+import { queryDb, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -161,7 +162,6 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         const ListItem: React.FC<{ data: ReadonlyArray<number>; index: number }> = ({ data: ids, index }) => {
           const id = ids[index]!
           const res = store.useQuery(LiveStore.computed(() => id, { label: `ListItem.${id}`, deps: id }))
-          // biome-ignore lint/a11y/useSemanticElements: <explanation>
           return <div role="listitem">{res}</div>
         }
 

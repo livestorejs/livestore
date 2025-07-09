@@ -1,6 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
-import React from 'react'
+import type React from 'react'
 import { FlatList } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'

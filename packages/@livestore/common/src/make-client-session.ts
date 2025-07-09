@@ -14,7 +14,6 @@ import * as Devtools from './devtools/mod.js'
 import { liveStoreVersion } from './version.js'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __debugWebmeshNode: any
 }
 
@@ -39,7 +38,7 @@ export const makeClientSession = <R>({
   sessionId: string
   isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  leaderThread: ClientSessionLeaderThreadProxy
+  leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy
   sqliteDb: SqliteDb
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
@@ -133,4 +132,4 @@ export const makeClientSession = <R>({
       shutdown,
       debugInstanceId,
     } satisfies ClientSession
-  })
+  }).pipe(Effect.withSpan('@livestore/common:make-client-session'))

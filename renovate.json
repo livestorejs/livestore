@@ -4,7 +4,8 @@
     "config:recommended",
     "schedule:daily",
     ":enableVulnerabilityAlertsWithLabel(security)",
-    ":semanticPrefixFixDepsChoreOthers"
+    ":semanticPrefixFixDepsChoreOthers",
+    "group:allNonMajor"
   ],
   "baseBranches": ["dev"],
   "platformAutomerge": true,
@@ -12,20 +13,28 @@
   "automergeType": "pr",
   "packageRules": [
     {
-      "description": "Exclude Expo / React Native packages",
-      "matchPackagePatterns": ["^expo-", "^@expo/", "^react-native-", "^@react-native/"],
+      "matchCategories": ["node"],
       "enabled": false
     },
     {
+      "description": "Exclude Expo / React Native packages",
+      "enabled": false,
+      "matchPackageNames": ["/^expo-/", "/^@expo//", "/^react-native-/", "/^@react-native//"]
+    },
+    {
       "description": "Exclude React packages",
-      "matchPackagePatterns": ["^react-", "^@react-"],
-      "matchPackageNames": ["react", "react-dom"],
+      "matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-/"],
       "enabled": false
     },
     {
       "description": "Exclude workspace packages",
-      "matchPackagePatterns": ["^@livestore/"],
-      "enabled": false
+      "enabled": false,
+      "matchPackageNames": ["/^@livestore//"]
+    },
+    {
+      "description": "Exclude graphology packages (as we need a patched version and will replace graphology with Effect's graph library soon)",
+      "enabled": false,
+      "matchPackageNames": ["graphology", "graphology-*"]
     },
     {
       "description": "Auto-merge patch and minor updates",
@@ -41,10 +50,7 @@
   "lockFileMaintenance": {
     "enabled": false
   },
-  "node": {
-    "enabled": false
-  },
-  "pnpm": {
+  "nix": {
     "enabled": true
   }
 }

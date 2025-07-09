@@ -3,8 +3,8 @@ import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
 import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
 import {
   applyFactGroups,
-  factsIntersect,
   type FactValidationResult,
+  factsIntersect,
   getFactsGroupForEventArgs,
   validateFacts,
 } from './facts.js'
@@ -38,6 +38,7 @@ export const defaultRebaseFn: RebaseFn = ({ pendingLocalEvents }) => {
   return { rebasedLocalEvents: pendingLocalEvents }
 }
 
+// TODO replace in favour of current rebase impl
 export const rebaseEvents = ({
   rebaseFn,
   pendingLocalEvents,

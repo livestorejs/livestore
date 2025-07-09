@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redeclare */
 import { Schema } from '@livestore/livestore'
 
 export const Filter = Schema.Literal('all', 'active', 'completed')

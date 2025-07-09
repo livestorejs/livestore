@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": [
     "./dist/global.js"
@@ -8,28 +8,34 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./cuid": {
       "types": "./dist/cuid/cuid.node.d.ts",
-      "node": "./dist/cuid/cuid.node.js",
       "browser": "./dist/cuid/cuid.browser.js",
+      "node": "./dist/cuid/cuid.node.js",
+      "bun": "./src/cuid/cuid.node.ts",
       "react-native": "./dist/cuid/cuid.browser.js"
     },
     "./nanoid": {
       "types": "./dist/nanoid/index.d.ts",
+      "bun": "./src/nanoid/index.ts",
       "default": "./dist/nanoid/index.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
+      "bun": "./src/effect/index.ts",
       "default": "./dist/effect/index.js"
     },
     "./node": {
       "types": "./dist/node/mod.d.ts",
+      "bun": "./src/node/mod.ts",
       "default": "./dist/node/mod.js"
     },
     "./bun": {
       "types": "./dist/bun/mod.d.ts",
+      "bun": "./src/bun/mod.ts",
       "default": "./dist/bun/mod.js"
     }
   },
@@ -57,32 +63,32 @@
     "@standard-schema/spec": "1.0.0",
     "msgpackr": "1.11.2",
     "nanoid": "5.1.3",
-    "pretty-bytes": "6.1.1"
+    "pretty-bytes": "7.0.0"
   },
   "devDependencies": {
-    "@effect/cli": "^0.61.4",
-    "@effect/cluster": "^0.34.1",
-    "@effect/experimental": "^0.46.4",
-    "@effect/opentelemetry": "^0.48.4",
-    "@effect/platform": "^0.82.4",
-    "@effect/platform-browser": "^0.62.4",
-    "@effect/platform-bun": "^0.65.1",
-    "@effect/platform-node": "^0.81.1",
-    "@effect/printer": "^0.43.2",
-    "@effect/printer-ansi": "^0.43.2",
-    "@effect/rpc": "^0.59.5",
-    "@effect/sql": "^0.35.4",
-    "@effect/typeclass": "^0.34.2",
-    "@effect/vitest": "^0.22.2",
+    "@effect/cli": "^0.66.10",
+    "@effect/cluster": "^0.41.14",
+    "@effect/experimental": "^0.51.11",
+    "@effect/opentelemetry": "^0.53.11",
+    "@effect/platform": "^0.87.10",
+    "@effect/platform-browser": "^0.67.10",
+    "@effect/platform-bun": "^0.72.14",
+    "@effect/platform-node": "^0.89.2",
+    "@effect/printer": "^0.44.12",
+    "@effect/printer-ansi": "^0.44.12",
+    "@effect/rpc": "^0.64.11",
+    "@effect/sql": "^0.40.11",
+    "@effect/typeclass": "^0.35.12",
+    "@effect/vitest": "^0.23.12",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.0",
-    "@types/bun": "^1.2.4",
+    "@types/bun": "^1.2.5",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.15.17",
+    "@types/node": "^22.15.33",
     "@types/web": "^0.0.203",
-    "effect": "^3.15.2",
+    "effect": "^3.16.12",
     "jsdom": "^26.0.0",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
@@ -91,22 +97,22 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@effect/cli": "~0.61.4",
-    "@effect/cluster": "~0.34.1",
-    "@effect/experimental": "~0.46.4",
-    "@effect/opentelemetry": "~0.48.4",
-    "@effect/platform": "~0.82.4",
-    "@effect/platform-browser": "~0.62.4",
-    "@effect/platform-bun": "~0.65.1",
-    "@effect/platform-node": "~0.81.1",
-    "@effect/printer": "~0.43.2",
-    "@effect/printer-ansi": "~0.43.2",
-    "@effect/rpc": "~0.59.5",
-    "@effect/sql": "~0.35.4",
-    "@effect/typeclass": "~0.34.2",
+    "@effect/cli": "~0.66.10",
+    "@effect/cluster": "~0.41.14",
+    "@effect/experimental": "~0.51.11",
+    "@effect/opentelemetry": "~0.53.11",
+    "@effect/platform": "~0.87.10",
+    "@effect/platform-browser": "~0.67.10",
+    "@effect/platform-bun": "~0.72.14",
+    "@effect/platform-node": "~0.89.2",
+    "@effect/printer": "~0.44.12",
+    "@effect/printer-ansi": "~0.44.12",
+    "@effect/rpc": "~0.64.11",
+    "@effect/sql": "~0.40.11",
+    "@effect/typeclass": "~0.35.12",
     "@opentelemetry/api": "~1.9.0",
     "@opentelemetry/resources": "~2.0.0",
-    "effect": "~3.15.2"
+    "effect": "~3.16.12"
   },
   "publishConfig": {
     "access": "public"

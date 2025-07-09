@@ -4,11 +4,11 @@
   "private": true,
   "dependencies": {
     "@expo/vector-icons": "14.1.0",
-    "@livestore/adapter-expo": "0.3.1",
-    "@livestore/devtools-expo": "0.3.1",
-    "@livestore/livestore": "0.3.1",
-    "@livestore/peer-deps": "0.3.1",
-    "@livestore/react": "0.3.1",
+    "@livestore/adapter-expo": "0.3.2-dev.0",
+    "@livestore/devtools-expo": "0.3.2-dev.0",
+    "@livestore/livestore": "0.3.2-dev.0",
+    "@livestore/peer-deps": "0.3.2-dev.0",
+    "@livestore/react": "0.3.2-dev.0",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native/assets-registry": "0.79.0",
     "@react-navigation/native": "7.1.6",
@@ -49,8 +49,6 @@
     "@types/react": "^19.1.2",
     "@types/react-test-renderer": "^19.0.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eslint-config-expo": "^9.2.0",
-    "eslint-plugin-react-compiler": "19.0.0-beta-40c6c23-20250301",
     "prettier": "^3.5.3",
     "react-test-renderer": "^19.0.0",
     "typescript": "^5.8.3"
@@ -65,7 +63,7 @@
   "scripts": {
     "android": "expo start --clear --android",
     "ios": "expo start --clear --ios",
-    "lint": "expo lint",
+    "lint": "biome lint .",
     "start": "expo start"
   }
 }

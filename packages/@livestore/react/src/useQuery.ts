@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
@@ -43,14 +42,16 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>
 } => {
   const store =
-    options?.store ?? React.useContext(LiveStoreContext)?.store ?? shouldNeverHappen(`No store provided to useQuery`)
+    options?.store ??
+    // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
+    React.useContext(LiveStoreContext)?.store ??
+    shouldNeverHappen(`No store provided to useQuery`)
 
   // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
   const rcRefKey = `${store.storeId}_${store.clientId}_${store.sessionId}_${queryDef.hash}`
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
-    // eslint-disable-next-line unicorn/error-message
     const stack = new Error().stack!
     Error.stackTraceLimit = originalStackLimit
     return extractStackInfoFromStackTrace(stack)

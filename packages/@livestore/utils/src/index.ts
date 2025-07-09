@@ -1,17 +1,17 @@
-export * from './string.js'
-export * from './guards.js'
-export * from './object/index.js'
-export * from './promise.js'
-export * from './time.js'
-export * from './NoopTracer.js'
-export * from './set.js'
+export { default as prettyBytes } from 'pretty-bytes'
+export * as base64 from './base64.js'
 export * from './browser.js'
 export * from './Deferred.js'
-export * from './misc.js'
 export * from './env.js'
 export * from './fast-deep-equal.js'
-export * as base64 from './base64.js'
-export { default as prettyBytes } from 'pretty-bytes'
+export * from './guards.js'
+export * from './misc.js'
+export * from './NoopTracer.js'
+export * from './object/index.js'
+export * from './promise.js'
+export * from './set.js'
+export * from './string.js'
+export * from './time.js'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
@@ -53,6 +53,7 @@ export const debugCatch = <T>(try_: () => T): T => {
   try {
     return try_()
   } catch (e: any) {
+    // biome-ignore lint/suspicious/noDebugger: debugging
     debugger
     throw e
   }
@@ -85,33 +86,37 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
  * Use this to make assertion at end of if-else chain that all members of a
  * union have been accounted for.
  */
-/* eslint-disable-next-line prefer-arrow/prefer-arrow-functions */
+
 export function casesHandled(unexpectedCase: never): never {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
 
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
+    // biome-ignore lint/suspicious/noDebugger: debugging
     debugger
     throw new Error(`This should never happen: ${msg}`)
   }
 }
 
 export const debuggerPipe = <T>(val: T): T => {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   return val
 }
 
 const truncate = (str: string, length: number): string => {
   if (str.length > length) {
-    return str.slice(0, length) + '...'
+    return `${str.slice(0, length)}...`
   } else {
     return str
   }
 }
 
 export const notYetImplemented = (msg?: string): never => {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   throw new Error(`Not yet implemented: ${msg}`)
 }

@@ -6,17 +6,17 @@ import type { InternalState } from '../../schema.js'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
 import { SqliteAst } from './db-schema/mod.js'
 import { stateSystemTables } from './system-tables.js'
-import { type TableDef, type TableDefBase } from './table-def.js'
+import type { TableDef, TableDefBase } from './table-def.js'
 
-export * from './table-def.js'
-export {
-  ClientDocumentTableDefSymbol,
-  tableIsClientDocumentTable,
-  clientDocument,
-  type ClientDocumentTableDef,
-  type ClientDocumentTableOptions,
-} from './client-document-def.js'
 export * from '../../EventDef.js'
+export {
+  type ClientDocumentTableDef,
+  ClientDocumentTableDefSymbol,
+  type ClientDocumentTableOptions,
+  clientDocument,
+  tableIsClientDocumentTable,
+} from './client-document-def.js'
+export * from './table-def.js'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)

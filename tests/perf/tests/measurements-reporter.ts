@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/throw-new-error */
 import os from 'node:os'
 
 import {
@@ -198,7 +197,7 @@ export default class MeasurementsReporter implements Reporter {
   private measurementEffects: Effect.Effect<unknown, ParseResult.ParseError | MissingAnnotationError>[] = []
   private runtime = ManagedRuntime.make(OtelLayer)
 
-  onBegin = (config: FullConfig, suite: Suite): void => {
+  onBegin = (_config: FullConfig, suite: Suite): void => {
     this.runtime.runSync(
       Effect.forEach(
         suite.allTests(),

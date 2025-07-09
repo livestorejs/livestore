@@ -7,43 +7,43 @@ body {
 }
 
 @font-face {
-  font-family: 'Inter UI';
+  font-family: "Inter UI";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
   src:
-    url('assets/fonts/inter-regular.woff2') format('woff2'),
-    url('assets/fonts/inter-regular.woff') format('woff');
+    url("assets/fonts/inter-regular.woff2") format("woff2"),
+    url("assets/fonts/inter-regular.woff") format("woff");
 }
 
 @font-face {
-  font-family: 'Inter UI';
+  font-family: "Inter UI";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
   src:
-    url('assets/fonts/inter-medium.woff2') format('woff2'),
-    url('assets/fonts/inter-medium.woff') format('woff');
+    url("assets/fonts/inter-medium.woff2") format("woff2"),
+    url("assets/fonts/inter-medium.woff") format("woff");
 }
 
 @font-face {
-  font-family: 'Inter UI';
+  font-family: "Inter UI";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
   src:
-    url('assets/fonts/inter-semibold.woff2') format('woff2'),
-    url('assets/fonts/inter-semibold.woff') format('woff');
+    url("assets/fonts/inter-semibold.woff2") format("woff2"),
+    url("assets/fonts/inter-semibold.woff") format("woff");
 }
 
 @font-face {
-  font-family: 'Inter UI';
+  font-family: "Inter UI";
   font-style: normal;
   font-weight: 800;
   font-display: swap;
   src:
-    url('assets/fonts/inter-extrabold.woff2') format('woff2'),
-    url('assets/fonts/inter-extrabold.woff') format('woff');
+    url("assets/fonts/inter-extrabold.woff2") format("woff2"),
+    url("assets/fonts/inter-extrabold.woff") format("woff");
 }
 
 .modal {
@@ -72,6 +72,6 @@ input::-webkit-inner-spin-button {
 }
 
 /* Firefox */
-input[type='number'] {
+input[type="number"] {
   -moz-appearance: textfield;
 }

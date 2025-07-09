@@ -7,7 +7,6 @@ import { List } from '@/components/layout/list'
 import { Search } from '@/components/layout/search'
 import { Sidebar } from '@/components/layout/sidebar'
 import 'animate.css/animate.min.css'
-import React from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 export const App = () => {

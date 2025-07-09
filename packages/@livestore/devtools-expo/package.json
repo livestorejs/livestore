@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "sideEffects": false,
   "types": "./dist/index.d.cts",
   "dependencies": {
@@ -8,9 +8,9 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.15.17",
+    "@types/node": "^22.15.33",
     "expo": "^53.0.9",
-    "vite": "^6.3.4"
+    "vite": "^7.0.0"
   },
   "files": [
     "package.json",

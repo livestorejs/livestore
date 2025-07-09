@@ -6,15 +6,13 @@
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/utils" },
     { "path": "../../packages/@livestore/utils-dev" },
     { "path": "../../packages/@livestore/sqlite-wasm" },
     { "path": "../../packages/@livestore/adapter-node" },
-    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/livestore" }
   ]
 }
