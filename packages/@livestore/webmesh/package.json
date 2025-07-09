@@ -6,13 +6,13 @@
   "exports": {
     ".": {
       "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js",
-      "bun": "./src/mod.ts"
+      "bun": "./src/mod.ts",
+      "default": "./dist/mod.js"
     },
     "./websocket-server": {
       "types": "./dist/websocket-server.d.ts",
-      "default": "./dist/websocket-server.js",
-      "bun": "./src/websocket-server.ts"
+      "bun": "./src/websocket-server.ts",
+      "default": "./dist/websocket-server.js"
     }
   },
   "types": "./dist/mod.d.ts",

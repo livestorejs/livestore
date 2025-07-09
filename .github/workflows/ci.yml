@@ -1,4 +1,5 @@
 name: ci
+run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 
 permissions:
   id-token: write
