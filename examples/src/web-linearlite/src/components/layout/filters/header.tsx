@@ -1,5 +1,4 @@
 import { MenuButton } from '@/components/common/menu-button'
-import React from 'react'
 
 export const Header = ({
   totalCount,

@@ -1,5 +1,3 @@
-/* eslint-disable no-var */
-
 interface Window {
   [key: `__debug${string}`]: any
 }

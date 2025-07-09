@@ -79,9 +79,11 @@ const Item = ({
       }}
     >
       <div className="view">
-        <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
-        <label>{todo.text}</label>
-        <button className="destroy" onClick={() => setState('deleting')}></button>
+        <label>
+          <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+          {todo.text}
+        </label>
+        <button type="button" className="destroy" onClick={() => setState('deleting')} />
       </div>
     </li>
   )

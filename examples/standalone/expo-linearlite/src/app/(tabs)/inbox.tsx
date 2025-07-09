@@ -1,7 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { Stack } from 'expo-router'
-import React from 'react'
 import type { ViewStyle } from 'react-native'
 import { Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 

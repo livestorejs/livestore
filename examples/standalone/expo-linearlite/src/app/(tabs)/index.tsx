@@ -102,20 +102,20 @@ const HomeScreen = () => {
   const isDark = colorScheme === 'dark'
 
   // Memoize selected settings
-  const {
-    selectedHomeTab,
-    assignedTabGrouping,
-    assignedTabOrdering,
-    createdTabGrouping,
-    createdTabOrdering,
-    ...displaySettings
-  } = useMemo(
+  const { selectedHomeTab, assignedTabGrouping, assignedTabOrdering, createdTabGrouping, createdTabOrdering } = useMemo(
     () => ({
       selectedHomeTab: appSettings.selectedHomeTab,
       assignedTabGrouping: appSettings.assignedTabGrouping,
       assignedTabOrdering: appSettings.assignedTabOrdering,
       createdTabGrouping: appSettings.createdTabGrouping,
       createdTabOrdering: appSettings.createdTabOrdering,
+    }),
+    [appSettings],
+  )
+
+  // Memoize display settings separately
+  const displaySettings = useMemo(
+    () => ({
       assignedTabShowAssignee: appSettings.assignedTabShowAssignee,
       assignedTabShowStatus: appSettings.assignedTabShowStatus,
       assignedTabShowPriority: appSettings.assignedTabShowPriority,

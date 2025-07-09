@@ -1,5 +1,4 @@
 const path = require('node:path')
-/* eslint-disable unicorn/prefer-module */
 
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config')

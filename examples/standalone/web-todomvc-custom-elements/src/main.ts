@@ -1,4 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
@@ -7,7 +6,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { createStorePromise, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker?worker'
-import { events, schema, tables, type Todo } from './schema.js'
+import { events, schema, type Todo, tables } from './schema.js'
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>

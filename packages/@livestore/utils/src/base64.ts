@@ -113,7 +113,6 @@ export const decode = (b64: string): Uint8Array => {
   const size = binString.length
   const bytes = new Uint8Array(size)
   for (let i = 0; i < size; i++) {
-    // eslint-disable-next-line unicorn/prefer-code-point
     bytes[i] = binString.charCodeAt(i)
   }
   return bytes

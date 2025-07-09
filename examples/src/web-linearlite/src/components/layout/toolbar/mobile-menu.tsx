@@ -1,9 +1,8 @@
+import { ChevronUpIcon } from '@heroicons/react/16/solid'
+import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
 import { ResetButton } from '@/components/layout/toolbar/reset-button'
 import { SeedInput } from '@/components/layout/toolbar/seed-input'
 import { UserInput } from '@/components/layout/toolbar/user-input'
-import { ChevronUpIcon } from '@heroicons/react/16/solid'
-import React from 'react'
-import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
 import { ShareButton } from './share-button'
 import { SyncToggle } from './sync-toggle'
 

@@ -1,5 +1,5 @@
 import { useQuery, useStore } from '@livestore/react'
-import React from 'react'
+import type React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'

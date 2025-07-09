@@ -1,12 +1,12 @@
-import { Icon, IconName } from '@/components/icons'
+import { CheckIcon } from '@heroicons/react/16/solid'
+import type React from 'react'
+import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
+import { Icon, type IconName } from '@/components/icons'
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
 import { useFilterState } from '@/lib/livestore/queries'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
-import { CheckIcon } from '@heroicons/react/16/solid'
-import React from 'react'
-import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
+import type { Priority } from '@/types/priority'
+import type { Status } from '@/types/status'
 
 export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
   const [filterState, setFilterState] = useFilterState()
@@ -31,7 +31,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                 const active = filterState.status?.includes(statusOption as Status)
                 return (
                   <MenuItem
-                    key={statusOption}
+                    key={name}
                     onAction={() => toggleFilter({ type: 'status', value: statusOption as Status })}
                     className="group/item p-2 pl-9 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
                   >
@@ -55,7 +55,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                 const active = filterState.priority?.includes(priorityOption as Priority)
                 return (
                   <MenuItem
-                    key={priorityOption}
+                    key={name}
                     onAction={() => toggleFilter({ type: 'priority', value: priorityOption as Priority })}
                     className="group/item p-2 pl-9 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
                   >

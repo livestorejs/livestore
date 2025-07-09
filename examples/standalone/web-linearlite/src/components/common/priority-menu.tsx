@@ -1,11 +1,11 @@
-import { Shortcut } from '@/components/common/shortcut'
-import { Icon, IconName } from '@/components/icons'
-import { priorityOptions } from '@/data/priority-options'
-import { Priority } from '@/types/priority'
 import { CheckIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
+import { Shortcut } from '@/components/common/shortcut'
+import { Icon, type IconName } from '@/components/icons'
+import { priorityOptions } from '@/data/priority-options'
+import type { Priority } from '@/types/priority'
 
 export const PriorityMenu = ({
   priority,
@@ -53,7 +53,7 @@ export const PriorityMenu = ({
         <Menu className="focus:outline-none" {...keyboardProps}>
           {priorityOptions.map(({ name, icon, style, shortcut }, priorityOption) => (
             <MenuItem
-              key={priorityOption}
+              key={name}
               onAction={() => onPriorityChange(priorityOption as Priority)}
               className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
             >

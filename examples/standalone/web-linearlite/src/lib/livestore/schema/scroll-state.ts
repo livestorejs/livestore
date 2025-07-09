@@ -1,4 +1,4 @@
-import { State, Schema } from '@livestore/livestore'
+import { Schema, State } from '@livestore/livestore'
 
 export const ScrollState = Schema.Struct({
   list: Schema.Number,

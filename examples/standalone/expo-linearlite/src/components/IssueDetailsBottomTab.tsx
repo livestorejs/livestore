@@ -81,25 +81,21 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
 
   return (
     <>
-      <Modal
-        onClose={() => setVisible(false)}
-        visible={visible}
-        children={
-          <View style={styles.modalContent}>
-            <Pressable style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}>
-              <PencilIcon color={Colors[theme!].text} size={14} />
-              <ThemedText style={styles.smallText}>Edit issue</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={handleDelete}
-              style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}
-            >
-              <Trash2Icon color={'red'} size={14} />
-              <ThemedText style={styles.deleteText}>Delete issue</ThemedText>
-            </Pressable>
-          </View>
-        }
-      />
+      <Modal onClose={() => setVisible(false)} visible={visible}>
+        <View style={styles.modalContent}>
+          <Pressable style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}>
+            <PencilIcon color={Colors[theme!].text} size={14} />
+            <ThemedText style={styles.smallText}>Edit issue</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={handleDelete}
+            style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}
+          >
+            <Trash2Icon color={'red'} size={14} />
+            <ThemedText style={styles.deleteText}>Delete issue</ThemedText>
+          </Pressable>
+        </View>
+      </Modal>
       <TextInput placeholder="Comment" style={styles.commentInput} />
       <View style={styles.bottomTabContainer}>
         <Pressable onPress={() => router.back()} style={styles.iconButton}>

@@ -37,7 +37,6 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
       const listen = Stream.asyncPush<Either.Either<Msg, ParseResult.ParseError>>((emit) =>
         Effect.acquireRelease(
           Effect.gen(function* () {
-            // eslint-disable-next-line unicorn/prefer-add-event-listener
             channel.onmessage = (event: any) => {
               return emit.single(Schema.decodeEither(schema)(event.data))
             }

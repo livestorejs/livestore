@@ -1,8 +1,12 @@
-import React from 'react'
-
 export const CanceledIcon = ({ className }: { className?: string }) => {
   return (
-    <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className={`fill-current ${className}`}>
+    <svg
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`fill-current ${className}`}
+      aria-hidden="true"
+    >
       <path
         fillRule="evenodd"
         clipRule="evenodd"

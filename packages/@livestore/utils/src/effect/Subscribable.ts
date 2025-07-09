@@ -55,7 +55,7 @@ class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscrib
   ) {
     super()
   }
-  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+
   commit() {
     return this.get
   }

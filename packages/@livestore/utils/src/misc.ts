@@ -37,7 +37,6 @@ export const tryAsFunctionAndNew = <TArg, TResult>(
   try {
     // @ts-expect-error try out as constructor
     return new fnOrConstructor(arg)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_e) {
     // @ts-expect-error try out as function
     return fnOrConstructor(arg)

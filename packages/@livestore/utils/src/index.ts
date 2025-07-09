@@ -86,7 +86,7 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
  * Use this to make assertion at end of if-else chain that all members of a
  * union have been accounted for.
  */
-/* eslint-disable-next-line prefer-arrow/prefer-arrow-functions */
+
 export function casesHandled(unexpectedCase: never): never {
   // biome-ignore lint/suspicious/noDebugger: debugging
   debugger

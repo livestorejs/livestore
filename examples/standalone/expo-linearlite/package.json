@@ -49,8 +49,6 @@
     "@types/react": "^19.1.2",
     "@types/react-test-renderer": "^19.0.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eslint-config-expo": "^9.2.0",
-    "eslint-plugin-react-compiler": "19.0.0-beta-40c6c23-20250301",
     "prettier": "^3.5.3",
     "react-test-renderer": "^19.0.0",
     "typescript": "^5.8.3"
@@ -65,7 +63,7 @@
   "scripts": {
     "android": "expo start --clear --android",
     "ios": "expo start --clear --ios",
-    "lint": "expo lint",
+    "lint": "biome lint .",
     "start": "expo start"
   }
 }

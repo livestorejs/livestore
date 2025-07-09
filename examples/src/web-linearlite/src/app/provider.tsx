@@ -1,14 +1,14 @@
+import { makePersistedAdapter } from '@livestore/adapter-web'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+import { LiveStoreProvider } from '@livestore/react'
+import React from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { schema } from '@/lib/livestore/schema'
 import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
-import { Status } from '@/types/status'
-import { LiveStoreProvider } from '@livestore/react'
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import React from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import type { Status } from '@/types/status'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 

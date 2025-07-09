@@ -1,7 +1,7 @@
 import { nanoid } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
-import React, { Fragment } from 'react'
+import { Fragment } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
 
 import { useUser } from '@/hooks/useUser.ts'

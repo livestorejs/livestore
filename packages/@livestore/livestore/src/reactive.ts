@@ -21,8 +21,6 @@
 //   is maintained eagerly as edges are added and removed.)
 // - At every thunk we check value equality with the previous value and cutoff propagation if possible.
 
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
 import { BoundArray } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'

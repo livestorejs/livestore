@@ -8,8 +8,8 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
-import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
+import LiveStoreWorker from './livestore.worker?worker'
 import { getStoreId } from './util/store-id.js'
 
 const AppBody: React.FC = () => (
