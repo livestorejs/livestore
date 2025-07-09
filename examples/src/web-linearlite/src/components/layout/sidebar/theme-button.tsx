@@ -1,11 +1,11 @@
-import { Shortcut } from '@/components/common/shortcut'
-import { Theme, themeOptions } from '@/data/theme-options'
-import { useFrontendState } from '@/lib/livestore/queries'
 import { CheckIcon, MoonIcon, SunIcon } from '@heroicons/react/16/solid'
 import { ComputerDesktopIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
+import { Shortcut } from '@/components/common/shortcut'
+import { type Theme, themeOptions } from '@/data/theme-options'
+import { useFrontendState } from '@/lib/livestore/queries'
 
 export const ThemeButton = () => {
   const [theme, setTheme] = React.useState<Theme | undefined>(undefined)

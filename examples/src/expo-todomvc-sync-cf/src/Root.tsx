@@ -4,7 +4,7 @@ import { LiveStoreProvider } from '@livestore/react'
 import { makeCfSync } from '@livestore/sync-cf'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
-import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
+import { Button, unstable_batchedUpdates as batchUpdates, StyleSheet, Text, View } from 'react-native'
 
 import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'

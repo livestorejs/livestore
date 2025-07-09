@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
@@ -53,7 +52,6 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
-    // eslint-disable-next-line unicorn/error-message
     const stack = new Error().stack!
     Error.stackTraceLimit = originalStackLimit
     return extractStackInfoFromStackTrace(stack)

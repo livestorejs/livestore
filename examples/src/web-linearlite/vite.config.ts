@@ -4,10 +4,10 @@ import path from 'node:path'
 import process from 'node:process'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import svgr from 'vite-plugin-svgr'
-import tailwindcss from '@tailwindcss/vite'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 

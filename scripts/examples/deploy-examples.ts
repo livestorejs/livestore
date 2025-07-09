@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-process-exit */
 import fs from 'node:fs'
 import process from 'node:process'
 

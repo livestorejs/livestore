@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/prefer-module */
 module.exports = (api) => {
   api.cache(true)
   return {

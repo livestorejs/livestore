@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/prefer-global-this */
 /**
  * Based on:
  *

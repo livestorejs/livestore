@@ -171,7 +171,6 @@ export const makeClientSessionSyncProcessor = ({
   const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    // eslint-disable-next-line unicorn/prefer-global-this
     if (confirmUnsavedChanges && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {

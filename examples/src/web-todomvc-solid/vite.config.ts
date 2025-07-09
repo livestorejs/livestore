@@ -1,6 +1,7 @@
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { defineConfig } from 'vite'
 import solidPlugin from 'vite-plugin-solid'
+
 // import devtools from 'solid-devtools/vite';
 
 const isProdBuild = process.env.NODE_ENV === 'production'

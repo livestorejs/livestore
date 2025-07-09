@@ -1,11 +1,10 @@
-import { type Store } from '@livestore/livestore'
-
+import type { Store } from '@livestore/livestore'
+import { generateKeyBetween } from 'fractional-indexing'
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
 import { events } from '@/lib/livestore/schema'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
-import { generateKeyBetween } from 'fractional-indexing'
+import type { Priority } from '@/types/priority'
+import type { Status } from '@/types/status'
 import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries'
 
 export const seed = (store: Store, count: number) => {
@@ -14,9 +13,9 @@ export const seed = (store: Store, count: number) => {
     const highestId = store.query(highestIssueId$)
     const highestKanbanOrder = store.query(highestKanbanOrder$)
     if (existingCount >= count) return
-    count -= existingCount
-    console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.commit(...Array.from(createIssues(count, highestId, highestKanbanOrder)))
+    const adjustedCount = count - existingCount
+    console.log('SEEDING WITH ', adjustedCount, ' ADDITIONAL ROWS')
+    store.commit(...Array.from(createIssues(adjustedCount, highestId, highestKanbanOrder)))
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')
@@ -29,7 +28,7 @@ function* createIssues(
   highestId?: number,
   highestKanbanOrder?: string,
 ): Generator<typeof events.createIssueWithDescription.Event> {
-  if (!highestId) highestId = 0
+  let currentId = highestId ?? 0
   let kanbanorder = highestKanbanOrder ?? 'a1'
 
   const getRandomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]!
@@ -47,7 +46,7 @@ function* createIssues(
     kanbanorder = generateKeyBetween(kanbanorder, undefined)
     const [title, description] = generateText()
     const issue = events.createIssueWithDescription({
-      id: (highestId += 1),
+      id: ++currentId,
       creator: 'John Doe',
       title,
       created: new Date(now - (numTasks - i) * 5 * ONE_DAY),

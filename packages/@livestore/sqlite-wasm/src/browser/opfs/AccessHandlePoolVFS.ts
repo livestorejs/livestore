@@ -1,5 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
 import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'

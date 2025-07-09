@@ -1,4 +1,4 @@
-import { IconName } from '@/components/icons'
+import type { IconName } from '@/components/icons'
 
 export const priorityOptions: { name: string; icon: IconName; style: string; shortcut: string }[] = [
   {

@@ -11,11 +11,9 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   ast: QueryBuilderAst = emptyAst(tableDef),
 ): QueryBuilder<TResult, TTableDef, never> => {
   const api = {
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     select() {
       assertSelectQueryBuilderAst(ast)
 
-      // eslint-disable-next-line prefer-rest-params
       const params = [...arguments]
 
       // Pluck if there's only one column selected
@@ -43,7 +41,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')
 
       if (arguments.length === 1) {
-        // eslint-disable-next-line prefer-rest-params
         const params = arguments[0]
         const newOps = Object.entries(params)
           .filter(([, value]) => value !== undefined)
@@ -69,7 +66,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         }
       }
 
-      // eslint-disable-next-line prefer-rest-params
       const [col, opOrValue, valueOrUndefined] = arguments
       const op = valueOrUndefined === undefined ? '=' : opOrValue
       const value = valueOrUndefined === undefined ? opOrValue : valueOrUndefined
@@ -89,14 +85,13 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         }
       }
     },
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+
     orderBy() {
       assertSelectQueryBuilderAst(ast)
 
       if (arguments.length === 0 || arguments.length > 2) return invalidQueryBuilder()
 
       if (arguments.length === 1) {
-        // eslint-disable-next-line prefer-rest-params
         const params = arguments[0] as QueryBuilder.OrderByParams<TTableDef>
         return makeQueryBuilder(tableDef, {
           ...ast,
@@ -104,7 +99,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         })
       }
 
-      // eslint-disable-next-line prefer-rest-params
       const [col, direction] = arguments as any as [keyof TTableDef['sqliteDef']['columns'] & string, 'asc' | 'desc']
 
       return makeQueryBuilder(tableDef, {
@@ -148,13 +142,13 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         pickFirst: { _tag: 'enabled', ...(behaviour ?? { behaviour: 'undefined' }) },
       })
     },
-    // // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+    //
     // getOrCreate() {
     //   if (tableDef.options.isClientDocumentTable === false) {
     //     return invalidQueryBuilder(`getOrCreate() is not allowed when table is not a client document table`)
     //   }
 
-    //   // eslint-disable-next-line prefer-rest-params
+    //
     //   const params = [...arguments]
 
     //   let id: string | number
@@ -277,21 +271,19 @@ const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
 })
 
 // Helper functions
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+
 function assertSelectQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
   if (ast._tag !== 'SelectQuery') {
     return shouldNeverHappen(`Expected SelectQuery but got ${ast._tag}`)
   }
 }
 
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 function assertInsertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.InsertQuery {
   if (ast._tag !== 'InsertQuery') {
     return shouldNeverHappen(`Expected InsertQuery but got ${ast._tag}`)
   }
 }
 
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 function assertWriteQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.WriteQuery {
   if (ast._tag !== 'InsertQuery' && ast._tag !== 'UpdateQuery' && ast._tag !== 'DeleteQuery') {
     return shouldNeverHappen(`Expected WriteQuery but got ${ast._tag}`)

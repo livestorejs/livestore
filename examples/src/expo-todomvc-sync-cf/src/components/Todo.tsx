@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons'
 import { useStore } from '@livestore/react'
-import React from 'react'
+import type React from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import type { tables } from '../livestore/schema.ts'

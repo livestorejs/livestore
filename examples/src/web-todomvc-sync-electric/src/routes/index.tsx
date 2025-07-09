@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import React from 'react'
 
 import { Footer } from '@/components/Footer.js'
 import { Header } from '@/components/Header.js'

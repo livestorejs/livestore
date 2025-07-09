@@ -2,8 +2,5 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {},
   "include": [],
-  "references": [
-    { "path": "./tsconfig.dev.json" },
-    { "path": "./tsconfig.standalone-examples.json" }
-  ]
+  "references": [{ "path": "./tsconfig.dev.json" }, { "path": "./tsconfig.standalone-examples.json" }]
 }

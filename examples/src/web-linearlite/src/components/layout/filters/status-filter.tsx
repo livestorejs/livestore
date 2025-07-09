@@ -1,11 +1,10 @@
-import { Icon, IconName } from '@/components/icons'
+import { XMarkIcon } from '@heroicons/react/16/solid'
+import { Button } from 'react-aria-components'
+import { Icon, type IconName } from '@/components/icons'
 import { FilterMenu } from '@/components/layout/filters/filter-menu'
 import { statusOptions } from '@/data/status-options'
 import { useFilterState } from '@/lib/livestore/queries'
-import { Status } from '@/types/status'
-import { XMarkIcon } from '@heroicons/react/16/solid'
-import React from 'react'
-import { Button } from 'react-aria-components'
+import type { Status } from '@/types/status'
 
 export const StatusFilter = () => {
   const [filterState, setFilterState] = useFilterState()
@@ -19,8 +18,8 @@ export const StatusFilter = () => {
       </div>
       <FilterMenu type="status">
         <Button className="pl-5 pr-2 flex items-center h-full hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 gap-1.5">
-          {filterState.status.map((status, index) => (
-            <div key={index} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
+          {filterState.status.map((status) => (
+            <div key={status} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
               <Icon
                 name={statusOptions[status as Status]!.icon as IconName}
                 className={`h-full ${statusOptions[status as Status]!.style}`}

@@ -1,11 +1,11 @@
-import { Shortcut } from '@/components/common/shortcut'
-import { Icon, IconName } from '@/components/icons'
-import { statusOptions } from '@/data/status-options'
-import { Status } from '@/types/status'
 import { CheckIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
+import { Shortcut } from '@/components/common/shortcut'
+import { Icon, type IconName } from '@/components/icons'
+import { statusOptions } from '@/data/status-options'
+import type { Status } from '@/types/status'
 
 export const StatusMenu = ({
   status,
@@ -50,7 +50,7 @@ export const StatusMenu = ({
         <Menu className="focus:outline-none" {...keyboardProps}>
           {statusOptions.map(({ name, icon, style, shortcut }, statusOption) => (
             <MenuItem
-              key={statusOption}
+              key={name}
               onAction={() => onStatusChange(statusOption as Status)}
               className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
             >

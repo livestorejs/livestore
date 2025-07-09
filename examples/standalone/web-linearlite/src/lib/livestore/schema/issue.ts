@@ -1,6 +1,6 @@
+import { Schema, State } from '@livestore/livestore'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { State, Schema } from '@livestore/livestore'
 
 export const issue = State.SQLite.table({
   name: 'issue',

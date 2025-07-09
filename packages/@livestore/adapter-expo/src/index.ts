@@ -46,7 +46,6 @@ export type MakeDbOptions = {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var RN$Bridgeless: boolean | undefined
 }
 
@@ -310,7 +309,6 @@ const getDevtoolsUrl = () => {
   const url = new URL(process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `ws://0.0.0.0:4242`)
   const port = url.port
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
   const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
   const devServer = getDevServer().url.replace(/\/?$/, '') as string
 

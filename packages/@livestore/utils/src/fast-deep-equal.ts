@@ -1,5 +1,3 @@
-/* eslint-disable no-var */
-
 // Copied from fast-deep-equal
 // MIT License
 
