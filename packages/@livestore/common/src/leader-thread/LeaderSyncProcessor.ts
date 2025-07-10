@@ -98,8 +98,8 @@ export const makeLeaderSyncProcessor = ({
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.EncodedWithMeta>()
-    const localPushBatchSize = params.localPushBatchSize ?? 10
-    const backendPushBatchSize = params.backendPushBatchSize ?? 50
+    const localPushBatchSize = params.localPushBatchSize ?? 1
+    const backendPushBatchSize = params.backendPushBatchSize ?? 2
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 

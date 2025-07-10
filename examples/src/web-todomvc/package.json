@@ -8,7 +8,7 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.2",
+    "@livestore/wa-sqlite": "1.0.5",
     "@overengineering/fps-meter": "0.1.2",
     "react": "19.0.0",
     "react-dom": "19.0.0",

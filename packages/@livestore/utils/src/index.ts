@@ -73,6 +73,11 @@ export const recRemoveUndefinedValues = (val: any): void => {
   }
 }
 
+/**
+ * Replace non-alphanumeric characters with a dash.
+ */
+export const sluggify = (str: string, separator = '-') => str.replace(/[^a-zA-Z0-9]/g, separator)
+
 export const prop =
   <T extends {}, K extends keyof T>(key: K) =>
   (obj: T): T[K] =>
