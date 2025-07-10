@@ -16,7 +16,7 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
     const testRunId = process.env.TEST_RUN_ID ?? shouldNeverHappen(`TEST_RUN_ID is not set (threadName: ${threadName})`)
 
     const logFilePath = path.join(
-      process.env.WORKSPACE_ROOT!,
+      process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set (threadName: ${threadName})`),
       'tests',
       'integration',
       'tmp',

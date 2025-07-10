@@ -2,7 +2,6 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
-  Duration,
   Effect,
   FiberHandle,
   Option,
@@ -20,6 +19,19 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { getEventDef, type LiveStoreSchema } from '../schema/mod.js'
 import * as SyncState from './syncstate.js'
+
+const SIMULATION_ENABLED = true
+
+export const SimulationParams = Schema.Struct({
+  pull: Schema.Struct({
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
+  }),
+})
+type SimulationParams = typeof SimulationParams.Type
 
 /**
  * Rebase behaviour:
@@ -63,6 +75,7 @@ export const makeClientSessionSyncProcessor = ({
   span: otel.Span
   params: {
     leaderPushBatchSize: number
+    simulation?: SimulationParams
   }
   /**
    * Currently only used in the web adapter:
@@ -71,6 +84,9 @@ export const makeClientSessionSyncProcessor = ({
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
   const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
+
+  const simSleep = <TKey extends keyof SimulationParams>(key: TKey, key2: keyof SimulationParams[TKey]) =>
+    Effect.sleep(params.simulation![key]![key2] as number)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -240,10 +256,16 @@ export const makeClientSessionSyncProcessor = ({
 
             debugInfo.rebaseCount++
 
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+
             yield* FiberHandle.clear(leaderPushingFiberHandle)
+
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
             yield* BucketQueue.clear(leaderPushQueue)
+
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '3_before_rebase_rollback')
 
             if (LS_DEV) {
               yield* Effect.logDebug(
@@ -261,7 +283,12 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
             span.addEvent('merge:pull:advance', {

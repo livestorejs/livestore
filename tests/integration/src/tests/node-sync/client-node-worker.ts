@@ -70,7 +70,10 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         storeId,
         disableDevtools: true,
         shutdownDeferred,
-        params: { leaderPushBatchSize: params.leaderPushBatchSize },
+        params: {
+          leaderPushBatchSize: params?.leaderPushBatchSize,
+          simulation: params?.simulation ? { clientSessionSyncProcessor: params.simulation } : undefined,
+        },
       })
       // @ts-expect-error for debugging
       globalThis.store = store

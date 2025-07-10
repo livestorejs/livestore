@@ -5,6 +5,7 @@ import type {
   ClientSessionDevtoolsChannel,
   IntentionalShutdownCause,
   MigrationsReport,
+  SimulationParams,
 } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -120,6 +121,9 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof SimulationParams.Type
+    }
   }
   debug?: {
     instanceId?: string
@@ -274,6 +278,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          simulation: params?.simulation,
         },
       })
 

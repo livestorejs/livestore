@@ -2,6 +2,7 @@ import './thread-polyfill.js'
 
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
+import { SimulationParams } from '@livestore/common'
 import { IS_CI } from '@livestore/utils'
 import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -59,9 +60,18 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           Schema.Literal('fs'),
           Schema.Literal('worker'),
           Schema.Literal(3),
-          Schema.Literal(50),
+          Schema.Literal(105),
           Schema.Literal(1),
           Schema.Literal(1),
+          Schema.Struct({
+            pull: Schema.Struct({
+              '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
+              '2_before_leader_push_queue_clear': Schema.Literal(10),
+              '3_before_rebase_rollback': Schema.Literal(0),
+              '4_before_leader_push_queue_offer': Schema.Literal(20),
+              '5_before_leader_push_fiber_run': Schema.Literal(0),
+            }),
+          }),
         ]
       : [
           WorkerSchema.StorageType,
@@ -70,24 +80,30 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           CreateCount,
           CommitBatchSize,
           LEADER_PUSH_BATCH_SIZE,
+          SimulationParams,
         ],
-    ([storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
+    (
+      [storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams],
+      test,
+    ) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
-        yield* Effect.logDebug('concurrent push', {
+        yield* Effect.log('concurrent push', {
           storageType,
           adapterType,
           todoCountA,
           todoCountB,
           commitBatchSize,
           leaderPushBatchSize,
+          simulationParams,
         })
+        const params = { leaderPushBatchSize, simulation: simulationParams }
 
         const [clientA, clientB] = yield* Effect.all(
           [
-            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, leaderPushBatchSize }),
-            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType, leaderPushBatchSize }),
+            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, params }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType, params }),
           ],
           { concurrency: 'unbounded' },
         )
@@ -131,7 +147,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       ),
     DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: 6 }, timeout: propTestTimeout },
+      : { fastCheck: { numRuns: IS_CI ? 6 : 20 }, timeout: propTestTimeout },
   )
 })
 
@@ -140,13 +156,13 @@ const makeWorker = ({
   storeId,
   adapterType,
   storageType,
-  leaderPushBatchSize,
+  params,
 }: {
   clientId: string
   storeId: string
   adapterType: typeof WorkerSchema.AdapterType.Type
   storageType: typeof WorkerSchema.StorageType.Type
-  leaderPushBatchSize?: number
+  params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
@@ -158,14 +174,7 @@ const makeWorker = ({
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () =>
-        WorkerSchema.InitialMessage.make({
-          storeId,
-          clientId,
-          adapterType,
-          storageType,
-          params: { leaderPushBatchSize },
-        }),
+      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params }),
     }).pipe(
       Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
       Effect.tapCauseLogPretty,
@@ -183,6 +192,8 @@ const withCtx =
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
 
     return self.pipe(
+      // Only provide logger here so we still see timeout logs in the console
+      Effect.provide(makeFileLogger('runner', { testContext })),
       DEBUGGER_ACTIVE
         ? identity
         : Effect.logWarnIfTakesLongerThan({
@@ -194,6 +205,5 @@ const withCtx =
       Effect.withSpan(spanName),
       Effect.annotateLogs({ suffix }),
       DEBUGGER_ACTIVE ? Effect.provide(otelLayer) : identity,
-      Effect.provide(makeFileLogger('runner', { testContext })),
     )
   }

@@ -1,4 +1,10 @@
-import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
+import type {
+  ClientSession,
+  IntentionalShutdownCause,
+  SimulationParams,
+  StoreInterrupted,
+  UnexpectedError,
+} from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
@@ -49,6 +55,9 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof SimulationParams.Type
+    }
   }
   __runningInDevtools: boolean
 }
