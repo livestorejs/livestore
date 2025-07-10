@@ -19,9 +19,30 @@ import { PlatformNode } from '@livestore/utils/node'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
-/**
- * RPC Schema for logging operations
+/*
+ * ## Why is this custom file logger needed?
+ *
+ * We're using this custom file logger to better control logging outputs. In the past we piped all
+ * output to stdout. But given the output can easily reach >10k lines it was hard to read and also
+ * polluted LLM context when debugging.
+ *
+ * We then tried using Vitest reporters to capture the output and write it to a file but that also
+ * didn't work well due to Vitest only capturing `console.log` / `console.error` and not `console.debug`
+ * or `console.info`.
+ *
+ * So in the end we rolled our own file logger using Effect's `Logger` system. Given we're using a
+ * multi-threaded setup we needed a way to send the logs across threads and capture them in a single
+ * place. That's what the system below does.
+ *
+ * ## How does it work?
+ * - In the test runner we start an RPC server that listens for log messages which writes to a file.
+ * - Each thread sends its logs to the RPC server via HTTP.
+ *
+ * ## Notes
+ * - We've decided to write to a single cannonical file for each test. Make sure to not run multiple
+ *   tests in parallel which would cause the log to be messed up.
  */
+
 class LoggerRpcs extends RpcGroup.make(
   Rpc.make('LogMessage', {
     payload: {
@@ -31,12 +52,6 @@ class LoggerRpcs extends RpcGroup.make(
   }),
 ) {}
 
-/**
- * Creates a logger layer with support for different modes:
- * - 'file': Traditional file logging (current behavior)
- * - 'rpc': Sends logs via HTTP RPC to centralized logger
- * - 'centralized': Receives RPC logs and writes to single file (runner only)
- */
 export const makeFileLogger = (threadName: string, exposeTestContext?: { testContext: Vitest.TestContext }) =>
   Layer.suspend(() => {
     if (exposeTestContext !== undefined) {
