@@ -10,7 +10,7 @@ import { ChildProcessWorker } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import { makeFileLogger } from './file-logger.js'
+import { makeFileLogger } from './fixtures/file-logger.js'
 import * as WorkerSchema from './worker-schema.js'
 
 const testTimeout = IS_CI ? 120_000 : 15_000
@@ -60,9 +60,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           Schema.Literal('fs'),
           Schema.Literal('worker'),
           Schema.Literal(3),
-          Schema.Literal(105),
+          Schema.Literal(391),
           Schema.Literal(1),
-          Schema.Literal(1),
+          Schema.Literal(2),
           Schema.Struct({
             pull: Schema.Struct({
               '1_before_leader_push_fiber_interrupt': Schema.Literal(0),

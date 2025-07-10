@@ -116,8 +116,6 @@ export const makeRpcClient = (threadName: string) => {
       const serverPort = process.env.LOGGER_SERVER_PORT ?? shouldNeverHappen('LOGGER_SERVER_PORT is not set')
       const baseUrl = `http://localhost:${serverPort}`
 
-      // yield* Effect.sleep(500)
-
       const ProtocolLive = RpcClient.layerProtocolHttp({
         url: `${baseUrl}/rpc`,
       }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))

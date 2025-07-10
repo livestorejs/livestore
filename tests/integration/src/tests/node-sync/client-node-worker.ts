@@ -22,7 +22,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { makeFileLogger } from './file-logger.js'
+import { makeFileLogger } from './fixtures/file-logger.js'
 import { events, schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'
 
