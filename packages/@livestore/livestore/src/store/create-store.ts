@@ -3,6 +3,7 @@ import type {
   BootStatus,
   ClientSession,
   ClientSessionDevtoolsChannel,
+  ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
   MigrationsReport,
 } from '@livestore/common'
@@ -120,6 +121,9 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
+    }
   }
   debug?: {
     instanceId?: string
@@ -274,6 +278,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          simulation: params?.simulation,
         },
       })
 

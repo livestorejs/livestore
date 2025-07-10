@@ -8,7 +8,7 @@
     "@livestore/react": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.2",
+    "@livestore/wa-sqlite": "1.0.5",
     "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
     "@opentelemetry/resources": "2.0.0",
     "@opentelemetry/sdk-trace-base": "2.0.0",

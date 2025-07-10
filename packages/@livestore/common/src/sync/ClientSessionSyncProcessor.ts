@@ -62,6 +62,7 @@ export const makeClientSessionSyncProcessor = ({
   span: otel.Span
   params: {
     leaderPushBatchSize: number
+    simulation?: ClientSessionSyncProcessorSimulationParams
   }
   /**
    * Currently only used in the web adapter:
@@ -70,6 +71,11 @@ export const makeClientSessionSyncProcessor = ({
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
   const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
+
+  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
+    key: TKey,
+    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
+  ) => Effect.sleep(params.simulation![key]![key2] as number)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -239,19 +245,23 @@ export const makeClientSessionSyncProcessor = ({
 
             debugInfo.rebaseCount++
 
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+
             yield* FiberHandle.clear(leaderPushingFiberHandle)
+
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
             yield* BucketQueue.clear(leaderPushQueue)
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '3_before_rebase_rollback')
 
             if (LS_DEV) {
-              Effect.logDebug(
+              yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
                 ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
-              ).pipe(Effect.provide(runtime), Effect.runSync)
+              )
             }
 
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
@@ -262,8 +272,13 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            // Pushing rebased pending events to leader
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+
+            if (SIMULATION_ENABLED) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+
+            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
             span.addEvent('merge:pull:advance', {
               payloadTag: payload._tag,
@@ -362,3 +377,17 @@ export interface ClientSessionSyncProcessor {
     }
   }
 }
+
+// TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
+const SIMULATION_ENABLED = true
+
+export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
+  pull: Schema.Struct({
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
+  }),
+})
+type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

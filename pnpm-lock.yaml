@@ -440,8 +440,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -585,8 +585,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -631,8 +631,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/peer-deps
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -686,8 +686,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -738,8 +738,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       solid-js:
         specifier: 1.9.4
         version: 1.9.4
@@ -784,8 +784,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -842,8 +842,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1158,8 +1158,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1303,8 +1303,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1349,8 +1349,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/peer-deps
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -1404,8 +1404,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1456,8 +1456,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       solid-js:
         specifier: 1.9.4
         version: 1.9.4
@@ -1502,8 +1502,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1560,8 +1560,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1982,8 +1982,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.304
@@ -2205,8 +2205,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/utils-dev
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@local/shared':
         specifier: workspace:*
         version: link:../../packages/@local/shared
@@ -2306,8 +2306,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/utils-dev
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.2
-        version: 1.0.5-dev.2
+        specifier: 1.0.5
+        version: 1.0.5
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.200.0
         version: 0.200.0(@opentelemetry/api@1.9.0)
@@ -4053,8 +4053,8 @@ packages:
     peerDependencies:
       vite: ~7.0.0
 
-  '@livestore/wa-sqlite@1.0.5-dev.2':
-    resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
+  '@livestore/wa-sqlite@1.0.5':
+    resolution: {integrity: sha512-OIxBEtl027kSl/z3772YgYf7ZlkE8aDWvLmm+O/hbPJO/lubv9+2EaDpXeoxsyg2xIIpkpXXSreEzFckkT1/QQ==}
 
   '@mapbox/node-pre-gyp@1.0.11':
     resolution: {integrity: sha512-Yhlar6v9WQgUp/He7BdgzOz8lqMQ8sU+jkCq7Wx8Myc5YFJLbEe7lgui/V7G1qB1DJykHSGwreceSaD60Y0PUQ==}
@@ -15495,7 +15495,7 @@ snapshots:
       '@livestore/utils': link:packages/@livestore/utils
       vite: 7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)
 
-  '@livestore/wa-sqlite@1.0.5-dev.2': {}
+  '@livestore/wa-sqlite@1.0.5': {}
 
   '@mapbox/node-pre-gyp@1.0.11':
     dependencies:

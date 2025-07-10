@@ -22,7 +22,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-
+import { makeFileLogger } from './fixtures/file-logger.js'
 import { events, schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'
 
@@ -70,7 +70,10 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         storeId,
         disableDevtools: true,
         shutdownDeferred,
-        params: { leaderPushBatchSize: params.leaderPushBatchSize },
+        params: {
+          leaderPushBatchSize: params?.leaderPushBatchSize,
+          simulation: params?.simulation ? { clientSessionSyncProcessor: params.simulation } : undefined,
+        },
       })
       // @ts-expect-error for debugging
       globalThis.store = store
@@ -111,14 +114,13 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
 })
 
-const clientId = process.argv[2]
+const clientId = process.argv[2]!
 
 const serviceName = `node-sync-test:${clientId}`
 
 runner.pipe(
   Layer.provide(PlatformNode.NodeContext.layer),
   Layer.provide(ChildProcessRunner.layer),
-  // Layer.provide(PlatformNode.NodeWorkerRunner.layer),
   WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
@@ -127,7 +129,7 @@ runner.pipe(
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
-  Effect.provide(Logger.prettyWithThread(serviceName)),
+  Effect.provide(makeFileLogger(`worker-${clientId}`)),
   Logger.withMinimumLogLevel(LogLevel.Debug),
-  PlatformNode.NodeRuntime.runMain,
+  PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
 )
