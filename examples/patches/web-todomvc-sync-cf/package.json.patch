@@ -18,6 +18,6 @@
 +    "@livestore/peer-deps": "0.3.2-dev.0",
 +    "@livestore/react": "0.3.2-dev.0",
 +    "@livestore/sync-cf": "0.3.2-dev.0",
-     "@livestore/wa-sqlite": "1.0.5-dev.2",
+     "@livestore/wa-sqlite": "1.0.5",
      "@overengineering/fps-meter": "0.1.2",
      "react": "19.0.0",

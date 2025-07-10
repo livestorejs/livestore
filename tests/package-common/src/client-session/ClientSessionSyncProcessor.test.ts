@@ -42,6 +42,7 @@ const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
 ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
 const encode = Schema.encodeSync(eventSchema)
 
+// TODO use property tests for simulation params
 Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('from scratch', (test) =>
     Effect.gen(function* () {

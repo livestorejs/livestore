@@ -1,17 +1,18 @@
 import * as ChildProcess from 'node:child_process'
-
 import { Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import { afterAll, beforeAll } from 'vitest'
 
 let wranglerProcess: ChildProcess.ChildProcess
 
+// TODO we should rewrite this with Effect
 beforeAll(async () => {
   const syncPort = await getFreePort.pipe(Effect.runPromise)
 
   process.env.LIVESTORE_SYNC_PORT = syncPort.toString()
 
-  console.log(`Starting sync backend via \`wrangler dev\` on localhost:${syncPort}`)
+  // TODO it still seems to be the cast that the wrangler process gets leaked somehow. We need to fix this.
+  // console.log(`Starting sync backend via \`wrangler dev\` on localhost:${syncPort}`)
   wranglerProcess = ChildProcess.spawn('bunx', ['wrangler', 'dev', '--port', syncPort.toString()], {
     stdio: ['ignore', 'pipe', 'pipe'], // ignore stdin, pipe stdout and stderr to parent process
     cwd: import.meta.dirname,
