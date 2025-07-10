@@ -2,7 +2,6 @@ import * as fs from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import {
   Effect,
   FetchHttpClient,
@@ -43,29 +42,19 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
     if (exposeTestContext !== undefined) {
       const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
       const testRunId = sluggify(spanName)
-      // const testRunId = `${cuid()}-${sluggify(spanName)}`
 
       process.env.TEST_RUN_ID = testRunId
 
-      return Layer.unwrapScoped(
-        Effect.gen(function* () {
-          const serverPort = Math.floor(Math.random() * 10000) + 50000
-          process.env.LOGGER_SERVER_PORT = String(serverPort)
+      const serverPort = Math.floor(Math.random() * 10000) + 50000
+      process.env.LOGGER_SERVER_PORT = String(serverPort)
 
-          yield* startRpcLogger(testRunId, serverPort).pipe(
-            Effect.tapErrorCause((cause) => Effect.logError('RPC server startup failed', cause)),
-            Effect.forkScoped,
-          )
-
-          return makeRpcClient(threadName)
-        }),
-      )
+      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
     } else {
       return makeRpcClient(threadName)
     }
   })
 
-export const startRpcLogger = (testRunId: string, serverPort: number) =>
+export const RpcLogger = (testRunId: string, serverPort: number) =>
   Effect.gen(function* () {
     const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
     const logFilePath = path.join(workspaceRoot, 'tests', 'integration', 'tmp', 'logs', `${testRunId}.log`)
@@ -75,15 +64,13 @@ export const startRpcLogger = (testRunId: string, serverPort: number) =>
     yield* Effect.promise(() => fs.mkdir(path.dirname(logFilePath), { recursive: true }))
 
     const fileHandle = yield* Effect.acquireRelease(
-      Effect.promise(() => fs.open(logFilePath, 'a')),
+      Effect.promise(() => fs.open(logFilePath, 'w')), // overwrite the file to start fresh
       (fileHandle) => Effect.promise(() => fileHandle.close()),
     )
 
     const LoggerHandlers = LoggerRpcs.toLayer(
-      Effect.gen(function* () {
-        return {
-          LogMessage: ({ message }) => Effect.promise(() => fs.appendFile(fileHandle, message)),
-        }
+      Effect.succeed({
+        LogMessage: ({ message }) => Effect.promise(() => fs.appendFile(fileHandle, message)),
       }),
     )
 
@@ -94,19 +81,12 @@ export const startRpcLogger = (testRunId: string, serverPort: number) =>
     }).pipe(Layer.provide(RpcSerialization.layerNdjson))
 
     // Use the provided port
-    const httpLive = HttpRouter.Default.serve().pipe(
+    return HttpRouter.Default.serve().pipe(
       Layer.provide(RpcLayer),
       Layer.provide(HttpProtocol),
       Layer.provide(PlatformNode.NodeHttpServer.layer(() => createServer(), { port: serverPort })),
     )
-
-    // Starting RPC server
-
-    // Fork the server to run in background
-    yield* Effect.provide(Effect.never, httpLive).pipe(Effect.forkScoped)
-
-    return serverPort
-  })
+  }).pipe(Layer.unwrapScoped)
 
 export const makeRpcClient = (threadName: string) => {
   const prettyLogger = FileLogger.prettyLoggerTty({
@@ -118,8 +98,10 @@ export const makeRpcClient = (threadName: string) => {
   return Logger.replaceScoped(
     Logger.defaultLogger,
     Effect.gen(function* () {
-      const serverPort = process.env.LOGGER_SERVER_PORT ?? '5555'
+      const serverPort = process.env.LOGGER_SERVER_PORT ?? shouldNeverHappen('LOGGER_SERVER_PORT is not set')
       const baseUrl = `http://localhost:${serverPort}`
+
+      // yield* Effect.sleep(500)
 
       const ProtocolLive = RpcClient.layerProtocolHttp({
         url: `${baseUrl}/rpc`,
