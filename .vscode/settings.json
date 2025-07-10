@@ -48,6 +48,5 @@
   "workbench.editor.customLabels.patterns": {
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
-  },
-  "vitest.experimentalStaticAstCollect": false
+  }
 }

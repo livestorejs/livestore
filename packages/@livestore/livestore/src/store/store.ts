@@ -195,6 +195,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       span: syncSpan,
       params: {
         leaderPushBatchSize: params.leaderPushBatchSize,
+        simulation: params.simulation?.clientSessionSyncProcessor,
       },
       confirmUnsavedChanges,
     })
