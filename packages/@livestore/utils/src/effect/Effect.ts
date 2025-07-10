@@ -57,7 +57,10 @@ export const tryAll = <Res>(
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
 
-export const addFinalizerLog = (...msgs: any[]) => Effect.addFinalizer(() => Effect.log(...msgs))
+export const addFinalizerLog = (...msgs: any[]) =>
+  Effect.addFinalizer((exit) =>
+    Effect.log(...msgs, exit._tag === 'Success' ? 'with success' : `with failure: ${Cause.pretty(exit.cause)}`),
+  )
 
 export const logBefore =
   (...msgs: any[]) =>

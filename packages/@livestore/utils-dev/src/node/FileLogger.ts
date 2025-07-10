@@ -37,7 +37,7 @@ export const makeFileLogger = (
           colors: options?.colors ?? false,
           stderr: false,
           formatDate: (date) => `${defaultDateFormat(date)} ${options?.threadName ?? ''}`,
-          fileHandle: logFile,
+          onLog: (str) => fs.writeSync(logFile, str),
         }),
       )
     }),
@@ -76,7 +76,7 @@ const logLevelColors: Record<LogLevel.LogLevel['_tag'], ReadonlyArray<string>> =
   Fatal: [colors.bgBrightRed, colors.black],
 }
 
-const defaultDateFormat = (date: Date): string =>
+export const defaultDateFormat = (date: Date): string =>
   `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date
     .getSeconds()
     .toString()
@@ -114,22 +114,24 @@ const consoleLogToString = (...s: any[]) => {
     .join(' ')
 }
 
-const prettyLoggerTty = (options: {
+export const prettyLoggerTty = (options: {
   readonly colors: boolean
   readonly stderr: boolean
   readonly formatDate: (date: Date) => string
-  readonly fileHandle: number
+  readonly onLog?: (str: string) => void
 }) => {
   const color = options.colors ? withColor : withColorNoop
-  return Logger.make<unknown, void>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+  return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+    let str = ''
+
     const log = (...s: any[]) => {
-      const str = `${consoleLogToString(...s)}\n`
-      fs.writeSync(options.fileHandle, str)
+      str += `${consoleLogToString(...s)}\n`
+      options.onLog?.(str)
     }
 
     const logIndented = (...s: any[]) => {
-      const str = `${consoleLogToString(...s).replace(/^/gm, '  ')}\n`
-      fs.writeSync(options.fileHandle, str)
+      str += `${consoleLogToString(...s).replace(/^/gm, '  ')}\n`
+      options.onLog?.(str)
     }
 
     const message = ReadonlyArray.ensure(message_)
@@ -198,5 +200,7 @@ const prettyLoggerTty = (options: {
     }
 
     // if (!processIsBun) console.groupEnd()
+
+    return str
   })
 }
