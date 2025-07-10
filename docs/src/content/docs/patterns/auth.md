@@ -43,7 +43,8 @@ export class WebSocketServer extends makeDurableObject({
 }) {}
 
 export default makeWorker({
-  validatePayload: async (payload: any) => {
+  validatePayload: async (payload: any, context) => {
+    const { storeId } = context
     const { authToken } = payload
 
     if (!authToken) {
@@ -74,6 +75,10 @@ async function getUserFromToken(token: string): Promise<jose.JWTPayload | undefi
   } catch (error) {
     console.log('⚠️ Error verifying token', error)
   }
+}
+
+async function checkUserAccess(payload: jose.JWTPayload, storeId: string): Promise<void> {
+  // Check if user is authorized to access the store
 }
 ```
 
