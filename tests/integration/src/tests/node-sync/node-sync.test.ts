@@ -3,7 +3,7 @@ import './thread-polyfill.js'
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
-import { IS_CI } from '@livestore/utils'
+import { IS_CI, stringifyObject } from '@livestore/utils'
 import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
@@ -143,7 +143,14 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       }).pipe(
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withCtx(test, {
-          suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
+          suffix: stringifyObject({
+            adapterType,
+            todoCountA,
+            todoCountB,
+            commitBatchSize,
+            leaderPushBatchSize,
+            simulationParams,
+          }),
         }),
       ),
     DEBUGGER_ACTIVE
