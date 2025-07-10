@@ -111,12 +111,21 @@ yield* Effect.sleep(Duration.millis(100))
 ```
 
 **Test Results with Artificial Delay**:
-- **30 todos**: TIMEOUT/INFINITE LOOP ✗ **SUCCESS!**
+- **30 todos (100ms delay)**: TIMEOUT/INFINITE LOOP ✗ 
+- **15 todos (100ms delay)**: PASS ✓ (but many rebases up to e17r1)
+- **12 todos (50ms delay)**: PASS ✓ (but many rebases up to e13r1)
+- **10 todos (30ms delay)**: TIMEOUT/INFINITE LOOP ✗ **ABSOLUTE MINIMUM!**
 
 **Observed Behavior**:
-- Client-a continuously rebasing with sequence numbers incrementing: `e1 → e0` to `e29r1 → e28r1`
+- Client-a continuously rebasing with sequence numbers incrementing
 - Multiple `merge:pull:rebase: rollback` messages showing continuous rebase loop
 - Same livelock pattern as original 391 todos case but with much smaller numbers
+
+**FINAL MINIMUM REPRODUCTION**: 
+- **Client-a**: 3 todos
+- **Client-b**: 10 todos (down from 391!)
+- **Artificial delay**: 30ms (down from 100ms)
+- **Batch sizes**: All set to 1 (leaderPushBatchSize=1, commitBatchSize=1)
 
 **Impact**: This makes the issue much more debuggable with smaller test cases and enables faster iteration on potential solutions.
 

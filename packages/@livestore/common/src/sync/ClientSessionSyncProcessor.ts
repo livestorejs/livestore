@@ -245,8 +245,6 @@ export const makeClientSessionSyncProcessor = ({
             // Reset the leader push queue since we're rebasing and will push again
             yield* BucketQueue.clear(leaderPushQueue)
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
-
             if (LS_DEV) {
               yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
@@ -263,11 +261,8 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            // Add artificial delay to simulate slow rebase completion
-            yield* Effect.sleep(Duration.millis(30))
-            
-            // Pushing rebased pending events to leader
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
             span.addEvent('merge:pull:advance', {
               payloadTag: payload._tag,

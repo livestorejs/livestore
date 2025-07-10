@@ -56,15 +56,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     'node-sync prop tests',
     DEBUGGER_ACTIVE
       ? [
-          //   adapterType: 'worker',
-          // todoCountA: 3,
-          // todoCountB: 391,
-          // commitBatchSize: 1,
-          // leaderPushBatchSize: 2
           Schema.Literal('fs'),
           Schema.Literal('worker'),
           Schema.Literal(3),
-          Schema.Literal(10),
+          Schema.Literal(50),
           Schema.Literal(1),
           Schema.Literal(1),
         ]
@@ -199,6 +194,6 @@ const withCtx =
       Effect.withSpan(spanName),
       Effect.annotateLogs({ suffix }),
       DEBUGGER_ACTIVE ? Effect.provide(otelLayer) : identity,
-      Effect.provide(makeFileLogger('runner', { exposeTestRunId: true, testContext })),
+      Effect.provide(makeFileLogger('runner', { testContext })),
     )
   }
