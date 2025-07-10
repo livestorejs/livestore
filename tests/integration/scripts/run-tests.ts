@@ -185,7 +185,7 @@ export const devtoolsTest: Cli.Command.Command<
       )
 
       if (mode === 'dev-server') {
-        yield* Effect.never
+        return yield* Effect.never
       } else {
         yield* cmd(
           ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
