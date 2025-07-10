@@ -48,5 +48,7 @@
   "workbench.editor.customLabels.patterns": {
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
-  }
+  },
+  // We'd love to use the AST collector but it doesn't support arbitrary `Vitest.*` (e.g. `Vitest.scopedLive`) yet
+  "vitest.experimentalStaticAstCollect": false
 }

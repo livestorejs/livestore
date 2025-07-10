@@ -91,9 +91,8 @@ export const nodeSyncTest: Cli.Command.Command<
   'node-sync',
   {},
   Effect.fn(function* () {
-    yield* cmd(['vitest', 'src/tests/node-sync/node-sync.test.ts'], {
+    yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
       cwd,
-      env: { CI: '1' },
     })
   }),
 )
