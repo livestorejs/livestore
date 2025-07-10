@@ -60,6 +60,22 @@ jobs:
       - run: mono test integration misc
       - run: mono test integration todomvc
       - run: mono test integration node-sync
+      - name: Display node-sync logs
+        if: always()
+        run: |
+          if [ -d "tests/integration/tmp/logs" ]; then
+            echo "::group::Node-sync test logs"
+            for log_file in tests/integration/tmp/logs/*.log; do
+              if [ -f "$log_file" ]; then
+                echo "::group::$(basename "$log_file")"
+                cat "$log_file"
+                echo "::endgroup::"
+              fi
+            done
+            echo "::endgroup::"
+          else
+            echo "No log files found"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
