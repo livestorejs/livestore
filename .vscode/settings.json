@@ -49,5 +49,6 @@
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
   },
+  // We'd love to use the AST collector but it doesn't support `@effect/vitest` yet as it always looks for imports from `vitest`
   "vitest.experimentalStaticAstCollect": false
 }
