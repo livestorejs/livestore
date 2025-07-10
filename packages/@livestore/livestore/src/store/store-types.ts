@@ -1,7 +1,7 @@
 import type {
   ClientSession,
+  ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
-  SimulationParams,
   StoreInterrupted,
   UnexpectedError,
 } from '@livestore/common'
@@ -56,7 +56,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   params: {
     leaderPushBatchSize: number
     simulation?: {
-      clientSessionSyncProcessor: typeof SimulationParams.Type
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
   }
   __runningInDevtools: boolean

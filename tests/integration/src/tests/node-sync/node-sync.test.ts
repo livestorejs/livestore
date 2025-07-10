@@ -2,7 +2,7 @@ import './thread-polyfill.js'
 
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
-import { SimulationParams } from '@livestore/common'
+import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI } from '@livestore/utils'
 import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -80,7 +80,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           CreateCount,
           CommitBatchSize,
           LEADER_PUSH_BATCH_SIZE,
-          SimulationParams,
+          ClientSessionSyncProcessorSimulationParams,
         ],
     (
       [storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams],

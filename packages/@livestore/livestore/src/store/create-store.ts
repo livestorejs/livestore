@@ -3,9 +3,9 @@ import type {
   BootStatus,
   ClientSession,
   ClientSessionDevtoolsChannel,
+  ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
   MigrationsReport,
-  SimulationParams,
 } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -122,7 +122,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   params?: {
     leaderPushBatchSize?: number
     simulation?: {
-      clientSessionSyncProcessor: typeof SimulationParams.Type
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
   }
   debug?: {

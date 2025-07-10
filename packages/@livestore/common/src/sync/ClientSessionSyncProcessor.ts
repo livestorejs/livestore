@@ -20,19 +20,6 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { getEventDef, type LiveStoreSchema } from '../schema/mod.js'
 import * as SyncState from './syncstate.js'
 
-const SIMULATION_ENABLED = true
-
-export const SimulationParams = Schema.Struct({
-  pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
-  }),
-})
-type SimulationParams = typeof SimulationParams.Type
-
 /**
  * Rebase behaviour:
  * - We continously pull events from the leader and apply them to the local store.
@@ -75,7 +62,7 @@ export const makeClientSessionSyncProcessor = ({
   span: otel.Span
   params: {
     leaderPushBatchSize: number
-    simulation?: SimulationParams
+    simulation?: ClientSessionSyncProcessorSimulationParams
   }
   /**
    * Currently only used in the web adapter:
@@ -85,8 +72,10 @@ export const makeClientSessionSyncProcessor = ({
 }): ClientSessionSyncProcessor => {
   const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
-  const simSleep = <TKey extends keyof SimulationParams>(key: TKey, key2: keyof SimulationParams[TKey]) =>
-    Effect.sleep(params.simulation![key]![key2] as number)
+  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
+    key: TKey,
+    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
+  ) => Effect.sleep(params.simulation![key]![key2] as number)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -388,3 +377,17 @@ export interface ClientSessionSyncProcessor {
     }
   }
 }
+
+// TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
+const SIMULATION_ENABLED = true
+
+export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
+  pull: Schema.Struct({
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
+  }),
+})
+type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
