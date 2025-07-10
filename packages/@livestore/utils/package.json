@@ -25,11 +25,13 @@
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
+      "node": "./src/effect/index.ts",
       "bun": "./src/effect/index.ts",
       "default": "./dist/effect/index.js"
     },
     "./node": {
       "types": "./dist/node/mod.d.ts",
+      "node": "./src/effect/index.ts",
       "bun": "./src/node/mod.ts",
       "default": "./dist/node/mod.js"
     },
