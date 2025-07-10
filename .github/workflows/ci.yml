@@ -60,6 +60,11 @@ jobs:
       - run: mono test integration misc
       - run: mono test integration todomvc
       - run: mono test integration node-sync
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-sync-logs
+          path: tests/integration/tmp/logs/
+          retention-days: 30
       # - run: mono test integration devtools
       # TODO fix flaky devtools test
       - run: mono test integration devtools || echo "::warning::Script failed but continuing"

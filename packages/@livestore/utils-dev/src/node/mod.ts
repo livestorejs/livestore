@@ -14,6 +14,8 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
+export * as FileLogger from './FileLogger.js'
+
 export const OtelLiveHttp = ({
   serviceName,
   rootSpanName,

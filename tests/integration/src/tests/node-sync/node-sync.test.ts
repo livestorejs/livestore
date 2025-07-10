@@ -2,15 +2,14 @@ import './thread-polyfill.js'
 
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
-
 import { IS_CI } from '@livestore/utils'
-import { Duration, Effect, identity, Layer, Logger, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-
+import { makeFileLogger } from './file-logger.js'
 import * as WorkerSchema from './worker-schema.js'
 
 const testTimeout = IS_CI ? 120_000 : 15_000
@@ -57,12 +56,17 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     'node-sync prop tests',
     DEBUGGER_ACTIVE
       ? [
+          //   adapterType: 'worker',
+          // todoCountA: 3,
+          // todoCountB: 391,
+          // commitBatchSize: 1,
+          // leaderPushBatchSize: 2
           Schema.Literal('fs'),
-          Schema.Literal('single-threaded'),
+          Schema.Literal('worker'),
+          Schema.Literal(3),
+          Schema.Literal(10),
           Schema.Literal(1),
-          Schema.Literal(405),
-          Schema.Literal(100),
-          Schema.Literal(2),
+          Schema.Literal(1),
         ]
       : [
           WorkerSchema.StorageType,
@@ -76,7 +80,14 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
-        console.log('concurrent push', { adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize })
+        yield* Effect.logDebug('concurrent push', {
+          storageType,
+          adapterType,
+          todoCountA,
+          todoCountB,
+          commitBatchSize,
+          leaderPushBatchSize,
+        })
 
         const [clientA, clientB] = yield* Effect.all(
           [
@@ -120,7 +131,6 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       }).pipe(
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withCtx(test, {
-          skipOtel: !DEBUGGER_ACTIVE,
           suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
         }),
       ),
@@ -173,9 +183,10 @@ const makeWorker = ({
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TestContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
+  (testContext: Vitest.TestContext, { suffix }: { suffix?: string } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
+
     return self.pipe(
       DEBUGGER_ACTIVE
         ? identity
@@ -184,10 +195,10 @@ const withCtx =
             label: `${spanName} approaching timeout (timeout: ${Duration.format(testTimeout)})`,
           }),
       DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
-      Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(spanName),
       Effect.annotateLogs({ suffix }),
-      skipOtel ? identity : Effect.provide(otelLayer),
+      DEBUGGER_ACTIVE ? Effect.provide(otelLayer) : identity,
+      Effect.provide(makeFileLogger('runner', { exposeTestRunId: true, testContext })),
     )
   }

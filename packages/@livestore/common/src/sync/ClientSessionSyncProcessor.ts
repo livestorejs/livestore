@@ -2,6 +2,7 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
+  Duration,
   Effect,
   FiberHandle,
   Option,
@@ -247,11 +248,11 @@ export const makeClientSessionSyncProcessor = ({
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
             if (LS_DEV) {
-              Effect.logDebug(
+              yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
                 ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
-              ).pipe(Effect.provide(runtime), Effect.runSync)
+              )
             }
 
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
@@ -262,6 +263,9 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
+            // Add artificial delay to simulate slow rebase completion
+            yield* Effect.sleep(Duration.millis(30))
+            
             // Pushing rebased pending events to leader
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
           } else {
