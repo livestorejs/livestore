@@ -80,6 +80,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           CreateCount,
           CommitBatchSize,
           LEADER_PUSH_BATCH_SIZE,
+          // TODO extend simulation tests to cover all parts of the client session and leader sync processor
           ClientSessionSyncProcessorSimulationParams,
         ],
     (
