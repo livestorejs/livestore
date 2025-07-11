@@ -51,6 +51,12 @@
 			"description": "Manual review for major updates",
 			"matchUpdateTypes": ["major"],
 			"automerge": false
+		},
+		{
+			"description": "Group Playwright packages together",
+			"groupName": "Playwright",
+			"matchPackageNames": ["@playwright/test", "playwright"],
+			"matchSourceUrls": ["https://github.com/pietdevries94/playwright-web-flake"]
 		}
 	],
 	"lockFileMaintenance": {
