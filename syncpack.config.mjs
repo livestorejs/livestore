@@ -56,7 +56,7 @@ const config = {
       dependencies: [...localPackages, '@local/**'],
       dependencyTypes: ['!local'],
       // Except for standalone examples
-      packages: ['!livestore-example-standalone-**'],
+      packages: ['!livestore-example-**'],
       pinVersion: 'workspace:*',
     },
     {

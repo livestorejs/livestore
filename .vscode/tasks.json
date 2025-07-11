@@ -104,7 +104,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-todomvc"
+        "cwd": "${workspaceFolder}/examples/web-todomvc"
       },
       "presentation": {
         "focus": false,
@@ -122,7 +122,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-todomvc-custom-elements"
+        "cwd": "${workspaceFolder}/examples/web-todomvc-custom-elements"
       },
       "presentation": {
         "focus": false,
@@ -140,7 +140,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-linearlite"
+        "cwd": "${workspaceFolder}/examples/web-linearlite"
       },
       "presentation": {
         "focus": false,
