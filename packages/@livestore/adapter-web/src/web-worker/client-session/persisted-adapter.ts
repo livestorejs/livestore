@@ -233,8 +233,7 @@ export const makePersistedAdapter =
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
         yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
-          initialMessage: () =>
-            new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
+          initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,

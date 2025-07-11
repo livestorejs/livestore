@@ -51,10 +51,7 @@ class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscrib
   readonly [Readable.TypeId] = Readable.TypeId
   readonly get: Effect.Effect<A>
   readonly changes: Stream.Stream<A>
-  constructor(
-    get: Effect.Effect<A>,
-    changes: Stream.Stream<A>,
-  ) {
+  constructor(get: Effect.Effect<A>, changes: Stream.Stream<A>) {
     super()
     this.get = get
     this.changes = changes
