@@ -9,7 +9,8 @@ import { REACT_VERSION, EFFECT_VERSION } from '../../../../../packages/@local/sh
 
 ### Personal experience
 
-Depending on the kind of contribution you're interested in, the following experience is recommended:
+Depending on the kind of contribution you're interested in, the following
+experience is recommended:
 
 - Deep experience with TypeScript (incl. type-level programming)
 - Experience with TypeScript monorepo setups
@@ -18,7 +19,11 @@ Depending on the kind of contribution you're interested in, the following experi
 
 ### Recommended tooling: Use Nix + direnv for a consistent development setup
 
-To make development as easy and consistent across systems and platforms, this project uses [Nix](https://zero-to-nix.com/) to manage "system dependencies" such as Node.js, Bun etc. You can either use [Direnv](https://direnv.net) setup (recommended) to automatically load the Nix env or manually use the Nix env (e.g. via `nix develop --command pnpm install`).
+To make development as easy and consistent across systems and platforms, this
+project uses [Nix](https://zero-to-nix.com/) to manage "system dependencies"
+such as Node.js, Bun etc. You can either use [Direnv](https://direnv.net) setup
+(recommended) to automatically load the Nix env or manually use the Nix env
+(e.g. via `nix develop --command pnpm install`).
 
 ### Manual setup
 
@@ -40,8 +45,10 @@ cd livestore
 ## General notes
 
 - TypeScript
-  - LiveStore tries to follow the strictest TypeScript rules possible to ensure type safety and avoid subtle bugs.
-	- LiveStore also makes heavy use of [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html).
+  - LiveStore tries to follow the strictest TypeScript rules possible to ensure
+    type safety and avoid subtle bugs.
+    - LiveStore also makes heavy use of
+      [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html).
 - Package management
   - This project uses [pnpm](https://pnpm.io/) to manage the workspace.
 - LiveStore is primarily developed in VSCode/Cursor.
@@ -62,14 +69,19 @@ cd livestore
 
 ### Environment variables
 
-The `.envrc` file contains all necessary environment variables for the project. You can create a `.envrc.local` file to override or add variables for your local setup. You'll need to run `direnv allow` to load the environment variables.
+The `.envrc` file contains all necessary environment variables for the project.
+You can create a `.envrc.local` file to override or add variables for your local
+setup. You'll need to run `direnv allow` to load the environment variables.
 
 ### VSCode tasks
 
-- This project is primarily developed in VSCode and makes use of [tasks](https://code.visualstudio.com/docs/editor/tasks) to run commands.
+- This project is primarily developed in VSCode and makes use of
+  [tasks](https://code.visualstudio.com/docs/editor/tasks) to run commands.
 - Common tasks are:
-  - `dev:ts:watch` to run the TypeScript compiler in watch mode for the entire monorepo
-  - `pnpm:install` to install all dependencies (e.g. when changing a `package.json`)
+  - `dev:ts:watch` to run the TypeScript compiler in watch mode for the entire
+    monorepo
+  - `pnpm:install` to install all dependencies (e.g. when changing a
+    `package.json`)
 
 ## Tasks to run before committing
 
@@ -81,21 +93,25 @@ Please run the following tasks before committing & pushing:
 
 ## Examples
 
-- Once you've set up the monorepo locally, you'll notice both the `src` and `standalone` directories in `/examples`.
-- The `/examples/standalone` directory is meant as a starting point for app developers evaluating LiveStore and looking for a ready-to-run example app.
-- The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/standalone` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
-- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/standalone` version via `mono examples sync --direction src-to-standalone`.
+- Once you've set up the monorepo locally, you'll find all examples in the
+  `/examples` directory.
+- All examples are self-contained and can be run independently.
+- Examples use explicit version dependencies (e.g., `0.3.2-dev.0`) for LiveStore packages.
+- Examples are not part of the monorepo TypeScript build system to maintain independence.
+- Each example has its own TypeScript configuration that's independent of the
+  monorepo build system.
 
 #### Making changes to examples
 
-1. Make your desired changes in `/examples/src`. (You might also need to update some of the patches in `/examples/patches`.)
-2. Run `mono examples sync --direction src-to-standalone` to generate the `/examples/standalone` version
-3. Check whether the changes in `/examples/standalone` are what you expected.
-4. Commit your changes in both `/examples/src` and `/examples/standalone` (and possibly `/examples/patches`). Note on GitHub, changes to `examples/standalone` are hidden by default.
+1. Make your desired changes directly in `/examples/<example-name>`.
+2. Test your changes by running the example (e.g., `pnpm dev` in the example
+   directory).
+3. Commit your changes.
 
 ### OpenTelemetry setup
 
-As a local OpenTelemetry setup, we recommend the [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
+As a local OpenTelemetry setup, we recommend the
+[docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
 
 Add the following to your `.envrc.local` file:
 
@@ -108,55 +124,75 @@ export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 
 ### TypeScript
 
-- Each package has its own `tsconfig.json` file which extends the root `tsconfig.base.json`.
+- Each package has its own `tsconfig.json` file which extends the root
+  `tsconfig.base.json`.
 - This project makes heavy use of TypeScript project references.
 
 ### Package management
 
 - This project uses [pnpm](https://pnpm.io/) to manage the workspace.
 - We're using the `workspace:*` protocol to link packages together.
-- We should try to keep dependencies to an absolute minimum and only add them if we absolutely need them.
+- We should try to keep dependencies to an absolute minimum and only add them if
+  we absolutely need them.
 - We also need to manually add peer dependencies for each package.
-- We should try to avoid duplicate dependencies across the monorepo as much as possible as duplicate dependencies can lead to a lot of issues and pain.
-  - We're also using the `resolutions` field in the root `package.json` to force some packages to be the same across the monorepo (ideally not needed but for some packages it's necessary currently).
-- We're using [syncpack](https://github.com/JamieMason/syncpack) to help maintain consistent dependency versions across the monorepo.
+- We should try to avoid duplicate dependencies across the monorepo as much as
+  possible as duplicate dependencies can lead to a lot of issues and pain.
+  - We're also using the `resolutions` field in the root `package.json` to force
+    some packages to be the same across the monorepo (ideally not needed but for
+    some packages it's necessary currently).
+- We're using [syncpack](https://github.com/JamieMason/syncpack) to help
+  maintain consistent dependency versions across the monorepo.
   - See `syncpack.config.mjs` for the configuration.
   - Common commands:
     - `bunx syncpack format` to format the `package.json` files
     - `bunx syncpack lint` to check all version ranges
-    - `bunx syncpack fix-mismatches` to adjust versions across `package.json` files (check before with `lint`)
-    - `bunx syncpack update` to update packages across the monorepo to the latest versions
+    - `bunx syncpack fix-mismatches` to adjust versions across `package.json`
+      files (check before with `lint`)
+    - `bunx syncpack update` to update packages across the monorepo to the
+      latest versions
 
 ### Notes on external dependencies
 
-LiveStore tries to use as few external dependencies as possible. Given LiveStore is built on top of Effect, which can be considered a standard library for TypeScript, it should handle most use cases.
+LiveStore tries to use as few external dependencies as possible. Given LiveStore
+is built on top of Effect, which can be considered a standard library for
+TypeScript, it should handle most use cases.
 
 #### Notes on some packages
 
 The following packages need to be updated with extra care:
-- `react`/`react-dom` as we need to move in lockstep with Expo / React Native (currently pinned to {REACT_VERSION})
+
+- `react`/`react-dom` as we need to move in lockstep with Expo / React Native
+  (currently pinned to {REACT_VERSION})
 - `effect` (currently pinned to {EFFECT_VERSION})
 
 #### Effect
 
-- LiveStore makes heavy use of the [Effect](https://effect.website) library and ecosystem throughout the implementation of the various packages.
-- Effect is not imposed on the app developers using LiveStore but where it makes sense, LiveStore is also exposing a Effect-based API (e.g. `createStore`).
+- LiveStore makes heavy use of the [Effect](https://effect.website) library and
+  ecosystem throughout the implementation of the various packages.
+- Effect is not imposed on the app developers using LiveStore but where it makes
+  sense, LiveStore is also exposing a Effect-based API (e.g. `createStore`).
 
 #### Updating dependencies
 
-- Either update the versions manually in each `package.json` file or use `bunx syncpack update`.
+- Either update the versions manually in each `package.json` file or use
+  `bunx syncpack update`.
 
 ### Notes on monorepo structure
 
-- The `@livestore/utils` package re-exports many common modules/functions (e.g. from `effect`) in order to
+- The `@livestore/utils` package re-exports many common modules/functions (e.g.
+  from `effect`) in order to
   - Reduce the number of direct dependencies for other packages
-  - Allows for convenient extension of modules (e.g. adding methods to `Effect.___`, `Schema.___`, ...)
+  - Allows for convenient extension of modules (e.g. adding methods to
+    `Effect.___`, `Schema.___`, ...)
 
 ## Docs
 
-The LiveStore docs are built with [Astro Starlight](https://starlight.astro.build/).
+The LiveStore docs are built with
+[Astro Starlight](https://starlight.astro.build/).
 
 ## Related external repos
 
-- [Fork of wa-sqlite](https://github.com/livestorejs/wa-sqlite) and its [Nix build setup](https://github.com/livestorejs/wa-sqlite-build-env?tab=readme-ov-file).
-- The source code of the devtools is currently not part of this monorepo but in a separate private repo.
+- [Fork of wa-sqlite](https://github.com/livestorejs/wa-sqlite) and its
+  [Nix build setup](https://github.com/livestorejs/wa-sqlite-build-env?tab=readme-ov-file).
+- The source code of the devtools is currently not part of this monorepo but in
+  a separate private repo.

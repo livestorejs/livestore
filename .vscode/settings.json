@@ -22,6 +22,12 @@
   "[jsonc]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
+  "[markdown]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[mdx]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
   "files.exclude": {
     "**/node_modules/**/dist": false,
     "**/{examples,packages}/**/dist": true,

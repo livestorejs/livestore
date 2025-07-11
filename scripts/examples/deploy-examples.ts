@@ -18,7 +18,7 @@ if (!workspaceRoot) {
   process.exit(1)
 }
 
-const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples/src`
+const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples`
 
 const buildAndDeployExample = ({
   example,

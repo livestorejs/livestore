@@ -8,7 +8,6 @@ import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import { copyTodomvcSrc } from './examples/copy-examples.js'
 import { command as deployExamplesCommand } from './examples/deploy-examples.js'
-import * as generateExamples from './examples/generate-examples.js'
 import { deployToNetlify } from './shared/netlify.js'
 
 const cwd =
@@ -102,7 +101,7 @@ const lintCommand = Cli.Command.make(
     yield* cmd('syncpack lint', { cwd })
 
     // Shell needed for wildcards
-    yield* cmd('madge --circular --no-spinner examples/src/*/src packages/*/*/src', { cwd, shell: true })
+    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { cwd, shell: true })
   }),
 )
 
@@ -224,7 +223,7 @@ const tsCommand = Cli.Command.make(
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
     } else {
       yield* cmd('tsc --build tsconfig.dev.json', { cwd })
-      yield* cmd('tsc --build tsconfig.all.json', { cwd })
+      yield* cmd('tsc --build tsconfig.examples.json', { cwd })
     }
   }),
 )
@@ -233,7 +232,7 @@ const circularCommand = Cli.Command.make(
   'circular',
   {},
   Effect.fn(function* () {
-    yield* cmd('madge --circular --no-spinner examples/src/*/src packages/*/*/src', { shell: true })
+    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true })
   }),
 )
 
@@ -283,8 +282,8 @@ const releaseSnapshotCommand = Cli.Command.make(
 const releaseCommand = Cli.Command.make('release').pipe(Cli.Command.withSubcommands([releaseSnapshotCommand]))
 
 const examples = fs
-  .readdirSync(`${cwd}/examples/src`)
-  .filter((entry) => fs.statSync(`${cwd}/examples/src/${entry}`).isDirectory())
+  .readdirSync(`${cwd}/examples`)
+  .filter((entry) => fs.statSync(`${cwd}/examples/${entry}`).isDirectory())
 
 const examplesRunCommand = Cli.Command.make(
   'run',
@@ -295,18 +294,12 @@ const examplesRunCommand = Cli.Command.make(
     ),
   },
   Effect.fn(function* ({ example }) {
-    yield* cmd(`pnpm dev`, { cwd: `${cwd}/examples/src/${example}` })
+    yield* cmd(`pnpm dev`, { cwd: `${cwd}/examples/${example}` })
   }),
 )
 
 const examplesCommand = Cli.Command.make('examples').pipe(
-  Cli.Command.withSubcommands([
-    generateExamples.updatePatchesCommand,
-    generateExamples.syncExamplesCommand,
-    deployExamplesCommand,
-    copyTodomvcSrc,
-    examplesRunCommand,
-  ]),
+  Cli.Command.withSubcommands([deployExamplesCommand, copyTodomvcSrc, examplesRunCommand]),
 )
 
 const command = Cli.Command.make('mono').pipe(

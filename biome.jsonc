@@ -21,6 +21,7 @@
       "!**/.direnv/**",
       "!**/playwright-report/**",
       "!**/test-results/**",
+      "!**/*.mdx", // TODO re-enable when Biome supports MDX files
       // https://github.com/biomejs/biome/issues/6528
       "!**/*.astro"
     ]
