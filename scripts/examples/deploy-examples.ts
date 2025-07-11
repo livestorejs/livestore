@@ -65,7 +65,7 @@ export const command = Cli.Command.make(
         'expo-todomvc-sync-cf',
         'node-effect-cli',
         'node-todomvc-sync-cf',
-        'todomvc-sync-electric',
+        'web-todomvc-sync-electric',
       ])
       const examplesToDeploy = fs
         .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
