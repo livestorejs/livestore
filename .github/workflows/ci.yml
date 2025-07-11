@@ -28,6 +28,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: mono lint
 
   test:
@@ -42,6 +44,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -113,6 +117,8 @@ jobs:
       - name: Load environment with direnv
         uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -139,6 +145,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Configure NPM authentication
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
@@ -158,6 +166,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: |
           mono examples deploy \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
@@ -178,6 +188,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: mono docs build --api-docs
       - run: mono docs deploy
         env:
