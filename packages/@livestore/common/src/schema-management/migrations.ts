@@ -1,23 +1,23 @@
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from '../adapter-types.js'
-import type { MigrationsReport, MigrationsReportEntry } from '../defs.js'
-import type { UnexpectedError } from '../errors.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
-import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'
+import type { SqliteDb } from '../adapter-types.ts'
+import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
+import type { UnexpectedError } from '../errors.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
+import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.ts'
 import {
   isStateSystemTable,
   SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
   schemaEventDefsMetaTable,
   stateSystemTables,
-} from '../schema/state/sqlite/system-tables.js'
-import { sql } from '../util.js'
-import type { SchemaManager } from './common.js'
-import { dbExecute, dbSelect } from './common.js'
-import { validateSchema } from './validate-schema.js'
+} from '../schema/state/sqlite/system-tables.ts'
+import { sql } from '../util.ts'
+import type { SchemaManager } from './common.ts'
+import { dbExecute, dbSelect } from './common.ts'
+import { validateSchema } from './validate-schema.ts'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 

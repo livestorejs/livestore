@@ -13,13 +13,13 @@ import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { Thunk } from '../reactive.js'
-import { isThunk, NOT_REFRESHED_YET } from '../reactive.js'
-import type { RefreshReason } from '../store/store-types.js'
-import { isValidFunctionString } from '../utils/function-string.js'
-import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
-import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.js'
+import type { Thunk } from '../reactive.ts'
+import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
+import type { RefreshReason } from '../store/store-types.ts'
+import { isValidFunctionString } from '../utils/function-string.ts'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
+import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.ts'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string

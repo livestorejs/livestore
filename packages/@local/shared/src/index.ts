@@ -1,1 +1,1 @@
-export * from './CONSTANTS.js'
+export * from './CONSTANTS.ts'

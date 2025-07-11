@@ -10,5 +10,9 @@
     { "path": "./tests/package-common" },
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/sync-cf" },
+    { "path": "./packages/@livestore/adapter-expo" },
+    { "path": "./packages/@livestore/adapter-web" },
+    { "path": "./packages/@livestore/solid" },
+    { "path": "./packages/@livestore/react" }
   ]
 }

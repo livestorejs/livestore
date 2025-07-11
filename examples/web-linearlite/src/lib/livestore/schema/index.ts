@@ -5,7 +5,7 @@ import { type Description, description } from '@/lib/livestore/schema/descriptio
 import { type FilterState, filterState } from '@/lib/livestore/schema/filter-state'
 import { type FrontendState, frontendState } from '@/lib/livestore/schema/frontend-state'
 import { type Issue, issue } from '@/lib/livestore/schema/issue'
-import { type ScrollState, scrollState } from './scroll-state'
+import { type ScrollState, scrollState } from './scroll-state.ts'
 
 export {
   comment,

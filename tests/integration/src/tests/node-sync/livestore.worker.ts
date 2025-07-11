@@ -4,8 +4,8 @@ import { IS_CI } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { makeFileLogger } from './fixtures/file-logger.js'
-import { schema } from './schema.js'
+import { makeFileLogger } from './fixtures/file-logger.ts'
+import { schema } from './schema.ts'
 
 const argv = getWorkerArgs()
 

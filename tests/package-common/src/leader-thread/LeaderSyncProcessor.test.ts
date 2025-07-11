@@ -28,9 +28,9 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import type { MockSyncBackend } from '../mock-sync-backend.js'
-import { makeMockSyncBackend } from '../mock-sync-backend.js'
-import { events, schema, tables } from './fixture.js'
+import type { MockSyncBackend } from '../mock-sync-backend.ts'
+import { makeMockSyncBackend } from '../mock-sync-backend.ts'
+import { events, schema, tables } from './fixture.ts'
 
 /*
 TODO:

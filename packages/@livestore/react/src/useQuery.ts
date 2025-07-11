@@ -5,10 +5,10 @@ import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.js'
-import { useRcResource } from './useRcResource.js'
-import { originalStackLimit } from './utils/stack-info.js'
-import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
+import { LiveStoreContext } from './LiveStoreContext.ts'
+import { useRcResource } from './useRcResource.ts'
+import { originalStackLimit } from './utils/stack-info.ts'
+import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.ts'
 
 /**
  * Returns the result of a query and subscribes to future updates.

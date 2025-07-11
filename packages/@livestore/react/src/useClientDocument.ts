@@ -6,8 +6,8 @@ import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.js'
-import { useQueryRef } from './useQuery.js'
+import { LiveStoreContext } from './LiveStoreContext.ts'
+import { useQueryRef } from './useQuery.ts'
 
 export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: TTableDef['Value'],

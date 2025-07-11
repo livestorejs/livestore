@@ -6,10 +6,10 @@ import type {
   EventDefFactsGroup,
   EventDefFactsSnapshot,
   FactsCallback,
-} from '../../schema/EventDef.js'
-import type * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import { graphologyDag } from './graphology_.js'
-import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
+} from '../../schema/EventDef.ts'
+import type * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import { graphologyDag } from './graphology_.ts'
+import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.ts'
 
 export const factsSnapshotForEvents = (
   events: HistoryDagNode[],

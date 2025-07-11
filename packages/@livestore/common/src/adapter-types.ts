@@ -8,16 +8,16 @@ import {
   type WebChannel,
 } from '@livestore/utils/effect'
 
-import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.js'
-import type * as Devtools from './devtools/mod.js'
-import type { IntentionalShutdownCause, SyncError, UnexpectedError } from './errors.js'
-import type { LiveStoreSchema } from './schema/mod.js'
-import type { SqliteDb } from './sqlite-types.js'
+import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
+import type * as Devtools from './devtools/mod.ts'
+import type { IntentionalShutdownCause, SyncError, UnexpectedError } from './errors.ts'
+import type { LiveStoreSchema } from './schema/mod.ts'
+import type { SqliteDb } from './sqlite-types.ts'
 
-export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.js'
-export * from './defs.js'
-export * from './errors.js'
-export * from './sqlite-types.js'
+export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
+export * from './defs.ts'
+export * from './errors.ts'
+export * from './sqlite-types.ts'
 
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */

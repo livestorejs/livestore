@@ -32,12 +32,12 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
-import { connectWebmeshNodeClientSession } from './client-session-devtools.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.ts'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
+import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -110,7 +110,7 @@ export type WebAdapterOptions = {
  * @example
  * ```ts
  * import { makePersistedAdapter } from '@livestore/adapter-web'
- * import LiveStoreWorker from './livestore.worker?worker'
+ * import LiveStoreWorker from './livestore.worker.ts?worker'
  * import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
  *
  * const adapter = makePersistedAdapter({
@@ -173,15 +173,15 @@ export const makePersistedAdapter =
 
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
-      const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
+      const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorkerRequest.Type>({
         size: 1,
         concurrency: 100,
         initialMessage: () =>
-          new WorkerSchema.SharedWorker.InitialMessage({
+          new WorkerSchema.SharedWorkerInitialMessage({
             liveStoreVersion,
             payload: {
               _tag: 'FromClientSession',
-              initialMessage: new WorkerSchema.LeaderWorkerInner.InitialMessage({
+              initialMessage: new WorkerSchema.LeaderWorkerInnerInitialMessage({
                 storageOptions,
                 storeId,
                 clientId,
@@ -232,9 +232,8 @@ export const makePersistedAdapter =
         // and adding the `sessionId` to make it easier to debug which session a worker belongs to in logs
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
-        yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuter.Request>({
-          initialMessage: () =>
-            new WorkerSchema.LeaderWorkerOuter.InitialMessage({ port: mc.port1, storeId, clientId }),
+        yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
+          initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
@@ -248,7 +247,7 @@ export const makePersistedAdapter =
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
         yield* sharedWorker
-          .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
+          .executeEffect(new WorkerSchema.SharedWorkerUpdateMessagePort({ port: mc.port2 }))
           .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
@@ -276,7 +275,7 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
+      const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
       ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
         ? Effect.Effect<A, UnexpectedError | E, R>
@@ -303,7 +302,7 @@ export const makePersistedAdapter =
           Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
         ) as any
 
-      const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
+      const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
       ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
         ? Stream.Stream<A, UnexpectedError, R>
@@ -322,7 +321,7 @@ export const makePersistedAdapter =
           )
         }).pipe(Stream.unwrap) as any
 
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
+      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
@@ -341,7 +340,7 @@ export const makePersistedAdapter =
       // re-exporting the db
       const initialResult =
         dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
+          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
               Effect.map(({ snapshot, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
                 snapshot,
@@ -403,7 +402,7 @@ export const makePersistedAdapter =
       )
 
       const leaderThread: ClientSession['leaderThread'] = {
-        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
+        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
@@ -411,9 +410,9 @@ export const makePersistedAdapter =
 
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
@@ -422,19 +421,19 @@ export const makePersistedAdapter =
 
         initialState: { leaderHead: initialLeaderHead, migrationsReport },
 
-        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportEventlog()).pipe(
+        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
         ),
 
         sendDevtoolsMessage: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),

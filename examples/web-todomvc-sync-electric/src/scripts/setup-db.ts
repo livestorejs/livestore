@@ -1,4 +1,4 @@
-import { makeDb } from '../server/db.js'
+import { makeDb } from '../server/db.ts'
 
 const main = async () => {
   const storeId = process.argv[2]

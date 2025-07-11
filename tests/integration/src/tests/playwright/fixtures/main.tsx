@@ -40,11 +40,11 @@ const routes = [
   },
   {
     path: '/devtools/two-stores',
-    component: React.lazy(() => import('./devtools/two-stores/Root.jsx').then((m) => ({ default: m.Root }))),
+    component: React.lazy(() => import('./devtools/two-stores/Root.tsx').then((m) => ({ default: m.Root }))),
   },
   {
     path: '/devtools/todomvc',
-    component: React.lazy(() => import('./devtools/todomvc/Root.jsx').then((m) => ({ default: m.App }))),
+    component: React.lazy(() => import('./devtools/todomvc/Root.tsx').then((m) => ({ default: m.App }))),
   },
   {
     path: '/devtools/no-livestore',

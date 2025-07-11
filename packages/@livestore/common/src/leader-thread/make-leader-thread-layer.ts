@@ -2,28 +2,28 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.js'
-import { UnexpectedError } from '../adapter-types.js'
-import type * as Devtools from '../devtools/mod.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.js'
-import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
-import { SyncState } from '../sync/syncstate.js'
-import { sql } from '../util.js'
-import * as Eventlog from './eventlog.js'
-import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
-import { bootDevtools } from './leader-worker-devtools.js'
-import { makeMaterializeEvent } from './materialize-event.js'
-import { recreateDb } from './recreate-db.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
+import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.ts'
+import { UnexpectedError } from '../adapter-types.ts'
+import type * as Devtools from '../devtools/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
+import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.ts'
+import { SyncState } from '../sync/syncstate.ts'
+import { sql } from '../util.ts'
+import * as Eventlog from './eventlog.ts'
+import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
+import { bootDevtools } from './leader-worker-devtools.ts'
+import { makeMaterializeEvent } from './materialize-event.ts'
+import { recreateDb } from './recreate-db.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
   DevtoolsOptions,
   InitialBlockingSyncContext,
   InitialSyncOptions,
   LeaderSqliteDb,
   ShutdownState,
-} from './types.js'
-import { LeaderThreadCtx } from './types.js'
+} from './types.ts'
+import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string

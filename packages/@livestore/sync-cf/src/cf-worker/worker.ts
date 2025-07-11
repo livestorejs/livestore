@@ -3,8 +3,8 @@ import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
-import { SearchParamsSchema } from '../common/mod.js'
-import type { Env } from './durable-object.js'
+import { SearchParamsSchema } from '../common/mod.ts'
+import type { Env } from './durable-object.ts'
 
 // Redeclaring Response to Cloudflare Worker Response type to avoid lib.dom type clashing
 declare const Response: typeof CfWorker.Response

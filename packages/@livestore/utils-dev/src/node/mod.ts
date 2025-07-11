@@ -14,7 +14,7 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
-export * as FileLogger from './FileLogger.js'
+export * as FileLogger from './FileLogger.ts'
 
 export const OtelLiveHttp = ({
   serviceName,
@@ -46,7 +46,7 @@ export const OtelLiveHttp = ({
 
     if (configRes._tag === 'None') {
       const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provide(OtelLiveDummy))
+      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
     }
 
     const config = configRes.value

@@ -6,8 +6,8 @@ import { ResetButton } from '@/components/layout/toolbar/reset-button'
 import { SeedInput } from '@/components/layout/toolbar/seed-input'
 import { ShareButton } from '@/components/layout/toolbar/share-button'
 import { UserInput } from '@/components/layout/toolbar/user-input'
-import { DevtoolsButton } from './devtools-button'
-import { SyncToggle } from './sync-toggle'
+import { DevtoolsButton } from './devtools-button.tsx'
+import { SyncToggle } from './sync-toggle.tsx'
 
 export const Toolbar = () => {
   return (

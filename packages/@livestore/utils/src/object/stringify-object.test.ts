@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stringifyObject } from './stringify-object.js'
+import { stringifyObject } from './stringify-object.ts'
 
 describe('stringifyObject', () => {
   it('stringifies a flat object', () => {

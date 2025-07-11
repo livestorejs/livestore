@@ -62,6 +62,10 @@
       },
       "correctness": {
         "noUnusedImports": "warn",
+        "useImportExtensions": "error",
+        "noUnusedLabels": {
+          "level": "warn"
+        },
         "useYield": "off"
       }
     }

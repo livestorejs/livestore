@@ -1,6 +1,6 @@
-import type { EventDefFactsGroup } from '../../schema/EventDef.js'
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import { graphology } from './graphology_.js'
+import type { EventDefFactsGroup } from '../../schema/EventDef.ts'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import { graphology } from './graphology_.ts'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
 export type ConnectionType = (typeof connectionTypeOptions)[number]

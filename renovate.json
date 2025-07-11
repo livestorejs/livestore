@@ -1,68 +1,63 @@
 {
-	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": [
-		"config:recommended",
-		"schedule:daily",
-		":enableVulnerabilityAlertsWithLabel(security)",
-		":semanticPrefixFixDepsChoreOthers",
-		"group:allNonMajor"
-	],
-	"baseBranches": ["dev"],
-	"platformAutomerge": true,
-	"gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
-	"automerge": true,
-	"automergeType": "pr",
-	"packageRules": [
-		{
-			"matchCategories": ["node"],
-			"enabled": false
-		},
-		{
-			"description": "Exclude Expo / React Native packages",
-			"enabled": false,
-			"matchPackageNames": [
-				"/^expo-/",
-				"/^@expo//",
-				"/^react-native-/",
-				"/^@react-native//"
-			]
-		},
-		{
-			"description": "Exclude React packages",
-			"matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-/"],
-			"enabled": false
-		},
-		{
-			"description": "Exclude workspace packages",
-			"enabled": false,
-			"matchPackageNames": ["/^@livestore//"]
-		},
-		{
-			"description": "Exclude graphology packages (as we need a patched version and will replace graphology with Effect's graph library soon)",
-			"enabled": false,
-			"matchPackageNames": ["graphology", "graphology-*"]
-		},
-		{
-			"description": "Auto-merge patch and minor updates",
-			"matchUpdateTypes": ["patch", "minor"],
-			"automerge": true
-		},
-		{
-			"description": "Manual review for major updates",
-			"matchUpdateTypes": ["major"],
-			"automerge": false
-		},
-		{
-			"description": "Group Playwright packages together",
-			"groupName": "Playwright",
-			"matchPackageNames": ["@playwright/test", "playwright"],
-			"matchSourceUrls": ["https://github.com/pietdevries94/playwright-web-flake"]
-		}
-	],
-	"lockFileMaintenance": {
-		"enabled": false
-	},
-	"nix": {
-		"enabled": true
-	}
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "schedule:daily",
+    ":enableVulnerabilityAlertsWithLabel(security)",
+    ":semanticPrefixFixDepsChoreOthers",
+    "group:allNonMajor"
+  ],
+  "baseBranches": ["dev"],
+  "platformAutomerge": true,
+  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "automerge": true,
+  "automergeType": "pr",
+  "packageRules": [
+    {
+      "matchCategories": ["node"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude Expo / React Native packages",
+      "enabled": false,
+      "matchPackageNames": ["/^expo-/", "/^@expo//", "/^react-native-/", "/^@react-native//"]
+    },
+    {
+      "description": "Exclude React packages",
+      "matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-/"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude workspace packages",
+      "enabled": false,
+      "matchPackageNames": ["/^@livestore//"]
+    },
+    {
+      "description": "Exclude graphology packages (as we need a patched version and will replace graphology with Effect's graph library soon)",
+      "enabled": false,
+      "matchPackageNames": ["graphology", "graphology-*"]
+    },
+    {
+      "description": "Auto-merge patch and minor updates",
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Manual review for major updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Group Playwright packages together",
+      "groupName": "Playwright",
+      "matchPackageNames": ["@playwright/test", "playwright"],
+      "matchSourceUrls": ["https://github.com/pietdevries94/playwright-web-flake"]
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "nix": {
+    "enabled": true
+  }
 }

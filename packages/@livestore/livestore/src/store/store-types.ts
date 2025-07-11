@@ -10,9 +10,9 @@ import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { StackInfo } from '../utils/stack-info.js'
-import type { Store } from './store.js'
+import type { DebugRefreshReasonBase } from '../reactive.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
+import type { Store } from './store.ts'
 
 export type LiveStoreContext =
   | LiveStoreContextRunning

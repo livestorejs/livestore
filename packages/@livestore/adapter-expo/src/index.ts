@@ -1,4 +1,4 @@
-import './polyfill.js'
+import './polyfill.ts'
 
 import {
   type Adapter,
@@ -23,9 +23,9 @@ import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
 import * as RN from 'react-native'
 
-import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
-import { makeSqliteDb } from './make-sqlite-db.js'
-import { makeShutdownChannel } from './shutdown-channel.js'
+import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
+import { makeSqliteDb } from './make-sqlite-db.ts'
+import { makeShutdownChannel } from './shutdown-channel.ts'
 
 export type MakeDbOptions = {
   sync?: SyncOptions

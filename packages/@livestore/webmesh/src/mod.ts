@@ -1,4 +1,4 @@
-export { EdgeAlreadyExistsError } from './common.js'
-export * as WebmeshSchema from './mesh-schema.js'
-export * from './node.js'
-export * from './websocket-edge.js'
+export { EdgeAlreadyExistsError } from './common.ts'
+export * as WebmeshSchema from './mesh-schema.ts'
+export * from './node.ts'
+export * from './websocket-edge.ts'

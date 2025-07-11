@@ -1,9 +1,9 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { State } from '../../../mod.js'
-import type { QueryBuilder } from './api.js'
-import { getResultSchema } from './impl.js'
+import { State } from '../../../mod.ts'
+import type { QueryBuilder } from './api.ts'
+import { getResultSchema } from './impl.ts'
 
 const todos = State.SQLite.table({
   name: 'todos',

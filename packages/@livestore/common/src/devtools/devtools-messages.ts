@@ -1,3 +1,3 @@
-export * as ClientSession from './devtools-messages-client-session.js'
-export * from './devtools-messages-common.js'
-export * as Leader from './devtools-messages-leader.js'
+export * as ClientSession from './devtools-messages-client-session.ts'
+export * from './devtools-messages-common.ts'
+export * as Leader from './devtools-messages-leader.ts'

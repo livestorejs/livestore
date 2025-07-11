@@ -1,10 +1,10 @@
 import type { Effect, HttpClient, Option, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type { UnexpectedError } from '../adapter-types.js'
-import type { InitialSyncOptions } from '../leader-thread/types.js'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import type * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import type { UnexpectedError } from '../adapter-types.ts'
+import type { InitialSyncOptions } from '../leader-thread/types.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.

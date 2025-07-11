@@ -1,10 +1,10 @@
 import type { Store } from '@livestore/livestore'
 import React from 'react'
 
-import type { ReactApi } from './LiveStoreContext.js'
-import { LiveStoreContext } from './LiveStoreContext.js'
-import { useClientDocument } from './useClientDocument.js'
-import { useQuery } from './useQuery.js'
+import type { ReactApi } from './LiveStoreContext.ts'
+import { LiveStoreContext } from './LiveStoreContext.ts'
+import { useClientDocument } from './useClientDocument.ts'
+import { useQuery } from './useQuery.ts'
 
 export const withReactApi = (store: Store): Store & ReactApi => {
   // @ts-expect-error TODO properly implement this

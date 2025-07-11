@@ -1,4 +1,4 @@
-import './thread-polyfill.js'
+import './thread-polyfill.ts'
 
 import inspector from 'node:inspector'
 
@@ -29,9 +29,9 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
 
-import type { TestingOverrides } from './leader-thread-shared.js'
-import { makeLeaderThread } from './leader-thread-shared.js'
-import * as WorkerSchema from './worker-schema.js'
+import type { TestingOverrides } from './leader-thread-shared.ts'
+import { makeLeaderThread } from './leader-thread-shared.ts'
+import * as WorkerSchema from './worker-schema.ts'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
@@ -60,7 +60,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
-  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
+  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: (args) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(

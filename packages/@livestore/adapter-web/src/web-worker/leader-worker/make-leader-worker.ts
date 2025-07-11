@@ -25,10 +25,10 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
@@ -81,7 +81,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
 const makeWorkerRunnerOuter = (
   workerOptions: WorkerOptions,
 ): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuter.InitialMessage, {
+  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuterInitialMessage, {
     // Port coming from client session and forwarded via the shared worker
     InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
       Effect.gen(function* () {
@@ -102,7 +102,7 @@ const makeWorkerRunnerOuter = (
   })
 
 const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
+  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayload }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())

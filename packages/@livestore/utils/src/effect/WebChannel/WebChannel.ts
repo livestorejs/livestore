@@ -1,10 +1,10 @@
 import { Deferred, Either, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
 import type { DurationInput } from 'effect/Duration'
 
-import { shouldNeverHappen } from '../../misc.js'
-import * as Effect from '../Effect.js'
-import * as Schema from '../Schema/index.js'
-import * as Stream from '../Stream.js'
+import { shouldNeverHappen } from '../../misc.ts'
+import * as Effect from '../Effect.ts'
+import * as Schema from '../Schema/index.ts'
+import * as Stream from '../Stream.ts'
 import {
   DebugPingMessage,
   type InputSchema,
@@ -15,7 +15,7 @@ import {
   WebChannelPing,
   WebChannelPong,
   WebChannelSymbol,
-} from './common.js'
+} from './common.ts'
 
 export const shutdown = <MsgListen, MsgSend>(webChannel: WebChannel<MsgListen, MsgSend>): Effect.Effect<void> =>
   Deferred.done(webChannel.closedDeferred, Exit.void)

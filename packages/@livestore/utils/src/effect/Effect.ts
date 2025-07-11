@@ -5,8 +5,8 @@ import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isPromise } from '../index.js'
-import { UnknownError } from './Error.js'
+import { isPromise } from '../index.ts'
+import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
 

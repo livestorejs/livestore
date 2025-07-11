@@ -2,9 +2,9 @@ import * as Runner from '@effect/platform/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
 
 // import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
-import { PlatformNode } from '../../mod.js'
-import * as ChildProcessRunner from '../ChildProcessRunner.js'
-import { Person, User, WorkerMessage } from './schema.js'
+import { PlatformNode } from '../../mod.ts'
+import * as ChildProcessRunner from '../ChildProcessRunner.ts'
+import { Person, User, WorkerMessage } from './schema.ts'
 
 interface Name {
   readonly _: unique symbol

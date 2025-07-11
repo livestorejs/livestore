@@ -23,8 +23,8 @@ import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, SubscriptionRef, 
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
-import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.js'
-import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.js'
+import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.ts'
+import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()

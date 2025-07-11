@@ -15,12 +15,12 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { makeDirectChannel } from './channel/direct-channel.js'
-import { makeProxyChannel } from './channel/proxy-channel.js'
-import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.js'
-import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.js'
-import * as WebmeshSchema from './mesh-schema.js'
-import { TimeoutSet } from './utils.js'
+import { makeDirectChannel } from './channel/direct-channel.ts'
+import { makeProxyChannel } from './channel/proxy-channel.ts'
+import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.ts'
+import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.ts'
+import * as WebmeshSchema from './mesh-schema.ts'
+import { TimeoutSet } from './utils.ts'
 
 type EdgeChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 

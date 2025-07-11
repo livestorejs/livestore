@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { liveStoreVersion as pkgVersion } from '../version.js'
+import { liveStoreVersion as pkgVersion } from '../version.ts'
 
 export const NetworkStatus = Schema.Struct({
   isConnected: Schema.Boolean,

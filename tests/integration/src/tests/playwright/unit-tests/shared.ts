@@ -1,6 +1,6 @@
 import { makeSchema, State } from '@livestore/common/schema'
 
-export * as Bridge from './bridge.js'
+export * as Bridge from './bridge.ts'
 
 const todos = State.SQLite.table({
   name: 'todos',

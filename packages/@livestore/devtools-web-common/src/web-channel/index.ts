@@ -5,9 +5,9 @@ import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/e
 import type { MeshNode } from '@livestore/webmesh'
 import { WebmeshSchema } from '@livestore/webmesh'
 
-import * as WorkerSchema from '../worker/schema.js'
+import * as WorkerSchema from '../worker/schema.ts'
 
-export * as WorkerSchema from '../worker/schema.js'
+export * as WorkerSchema from '../worker/schema.ts'
 
 declare global {
   var __debugWebmeshNode: any

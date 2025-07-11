@@ -6,7 +6,7 @@ import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestor
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
-import { downloadChromeExtension } from './download-chrome-extension.js'
+import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 

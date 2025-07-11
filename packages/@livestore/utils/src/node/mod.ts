@@ -2,15 +2,15 @@ import * as http from 'node:http'
 
 import { Effect, Layer } from 'effect'
 
-import { OtelTracer, UnknownError } from '../effect/index.js'
-import { makeNoopTracer } from '../NoopTracer.js'
+import { OtelTracer, UnknownError } from '../effect/index.ts'
+import { makeNoopTracer } from '../NoopTracer.ts'
 
 export * as Cli from '@effect/cli'
 export * as SocketServer from '@effect/platform/SocketServer'
 export * as PlatformNode from '@effect/platform-node'
 
-export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.js'
-export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.js'
+export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'
+export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
 
 // Enable debug logging for OpenTelemetry
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
@@ -47,7 +47,7 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 
   const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
     Layer.provideMerge(OtelTracerLive),
-  ) as any as Layer.Layer<OtelTracer.OtelTracer>
+  )
 
   return TracingLive
 })

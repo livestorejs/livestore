@@ -32,15 +32,15 @@ import type {
   ReactivityGraph,
   ReactivityGraphContext,
   SignalDef,
-} from '../live-queries/base-class.js'
-import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
-import { queryDb } from '../live-queries/db-query.js'
-import type { Ref } from '../reactive.js'
-import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { ReferenceCountedSet } from '../utils/data-structures.js'
-import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
-import type { StackInfo } from '../utils/stack-info.js'
+} from '../live-queries/base-class.ts'
+import { makeReactivityGraph } from '../live-queries/base-class.ts'
+import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
+import { queryDb } from '../live-queries/db-query.ts'
+import type { Ref } from '../reactive.ts'
+import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
+import { ReferenceCountedSet } from '../utils/data-structures.ts'
+import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
@@ -48,7 +48,7 @@ import type {
   StoreOptions,
   StoreOtel,
   Unsubscribe,
-} from './store-types.js'
+} from './store-types.ts'
 
 if (isDevEnv()) {
   exposeDebugUtils()

@@ -1,12 +1,12 @@
 import { casesHandled } from '@livestore/utils'
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import type { MigrationsReport } from '../defs.js'
-import type { BootStatus, MigrationHooks, SqliteDb, SqliteError } from '../index.js'
-import { migrateDb, rematerializeFromEventlog, UnexpectedError } from '../index.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { configureConnection } from './connection.js'
-import type { MaterializeEvent } from './types.js'
+import type { MigrationsReport } from '../defs.ts'
+import type { BootStatus, MigrationHooks, SqliteDb, SqliteError } from '../index.ts'
+import { migrateDb, rematerializeFromEventlog, UnexpectedError } from '../index.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { configureConnection } from './connection.ts'
+import type { MaterializeEvent } from './types.ts'
 
 export const recreateDb = ({
   dbState,

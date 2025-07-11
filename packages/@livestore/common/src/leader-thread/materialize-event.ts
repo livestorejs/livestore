@@ -1,15 +1,15 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from '../adapter-types.js'
-import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.js'
-import { insertRow } from '../sql-queries/index.js'
-import { sql } from '../util.js'
-import { execSql, execSqlPrepared } from './connection.js'
-import * as Eventlog from './eventlog.js'
-import type { MaterializeEvent } from './types.js'
+import { type SqliteDb, UnexpectedError } from '../adapter-types.ts'
+import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.ts'
+import { insertRow } from '../sql-queries/index.ts'
+import { sql } from '../util.ts'
+import { execSql, execSqlPrepared } from './connection.ts'
+import * as Eventlog from './eventlog.ts'
+import type { MaterializeEvent } from './types.ts'
 
 export const makeMaterializeEvent = ({
   schema,

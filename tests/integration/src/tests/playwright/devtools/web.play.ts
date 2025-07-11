@@ -11,7 +11,7 @@ import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 
-import { checkDevtoolsState } from './shared.js'
+import { checkDevtoolsState } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 

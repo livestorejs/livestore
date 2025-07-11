@@ -9,9 +9,9 @@ import type {
   LockStatus,
   SqliteDb,
   UnexpectedError,
-} from './adapter-types.js'
-import * as Devtools from './devtools/mod.js'
-import { liveStoreVersion } from './version.js'
+} from './adapter-types.ts'
+import * as Devtools from './devtools/mod.ts'
+import { liveStoreVersion } from './version.ts'
 
 declare global {
   var __debugWebmeshNode: any
