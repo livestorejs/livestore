@@ -1,5 +1,5 @@
 import { test as base } from '@playwright/test'
-import { shouldRecordPerfProfile } from './utils.js'
+import { shouldRecordPerfProfile } from './utils.ts'
 
 // We use a global beforeEach/afterEach instead of a global setup/teardown because the latter can't share a browser context
 // biome-ignore lint/suspicious/noConfusingVoidType: testing

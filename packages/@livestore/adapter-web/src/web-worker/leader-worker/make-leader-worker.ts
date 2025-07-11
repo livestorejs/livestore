@@ -25,10 +25,10 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema

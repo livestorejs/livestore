@@ -25,8 +25,8 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {

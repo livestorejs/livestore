@@ -1,4 +1,4 @@
-import './thread-polyfill.js'
+import './thread-polyfill.ts'
 
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
@@ -10,8 +10,8 @@ import { ChildProcessWorker } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import { makeFileLogger } from './fixtures/file-logger.js'
-import * as WorkerSchema from './worker-schema.js'
+import { makeFileLogger } from './fixtures/file-logger.ts'
+import * as WorkerSchema from './worker-schema.ts'
 
 const testTimeout = IS_CI ? 120_000 : 15_000
 const propTestTimeout = IS_CI ? 300_000 : 120_000
@@ -174,7 +174,7 @@ const makeWorker = ({
 }) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
-      new URL('../../../dist/src/tests/node-sync/client-node-worker.js', import.meta.url),
+      new URL('../../../dist/src/tests/node-sync/client-node-worker.ts', import.meta.url),
       // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
       [clientId],
     )

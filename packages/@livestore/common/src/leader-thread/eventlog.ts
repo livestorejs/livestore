@@ -1,23 +1,23 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from '../adapter-types.js'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import type { SqliteDb } from '../adapter-types.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
   sessionChangesetMetaTable,
-} from '../schema/state/sqlite/system-tables.js'
-import { migrateTable } from '../schema-management/migrations.js'
-import { insertRow, updateRows } from '../sql-queries/sql-queries.js'
-import type { PreparedBindValues } from '../util.js'
-import { sql } from '../util.js'
-import { execSql } from './connection.js'
-import type { InitialSyncInfo } from './types.js'
-import { LeaderThreadCtx } from './types.js'
+} from '../schema/state/sqlite/system-tables.ts'
+import { migrateTable } from '../schema-management/migrations.ts'
+import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
+import type { PreparedBindValues } from '../util.ts'
+import { sql } from '../util.ts'
+import { execSql } from './connection.ts'
+import type { InitialSyncInfo } from './types.ts'
+import { LeaderThreadCtx } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {

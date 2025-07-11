@@ -16,8 +16,8 @@ import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/ut
 import { Effect } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
-import { makeShutdownChannel } from './shutdown-channel.js'
-import type * as WorkerSchema from './worker-schema.js'
+import { makeShutdownChannel } from './shutdown-channel.ts'
+import type * as WorkerSchema from './worker-schema.ts'
 
 export type TestingOverrides = {
   clientSession?: {
@@ -144,7 +144,7 @@ const makeDevtoolsOptions = ({
       enabled: true,
       boot: Effect.gen(function* () {
         // Lazy import to improve startup time
-        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.js'))
+        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.ts'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
         if (devtools.useExistingDevtoolsServer === false) {

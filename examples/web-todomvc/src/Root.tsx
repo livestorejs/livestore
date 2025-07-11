@@ -9,7 +9,7 @@ import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import { schema } from './livestore/schema.js'
-import LiveStoreWorker from './livestore.worker?worker'
+import LiveStoreWorker from './livestore.worker.ts?worker'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">

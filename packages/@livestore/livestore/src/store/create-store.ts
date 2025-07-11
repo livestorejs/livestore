@@ -30,13 +30,13 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import { connectDevtoolsToStore } from './devtools.js'
-import { Store } from './store.js'
+import { connectDevtoolsToStore } from './devtools.ts'
+import { Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
-} from './store-types.js'
+} from './store-types.ts'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,

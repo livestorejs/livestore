@@ -4,7 +4,7 @@ import { makeAdapter } from '@livestore/adapter-node'
 import { createStorePromise } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
 
-import { events, schema, tables } from './livestore/schema.js'
+import { events, schema, tables } from './livestore/schema.ts'
 
 const main = async () => {
   const adapter = makeAdapter({

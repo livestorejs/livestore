@@ -16,7 +16,7 @@ import {
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
-import { printConsoleTable } from './print-console-table.js'
+import { printConsoleTable } from './print-console-table.ts'
 
 const MeasurementUnit = Schema.Literal('ms', 'bytes')
 type MeasurementUnit = typeof MeasurementUnit.Type

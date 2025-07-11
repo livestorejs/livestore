@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-export * as WSMessage from './ws-message-types.js'
+export * as WSMessage from './ws-message-types.ts'
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,

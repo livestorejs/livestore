@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import * as SyncState from './syncstate.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import * as SyncState from './syncstate.ts'
 
 class TestEvent extends LiveStoreEvent.EncodedWithMeta {
   constructor(

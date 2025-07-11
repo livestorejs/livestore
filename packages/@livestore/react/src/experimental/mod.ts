@@ -1,1 +1,1 @@
-export { LiveList, type LiveListProps } from './components/LiveList.js'
+export { LiveList, type LiveListProps } from './components/LiveList.ts'

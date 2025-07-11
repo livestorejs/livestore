@@ -1,8 +1,8 @@
 import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.

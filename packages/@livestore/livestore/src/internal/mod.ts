@@ -1,2 +1,2 @@
-export * as LiveQueries from '../live-queries/mod.js'
-export * as ReactiveGraph from '../reactive.js'
+export * as LiveQueries from '../live-queries/mod.ts'
+export * as ReactiveGraph from '../reactive.ts'

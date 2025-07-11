@@ -1,9 +1,9 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
-import { tables } from '../../../__tests__/fixture.js'
-import type * as LiveStoreEvent from '../../LiveStoreEvent.js'
-import { ClientDocumentTableDefSymbol, clientDocument } from './client-document-def.js'
+import { tables } from '../../../__tests__/fixture.ts'
+import type * as LiveStoreEvent from '../../LiveStoreEvent.ts'
+import { ClientDocumentTableDefSymbol, clientDocument } from './client-document-def.ts'
 
 describe('client document table', () => {
   test('set event', () => {

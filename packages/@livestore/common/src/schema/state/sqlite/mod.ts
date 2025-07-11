@@ -1,22 +1,22 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
-import type { MigrationOptions } from '../../../adapter-types.js'
-import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.js'
-import type { InternalState } from '../../schema.js'
-import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
-import { SqliteAst } from './db-schema/mod.js'
-import { stateSystemTables } from './system-tables.js'
-import type { TableDef, TableDefBase } from './table-def.js'
+import type { MigrationOptions } from '../../../adapter-types.ts'
+import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.ts'
+import type { InternalState } from '../../schema.ts'
+import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
+import { SqliteAst } from './db-schema/mod.ts'
+import { stateSystemTables } from './system-tables.ts'
+import type { TableDef, TableDefBase } from './table-def.ts'
 
-export * from '../../EventDef.js'
+export * from '../../EventDef.ts'
 export {
   type ClientDocumentTableDef,
   ClientDocumentTableDefSymbol,
   type ClientDocumentTableOptions,
   clientDocument,
   tableIsClientDocumentTable,
-} from './client-document-def.js'
-export * from './table-def.js'
+} from './client-document-def.ts'
+export * from './table-def.ts'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)

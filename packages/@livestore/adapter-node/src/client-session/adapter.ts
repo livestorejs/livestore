@@ -33,10 +33,10 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
-import type { TestingOverrides } from '../leader-thread-shared.js'
-import { makeLeaderThread } from '../leader-thread-shared.js'
-import { makeShutdownChannel } from '../shutdown-channel.js'
-import * as WorkerSchema from '../worker-schema.js'
+import type { TestingOverrides } from '../leader-thread-shared.ts'
+import { makeLeaderThread } from '../leader-thread-shared.ts'
+import { makeShutdownChannel } from '../shutdown-channel.ts'
+import * as WorkerSchema from '../worker-schema.ts'
 
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
@@ -90,7 +90,7 @@ export const makeWorkerAdapter = ({
   ...options
 }: NodeAdapterOptions & {
   /**
-   * Example: `new URL('./livestore.worker.js', import.meta.url)`
+   * Example: `new URL('./livestore.worker.ts', import.meta.url)`
    */
   workerUrl: URL
 }): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl } })

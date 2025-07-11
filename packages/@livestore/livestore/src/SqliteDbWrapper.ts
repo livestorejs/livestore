@@ -17,7 +17,7 @@ import {
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
-import QueryCache from './QueryCache.js'
+import QueryCache from './QueryCache.ts'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),

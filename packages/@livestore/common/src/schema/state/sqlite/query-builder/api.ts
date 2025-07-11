@@ -1,11 +1,11 @@
 import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
-import type { SessionIdSymbol } from '../../../../adapter-types.js'
-import type { SqlValue } from '../../../../util.js'
-import type { ClientDocumentTableDef } from '../client-document-def.js'
-import type { SqliteDsl } from '../db-schema/mod.js'
-import type { TableDefBase } from '../table-def.js'
+import type { SessionIdSymbol } from '../../../../adapter-types.ts'
+import type { SqlValue } from '../../../../util.ts'
+import type { ClientDocumentTableDef } from '../client-document-def.ts'
+import type { SqliteDsl } from '../db-schema/mod.ts'
+import type { TableDefBase } from '../table-def.ts'
 
 export type QueryBuilderAst =
   | QueryBuilderAst.SelectQuery

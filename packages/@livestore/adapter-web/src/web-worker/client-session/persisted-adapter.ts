@@ -32,12 +32,12 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
-import { connectWebmeshNodeClientSession } from './client-session-devtools.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.ts'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
+import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -110,7 +110,7 @@ export type WebAdapterOptions = {
  * @example
  * ```ts
  * import { makePersistedAdapter } from '@livestore/adapter-web'
- * import LiveStoreWorker from './livestore.worker?worker'
+ * import LiveStoreWorker from './livestore.worker.ts?worker'
  * import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
  *
  * const adapter = makePersistedAdapter({

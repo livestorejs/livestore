@@ -116,7 +116,7 @@ Here's an example:
 <script setup lang="ts">
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import LiveStoreWorker from './livestore/livestore.worker?worker'
+import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
 import { schema } from './livestore/schema'
 import { LiveStoreProvider } from 'vue-livestore'
 import ToDos from './components/to-dos.vue'

@@ -1,8 +1,8 @@
 import { Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from './adapter-types.js'
-import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.js'
-import type { PreparedBindValues } from './util.js'
+import type { SqliteDb } from './adapter-types.ts'
+import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.ts'
+import type { PreparedBindValues } from './util.ts'
 
 export const makeExecute = (
   execute: (

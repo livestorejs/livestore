@@ -2,8 +2,8 @@ import { UnexpectedError } from '@livestore/common'
 import { Effect, Exit } from '@livestore/utils/effect'
 import { expect, test } from '@playwright/test'
 
-import { runAndGetExit, runTest } from './shared-test.js'
-import { Bridge } from './unit-tests/shared.js'
+import { runAndGetExit, runTest } from './shared-test.ts'
+import { Bridge } from './unit-tests/shared.ts'
 
 const modulePrefix = '../unit-tests'
 

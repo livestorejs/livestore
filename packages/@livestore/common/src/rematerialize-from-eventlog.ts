@@ -1,12 +1,12 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from './adapter-types.js'
-import type { MaterializeEvent } from './leader-thread/mod.js'
-import type { EventDef, LiveStoreSchema } from './schema/mod.js'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
-import type { PreparedBindValues } from './util.js'
-import { sql } from './util.js'
+import { type SqliteDb, UnexpectedError } from './adapter-types.ts'
+import type { MaterializeEvent } from './leader-thread/mod.ts'
+import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
+import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.ts'
+import type { PreparedBindValues } from './util.ts'
+import { sql } from './util.ts'
 
 export const rematerializeFromEventlog = ({
   dbEventlog,

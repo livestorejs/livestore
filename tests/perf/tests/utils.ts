@@ -1,5 +1,5 @@
 import type { TestDetails } from '@playwright/test'
-import { test } from './fixtures.js'
+import { test } from './fixtures.ts'
 
 export const repeatSuite = (
   suiteName: string,

@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
-import { test } from '../fixtures.js'
-import { repeatSuite } from '../utils.js'
+import { test } from '../fixtures.ts'
+import { repeatSuite } from '../utils.ts'
 
 const REPETITIONS_PER_TEST = 15
 

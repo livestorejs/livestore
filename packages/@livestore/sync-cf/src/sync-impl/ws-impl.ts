@@ -19,8 +19,8 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { SearchParamsSchema, WSMessage } from '../common/mod.js'
-import type { SyncMetadata } from '../common/ws-message-types.js'
+import { SearchParamsSchema, WSMessage } from '../common/mod.ts'
+import type { SyncMetadata } from '../common/ws-message-types.ts'
 
 export interface WsSyncOptions {
   url: string

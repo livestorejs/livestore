@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { extractStackInfoFromStackTrace } from './stack-info.js'
+import { extractStackInfoFromStackTrace } from './stack-info.ts'
 
 it('RouteLink stacktrace', async () => {
   const stackTrace = `\

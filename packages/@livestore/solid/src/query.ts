@@ -1,7 +1,7 @@
 import type { LiveQueries } from '@livestore/livestore/internal'
 import * as Solid from 'solid-js'
 
-import { storeToExport } from './store.js'
+import { storeToExport } from './store.ts'
 
 export const query = <TQuery extends LiveQueries.LiveQueryDef.Any>(
   queryDef: TQuery,

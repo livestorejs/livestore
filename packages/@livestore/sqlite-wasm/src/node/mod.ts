@@ -5,9 +5,9 @@ import { Effect, FileSystem } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
-import { makeInMemoryDb } from '../in-memory-vfs.js'
-import { makeSqliteDb } from '../make-sqlite-db.js'
-import { NodeFS } from './NodeFS.js'
+import { makeInMemoryDb } from '../in-memory-vfs.ts'
+import { makeSqliteDb } from '../make-sqlite-db.ts'
+import { NodeFS } from './NodeFS.ts'
 
 export type NodeDatabaseMetadataInMemory = {
   _tag: 'in-memory'

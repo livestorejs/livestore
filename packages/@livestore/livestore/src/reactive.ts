@@ -25,7 +25,7 @@ import { BoundArray } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-// import { getDurationMsFromSpan } from './otel.js'
+// import { getDurationMsFromSpan } from './otel.ts'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET

@@ -3,10 +3,10 @@ import { Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import type { MeshNode } from '@livestore/webmesh'
 
-import * as SessionInfo from './devtools-sessioninfo.js'
+import * as SessionInfo from './devtools-sessioninfo.ts'
 
-export * from './devtools-messages.js'
-export * as SessionInfo from './devtools-sessioninfo.js'
+export * from './devtools-messages.ts'
+export * as SessionInfo from './devtools-sessioninfo.ts'
 
 export const DevtoolsMode = Schema.Union(
   Schema.TaggedStruct('node', {

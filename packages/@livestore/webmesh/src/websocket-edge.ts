@@ -14,8 +14,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import * as WebmeshSchema from './mesh-schema.js'
-import type { MeshNode } from './node.js'
+import * as WebmeshSchema from './mesh-schema.ts'
+import type { MeshNode } from './node.ts'
 
 export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
   from: Schema.String,

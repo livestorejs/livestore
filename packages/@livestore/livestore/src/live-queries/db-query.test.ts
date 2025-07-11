@@ -6,11 +6,11 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { expect } from 'vitest'
 
-import * as RG from '../reactive.js'
-import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
-import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
-import { computed } from './computed.js'
-import { queryDb } from './db-query.js'
+import * as RG from '../reactive.ts'
+import { makeTodoMvc, tables } from '../utils/tests/fixture.ts'
+import { getSimplifiedRootSpan } from '../utils/tests/otel.ts'
+import { computed } from './computed.ts'
+import { queryDb } from './db-query.ts'
 
 /*
 TODO write tests for:

@@ -1,9 +1,9 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
-import type { EventDef, EventDefRecord } from './EventDef.js'
-import * as EventSequenceNumber from './EventSequenceNumber.js'
-import type { LiveStoreSchema } from './schema.js'
+import type { EventDef, EventDefRecord } from './EventDef.ts'
+import * as EventSequenceNumber from './EventSequenceNumber.ts'
+import type { LiveStoreSchema } from './schema.ts'
 
 export namespace ForEventDef {
   export type PartialDecoded<TEventDef extends EventDef.Any> = {

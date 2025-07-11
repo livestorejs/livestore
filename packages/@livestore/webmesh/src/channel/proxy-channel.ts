@@ -23,8 +23,8 @@ import {
   type MeshNodeName,
   type ProxyQueueItem,
   packetAsOtelAttributes,
-} from '../common.js'
-import * as MeshSchema from '../mesh-schema.js'
+} from '../common.ts'
+import * as MeshSchema from '../mesh-schema.ts'
 
 interface MakeProxyChannelArgs {
   queue: Queue.Queue<ProxyQueueItem>

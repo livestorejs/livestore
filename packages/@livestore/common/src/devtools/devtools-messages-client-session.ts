@@ -1,9 +1,9 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { DebugInfo } from '../debug-info.js'
-import { EventSequenceNumber } from '../schema/mod.js'
-import { PreparedBindValues } from '../util.js'
-import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
+import { DebugInfo } from '../debug-info.ts'
+import { EventSequenceNumber } from '../schema/mod.ts'
+import { PreparedBindValues } from '../util.ts'
+import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.ts'
 
 export class DebugInfoReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoReq', {}) {}
 

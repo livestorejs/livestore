@@ -29,8 +29,8 @@
     "editor.defaultFormatter": "biomejs.biome"
   },
   "files.exclude": {
-    "**/node_modules/**/dist": false,
-    "**/{examples,packages}/**/dist": true,
+    // "**/node_modules/**/dist": false,
+    // "**/{examples,packages}/**/dist": true,
     "**/.git": true,
     "**/.vercel": true,
     "**/.netlify": true,
