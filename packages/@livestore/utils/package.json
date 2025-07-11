@@ -31,7 +31,7 @@
     },
     "./node": {
       "types": "./dist/node/mod.d.ts",
-      "node": "./src/effect/index.ts",
+      "node": "./src/node/mod.ts",
       "bun": "./src/node/mod.ts",
       "default": "./dist/node/mod.js"
     },
