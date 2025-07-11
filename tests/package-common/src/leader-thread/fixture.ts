@@ -31,12 +31,26 @@ export const events = {
     name: 'todoDeletedNonPure',
     schema: Schema.Struct({ id: Schema.String }),
   }),
+  // Events for testing GitHub issue #409
+  noopEvent: Events.synced({
+    name: 'noopEvent',
+    schema: Schema.Struct({ id: Schema.String, data: Schema.String }),
+  }),
+  crashingEvent: Events.synced({
+    name: 'crashingEvent',
+    schema: Schema.Struct({ id: Schema.String, data: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
+  // Materializers for testing GitHub issue #409
+  noopEvent: () => [], // Returns noop - no state changes
+  crashingEvent: () => {
+    throw new Error('Materialization crash for testing issue #409')
+  },
 })
 
 export const tables = { todos, appConfig }

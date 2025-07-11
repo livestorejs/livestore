@@ -26,6 +26,7 @@ import { LeaderAheadError } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
+import * as MaterializationStatus from './materialization-status.ts'
 import { rollback } from './materialize-event.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -483,6 +484,13 @@ const backgroundApplyLocalPushes = ({
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+      
+      // Update materialization head for local events
+      if (mergeResult.newEvents.length > 0) {
+        const { dbState } = yield* LeaderThreadCtx
+        const lastEvent = mergeResult.newEvents.at(-1)!
+        MaterializationStatus.updateMaterializationHead(dbState, lastEvent.seqNum)
+      }
 
       // Allow the backend pulling to start
       yield* pullLatch.open
@@ -496,10 +504,14 @@ type MaterializeEventsBatch = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
+  /**
+   * Optional new backend head to update atomically with materialization
+   */
+  newBackendHead?: EventSequenceNumber.EventSequenceNumber
 }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
-const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
+const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds, newBackendHead }) =>
   Effect.gen(function* () {
     const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
 
@@ -524,6 +536,16 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
 
       if (deferreds?.[i] !== undefined) {
         yield* Deferred.succeed(deferreds[i]!, void 0)
+      }
+    }
+
+    // Update backend head atomically with materialization if provided
+    if (newBackendHead !== undefined) {
+      Eventlog.updateBackendHead(dbEventlog, newBackendHead)
+      // Also update materialization head in state database to maintain consistency
+      if (batchItems.length > 0) {
+        const lastMaterializedEvent = batchItems.at(-1)!
+        MaterializationStatus.updateMaterializationHead(db, lastMaterializedEvent.seqNum)
       }
     }
 
@@ -610,8 +632,6 @@ const backgroundBackendPulling = ({
 
         const newBackendHead = newEvents.at(-1)!.seqNum
 
-        Eventlog.updateBackendHead(dbEventlog, newBackendHead)
-
         if (mergeResult._tag === 'rebase') {
           otelSpan?.addEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
             newEventsCount: newEvents.length,
@@ -666,7 +686,11 @@ const backgroundBackendPulling = ({
 
         advancePushHead(mergeResult.newSyncState.localHead)
 
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+        yield* materializeEventsBatch({ 
+          batchItems: mergeResult.newEvents, 
+          deferreds: undefined,
+          newBackendHead
+        })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
