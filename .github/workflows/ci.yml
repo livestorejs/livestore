@@ -146,20 +146,6 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: mono release snapshot --git-sha=${{ github.sha }}
 
-  generate-examples-standalone:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: mono examples sync --direction src-to-standalone
-
   build-and-deploy-examples-src:
     strategy:
       matrix:
