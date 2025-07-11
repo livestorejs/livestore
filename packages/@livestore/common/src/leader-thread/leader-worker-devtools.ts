@@ -1,10 +1,10 @@
 import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { SystemTables } from '../schema/mod.js'
-import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
-import { LeaderThreadCtx } from './types.js'
+import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.ts'
+import { SystemTables } from '../schema/mod.ts'
+import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
+import { LeaderThreadCtx } from './types.ts'
 
 type SendMessageToDevtools = (message: Devtools.Leader.MessageFromApp) => Effect.Effect<void>
 

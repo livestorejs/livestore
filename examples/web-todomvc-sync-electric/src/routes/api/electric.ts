@@ -2,7 +2,7 @@ import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
 import { createAPIFileRoute } from '@tanstack/react-start/api'
 
-import { makeDb } from '@/server/db.js'
+import { makeDb } from '@/server/db.ts'
 
 // You can change this to your own ElectricSQL endpoint
 const electricHost = 'http://localhost:30000'

@@ -21,8 +21,8 @@ import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
-import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.js'
-import { checkDevtoolsState } from './shared.js'
+import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
+import { checkDevtoolsState } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 

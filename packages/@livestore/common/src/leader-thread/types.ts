@@ -12,8 +12,8 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { MigrationsReport } from '../defs.js'
-import type { SqliteError } from '../errors.js'
+import type { MigrationsReport } from '../defs.ts'
+import type { SqliteError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
@@ -23,10 +23,10 @@ import type {
   SqliteDb,
   SyncBackend,
   UnexpectedError,
-} from '../index.js'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
-import type * as SyncState from '../sync/syncstate.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
+} from '../index.ts'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.ts'
+import type * as SyncState from '../sync/syncstate.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
 

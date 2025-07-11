@@ -11,7 +11,7 @@ const { PlatformNode } = require('@livestore/utils/node') as typeof import('@liv
 
 import type { MetroConfig } from 'expo/metro-config'
 
-import type { Middleware, Options } from './types.js'
+import type { Middleware, Options } from './types.ts'
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -87,4 +87,4 @@ module.exports = {
 }
 
 export type { addLiveStoreDevtoolsMiddleware }
-export type { Options } from './types.js'
+export type { Options } from './types.ts'

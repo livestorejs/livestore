@@ -1,22 +1,22 @@
 export { default as prettyBytes } from 'pretty-bytes'
-export * as base64 from './base64.js'
-export * from './browser.js'
-export * from './Deferred.js'
-export * from './env.js'
-export * from './fast-deep-equal.js'
-export * from './guards.js'
-export * from './misc.js'
-export * from './NoopTracer.js'
-export * from './object/index.js'
-export * from './promise.js'
-export * from './set.js'
-export * from './string.js'
-export * from './time.js'
+export * as base64 from './base64.ts'
+export * from './browser.ts'
+export * from './Deferred.ts'
+export * from './env.ts'
+export * from './fast-deep-equal.ts'
+export * from './guards.ts'
+export * from './misc.ts'
+export * from './NoopTracer.ts'
+export * from './object/index.ts'
+export * from './promise.ts'
+export * from './set.ts'
+export * from './string.ts'
+export * from './time.ts'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
 
-import { objectToString } from './misc.js'
+import { objectToString } from './misc.ts'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
 
@@ -233,4 +233,4 @@ export const isPromise = (value: any): value is Promise<unknown> => typeof value
 
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
-export { objectToString as errorToString } from './misc.js'
+export { objectToString as errorToString } from './misc.ts'

@@ -6,7 +6,7 @@ import path from 'node:path'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
-import { FacadeVFS } from '../FacadeVFS.js'
+import { FacadeVFS } from '../FacadeVFS.ts'
 
 interface NodeFsFile {
   pathname: string

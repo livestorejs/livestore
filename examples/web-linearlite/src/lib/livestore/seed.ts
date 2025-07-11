@@ -5,7 +5,7 @@ import { statusOptions } from '@/data/status-options'
 import { events } from '@/lib/livestore/schema'
 import type { Priority } from '@/types/priority'
 import type { Status } from '@/types/status'
-import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries'
+import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries.ts'
 
 export const seed = (store: Store, count: number) => {
   try {

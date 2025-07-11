@@ -1,10 +1,10 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../../adapter-types.js'
-import type { SqlValue } from '../../../../util.js'
-import type { State } from '../../../mod.js'
-import type { QueryBuilderAst } from './api.js'
+import { SessionIdSymbol } from '../../../../adapter-types.ts'
+import type { SqlValue } from '../../../../util.ts'
+import type { State } from '../../../mod.ts'
+import type { QueryBuilderAst } from './api.ts'
 
 // Helper functions for SQL generation
 const formatWhereClause = (

@@ -19,9 +19,9 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { Packet } from './mesh-schema.js'
-import type { MeshNode } from './node.js'
-import { makeMeshNode } from './node.js'
+import { Packet } from './mesh-schema.ts'
+import type { MeshNode } from './node.ts'
+import { makeMeshNode } from './node.ts'
 
 // TODO test cases where in-between node only comes online later
 // TODO test cases where other side tries to reconnect

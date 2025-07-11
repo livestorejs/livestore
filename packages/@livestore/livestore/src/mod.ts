@@ -31,15 +31,15 @@ export {
   type Signal,
   type SignalDef,
   signal,
-} from './live-queries/mod.js'
-export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.js'
-export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.js'
-export { Store } from './store/store.js'
-export type { OtelOptions, QueryDebugInfo, RefreshReason } from './store/store-types.js'
+} from './live-queries/mod.ts'
+export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.ts'
+export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.ts'
+export { Store } from './store/store.ts'
+export type { OtelOptions, QueryDebugInfo, RefreshReason } from './store/store-types.ts'
 export {
   type LiveStoreContext,
   type LiveStoreContextRunning,
   makeShutdownDeferred,
   type ShutdownDeferred,
-} from './store/store-types.js'
-export * from './utils/stack-info.js'
+} from './store/store-types.ts'
+export * from './utils/stack-info.ts'

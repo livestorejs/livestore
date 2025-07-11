@@ -4,8 +4,8 @@ import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/comm
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema, UrlParams } from '@livestore/utils/effect'
 
-import { SearchParamsSchema, WSMessage } from '../common/mod.js'
-import type { SyncMetadata } from '../common/ws-message-types.js'
+import { SearchParamsSchema, WSMessage } from '../common/mod.ts'
+import type { SyncMetadata } from '../common/ws-message-types.ts'
 
 export interface Env {
   DB: D1Database

@@ -1,3 +1,3 @@
-export * from './ClientSessionSyncProcessor.js'
-export * from './sync.js'
-export * from './validate-push-payload.js'
+export * from './ClientSessionSyncProcessor.ts'
+export * from './sync.ts'
+export * from './validate-push-payload.ts'

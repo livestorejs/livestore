@@ -25,8 +25,8 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
@@ -39,21 +39,21 @@ if (isDevEnv()) {
 const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
-        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInner.Request>
+        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
         scope: Scope.CloseableScope
       }
     | undefined
   >(undefined)
 
   const initialMessagePayloadDeferredRef = yield* Deferred.make<
-    typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type
+    typeof WorkerSchema.SharedWorkerInitialMessagePayloadFromClientSession.Type
   >().pipe(Effect.andThen(Ref.make))
 
   const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
+  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Effect.Effect<A, UnexpectedError, never>
@@ -79,7 +79,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.tapCauseLogPretty,
     ) as any
 
-  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
+  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
@@ -133,14 +133,14 @@ const makeWorkerRunner = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
 
     const initialMessagePayloadDeferred =
-      yield* Deferred.make<typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type>()
+      yield* Deferred.make<typeof WorkerSchema.SharedWorkerInitialMessagePayloadFromClientSession.Type>()
     yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
 
     yield* resetCurrentWorkerCtx
     // yield* devtoolsWebBridge.reset
   })
 
-  return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
+  return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
     InitialMessage: (message) =>
       Effect.gen(function* () {
         if (message.payload._tag === 'FromWebBridge') return
@@ -151,7 +151,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
-          const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(
+          const messageSchema = WorkerSchema.LeaderWorkerInnerInitialMessage.pipe(
             Schema.omit('devtoolsEnabled', 'debugInstanceId'),
           )
           const isEqual = Schema.equivalence(messageSchema)
@@ -194,7 +194,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
 
-          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInner.Request>({
+          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
             size: 1,
             concurrency: 100,
             initialMessage: () => initialMessagePayload.initialMessage,

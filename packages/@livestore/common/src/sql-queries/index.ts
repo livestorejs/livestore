@@ -1,3 +1,3 @@
-export * from './sql-queries.js'
-export * from './sql-query-builder.js'
-export * from './types.js'
+export * from './sql-queries.ts'
+export * from './sql-query-builder.ts'
+export * from './types.ts'

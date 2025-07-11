@@ -13,8 +13,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.js'
-import * as MeshSchema from '../mesh-schema.js'
+import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
+import * as MeshSchema from '../mesh-schema.ts'
 
 export interface MakeDirectChannelArgs {
   nodeName: MeshNodeName

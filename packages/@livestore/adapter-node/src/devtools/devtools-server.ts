@@ -18,7 +18,7 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
-import { makeViteMiddleware } from './vite-dev-server.js'
+import { makeViteMiddleware } from './vite-dev-server.ts'
 
 /**
  * Starts a devtools HTTP/WS server which serves ...

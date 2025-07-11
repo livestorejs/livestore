@@ -1,9 +1,9 @@
 import type { Nullable } from '@livestore/utils'
 import type { Schema, Types } from '@livestore/utils/effect'
 
-import { SqliteDsl } from './db-schema/mod.js'
-import type { QueryBuilder } from './query-builder/mod.js'
-import { makeQueryBuilder, QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.js'
+import { SqliteDsl } from './db-schema/mod.ts'
+import type { QueryBuilder } from './query-builder/mod.ts'
+import { makeQueryBuilder, QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 

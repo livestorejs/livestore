@@ -6,9 +6,9 @@ import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
-import { copyTodomvcSrc } from './examples/copy-examples.js'
-import { command as deployExamplesCommand } from './examples/deploy-examples.js'
-import { deployToNetlify } from './shared/netlify.js'
+import { copyTodomvcSrc } from './examples/copy-examples.ts'
+import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
+import { deployToNetlify } from './shared/netlify.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)

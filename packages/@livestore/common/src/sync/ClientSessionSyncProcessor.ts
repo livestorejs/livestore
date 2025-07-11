@@ -14,11 +14,11 @@ import {
 } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.js'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { getEventDef, type LiveStoreSchema } from '../schema/mod.js'
-import * as SyncState from './syncstate.js'
+import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
+import * as SyncState from './syncstate.ts'
 
 /**
  * Rebase behaviour:
@@ -75,7 +75,7 @@ export const makeClientSessionSyncProcessor = ({
   const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
     key: TKey,
     key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
-  ) => Effect.sleep(params.simulation![key]![key2] as number)
+  ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state

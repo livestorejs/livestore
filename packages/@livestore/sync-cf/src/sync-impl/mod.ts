@@ -1,1 +1,1 @@
-export * from './ws-impl.js'
+export * from './ws-impl.ts'

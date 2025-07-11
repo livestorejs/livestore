@@ -1,6 +1,6 @@
 import { type Option, Schema } from '@livestore/utils/effect'
 
-import { hashCode } from '../hash.js'
+import { hashCode } from '../hash.ts'
 
 export namespace ColumnType {
   export type ColumnType = Text | Null | Real | Integer | Blob

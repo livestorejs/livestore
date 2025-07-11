@@ -2,10 +2,10 @@ import type { Nullable } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type * as SqliteAst from '../ast/sqlite.js'
-import type { ColumnDefinition } from './field-defs.js'
+import type * as SqliteAst from '../ast/sqlite.ts'
+import type { ColumnDefinition } from './field-defs.ts'
 
-export * from './field-defs.js'
+export * from './field-defs.ts'
 
 export type DbSchema = {
   [key: string]: TableDefinition<string, Columns>

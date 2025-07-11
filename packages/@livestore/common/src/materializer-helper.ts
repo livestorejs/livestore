@@ -1,17 +1,17 @@
 import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
 import { Hash, Option, Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from './adapter-types.js'
-import { SessionIdSymbol } from './adapter-types.js'
-import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.js'
-import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
-import { getEventDef, type LiveStoreSchema } from './schema/schema.js'
-import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import { getResultSchema } from './schema/state/sqlite/query-builder/impl.js'
-import type { BindValues } from './sql-queries/sql-queries.js'
-import type { ParamsObject, PreparedBindValues } from './util.js'
-import { prepareBindValues } from './util.js'
+import type { SqliteDb } from './adapter-types.ts'
+import { SessionIdSymbol } from './adapter-types.ts'
+import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.ts'
+import type * as LiveStoreEvent from './schema/LiveStoreEvent.ts'
+import { getEventDef, type LiveStoreSchema } from './schema/schema.ts'
+import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
+import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
+import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
+import type { BindValues } from './sql-queries/sql-queries.ts'
+import type { ParamsObject, PreparedBindValues } from './util.ts'
+import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
   eventDef,

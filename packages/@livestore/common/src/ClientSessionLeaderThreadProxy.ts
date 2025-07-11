@@ -1,12 +1,12 @@
 import type { Effect, Stream } from '@livestore/utils/effect'
 
-import type { MigrationsReport } from './defs.js'
-import type * as Devtools from './devtools/mod.js'
-import type { UnexpectedError } from './errors.js'
-import type * as EventSequenceNumber from './schema/EventSequenceNumber.js'
-import type { LiveStoreEvent } from './schema/mod.js'
-import type { LeaderAheadError } from './sync/sync.js'
-import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
+import type { MigrationsReport } from './defs.ts'
+import type * as Devtools from './devtools/mod.ts'
+import type { UnexpectedError } from './errors.ts'
+import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
+import type { LiveStoreEvent } from './schema/mod.ts'
+import type { LeaderAheadError } from './sync/sync.ts'
+import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
 
 export interface ClientSessionLeaderThreadProxy {
   events: {

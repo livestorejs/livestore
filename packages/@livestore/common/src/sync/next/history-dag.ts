@@ -1,6 +1,6 @@
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import { factsToString, validateFacts } from './facts.js'
-import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import { factsToString, validateFacts } from './facts.ts'
+import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.ts'
 
 export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skipFactsCheck: boolean }) => {
   if (options?.skipFactsCheck !== true) {

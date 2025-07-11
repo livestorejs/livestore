@@ -5,7 +5,7 @@ import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 
-import { deployToNetlify } from '../shared/netlify.js'
+import { deployToNetlify } from '../shared/netlify.ts'
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.

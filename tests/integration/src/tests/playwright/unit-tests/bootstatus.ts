@@ -3,8 +3,8 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import type { BootStatus } from '@livestore/common'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
 
-import LiveStoreWorker from './livestore.worker?worker'
-import { Bridge, schema } from './shared.js'
+import LiveStoreWorker from './livestore.worker.ts?worker'
+import { Bridge, schema } from './shared.ts'
 
 export const test = () =>
   Effect.gen(function* () {

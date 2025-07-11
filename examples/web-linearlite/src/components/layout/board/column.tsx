@@ -21,7 +21,7 @@ import { filterState$, useDebouncedScrollState, useFilterState } from '@/lib/liv
 import { events, tables } from '@/lib/livestore/schema'
 import { filterStateToWhere } from '@/lib/livestore/utils'
 import type { Status } from '@/types/status'
-import { Card } from './card'
+import { Card } from './card.tsx'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
   const { store } = LiveStoreReact.useStore()

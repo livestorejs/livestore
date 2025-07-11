@@ -3,8 +3,8 @@ import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 're
 import { ResetButton } from '@/components/layout/toolbar/reset-button'
 import { SeedInput } from '@/components/layout/toolbar/seed-input'
 import { UserInput } from '@/components/layout/toolbar/user-input'
-import { ShareButton } from './share-button'
-import { SyncToggle } from './sync-toggle'
+import { ShareButton } from './share-button.tsx'
+import { SyncToggle } from './sync-toggle.tsx'
 
 export const MobileMenu = () => {
   return (

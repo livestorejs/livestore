@@ -1,8 +1,8 @@
 import { pipe } from 'effect'
 
-export * from './omit.js'
-export * from './pick.js'
-export * from './stringify-object.js'
+export * from './omit.ts'
+export * from './pick.ts'
+export * from './stringify-object.ts'
 
 type ValueOfRecord<R extends Record<any, any>> = R extends Record<any, infer V> ? V : never
 

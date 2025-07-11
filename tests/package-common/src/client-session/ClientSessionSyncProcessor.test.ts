@@ -32,9 +32,9 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { events, schema, tables } from '../leader-thread/fixture.js'
-import type { MockSyncBackend } from '../mock-sync-backend.js'
-import { makeMockSyncBackend } from '../mock-sync-backend.js'
+import { events, schema, tables } from '../leader-thread/fixture.ts'
+import type { MockSyncBackend } from '../mock-sync-backend.ts'
+import { makeMockSyncBackend } from '../mock-sync-backend.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(

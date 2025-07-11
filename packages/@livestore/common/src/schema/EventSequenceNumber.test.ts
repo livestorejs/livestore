@@ -1,7 +1,7 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { EventSequenceNumber } from './mod.js'
+import { EventSequenceNumber } from './mod.ts'
 
 Vitest.describe('EventSequenceNumber', () => {
   Vitest.test('nextPair (no rebase)', () => {

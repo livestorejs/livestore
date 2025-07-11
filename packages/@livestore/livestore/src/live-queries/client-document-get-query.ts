@@ -4,7 +4,7 @@ import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
-import type { ReactivityGraphContext } from './base-class.js'
+import type { ReactivityGraphContext } from './base-class.ts'
 
 export const rowQueryLabel = (
   table: State.SQLite.ClientDocumentTableDef.Any,

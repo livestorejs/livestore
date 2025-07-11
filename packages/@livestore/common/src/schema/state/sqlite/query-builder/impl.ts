@@ -2,10 +2,10 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { TableDefBase } from '../table-def.js'
-import type { QueryBuilder, QueryBuilderAst } from './api.js'
-import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.js'
-import { astToSql } from './astToSql.js'
+import type { TableDefBase } from '../table-def.ts'
+import type { QueryBuilder, QueryBuilderAst } from './api.ts'
+import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.ts'
+import { astToSql } from './astToSql.ts'
 export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   ast: QueryBuilderAst = emptyAst(tableDef),

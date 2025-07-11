@@ -1,8 +1,8 @@
 import { Schema } from '@livestore/utils/effect'
 
-import * as EventSequenceNumber from '../../EventSequenceNumber.js'
-import { SqliteDsl } from './db-schema/mod.js'
-import { table } from './table-def.js'
+import * as EventSequenceNumber from '../../EventSequenceNumber.ts'
+import { SqliteDsl } from './db-schema/mod.ts'
+import { table } from './table-def.ts'
 
 /// State DB
 

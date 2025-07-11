@@ -3,8 +3,8 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
 import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import type * as WorkerSchema from './worker-schema.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
   cause: Schema.Defect,

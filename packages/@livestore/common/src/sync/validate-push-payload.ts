@@ -1,7 +1,7 @@
 import { Effect } from '@livestore/utils/effect'
 
-import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.js'
-import { InvalidPushError } from './sync.js'
+import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
+import { InvalidPushError } from './sync.ts'
 
 // TODO proper batch validation
 export const validatePushPayload = (
