@@ -1,17 +1,17 @@
 {
-  "name": "livestore-example-src-node-effect-cli",
+  "name": "livestore-example-node-effect-cli",
   "version": "0.0.0",
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/adapter-node": "0.3.2-dev.0",
+    "@livestore/common": "0.3.2-dev.0",
+    "@livestore/livestore": "0.3.2-dev.0",
+    "@livestore/sync-cf": "0.3.2-dev.0",
+    "@livestore/utils": "0.3.2-dev.0"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
+    "@livestore/utils-dev": "0.3.2-dev.0",
     "typescript": "^5.8.3"
   },
   "engines": {

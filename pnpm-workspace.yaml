@@ -3,8 +3,7 @@ packages:
   - docs
   - packages/@livestore/*
   - packages/@local/*
-  - examples/src/*
-  - examples/standalone/*
+  - examples/*
   - tests/*
 
 catalog:
