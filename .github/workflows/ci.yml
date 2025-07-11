@@ -28,8 +28,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - run: mono lint
 
   test:
@@ -44,8 +42,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -117,8 +113,6 @@ jobs:
       - name: Load environment with direnv
         uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -145,8 +139,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - name: Configure NPM authentication
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
@@ -166,8 +158,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - run: mono examples sync --direction src-to-standalone
 
   build-and-deploy-examples-src:
@@ -182,8 +172,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
       - run: |
           mono examples deploy \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
@@ -204,8 +192,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts # Needed for starlight-typedoc
       - run: mono docs build --api-docs
       - run: mono docs deploy
         env:
