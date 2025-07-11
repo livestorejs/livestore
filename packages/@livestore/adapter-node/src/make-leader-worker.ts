@@ -60,7 +60,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
-  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
+  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: (args) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(

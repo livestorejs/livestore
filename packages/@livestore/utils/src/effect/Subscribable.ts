@@ -49,11 +49,15 @@ class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscrib
   readonly [TypeId] = TypeId
   // @ts-expect-error type symbol
   readonly [Readable.TypeId] = Readable.TypeId
+  readonly get: Effect.Effect<A>
+  readonly changes: Stream.Stream<A>
   constructor(
-    readonly get: Effect.Effect<A>,
-    readonly changes: Stream.Stream<A>,
+    get: Effect.Effect<A>,
+    changes: Stream.Stream<A>,
   ) {
     super()
+    this.get = get
+    this.changes = changes
   }
 
   commit() {

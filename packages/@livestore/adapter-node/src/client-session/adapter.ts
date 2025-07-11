@@ -147,7 +147,7 @@ const makeAdapterImpl = ({
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
-      const devtoolsOptions: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools'] =
+      const devtoolsOptions: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools'] =
         devtoolsEnabled && devtoolsOptionsInput !== undefined
           ? {
               enabled: true,
@@ -237,7 +237,7 @@ const makeLocalLeaderThread = ({
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
   syncPayload: Schema.JsonValue | undefined
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
   }
@@ -305,7 +305,7 @@ const makeWorkerLeaderThread = ({
   sessionId: string
   workerUrl: URL
   storage: WorkerSchema.StorageType
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
   syncPayload: Schema.JsonValue | undefined
   testing?: {
@@ -319,11 +319,11 @@ const makeWorkerLeaderThread = ({
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 
-    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInner.Request.Type>({
+    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInnerRequest.Type>({
       size: 1,
       concurrency: 100,
       initialMessage: () =>
-        new WorkerSchema.LeaderWorkerInner.InitialMessage({
+        new WorkerSchema.LeaderWorkerInnerInitialMessage({
           storeId,
           clientId,
           storage,
@@ -337,7 +337,7 @@ const makeWorkerLeaderThread = ({
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
+    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
       ? Effect.Effect<A, UnexpectedError, R>
@@ -358,7 +358,7 @@ const makeWorkerLeaderThread = ({
         Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
       ) as any
 
-    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
+    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
       ? Stream.Stream<A, UnexpectedError, R>
@@ -374,7 +374,7 @@ const makeWorkerLeaderThread = ({
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
       ) as any
 
-    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
+    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
       Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
@@ -389,9 +389,9 @@ const makeWorkerLeaderThread = ({
       Effect.forkScoped,
     )
 
-    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
+    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead())
 
-    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
+    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
       UnexpectedError.mapToUnexpectedError,
       Effect.withSpan('@livestore/adapter-node:client-session:export'),
@@ -401,9 +401,9 @@ const makeWorkerLeaderThread = ({
       {
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
@@ -413,18 +413,18 @@ const makeWorkerLeaderThread = ({
           leaderHead: initialLeaderHead,
           migrationsReport: bootResult.migrationsReport,
         },
-        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
+        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
         ),
         sendDevtoolsMessage: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),

@@ -40,7 +40,7 @@ export interface MakeLeaderThreadArgs {
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
   makeSqliteDb: MakeNodeSqliteDb
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
   syncPayload: Schema.JsonValue | undefined
   testing: TestingOverrides | undefined
@@ -131,7 +131,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtools.enabled === false) {

@@ -174,7 +174,7 @@ const makeWorker = ({
 }) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
-      new URL('../../../dist/src/tests/node-sync/client-node-worker.ts', import.meta.url),
+      new URL('./client-node-worker.ts', import.meta.url),
       // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
       [clientId],
     )

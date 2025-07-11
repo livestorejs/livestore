@@ -42,122 +42,118 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
-export namespace LeaderWorkerOuter {
-  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
-    payload: { port: Transferable.MessagePort },
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()('InitialMessage', {
+  payload: { port: Transferable.MessagePort },
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
 
-  export class Request extends Schema.Union(InitialMessage) {}
-}
+export class LeaderWorkerOuterRequest extends Schema.Union(LeaderWorkerOuterInitialMessage) {}
 
-export namespace LeaderWorkerInner {
-  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
-    payload: {
-      storeId: Schema.String,
-      clientId: Schema.String,
-      storage: StorageType,
-      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
-      devtools: Schema.Union(
-        Schema.Struct({
-          enabled: Schema.Literal(true),
-          schemaPath: Schema.String,
-          port: Schema.Number,
-          host: Schema.String,
-          schemaAlias: Schema.String,
-          useExistingDevtoolsServer: Schema.Boolean,
-        }),
-        Schema.Struct({ enabled: Schema.Literal(false) }),
-      ),
-    },
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()('InitialMessage', {
+  payload: {
+    storeId: Schema.String,
+    clientId: Schema.String,
+    storage: StorageType,
+    syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+    devtools: Schema.Union(
+      Schema.Struct({
+        enabled: Schema.Literal(true),
+        schemaPath: Schema.String,
+        port: Schema.Number,
+        host: Schema.String,
+        schemaAlias: Schema.String,
+        useExistingDevtoolsServer: Schema.Boolean,
+      }),
+      Schema.Struct({ enabled: Schema.Literal(false) }),
+    ),
+  },
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
 
-  export class BootStatusStream extends Schema.TaggedRequest<BootStatusStream>()('BootStatusStream', {
-    payload: {},
-    success: BootStatus,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerBootStatusStream>()('BootStatusStream', {
+  payload: {},
+  success: BootStatus,
+  failure: UnexpectedError,
+}) {}
 
-  export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
-    payload: {
-      cursor: EventSequenceNumber.EventSequenceNumber,
-    },
-    success: Schema.Struct({
-      payload: SyncState.PayloadUpstream,
-    }),
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
+  payload: {
+    cursor: EventSequenceNumber.EventSequenceNumber,
+  },
+  success: Schema.Struct({
+    payload: SyncState.PayloadUpstream,
+  }),
+  failure: UnexpectedError,
+}) {}
 
-  export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
-    payload: {
-      batch: Schema.Array(LiveStoreEvent.AnyEncoded),
-    },
-    success: Schema.Void,
-    failure: Schema.Union(UnexpectedError, LeaderAheadError),
-  }) {}
+export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushToLeader>()('PushToLeader', {
+  payload: {
+    batch: Schema.Array(LiveStoreEvent.AnyEncoded),
+  },
+  success: Schema.Void,
+  failure: Schema.Union(UnexpectedError, LeaderAheadError),
+}) {}
 
-  export class Export extends Schema.TaggedRequest<Export>()('Export', {
-    payload: {},
-    success: Transferable.Uint8Array,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
+  payload: {},
+  success: Transferable.Uint8Array,
+  failure: UnexpectedError,
+}) {}
 
-  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
-    payload: {},
-    success: Schema.Struct({
-      snapshot: Transferable.Uint8Array,
-      migrationsReport: MigrationsReport,
-    }),
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<LeaderWorkerInnerGetRecreateSnapshot>()('GetRecreateSnapshot', {
+  payload: {},
+  success: Schema.Struct({
+    snapshot: Transferable.Uint8Array,
+    migrationsReport: MigrationsReport,
+  }),
+  failure: UnexpectedError,
+}) {}
 
-  export class ExportEventlog extends Schema.TaggedRequest<ExportEventlog>()('ExportEventlog', {
-    payload: {},
-    success: Transferable.Uint8Array,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<LeaderWorkerInnerExportEventlog>()('ExportEventlog', {
+  payload: {},
+  success: Transferable.Uint8Array,
+  failure: UnexpectedError,
+}) {}
 
-  export class GetLeaderHead extends Schema.TaggedRequest<GetLeaderHead>()('GetLeaderHead', {
-    payload: {},
-    success: EventSequenceNumber.EventSequenceNumber,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderHead>()('GetLeaderHead', {
+  payload: {},
+  success: EventSequenceNumber.EventSequenceNumber,
+  failure: UnexpectedError,
+}) {}
 
-  export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
-    payload: {},
-    success: SyncState.SyncState,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderSyncState>()('GetLeaderSyncState', {
+  payload: {},
+  success: SyncState.SyncState,
+  failure: UnexpectedError,
+}) {}
 
-  export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
-    payload: {},
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
+  payload: {},
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
 
-  export class ExtraDevtoolsMessage extends Schema.TaggedRequest<ExtraDevtoolsMessage>()('ExtraDevtoolsMessage', {
-    payload: {
-      message: Devtools.Leader.MessageToApp,
-    },
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
+export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<LeaderWorkerInnerExtraDevtoolsMessage>()('ExtraDevtoolsMessage', {
+  payload: {
+    message: Devtools.Leader.MessageToApp,
+  },
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
 
-  export const Request = Schema.Union(
-    InitialMessage,
-    BootStatusStream,
-    PullStream,
-    PushToLeader,
-    Export,
-    GetRecreateSnapshot,
-    ExportEventlog,
-    GetLeaderHead,
-    GetLeaderSyncState,
-    Shutdown,
-    ExtraDevtoolsMessage,
-  )
-  export type Request = typeof Request.Type
-}
+export const LeaderWorkerInnerRequest = Schema.Union(
+  LeaderWorkerInnerInitialMessage,
+  LeaderWorkerInnerBootStatusStream,
+  LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerExport,
+  LeaderWorkerInnerGetRecreateSnapshot,
+  LeaderWorkerInnerExportEventlog,
+  LeaderWorkerInnerGetLeaderHead,
+  LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerShutdown,
+  LeaderWorkerInnerExtraDevtoolsMessage,
+)
+export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type

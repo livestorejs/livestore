@@ -5,11 +5,13 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import * as SyncState from './syncstate.ts'
 
 class TestEvent extends LiveStoreEvent.EncodedWithMeta {
+  public readonly payload: string
+  public readonly isClient: boolean
   constructor(
     seqNum: EventSequenceNumber.EventSequenceNumberInput,
     parentSeqNum: EventSequenceNumber.EventSequenceNumberInput,
-    public readonly payload: string,
-    public readonly isClient: boolean,
+    payload: string,
+    isClient: boolean,
   ) {
     super({
       seqNum: EventSequenceNumber.make(seqNum),
@@ -19,6 +21,8 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
       clientId: 'static-local-id',
       sessionId: 'static-session-id',
     })
+    this.payload = payload
+    this.isClient = isClient
   }
 
   rebase_ = (parentSeqNum: EventSequenceNumber.EventSequenceNumber, rebaseGeneration: number) => {
