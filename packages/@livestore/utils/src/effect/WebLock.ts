@@ -35,7 +35,7 @@ export const withLock =
 
             // TODO also propagate Effect interruption to the execution
             return Runtime.runPromiseExit(runtime)(eff)
-          })
+          }) as unknown as Promise<Exit.Exit<A, E>>
         },
         catch: (err) => err as any as E,
       })
