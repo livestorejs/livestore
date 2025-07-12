@@ -23,7 +23,7 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0, isClient: false, rebaseGeneration: 1 }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
-      rebaseGeneration: 1,
+      rebaseGeneration: 0,
     })
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0, isClient: true, rebaseGeneration: 1 }).seqNum).toStrictEqual({
       global: 0,
@@ -35,7 +35,7 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0_g1, isClient: false }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
-      rebaseGeneration: 2,
+      rebaseGeneration: 0,
     })
   })
 

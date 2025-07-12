@@ -57,18 +57,18 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     'node-sync prop tests',
     DEBUGGER_ACTIVE
       ? [
-          Schema.Literal('fs'),
+          Schema.Literal('in-memory'),
           Schema.Literal('worker'),
           Schema.Literal(3),
           Schema.Literal(391),
           Schema.Literal(1),
-          Schema.Literal(2),
+          Schema.Literal(1),
           Schema.Struct({
             pull: Schema.Struct({
               '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
-              '2_before_leader_push_queue_clear': Schema.Literal(10),
+              '2_before_leader_push_queue_clear': Schema.Literal(0),
               '3_before_rebase_rollback': Schema.Literal(0),
-              '4_before_leader_push_queue_offer': Schema.Literal(20),
+              '4_before_leader_push_queue_offer': Schema.Literal(0),
               '5_before_leader_push_fiber_run': Schema.Literal(0),
             }),
           }),
