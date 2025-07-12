@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { Devtools } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { isReadonlyArray } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import * as Vite from 'vite'
@@ -15,7 +16,7 @@ export type ViteDevtoolsOptions = {
    *
    * Example: `./src/schema.ts`
    */
-  schemaPath: string
+  schemaPath: string | ReadonlyArray<string>
   /**
    * The mode of the devtools server.
    *
@@ -44,7 +45,9 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
       base: '/_livestore/',
       plugins: [
         livestoreDevtoolsPlugin({
-          schemaPath: path.resolve(cwd, options.schemaPath),
+          schemaPath: isReadonlyArray(options.schemaPath)
+            ? options.schemaPath.map((schemaPath) => path.resolve(cwd, schemaPath))
+            : path.resolve(cwd, options.schemaPath),
           mode: options.mode,
           path: '/',
         }),

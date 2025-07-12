@@ -2,7 +2,7 @@ import http from 'node:http'
 import path from 'node:path'
 
 import type { Devtools } from '@livestore/common'
-import { LS_DEV } from '@livestore/utils'
+import { isReadonlyArray, LS_DEV } from '@livestore/utils'
 import type { HttpClient } from '@livestore/utils/effect'
 import {
   Deferred,
@@ -31,7 +31,7 @@ export const startDevtoolsServer = ({
   port,
   host,
 }: {
-  schemaPath: string
+  schemaPath: string | ReadonlyArray<string>
   clientSessionInfo: Devtools.SessionInfo.SessionInfo | undefined
   host: string
   port: number
@@ -39,7 +39,9 @@ export const startDevtoolsServer = ({
   Effect.gen(function* () {
     const viteMiddleware = yield* makeViteMiddleware({
       mode: { _tag: 'node', url: `http://${host}:${port}` },
-      schemaPath: path.resolve(process.cwd(), schemaPath),
+      schemaPath: isReadonlyArray(schemaPath)
+        ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
+        : path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
         if (LS_DEV) {
           viteConfig.server ??= {}
@@ -85,7 +87,7 @@ export const startDevtoolsServer = ({
             }
 
             // We want to keep the websocket open until the client disconnects or the server shuts down
-            yield* Effect.never
+            return yield* Effect.never
           }),
           webChannel.closedDeferred,
         )
