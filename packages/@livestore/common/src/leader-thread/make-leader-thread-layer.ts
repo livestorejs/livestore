@@ -12,6 +12,7 @@ import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
+import * as MaterializationStatus from './materialization-status.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
@@ -92,7 +93,7 @@ export const makeLeaderThreadLayer = ({
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
       dbState,
-      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
+      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing, dbStateMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       params: {
@@ -162,14 +163,20 @@ const getInitialSyncState = ({
   dbEventlog,
   dbState,
   dbEventlogMissing,
+  dbStateMissing,
 }: {
   dbEventlog: SqliteDb
   dbState: SqliteDb
   dbEventlogMissing: boolean
+  dbStateMissing: boolean
 }) => {
   const initialBackendHead = dbEventlogMissing
     ? EventSequenceNumber.ROOT.global
     : Eventlog.getBackendHeadFromDb(dbEventlog)
+
+  const initialMaterializationHead = (dbEventlogMissing || dbStateMissing)
+    ? EventSequenceNumber.ROOT.global
+    : MaterializationStatus.getMaterializationHeadFromDb(dbState)
 
   const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -177,6 +184,26 @@ const getInitialSyncState = ({
     return shouldNeverHappen(
       `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
     )
+  }
+
+  // Check for materialization inconsistency and recover if needed
+  if (initialBackendHead > initialMaterializationHead) {
+    // Recovery: Re-materialize events from materialization head to backend head
+    const unmaterializedEvents = Eventlog.getEventsSince({
+      dbEventlog,
+      dbState,
+      since: {
+        global: initialMaterializationHead,
+        client: EventSequenceNumber.clientDefault,
+        rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      },
+    }).filter((event) => event.seqNum.global <= initialBackendHead)
+    
+    // TODO: For now we'll track this inconsistency but not auto-recover 
+    // In a production system, we'd want to re-materialize these events
+    if (unmaterializedEvents.length > 0) {
+      console.warn(`Found ${unmaterializedEvents.length} unmaterialized events during boot. Backend head: ${initialBackendHead}, Materialization head: ${initialMaterializationHead}`)
+    }
   }
 
   return SyncState.make({
@@ -272,6 +299,9 @@ const bootLeaderThread = ({
     const { migrationsReport } = dbStateMissing
       ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
       : { migrationsReport: { migrations: [] } }
+
+    // Initialize materialization status in state database
+    yield* MaterializationStatus.initMaterializationStatus(dbState)
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot

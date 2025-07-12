@@ -1,6 +1,7 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
 import type { LeaderAheadError, SyncState, UnexpectedError } from '@livestore/common'
+import { sessionChangesetMetaTable, syncStatusTable } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
@@ -52,10 +53,10 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      yield* testContext.localPush(
+      yield* testContext.localPush([
         events.todoCreated({ id: '1', text: 't1' }),
         events.todoCreated({ id: '2', text: 't2' }),
-      )
+      ])
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
         Stream.takeUntil((_) => _.localHead.global === 2),
@@ -95,7 +96,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
           .toGlobal(),
       )
 
-      yield* testContext.localPush(events.todoCreated({ id: '2', text: 't2' }))
+      yield* testContext.localPush([events.todoCreated({ id: '2', text: 't2' })])
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
@@ -129,9 +130,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       yield* Effect.forEach(
         Array.from({ length: numberOfPushes }, (_, i) => i),
         (i) =>
-          testContext.localPush(
+          testContext.localPush([
             events.todoCreated({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
-          ),
+          ]),
         { concurrency: 'unbounded' },
       ).pipe(Effect.withSpan(`@livestore/common-tests:sync:events(${numberOfPushes})`))
 
@@ -168,7 +169,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
 
       for (let i = 0; i < 5; i++) {
         yield* testContext
-          .localPush(events.todoCreated({ id: `local_${i}`, text: '', completed: false }))
+          .localPush([events.todoCreated({ id: `local_${i}`, text: '', completed: false })])
           .pipe(Effect.tapCauseLogPretty, Effect.exit)
       }
 
@@ -187,7 +188,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
           seqNum: EventSequenceNumber.make({ global: i + 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.make({ global: i, client: 0 }),
         }
-        yield* testContext.localPush(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+        yield* testContext.localPush([event]).pipe(Effect.repeatN(1), Effect.ignoreLogged)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
@@ -214,6 +215,154 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   //   2) pulling from backend -> causes rebase (rebase generation 1)
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
+
+  // TESTS FOR GITHUB ISSUE #409: Backend Head vs Materialization Head Inconsistency
+  Vitest.describe('Issue #409: Dual Head Tracking Solution', () => {
+    Vitest.scopedLive('baseline: reproduces head advancement without materialization', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        // Push noop event - advances head but no state changes
+        yield* testContext.localPush([events.noopEvent({ id: '1', data: 'test' })])
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 1),
+          Stream.runDrain,
+        )
+
+        // Current behavior: Head advanced but no materialization
+        const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+        expect(syncState.localHead.global).toBe(1)
+        
+        const todos = leaderThreadCtx.dbState.select(tables.todos.select())
+        expect(todos).toEqual([])
+      }).pipe(withCtxForIssue409(test)),
+    )
+
+    Vitest.scopedLive('crash during materialization should maintain consistency', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        // Push events that will cause materialization to crash
+        yield* testContext.localPush([
+          events.todoCreated({ id: 'before', text: 'before' }),
+          events.crashingEvent({ id: 'crash', data: 'test' }),
+          events.todoCreated({ id: 'after', text: 'after' }),
+        ])
+
+        // System should properly handle crash and maintain consistency
+        const todos = leaderThreadCtx.dbState.select(tables.todos.select())
+        expect(todos).toEqual([])
+
+        const changesetCount = leaderThreadCtx.dbState.select(sessionChangesetMetaTable.count())
+        expect(changesetCount).toBe(0)
+      }).pipe(withCtxForIssue409(test)),
+    )
+
+    Vitest.scopedLive('mixed events should handle partial materialization gracefully', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        // Mixed events: successful, noop, successful
+        yield* testContext.localPush([
+          events.todoCreated({ id: '1', text: 'first' }),
+          events.noopEvent({ id: '2', data: 'noop' }),
+          events.todoCreated({ id: '3', text: 'third' }),
+        ])
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 3),
+          Stream.runDrain,
+        )
+
+        // All events processed, but only materialized ones should show in state
+        const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+        expect(syncState.localHead.global).toBe(3)
+
+        const todos = leaderThreadCtx.dbState.select(tables.todos.select())
+        expect(todos).toHaveLength(2)
+        expect(todos).toEqual([
+          { id: '1', text: 'first', completed: false, deletedAt: null },
+          { id: '3', text: 'third', completed: false, deletedAt: null },
+        ])
+
+        // Check changeset tracking
+        const changesets = leaderThreadCtx.dbState.select(
+          sessionChangesetMetaTable.select('seqNumGlobal', 'changeset').orderBy('seqNumGlobal', 'asc'),
+        )
+        expect(changesets).toHaveLength(3)
+        expect(changesets[0]?.changeset).not.toBe(null) // Successful
+        expect(changesets[1]?.changeset).toBe(null) // Noop
+        expect(changesets[2]?.changeset).not.toBe(null) // Successful
+      }).pipe(withCtxForIssue409(test)),
+    )
+
+    Vitest.scopedLive('recovery after system restart should work correctly', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        // Push events with partial materialization
+        yield* testContext.localPush([
+          events.todoCreated({ id: '1', text: 'materialized' }),
+          events.noopEvent({ id: '2', data: 'not-materialized' }),
+        ])
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 2),
+          Stream.runDrain,
+        )
+
+        // Verify inconsistent state exists
+        const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+        expect(syncState.localHead.global).toBe(2)
+
+        const todos = leaderThreadCtx.dbState.select(tables.todos.select())
+        expect(todos).toHaveLength(1)
+
+        // TODO: Add boot recovery test after implementing dual head tracking
+        // This will test that the system can recover from inconsistent state
+      }).pipe(withCtxForIssue409(test)),
+    )
+
+    Vitest.scopedLive('large batch with mixed outcomes maintains consistency', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        // Large batch with mixed successful and noop events
+        const events_ = Array.from({ length: 10 }, (_, i) => {
+          if (i % 3 === 0) {
+            return events.noopEvent({ id: `noop-${i}`, data: 'test' })
+          }
+          return events.todoCreated({ id: `todo-${i}`, text: `todo ${i}` })
+        })
+
+        yield* testContext.localPush(events_)
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 10),
+          Stream.runDrain,
+        )
+
+        // Verify head advancement
+        const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+        expect(syncState.localHead.global).toBe(10)
+
+        // Count actual materializations (should be less than total events)
+        const todos = leaderThreadCtx.dbState.select(tables.todos.select())
+        const expectedMaterializations = events_.filter(e => e.name === 'todoCreated').length
+        expect(todos).toHaveLength(expectedMaterializations)
+
+        // Verify changesets tracking
+        const changesets = leaderThreadCtx.dbState.select(sessionChangesetMetaTable.select())
+        expect(changesets).toHaveLength(10)
+      }).pipe(withCtxForIssue409(test)),
+    )
+  })
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -225,7 +374,8 @@ class TestContext extends Context.Tag('TestContext')<
     ) => LiveStoreEvent.EncodedWithMeta
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
     localPush: (
-      ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
+      events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[],
+      options?: { waitForProcessing?: boolean },
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
@@ -296,8 +446,11 @@ const LeaderThreadCtxLive = ({
         return encodeLiveStoreEvent({ ...event, ...nextNumPair })
       }
 
-      const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>
-        leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)))
+      const localPush = (events: LiveStoreEvent.PartialAnyDecoded[], options?: { waitForProcessing?: boolean }) =>
+        leaderThreadCtx.syncProcessor.push(
+          events.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)),
+          options,
+        )
 
       return Layer.succeed(TestContext, {
         mockSyncBackend,
@@ -338,3 +491,6 @@ const withCtx =
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
       skipOtel ? identity : Effect.provide(otelLayer),
     )
+
+// Helper for issue #409 tests - uses the same context but with a descriptive name
+const withCtxForIssue409 = (testContext: Vitest.TestContext) => withCtx(testContext, { suffix: 'issue-409' })

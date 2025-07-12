@@ -55,7 +55,22 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
+/**
+ * Table which tracks the materialization head in the state database.
+ * This represents the highest sequence number that has been successfully materialized.
+ */
+export const MATERIALIZATION_STATUS_TABLE = '__livestore_materialization_status'
+
+export const materializationStatusTable = table({
+  name: MATERIALIZATION_STATUS_TABLE,
+  columns: {
+    head: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+  },
+})
+
+export type MaterializationStatusRow = typeof materializationStatusTable.Type
+
+export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable, materializationStatusTable] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
 
