@@ -3,7 +3,7 @@ import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
 import { liveStoreVersion } from '@livestore/common'
 import { IS_MAIN_BRANCH } from '../../data.js'
 
-const nextUrl = 'https://dev.docs.livestore.dev'
+const devUrl = 'https://dev.docs.livestore.dev'
 const latestUrl = 'https://docs.livestore.dev'
 
 const links = Object.entries({
@@ -29,7 +29,7 @@ const links = Object.entries({
 			<option value={latestUrl} selected={IS_MAIN_BRANCH}
 				>Version: {IS_MAIN_BRANCH ? liveStoreVersion : 'latest'}</option
 			>
-			<option value={nextUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
+			<option value={devUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
 		</select>
 	</div>
 </div>
