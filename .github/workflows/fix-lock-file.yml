@@ -57,7 +57,7 @@ jobs:
 
       - name: Create PR
         if: ${{ env.HAS_CHANGES == 'true' }}
-        uses: devops-infra/action-pull-request@v0.5.5
+        uses: devops-infra/action-pull-request@v0.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           source_branch: ${{ env.BRANCH_NAME }}
