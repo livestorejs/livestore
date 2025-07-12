@@ -24,7 +24,7 @@
     },
     {
       "description": "Exclude React packages",
-      "matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-/"],
+      "matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-/", "@types/react", "@types/react-dom"],
       "enabled": false
     },
     {
