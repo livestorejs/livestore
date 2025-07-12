@@ -4,11 +4,11 @@ import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 
-import { shouldNeverHappen } from '../../index.js'
+import { shouldNeverHappen } from '../../index.ts'
 
 export * from 'effect/Schema'
-export * from './debug-diff.js'
-export * from './msgpack.js'
+export * from './debug-diff.ts'
+export * from './msgpack.ts'
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719

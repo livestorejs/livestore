@@ -4,6 +4,7 @@ import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
+import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
@@ -12,8 +13,6 @@ import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
-
-import { DISCORD_INVITE_URL } from '../CONSTANTS.js'
 import { getBranchName } from './data.js'
 
 const port = 5252

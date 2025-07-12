@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-process-exit */
 import fs from 'node:fs'
 import process from 'node:process'
 
@@ -6,7 +5,7 @@ import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 
-import { deployToNetlify } from '../shared/netlify.js'
+import { deployToNetlify } from '../shared/netlify.ts'
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.
@@ -19,7 +18,7 @@ if (!workspaceRoot) {
   process.exit(1)
 }
 
-const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples/src`
+const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples`
 
 const buildAndDeployExample = ({
   example,
@@ -66,7 +65,7 @@ export const command = Cli.Command.make(
         'expo-todomvc-sync-cf',
         'node-effect-cli',
         'node-todomvc-sync-cf',
-        'todomvc-sync-electric',
+        'web-todomvc-sync-electric',
       ])
       const examplesToDeploy = fs
         .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })

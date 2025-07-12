@@ -21,10 +21,10 @@ import {
   type ChannelKey,
   type ChannelName,
   type MeshNodeName,
-  packetAsOtelAttributes,
   type ProxyQueueItem,
-} from '../common.js'
-import * as MeshSchema from '../mesh-schema.js'
+  packetAsOtelAttributes,
+} from '../common.ts'
+import * as MeshSchema from '../mesh-schema.ts'
 
 interface MakeProxyChannelArgs {
   queue: Queue.Queue<ProxyQueueItem>
@@ -427,7 +427,7 @@ export const makeProxyChannel = ({
         debugInfo,
         ...({
           debug: {
-            ping: (message: string = 'ping') =>
+            ping: (message = 'ping') =>
               send(WebChannel.DebugPingMessage.make({ message })).pipe(
                 Effect.provide(runtime),
                 Effect.tapCauseLogPretty,

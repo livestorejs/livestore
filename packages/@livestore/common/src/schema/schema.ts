@@ -1,12 +1,12 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
-import type { MigrationOptions } from '../adapter-types.js'
-import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './EventDef.js'
-import { rawSqlEvent } from './EventDef.js'
-import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.js'
-import type { SqliteDsl } from './state/sqlite/db-schema/mod.js'
-import { stateSystemTables } from './state/sqlite/system-tables.js'
-import type { TableDef } from './state/sqlite/table-def.js'
+import type { MigrationOptions } from '../adapter-types.ts'
+import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './EventDef.ts'
+import { rawSqlEvent } from './EventDef.ts'
+import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
+import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
+import { stateSystemTables } from './state/sqlite/system-tables.ts'
+import type { TableDef } from './state/sqlite/table-def.ts'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol

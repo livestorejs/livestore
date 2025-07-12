@@ -15,7 +15,7 @@ const rootPackages = fs
 
 export default defineConfig({
   test: {
-    workspace: [
+    projects: [
       ...rootPackages,
       // path.join(rootDir, 'tests/'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),

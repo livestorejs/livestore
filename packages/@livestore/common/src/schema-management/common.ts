@@ -1,6 +1,6 @@
-import type { SqliteDb } from '../adapter-types.js'
-import type { ParamsObject } from '../util.js'
-import { prepareBindValues } from '../util.js'
+import type { SqliteDb } from '../adapter-types.ts'
+import type { ParamsObject } from '../util.ts'
+import { prepareBindValues } from '../util.ts'
 
 // TODO bring back statement caching
 // will require proper scope-aware cleanup etc (for testing and apps with multiple LiveStore instances)

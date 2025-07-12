@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-web",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -60,7 +60,7 @@
   "devDependencies": {
     "@types/chrome": "^0.0.304",
     "@types/wicg-file-system-access": "^2023.10.5",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",

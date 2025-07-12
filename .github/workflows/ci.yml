@@ -1,4 +1,5 @@
 name: ci
+run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 
 permissions:
   id-token: write
@@ -27,8 +28,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: mono lint
 
   test:
@@ -43,8 +44,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -53,10 +54,34 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - run: mono test unit
       - run: mono test integration misc
       - run: mono test integration todomvc
       - run: mono test integration node-sync
+      - name: Display node-sync logs
+        if: always()
+        run: |
+          if [ -d "tests/integration/tmp/logs" ]; then
+            echo "::group::Node-sync test logs"
+            for log_file in tests/integration/tmp/logs/*.log; do
+              if [ -f "$log_file" ]; then
+                echo "::group::$(basename "$log_file")"
+                cat "$log_file"
+                echo "::endgroup::"
+              fi
+            done
+            echo "::endgroup::"
+          else
+            echo "No log files found"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: node-sync-logs
+          path: tests/integration/tmp/logs/
+          retention-days: 30
       # - run: mono test integration devtools
       # TODO fix flaky devtools test
       - run: mono test integration devtools || echo "::warning::Script failed but continuing"
@@ -92,8 +117,8 @@ jobs:
       - name: Load environment with direnv
         uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -120,30 +145,14 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - name: Configure NPM authentication
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: mono release snapshot --git-sha=${{ github.sha }}
-
-  generate-examples-standalone:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
-      - run: mono examples sync --direction src-to-standalone
 
   build-and-deploy-examples-src:
     strategy:
@@ -157,8 +166,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: |
           mono examples deploy \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
@@ -179,8 +188,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts # Needed for starlight-typedoc
+      - name: Load environment
+        run: direnv export bash >> $GITHUB_ENV
       - run: mono docs build --api-docs
       - run: mono docs deploy
         env:
@@ -203,7 +212,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-      - run: cp -r example-repo/examples/standalone/web-todomvc example
+      - run: cp -r example-repo/examples/web-todomvc example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore adapter-web peer-deps react common utils; do
@@ -233,7 +242,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-      - run: cp -r example-repo/examples/standalone/web-linearlite example
+      - run: cp -r example-repo/examples/web-linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore adapter-web peer-deps react common utils; do
@@ -263,7 +272,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-      - run: cp -r example-repo/examples/standalone/expo-linearlite example
+      - run: cp -r example-repo/examples/expo-linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore adapter-web peer-deps react common utils; do

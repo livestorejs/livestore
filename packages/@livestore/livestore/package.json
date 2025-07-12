@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -46,8 +46,8 @@
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vite": "^7.0.0",
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",

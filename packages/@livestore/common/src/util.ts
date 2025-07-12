@@ -30,7 +30,6 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
     str += template[i] + String(arg)
   }
 
-  // eslint-disable-next-line unicorn/prefer-at
   return str + template[template.length - 1]
 }
 

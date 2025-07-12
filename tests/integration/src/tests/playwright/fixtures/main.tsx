@@ -1,5 +1,3 @@
-/* eslint-disable unicorn/prefer-global-this */
-
 import { createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider } from '@tanstack/react-router'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -42,11 +40,11 @@ const routes = [
   },
   {
     path: '/devtools/two-stores',
-    component: React.lazy(() => import('./devtools/two-stores/Root.jsx').then((m) => ({ default: m.Root }))),
+    component: React.lazy(() => import('./devtools/two-stores/Root.tsx').then((m) => ({ default: m.Root }))),
   },
   {
     path: '/devtools/todomvc',
-    component: React.lazy(() => import('./devtools/todomvc/Root.jsx').then((m) => ({ default: m.App }))),
+    component: React.lazy(() => import('./devtools/todomvc/Root.tsx').then((m) => ({ default: m.App }))),
   },
   {
     path: '/devtools/no-livestore',
@@ -98,7 +96,7 @@ const rootElement = document.getElementById('root')
 if (rootElement !== null && rootElement !== undefined) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <RouterProvider router={router}></RouterProvider>
+      <RouterProvider router={router} />
     </React.StrictMode>,
   )
 } else {

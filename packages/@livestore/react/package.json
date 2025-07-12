@@ -1,6 +1,6 @@
 {
   "name": "@livestore/react",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -40,8 +40,8 @@
     "react-dom": "^19.0.0",
     "react-window": "^1.8.11",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vite": "^7.0.0",
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",

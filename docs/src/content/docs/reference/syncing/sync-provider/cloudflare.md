@@ -44,7 +44,7 @@ export class WebSocketServer extends makeDurableObject({
 }) {}
 
 export default makeWorker({
-  validatePayload: (payload: any) => {
+  validatePayload: (payload: any, context) => {
     if (payload?.authToken !== 'insecure-token-change-me') {
       throw new Error('Invalid auth token')
     }
@@ -66,7 +66,7 @@ export default {
 
     if (url.pathname.endsWith('/websocket')) {
       return handleWebSocket(request, env, ctx, {
-        validatePayload: (payload: any) => {
+        validatePayload: (payload: any, context) => {
           if (payload?.authToken !== 'insecure-token-change-me') {
             throw new Error('Invalid auth token')
           }

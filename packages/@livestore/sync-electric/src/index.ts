@@ -14,9 +14,9 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import * as ApiSchema from './api-schema.js'
+import * as ApiSchema from './api-schema.ts'
 
-export * as ApiSchema from './api-schema.js'
+export * as ApiSchema from './api-schema.ts'
 
 /*
 Example data:

@@ -6,11 +6,11 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { expect } from 'vitest'
 
-import * as RG from '../reactive.js'
-import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
-import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
-import { computed } from './computed.js'
-import { queryDb } from './db-query.js'
+import * as RG from '../reactive.ts'
+import { makeTodoMvc, tables } from '../utils/tests/fixture.ts'
+import { getSimplifiedRootSpan } from '../utils/tests/otel.ts'
+import { computed } from './computed.ts'
+import { queryDb } from './db-query.ts'
 
 /*
 TODO write tests for:
@@ -155,7 +155,9 @@ Vitest.describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => ({ completed: false }))
-      const query$ = queryDb((get) => tables.todos.where(get(filter)).first({ fallback: () => defaultTodo }))
+      const query$ = queryDb((get) =>
+        tables.todos.where(get(filter)).first({ behaviour: 'fallback', fallback: () => defaultTodo }),
+      )
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -197,7 +199,9 @@ Vitest.describe('otel', () => {
       const callbackResults: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
       const unsubscribe = store.subscribe(queryBuilder, {
         onUpdate: (result) => {
@@ -241,7 +245,9 @@ Vitest.describe('otel', () => {
       const callbackResults2: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
       const unsubscribe1 = store.subscribe(queryBuilder, {
         onUpdate: (result) => {

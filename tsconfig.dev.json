@@ -3,22 +3,16 @@
   "compilerOptions": {},
   "include": [],
   "references": [
+    { "path": "./packages/@local/shared" },
     { "path": "./scripts" },
     { "path": "./tests/integration" },
     { "path": "./tests/perf" },
     { "path": "./tests/package-common" },
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/sync-cf" },
-    { "path": "./examples/src/node-effect-cli" },
-    { "path": "./examples/src/node-todomvc-sync-cf" },
-    { "path": "./examples/src/expo-todomvc-sync-cf" },
-    { "path": "./examples/src/expo-linearlite" },
-    { "path": "./examples/src/web-linearlite" },
-    { "path": "./examples/src/web-todomvc" },
-    { "path": "./examples/src/web-todomvc-custom-elements" },
-    { "path": "./examples/src/web-todomvc-experimental" },
-    { "path": "./examples/src/web-todomvc-solid" },
-    { "path": "./examples/src/web-todomvc-sync-cf" },
-    { "path": "./examples/src/web-todomvc-sync-electric" },
+    { "path": "./packages/@livestore/adapter-expo" },
+    { "path": "./packages/@livestore/adapter-web" },
+    { "path": "./packages/@livestore/solid" },
+    { "path": "./packages/@livestore/react" }
   ]
 }

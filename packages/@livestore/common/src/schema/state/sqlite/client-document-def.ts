@@ -2,15 +2,15 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../adapter-types.js'
-import { sql } from '../../../util.js'
-import type { EventDef, Materializer } from '../../EventDef.js'
-import { defineEvent, defineMaterializer } from '../../EventDef.js'
-import { SqliteDsl } from './db-schema/mod.js'
-import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.js'
-import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.js'
-import type { TableDef, TableDefBase } from './table-def.js'
-import { table } from './table-def.js'
+import { SessionIdSymbol } from '../../../adapter-types.ts'
+import { sql } from '../../../util.ts'
+import type { EventDef, Materializer } from '../../EventDef.ts'
+import { defineEvent, defineMaterializer } from '../../EventDef.ts'
+import { SqliteDsl } from './db-schema/mod.ts'
+import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
+import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
+import type { TableDef, TableDefBase } from './table-def.ts'
+import { table } from './table-def.ts'
 
 /**
  * Special:
@@ -386,37 +386,49 @@ export namespace ClientDocumentTableDef {
     }
   }
 
-  export type GetOptions<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions> ? TOptions : never
+  export type GetOptions<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions
+    : never
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type DefaultIdType<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
-      ? TOptions['default']['id'] extends SessionIdSymbol | string
-        ? TOptions['default']['id']
-        : never
+  export type DefaultIdType<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions['default']['id'] extends SessionIdSymbol | string
+      ? TOptions['default']['id']
       : never
+    : never
 
-  export type SetEventDefLike<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> =
-    // Helper to create partial event
-    (TOptions['default']['id'] extends undefined
-      ? (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }
-      : (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id?: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+  export type SetEventDefLike<
+    TName extends string,
+    TType,
+    TOptions extends ClientDocumentTableOptions<TType>,
+  > = (TOptions['default']['id'] extends undefined // Helper to create partial event
+    ? (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }
+    : (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id?: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+    readonly name: `${TName}Set`
+    readonly schema: Schema.Schema<any>
+    readonly Event: {
       readonly name: `${TName}Set`
-      readonly schema: Schema.Schema<any>
-      readonly Event: {
-        readonly name: `${TName}Set`
-        readonly args: { id: string; value: TType }
-      }
-      readonly options: { derived: true; clientOnly: true; facts: undefined }
+      readonly args: { id: string; value: TType }
     }
+    readonly options: { derived: true; clientOnly: true; facts: undefined }
+  }
 
   export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<
     TName,

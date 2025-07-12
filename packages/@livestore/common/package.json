@@ -1,11 +1,12 @@
 {
   "name": "@livestore/common",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./sql-queries": {
@@ -59,7 +60,7 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
-    "vitest": "^3.1.2"
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",

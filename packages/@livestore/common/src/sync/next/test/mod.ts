@@ -1,1 +1,1 @@
-export * from './event-fixtures.js'
+export * from './event-fixtures.ts'

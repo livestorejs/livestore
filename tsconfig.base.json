@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -19,6 +20,10 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
     "plugins": [{ "name": "@effect/language-service" }],
     "paths": {
       "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],

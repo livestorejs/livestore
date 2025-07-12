@@ -1,14 +1,12 @@
 import type { Bindable } from '@livestore/common'
 import { BoundMap, BoundSet, SessionIdSymbol } from '@livestore/common'
 
-type Opaque<BaseType, BrandType = unknown> = BaseType & {
-  readonly [Symbols.base]: BaseType
-  readonly [Symbols.brand]: BrandType
-}
+const SymbolsBase = Symbol('base')
+const SymbolsBrand = Symbol('brand')
 
-namespace Symbols {
-  export declare const base: unique symbol
-  export declare const brand: unique symbol
+type Opaque<BaseType, BrandType = unknown> = BaseType & {
+  readonly [SymbolsBase]: BaseType
+  readonly [SymbolsBrand]: BrandType
 }
 
 export type CacheKey = Opaque<string, string>
@@ -30,7 +28,7 @@ export default class QueryCache {
     const formatValue = (value: any) => (value === SessionIdSymbol ? 'SessionIdSymbol' : String(value))
 
     if (Array.isArray(bindValues)) {
-      return (sql + '\n' + bindValues.map(formatValue).join('\n')) as CacheKey
+      return `${sql}\n${bindValues.map(formatValue).join('\n')}` as CacheKey
     }
 
     return (sql +

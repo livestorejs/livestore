@@ -1,8 +1,8 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import type { DiffItem } from './debug-diff.js'
-import { debugDiff } from './debug-diff.js'
+import type { DiffItem } from './debug-diff.ts'
+import { debugDiff } from './debug-diff.ts'
 
 describe('debug-diff', () => {
   test('simple object', () => {

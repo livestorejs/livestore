@@ -1,0 +1,12 @@
+{
+  "name": "@local/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.33"
+  }
+}

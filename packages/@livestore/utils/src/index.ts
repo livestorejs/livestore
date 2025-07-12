@@ -1,22 +1,22 @@
-export * from './string.js'
-export * from './guards.js'
-export * from './object/index.js'
-export * from './promise.js'
-export * from './time.js'
-export * from './NoopTracer.js'
-export * from './set.js'
-export * from './browser.js'
-export * from './Deferred.js'
-export * from './misc.js'
-export * from './env.js'
-export * from './fast-deep-equal.js'
-export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
+export * as base64 from './base64.ts'
+export * from './browser.ts'
+export * from './Deferred.ts'
+export * from './env.ts'
+export * from './fast-deep-equal.ts'
+export * from './guards.ts'
+export * from './misc.ts'
+export * from './NoopTracer.ts'
+export * from './object/index.ts'
+export * from './promise.ts'
+export * from './set.ts'
+export * from './string.ts'
+export * from './time.ts'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
 
-import { objectToString } from './misc.js'
+import { objectToString } from './misc.ts'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
 
@@ -53,6 +53,7 @@ export const debugCatch = <T>(try_: () => T): T => {
   try {
     return try_()
   } catch (e: any) {
+    // biome-ignore lint/suspicious/noDebugger: debugging
     debugger
     throw e
   }
@@ -72,6 +73,11 @@ export const recRemoveUndefinedValues = (val: any): void => {
   }
 }
 
+/**
+ * Replace non-alphanumeric characters with a dash.
+ */
+export const sluggify = (str: string, separator = '-') => str.replace(/[^a-zA-Z0-9]/g, separator)
+
 export const prop =
   <T extends {}, K extends keyof T>(key: K) =>
   (obj: T): T[K] =>
@@ -85,33 +91,37 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
  * Use this to make assertion at end of if-else chain that all members of a
  * union have been accounted for.
  */
-/* eslint-disable-next-line prefer-arrow/prefer-arrow-functions */
+
 export function casesHandled(unexpectedCase: never): never {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
 
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
+    // biome-ignore lint/suspicious/noDebugger: debugging
     debugger
     throw new Error(`This should never happen: ${msg}`)
   }
 }
 
 export const debuggerPipe = <T>(val: T): T => {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   return val
 }
 
 const truncate = (str: string, length: number): string => {
   if (str.length > length) {
-    return str.slice(0, length) + '...'
+    return `${str.slice(0, length)}...`
   } else {
     return str
   }
 }
 
 export const notYetImplemented = (msg?: string): never => {
+  // biome-ignore lint/suspicious/noDebugger: debugging
   debugger
   throw new Error(`Not yet implemented: ${msg}`)
 }
@@ -223,4 +233,4 @@ export const isPromise = (value: any): value is Promise<unknown> => typeof value
 
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
-export { objectToString as errorToString } from './misc.js'
+export { objectToString as errorToString } from './misc.ts'

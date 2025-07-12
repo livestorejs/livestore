@@ -1,6 +1,6 @@
 import { type Effect, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.js'
+import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.ts'
 
 export type ProxyQueueItem = {
   packet: typeof ProxyChannelPacket.Type

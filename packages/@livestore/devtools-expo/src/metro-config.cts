@@ -1,12 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports, prettier/prettier
-const { Effect, Logger, LogLevel } = require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: { "resolution-mode": "import" } })
+const { Effect, Logger, LogLevel } =
+  require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: {
+    'resolution-mode': 'import',
+  }})
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports, prettier/prettier
-const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', { with: { "resolution-mode": "import" } })
+const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', { with: {
+  'resolution-mode': 'import',
+}})
 
 import type { MetroConfig } from 'expo/metro-config'
 
-import type { Middleware, Options } from './types.js'
+import type { Middleware, Options } from './types.ts'
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -82,4 +87,4 @@ module.exports = {
 }
 
 export type { addLiveStoreDevtoolsMiddleware }
-export type { Options } from './types.js'
+export type { Options } from './types.ts'

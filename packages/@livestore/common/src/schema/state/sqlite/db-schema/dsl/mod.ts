@@ -2,10 +2,10 @@ import type { Nullable } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type * as SqliteAst from '../ast/sqlite.js'
-import type { ColumnDefinition } from './field-defs.js'
+import type * as SqliteAst from '../ast/sqlite.ts'
+import type { ColumnDefinition } from './field-defs.ts'
 
-export * from './field-defs.js'
+export * from './field-defs.ts'
 
 export type DbSchema = {
   [key: string]: TableDefinition<string, Columns>
@@ -19,12 +19,13 @@ export type DbSchemaInput = Record<string, TableDefinition<any, any>> | Readonly
  * - array: we use the table name of each array item (= table definition) as the object key
  * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
  */
-export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> =
-  TSchemaInput extends ReadonlyArray<TableDefinition<any, any>>
-    ? { [K in TSchemaInput[number] as K['name']]: K }
-    : TSchemaInput extends Record<string, TableDefinition<any, any>>
-      ? { [K in keyof TSchemaInput as TSchemaInput[K]['name']]: TSchemaInput[K] }
-      : never
+export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> = TSchemaInput extends ReadonlyArray<
+  TableDefinition<any, any>
+>
+  ? { [K in TSchemaInput[number] as K['name']]: K }
+  : TSchemaInput extends Record<string, TableDefinition<any, any>>
+    ? { [K in keyof TSchemaInput as TSchemaInput[K]['name']]: TSchemaInput[K] }
+    : never
 
 // TODO ensure via runtime check (possibly even via type-level check) that all index names are unique
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
@@ -113,8 +114,12 @@ export type TableDefinition<TName extends string, TColumns extends Columns> = {
 
 export type Columns = Record<string, ColumnDefinition<any, any>>
 
-export type IsSingleColumn<TColumns extends Columns | ColumnDefinition<any, any>> =
-  TColumns extends ColumnDefinition<any, any> ? true : false
+export type IsSingleColumn<TColumns extends Columns | ColumnDefinition<any, any>> = TColumns extends ColumnDefinition<
+  any,
+  any
+>
+  ? true
+  : false
 
 /**
  * NOTE this is only needed to avoid a TS limitation where `StructSchemaForColumns` in the default case
@@ -207,8 +212,9 @@ export namespace FromColumns {
 
   export type RequiredInsertColumnNames<TColumns extends Columns> = keyof RequiredInsertColumns<TColumns>
 
-  export type RequiresInsertValues<TColumns extends Columns> =
-    RequiredInsertColumnNames<TColumns> extends never ? false : true
+  export type RequiresInsertValues<TColumns extends Columns> = RequiredInsertColumnNames<TColumns> extends never
+    ? false
+    : true
 
   export type InsertRowDecoded<TColumns extends Columns> = Types.Simplify<
     Pick<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &

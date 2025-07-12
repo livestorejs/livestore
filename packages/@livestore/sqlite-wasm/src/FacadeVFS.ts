@@ -1,9 +1,8 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/FacadeVFS.js
+/** biome-ignore-all lint/complexity/useLiteralKeys: not needed for this file */
+/** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
+/** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
 
-/* eslint-disable unicorn/prefer-code-point */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
@@ -212,7 +211,7 @@ export class FacadeVFS extends VFS.Base {
   xOpen(pVfs, zName, pFile, flags, pOutFlags): number {
     const filename = this.#decodeFilename(zName, flags)
     const pOutFlagsView = this.#makeTypedDataView('Int32', pOutFlags)
-    this['log']?.('jOpen', filename, pFile, '0x' + flags.toString(16))
+    this['log']?.('jOpen', filename, pFile, `0x${flags.toString(16)}`)
     return this.jOpen(filename, pFile, flags, pOutFlagsView)
   }
 
@@ -424,13 +423,13 @@ export class FacadeVFS extends VFS.Base {
           dataView = makeDataView()
         }
         if (prop === getter) {
-          return function (byteOffset, littleEndian) {
+          return (byteOffset, littleEndian) => {
             if (!littleEndian) throw new Error('must be little endian')
             return dataView[prop](byteOffset, littleEndian)
           }
         }
         if (prop === setter) {
-          return function (byteOffset, value, littleEndian) {
+          return (byteOffset, value, littleEndian) => {
             if (!littleEndian) throw new Error('must be little endian')
             return dataView[prop](byteOffset, value, littleEndian)
           }
