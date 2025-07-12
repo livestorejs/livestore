@@ -16,11 +16,9 @@ export const getBranchName = () =>
 
 export const versionNpmSuffix = liveStoreVersion.includes('dev') ? `@${liveStoreVersion}` : ''
 
-export const IS_MAIN_BRANCH = process.env.GITHUB_BRANCH_NAME
-  ? process.env.GITHUB_BRANCH_NAME === 'main'
-  : getBranchName() === 'main'
+export const IS_MAIN_BRANCH = getBranchName() === 'main'
 
 export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {
-  const hashSuffix = IS_MAIN_BRANCH ? '' : `#${getBranchName()}`
+  const hashSuffix = `#${getBranchName()}`
   return `${approach} tiged github:livestorejs/livestore/examples/${example}${hashSuffix} livestore-app`
 }
