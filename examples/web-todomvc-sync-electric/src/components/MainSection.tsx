@@ -33,10 +33,9 @@ export const MainSection: React.FC = () => {
         {visibleTodos.map((todo) => (
           <li key={todo.id}>
             <div className="state">
-              <label>
-                <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
-                {todo.text}
-              </label>
+              <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+              {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
+              <label>{todo.text}</label>
               <button
                 type="button"
                 className="destroy"
