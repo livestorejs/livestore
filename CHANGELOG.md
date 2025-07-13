@@ -22,15 +22,15 @@
     store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos ...` }))
     
     // After: Define in userland if needed
-    const rawSqlEvent = defineEvent({
+    import { Events, Schema } from '@livestore/livestore'
+
+    const rawSqlEvent = Events.clientOnly({
       name: 'livestore.RawSql',
       schema: Schema.Struct({
         sql: Schema.String,
         bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
         writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
       }),
-      clientOnly: true,
-      derived: true,
     })
     
     const rawSqlMaterializer = defineMaterializer(rawSqlEvent, ({ sql, bindValues, writeTables }) => ({
