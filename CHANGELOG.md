@@ -11,6 +11,39 @@
 - Detection of non-pure materializers (during development)
 - fix: store.subscribe() QueryBuilder support #371 (thanks @rgbkrk)
 
+- **BREAKING**: Removed automatic raw SQL event from schema
+  - The `livestore.RawSql` event is no longer automatically available in all schemas
+  - **Recommended approach**: Model events with specific domain intent (e.g., `userCreated`, `todoCompleted`)
+  - **If you need raw SQL**: You can define equivalent functionality in userland
+  - Migration guide:
+    ```ts
+    // Before: Import from LiveStore
+    import { rawSqlEvent } from '@livestore/common/schema'
+    store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos ...` }))
+    
+    // After: Define in userland if needed
+    const rawSqlEvent = defineEvent({
+      name: 'livestore.RawSql',
+      schema: Schema.Struct({
+        sql: Schema.String,
+        bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
+        writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
+      }),
+      clientOnly: true,
+      derived: true,
+    })
+    
+    const rawSqlMaterializer = defineMaterializer(rawSqlEvent, ({ sql, bindValues, writeTables }) => ({
+      sql,
+      bindValues: bindValues ?? {},
+      writeTables,
+    }))
+    
+    // Add to your schema
+    const events = { rawSql: rawSqlEvent, /* other events */ }
+    const materializers = { 'livestore.RawSql': rawSqlMaterializer, /* other materializers */ }
+    ```
+
 - Breaking: Adjusted `QueryBuilder.first()` API and default behaviour
   - Before: `first()` without arguments would throw an error if the query didn't
     match any rows

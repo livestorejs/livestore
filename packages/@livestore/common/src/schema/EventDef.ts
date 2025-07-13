@@ -7,10 +7,9 @@ import type { ParamsObject } from '../util.ts'
 import type { QueryBuilder } from './state/sqlite/query-builder/mod.ts'
 
 export type EventDefMap = {
-  map: Map<string | 'livestore.RawSql', EventDef.Any>
+  map: Map<string, EventDef.Any>
 }
 export type EventDefRecord = {
-  'livestore.RawSql': RawSqlEvent
   [name: string]: EventDef.Any
 }
 
@@ -218,22 +217,3 @@ export const materializers = <TInputRecord extends Record<string, EventDef.AnyWi
 ) => {
   return handlers
 }
-
-export const rawSqlEvent = defineEvent({
-  name: 'livestore.RawSql',
-  schema: Schema.Struct({
-    sql: Schema.String,
-    bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
-    writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
-  }),
-  clientOnly: true,
-  derived: true,
-})
-
-export const rawSqlMaterializer = defineMaterializer(rawSqlEvent, ({ sql, bindValues, writeTables }) => ({
-  sql,
-  bindValues: bindValues ?? {},
-  writeTables,
-}))
-
-export type RawSqlEvent = typeof rawSqlEvent

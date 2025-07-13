@@ -1,8 +1,7 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.ts'
-import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './EventDef.ts'
-import { rawSqlEvent } from './EventDef.ts'
+import type { EventDef, EventDefRecord, Materializer } from './EventDef.ts'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
 import { stateSystemTables } from './state/sqlite/system-tables.ts'
@@ -80,8 +79,6 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  eventsDefsMap.set(rawSqlEvent.name, rawSqlEvent)
-
   for (const tableDef of tables.values()) {
     if (tableIsClientDocumentTable(tableDef) && eventsDefsMap.has(tableDef.set.name) === false) {
       eventsDefsMap.set(tableDef.set.name, tableDef.set)
@@ -138,8 +135,8 @@ export namespace FromInputSchema {
 
   type EventDefRecordFromInputSchemaEvents<TEvents extends InputSchema['events']> =
     TEvents extends ReadonlyArray<EventDef.Any>
-      ? { [K in TEvents[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlEvent }
+      ? { [K in TEvents[number] as K['name']]: K }
       : TEvents extends { [name: string]: EventDef.Any }
-        ? { [K in keyof TEvents as TEvents[K]['name']]: TEvents[K] } & { 'livestore.RawSql': RawSqlEvent }
+        ? { [K in keyof TEvents as TEvents[K]['name']]: TEvents[K] }
         : never
 }

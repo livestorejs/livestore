@@ -154,13 +154,7 @@ Vitest.describe('useClientDocument', () => {
 
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() =>
-        store.commit(
-          LiveStore.rawSqlEvent({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-          }),
-        ),
-      )
+      ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
       expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
