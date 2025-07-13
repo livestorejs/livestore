@@ -23,6 +23,18 @@ import { table } from './table-def.ts'
  * Careful:
  * - When changing the table definitions in a non-backwards compatible way, the state might be lost without
  *   explicit reducers to handle the old auto-generated events
+ *
+ * Usage:
+ *
+ * ```ts
+ * // Querying data
+ * // `'some-id'` can be ommited for SessionIdSymbol
+ * store.queryDb(clientDocumentTable.get('some-id'))
+ *
+ * // Setting data
+ * // Again, `'some-id'` can be ommited for SessionIdSymbol
+ * store.commit(clientDocumentTable.set({ someField: 'some-value' }, 'some-id'))
+ * ```
  */
 export const clientDocument = <
   TName extends string,
