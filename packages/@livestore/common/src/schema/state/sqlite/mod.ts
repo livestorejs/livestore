@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../../../adapter-types.ts'
-import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.ts'
+import type { Materializer } from '../../EventDef.ts'
 import type { InternalState } from '../../schema.ts'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
 import { SqliteAst } from './db-schema/mod.ts'
@@ -43,8 +43,6 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
   for (const [name, materializer] of Object.entries(inputSchema.materializers)) {
     materializers.set(name, materializer)
   }
-
-  materializers.set(rawSqlEvent.name, rawSqlMaterializer)
 
   for (const tableDef of inputTables) {
     if (tableIsClientDocumentTable(tableDef)) {
