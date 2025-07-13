@@ -14,10 +14,7 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 export default defineConfig({
   server: {
     port: 60_002,
-    fs: {
-      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
-      allow: process.env.MONOREPO_ROOT ? [process.env.MONOREPO_ROOT] : [process.env.WORKSPACE_ROOT!],
-    },
+    fs: { strict: false },
   },
   build: {
     sourcemap: true,
@@ -35,7 +32,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/schema.ts' }),
-    // @ts-expect-error plugin types seem to be wrong
     shouldAnalyze
       ? visualizer({ filename: path.resolve('./tmp/stats/index.html'), gzipSize: true, brotliSize: true })
       : undefined,
