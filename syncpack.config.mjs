@@ -63,6 +63,8 @@ const config = {
       label: 'Enforce pnpm default catalog',
       dependencies: getPnpmCatalogDependencies(),
       dependencyTypes: ['!local'],
+      // Except for examples
+      packages: ['!livestore-example-**'],
       pinVersion: 'catalog:',
     },
   ],

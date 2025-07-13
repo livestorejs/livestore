@@ -7,6 +7,6 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.15.33"
+    "@types/node": "catalog:"
   }
 }

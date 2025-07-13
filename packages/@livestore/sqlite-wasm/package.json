@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.304",
-    "@types/node": "^22.15.33",
+    "@types/node": "catalog:",
     "@types/wicg-file-system-access": "^2023.10.5"
   },
   "files": [

@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@types/node':
+      specifier: 22.15.33
+      version: 22.15.33
     '@vitest/ui':
       specifier: 3.2.4
       version: 3.2.4
@@ -49,7 +52,7 @@ importers:
         specifier: ^0.23.3
         version: 0.23.5
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       '@vitest/ui':
         specifier: 'catalog:'
@@ -1031,7 +1034,7 @@ importers:
         version: link:../utils
     devDependencies:
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       expo:
         specifier: ^53.0.9
@@ -1062,7 +1065,7 @@ importers:
         specifier: ^1.53.1
         version: 1.53.1
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
 
   packages/@livestore/graphql:
@@ -1271,7 +1274,7 @@ importers:
         specifier: ^0.0.304
         version: 0.0.304
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
@@ -1369,7 +1372,7 @@ importers:
         specifier: ^21.1.7
         version: 21.1.7
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       '@types/web':
         specifier: ^0.0.203
@@ -1430,7 +1433,7 @@ importers:
   packages/@local/shared:
     devDependencies:
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
 
   scripts:
@@ -1451,7 +1454,7 @@ importers:
         specifier: ^1.2.5
         version: 1.2.5
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
 
   tests/integration:
@@ -1518,7 +1521,7 @@ importers:
         specifier: ^1.119.0
         version: 1.119.0(@tanstack/react-router@1.119.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.7(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0)))(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/node':
-        specifier: ^22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       '@types/react':
         specifier: ^19.1.2
@@ -1606,7 +1609,7 @@ importers:
         specifier: 1.53.1
         version: 1.53.1
       '@types/node':
-        specifier: 22.15.33
+        specifier: 'catalog:'
         version: 22.15.33
       '@types/react':
         specifier: 19.1.2

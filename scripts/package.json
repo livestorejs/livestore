@@ -12,6 +12,6 @@
     "@livestore/utils-dev": "workspace:*",
     "@local/tests-integration": "workspace:*",
     "@types/bun": "^1.2.5",
-    "@types/node": "^22.15.33"
+    "@types/node": "catalog:"
   }
 }

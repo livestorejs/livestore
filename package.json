@@ -5,7 +5,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.1.0",
     "@effect/language-service": "^0.23.3",
-    "@types/node": "^22.15.33",
+    "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "madge": "^8.0.0",
     "syncpack": "^13.0.2",

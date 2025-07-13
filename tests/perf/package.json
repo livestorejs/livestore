@@ -14,7 +14,7 @@
     "@opentelemetry/sdk-trace-base": "2.0.0",
     "@opentelemetry/sdk-trace-web": "2.0.0",
     "@playwright/test": "1.53.1",
-    "@types/node": "22.15.33",
+    "@types/node": "catalog:",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.0.4",
     "@vitejs/plugin-react": "4.3.4",

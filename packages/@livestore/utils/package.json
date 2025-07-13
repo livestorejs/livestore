@@ -86,7 +86,7 @@
     "@opentelemetry/resources": "^2.0.0",
     "@types/bun": "^1.2.5",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.15.33",
+    "@types/node": "catalog:",
     "@types/web": "^0.0.203",
     "effect": "^3.16.12",
     "jsdom": "^26.0.0",
