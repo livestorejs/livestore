@@ -4,16 +4,16 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.3.2-dev.9",
-    "@livestore/livestore": "0.3.2-dev.9",
-    "@livestore/peer-deps": "0.3.2-dev.9",
+    "@livestore/adapter-web": "0.3.2-dev.10",
+    "@livestore/livestore": "0.3.2-dev.10",
+    "@livestore/peer-deps": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.2-dev.9",
+    "@livestore/devtools-vite": "0.3.2-dev.10",
     "@tailwindcss/vite": "^4.1.6",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",

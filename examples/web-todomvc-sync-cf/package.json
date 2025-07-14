@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.3.2-dev.9",
-    "@livestore/livestore": "0.3.2-dev.9",
-    "@livestore/peer-deps": "0.3.2-dev.9",
-    "@livestore/react": "0.3.2-dev.9",
-    "@livestore/sync-cf": "0.3.2-dev.9",
+    "@livestore/adapter-web": "0.3.2-dev.10",
+    "@livestore/livestore": "0.3.2-dev.10",
+    "@livestore/peer-deps": "0.3.2-dev.10",
+    "@livestore/react": "0.3.2-dev.10",
+    "@livestore/sync-cf": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5",
     "@overengineering/fps-meter": "0.1.2",
     "react": "19.0.0",
@@ -16,7 +16,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.2-dev.9",
+    "@livestore/devtools-vite": "0.3.2-dev.10",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
