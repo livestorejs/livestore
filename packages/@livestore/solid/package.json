@@ -1,6 +1,6 @@
 {
   "name": "@livestore/solid",
-  "version": "0.3.2-dev.4",
+  "version": "0.3.2-dev.5",
   "type": "module",
   "exports": {
     ".": {

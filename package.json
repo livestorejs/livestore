@@ -26,7 +26,7 @@
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.3.2-dev.4",
+    "@livestore/devtools-vite": "0.3.2-dev.5",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
