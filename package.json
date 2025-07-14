@@ -26,7 +26,7 @@
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.3.2-dev.2",
+    "@livestore/devtools-vite": "0.3.2-dev.3",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
@@ -36,6 +36,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.4",
     "react-native": "^0.79.2"
