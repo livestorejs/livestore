@@ -6,60 +6,16 @@
     "./dist/global.js"
   ],
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "bun": "./src/index.ts",
-      "default": "./dist/index.js"
-    },
+    ".": "./src/mod.ts",
     "./cuid": {
-      "types": "./dist/cuid/cuid.node.d.ts",
-      "browser": "./dist/cuid/cuid.browser.js",
-      "node": "./dist/cuid/cuid.node.js",
-      "bun": "./src/cuid/cuid.node.ts",
-      "react-native": "./dist/cuid/cuid.browser.js"
+      "browser": "./src/cuid/cuid.browser.ts",
+      "react-native": "./src/cuid/cuid.browser.ts",
+      "default": "./src/cuid/cuid.node.ts"
     },
-    "./nanoid": {
-      "types": "./dist/nanoid/index.d.ts",
-      "bun": "./src/nanoid/index.ts",
-      "default": "./dist/nanoid/index.js"
-    },
-    "./effect": {
-      "types": "./dist/effect/index.d.ts",
-      "node": "./src/effect/index.ts",
-      "bun": "./src/effect/index.ts",
-      "default": "./dist/effect/index.js"
-    },
-    "./node": {
-      "types": "./dist/node/mod.d.ts",
-      "node": "./src/node/mod.ts",
-      "bun": "./src/node/mod.ts",
-      "default": "./dist/node/mod.js"
-    },
-    "./bun": {
-      "types": "./dist/bun/mod.d.ts",
-      "bun": "./src/bun/mod.ts",
-      "default": "./dist/bun/mod.js"
-    }
-  },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "./cuid": [
-        "./dist/cuid/cuid.node.d.ts"
-      ],
-      "./nanoid": [
-        "./dist/nanoid/index.d.ts"
-      ],
-      "./effect": [
-        "./dist/effect/index.d.ts"
-      ],
-      "./node": [
-        "./dist/node/mod.d.ts"
-      ],
-      "./bun": [
-        "./dist/bun/mod.d.ts"
-      ]
-    }
+    "./nanoid": "./src/nanoid/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./node": "./src/node/mod.ts",
+    "./bun": "./src/bun/mod.ts"
   },
   "dependencies": {
     "@standard-schema/spec": "1.0.0",
@@ -117,7 +73,35 @@
     "effect": "~3.16.12"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "./cuid": {
+        "types": "./dist/cuid/cuid.node.d.ts",
+        "browser": "./dist/cuid/cuid.browser.js",
+        "react-native": "./dist/cuid/cuid.browser.js",
+        "default": "./dist/cuid/cuid.node.js"
+      },
+      "./nanoid": {
+        "types": "./dist/nanoid/index.d.ts",
+        "default": "./dist/nanoid/index.js"
+      },
+      "./effect": {
+        "types": "./dist/effect/index.d.ts",
+        "default": "./dist/effect/index.js"
+      },
+      "./node": {
+        "types": "./dist/node/mod.d.ts",
+        "default": "./dist/node/mod.js"
+      },
+      "./bun": {
+        "types": "./dist/bun/mod.d.ts",
+        "default": "./dist/bun/mod.js"
+      }
+    }
   },
   "react-native": "./dist/index.js",
   "scripts": {

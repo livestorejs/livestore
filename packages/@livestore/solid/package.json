@@ -3,12 +3,8 @@
   "version": "0.3.2-dev.5",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    }
+    ".": "./src/mod.ts"
   },
-  "types": "./dist/mod.d.ts",
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
@@ -33,7 +29,13 @@
     "solid-js": "~1.9.4"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      }
+    }
   },
   "scripts": {
     "build": "tsc",

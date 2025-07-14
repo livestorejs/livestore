@@ -4,50 +4,12 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./worker": {
-      "types": "./dist/web-worker/leader-worker/make-leader-worker.d.ts",
-      "default": "./dist/web-worker/leader-worker/make-leader-worker.js"
-    },
-    "./worker-vite-dev-polyfill": {
-      "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
-      "default": "./dist/web-worker/vite-dev-polyfill.js"
-    },
-    "./shared-worker": {
-      "types": "./dist/web-worker/shared-worker/make-shared-worker.d.ts",
-      "default": "./dist/web-worker/shared-worker/make-shared-worker.js"
-    },
-    "./sqlite": {
-      "types": "./dist/sqlite/index.d.ts",
-      "default": "./dist/sqlite/index.js"
-    },
-    "./opfs-utils": {
-      "types": "./dist/opfs-utils.d.ts",
-      "default": "./dist/opfs-utils.js"
-    }
-  },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "worker": [
-        "./dist/web-worker/leader-worker/make-leader-worker.d.ts"
-      ],
-      "worker-vite-dev-polyfill": [
-        "./dist/web-worker/vite-dev-polyfill.d.ts"
-      ],
-      "shared-worker": [
-        "./dist/web-worker/shared-worker/make-shared-worker.d.ts"
-      ],
-      "sqlite": [
-        "./dist/sqlite/index.d.ts"
-      ],
-      "opfs-utils": [
-        "./dist/opfs.d.ts"
-      ]
-    }
+    ".": "./src/index.ts",
+    "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
+    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts",
+    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
+    "./sqlite": "./src/sqlite/index.ts",
+    "./opfs-utils": "./src/opfs-utils.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -69,7 +31,33 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./worker": {
+        "types": "./dist/web-worker/leader-worker/make-leader-worker.d.ts",
+        "default": "./dist/web-worker/leader-worker/make-leader-worker.js"
+      },
+      "./worker-vite-dev-polyfill": {
+        "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
+        "default": "./dist/web-worker/vite-dev-polyfill.js"
+      },
+      "./shared-worker": {
+        "types": "./dist/web-worker/shared-worker/make-shared-worker.d.ts",
+        "default": "./dist/web-worker/shared-worker/make-shared-worker.js"
+      },
+      "./sqlite": {
+        "types": "./dist/sqlite/index.d.ts",
+        "default": "./dist/sqlite/index.js"
+      },
+      "./opfs-utils": {
+        "types": "./dist/opfs-utils.d.ts",
+        "default": "./dist/opfs-utils.js"
+      }
+    }
   },
   "scripts": {
     "test": "echo No tests yet"

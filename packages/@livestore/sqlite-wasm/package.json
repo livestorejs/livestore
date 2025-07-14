@@ -3,25 +3,14 @@
   "version": "0.3.2-dev.5",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
+    ".": "./src/index.ts",
     "./load-wasm": {
-      "types": "./dist/load-wasm/mod.browser.d.ts",
-      "browser": "./dist/load-wasm/mod.browser.js",
-      "worker": "./dist/load-wasm/mod.browser.js",
-      "node": "./dist/load-wasm/mod.node.js",
-      "default": "./dist/load-wasm/mod.browser.js"
+      "browser": "./src/load-wasm/mod.browser.ts",
+      "worker": "./src/load-wasm/mod.browser.ts",
+      "default": "./src/load-wasm/mod.node.ts"
     },
-    "./node": {
-      "types": "./dist/node/mod.d.ts",
-      "default": "./dist/node/mod.js"
-    },
-    "./browser": {
-      "types": "./dist/browser/mod.d.ts",
-      "default": "./dist/browser/mod.js"
-    }
+    "./node": "./src/node/mod.ts",
+    "./browser": "./src/browser/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -40,7 +29,27 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./load-wasm": {
+        "types": "./dist/load-wasm/mod.browser.d.ts",
+        "browser": "./dist/load-wasm/mod.browser.js",
+        "worker": "./dist/load-wasm/mod.browser.js",
+        "default": "./dist/load-wasm/mod.node.js"
+      },
+      "./node": {
+        "types": "./dist/node/mod.d.ts",
+        "default": "./dist/node/mod.js"
+      },
+      "./browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
+      }
+    }
   },
   "scripts": {}
 }

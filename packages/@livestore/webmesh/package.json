@@ -4,18 +4,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "bun": "./src/mod.ts",
-      "default": "./dist/mod.js"
-    },
-    "./websocket-server": {
-      "types": "./dist/websocket-server.d.ts",
-      "bun": "./src/websocket-server.ts",
-      "default": "./dist/websocket-server.js"
-    }
+    ".": "./src/mod.ts",
+    "./websocket-server": "./src/websocket-server.ts"
   },
-  "types": "./dist/mod.d.ts",
   "dependencies": {
     "@livestore/utils": "workspace:*"
   },
@@ -29,7 +20,19 @@
     "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mod.d.ts",
+        "bun": "./src/mod.ts",
+        "default": "./dist/mod.js"
+      },
+      "./websocket-server": {
+        "types": "./dist/websocket-server.d.ts",
+        "bun": "./src/websocket-server.ts",
+        "default": "./dist/websocket-server.js"
+      }
+    }
   },
   "scripts": {
     "test": "vitest"

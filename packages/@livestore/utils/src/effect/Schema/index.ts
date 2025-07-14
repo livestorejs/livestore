@@ -4,7 +4,7 @@ import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 
-import { shouldNeverHappen } from '../../index.ts'
+import { shouldNeverHappen } from '../../mod.ts'
 
 export * from 'effect/Schema'
 export * from './debug-diff.ts'

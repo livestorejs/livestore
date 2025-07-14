@@ -22,7 +22,7 @@ overrides:
   '@livestore/adapter-web': workspace:*
   '@livestore/common': workspace:*
   '@livestore/devtools-expo': workspace:*
-  '@livestore/devtools-vite': 0.3.2-dev.4
+  '@livestore/devtools-vite': 0.3.2-dev.5
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/peer-deps': workspace:*
@@ -523,8 +523,8 @@ importers:
         version: 0.8.10(@tiptap/core@2.26.0(@tiptap/pm@2.26.0))
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.8.3))
@@ -605,8 +605,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -648,8 +648,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tailwindcss/vite':
         specifier: ^4.1.6
         version: 4.1.6(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
@@ -706,8 +706,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -755,8 +755,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
@@ -804,8 +804,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@types/react':
         specifier: ^19.1.2
         version: 19.1.2
@@ -868,8 +868,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@tanstack/react-router':
         specifier: ^1.119.0
         version: 1.127.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -935,8 +935,8 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -1470,8 +1470,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.2-dev.4
-        version: 0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
+        specifier: 0.3.2-dev.5
+        version: 0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))
       '@livestore/effect-playwright':
         specifier: workspace:*
         version: link:../../packages/@livestore/effect-playwright
@@ -3416,8 +3416,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@livestore/devtools-vite@0.3.2-dev.4':
-    resolution: {integrity: sha512-Sje8dy3qogxdHkSoNCDYwb8UvXJmS0XgNW8c9dHXkhbKD2LUXK0ExTkBPJRwDyJYpArsUBEqrxWAOXFK/q8x4A==}
+  '@livestore/devtools-vite@0.3.2-dev.5':
+    resolution: {integrity: sha512-R/KWdYqR+WkXWkPFaSjUhNa/KgJv89ANYh1THdPIPO0GKRAT5wBSCPGJezoMd3qKfJolR3ZiTL1iNaT4LgAcjA==}
     peerDependencies:
       vite: ~7.0.0
 
@@ -15727,7 +15727,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.4
 
-  '@livestore/devtools-vite@0.3.2-dev.4(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
+  '@livestore/devtools-vite@0.3.2-dev.5(vite@7.0.0(@types/node@22.15.33)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.0))':
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
       '@livestore/utils': link:packages/@livestore/utils

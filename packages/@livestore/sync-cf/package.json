@@ -4,22 +4,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/sync-impl/mod.d.ts",
-      "default": "./dist/sync-impl/mod.js"
-    },
-    "./cf-worker": {
-      "types": "./dist/cf-worker/mod.d.ts",
-      "default": "./dist/cf-worker/mod.js"
-    },
-    "./cf-worker/durable-object": {
-      "types": "./dist/cf-worker/durable-object.d.ts",
-      "default": "./dist/cf-worker/durable-object.js"
-    },
-    "./cf-worker/worker": {
-      "types": "./dist/cf-worker/worker.d.ts",
-      "default": "./dist/cf-worker/worker.js"
-    }
+    ".": "./src/sync-impl/mod.ts",
+    "./cf-worker": "./src/cf-worker/mod.ts",
+    "./cf-worker/durable-object": "./src/cf-worker/durable-object.ts",
+    "./cf-worker/worker": "./src/cf-worker/worker.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -36,7 +24,25 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/sync-impl/mod.d.ts",
+        "default": "./dist/sync-impl/mod.js"
+      },
+      "./cf-worker": {
+        "types": "./dist/cf-worker/mod.d.ts",
+        "default": "./dist/cf-worker/mod.js"
+      },
+      "./cf-worker/durable-object": {
+        "types": "./dist/cf-worker/durable-object.d.ts",
+        "default": "./dist/cf-worker/durable-object.js"
+      },
+      "./cf-worker/worker": {
+        "types": "./dist/cf-worker/worker.d.ts",
+        "default": "./dist/cf-worker/worker.js"
+      }
+    }
   },
   "scripts": {
     "test": "echo 'No tests yet'"

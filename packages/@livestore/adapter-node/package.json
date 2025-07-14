@@ -4,27 +4,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "bun": "./src/index.ts",
-      "default": "./dist/index.js"
-    },
-    "./devtools": {
-      "types": "./dist/devtools/mod.d.ts",
-      "default": "./dist/devtools/mod.js"
-    },
-    "./worker": {
-      "types": "./dist/make-leader-worker.d.ts",
-      "default": "./dist/make-leader-worker.js"
-    }
-  },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "./devtools": [
-        "./dist/devtools/mod.d.ts"
-      ]
-    }
+    ".": "./src/index.ts",
+    "./devtools": "./src/devtools/mod.ts",
+    "./worker": "./src/make-leader-worker.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -48,7 +30,21 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./devtools": {
+        "types": "./dist/devtools/mod.d.ts",
+        "default": "./dist/devtools/mod.js"
+      },
+      "./worker": {
+        "types": "./dist/make-leader-worker.d.ts",
+        "default": "./dist/make-leader-worker.js"
+      }
+    }
   },
   "scripts": {
     "test": "echo No tests yet"

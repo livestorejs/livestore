@@ -4,22 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    },
-    "./experimental": {
-      "types": "./dist/experimental/mod.d.ts",
-      "default": "./dist/experimental/mod.js"
-    }
-  },
-  "types": "./dist/mod.d.ts",
-  "typesVersions": {
-    "*": {
-      "./experimental": [
-        "./dist/experimental/mod.d.ts"
-      ]
-    }
+    ".": "./src/mod.ts",
+    "./experimental": "./src/experimental/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -53,7 +39,17 @@
     "react": "~19.0.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "./experimental": {
+        "types": "./dist/experimental/mod.d.ts",
+        "default": "./dist/experimental/mod.js"
+      }
+    }
   },
   "scripts": {
     "build": "tsc",

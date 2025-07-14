@@ -6,21 +6,9 @@
     "./dist/node-vitest/polyfill.js"
   ],
   "exports": {
-    "./node": {
-      "types": "./dist/node/mod.d.ts",
-      "bun": "./src/node/mod.ts",
-      "default": "./dist/node/mod.js"
-    },
-    "./node-vitest": {
-      "types": "./dist/node-vitest/mod.d.ts",
-      "bun": "./src/node-vitest/mod.ts",
-      "default": "./dist/node-vitest/mod.js"
-    },
-    "./node-vitest-polyfill": {
-      "types": "./dist/node-vitest/polyfill.d.ts",
-      "bun": "./src/node-vitest/polyfill.ts",
-      "default": "./dist/node-vitest/polyfill.js"
-    }
+    "./node": "./src/node/mod.ts",
+    "./node-vitest": "./src/node-vitest/mod.ts",
+    "./node-vitest-polyfill": "./src/node-vitest/polyfill.ts"
   },
   "dependencies": {
     "@effect/opentelemetry": "0.53.11",
@@ -42,7 +30,21 @@
   "license": "Apache-2.0",
   "peerDependencies": {},
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./node": {
+        "types": "./dist/node/mod.d.ts",
+        "default": "./dist/node/mod.js"
+      },
+      "./node-vitest": {
+        "types": "./dist/node-vitest/mod.d.ts",
+        "default": "./dist/node-vitest/mod.js"
+      },
+      "./node-vitest-polyfill": {
+        "types": "./dist/node-vitest/polyfill.d.ts",
+        "default": "./dist/node-vitest/polyfill.js"
+      }
+    }
   },
   "scripts": {
     "test": "echo 'No tests for utils-dev'"

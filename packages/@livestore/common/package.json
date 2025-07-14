@@ -4,51 +4,12 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "bun": "./src/index.ts",
-      "default": "./dist/index.js"
-    },
-    "./sql-queries": {
-      "types": "./dist/sql-queries/index.d.ts",
-      "default": "./dist/sql-queries/index.js"
-    },
-    "./leader-thread": {
-      "types": "./dist/leader-thread/mod.d.ts",
-      "default": "./dist/leader-thread/mod.js"
-    },
-    "./schema": {
-      "types": "./dist/schema/mod.d.ts",
-      "default": "./dist/schema/mod.js"
-    },
-    "./sync/next": {
-      "types": "./dist/sync/next/mod.d.ts",
-      "default": "./dist/sync/next/mod.js"
-    },
-    "./sync/next/test": {
-      "types": "./dist/sync/next/test/mod.d.ts",
-      "default": "./dist/sync/next/test/mod.js"
-    }
-  },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "schema": [
-        "./dist/schema/mod.d.ts"
-      ],
-      "sql-queries": [
-        "./dist/sql-queries/index.d.ts"
-      ],
-      "leader-thread": [
-        "./dist/leader-thread/mod.d.ts"
-      ],
-      "sync/next": [
-        "./dist/sync/next/mod.d.ts"
-      ],
-      "sync/next/test": [
-        "./dist/sync/next/test/mod.d.ts"
-      ]
-    }
+    ".": "./src/index.ts",
+    "./sql-queries": "./src/sql-queries/index.ts",
+    "./leader-thread": "./src/leader-thread/mod.ts",
+    "./schema": "./src/schema/mod.ts",
+    "./sync/next": "./src/sync/next/mod.ts",
+    "./sync/next/test": "./src/sync/next/test/mod.ts"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*",
@@ -69,7 +30,33 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./sql-queries": {
+        "types": "./dist/sql-queries/index.d.ts",
+        "default": "./dist/sql-queries/index.js"
+      },
+      "./leader-thread": {
+        "types": "./dist/leader-thread/mod.d.ts",
+        "default": "./dist/leader-thread/mod.js"
+      },
+      "./schema": {
+        "types": "./dist/schema/mod.d.ts",
+        "default": "./dist/schema/mod.js"
+      },
+      "./sync/next": {
+        "types": "./dist/sync/next/mod.d.ts",
+        "default": "./dist/sync/next/mod.js"
+      },
+      "./sync/next/test": {
+        "types": "./dist/sync/next/test/mod.d.ts",
+        "default": "./dist/sync/next/test/mod.js"
+      }
+    }
   },
   "scripts": {
     "test": "vitest"

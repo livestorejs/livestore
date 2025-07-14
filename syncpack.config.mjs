@@ -37,7 +37,7 @@ const localPackages = fs
 const config = {
   sortFirst: ['name', 'version', 'type', 'sideEffects', 'private', 'exports', 'types', 'typesVersions'],
   sortExports: [
-    'types',
+    'types', // should be first
     'browser',
     'worker',
     'node-addons',
@@ -48,7 +48,7 @@ const config = {
     'require',
     'development',
     'production',
-    'default',
+    'default', // should be last
   ],
   versionGroups: [
     {
