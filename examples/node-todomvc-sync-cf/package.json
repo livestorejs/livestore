@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.3.2-dev.8",
-    "@livestore/livestore": "0.3.2-dev.8",
-    "@livestore/sync-cf": "0.3.2-dev.8"
+    "@livestore/adapter-node": "0.3.2-dev.9",
+    "@livestore/livestore": "0.3.2-dev.9",
+    "@livestore/sync-cf": "0.3.2-dev.9"
   },
   "devDependencies": {
     "@types/node": "^22.15.33",
