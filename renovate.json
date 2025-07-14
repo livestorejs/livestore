@@ -10,6 +10,9 @@
   "baseBranches": ["dev"],
   "platformAutomerge": true,
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "postUpgradeTasks": {
+    "commands": ["syncpack fix-mismatches", "syncpack format"]
+  },
   "automerge": true,
   "automergeType": "pr",
   "packageRules": [
