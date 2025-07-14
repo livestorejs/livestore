@@ -164,7 +164,7 @@ export const cmd: (
   const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}=${value} `)
+    .map(([key, value]) => `${key}='${value}' `)
     .join('')
   const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
@@ -199,7 +199,7 @@ export const cmdText: (
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}=${value} `)
+      .map(([key, value]) => `${key}='${value}' `)
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
