@@ -15,7 +15,7 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
     )
 
     if (missingEventDefs.length > 0) {
-      yield* new UnexpectedError({
+      return yield* new UnexpectedError({
         cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.eventName).join(', ')}`,
       })
     }

@@ -1,5 +1,5 @@
 export { LiveStoreContext, type ReactApi } from './LiveStoreContext.ts'
-export { LiveStoreProvider } from './LiveStoreProvider.ts'
+export { LiveStoreProvider } from './LiveStoreProvider.tsx'
 export {
   type Dispatch,
   type SetStateAction,
