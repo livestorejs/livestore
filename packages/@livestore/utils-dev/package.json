@@ -32,18 +32,9 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./node": {
-        "types": "./dist/node/mod.d.ts",
-        "default": "./dist/node/mod.js"
-      },
-      "./node-vitest": {
-        "types": "./dist/node-vitest/mod.d.ts",
-        "default": "./dist/node-vitest/mod.js"
-      },
-      "./node-vitest-polyfill": {
-        "types": "./dist/node-vitest/polyfill.d.ts",
-        "default": "./dist/node-vitest/polyfill.js"
-      }
+      "./node": "./dist/node/mod.js",
+      "./node-vitest": "./dist/node-vitest/mod.js",
+      "./node-vitest-polyfill": "./dist/node-vitest/polyfill.js"
     }
   },
   "scripts": {

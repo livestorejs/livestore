@@ -31,10 +31,7 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/mod.d.ts",
-        "default": "./dist/mod.js"
-      }
+      ".": "./dist/mod.js"
     }
   },
   "scripts": {

@@ -32,18 +32,9 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "./devtools": {
-        "types": "./dist/devtools/mod.d.ts",
-        "default": "./dist/devtools/mod.js"
-      },
-      "./worker": {
-        "types": "./dist/make-leader-worker.d.ts",
-        "default": "./dist/make-leader-worker.js"
-      }
+      ".": "./dist/index.js",
+      "./devtools": "./dist/devtools/mod.js",
+      "./worker": "./dist/make-leader-worker.js"
     }
   },
   "scripts": {

@@ -41,14 +41,8 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/mod.d.ts",
-        "default": "./dist/mod.js"
-      },
-      "./experimental": {
-        "types": "./dist/experimental/mod.d.ts",
-        "default": "./dist/experimental/mod.js"
-      }
+      ".": "./dist/mod.js",
+      "./experimental": "./dist/experimental/mod.js"
     }
   },
   "scripts": {

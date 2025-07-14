@@ -22,14 +22,8 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./web-channel": {
-        "types": "./dist/web-channel/index.d.ts",
-        "default": "./dist/web-channel/index.js"
-      },
-      "./worker": {
-        "types": "./dist/worker/mod.d.ts",
-        "default": "./dist/worker/mod.js"
-      }
+      "./web-channel": "./dist/web-channel/index.js",
+      "./worker": "./dist/worker/mod.js"
     }
   },
   "scripts": {

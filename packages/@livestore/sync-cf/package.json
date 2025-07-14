@@ -26,22 +26,10 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/sync-impl/mod.d.ts",
-        "default": "./dist/sync-impl/mod.js"
-      },
-      "./cf-worker": {
-        "types": "./dist/cf-worker/mod.d.ts",
-        "default": "./dist/cf-worker/mod.js"
-      },
-      "./cf-worker/durable-object": {
-        "types": "./dist/cf-worker/durable-object.d.ts",
-        "default": "./dist/cf-worker/durable-object.js"
-      },
-      "./cf-worker/worker": {
-        "types": "./dist/cf-worker/worker.d.ts",
-        "default": "./dist/cf-worker/worker.js"
-      }
+      ".": "./dist/sync-impl/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js",
+      "./cf-worker/durable-object": "./dist/cf-worker/durable-object.js",
+      "./cf-worker/worker": "./dist/cf-worker/worker.js"
     }
   },
   "scripts": {
