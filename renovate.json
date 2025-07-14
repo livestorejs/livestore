@@ -50,7 +50,12 @@
     {
       "description": "Group Playwright packages together",
       "groupName": "Playwright",
-      "matchSourceUrls": ["pietdevries94/playwright-web-flake", "@playwright/test"]
+      "matchPackageNames": ["@playwright/test"]
+    },
+    {
+      "description": "Group Playwright packages together",
+      "groupName": "Playwright",
+      "matchSourceUrls": ["https://github.com/pietdevries94/playwright-web-flake"]
     }
   ],
   "lockFileMaintenance": {
