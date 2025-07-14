@@ -22,16 +22,8 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/mod.d.ts",
-        "bun": "./src/mod.ts",
-        "default": "./dist/mod.js"
-      },
-      "./websocket-server": {
-        "types": "./dist/websocket-server.d.ts",
-        "bun": "./src/websocket-server.ts",
-        "default": "./dist/websocket-server.js"
-      }
+      ".": "./dist/mod.js",
+      "./websocket-server": "./dist/websocket-server.js"
     }
   },
   "scripts": {

@@ -26,7 +26,7 @@ import {
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.js'
+import { LiveStoreContext } from './LiveStoreContext.ts'
 
 export interface LiveStoreProviderProps {
   schema: LiveStoreSchema

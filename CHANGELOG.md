@@ -11,6 +11,28 @@
 - Detection of non-pure materializers (during development)
 - fix: store.subscribe() QueryBuilder support #371 (thanks @rgbkrk)
 
+### New features
+
+- feat: Expose sync payload and store id to `onPull/onPush`, expose `storeId` to `validatePayload` (#451)
+- feat: Improve node sync testing infrastructure and fix logging issues (#452)
+
+### Breaking changes
+
+- **BREAKING**: Adjusted `QueryBuilder.first()` API and default behaviour
+  - Before: `first()` without arguments would throw an error if the query didn't
+    match any rows
+  - Now: `first()` without arguments will return `undefined` if the query didn't
+    match any rows
+  - New API:
+    ```ts
+    table.query.first(); // returns undefined if the query didn't match any rows
+    table.query.first({ behaviour: "error" }); // throws an error if the query didn't match any rows
+    table.query.first({
+      behaviour: "fallback",
+      fallback: () => ({ id: "123", name: "Alice" }),
+    }); // returns a fallback value if the query didn't match any rows
+    ```
+
 - **BREAKING**: Removed automatic raw SQL event from schema
   - The `livestore.RawSql` event is no longer automatically available in all schemas
   - **Recommended approach**: Model events with specific domain intent (e.g., `userCreated`, `todoCompleted`)
@@ -44,20 +66,31 @@
     const materializers = { 'livestore.RawSql': rawSqlMaterializer, /* other materializers */ }
     ```
 
-- Breaking: Adjusted `QueryBuilder.first()` API and default behaviour
-  - Before: `first()` without arguments would throw an error if the query didn't
-    match any rows
-  - Now: `first()` without arguments will return `undefined` if the query didn't
-    match any rows
-  - New API:
-    ```ts
-    table.query.first(); // returns undefined if the query didn't match any rows
-    table.query.first({ behaviour: "error" }); // throws an error if the query didn't match any rows
-    table.query.first({
-      behaviour: "fallback",
-      fallback: () => ({ id: "123", name: "Alice" }),
-    }); // returns a fallback value if the query didn't match any rows
-    ```
+### Notable improvements & fixes
+
+- Fix: Correct type assertion in withLock function
+- Fix: Resolve TypeScript build issues and finalize examples restructuring
+- Fix: Ensure finalizers are executed in the proper order (#450)
+- Fix: TypeScript erasableSyntaxOnly compatibility issues (#459)
+- Fix: Resolve CI race condition in integration tests with proper server readiness check
+- Fix: Update biome configuration and CI environment variables
+- Fix: Resolve CI TypeScript build failures by standardizing bun types (#440)
+- Fix: Use new connection for in-memory SQLite database in Expo adapter
+- Fix: Suppress TypeScript error for global process assignment in vite-dev-polyfill.ts
+
+### Internal changes
+
+- chore: Remove ESLint and migrate to Biome (#447)
+- chore: Update Effect and related dependencies to version 3.16.12 across all packages
+- chore: Upgrade Vite and Effect dependencies across all packages to version 7.0.0 and 3.16.10 respectively
+- chore: Update dependency management and Renovate configuration
+- chore: Clean up global type definitions and improve command debug output
+- chore: Update package.json exports structure and add workaround in biome.jsonc
+- refactor: Update worker execution to use PlatformNode runtime
+- refactor: Restructure examples and make tsconfigs self-contained
+- refactor: Update Card component to improve accessibility
+- refactor: Enhance array schema handling in getResultSchema function
+- refactor: Update query handling to use new behaviour options for first() method
 
 ### Todo
 
