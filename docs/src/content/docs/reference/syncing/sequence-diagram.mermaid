@@ -1,0 +1,110 @@
+sequenceDiagram
+    box ClientSession
+        participant Store
+        participant CSSP as ClientSessionSyncProcessor
+        participant ClientSessionSyncState
+        participant ClientSessionSQLite
+    end
+    box Leader
+        participant LeaderPushQueue
+        participant LSP as LeaderSyncProcessor
+        participant LocalPushesLatch
+        participant PullLatch
+        participant PushHead
+        participant LeaderSyncState
+        participant LocalPushesQueue
+        participant LeaderSQLite
+        participant ClientSessionPullQueues
+        participant BackendPushQueue
+        participant Eventlog
+    end
+    box Backend
+        participant SyncBackend
+    end
+
+    Store->>CSSP: commit(events)
+    Store->>CSSP: push(events)
+    CSSP->>CSSP: EventSequenceNumber.nextPair()<br/>assign sequence numbers + rebaseGeneration
+    CSSP->>CSSP: SyncState.merge() with 'local-push'<br/>validate sequence numbers
+    CSSP->>ClientSessionSyncState: update sync state
+    CSSP->>Store: materializeEvent() callback
+    Store->>ClientSessionSQLite: execute SQLite statements
+    CSSP->>Store: refreshTables() callback
+    Store->>Store: update table refs & trigger reactivity
+    CSSP->>LeaderPushQueue: queue events for leader
+    CSSP->>LeaderPushQueue: Take between 1 and <br/>up to `leaderPushBatchSize`<br/>events as a batch
+    CSSP->>LSP: push event batch to leader
+
+    LSP->>LSP: validatePushBatch()<br/>check sequence continuity
+    LSP->>PushHead: advance push head to<br/>last event sequence number
+    LSP->>LocalPushesQueue: queue validated event batch
+
+    par apply local pushes
+        loop infinite loop
+            LSP->>LocalPushesQueue: Take between 1 and <br/>up to `localPushBatchSize`<br/>events as a batch
+            LSP->>LocalPushesLatch: await
+            LSP->>PullLatch: close
+            LSP->>LSP: filter out events with old rebaseGeneration value
+            alt all events were filtered out
+                LSP->>PullLatch: open
+            else
+                LSP->>LSP: SyncState.merge() events as 'local-push'
+                alt merge result = 'advance'
+                    LSP->>LeaderSyncState: update sync state
+                    LSP->>LeaderSQLite: materializeEventsBatch()<br/>SQLite transactions
+                    LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadUpstreamAdvance to client sessions
+                    LSP->>BackendPushQueue: queue non-clientOnly events
+                else merge result = 'reject'
+                    LSP->>LocalPushesQueue: remove events with old rebaseGeneration
+                    LSP->>LSP: fail deferred objects with LeaderAheadError
+                end
+                LSP->>PullLatch: open
+            end
+        end
+    and pull events from backend
+        loop infinite loop
+            LSP->>SyncBackend: pull events from backend pull stream
+            LSP->>LocalPushesLatch: close
+            LSP->>PullLatch: await
+            LSP->>LSP: SyncState.merge() events as 'upstream-advance'
+            LSP->>Eventlog: updateBackendHead() with new cursor
+            alt merge result = 'advance'
+                LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadUpstreamAdvance to client sessions
+                LSP->>Eventlog: updateSyncMetadata() for confirmed events
+            else merge result = 'rebase'
+                LSP->>LeaderSQLite: rollback conflicting events using changesets
+                LSP->>BackendPushQueue: clear and restart with rebased pending events
+                LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadRebase to client sessions
+            end
+            LSP->>LeaderSQLite: materializeEventsBatch()<br/>SQLite transactions
+            LSP->>LeaderSyncState: update sync state
+            LSP->>LocalPushesLatch: open
+        end
+    and push events to backend
+        loop infinite loop
+            LSP->> BackendPushQueue: Take between 1 and <br/>up to `backendPushBatchSize`<br/>events as a batch
+            BackendPushQueue->>SyncBackend: push event batch to backend
+        end
+    end
+
+    ClientSessionPullQueues->>CSSP: pull stream with cursor-based resumption
+    loop process pull events
+        CSSP->>CSSP: SyncState.merge() with received payload
+        alt merge result = 'advance'
+            CSSP->>Store: materializeEvent() callback
+            Store->>ClientSessionSQLite: execute SQLite statements
+            CSSP->>Store: refreshTables() callback
+            Store->>Store: update table refs & trigger reactivity
+        else merge result = 'rebase'
+            CSSP->>CSSP: interrupt leader push fiber
+            CSSP->>LeaderPushQueue: clear pending events
+            CSSP->>ClientSessionSQLite: rollback() conflicting events using session changesets
+            CSSP->>Store: materializeEvent() callback for new upstream events
+            Store->>ClientSessionSQLite: execute SQLite statements
+            CSSP->>LeaderPushQueue: re-queue rebased pending events
+            CSSP->>CSSP: restart leader push fiber
+            CSSP->>Store: refreshTables() callback
+            Store->>Store: update table refs & trigger reactivity
+        end
+        CSSP->>ClientSessionSyncState: update sync state
+    end
