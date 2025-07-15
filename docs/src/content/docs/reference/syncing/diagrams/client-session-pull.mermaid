@@ -1,0 +1,50 @@
+sequenceDiagram
+    box ClientSession
+        participant UI
+        participant Store
+        participant CSSP as ClientSessionSyncProcessor
+        participant ClientSessionSyncState
+        participant InMemorySQLite
+        participant LeaderPushQueue
+    end
+    box Leader
+        participant ClientSessionPullQueues
+    end
+
+
+    ClientSessionPullQueues->>CSSP: pull stream with cursor-based resumption
+
+    loop process pull events
+        CSSP->>CSSP: SyncState.merge() with received payload
+
+        alt merge result = 'advance'
+            Note over CSSP: No conflicts, simple advance
+            CSSP->>Store: materialize events callback
+            Store->>InMemorySQLite: materialize events
+
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
+
+        else merge result = 'rebase'
+            Note over CSSP: Conflicts detected, need to rebase
+
+            CSSP->>CSSP: interrupt leader push fiber
+            CSSP->>LeaderPushQueue: clear pending events
+
+            CSSP->>InMemorySQLite: rollback conflicting events using session changesets
+
+            CSSP->>Store: materialize events callback for new upstream events
+            Store->>InMemorySQLite: materialize events
+
+            CSSP->>LeaderPushQueue: re-queue rebased pending events
+            CSSP->>CSSP: restart leader push fiber
+
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
+        end
+
+        %% Update sync state
+        CSSP->>ClientSessionSyncState: update sync state
+    end
