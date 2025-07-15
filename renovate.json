@@ -11,7 +11,7 @@
   "platformAutomerge": true,
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "postUpgradeTasks": {
-    "commands": ["bunx syncpack fix-mismatches", "bunx syncpack format"]
+    "commands": ["npx -y syncpack fix-mismatches", "npx -y syncpack format"]
   },
   "automerge": true,
   "automergeType": "pr",
