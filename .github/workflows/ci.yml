@@ -23,13 +23,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Base setup
+        uses: ./.github/actions/setup
       - run: mono lint
 
   test:
@@ -39,13 +34,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Base setup
+        uses: ./.github/actions/setup
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256

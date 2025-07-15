@@ -1,0 +1,24 @@
+name: Setup
+description: Setup the environment for the CI workflow.
+# inputs:
+#   node-version:
+#     description: The version of Node.js to install
+#     required: true
+#     default: 23.7.0
+
+runs:
+  using: composite
+  steps:
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/determinate-nix-action@v3
+    - name: Setup Flakehub Cache
+      uses: DeterminateSystems/flakehub-cache-action@main
+    - name: Install + load direnv env
+      shell: bash
+      run: |
+        timeout 300 bash -c '
+          nix profile install nixpkgs#direnv                     # puts direnv in $PATH
+          echo '\''eval "$(direnv hook bash)"'\'' >> "$BASH_ENV" # hook for subsequent steps
+          direnv allow
+          direnv dump >> "$GITHUB_ENV"                           # export vars for later steps
+        '
