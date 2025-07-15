@@ -38,30 +38,6 @@ runs:
         echo "Loading direnv env..."
         eval "$(direnv hook bash)"
 
-        echo "Debug: checking current state before direnv allow..."
-        echo "PWD: $(pwd)"
-        echo "node_modules/.last_git_hash exists: $(test -f node_modules/.last_git_hash && echo 'yes' || echo 'no')"
-        echo "Current git hash: $(git rev-parse HEAD 2>/dev/null || echo 'no-git')"
-        if [ -f "node_modules/.last_git_hash" ]; then
-          echo "Contents of node_modules/.last_git_hash: $(cat node_modules/.last_git_hash)"
-        fi
-        echo "Parent dir: $(dirname "$PWD")"
-        echo "Parent is git repo: $(git -C "$(dirname "$PWD")" rev-parse --is-inside-work-tree 2>/dev/null || echo 'no')"
-        
-        echo "Debug: checking .envrc file exists and is readable..."
-        if [ -f ".envrc" ]; then
-          echo "Debug: .envrc exists, first few lines:"
-          head -5 .envrc
-        else
-          echo "Debug: .envrc file does not exist!"
-        fi
-        
-        echo "Debug: testing .envrc syntax..."
-        if ! bash -n .envrc; then
-          echo "::error::.envrc has syntax errors"
-          exit 1
-        fi
-        
         echo "Running direnv allow with timeout ${{ inputs.direnv-timeout }}s..."
         if ! timeout "${{ inputs.direnv-timeout }}" direnv allow 2>&1; then
           echo "::error::direnv allow failed or timed out after ${{ inputs.direnv-timeout }}s"
@@ -71,8 +47,6 @@ runs:
         # Check if `node_modules/.last_git_hash` exists as sanity check
         if [ ! -f "node_modules/.last_git_hash" ]; then
           echo "::error::node_modules/.last_git_hash does not exist."
-          echo "Debug: node_modules directory contents:"
-          ls -la node_modules/ 2>/dev/null || echo "node_modules directory does not exist"
           exit 1
         fi
 
