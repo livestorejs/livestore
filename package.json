@@ -10,7 +10,7 @@
     "madge": "^8.0.0",
     "syncpack": "^13.0.2",
     "typescript": "^5.8.3",
-    "vite": "^7.0.0",
+    "vite": "^7.0.4",
     "vitest": "catalog:",
     "yaml": "^2.8.0"
   },
