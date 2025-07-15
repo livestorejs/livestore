@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.1.0",
-    "@effect/language-service": "^0.23.3",
+    "@effect/language-service": "^0.27.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "madge": "^8.0.0",
@@ -14,7 +14,7 @@
     "vitest": "catalog:",
     "yaml": "^2.8.0"
   },
-  "packageManager": "pnpm@10.2.1",
+  "packageManager": "pnpm@10.13.1",
   "pnpm": {
     "patchedDependencies": {
       "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
@@ -38,7 +38,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "esbuild": "0.25.4",
+    "esbuild": "0.25.6",
     "react-native": "^0.79.2"
   },
   "resolutions#": {

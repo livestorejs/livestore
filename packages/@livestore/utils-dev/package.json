@@ -11,15 +11,15 @@
     "./node-vitest-polyfill": "./src/node-vitest/polyfill.ts"
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.53.11",
-    "@effect/vitest": "0.23.12",
+    "@effect/opentelemetry": "0.54.0",
+    "@effect/vitest": "0.24.0",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
-    "@opentelemetry/sdk-metrics": "2.0.0",
-    "@opentelemetry/sdk-trace-base": "2.0.0",
-    "@opentelemetry/sdk-trace-node": "2.0.0"
+    "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/sdk-metrics": "2.0.1",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/sdk-trace-node": "2.0.1"
   },
   "devDependencies": {},
   "files": [
