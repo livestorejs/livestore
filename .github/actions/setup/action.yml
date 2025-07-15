@@ -11,14 +11,31 @@ runs:
   steps:
     - name: Install Determinate Nix
       uses: DeterminateSystems/determinate-nix-action@v3
+
+      # NOTE Flakehub cache is still faster than magic-nix-cache-action
     - name: Setup Flakehub Cache
       uses: DeterminateSystems/flakehub-cache-action@main
+    # - name: Nix cache
+    #   uses: DeterminateSystems/magic-nix-cache-action@main
+
+    # Speed up direnv setup by caching the binary
+    - name: Cache direnv binary
+      uses: actions/cache@v4
+      with:
+        path: ~/.nix-profile/bin/direnv
+        key: direnv-${{ runner.os }}-${{ hashFiles('.envrc') }}
+        restore-keys: |
+          direnv-${{ runner.os }}-
+
+    # We're timing out after 5 minutes in case Nix wants to rebuild something which could burn a lot of CPU time
     - name: Install + load direnv env
       shell: bash
       run: |
-        timeout 300 bash -c '
-          nix profile install nixpkgs#direnv                     # puts direnv in $PATH
-          echo '\''eval "$(direnv hook bash)"'\'' >> "$BASH_ENV" # hook for subsequent steps
-          direnv allow
-          direnv dump >> "$GITHUB_ENV"                           # export vars for later steps
-        '
+        timeout 300 bash <<'EOF'
+        nix profile install nixpkgs#direnv
+        # Setup direnv shell integration for subsequent steps
+        echo 'eval "$(direnv hook bash)"' >> "$BASH_ENV"
+        direnv allow
+        # Make env vars available to subsequent steps
+        direnv dump >> "$GITHUB_ENV"
+        EOF
