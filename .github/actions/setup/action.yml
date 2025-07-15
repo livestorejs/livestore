@@ -36,7 +36,7 @@ runs:
         fi
 
         echo "Running direnv allow with timeout ${{ inputs.direnv-timeout }}s..."
-        if ! timeout "${{ inputs.direnv-timeout }}" direnv allow; then
+        if ! timeout "${{ inputs.direnv-timeout }}" direnv allow 2>&1; then
           echo "::error::direnv allow failed or timed out after ${{ inputs.direnv-timeout }}s"
           exit 1
         fi
