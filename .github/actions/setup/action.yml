@@ -51,9 +51,7 @@ runs:
         fi
 
         echo "Setting environment variables for subsequent steps..."
-        if ! direnv dump bash >> "$GITHUB_ENV"; then
-          echo "::error::Failed to set environment variables"
-          exit 1
-        fi
+        # Uses node to parse the json and set the environment variables in the correct format
+        direnv export json | node -e "Object.entries(JSON.parse(require('fs').readFileSync(0))).forEach(([k,v]) => require('fs').appendFileSync(process.env.GITHUB_ENV, v.includes('\n') ? \`\${k}<<EOF_\${k}\n\${v}\nEOF_\${k}\n\` : \`\${k}=\${v}\n\`))"
 
         echo "Environment setup complete"
