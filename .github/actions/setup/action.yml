@@ -24,7 +24,7 @@ runs:
         set -euo pipefail
 
         echo "Installing direnv..."
-        if ! nix profile install nixpkgs#direnv; then
+        if ! nix profile add nixpkgs#direnv; then
           echo "::error::Failed to install direnv via Nix"
           exit 1
         fi
@@ -34,9 +34,6 @@ runs:
           echo "::error::direnv not found in PATH after installation"
           exit 1
         fi
-
-        echo "Setting up direnv shell integration..."
-        echo 'eval "$(direnv hook bash)"' >> "$BASH_ENV"
 
         echo "Running direnv allow with timeout ${{ inputs.direnv-timeout }}s..."
         if ! timeout "${{ inputs.direnv-timeout }}" direnv allow; then
