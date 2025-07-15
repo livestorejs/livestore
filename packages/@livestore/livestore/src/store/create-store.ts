@@ -3,6 +3,7 @@ import type {
   BootStatus,
   ClientSession,
   ClientSessionDevtoolsChannel,
+  ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
   MigrationsReport,
 } from '@livestore/common'
@@ -29,13 +30,13 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import { connectDevtoolsToStore } from './devtools.js'
-import { Store } from './store.js'
+import { connectDevtoolsToStore } from './devtools.ts'
+import { Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
-} from './store-types.js'
+} from './store-types.ts'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
@@ -120,6 +121,9 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
+    }
   }
   debug?: {
     instanceId?: string
@@ -274,6 +278,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          simulation: params?.simulation,
         },
       })
 

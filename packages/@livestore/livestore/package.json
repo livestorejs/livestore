@@ -1,39 +1,13 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.10",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    },
-    "./internal": {
-      "types": "./dist/internal/mod.d.ts",
-      "default": "./dist/internal/mod.js"
-    },
-    "./internal/testing-utils": {
-      "types": "./dist/utils/tests/mod.d.ts",
-      "default": "./dist/utils/tests/mod.js"
-    },
-    "./effect": {
-      "types": "./dist/effect/mod.d.ts",
-      "default": "./dist/effect/mod.js"
-    }
-  },
-  "types": "./dist/mod.d.ts",
-  "typesVersions": {
-    "*": {
-      "internal": [
-        "./dist/internal/mod.d.ts"
-      ],
-      "testing-utils": [
-        "./dist/utils/tests/mod.d.ts"
-      ],
-      "effect": [
-        "./dist/effect/mod.d.ts"
-      ]
-    }
+    ".": "./src/mod.ts",
+    "./internal": "./src/internal/mod.ts",
+    "./internal/testing-utils": "./src/utils/tests/mod.ts",
+    "./effect": "./src/effect/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -43,11 +17,11 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vite": "^7.0.4",
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
@@ -56,7 +30,13 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
+    }
   },
   "scripts": {
     "build": "tsc",

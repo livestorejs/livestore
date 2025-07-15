@@ -2,7 +2,7 @@ import { FetchHttpClient } from '@effect/platform'
 import * as Vitest from '@effect/vitest'
 import { Effect, Exit } from 'effect'
 
-import { makeWebSocket } from './WebSocket.js'
+import { makeWebSocket } from './WebSocket.ts'
 
 Vitest.describe('WebSocket', () => {
   Vitest.scopedLive(

@@ -16,16 +16,22 @@ import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/ut
 import { Effect } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
-import { makeShutdownChannel } from './shutdown-channel.js'
-import type * as WorkerSchema from './worker-schema.js'
+import { makeShutdownChannel } from './shutdown-channel.ts'
+import type * as WorkerSchema from './worker-schema.ts'
 
 export type TestingOverrides = {
   clientSession?: {
-    leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
+    leaderThreadProxy?: (
+      original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
+    ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
   }
-  makeLeaderThread?: {
-    dbEventlog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
-  }
+  makeLeaderThread?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<
+    {
+      dbEventlog: SqliteDb
+      dbState: SqliteDb
+    },
+    UnexpectedError
+  >
 }
 
 export interface MakeLeaderThreadArgs {
@@ -34,7 +40,7 @@ export interface MakeLeaderThreadArgs {
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
   makeSqliteDb: MakeNodeSqliteDb
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
   syncPayload: Schema.JsonValue | undefined
   testing: TestingOverrides | undefined
@@ -62,8 +68,10 @@ export const makeLeaderThread = ({
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread?.dbEventlog && kind === 'eventlog') {
-        return testing.makeLeaderThread.dbEventlog(makeSqliteDb)
+      if (testing?.makeLeaderThread) {
+        return testing
+          .makeLeaderThread(makeSqliteDb)
+          .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
       }
 
       return storage.type === 'in-memory'
@@ -123,7 +131,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtools.enabled === false) {
@@ -136,7 +144,7 @@ const makeDevtoolsOptions = ({
       enabled: true,
       boot: Effect.gen(function* () {
         // Lazy import to improve startup time
-        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.js'))
+        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.ts'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
         if (devtools.useExistingDevtoolsServer === false) {

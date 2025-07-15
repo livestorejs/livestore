@@ -6,8 +6,8 @@ import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.js'
-import { useQueryRef } from './useQuery.js'
+import { LiveStoreContext } from './LiveStoreContext.ts'
+import { useQueryRef } from './useQuery.ts'
 
 export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: TTableDef['Value'],
@@ -98,7 +98,7 @@ export const useClientDocument: {
 
   const store =
     storeArg?.store ??
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useClientDocument`)
 

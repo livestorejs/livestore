@@ -1,2 +1,2 @@
-export * from './durable-object.js'
-export * from './worker.js'
+export * from './durable-object.ts'
+export * from './worker.ts'

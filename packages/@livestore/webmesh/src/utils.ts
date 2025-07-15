@@ -1,4 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import { Duration, Effect } from '@livestore/utils/effect'
 
 /**

@@ -1,25 +1,11 @@
 {
   "name": "@livestore/react",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.10",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    },
-    "./experimental": {
-      "types": "./dist/experimental/mod.d.ts",
-      "default": "./dist/experimental/mod.js"
-    }
-  },
-  "types": "./dist/mod.d.ts",
-  "typesVersions": {
-    "*": {
-      "./experimental": [
-        "./dist/experimental/mod.d.ts"
-      ]
-    }
+    ".": "./src/mod.ts",
+    "./experimental": "./src/experimental/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -30,7 +16,7 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.1.2",
@@ -40,8 +26,8 @@
     "react-dom": "^19.0.0",
     "react-window": "^1.8.11",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vite": "^7.0.4",
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
@@ -53,7 +39,11 @@
     "react": "~19.0.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./experimental": "./dist/experimental/mod.js"
+    }
   },
   "scripts": {
     "build": "tsc",

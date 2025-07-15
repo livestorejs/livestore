@@ -1,14 +1,14 @@
-import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.ts'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.ts'
 import {
   applyFactGroups,
-  factsIntersect,
   type FactValidationResult,
+  factsIntersect,
   getFactsGroupForEventArgs,
   validateFacts,
-} from './facts.js'
-import type { HistoryDagNode } from './history-dag-common.js'
+} from './facts.ts'
+import type { HistoryDagNode } from './history-dag-common.ts'
 
 export type RebaseEventWithConflict = HistoryDagNode & {
   conflictType: 'overlap' | 'missing-requirement'
@@ -38,6 +38,7 @@ export const defaultRebaseFn: RebaseFn = ({ pendingLocalEvents }) => {
   return { rebasedLocalEvents: pendingLocalEvents }
 }
 
+// TODO replace in favour of current rebase impl
 export const rebaseEvents = ({
   rebaseFn,
   pendingLocalEvents,

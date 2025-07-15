@@ -1,16 +1,14 @@
-import { sql } from '@livestore/common'
-import { rawSqlEvent } from '@livestore/common/schema'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { expect } from 'vitest'
 
-import * as RG from '../reactive.js'
-import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
-import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
-import { computed } from './computed.js'
-import { queryDb } from './db-query.js'
+import * as RG from '../reactive.ts'
+import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
+import { getSimplifiedRootSpan } from '../utils/tests/otel.ts'
+import { computed } from './computed.ts'
+import { queryDb } from './db-query.ts'
 
 /*
 TODO write tests for:
@@ -65,7 +63,7 @@ Vitest.describe('otel', () => {
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       [
@@ -119,7 +117,7 @@ Vitest.describe('otel', () => {
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
@@ -155,7 +153,9 @@ Vitest.describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => ({ completed: false }))
-      const query$ = queryDb((get) => tables.todos.where(get(filter)).first({ fallback: () => defaultTodo }))
+      const query$ = queryDb((get) =>
+        tables.todos.where(get(filter)).first({ behaviour: 'fallback', fallback: () => defaultTodo }),
+      )
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -165,7 +165,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -197,7 +197,9 @@ Vitest.describe('otel', () => {
       const callbackResults: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
       const unsubscribe = store.subscribe(queryBuilder, {
         onUpdate: (result) => {
@@ -208,7 +210,7 @@ Vitest.describe('otel', () => {
       expect(callbackResults).toHaveLength(1)
       expect(callbackResults[0]).toMatchObject(defaultTodo)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(callbackResults).toHaveLength(2)
       expect(callbackResults[1]).toMatchObject({
@@ -241,7 +243,9 @@ Vitest.describe('otel', () => {
       const callbackResults2: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
       const unsubscribe1 = store.subscribe(queryBuilder, {
         onUpdate: (result) => {
@@ -258,14 +262,14 @@ Vitest.describe('otel', () => {
       expect(callbackResults1).toHaveLength(1)
       expect(callbackResults2).toHaveLength(1)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)` }))
+      store.commit(events.todoCreated({ id: 't3', text: 'read book', completed: false }))
 
       expect(callbackResults1).toHaveLength(2)
       expect(callbackResults2).toHaveLength(2)
 
       unsubscribe1()
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)` }))
+      store.commit(events.todoCreated({ id: 't4', text: 'cook dinner', completed: false }))
 
       expect(callbackResults1).toHaveLength(2)
       expect(callbackResults2).toHaveLength(3)
@@ -301,7 +305,7 @@ Vitest.describe('otel', () => {
       expect(callbackResults).toHaveLength(1)
       expect(callbackResults[0]).toEqual([])
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)` }))
+      store.commit(events.todoCreated({ id: 't5', text: 'clean house', completed: true }))
 
       expect(callbackResults).toHaveLength(2)
       expect(callbackResults[1]).toHaveLength(1)

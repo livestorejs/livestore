@@ -3,7 +3,7 @@ import { provideOtel } from '@livestore/common'
 import { createStore } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 
-import { Bridge, schema } from './shared.js'
+import { Bridge, schema } from './shared.ts'
 
 export const test = () =>
   Effect.gen(function* () {

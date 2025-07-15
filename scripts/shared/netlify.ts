@@ -1,7 +1,6 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 import { cmdText } from '@livestore/utils-dev/node'
 
-// eslint-disable-next-line unicorn/throw-new-error
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
   message: Schema.String,

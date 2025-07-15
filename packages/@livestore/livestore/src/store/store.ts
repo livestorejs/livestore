@@ -1,12 +1,7 @@
 import {
+  type Bindable,
   type ClientSession,
   type ClientSessionSyncProcessor,
-  type ParamsObject,
-  type PreparedBindValues,
-  type QueryBuilder,
-  UnexpectedError,
-} from '@livestore/common'
-import {
   Devtools,
   getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
@@ -16,9 +11,12 @@ import {
   isQueryBuilder,
   liveStoreVersion,
   makeClientSessionSyncProcessor,
+  type PreparedBindValues,
   prepareBindValues,
+  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
@@ -34,15 +32,15 @@ import type {
   ReactivityGraph,
   ReactivityGraphContext,
   SignalDef,
-} from '../live-queries/base-class.js'
-import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
-import { queryDb } from '../live-queries/db-query.js'
-import type { Ref } from '../reactive.js'
-import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { ReferenceCountedSet } from '../utils/data-structures.js'
-import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
-import type { StackInfo } from '../utils/stack-info.js'
+} from '../live-queries/base-class.ts'
+import { makeReactivityGraph } from '../live-queries/base-class.ts'
+import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
+import { queryDb } from '../live-queries/db-query.ts'
+import type { Ref } from '../reactive.ts'
+import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
+import { ReferenceCountedSet } from '../utils/data-structures.ts'
+import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
@@ -50,7 +48,7 @@ import type {
   StoreOptions,
   StoreOtel,
   Unsubscribe,
-} from './store-types.js'
+} from './store-types.ts'
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -164,6 +162,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             for (const table of writeTables) {
               writeTablesForEvent.add(table)
             }
+
+            this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
           }
         }
 
@@ -195,6 +195,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       span: syncSpan,
       params: {
         leaderPushBatchSize: params.leaderPushBatchSize,
+        simulation: params.simulation?.clientSessionSyncProcessor,
       },
       confirmUnsavedChanges,
     })
@@ -413,13 +414,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | LiveQuery<TResult>
       | LiveQueryDef<TResult>
       | SignalDef<TResult>
-      | { query: string; bindValues: ParamsObject },
+      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
+      const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
+      if (query.schema) {
+        return Schema.decodeSync(query.schema)(res)
+      }
+      return res
     } else if (isQueryBuilder(query)) {
       const ast = query[QueryBuilderAstSymbol]
       if (ast._tag === 'RowQuery') {

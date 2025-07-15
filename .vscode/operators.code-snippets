@@ -1,37 +1,27 @@
 {
   "Effect Gen Function": {
     "prefix": "egen",
-    "body": [
-      "Effect.gen(function* () {\n\t$0\n})"
-    ],
+    "body": ["Effect.gen(function* () {\n\t$0\n})"],
     "description": "Effect generator FUnction with $ input"
   },
   "Gen Function": {
     "prefix": "gen",
-    "body": [
-      "function* () {}"
-    ],
+    "body": ["function* () {}"],
     "description": "Generator FUnction with $ input"
   },
   "Gen Yield * tmp": {
     "prefix": "yy",
-    "body": [
-      "yield* $0"
-    ],
+    "body": ["yield* $0"],
     "description": "Yield generator calling"
   },
   "Gen Yield *": {
     "prefix": "!",
-    "body": [
-      "yield* $0"
-    ],
+    "body": ["yield* $0"],
     "description": "Yield generator calling"
   },
   "Otel import": {
     "prefix": "+otel",
-    "body": [
-      "import * as otel from '@opentelemetry/api'\n$0"
-    ],
+    "body": ["import * as otel from '@opentelemetry/api'\n$0"],
     "description": "Import OpenTelemetry"
   }
 }

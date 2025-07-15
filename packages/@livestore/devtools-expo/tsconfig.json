@@ -3,13 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "verbatimModuleSyntax": true, 
+    "verbatimModuleSyntax": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src", "src/types.d.ts"],
-  "references": [
-    { "path": "../adapter-web" },
-    { "path": "../adapter-node" },
-    { "path": "../utils" },
-  ]
+  "references": [{ "path": "../adapter-web" }, { "path": "../adapter-node" }, { "path": "../utils" }]
 }

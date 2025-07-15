@@ -9,7 +9,7 @@ export const copyTodomvcSrc = Cli.Command.make(
   'copy-todomvc-src',
   {},
   Effect.fn(function* () {
-    const SRC_EXAMPLE_DIR = `${process.env.WORKSPACE_ROOT}/examples/src/web-todomvc`
+    const SRC_EXAMPLE_DIR = `${process.env.WORKSPACE_ROOT}/examples/web-todomvc`
     const targetExamples = [
       // 'node-todomvc-sync-cf', // Not included as it doesn't have `uiState`
       // 'expo-todomvc-sync-cf', // Not included as it uses `.ts` imports
@@ -21,7 +21,7 @@ export const copyTodomvcSrc = Cli.Command.make(
     ]
 
     for (const example of targetExamples) {
-      const targetExampleDir = `${process.env.WORKSPACE_ROOT}/examples/src/${example}`
+      const targetExampleDir = `${process.env.WORKSPACE_ROOT}/examples/${example}`
 
       const copy = (subPath: string) =>
         cmd(['rsync', '-av', `${SRC_EXAMPLE_DIR}/src/${subPath}`, `${targetExampleDir}/src/${subPath}`], {

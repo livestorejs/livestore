@@ -3,8 +3,8 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
 
-import type { LiveStoreContextProps } from '../store/create-store.js'
-import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.js'
+import type { LiveStoreContextProps } from '../store/create-store.ts'
+import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'
 
 export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,
@@ -35,7 +35,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
 
       globalThis.__debugLiveStore ??= {}
       if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-        globalThis.__debugLiveStore['_'] = store
+        globalThis.__debugLiveStore._ = store
       }
       globalThis.__debugLiveStore[storeId] = store
 

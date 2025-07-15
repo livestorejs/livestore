@@ -1,14 +1,10 @@
 {
   "name": "@livestore/graphql",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.10",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
-  "types": "./dist/index.d.ts",
   "dependencies": {
     "@graphql-typed-document-node/core": "3.2.0",
     "@livestore/common": "workspace:*",
@@ -29,7 +25,10 @@
     "graphql": "~16.10.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js"
+    }
   },
   "scripts": {
     "test": "echo 'No tests'"

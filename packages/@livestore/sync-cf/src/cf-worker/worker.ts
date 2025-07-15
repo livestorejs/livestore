@@ -3,8 +3,8 @@ import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
-import { SearchParamsSchema } from '../common/mod.js'
-import type { Env } from './durable-object.js'
+import { SearchParamsSchema } from '../common/mod.ts'
+import type { Env } from './durable-object.ts'
 
 // Redeclaring Response to Cloudflare Worker Response type to avoid lib.dom type clashing
 declare const Response: typeof CfWorker.Response
@@ -37,7 +37,7 @@ type ExtractDurableObjectKeys<TEnv = Env> = TEnv extends Env
   : never
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
-export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
+export type CFWorker<TEnv extends Env = Env, _T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
   fetch: <CFHostMetada = unknown>(
     request: CfWorker.Request<CFHostMetada>,
     env: TEnv,
@@ -46,7 +46,12 @@ export type CFWorker<TEnv extends Env = Env, T extends CfWorker.Rpc.DurableObjec
 }
 
 export type MakeWorkerOptions<TEnv extends Env = Env> = {
-  validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+  /**
+   * Validates the payload during WebSocket connection establishment.
+   * Note: This runs only at connection time, not for individual push events.
+   * For push event validation, use the `onPush` callback in the durable object.
+   */
+  validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
   durableObject?: {
@@ -120,7 +125,8 @@ export const makeWorker = <
  *
  * @example
  * ```ts
- * const validatePayload = (payload: Schema.JsonValue | undefined) => {
+ * const validatePayload = (payload: Schema.JsonValue | undefined, context: { storeId: string }) => {
+ *   console.log(`Validating connection for store: ${context.storeId}`)
  *   if (payload?.authToken !== 'insecure-token-change-me') {
  *     throw new Error('Invalid auth token')
  *   }
@@ -150,7 +156,7 @@ export const handleWebSocket = <
   options: {
     headers?: CfWorker.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
-    validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+    validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   },
 ): Promise<CfWorker.Response> =>
   Effect.gen(function* () {
@@ -169,7 +175,7 @@ export const handleWebSocket = <
     const { storeId, payload } = paramsResult.right
 
     if (options.validatePayload !== undefined) {
-      const result = yield* Effect.promise(async () => options.validatePayload!(payload)).pipe(
+      const result = yield* Effect.promise(async () => options.validatePayload!(payload, { storeId })).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.either,
       )
