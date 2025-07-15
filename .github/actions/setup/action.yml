@@ -18,6 +18,25 @@ runs:
     # - name: Nix cache
     #   uses: DeterminateSystems/magic-nix-cache-action@main
 
+    - name: Cache node_modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+          .pnpm-store
+        key: node_modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
+        restore-keys: |
+          node_modules-${{ runner.os }}-
+
+    - name: Cache direnv setup
+      uses: actions/cache@v4
+      with:
+        path: |
+          .direnv
+        key: direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-${{ github.sha }}
+        restore-keys: |
+          direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-
+
     - name: Install and setup direnv
       shell: bash
       run: |

@@ -3,6 +3,7 @@ declare global {
 
   interface ImportMeta {
     readonly main: boolean
+    readonly env: Record<string, string>
   }
 }
 

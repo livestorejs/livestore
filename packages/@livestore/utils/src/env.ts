@@ -1,3 +1,5 @@
+/// <reference types="bun" />
+
 import { envTruish } from './misc.ts'
 
 export const env = (name: string): string | undefined => {

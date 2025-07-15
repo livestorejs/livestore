@@ -223,7 +223,8 @@ const tsCommand = Cli.Command.make(
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
     } else {
       yield* cmd('tsc --build tsconfig.dev.json', { cwd })
-      yield* cmd('tsc --build tsconfig.examples.json', { cwd })
+      // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
+      // yield* cmd('tsc --build tsconfig.examples.json', { cwd })
     }
   }),
 )
