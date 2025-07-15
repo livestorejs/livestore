@@ -41,6 +41,12 @@ runs:
           exit 1
         fi
 
+        # Check if `node_modules/.last_git_hash` exists as sanity check
+        if [ ! -f "node_modules/.last_git_hash" ]; then
+          echo "::error::node_modules/.last_git_hash does not exist."
+          exit 1
+        fi
+
         echo "Exporting environment variables..."
         if ! direnv export bash >> "$GITHUB_ENV"; then
           echo "::error::Failed to export environment variables"
