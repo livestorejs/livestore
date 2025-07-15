@@ -48,6 +48,20 @@ runs:
         echo "Parent dir: $(dirname "$PWD")"
         echo "Parent is git repo: $(git -C "$(dirname "$PWD")" rev-parse --is-inside-work-tree 2>/dev/null || echo 'no')"
         
+        echo "Debug: checking .envrc file exists and is readable..."
+        if [ -f ".envrc" ]; then
+          echo "Debug: .envrc exists, first few lines:"
+          head -5 .envrc
+        else
+          echo "Debug: .envrc file does not exist!"
+        fi
+        
+        echo "Debug: testing .envrc syntax..."
+        if ! bash -n .envrc; then
+          echo "::error::.envrc has syntax errors"
+          exit 1
+        fi
+        
         echo "Running direnv allow with timeout ${{ inputs.direnv-timeout }}s..."
         if ! timeout "${{ inputs.direnv-timeout }}" direnv allow 2>&1; then
           echo "::error::direnv allow failed or timed out after ${{ inputs.direnv-timeout }}s"
