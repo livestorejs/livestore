@@ -1,0 +1,36 @@
+sequenceDiagram
+    box Main Thread
+        participant UI
+        participant ClientSession as Client Session
+    end
+    box Worker
+        participant Leader
+    end
+    box Server
+        participant Backend
+    end
+
+    rect rgb(240, 248, 255)
+        par
+            UI->>ClientSession: commit(events)
+            ClientSession->>ClientSession: Apply events
+        and
+            ClientSession->>Leader: Push events
+        end
+    end
+
+    rect rgb(255, 248, 240)
+        par
+            Leader->>Leader: Apply events
+        and
+            Leader->>Backend: Pull events from backend
+        and
+            Leader->>Backend: Push events to backend
+        end
+    end
+
+    rect rgb(240, 255, 240)
+        Leader->>ClientSession: Broadcast updates<br/>(local-push, upstream-advance, rebase)
+        ClientSession->>ClientSession: Apply updates
+        ClientSession->>UI: Update UI
+    end

@@ -1,0 +1,51 @@
+sequenceDiagram
+    box ClientSession
+        participant Store
+        participant CSSP as ClientSessionSyncProcessor
+        participant ClientSessionSyncState
+        participant ClientSessionSQLite
+        participant LeaderPushQueue
+    end
+    box Leader
+        participant LSP as LeaderSyncProcessor
+        participant LocalPushesQueue
+        participant LeaderSQLite
+        participant ClientSessionPullQueues
+        participant BackendPushQueue
+    end
+    box Backend
+        participant SyncBackend
+    end
+
+        par
+            Store->>CSSP: commit(events)
+            Store->>CSSP: push(events)
+            CSSP->>CSSP: EventSequenceNumber.nextPair()<br/>assign sequence numbers + rebaseGeneration
+            CSSP->>CSSP: SyncState.merge() with 'local-push'<br/>validate sequence numbers
+            CSSP->>ClientSessionSyncState: update sync state
+            CSSP->>Store: materializeEvent() callback
+            Store->>ClientSessionSQLite: materialize events
+            CSSP->>Store: refreshTables() callback
+            Store->>Store: update table refs & trigger reactivity
+            CSSP->>LeaderPushQueue: queue events for leader
+        and
+            CSSP->>LeaderPushQueue: Take between 1 and <br/>up to `leaderPushBatchSize`<br/>events as a batch
+            CSSP->>LSP: push event batch to leader
+
+
+            LSP->>LSP: validatePushBatch()<br/>check sequence continuity
+            LSP->>LocalPushesQueue: queue validated event batch
+        end
+
+        par
+            LSP->>LocalPushesQueue: Take between 1 and <br/>up to `localPushBatchSize`<br/>events as a batch
+            LSP->>LSP: filter out events with old rebaseGeneration value
+            LSP->>LSP: SyncState.merge() events as 'local-push'
+            Note over LSP: merge result = 'advance'
+            LSP->>LeaderSQLite: materialize events
+            LSP->>ClientSessionPullQueues: broadcast 'upstream-advance' to client sessions
+            LSP->>BackendPushQueue: queue non-clientOnly events
+        and
+            LSP->> BackendPushQueue: Take between 1 and <br/>up to `backendPushBatchSize`<br/>events as a batch
+            BackendPushQueue->>SyncBackend: push event batch to backend
+    end

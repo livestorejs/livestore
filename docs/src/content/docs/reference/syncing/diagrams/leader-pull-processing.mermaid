@@ -1,0 +1,60 @@
+sequenceDiagram
+    box Leader
+        participant LSP as LeaderSyncProcessor
+        participant LocalPushesLatch
+        participant PullLatch
+        participant LeaderSyncState
+        participant LeaderSQLite
+        participant ClientSessionPullQueues
+        participant BackendPushQueue
+        participant Eventlog
+    end
+    box Backend
+        participant SyncBackend
+    end
+
+    Note over LSP, SyncBackend: Backend Pull Processing (Upstream Events)
+
+    %% Continuous pull loop
+    activate LSP
+    loop infinite pull loop
+        activate SyncBackend
+        LSP->>SyncBackend: pull events from backend pull stream
+        deactivate SyncBackend
+        
+        %% Coordinate with local pushes
+        LSP->>LocalPushesLatch: close (prevent new local pushes)
+        LSP->>PullLatch: await (wait for pending local pushes)
+        
+        %% Process upstream events
+        LSP->>LSP: SyncState.merge() events as 'upstream-advance'
+        LSP->>Eventlog: updateBackendHead() with new cursor
+        
+        alt merge result = 'advance'
+            Note over LSP: No conflicts with pending events
+            activate ClientSessionPullQueues
+            LSP->>ClientSessionPullQueues: broadcast PayloadUpstreamAdvance to client sessions
+            deactivate ClientSessionPullQueues
+            LSP->>Eventlog: updateSyncMetadata() for confirmed events
+            
+        else merge result = 'rebase'
+            Note over LSP: Conflicts detected with pending events
+            activate LeaderSQLite
+            LSP->>LeaderSQLite: rollback() conflicting events using changesets
+            deactivate LeaderSQLite
+            LSP->>BackendPushQueue: clear and restart with rebased pending events
+            activate ClientSessionPullQueues
+            LSP->>ClientSessionPullQueues: broadcast PayloadRebase to client sessions
+            deactivate ClientSessionPullQueues
+        end
+        
+        %% Materialize upstream events
+        activate LeaderSQLite
+        LSP->>LeaderSQLite: materializeEventsBatch()<br/>SQLite transactions
+        deactivate LeaderSQLite
+        LSP->>LeaderSyncState: update sync state
+        
+        %% Re-enable local pushes
+        LSP->>LocalPushesLatch: open (allow new local pushes)
+    end
+    deactivate LSP
