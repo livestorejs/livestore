@@ -50,9 +50,9 @@ runs:
           exit 1
         fi
 
-        echo "Exporting environment variables..."
-        if ! direnv export bash >> "$GITHUB_ENV"; then
-          echo "::error::Failed to export environment variables"
+        echo "Setting environment variables for subsequent steps..."
+        if ! direnv dump bash >> "$GITHUB_ENV"; then
+          echo "::error::Failed to set environment variables"
           exit 1
         fi
 
