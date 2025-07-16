@@ -1,0 +1,41 @@
+sequenceDiagram
+    box Leader
+        participant ClientSessionPullQueues
+        participant LSP as LeaderSyncProcessor
+        participant LocalPushesLatch
+        participant PullLatch
+        participant LeaderSyncState
+        participant PersistedSQLite
+        participant BackendPushQueue
+        participant Eventlog
+    end
+    box Backend
+        participant SyncBackend
+    end
+
+    loop infinite pull loop
+        LSP->>SyncBackend: pull events from backend pull stream
+
+        LSP->>LocalPushesLatch: close (prevent new local pushes)
+        LSP->>PullLatch: await (wait for pending local pushes)
+
+        LSP->>LSP: SyncState.merge() events as 'upstream-advance'
+        LSP->>Eventlog: updateBackendHead() with new cursor
+
+        alt merge result = 'advance'
+            Note over LSP: No conflicts with pending events
+            LSP->>ClientSessionPullQueues: broadcast 'upstream-advance'<br/>to client sessions
+            LSP->>Eventlog: updateSyncMetadata() for confirmed events
+
+        else merge result = 'rebase'
+            Note over LSP: Conflicts detected with pending events
+            LSP->>PersistedSQLite: rollback conflicting events using changesets
+            LSP->>BackendPushQueue: clear and restart with rebased pending events
+            LSP->>ClientSessionPullQueues: broadcast 'upstream-rebase'<br/>to client sessions
+        end
+
+        LSP->>PersistedSQLite: materialize events
+        LSP->>LeaderSyncState: update sync state
+
+        LSP->>LocalPushesLatch: open (allow new local pushes)
+    end
