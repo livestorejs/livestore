@@ -20,7 +20,7 @@ sequenceDiagram
         alt merge result = 'advance'
             Note over CSSP: No conflicts, simple advance
             CSSP->>Store: materialize events callback
-            Store->>InMemorySQLite: execute SQLite statements
+            Store->>InMemorySQLite: materialize events
 
             CSSP->>Store: refresh tables callback
             Store->>Store: update table refs
@@ -32,10 +32,10 @@ sequenceDiagram
             CSSP->>CSSP: interrupt leader push fiber
             CSSP->>LeaderPushQueue: clear pending events
 
-            CSSP->>InMemorySQLite: rollback() conflicting events using session changesets
+            CSSP->>InMemorySQLite: rollback conflicting events using session changesets
 
             CSSP->>Store: materialize events callback for new upstream events
-            Store->>InMemorySQLite: execute SQLite statements
+            Store->>InMemorySQLite: materialize events
 
             CSSP->>LeaderPushQueue: re-queue rebased pending events
             CSSP->>CSSP: restart leader push fiber
