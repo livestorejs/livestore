@@ -29,12 +29,12 @@ sequenceDiagram
 
         else merge result = 'rebase'
             Note over LSP: Conflicts detected with pending events
-            LSP->>PersistedSQLite: rollback() conflicting events using changesets
+            LSP->>PersistedSQLite: rollback conflicting events using changesets
             LSP->>BackendPushQueue: clear and restart with rebased pending events
             LSP->>ClientSessionPullQueues: broadcast 'upstream-rebase'<br/>to client sessions
         end
 
-        LSP->>PersistedSQLite: materializeEventsBatch()<br/>SQLite transactions
+        LSP->>PersistedSQLite: materialize events
         LSP->>LeaderSyncState: update sync state
 
         LSP->>LocalPushesLatch: open (allow new local pushes)
