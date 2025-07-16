@@ -1,65 +1,50 @@
 sequenceDiagram
     box ClientSession
+        participant UI
         participant Store
         participant CSSP as ClientSessionSyncProcessor
         participant ClientSessionSyncState
-        participant ClientSessionSQLite
+        participant InMemorySQLite
+        participant LeaderPushQueue
     end
     box Leader
-        participant LeaderPushQueue
         participant ClientSessionPullQueues
     end
 
-    Note over Store, ClientSessionPullQueues: Client Session Pull Processing
 
-    activate CSSP
     ClientSessionPullQueues->>CSSP: pull stream with cursor-based resumption
-    
+
     loop process pull events
         CSSP->>CSSP: SyncState.merge() with received payload
-        
+
         alt merge result = 'advance'
             Note over CSSP: No conflicts, simple advance
-            CSSP->>Store: materializeEvent() callback
-            activate Store
-            Store->>ClientSessionSQLite: execute SQLite statements
-            deactivate Store
-            
-            CSSP->>Store: refreshTables() callback
-            activate Store
-            Store->>Store: update table refs & trigger reactivity
-            deactivate Store
-            
+            CSSP->>Store: materialize events callback
+            Store->>InMemorySQLite: execute SQLite statements
+
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
+
         else merge result = 'rebase'
             Note over CSSP: Conflicts detected, need to rebase
-            
-            %% Interrupt current processing
+
             CSSP->>CSSP: interrupt leader push fiber
             CSSP->>LeaderPushQueue: clear pending events
-            
-            %% Rollback conflicting events
-            activate ClientSessionSQLite
-            CSSP->>ClientSessionSQLite: rollback() conflicting events using session changesets
-            deactivate ClientSessionSQLite
-            
-            %% Materialize upstream events
-            CSSP->>Store: materializeEvent() callback for new upstream events
-            activate Store
-            Store->>ClientSessionSQLite: execute SQLite statements
-            deactivate Store
-            
-            %% Re-queue rebased events
+
+            CSSP->>InMemorySQLite: rollback() conflicting events using session changesets
+
+            CSSP->>Store: materialize events callback for new upstream events
+            Store->>InMemorySQLite: execute SQLite statements
+
             CSSP->>LeaderPushQueue: re-queue rebased pending events
             CSSP->>CSSP: restart leader push fiber
-            
-            %% Update UI
-            CSSP->>Store: refreshTables() callback
-            activate Store
-            Store->>Store: update table refs & trigger reactivity
-            deactivate Store
+
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
         end
-        
+
         %% Update sync state
         CSSP->>ClientSessionSyncState: update sync state
     end
-    deactivate CSSP

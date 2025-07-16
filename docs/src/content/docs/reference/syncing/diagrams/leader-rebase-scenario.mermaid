@@ -1,14 +1,15 @@
 sequenceDiagram
     box ClientSession
+        participant UI
         participant Store
         participant CSSP as ClientSessionSyncProcessor
-        participant ClientSessionSQLite
+        participant InMemorySQLite
         participant LeaderPushQueue
     end
     box Leader
-        participant LSP as LeaderSyncProcessor
-        participant LeaderSQLite
         participant ClientSessionPullQueues
+        participant LSP as LeaderSyncProcessor
+        participant PersistedSQLite
         participant BackendPushQueue
     end
     box Backend
@@ -21,10 +22,10 @@ sequenceDiagram
     Note over LSP: merge result = 'rebase'
 
     LSP->>BackendPushQueue: clear and restart with rebased pending events
-    LSP->>LeaderSQLite: rollback conflicting events
-    LSP->>ClientSessionPullQueues: broadcast PayloadUpstreamRebase to client sessions
+    LSP->>PersistedSQLite: rollback conflicting events
+    LSP->>ClientSessionPullQueues: broadcast 'upstream-rebase'<br>to client sessions
 
-    LSP->>LeaderSQLite: materialize upstream events
+    LSP->>PersistedSQLite: materialize upstream events
 
     ClientSessionPullQueues->>CSSP: PayloadUpstreamRebase
     CSSP->>CSSP: Merge payload as 'upstream-rebase'
@@ -34,13 +35,14 @@ sequenceDiagram
     CSSP->>CSSP: stop leader pushing
     CSSP->>LeaderPushQueue: clear pending events
 
-    CSSP->>ClientSessionSQLite: rollback conflicting events using session changesets
+    CSSP->>InMemorySQLite: rollback conflicting events using session changesets
 
     CSSP->>Store: materialize events callback for new upstream events
-    Store->>ClientSessionSQLite: execute SQLite statements
+    Store->>InMemorySQLite: materialize events
 
     CSSP->>LeaderPushQueue: re-queue rebased pending events
     CSSP->>CSSP: resume leader pushing
 
-    CSSP->>Store: refreshTables() callback
-    Store->>Store: update table refs & trigger reactivity
+    CSSP->>Store: refresh tables callback
+    Store->>Store: update table refs
+    Store->>UI: trigger reactivity

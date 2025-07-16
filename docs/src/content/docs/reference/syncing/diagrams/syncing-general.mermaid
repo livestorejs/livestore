@@ -12,7 +12,7 @@ sequenceDiagram
 
     rect rgb(240, 248, 255)
         par
-            UI->>ClientSession: commit(events)
+            UI->>ClientSession: commit events
             ClientSession->>ClientSession: Apply events
         and
             ClientSession->>Leader: Push events
@@ -30,7 +30,7 @@ sequenceDiagram
     end
 
     rect rgb(240, 255, 240)
-        Leader->>ClientSession: Broadcast updates<br/>(local-push, upstream-advance, rebase)
+        Leader->>ClientSession: Broadcast updates<br/>(upstream-advance, rebase)
         ClientSession->>ClientSession: Apply updates
         ClientSession->>UI: Update UI
     end
