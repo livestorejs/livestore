@@ -1,16 +1,17 @@
 sequenceDiagram
     box ClientSession
+        participant UI
         participant Store
         participant CSSP as ClientSessionSyncProcessor
         participant ClientSessionSyncState
-        participant ClientSessionSQLite
+        participant InMemorySQLite
         participant LeaderPushQueue
     end
     box Leader
+        participant ClientSessionPullQueues
         participant LSP as LeaderSyncProcessor
         participant LocalPushesQueue
-        participant LeaderSQLite
-        participant ClientSessionPullQueues
+        participant PersistedSQLite
         participant BackendPushQueue
     end
     box Backend
@@ -18,15 +19,15 @@ sequenceDiagram
     end
 
         par
-            Store->>CSSP: commit(events)
-            Store->>CSSP: push(events)
-            CSSP->>CSSP: EventSequenceNumber.nextPair()<br/>assign sequence numbers + rebaseGeneration
-            CSSP->>CSSP: SyncState.merge() with 'local-push'<br/>validate sequence numbers
-            CSSP->>ClientSessionSyncState: update sync state
-            CSSP->>Store: materializeEvent() callback
-            Store->>ClientSessionSQLite: materialize events
-            CSSP->>Store: refreshTables() callback
-            Store->>Store: update table refs & trigger reactivity
+            UI->>Store: commit events
+            Store->>CSSP: push events
+            CSSP->>CSSP: assign event sequence<br>numbers to events
+            CSSP->>CSSP: merge events as 'local-push'
+            CSSP->>Store: materialize events callback
+            Store->>InMemorySQLite: materialize events
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
             CSSP->>LeaderPushQueue: queue events for leader
         and
             CSSP->>LeaderPushQueue: Take between 1 and <br/>up to `leaderPushBatchSize`<br/>events as a batch
@@ -34,16 +35,16 @@ sequenceDiagram
 
 
             LSP->>LSP: validatePushBatch()<br/>check sequence continuity
-            LSP->>LocalPushesQueue: queue validated event batch
+            LSP->>LocalPushesQueue: queue validated<br>event batch
         end
 
         par
             LSP->>LocalPushesQueue: Take between 1 and <br/>up to `localPushBatchSize`<br/>events as a batch
-            LSP->>LSP: filter out events with old rebaseGeneration value
-            LSP->>LSP: SyncState.merge() events as 'local-push'
+            LSP->>LSP: filter out events with<br>old rebaseGeneration value
+            LSP->>LSP: merge events as 'local-push'
             Note over LSP: merge result = 'advance'
-            LSP->>LeaderSQLite: materialize events
-            LSP->>ClientSessionPullQueues: broadcast 'upstream-advance' to client sessions
+            LSP->>PersistedSQLite: materialize events
+            LSP->>ClientSessionPullQueues: broadcast 'upstream-advance'<br/>to client sessions
             LSP->>BackendPushQueue: queue non-clientOnly events
         and
             LSP->> BackendPushQueue: Take between 1 and <br/>up to `backendPushBatchSize`<br/>events as a batch

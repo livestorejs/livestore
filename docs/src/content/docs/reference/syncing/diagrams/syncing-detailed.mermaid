@@ -1,20 +1,21 @@
 sequenceDiagram
     box ClientSession
+        participant UI
         participant Store
         participant CSSP as ClientSessionSyncProcessor
         participant ClientSessionSyncState
-        participant ClientSessionSQLite
+        participant InMemorySQLite
+        participant LeaderPushQueue
     end
     box Leader
-        participant LeaderPushQueue
+        participant ClientSessionPullQueues
         participant LSP as LeaderSyncProcessor
         participant LocalPushesLatch
         participant PullLatch
         participant PushHead
         participant LeaderSyncState
         participant LocalPushesQueue
-        participant LeaderSQLite
-        participant ClientSessionPullQueues
+        participant PersistedSQLite
         participant BackendPushQueue
         participant Eventlog
     end
@@ -27,10 +28,11 @@ sequenceDiagram
     CSSP->>CSSP: EventSequenceNumber.nextPair()<br/>assign sequence numbers + rebaseGeneration
     CSSP->>CSSP: SyncState.merge() with 'local-push'<br/>validate sequence numbers
     CSSP->>ClientSessionSyncState: update sync state
-    CSSP->>Store: materializeEvent() callback
-    Store->>ClientSessionSQLite: execute SQLite statements
-    CSSP->>Store: refreshTables() callback
-    Store->>Store: update table refs & trigger reactivity
+    CSSP->>Store: materialize events callback
+    Store->>InMemorySQLite: execute SQLite statements
+    CSSP->>Store: refresh tables callback
+    Store->>Store: update table refs
+    Store->>UI: trigger reactivity
     CSSP->>LeaderPushQueue: queue events for leader
     CSSP->>LeaderPushQueue: Take between 1 and <br/>up to `leaderPushBatchSize`<br/>events as a batch
     CSSP->>LSP: push event batch to leader
@@ -51,8 +53,8 @@ sequenceDiagram
                 LSP->>LSP: SyncState.merge() events as 'local-push'
                 alt merge result = 'advance'
                     LSP->>LeaderSyncState: update sync state
-                    LSP->>LeaderSQLite: materializeEventsBatch()<br/>SQLite transactions
-                    LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadUpstreamAdvance to client sessions
+                    LSP->>PersistedSQLite: materializeEventsBatch()<br/>SQLite transactions
+                    LSP->>ClientSessionPullQueues: broadcast 'upstream-advance'<br/>to client sessions
                     LSP->>BackendPushQueue: queue non-clientOnly events
                 else merge result = 'reject'
                     LSP->>LocalPushesQueue: remove events with old rebaseGeneration
@@ -69,14 +71,14 @@ sequenceDiagram
             LSP->>LSP: SyncState.merge() events as 'upstream-advance'
             LSP->>Eventlog: updateBackendHead() with new cursor
             alt merge result = 'advance'
-                LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadUpstreamAdvance to client sessions
+                LSP->>ClientSessionPullQueues: broadcast 'upstream-advance'<br>to client sessions
                 LSP->>Eventlog: updateSyncMetadata() for confirmed events
             else merge result = 'rebase'
-                LSP->>LeaderSQLite: rollback conflicting events using changesets
+                LSP->>PersistedSQLite: rollback conflicting events using changesets
                 LSP->>BackendPushQueue: clear and restart with rebased pending events
-                LSP->>ClientSessionPullQueues: broadcast SyncState.PayloadRebase to client sessions
+                LSP->>ClientSessionPullQueues: broadcast 'upstream-rebase'<br>to client sessions
             end
-            LSP->>LeaderSQLite: materializeEventsBatch()<br/>SQLite transactions
+            LSP->>PersistedSQLite: materializeEventsBatch()<br/>SQLite transactions
             LSP->>LeaderSyncState: update sync state
             LSP->>LocalPushesLatch: open
         end
@@ -91,20 +93,22 @@ sequenceDiagram
     loop process pull events
         CSSP->>CSSP: SyncState.merge() with received payload
         alt merge result = 'advance'
-            CSSP->>Store: materializeEvent() callback
-            Store->>ClientSessionSQLite: execute SQLite statements
-            CSSP->>Store: refreshTables() callback
-            Store->>Store: update table refs & trigger reactivity
+            CSSP->>Store: materialize events callback
+            Store->>InMemorySQLite: execute SQLite statements
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
         else merge result = 'rebase'
             CSSP->>CSSP: interrupt leader push fiber
             CSSP->>LeaderPushQueue: clear pending events
-            CSSP->>ClientSessionSQLite: rollback() conflicting events using session changesets
-            CSSP->>Store: materializeEvent() callback for new upstream events
-            Store->>ClientSessionSQLite: execute SQLite statements
+            CSSP->>InMemorySQLite: rollback() conflicting events using session changesets
+            CSSP->>Store: materialize events callback for new upstream events
+            Store->>InMemorySQLite: execute SQLite statements
             CSSP->>LeaderPushQueue: re-queue rebased pending events
             CSSP->>CSSP: restart leader push fiber
-            CSSP->>Store: refreshTables() callback
-            Store->>Store: update table refs & trigger reactivity
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
         end
         CSSP->>ClientSessionSyncState: update sync state
     end
