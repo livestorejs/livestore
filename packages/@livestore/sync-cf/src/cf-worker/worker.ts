@@ -1,13 +1,10 @@
-import type * as CfWorker from '@cloudflare/workers-types'
+import * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.ts'
 import type { Env } from './durable-object.ts'
-
-// Redeclaring Response to Cloudflare Worker Response type to avoid lib.dom type clashing
-declare const Response: typeof CfWorker.Response
 
 /**
  * Helper type to extract DurableObject keys from Env to give consumer type safety.
@@ -77,7 +74,7 @@ export const makeWorker = <
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       if (request.method === 'GET' && url.pathname === '/') {
-        return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
+        return new CfWorker.Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
           status: 200,
           headers: { 'Content-Type': 'text/plain' },
         })
@@ -92,7 +89,7 @@ export const makeWorker = <
         : {}
 
       if (request.method === 'OPTIONS' && options.enableCORS) {
-        return new Response(null, {
+        return new CfWorker.Response(null, {
           status: 204,
           headers: corsHeaders,
         })
@@ -108,7 +105,7 @@ export const makeWorker = <
 
       console.error('Invalid path', url.pathname)
 
-      return new Response('Invalid path', {
+      return new CfWorker.Response('Invalid path', {
         status: 400,
         statusText: 'Bad Request',
         headers: {
@@ -138,7 +135,7 @@ export const makeWorker = <
  *       return handleWebSocket(request, env, ctx, { headers: {}, validatePayload })
  *     }
  *
- *     return new Response('Invalid path', { status: 400, headers: corsHeaders })
+ *     return new Response('Invalid path', { status: 400 })
  *   }
  * }
  * ```
@@ -166,7 +163,7 @@ export const handleWebSocket = <
     const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)
 
     if (paramsResult._tag === 'Left') {
-      return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
+      return new CfWorker.Response(`Invalid search params: ${paramsResult.left.toString()}`, {
         status: 500,
         headers: options?.headers,
       })
@@ -182,13 +179,13 @@ export const handleWebSocket = <
 
       if (result._tag === 'Left') {
         console.error('Invalid payload', result.left)
-        return new Response(result.left.toString(), { status: 400, headers: options.headers })
+        return new CfWorker.Response(result.left.toString(), { status: 400, headers: options.headers })
       }
     }
 
     const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
     if (!(durableObjectName in env)) {
-      return new Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
+      return new CfWorker.Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
         status: 424,
         headers: options.headers,
       })
@@ -203,12 +200,12 @@ export const handleWebSocket = <
 
     const upgradeHeader = request.headers.get('Upgrade')
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Durable Object expected Upgrade: websocket', {
+      return new CfWorker.Response('Durable Object expected Upgrade: websocket', {
         status: 426,
         headers: options?.headers,
       })
     }
 
     // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
-    return yield* Effect.promise(() => durableObject.fetch(request as any) as unknown as Promise<CfWorker.Response>)
+    return yield* Effect.promise(() => durableObject.fetch(request))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
