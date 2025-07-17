@@ -1,16 +1,14 @@
 {
   "name": "@livestore/sync-electric",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "sideEffects": false,
+  "dependencies": {
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10"
+  },
+  "devDependencies": {},
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {},
   "files": [
     "package.json",
     "src",
@@ -26,5 +24,7 @@
   "scripts": {
     "build": "",
     "test": "echo 'No tests yet'"
-  }
+  },
+  "sideEffects": false,
+  "type": "module"
 }
