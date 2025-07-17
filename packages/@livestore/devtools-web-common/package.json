@@ -1,18 +1,16 @@
 {
   "name": "@livestore/devtools-web-common",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "sideEffects": false,
+  "dependencies": {
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@livestore/webmesh": "0.3.2-dev.10"
+  },
+  "devDependencies": {},
   "exports": {
     "./web-channel": "./src/web-channel/index.ts",
     "./worker": "./src/worker/mod.ts"
   },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*"
-  },
-  "devDependencies": {},
   "files": [
     "package.json",
     "src",
@@ -28,5 +26,7 @@
   },
   "scripts": {
     "test": "echo No tests yet"
-  }
+  },
+  "sideEffects": false,
+  "type": "module"
 }
