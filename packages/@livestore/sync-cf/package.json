@@ -11,9 +11,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
+    "@livestore/utils": "workspace:*",
     "@cloudflare/workers-types": "^4.20250702.0"
   },
   "files": [
