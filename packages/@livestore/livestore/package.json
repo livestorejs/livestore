@@ -1,27 +1,25 @@
 {
   "name": "@livestore/livestore",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./internal": "./src/internal/mod.ts",
-    "./internal/testing-utils": "./src/utils/tests/mod.ts",
-    "./effect": "./src/effect/mod.ts"
-  },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "1.9.0"
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
+    "@livestore/adapter-web": "0.3.2-dev.10",
+    "@livestore/utils-dev": "0.3.2-dev.10",
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.4",
     "vitest": "catalog:"
+  },
+  "exports": {
+    ".": "./src/mod.ts",
+    "./internal": "./src/internal/mod.ts",
+    "./internal/testing-utils": "./src/utils/tests/mod.ts",
+    "./effect": "./src/effect/mod.ts"
   },
   "files": [
     "package.json",
@@ -41,5 +39,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest"
-  }
+  },
+  "sideEffects": false,
+  "type": "module"
 }

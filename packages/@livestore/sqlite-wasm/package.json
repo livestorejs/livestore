@@ -1,26 +1,25 @@
 {
   "name": "@livestore/sqlite-wasm",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./load-wasm": {
-      "browser": "./src/load-wasm/mod.browser.ts",
-      "worker": "./src/load-wasm/mod.browser.ts",
-      "default": "./src/load-wasm/mod.node.ts"
-    },
-    "./node": "./src/node/mod.ts",
-    "./browser": "./src/browser/mod.ts"
-  },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.0",
     "@types/node": "catalog:",
     "@types/wicg-file-system-access": "^2023.10.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./load-wasm": {
+      "browser": "./src/load-wasm/mod.browser.ts",
+      "default": "./src/load-wasm/mod.node.ts",
+      "worker": "./src/load-wasm/mod.browser.ts"
+    },
+    "./node": "./src/node/mod.ts",
+    "./browser": "./src/browser/mod.ts"
   },
   "files": [
     "package.json",
@@ -51,5 +50,6 @@
       }
     }
   },
-  "scripts": {}
+  "scripts": {},
+  "type": "module"
 }

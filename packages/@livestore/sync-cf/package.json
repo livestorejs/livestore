@@ -1,20 +1,18 @@
 {
   "name": "@livestore/sync-cf",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "sideEffects": false,
+  "dependencies": {
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250702.0"
+  },
   "exports": {
     ".": "./src/sync-impl/mod.ts",
     "./cf-worker": "./src/cf-worker/mod.ts",
     "./cf-worker/durable-object": "./src/cf-worker/durable-object.ts",
     "./cf-worker/worker": "./src/cf-worker/worker.ts"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250702.0"
   },
   "files": [
     "dist",
@@ -34,5 +32,7 @@
   },
   "scripts": {
     "test": "echo 'No tests yet'"
-  }
+  },
+  "sideEffects": false,
+  "type": "module"
 }
