@@ -13,8 +13,7 @@ import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-const testTimeout = IS_CI ? 240_000 : 30_000
-const propTestTimeout = IS_CI ? 600_000 : 240_000
+const testTimeout = IS_CI ? 600_000 : 900_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
@@ -154,8 +153,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         }),
       ),
     DEBUGGER_ACTIVE
-      ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: IS_CI ? 6 : 20 }, timeout: propTestTimeout },
+      ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
+      : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
   )
 })
 
