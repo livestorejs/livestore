@@ -50,6 +50,7 @@ describe('client document table', () => {
         currentFacts: new Map(),
         query: {} as any, // unused
         eventDef: Doc[ClientDocumentTableDefSymbol].derived.setEventDef,
+        clientId: 'test-client-id',
       })
     }
 

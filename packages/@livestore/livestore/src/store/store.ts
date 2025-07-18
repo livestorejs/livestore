@@ -77,7 +77,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
-  tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
+  tableRefs: {
+    [key: string]: Ref<null, ReactivityGraphContext, RefreshReason>
+  }
 
   /** Tracks whether the store has been shut down */
   private isShutdown = false
@@ -113,7 +115,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     this.storeId = storeId
 
-    this.sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
+    this.sqliteDbWrapper = new SqliteDbWrapper({
+      otel: otelOptions,
+      db: clientSession.sqliteDb,
+    })
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
@@ -164,7 +169,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
           } of execArgsArr) {
             try {
-              this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+              this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, {
+                otelContext,
+                writeTables,
+              })
             } catch (cause) {
               throw UnexpectedError.make({
                 cause,
@@ -182,7 +190,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
 
         let sessionChangeset:
-          | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
+          | {
+              _tag: 'sessionChangeset'
+              data: Uint8Array<ArrayBuffer>
+              debug: any
+            }
           | { _tag: 'no-op' }
           | { _tag: 'unset' } = { _tag: 'unset' }
 
@@ -192,7 +204,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           exec()
         }
 
-        return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
+        return {
+          writeTables: writeTablesForEvent,
+          sessionChangeset,
+          materializerHash,
+        }
       },
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
@@ -337,7 +353,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+      {
+        attributes: {
+          label: options?.label,
+          queryLabel: isQueryBuilder(query) ? query.toString() : query.label,
+        },
+      },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
         // console.debug('store sub', query$.id, query$.label)
@@ -370,7 +391,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
         }
 
         const unsubscribe = () => {
@@ -440,8 +464,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       | LiveQuery<TResult>
       | LiveQueryDef<TResult>
       | SignalDef<TResult>
-      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
-    options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
+      | {
+          query: string
+          bindValues: Bindable
+          schema?: Schema.Schema<TResult>
+        },
+    options?: {
+      otelContext?: otel.Context
+      debugRefreshReason?: RefreshReason
+    },
   ): TResult => {
     this.checkShutdown('query')
 
@@ -487,7 +518,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const signal$ = query.make(this.reactivityGraph.context!)
       return signal$.value.get()
     } else {
-      return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
+      return query.run({
+        otelContext: options?.otelContext,
+        debugRefreshReason: options?.debugRefreshReason,
+      })
     }
   }
 
@@ -641,7 +675,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
             } catch (e: any) {
               console.error(e)
-              span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
+              span.setStatus({
+                code: otel.SpanStatusCode.ERROR,
+                message: e.toString(),
+              })
               throw e
             } finally {
               span.end()
@@ -662,10 +699,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
+          this.reactivityGraph.setRefs(tablesToUpdate, {
+            debugRefreshReason,
+            otelContext,
+            skipRefresh,
+          })
         } catch (e: any) {
           console.error(e)
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
+          span.setStatus({
+            code: otel.SpanStatusCode.ERROR,
+            message: e.toString(),
+          })
           throw e
         } finally {
           span.end()
@@ -779,7 +823,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.gen(this, function* () {
         const clientId = this.clientSession.clientId
         yield* this.clientSession.leaderThread.sendDevtoolsMessage(
-          Devtools.Leader.ResetAllData.Request.make({ liveStoreVersion, mode, requestId: nanoid(), clientId }),
+          Devtools.Leader.ResetAllData.Request.make({
+            liveStoreVersion,
+            mode,
+            requestId: nanoid(),
+            clientId,
+          }),
         )
       }).pipe(this.runEffectFork)
     },

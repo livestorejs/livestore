@@ -24,8 +24,14 @@ export const getExecStatementsFromMaterializer = ({
   dbState: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
-    | { decoded: LiveStoreEvent.AnyDecoded; encoded: undefined }
-    | { decoded: undefined; encoded: LiveStoreEvent.AnyEncoded }
+    | {
+        decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
+        encoded: undefined
+      }
+    | {
+        decoded: undefined
+        encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
+      }
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -57,12 +63,16 @@ export const getExecStatementsFromMaterializer = ({
     }
   }
 
+  // Extract clientId from the event object
+  const clientId = event.decoded ? (event.decoded as any).clientId : (event.encoded as any).clientId
+
   const statementResults = fromMaterializerResult(
     materializer(eventArgsDecoded, {
       eventDef,
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      clientId,
     }),
   )
 
@@ -73,7 +83,11 @@ export const getExecStatementsFromMaterializer = ({
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
 
-    return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
+    return {
+      statementSql,
+      bindValues: prepareBindValues(bindValues ?? {}, statementSql),
+      writeTables,
+    }
   })
 }
 
@@ -114,9 +128,21 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
+    return [
+      {
+        sql: query,
+        bindValues: bindValues as BindValues,
+        writeTables: usedTables,
+      },
+    ]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+    return [
+      {
+        sql: materializerResult,
+        bindValues: {} as BindValues,
+        writeTables: undefined,
+      },
+    ]
   } else {
     return [
       {
