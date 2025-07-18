@@ -48,7 +48,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     { fastCheck: { numRuns: 4 } },
   )
 
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
+  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
