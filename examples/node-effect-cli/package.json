@@ -1,8 +1,6 @@
 {
   "name": "livestore-example-node-effect-cli",
   "version": "0.0.0",
-  "type": "module",
-  "private": true,
   "dependencies": {
     "@livestore/adapter-node": "0.3.2-dev.10",
     "@livestore/common": "0.3.2-dev.10",
@@ -17,5 +15,7 @@
   "engines": {
     "node": ">=23.0.0"
   },
-  "scripts": {}
+  "private": true,
+  "scripts": {},
+  "type": "module"
 }
