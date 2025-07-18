@@ -122,6 +122,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           materializer,
           dbState: this.sqliteDbWrapper,
           event: { decoded: eventDecoded, encoded: undefined },
+          clientId: eventDecoded.clientId,
         })
 
         const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
