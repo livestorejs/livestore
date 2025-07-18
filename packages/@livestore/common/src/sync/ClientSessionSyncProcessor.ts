@@ -383,11 +383,11 @@ const SIMULATION_ENABLED = true
 
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 50)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 50)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 50)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 50)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 50)),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

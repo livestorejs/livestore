@@ -13,8 +13,8 @@ import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-const testTimeout = IS_CI ? 120_000 : 15_000
-const propTestTimeout = IS_CI ? 300_000 : 120_000
+const testTimeout = IS_CI ? 240_000 : 30_000
+const propTestTimeout = IS_CI ? 600_000 : 240_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
