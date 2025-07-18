@@ -18,6 +18,7 @@ export const getExecStatementsFromMaterializer = ({
   materializer,
   dbState,
   event,
+  clientId,
 }: {
   eventDef: EventDef.AnyWithoutFn
   materializer: Materializer
@@ -32,6 +33,7 @@ export const getExecStatementsFromMaterializer = ({
         decoded: undefined
         encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
       }
+  clientId: string
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -69,6 +71,7 @@ export const getExecStatementsFromMaterializer = ({
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      clientId,
     }),
   )
 
@@ -93,6 +96,7 @@ export const makeMaterializerHash =
         materializer,
         dbState,
         event: { decoded: undefined, encoded: event },
+        clientId: event.clientId,
       })
       return Option.some(Hash.string(JSON.stringify(materializerResults)))
     }
