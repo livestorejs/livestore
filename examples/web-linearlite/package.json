@@ -1,7 +1,6 @@
 {
   "name": "livestore-example-web-linearlite",
   "version": "0.0.0",
-  "type": "module",
   "dependencies": {
     "@headlessui/react": "2.2.1",
     "@heroicons/react": "2.2.0",
@@ -24,16 +23,16 @@
     "animate.css": "4.1.1",
     "classnames": "2.5.1",
     "fractional-indexing": "3.2.0",
-    "react": "19.0.0",
+    "react": "^19.0.0",
     "react-aria": "3.41.1",
     "react-aria-components": "1.10.1",
     "react-beautiful-dnd": "13.1.1",
-    "react-dom": "19.0.0",
+    "react-dom": "^19.0.0",
     "react-icons": "5.5.0",
     "react-markdown": "10.1.0",
     "react-router-dom": "7.5.0",
     "react-virtualized-auto-sizer": "1.0.26",
-    "react-window": "1.8.11",
+    "react-window": "^1.8.11",
     "tiptap-markdown": "0.8.10"
   },
   "devDependencies": {
@@ -52,7 +51,7 @@
     "prompt": "^1.3.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4",
+    "vite": "7.0.5",
     "vite-plugin-svgr": "^4.3.0"
   },
   "engines": {
@@ -64,5 +63,6 @@
     "lint": "biome lint .",
     "preview": "vite preview",
     "vite": "vite"
-  }
+  },
+  "type": "module"
 }

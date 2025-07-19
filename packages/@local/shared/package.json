@@ -1,12 +1,12 @@
 {
   "name": "@local/shared",
   "version": "0.0.0",
-  "type": "module",
-  "private": true,
+  "devDependencies": {
+    "@types/node": "catalog:"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
-  "devDependencies": {
-    "@types/node": "catalog:"
-  }
+  "private": true,
+  "type": "module"
 }

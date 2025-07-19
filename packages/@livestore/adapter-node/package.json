@@ -1,27 +1,25 @@
 {
   "name": "@livestore/adapter-node",
   "version": "0.3.2-dev.10",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/index.ts",
-    "./devtools": "./src/devtools/mod.ts",
-    "./worker": "./src/make-leader-worker.ts"
-  },
   "dependencies": {
-    "@livestore/common": "workspace:*",
+    "@livestore/common": "0.3.2-dev.10",
     "@livestore/devtools-vite": "0.3.2-dev.10",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "1.9.0",
-    "vite": "7.0.4"
+    "@livestore/sqlite-wasm": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@livestore/webmesh": "0.3.2-dev.10",
+    "@opentelemetry/api": "^1.9.0",
+    "vite": "7.0.5"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-terser": "^0.4.4",
     "rollup": "^4.35.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./devtools": "./src/devtools/mod.ts",
+    "./worker": "./src/make-leader-worker.ts"
   },
   "files": [
     "package.json",
@@ -39,5 +37,7 @@
   },
   "scripts": {
     "test": "echo No tests yet"
-  }
+  },
+  "sideEffects": false,
+  "type": "module"
 }
