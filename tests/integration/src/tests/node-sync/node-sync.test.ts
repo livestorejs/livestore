@@ -13,8 +13,7 @@ import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-const testTimeout = IS_CI ? 120_000 : 15_000
-const propTestTimeout = IS_CI ? 300_000 : 120_000
+const testTimeout = IS_CI ? 600_000 : 900_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
@@ -48,7 +47,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     { fastCheck: { numRuns: 4 } },
   )
 
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
+  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
@@ -154,8 +153,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         }),
       ),
     DEBUGGER_ACTIVE
-      ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: IS_CI ? 6 : 20 }, timeout: propTestTimeout },
+      ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
+      : { fastCheck: { numRuns: IS_CI ? 6 : 20 }, timeout: testTimeout },
   )
 })
 

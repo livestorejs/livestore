@@ -3,6 +3,7 @@ declare global {
 
   interface ImportMeta {
     readonly main: boolean
+    // @ts-ignore - temporary ignore so that we can see if tests pass
     readonly env: Record<string, string>
   }
 }

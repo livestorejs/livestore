@@ -185,7 +185,7 @@ export const nextPair = ({
     seqNum: {
       global: (seqNum.global + 1) as any as GlobalEventSequenceNumber,
       client: clientDefault,
-      rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
+      rebaseGeneration: rebaseGenerationDefault,
     },
     // NOTE we always point to `client: 0` for non-clientOnly events
     parentSeqNum: { global: seqNum.global, client: clientDefault, rebaseGeneration: seqNum.rebaseGeneration },
