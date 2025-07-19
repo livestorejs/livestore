@@ -1,24 +1,22 @@
 {
   "name": "docs",
   "version": "0.1.1",
-  "type": "module",
-  "private": true,
   "dependencies": {
     "@astrojs/check": "0.9.4",
-    "@astrojs/netlify": "6.5.0",
+    "@astrojs/netlify": "6.5.1",
     "@astrojs/react": "4.3.0",
-    "@astrojs/starlight": "0.34.6",
+    "@astrojs/starlight": "0.35.1",
     "@astrojs/starlight-tailwind": "4.0.1",
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@local/shared": "workspace:*",
-    "@tailwindcss/vite": "4.1.11",
-    "@types/react": "19.1.2",
-    "astro": "5.11.1",
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@local/shared": "0.0.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.2",
+    "astro": "5.12.0",
     "astro-og-canvas": "0.7.0",
     "canvaskit-wasm": "0.40.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "rehype-mermaid": "3.0.0",
     "remark-custom-header-id": "1.0.0",
     "sharp": "0.34.3",
@@ -26,16 +24,18 @@
     "starlight-links-validator": "0.17.0",
     "starlight-sidebar-topics": "0.6.0",
     "starlight-typedoc": "0.21.3",
-    "tailwindcss": "4.1.11",
+    "tailwindcss": "^4.1.11",
     "typedoc": "0.28.7",
-    "typedoc-plugin-markdown": "4.7.0",
-    "typescript": "5.8.3"
+    "typedoc-plugin-markdown": "4.7.1",
+    "typescript": "^5.8.3"
   },
+  "private": true,
   "scripts": {
     "astro": "astro",
     "build": "astro check && astro build",
     "dev": "astro dev",
     "preview": "astro preview",
     "start": "astro dev"
-  }
+  },
+  "type": "module"
 }

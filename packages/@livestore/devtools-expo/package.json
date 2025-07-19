@@ -1,16 +1,14 @@
 {
   "name": "@livestore/devtools-expo",
   "version": "0.3.2-dev.10",
-  "sideEffects": false,
-  "types": "./dist/index.d.cts",
   "dependencies": {
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/adapter-node": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "expo": "^53.0.9",
-    "vite": "^7.0.4"
+    "vite": "7.0.5"
   },
   "files": [
     "package.json",
@@ -22,12 +20,14 @@
   "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "~53.0.9"
+    "expo": "^53.0.9"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "test": "echo No tests yet"
-  }
+  },
+  "sideEffects": false,
+  "types": "./dist/index.d.cts"
 }

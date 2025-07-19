@@ -1,32 +1,32 @@
 {
   "name": "@local/tests-perf",
   "version": "0.0.0",
-  "type": "module",
   "dependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/react": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
+    "@livestore/adapter-web": "0.3.2-dev.10",
+    "@livestore/livestore": "0.3.2-dev.10",
+    "@livestore/react": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@livestore/utils-dev": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5",
-    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
-    "@opentelemetry/resources": "2.0.1",
-    "@opentelemetry/sdk-trace-base": "2.0.1",
-    "@opentelemetry/sdk-trace-web": "2.0.0",
-    "@playwright/test": "1.53.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-web": "^2.0.0",
+    "@playwright/test": "^1.53.1",
     "@types/node": "catalog:",
-    "@types/react": "19.1.2",
-    "@types/react-dom": "19.0.4",
-    "@vitejs/plugin-react": "4.3.4",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "typescript": "5.8.3",
-    "vite": "7.0.4"
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.8.3",
+    "vite": "7.0.5"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
     "test-app": "vite build test-app && vite preview test-app",
     "test-app:dev": "vite test-app",
     "test:profiler": "PERF_PROFILER=1 pnpm test"
-  }
+  },
+  "type": "module"
 }

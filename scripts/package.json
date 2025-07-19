@@ -1,17 +1,17 @@
 {
   "name": "@local/scripts",
   "version": "0.0.0",
-  "type": "module",
-  "private": true,
+  "devDependencies": {
+    "@livestore/common": "0.3.2-dev.10",
+    "@livestore/utils": "0.3.2-dev.10",
+    "@livestore/utils-dev": "0.3.2-dev.10",
+    "@local/tests-integration": "0.0.54-dev.23",
+    "@types/bun": "^1.2.5",
+    "@types/node": "catalog:"
+  },
   "exports": {
     "./examples": "./examples/mod.ts"
   },
-  "devDependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
-    "@local/tests-integration": "workspace:*",
-    "@types/bun": "^1.2.5",
-    "@types/node": "catalog:"
-  }
+  "private": true,
+  "type": "module"
 }
