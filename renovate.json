@@ -53,8 +53,10 @@
     {
       "description": "Group @playwright/test and playwright-web-flake updates",
       "groupName": "Playwright",
-      "matchPackageNames": ["@playwright/test"],
-      "matchDepNames": ["playwright-web-flake"],
+      "matchPackageNames": [
+        "@playwright/test",
+        "https://github.com/pietdevries94/playwright-web-flake"
+      ],
       "matchUpdateTypes": ["patch", "minor", "major", "digest"]
     }
   ],
