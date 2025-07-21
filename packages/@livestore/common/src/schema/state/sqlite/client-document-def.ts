@@ -121,7 +121,7 @@ export const clientDocument = <
   return clientDocumentTableDef
 }
 
-const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
+export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
   if (
     typeof defaultValues !== 'object' ||
     typeof explicitDefaultValues !== 'object' ||
@@ -131,7 +131,13 @@ const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T =>
     return explicitDefaultValues
   }
 
-  return Object.keys(defaultValues as any).reduce((acc, key) => {
+  // Get all unique keys from both objects
+  const allKeys = new Set([
+    ...Object.keys(defaultValues as any),
+    ...Object.keys(explicitDefaultValues as any)
+  ])
+
+  return Array.from(allKeys).reduce((acc, key) => {
     acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
   }, {} as any)

@@ -438,6 +438,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
+      
+      // Replace SessionIdSymbol in bind values before executing the query
+      if (sqlRes.bindValues) {
+        replaceSessionIdSymbol(sqlRes.bindValues, this.clientSession.sessionId)
+      }
+      
       const rawRes = this.sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
