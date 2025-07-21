@@ -1,5 +1,5 @@
-name: Setup
-description: Setup the environment for the CI workflow.
+name: Set up environment
+description: Set up the environment with Nix and direnv.
 inputs:
   direnv-timeout:
     description: Timeout in seconds for direnv allow step
