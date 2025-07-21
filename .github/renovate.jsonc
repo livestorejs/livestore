@@ -1,6 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
 
+  /* --------------------------------------------------------------------------------------------------------------
+     SYNCPACK ALIGNMENT: This config aligns with syncpack.config.mjs to minimize post-upgrade fixes.
+     Renovate creates PRs that already match our version rules: prod deps (exact), dev deps (^), peer deps (~).
+  -------------------------------------------------------------------------------------------------------------- */
+
   /* ------------------------------------------------------------------
      Core presets
   ------------------------------------------------------------------ */
