@@ -11,11 +11,32 @@
   "platformAutomerge": true,
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "postUpgradeTasks": {
-    "commands": ["pnpm install --frozen-lockfile", "pnpm exec syncpack fix-mismatches", "pnpm exec syncpack format"]
+    "commands": ["pnpm install", "pnpm exec syncpack fix-mismatches", "pnpm exec syncpack format"]
   },
   "automerge": true,
   "automergeType": "pr",
   "packageRules": [
+    {
+      "description": "Production dependencies - use exact versions",
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Dev dependencies - update with existing range type",
+      "matchDepTypes": ["devDependencies"],
+      "rangeStrategy": "auto"
+    },
+    {
+      "description": "Peer dependencies - preserve tilde range",
+      "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "auto"
+    },
+    {
+      "description": "Update catalog entries in pnpm-workspace.yaml",
+      "matchManagers": ["pnpm"],
+      "matchFileNames": ["pnpm-workspace.yaml"],
+      "rangeStrategy": "pin"
+    },
     {
       "matchCategories": ["node"],
       "enabled": false
@@ -53,10 +74,7 @@
     {
       "description": "Group @playwright/test and playwright-web-flake updates",
       "groupName": "Playwright",
-      "matchPackageNames": [
-        "@playwright/test",
-        "https://github.com/pietdevries94/playwright-web-flake"
-      ],
+      "matchPackageNames": ["@playwright/test", "https://github.com/pietdevries94/playwright-web-flake"],
       "matchUpdateTypes": ["patch", "minor", "major", "digest"]
     }
   ],
