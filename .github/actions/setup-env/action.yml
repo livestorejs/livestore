@@ -1,22 +1,10 @@
 name: Set up environment
 description: Set up the environment with Nix and direnv.
-inputs:
-  direnv-timeout:
-    description: Timeout in seconds for direnv allow step
-    required: false
-    default: "300"
-
 runs:
   using: composite
   steps:
     - name: Install Determinate Nix
       uses: DeterminateSystems/determinate-nix-action@v3
-
-      # NOTE Flakehub cache is still faster than magic-nix-cache-action
-    - name: Setup Flakehub Cache
-      uses: DeterminateSystems/flakehub-cache-action@main
-    # - name: Nix cache
-    #   uses: DeterminateSystems/magic-nix-cache-action@main
 
     - name: Cache node_modules
       uses: actions/cache@v4
@@ -37,40 +25,19 @@ runs:
         restore-keys: |
           direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-
 
-    - name: Install and setup direnv
+    - name: Use FlakeHub Cache for Nix binaries
+      # NOTE Flakehub cache is still faster than magic-nix-cache-action
+      uses: DeterminateSystems/flakehub-cache-action@main
+
+    - name: Install direnv
       shell: bash
       run: |
-        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install direnv
 
-        echo "Installing direnv..."
-        if ! nix profile add nixpkgs#direnv; then
-          echo "::error::Failed to install direnv via Nix"
-          exit 1
-        fi
-
-        echo "Verifying direnv installation..."
-        if ! command -v direnv >/dev/null 2>&1; then
-          echo "::error::direnv not found in PATH after installation"
-          exit 1
-        fi
-
-        echo "Allowing direnv..."
+    - name: Load environment with direnv
+      shell: bash
+      run: |
         direnv allow
-
-        echo "Loading direnv env with timeout ${{ inputs.direnv-timeout }}s..."
-        if ! timeout "${{ inputs.direnv-timeout }}" direnv exec . echo "Direnv loaded successfully" 2>&1; then
-          echo "::error::direnv allow failed or timed out after ${{ inputs.direnv-timeout }}s"
-          exit 1
-        fi
-
-        # Check if `node_modules/.last_git_hash` exists as sanity check
-        if [ ! -f "node_modules/.last_git_hash" ]; then
-          echo "::error::node_modules/.last_git_hash does not exist."
-          exit 1
-        fi
-
-        echo "Setting environment variables for subsequent steps..."
-        # Uses node to parse the json and set the environment variables in the correct format
-        direnv export json | node -e "Object.entries(JSON.parse(require('fs').readFileSync(0))).forEach(([k,v]) => require('fs').appendFileSync(process.env.GITHUB_ENV, v.includes('\n') ? \`\${k}<<EOF_\${k}\n\${v}\nEOF_\${k}\n\` : \`\${k}=\${v}\n\`))"
-
-        echo "Environment setup complete"
+        direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
+        direnv export gha >> "$GITHUB_ENV"
