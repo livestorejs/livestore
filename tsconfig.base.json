@@ -24,11 +24,7 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
-    "plugins": [{ "name": "@effect/language-service" }],
-    "paths": {
-      "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],
-      "@livestore/*": ["./packages/@livestore/*"]
-    }
+    "plugins": [{ "name": "@effect/language-service" }]
   },
   "exclude": ["packages/**/dist", "node_modules", "packages/**/node_modules"]
 }

@@ -1,11 +1,15 @@
-import * as CfWorker from './cf-types.ts'
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema, UrlParams } from '@livestore/utils/effect'
-
 import { SearchParamsSchema, WSMessage } from '../common/mod.ts'
 import type { SyncMetadata } from '../common/ws-message-types.ts'
+import type * as CfWorker from './cf-types.ts'
+
+// NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
+declare class Response extends CfWorker.Response {}
+declare class WebSocketPair extends CfWorker.WebSocketPair {}
+declare class WebSocketRequestResponsePair extends CfWorker.WebSocketRequestResponsePair {}
 
 export interface Env {
   DB: CfWorker.D1Database
@@ -66,7 +70,7 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase implements CfWorker.DurableObject, CfWorker.Rpc.DurableObjectBranded {
-    [CfWorker.Rpc.__DURABLE_OBJECT_BRAND] = 'WebSocketServerBase' as never
+    __DURABLE_OBJECT_BRAND = 'WebSocketServerBase' as never
     ctx: CfWorker.DurableObjectState
     env: Env
 
@@ -85,7 +89,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         const { storeId, payload } = getRequestSearchParams(request)
         const storage = makeStorage(this.ctx, this.env, storeId)
 
-        const { 0: client, 1: server } = new CfWorker.WebSocketPair()
+        const { 0: client, 1: server } = new WebSocketPair()
 
         // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
         server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload }))
@@ -95,7 +99,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         this.ctx.acceptWebSocket(server)
 
         this.ctx.setWebSocketAutoResponse(
-          new CfWorker.WebSocketRequestResponsePair(
+          new WebSocketRequestResponsePair(
             encodeIncomingMessage(WSMessage.Ping.make({ requestId: 'ping' })),
             encodeOutgoingMessage(WSMessage.Pong.make({ requestId: 'ping' })),
           ),
@@ -104,7 +108,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         const colSpec = makeColumnSpec(eventlogTable.sqliteDef.ast)
         this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
 
-        return new CfWorker.Response(null, {
+        return new Response(null, {
           status: 101,
           webSocket: client,
         })
@@ -311,7 +315,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       )
     }
 
-    webSocketClose = async (ws: CfWorker.WebSocket, code: number, _reason: string, _wasClean: boolean): Promise<void> => {
+    webSocketClose = async (
+      ws: CfWorker.WebSocket,
+      code: number,
+      _reason: string,
+      _wasClean: boolean,
+    ): Promise<void> => {
       // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
       ws.close(code, 'Durable Object is closing WebSocket')
     }

@@ -1,10 +1,14 @@
-import * as CfWorker from '@cloudflare/workers-types'
+import type * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.ts'
+
 import type { Env } from './durable-object.ts'
+
+// NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
+declare class Response extends CfWorker.Response {}
 
 /**
  * Helper type to extract DurableObject keys from Env to give consumer type safety.
@@ -74,7 +78,7 @@ export const makeWorker = <
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       if (request.method === 'GET' && url.pathname === '/') {
-        return new CfWorker.Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
+        return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
           status: 200,
           headers: { 'Content-Type': 'text/plain' },
         })
@@ -89,7 +93,7 @@ export const makeWorker = <
         : {}
 
       if (request.method === 'OPTIONS' && options.enableCORS) {
-        return new CfWorker.Response(null, {
+        return new Response(null, {
           status: 204,
           headers: corsHeaders,
         })
@@ -105,7 +109,7 @@ export const makeWorker = <
 
       console.error('Invalid path', url.pathname)
 
-      return new CfWorker.Response('Invalid path', {
+      return new Response('Invalid path', {
         status: 400,
         statusText: 'Bad Request',
         headers: {
@@ -163,7 +167,7 @@ export const handleWebSocket = <
     const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)
 
     if (paramsResult._tag === 'Left') {
-      return new CfWorker.Response(`Invalid search params: ${paramsResult.left.toString()}`, {
+      return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
         status: 500,
         headers: options?.headers,
       })
@@ -179,13 +183,13 @@ export const handleWebSocket = <
 
       if (result._tag === 'Left') {
         console.error('Invalid payload', result.left)
-        return new CfWorker.Response(result.left.toString(), { status: 400, headers: options.headers })
+        return new Response(result.left.toString(), { status: 400, headers: options.headers })
       }
     }
 
     const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
     if (!(durableObjectName in env)) {
-      return new CfWorker.Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
+      return new Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
         status: 424,
         headers: options.headers,
       })
@@ -200,7 +204,7 @@ export const handleWebSocket = <
 
     const upgradeHeader = request.headers.get('Upgrade')
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new CfWorker.Response('Durable Object expected Upgrade: websocket', {
+      return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
         headers: options?.headers,
       })
