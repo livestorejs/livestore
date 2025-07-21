@@ -3,7 +3,7 @@
   "version": "0.3.2-dev.10",
   "type": "module",
   "sideEffects": [
-    "./dist/global.js"
+    "./src/global.ts"
   ],
   "exports": {
     ".": "./src/mod.ts",
@@ -74,6 +74,9 @@
   },
   "publishConfig": {
     "access": "public",
+    "sideEffects": [
+      "./dist/global.js"
+    ],
     "exports": {
       ".": {
         "types": "./dist/mod.d.ts",
