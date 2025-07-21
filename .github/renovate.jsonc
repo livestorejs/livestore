@@ -1,0 +1,114 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
+  /* ------------------------------------------------------------------
+     Core presets
+  ------------------------------------------------------------------ */
+  "extends": [
+    "config:recommended",
+    "schedule:daily",
+    ":enableVulnerabilityAlertsWithLabel(security)",
+    ":semanticPrefixFixDepsChoreOthers",
+    "group:allNonMajor"
+  ],
+  "baseBranches": ["dev"],
+  "platformAutomerge": true,
+  "automerge": true,
+  "automergeType": "pr",
+  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+
+  /* ------------------------------------------------------------------
+     Post-upgrade housekeeping
+  ------------------------------------------------------------------ */
+  "postUpgradeTasks": {
+    "commands": ["pnpm install", "pnpm exec syncpack fix-mismatches", "pnpm exec syncpack format"]
+  },
+
+  /* ------------------------------------------------------------------
+     Package rules
+  ------------------------------------------------------------------ */
+  "packageRules": [
+    /* 1. Skip catalog pointers so Renovate never overwrites them */
+    {
+      "description": "Ignore catalog: references in package.json",
+      "matchCurrentValue": "^catalog:",
+      "enabled": false
+    },
+
+    /* 2. Control updates to the real catalog definitions */
+    {
+      "description": "Update pnpm catalog entries (definitions) with exact versions",
+      "matchDepTypes": ["pnpm.catalog.*"],
+      "rangeStrategy": "pin",
+      "prPriority": 10
+    },
+
+    /* 3. Normal dependency policies */
+    {
+      "description": "Production deps – pin",
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Dev deps – keep existing range",
+      "matchDepTypes": ["devDependencies"],
+      "rangeStrategy": "auto"
+    },
+    {
+      "description": "Peer deps – keep ~ range",
+      "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "auto"
+    },
+
+    /* 4. Misc. project-specific rules */
+    {
+      "description": "Auto-merge patch / minor",
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Manual review for majors",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Group Playwright updates",
+      "groupName": "Playwright",
+      "matchPackageNames": ["@playwright/test", "https://github.com/pietdevries94/playwright-web-flake"],
+      "matchUpdateTypes": ["patch", "minor", "major", "digest"]
+    },
+
+    /* Exclude rules */
+    {
+      "description": "Node toolchain releases",
+      "matchCategories": ["node"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude Expo / React Native packages",
+      "matchPackageNames": ["/^expo-/", "/^@expo\\//", "/^react-native-/", "/^@react-native\\//"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude React packages",
+      "matchPackageNames": ["react", "react-dom", "/^react-/", "/^@react-\\//", "@types/react", "@types/react-dom"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude workspace packages",
+      "matchPackageNames": ["/^@livestore\\//"],
+      "enabled": false
+    },
+    {
+      "description": "Exclude graphology packages",
+      "matchPackageNames": ["graphology", "graphology-*"],
+      "enabled": false
+    }
+  ],
+
+  /* ------------------------------------------------------------------
+     Misc toggles
+  ------------------------------------------------------------------ */
+  "lockFileMaintenance": { "enabled": false },
+  "nix": { "enabled": true }
+}
