@@ -51,14 +51,11 @@
       "automerge": false
     },
     {
-      "description": "Group Playwright packages together",
+      "description": "Group @playwright/test and playwright-web-flake updates",
       "groupName": "Playwright",
-      "matchPackageNames": ["@playwright/test"]
-    },
-    {
-      "description": "Group Playwright packages together",
-      "groupName": "Playwright",
-      "matchSourceUrls": ["https://github.com/pietdevries94/playwright-web-flake"]
+      "matchPackageNames": ["@playwright/test"],
+      "matchDepNames": ["playwright-web-flake"],
+      "matchUpdateTypes": ["patch", "minor", "major", "digest"]
     }
   ],
   "lockFileMaintenance": {
