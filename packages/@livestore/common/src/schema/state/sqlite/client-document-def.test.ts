@@ -279,10 +279,10 @@ describe('mergeDefaultValues', () => {
     const result = mergeDefaultValues(defaults, userSet)
 
     // Should include the description field even though it's not in defaults
-    expect(result).toEqual({ 
-      newTodoText: '', 
+    expect(result).toEqual({
+      newTodoText: '',
       description: 'First attempt',
-      filter: 'all' 
+      filter: 'all',
     })
     expect('description' in result).toBe(true)
   })
@@ -305,23 +305,23 @@ describe('mergeDefaultValues', () => {
   })
 
   test('should handle mix of default and new properties', () => {
-    const defaults = { 
+    const defaults = {
       required1: 'default1',
-      required2: 'default2'
+      required2: 'default2',
     }
     const userSet = {
-      required1: 'user1',      // Override default
-      required2: 'default2',   // Keep default  
-      optional1: 'new1',       // New field
-      optional2: 'new2'        // New field
+      required1: 'user1', // Override default
+      required2: 'default2', // Keep default
+      optional1: 'new1', // New field
+      optional2: 'new2', // New field
     }
     const result = mergeDefaultValues(defaults, userSet)
 
     expect(result).toEqual({
       required1: 'user1',
-      required2: 'default2', 
+      required2: 'default2',
       optional1: 'new1',
-      optional2: 'new2'
+      optional2: 'new2',
     })
     expect(Object.keys(result).sort()).toEqual(['optional1', 'optional2', 'required1', 'required2'])
   })

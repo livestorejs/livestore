@@ -57,9 +57,6 @@
     "node": ">=23.0.0"
   },
   "main": "expo-router/entry",
-  "resolutions": {
-    "@react-navigation/native": "7.1.6"
-  },
   "scripts": {
     "android": "expo start --clear --android",
     "ios": "expo start --clear --ios",
