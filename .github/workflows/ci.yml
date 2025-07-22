@@ -23,8 +23,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Base setup
-        uses: ./.github/actions/setup
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - run: mono lint
 
   test:
@@ -34,8 +34,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Base setup
-        uses: ./.github/actions/setup
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
