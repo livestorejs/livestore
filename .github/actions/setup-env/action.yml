@@ -6,6 +6,10 @@ runs:
     - name: Install Determinate Nix
       uses: DeterminateSystems/determinate-nix-action@v3
 
+    - name: Use FlakeHub Cache for Nix binaries
+      # NOTE Flakehub cache is still faster than magic-nix-cache-action
+      uses: DeterminateSystems/flakehub-cache-action@main
+
     - name: Cache node_modules
       uses: actions/cache@v4
       with:
@@ -24,10 +28,6 @@ runs:
         key: direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-${{ github.sha }}
         restore-keys: |
           direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-
-
-    - name: Use FlakeHub Cache for Nix binaries
-      # NOTE Flakehub cache is still faster than magic-nix-cache-action
-      uses: DeterminateSystems/flakehub-cache-action@main
 
     - name: Install direnv
       shell: bash
