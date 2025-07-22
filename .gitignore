@@ -32,3 +32,4 @@ _tmp*
 .output
 
 scripts/.completionscore
+core
