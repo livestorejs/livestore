@@ -11,8 +11,8 @@
     "./node-vitest-polyfill": "./src/node-vitest/polyfill.ts"
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.54.0",
-    "@effect/vitest": "0.24.0",
+    "@effect/opentelemetry": "0.54.1",
+    "@effect/vitest": "0.24.1",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",

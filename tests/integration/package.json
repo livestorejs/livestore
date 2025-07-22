@@ -35,7 +35,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "todomvc-app-css": "^2.4.3",
-    "vite": "^7.0.4",
+    "vite": "^7.0.5",
     "vitest": "catalog:",
     "wrangler": "^4.14.4"
   },
