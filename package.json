@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@biomejs/biome": "^2.1.0",
+    "@biomejs/biome": "^2.1.2",
     "@effect/language-service": "^0.27.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",

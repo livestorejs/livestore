@@ -6,7 +6,7 @@ import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter
 import { UnexpectedError } from '../adapter-types.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -66,13 +66,10 @@ export const makeLeaderThreadLayer = ({
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-    // TODO do more validation here than just checking the count of tables
-    // Either happens on initial boot or if schema changes
-    const dbEventlogMissing =
-      dbEventlog.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
-    const dbStateMissing =
-      dbState.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    // Either happens on initial boot or if schema changes
+    const dbStateMissing = !hasStateTables(dbState)
 
     const syncBackend =
       syncOptions?.backend === undefined
@@ -157,6 +154,26 @@ export const makeLeaderThreadLayer = ({
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
+
+const hasEventlogTables = (db: SqliteDb) => {
+  const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
+  const eventlogTables = new Set(SystemTables.eventlogSystemTables.map((_) => _.sqliteDef.name))
+  return isSubsetOf(eventlogTables, tableNames)
+}
+
+const hasStateTables = (db: SqliteDb) => {
+  const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
+  const stateTables = new Set(SystemTables.stateSystemTables.map((_) => _.sqliteDef.name))
+  return isSubsetOf(stateTables, tableNames)
+}
+
+const isSubsetOf = (a: Set<string>, b: Set<string>) => {
+  for (const item of a) {
+    if (!b.has(item)) {
+      return false
+    }
+  }
+}
 
 const getInitialSyncState = ({
   dbEventlog,

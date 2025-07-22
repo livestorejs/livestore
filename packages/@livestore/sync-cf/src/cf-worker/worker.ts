@@ -4,10 +4,11 @@ import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.ts'
+
 import type { Env } from './durable-object.ts'
 
-// Redeclaring Response to Cloudflare Worker Response type to avoid lib.dom type clashing
-declare const Response: typeof CfWorker.Response
+// NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
+declare class Response extends CfWorker.Response {}
 
 /**
  * Helper type to extract DurableObject keys from Env to give consumer type safety.
@@ -138,7 +139,7 @@ export const makeWorker = <
  *       return handleWebSocket(request, env, ctx, { headers: {}, validatePayload })
  *     }
  *
- *     return new Response('Invalid path', { status: 400, headers: corsHeaders })
+ *     return new Response('Invalid path', { status: 400 })
  *   }
  * }
  * ```
@@ -210,5 +211,5 @@ export const handleWebSocket = <
     }
 
     // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
-    return yield* Effect.promise(() => durableObject.fetch(request as any) as unknown as Promise<CfWorker.Response>)
+    return yield* Effect.promise(() => durableObject.fetch(request))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)

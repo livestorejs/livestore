@@ -119,8 +119,8 @@ const fromMaterializerResult = (
     return materializerResult.flatMap(fromMaterializerResult)
   }
   if (isQueryBuilder(materializerResult)) {
-    const { query, bindValues } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: undefined }]
+    const { query, bindValues, usedTables } = materializerResult.asSql()
+    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
     return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
   } else {

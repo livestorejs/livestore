@@ -209,12 +209,12 @@ export const withPerformanceMeasure =
   (meaureLabel: string) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.acquireUseRelease(
-      Effect.sync(() => performance.mark(`${meaureLabel}:start`)),
+      Effect.sync(() => globalThis.performance.mark(`${meaureLabel}:start`)),
       () => eff,
       () =>
         Effect.sync(() => {
-          performance.mark(`${meaureLabel}:end`)
-          performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
+          globalThis.performance.mark(`${meaureLabel}:end`)
+          globalThis.performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
         }),
     )
 
