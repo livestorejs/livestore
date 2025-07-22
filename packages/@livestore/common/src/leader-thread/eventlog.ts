@@ -1,7 +1,8 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
+import { UnexpectedError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import {
@@ -98,6 +99,131 @@ export const getEventsSince = ({
     })
     .filter((_) => EventSequenceNumber.compare(_.seqNum, since) > 0)
     .sort((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
+}
+
+/**
+ * Stream events from the eventlog with advanced filtering options
+ */
+export const streamEventsFromEventlog = ({
+  dbEventlog,
+  dbState,
+  options,
+}: {
+  dbEventlog: SqliteDb
+  dbState: SqliteDb
+  options: {
+    since: EventSequenceNumber.EventSequenceNumber
+    until?: EventSequenceNumber.EventSequenceNumber
+    filter?: ReadonlyArray<string>
+    clientIds?: ReadonlyArray<string>
+    sessionIds?: ReadonlyArray<string>
+    batchSize?: number
+  }
+}): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError> => {
+  const batchSize = options.batchSize ?? 1000
+  
+  return Stream.asyncPush<LiveStoreEvent.EncodedWithMeta>((emit) =>
+    Effect.gen(function* () {
+      // Build WHERE conditions for filtering
+      const whereConditions: string[] = [`seqNumGlobal > ${options.since.global}`]
+      const bindValues: any[] = []
+      
+      if (options.until) {
+        whereConditions.push(`seqNumGlobal <= ${options.until.global}`)
+      }
+      
+      if (options.filter && options.filter.length > 0) {
+        const placeholders = options.filter.map(() => '?').join(', ')
+        whereConditions.push(`name IN (${placeholders})`)
+        bindValues.push(...options.filter)
+      }
+      
+      if (options.clientIds && options.clientIds.length > 0) {
+        const placeholders = options.clientIds.map(() => '?').join(', ')
+        whereConditions.push(`clientId IN (${placeholders})`)
+        bindValues.push(...options.clientIds)
+      }
+      
+      if (options.sessionIds && options.sessionIds.length > 0) {
+        const placeholders = options.sessionIds.map(() => '?').join(', ')
+        whereConditions.push(`sessionId IN (${placeholders})`)
+        bindValues.push(...options.sessionIds)
+      }
+      
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+      
+      // Stream events in batches
+      let offset = 0
+      let hasMore = true
+      
+      while (hasMore) {
+        const query = `SELECT * FROM ${EVENTLOG_META_TABLE} ${whereClause} ORDER BY seqNumGlobal ASC, seqNumClient ASC LIMIT ${batchSize} OFFSET ${offset}`
+        
+        const eventlogEvents = dbEventlog.select(query, bindValues as any)
+        
+        if (eventlogEvents.length === 0) {
+          hasMore = false
+          break
+        }
+        
+        // Get session changeset data for this batch
+        const minSeqNum = Math.min(...eventlogEvents.map(e => e.seqNumGlobal))
+        const maxSeqNum = Math.max(...eventlogEvents.map(e => e.seqNumGlobal))
+        
+        const sessionChangesetRowsDecoded = dbState.select(
+          sessionChangesetMetaTable.where('seqNumGlobal', '>=', minSeqNum).where('seqNumGlobal', '<=', maxSeqNum),
+        )
+        
+        // Convert to EncodedWithMeta and emit
+        for (const eventlogEvent of eventlogEvents) {
+          const sessionChangeset = sessionChangesetRowsDecoded.find(
+            (readModelEvent) =>
+              readModelEvent.seqNumGlobal === eventlogEvent.seqNumGlobal &&
+              readModelEvent.seqNumClient === eventlogEvent.seqNumClient,
+          )
+          
+          const encodedEvent = LiveStoreEvent.EncodedWithMeta.make({
+            name: eventlogEvent.name,
+            args: eventlogEvent.argsJson,
+            seqNum: {
+              global: eventlogEvent.seqNumGlobal,
+              client: eventlogEvent.seqNumClient,
+              rebaseGeneration: eventlogEvent.seqNumRebaseGeneration,
+            },
+            parentSeqNum: {
+              global: eventlogEvent.parentSeqNumGlobal,
+              client: eventlogEvent.parentSeqNumClient,
+              rebaseGeneration: eventlogEvent.parentSeqNumRebaseGeneration,
+            },
+            clientId: eventlogEvent.clientId,
+            sessionId: eventlogEvent.sessionId,
+            meta: {
+              sessionChangeset:
+                sessionChangeset && sessionChangeset.changeset !== null
+                  ? {
+                      _tag: 'sessionChangeset' as const,
+                      data: sessionChangeset.changeset,
+                      debug: sessionChangeset.debug,
+                    }
+                  : { _tag: 'unset' as const },
+              syncMetadata: eventlogEvent.syncMetadataJson,
+              materializerHashLeader: Option.none(),
+              materializerHashSession: Option.none(),
+            },
+          })
+          
+          yield* emit.single(encodedEvent)
+        }
+        
+        offset += batchSize
+        hasMore = eventlogEvents.length === batchSize
+      }
+    }),
+  ).pipe(
+    Stream.tapError((error) =>
+      Effect.logError('Error streaming events from eventlog', error),
+    ),
+  )
 }
 
 export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.EventSequenceNumber => {
