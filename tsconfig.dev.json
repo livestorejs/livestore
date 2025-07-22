@@ -24,6 +24,6 @@
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/utils" },
     { "path": "./packages/@livestore/utils-dev" },
-    { "path": "./packages/@livestore/webmesh" },
+    { "path": "./packages/@livestore/webmesh" }
   ]
 }
