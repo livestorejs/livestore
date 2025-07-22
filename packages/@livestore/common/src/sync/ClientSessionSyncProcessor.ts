@@ -381,6 +381,7 @@ export interface ClientSessionSyncProcessor {
 // TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
 const SIMULATION_ENABLED = true
 
+// Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
     '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 25)),

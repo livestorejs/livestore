@@ -13,6 +13,8 @@ import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
+// Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
+// A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = IS_CI ? 600_000 : 900_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
@@ -47,6 +49,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     { fastCheck: { numRuns: 4 } },
   )
 
+  // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
   const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
