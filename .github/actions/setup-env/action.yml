@@ -34,6 +34,7 @@ runs:
       run: nix profile add nixpkgs#direnv
 
     - name: Load environment with direnv
+      # See https://github.com/direnv/direnv/wiki/GitHubActions for more details
       shell: bash
       run: |
         direnv allow
