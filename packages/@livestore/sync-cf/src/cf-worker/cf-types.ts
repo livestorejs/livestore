@@ -1,12 +1,12 @@
 export {
-  type DurableObjectState,
-  type DurableObject,
-  Rpc,
   type D1Database,
   type D1Result,
+  type DurableObject,
+  type DurableObjectState,
   Request,
   Response,
-  WebSocketPair,
+  Rpc,
   WebSocket,
+  WebSocketPair,
   WebSocketRequestResponsePair,
-} from '@cloudflare/workers-types';
+} from '@cloudflare/workers-types'
