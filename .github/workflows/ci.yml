@@ -100,15 +100,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - name: Use FlakeHub Cache for Nix binaries
-        uses: DeterminateSystems/flakehub-cache-action@main
-      - name: Load environment with direnv
-        uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
@@ -130,13 +123,8 @@ jobs:
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - name: Configure NPM authentication
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
@@ -151,13 +139,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - run: |
           mono examples deploy \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
@@ -173,13 +156,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - name: Load environment
-        run: direnv export bash >> $GITHUB_ENV
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
       - run: mono docs build --api-docs
       - run: mono docs deploy
         env:
