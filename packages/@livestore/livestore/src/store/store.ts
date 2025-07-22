@@ -41,6 +41,7 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
+import { DEFAULT_PARAMS } from './create-store.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
@@ -680,78 +681,158 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
   eventsStream = (options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
     const self = this
-    const { syncProcessor, schema, clientSession } = self
+    const { syncProcessor, schema, clientSession, params } = self
+    const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
     
-    return Stream.asyncPush<LiveStoreEvent.ForSchema<TSchema>>((emit) =>
-      Effect.gen(function* () {
-        // Get the current sync state to determine starting position
-        const initialSyncState = yield* syncProcessor.syncState.get
-        let lastSeenHead = options?.cursor ?? initialSyncState.localHead
-        
-        // Helper function to check if event matches filter criteria
-        const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
-          // Apply name filter if specified
-          if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
-            return false
-          }
+    // Apply defaults
+    const minSyncLevel = options?.minSyncLevel ?? 'client'
+    const cursor = options?.cursor ?? EventSequenceNumber.ROOT
+    const snapshotOnly = options?.snapshotOnly ?? false
+    const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
+    
+    // Helper function to check if event matches all filter criteria
+    const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
+      // Apply name filter if specified
+      if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
+        return false
+      }
+      
+      // Check client-only filter (for backwards compatibility)
+      if (options?.includeClientOnly !== undefined) {
+        const eventDef = getEventDef(schema, eventEncoded.name)
+        const isClientOnly = eventDef.eventDef.options.clientOnly ?? false
+        if (options.includeClientOnly === false && isClientOnly) {
+          return false
+        }
+      }
+      
+      // Apply clientId filter
+      if (options?.clientIds && !options.clientIds.includes(eventEncoded.clientId)) {
+        return false
+      }
+      
+      // Apply sessionId filter
+      if (options?.sessionIds && !options.sessionIds.includes(eventEncoded.sessionId)) {
+        return false
+      }
+      
+      // Apply since filter (exclusive)
+      if (options?.since && EventSequenceNumber.compare(eventEncoded.seqNum, options.since) <= 0) {
+        return false
+      }
+      
+      // Apply until filter (inclusive)
+      if (options?.until && EventSequenceNumber.compare(eventEncoded.seqNum, options.until) > 0) {
+        return false
+      }
+      
+      return true
+    }
+    
+    // Create the appropriate stream based on minSyncLevel
+    return Effect.gen(function* () {
+      const syncState = yield* syncProcessor.syncState.get
+      
+      switch (minSyncLevel) {
+        case 'backend': {
+          // Only events confirmed by backend
+          const leaderSyncState = yield* leaderThreadProxy.getSyncState()
+          const backendHead = leaderSyncState.upstreamHead
           
-          // Check client-only filter
-          const eventDef = getEventDef(schema, eventEncoded.name)
-          const isClientOnly = eventDef.eventDef.options.clientOnly ?? false
-          if (options?.includeClientOnly === false && isClientOnly) {
-            return false
-          }
-          
-          // Note: For now, we only have access to pending (unpushed) events
-          // Once we have access to the eventlog, we can properly filter by unpushed status
-          if (options?.excludeUnpushed === true) {
-            // All events in pending are unpushed, so exclude all
-            return false
-          }
-          
-          return true
+          // Stream from leader, but only up to backend head
+          return leaderThreadProxy.events.stream({
+            since: cursor,
+            until: backendHead,
+            filter: options?.filter as ReadonlyArray<string> | undefined,
+            clientIds: options?.clientIds,
+            sessionIds: options?.sessionIds,
+            batchSize,
+          }).pipe(
+            Stream.filter(matchesFilters),
+            Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
+          )
         }
         
-        // If starting from ROOT, emit all current pending events first
-        if (options?.cursor && EventSequenceNumber.compare(options.cursor, EventSequenceNumber.ROOT) === 0) {
-          const currentState = yield* syncProcessor.syncState.get
-          
-          // TODO: In the future, we should query historical events from the eventlog
-          // For now, we only have access to pending events
-          for (const eventEncoded of currentState.pending) {
-            if (matchesFilters(eventEncoded)) {
-              const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-              yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
-            }
-          }
-          
-          // Update cursor to current head
-          lastSeenHead = currentState.localHead
+        case 'leader': {
+          // Events confirmed by leader (exclude client pending)
+          return leaderThreadProxy.events.stream({
+            since: cursor,
+            until: options?.until,
+            filter: options?.filter as ReadonlyArray<string> | undefined,
+            clientIds: options?.clientIds,
+            sessionIds: options?.sessionIds,
+            batchSize,
+          }).pipe(
+            Stream.filter(matchesFilters),
+            Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
+            snapshotOnly ? Stream.takeUntil(() => true) : identity,
+          )
         }
         
-        // Subscribe to sync state changes for new events
-        yield* syncProcessor.syncState.changes.pipe(
-          Stream.tap((newState) =>
+        case 'client':
+        default: {
+          // Merge leader stream with client pending events
+          
+          // First, determine where to split between leader and client
+          const leaderSyncState = yield* leaderThreadProxy.getSyncState()
+          const leaderHead = leaderSyncState.localHead
+          
+          // Create leader stream up to its head
+          const leaderStream = EventSequenceNumber.compare(cursor, leaderHead) < 0
+            ? leaderThreadProxy.events.stream({
+                since: cursor,
+                until: leaderHead,
+                filter: options?.filter as ReadonlyArray<string> | undefined,
+                clientIds: options?.clientIds,
+                sessionIds: options?.sessionIds,
+                batchSize,
+              }).pipe(
+                Stream.filter(matchesFilters),
+                Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
+              )
+            : Stream.empty
+          
+          // Create pending events stream
+          const pendingStream = Stream.asyncPush<LiveStoreEvent.ForSchema<TSchema>>((emit) =>
             Effect.gen(function* () {
-              // Process only new events (those after our last seen position)
-              for (const eventEncoded of newState.pending) {
-                if (EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0) {
-                  if (matchesFilters(eventEncoded)) {
-                    const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                    yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
-                  }
+              const currentState = yield* syncProcessor.syncState.get
+              
+              // Emit current pending events that are after cursor
+              for (const eventEncoded of currentState.pending) {
+                if (EventSequenceNumber.compare(eventEncoded.seqNum, cursor) > 0 && matchesFilters(eventEncoded)) {
+                  const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
+                  yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
                 }
               }
               
-              // Update our cursor
-              lastSeenHead = newState.localHead
+              if (!snapshotOnly) {
+                // Continue with live updates
+                let lastSeenHead = currentState.localHead
+                yield* syncProcessor.syncState.changes.pipe(
+                  Stream.tap((newState) =>
+                    Effect.gen(function* () {
+                      for (const eventEncoded of newState.pending) {
+                        if (EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 && matchesFilters(eventEncoded)) {
+                          const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
+                          yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
+                        }
+                      }
+                      lastSeenHead = newState.localHead
+                    }),
+                  ),
+                  Stream.runDrain,
+                )
+              }
             }),
-          ),
-          Stream.runDrain,
-        )
-      }),
-    ).pipe(
+          )
+          
+          // Merge the streams
+          return Stream.concat(leaderStream, pendingStream)
+        }
+      }
+    }).pipe(
+      Stream.flatten,
       Stream.tapError((error) =>
         Effect.logError('Error in eventsStream', error),
       ),

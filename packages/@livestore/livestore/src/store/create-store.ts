@@ -40,6 +40,7 @@ import type {
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
+  eventQueryBatchSize: 1000,
 }
 
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
@@ -121,6 +122,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -278,6 +280,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          eventQueryBatchSize: params?.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize,
           simulation: params?.simulation,
         },
       })

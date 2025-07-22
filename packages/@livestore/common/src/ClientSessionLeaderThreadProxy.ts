@@ -15,6 +15,15 @@ export interface ClientSessionLeaderThreadProxy {
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    /** Stream historical events with filtering */
+    stream(options: {
+      since: EventSequenceNumber.EventSequenceNumber
+      until?: EventSequenceNumber.EventSequenceNumber
+      filter?: ReadonlyArray<string>  // event names
+      clientIds?: ReadonlyArray<string>
+      sessionIds?: ReadonlyArray<string>
+      batchSize?: number
+    }): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

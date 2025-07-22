@@ -55,6 +55,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -136,15 +137,21 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    */
   excludeUnpushed?: boolean
   /**
-   * Only include events created after this timestamp
+   * Only include events after this logical timestamp (exclusive)
    * @default undefined (no lower bound)
    */
-  since?: Date
+  since?: EventSequenceNumber.EventSequenceNumber
   /**
-   * Only include events created before this timestamp
+   * Only include events up to this logical timestamp (inclusive)
    * @default undefined (no upper bound)
    */
-  until?: Date
+  until?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * If true, only returns a snapshot of existing events and completes.
+   * If false, continues streaming new events as they arrive.
+   * @default false (live streaming)
+   */
+  snapshotOnly?: boolean
   /**
    * Only include events from specific client IDs
    * @default undefined (include all clients)
