@@ -26,7 +26,7 @@ fi
 # Install direnv
 echo "Installing direnv..."
 if ! command -v direnv &> /dev/null; then
-  nix profile install nixpkgs#direnv
+  nix profile add nixpkgs#direnv
 else
   echo "direnv is already installed"
 fi
