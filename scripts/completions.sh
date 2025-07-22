@@ -13,9 +13,11 @@
 # Until direnv + fish provides loading completions from a local directory, we need to install them globally
 # See https://github.com/direnv/direnv/issues/443
 # This also didn't work `path_add fish_complete_path "$WORKSPACE_ROOT/scripts/.completions/fish"`
-mkdir -p ~/.config/fish/completions
-bun $WORKSPACE_ROOT/scripts/mono.ts --completions=fish > ~/.config/fish/completions/mono.fish
-bun $WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts --completions=fish > ~/.config/fish/completions/livestore.fish
+if command -v fish >/dev/null 2>&1; then
+    mkdir -p ~/.config/fish/completions
+    bun $WORKSPACE_ROOT/scripts/mono.ts --completions=fish > ~/.config/fish/completions/mono.fish
+    bun $WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts --completions=fish > ~/.config/fish/completions/livestore.fish
+fi
 
 # (2) Load completions
 
