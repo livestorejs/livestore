@@ -162,7 +162,12 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    * @default undefined (include all sessions)
    */
   sessionIds?: ReadonlyArray<string>
-  
+  /**
+   * Number of events to fetch in each batch when streaming from database
+   * @default 1000
+   */
+  eventQueryBatchSize?: number
+
   // Future filtering ideas (not implemented yet):
   // - parentEventId: Filter by parent event
   // - argPattern: Pattern matching on event arguments

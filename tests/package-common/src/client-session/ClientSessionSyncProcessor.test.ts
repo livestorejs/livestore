@@ -74,6 +74,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                       return leader.events.pull({ cursor })
                     }).pipe(Stream.unwrap),
                   push: leader.events.push,
+                  stream: leader.events.stream,
                 },
               }),
             },
@@ -158,6 +159,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                       })),
                     ),
                   push: () => Effect.void,
+                  stream: () => Stream.empty,
                 },
               }),
             },
