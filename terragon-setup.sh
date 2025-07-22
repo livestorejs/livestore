@@ -12,6 +12,13 @@ if ! command -v nix &> /dev/null; then
   if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
     . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
   fi
+  
+  # Verify Nix is working
+  if ! command -v nix &> /dev/null; then
+    echo "Nix installation complete, but requires shell restart."
+    echo "Please restart your shell and run this script again to continue setup."
+    exit 0
+  fi
 else
   echo "Nix is already installed"
 fi
@@ -19,7 +26,7 @@ fi
 # Install direnv
 echo "Installing direnv..."
 if ! command -v direnv &> /dev/null; then
-  nix-env -i direnv
+  nix profile add nixpkgs#direnv
 else
   echo "direnv is already installed"
 fi
