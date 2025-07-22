@@ -19,8 +19,8 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
+import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -665,12 +665,97 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * }
    * ```
    */
-  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
-    return notYetImplemented(`store.events() is not yet implemented but planned soon`)
+  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    const self = this
+    return {
+      async *[Symbol.asyncIterator]() {
+        // Convert the stream to an async iterable
+        const iterator = Stream.toAsyncIterable(self.eventsStream(options))
+        for await (const event of iterator) {
+          yield event
+        }
+      },
+    }
   }
 
-  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
-    return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
+  eventsStream = (options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+    const self = this
+    const { syncProcessor, schema, clientSession } = self
+    const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
+    
+    return Stream.asyncPush<LiveStoreEvent.ForSchema<TSchema>>((emit) =>
+      Effect.gen(function* () {
+        // Get the current sync state to determine starting position
+        const initialSyncState = yield* syncProcessor.syncState.get
+        let lastSeenHead = options?.cursor ?? initialSyncState.localHead
+        
+        // Helper function to check if event matches filter criteria
+        const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
+          // Apply name filter if specified
+          if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
+            return false
+          }
+          
+          // Check client-only filter
+          const eventDef = getEventDef(schema, eventEncoded.name)
+          const isClientOnly = eventDef.eventDef.options.clientOnly ?? false
+          if (options?.includeClientOnly === false && isClientOnly) {
+            return false
+          }
+          
+          // Note: For now, we only have access to pending (unpushed) events
+          // Once we have access to the eventlog, we can properly filter by unpushed status
+          if (options?.excludeUnpushed === true) {
+            // All events in pending are unpushed, so exclude all
+            return false
+          }
+          
+          return true
+        }
+        
+        // If starting from ROOT, emit all current pending events first
+        if (options?.cursor && EventSequenceNumber.compare(options.cursor, EventSequenceNumber.ROOT) === 0) {
+          const currentState = yield* syncProcessor.syncState.get
+          
+          // TODO: In the future, we should query historical events from the eventlog
+          // For now, we only have access to pending events
+          for (const eventEncoded of currentState.pending) {
+            if (matchesFilters(eventEncoded)) {
+              const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
+              yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
+            }
+          }
+          
+          // Update cursor to current head
+          lastSeenHead = currentState.localHead
+        }
+        
+        // Subscribe to sync state changes for new events
+        yield* syncProcessor.syncState.changes.pipe(
+          Stream.tap((newState) =>
+            Effect.gen(function* () {
+              // Process only new events (those after our last seen position)
+              for (const eventEncoded of newState.pending) {
+                if (EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0) {
+                  if (matchesFilters(eventEncoded)) {
+                    const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
+                    yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
+                  }
+                }
+              }
+              
+              // Update our cursor
+              lastSeenHead = newState.localHead
+            }),
+          ),
+          Stream.runDrain,
+        )
+      }),
+    ).pipe(
+      Stream.tapError((error) =>
+        Effect.logError('Error in eventsStream', error),
+      ),
+    )
   }
 
   /**
