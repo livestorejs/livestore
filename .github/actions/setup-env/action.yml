@@ -31,9 +31,7 @@ runs:
 
     - name: Install direnv
       shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install direnv
+      run: nix profile add nixpkgs#direnv
 
     - name: Load environment with direnv
       shell: bash
