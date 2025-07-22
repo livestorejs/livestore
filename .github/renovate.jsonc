@@ -48,7 +48,7 @@
       "prPriority": 10
     },
 
-    /* 3. Normal dependency policies */
+    /* 3. Normal dependency policies (same as syncpack) */
     {
       "description": "Production deps – pin",
       "matchDepTypes": ["dependencies"],
@@ -60,9 +60,9 @@
       "rangeStrategy": "auto"
     },
     {
-      "description": "Peer deps – keep ~ range",
+      "description": "Peer deps – bump to new ~ range",
       "matchDepTypes": ["peerDependencies"],
-      "rangeStrategy": "auto"
+      "rangeStrategy": "bump"
     },
 
     /* 4. Misc. project-specific rules */
