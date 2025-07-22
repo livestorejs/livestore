@@ -16,7 +16,6 @@ interface NodeFsFile {
 
 export class NodeFS extends FacadeVFS {
   private mapIdToFile = new Map<number, NodeFsFile>()
-  private lastError: Error | null = null
   private readonly directory: string
   constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string) {
     super(name, sqlite3)
