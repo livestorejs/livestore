@@ -20,9 +20,20 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv } from '@livestore/utils'
+import { assertNever, casesHandled, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Cause,
+  Effect,
+  Fiber,
+  Inspectable,
+  identity,
+  Option,
+  OtelTracer,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -63,6 +74,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   schema: LiveStoreSchema
   context: TContext
   otel: StoreOtel
+  params: StoreOptions<TSchema, TContext>['params']
   /**
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
@@ -104,6 +116,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.params = params
 
     this.effectContext = effectContext
 
@@ -679,25 +692,27 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     }
   }
 
-  eventsStream = (options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+  eventsStream = (
+    options?: StoreEventsOptions<TSchema>,
+  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
     const self = this
     const { syncProcessor, schema, clientSession, params } = self
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
-    
+
     // Apply defaults
     const minSyncLevel = options?.minSyncLevel ?? 'client'
     const cursor = options?.cursor ?? EventSequenceNumber.ROOT
     const snapshotOnly = options?.snapshotOnly ?? false
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
-    
+
     // Helper function to check if event matches all filter criteria
     const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
       // Apply name filter if specified
       if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
         return false
       }
-      
+
       // Check client-only filter (for backwards compatibility)
       if (options?.includeClientOnly !== undefined) {
         const eventDef = getEventDef(schema, eventEncoded.name)
@@ -706,106 +721,113 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           return false
         }
       }
-      
+
       // Apply clientId filter
       if (options?.clientIds && !options.clientIds.includes(eventEncoded.clientId)) {
         return false
       }
-      
+
       // Apply sessionId filter
       if (options?.sessionIds && !options.sessionIds.includes(eventEncoded.sessionId)) {
         return false
       }
-      
+
       // Apply since filter (exclusive)
       if (options?.since && EventSequenceNumber.compare(eventEncoded.seqNum, options.since) <= 0) {
         return false
       }
-      
+
       // Apply until filter (inclusive)
       if (options?.until && EventSequenceNumber.compare(eventEncoded.seqNum, options.until) > 0) {
         return false
       }
-      
+
       return true
     }
-    
+
     // Create the appropriate stream based on minSyncLevel
     return Effect.gen(function* () {
-      const syncState = yield* syncProcessor.syncState.get
-      
       switch (minSyncLevel) {
         case 'backend': {
           // Only events confirmed by backend
-          const leaderSyncState = yield* leaderThreadProxy.getSyncState()
+          const leaderSyncState = yield* leaderThreadProxy.getSyncState
           const backendHead = leaderSyncState.upstreamHead
-          
+
           // Stream from leader, but only up to backend head
-          return leaderThreadProxy.events.stream({
-            since: cursor,
-            until: backendHead,
-            filter: options?.filter as ReadonlyArray<string> | undefined,
-            clientIds: options?.clientIds,
-            sessionIds: options?.sessionIds,
-            batchSize,
-          }).pipe(
-            Stream.filter(matchesFilters),
-            Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
-          )
+          return leaderThreadProxy.events
+            .stream({
+              since: cursor,
+              until: backendHead,
+              filter: options?.filter as ReadonlyArray<string> | undefined,
+              clientIds: options?.clientIds,
+              sessionIds: options?.sessionIds,
+              batchSize,
+            })
+            .pipe(
+              Stream.filter(matchesFilters),
+              Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+            )
         }
-        
+
         case 'leader': {
           // Events confirmed by leader (exclude client pending)
-          return leaderThreadProxy.events.stream({
-            since: cursor,
-            until: options?.until,
-            filter: options?.filter as ReadonlyArray<string> | undefined,
-            clientIds: options?.clientIds,
-            sessionIds: options?.sessionIds,
-            batchSize,
-          }).pipe(
-            Stream.filter(matchesFilters),
-            Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
-            snapshotOnly ? Stream.takeUntil(() => true) : identity,
-          )
+          return leaderThreadProxy.events
+            .stream({
+              since: cursor,
+              until: options?.until,
+              filter: options?.filter as ReadonlyArray<string> | undefined,
+              clientIds: options?.clientIds,
+              sessionIds: options?.sessionIds,
+              batchSize,
+            })
+            .pipe(
+              Stream.filter(matchesFilters),
+              Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+              snapshotOnly ? Stream.takeUntil(() => true) : identity,
+            )
         }
-        
-        case 'client':
-        default: {
+
+        case 'client': {
           // Merge leader stream with client pending events
-          
+
           // First, determine where to split between leader and client
-          const leaderSyncState = yield* leaderThreadProxy.getSyncState()
+          const leaderSyncState = yield* leaderThreadProxy.getSyncState
           const leaderHead = leaderSyncState.localHead
-          
+
           // Create leader stream up to its head
-          const leaderStream = EventSequenceNumber.compare(cursor, leaderHead) < 0
-            ? leaderThreadProxy.events.stream({
-                since: cursor,
-                until: leaderHead,
-                filter: options?.filter as ReadonlyArray<string> | undefined,
-                clientIds: options?.clientIds,
-                sessionIds: options?.sessionIds,
-                batchSize,
-              }).pipe(
-                Stream.filter(matchesFilters),
-                Stream.map(eventEncoded => Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>),
-              )
-            : Stream.empty
-          
+          const leaderStream =
+            EventSequenceNumber.compare(cursor, leaderHead) < 0
+              ? leaderThreadProxy.events
+                  .stream({
+                    since: cursor,
+                    until: leaderHead,
+                    filter: options?.filter as ReadonlyArray<string> | undefined,
+                    clientIds: options?.clientIds,
+                    sessionIds: options?.sessionIds,
+                    batchSize,
+                  })
+                  .pipe(
+                    Stream.filter(matchesFilters),
+                    Stream.map(
+                      (eventEncoded) =>
+                        Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>,
+                    ),
+                  )
+              : Stream.empty
+
           // Create pending events stream
           const pendingStream = Stream.asyncPush<LiveStoreEvent.ForSchema<TSchema>>((emit) =>
             Effect.gen(function* () {
-              const currentState = yield* syncProcessor.syncState.get
-              
+              const currentState = yield* syncProcessor.syncState
+
               // Emit current pending events that are after cursor
               for (const eventEncoded of currentState.pending) {
                 if (EventSequenceNumber.compare(eventEncoded.seqNum, cursor) > 0 && matchesFilters(eventEncoded)) {
                   const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                  yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
+                  emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
                 }
               }
-              
+
               if (!snapshotOnly) {
                 // Continue with live updates
                 let lastSeenHead = currentState.localHead
@@ -813,9 +835,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
                   Stream.tap((newState) =>
                     Effect.gen(function* () {
                       for (const eventEncoded of newState.pending) {
-                        if (EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 && matchesFilters(eventEncoded)) {
+                        if (
+                          EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 &&
+                          matchesFilters(eventEncoded)
+                        ) {
                           const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                          yield* emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
+                          emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
                         }
                       }
                       lastSeenHead = newState.localHead
@@ -826,16 +851,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
               }
             }),
           )
-          
+
           // Merge the streams
           return Stream.concat(leaderStream, pendingStream)
         }
+        default: {
+          return casesHandled(minSyncLevel)
+        }
       }
     }).pipe(
-      Stream.flatten,
-      Stream.tapError((error) =>
-        Effect.logError('Error in eventsStream', error),
-      ),
+      Stream.unwrap,
+      Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
   }
 

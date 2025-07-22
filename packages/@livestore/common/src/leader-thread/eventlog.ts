@@ -7,6 +7,7 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import {
   EVENTLOG_META_TABLE,
+  type EventlogMetaRow,
   eventlogMetaTable,
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
@@ -159,7 +160,7 @@ export const streamEventsFromEventlog = ({
       while (hasMore) {
         const query = `SELECT * FROM ${EVENTLOG_META_TABLE} ${whereClause} ORDER BY seqNumGlobal ASC, seqNumClient ASC LIMIT ${batchSize} OFFSET ${offset}`
 
-        const eventlogEvents = dbEventlog.select(query, bindValues as any)
+        const eventlogEvents = dbEventlog.select<EventlogMetaRow>(query, bindValues as any)
 
         if (eventlogEvents.length === 0) {
           hasMore = false
@@ -167,8 +168,12 @@ export const streamEventsFromEventlog = ({
         }
 
         // Get session changeset data for this batch
-        const minSeqNum = Math.min(...eventlogEvents.map((e) => e.seqNumGlobal))
-        const maxSeqNum = Math.max(...eventlogEvents.map((e) => e.seqNumGlobal))
+        const minSeqNum = Math.min(
+          ...eventlogEvents.map((e) => e.seqNumGlobal),
+        ) as EventSequenceNumber.GlobalEventSequenceNumber
+        const maxSeqNum = Math.max(
+          ...eventlogEvents.map((e) => e.seqNumGlobal),
+        ) as EventSequenceNumber.GlobalEventSequenceNumber
 
         const sessionChangesetRowsDecoded = dbState.select(
           sessionChangesetMetaTable.where('seqNumGlobal', '>=', minSeqNum).where('seqNumGlobal', '<=', maxSeqNum),
