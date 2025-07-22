@@ -2,7 +2,6 @@ import { type IntentionalShutdownCause, provideOtel, StoreInterrupted } from '@l
 import type {
   BootStatus,
   CreateStoreOptions,
-  LiveStoreContextRunning,
   LiveStoreSchema,
   ShutdownDeferred,
   Store,
@@ -53,7 +52,12 @@ const [, setInternalStore] = Solid.createSignal<{
   counter: number
 }>(storeValue)
 
-export const [storeToExport, setStoreToExport] = Solid.createSignal<LiveStoreContextRunning['store']>()
+// TODO remove `any` store type
+// this will require fixing: error TS2742: The inferred type of 'storeToExport' cannot be named without a reference to '../node_modules/@livestore/common/src/schema/state/sqlite/db-schema/dsl/mod.ts'. This is likely not portable. A type annotation is necessary.
+export const [storeToExport, setStoreToExport]: [
+  Solid.Accessor<Store<any> | undefined>,
+  Solid.Setter<Store<any> | undefined>,
+] = Solid.createSignal<Store<LiveStoreSchema> | undefined>()
 
 const setupStore = async ({
   schema,

@@ -1283,16 +1283,15 @@ importers:
 
   packages/@livestore/sync-cf:
     dependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250702.0
+        version: 4.20250715.0
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20250702.0
-        version: 4.20250715.0
 
   packages/@livestore/sync-electric:
     dependencies:
@@ -3127,7 +3126,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.24.13':
     resolution: {integrity: sha512-2LSdbvYs+WmUljnplQXMCUyNzyX4H+F4l8uExfA1hud25Bl5kyaGrx1jjtgNxMTXmfmMjvgBdK798R50imEhkA==}

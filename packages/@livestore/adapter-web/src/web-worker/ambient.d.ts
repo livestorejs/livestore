@@ -26,7 +26,7 @@ interface FileSystemFileHandle {
 //   export default sharedWorkerConstructor
 // }
 
-interface ImportMeta {
+declare interface ImportMeta {
   env: {
     DEV: boolean | undefined
     VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
