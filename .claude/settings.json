@@ -1,0 +1,6 @@
+{
+  "hooks": {
+    "on-startup-hook": "[ -z \"$WORKSPACE_ROOT\" ] && [ -f .envrc ] && direnv allow || true",
+    "on-cwd-change-hook": "[ -z \"$WORKSPACE_ROOT\" ] && [ -f .envrc ] && direnv allow || true"
+  }
+}
