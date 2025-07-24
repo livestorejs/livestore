@@ -44,6 +44,7 @@ export const getExecStatementsFromMaterializer = ({
     ? undefined
     : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
+  // Extract clientId from the event object to pass to materializer
   const clientId = event.decoded?.clientId ?? event.encoded!.clientId
 
   if (!clientId) {
