@@ -18,7 +18,6 @@ export const getExecStatementsFromMaterializer = ({
   materializer,
   dbState,
   event,
-  clientId,
 }: {
   eventDef: EventDef.AnyWithoutFn
   materializer: Materializer
@@ -33,7 +32,6 @@ export const getExecStatementsFromMaterializer = ({
         decoded: undefined
         encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
       }
-  clientId: string
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -45,6 +43,12 @@ export const getExecStatementsFromMaterializer = ({
   const eventArgsEncoded = isNil(event.decoded?.args)
     ? undefined
     : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
+
+  const clientId = event.decoded?.clientId ?? event.encoded!.clientId
+
+  if (!clientId) {
+    throw new Error('clientId is required for materializer execution')
+  }
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -82,7 +86,11 @@ export const getExecStatementsFromMaterializer = ({
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
 
-    return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
+    return {
+      statementSql,
+      bindValues: prepareBindValues(bindValues ?? {}, statementSql),
+      writeTables,
+    }
   })
 }
 
@@ -96,7 +104,6 @@ export const makeMaterializerHash =
         materializer,
         dbState,
         event: { decoded: undefined, encoded: event },
-        clientId: event.clientId,
       })
       return Option.some(Hash.string(JSON.stringify(materializerResults)))
     }
@@ -124,9 +131,21 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
+    return [
+      {
+        sql: query,
+        bindValues: bindValues as BindValues,
+        writeTables: usedTables,
+      },
+    ]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+    return [
+      {
+        sql: materializerResult,
+        bindValues: {} as BindValues,
+        writeTables: undefined,
+      },
+    ]
   } else {
     return [
       {

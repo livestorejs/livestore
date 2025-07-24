@@ -40,7 +40,6 @@ export const makeMaterializeEvent = ({
           materializer,
           dbState,
           event: { decoded: undefined, encoded: eventEncoded },
-          clientId: eventEncoded.clientId,
         })
 
         const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
