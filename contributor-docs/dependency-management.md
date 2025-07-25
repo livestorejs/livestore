@@ -10,18 +10,16 @@ pnpm --version  # Check current version
 pnpm view pnpm version  # Check latest version
 # Update via corepack: corepack use pnpm@latest
 
-# 1. Build Expo constraints and apply to resolutions
+# 1. Get Expo-managed packages to exclude from updates
 EXPO_SDK=$(pnpm view expo version | sed 's/\([0-9]*\.[0-9]*\)\..*/\1.0/')
-# Thanks to Kudo from the Expo team for sharing this trick!
-EXPO_CONSTRAINTS=$(direnv exec . curl -s https://api.expo.dev/v2/sdks/$EXPO_SDK/native-modules | jq -r 'reduce .data[] as $item ({}; .[$item.npmPackage] = $item.versionRange) | to_entries | map("\"" + .key + "\": \"" + .value + "\"") | join(", ")')
-jq ".resolutions += {$EXPO_CONSTRAINTS}" package.json > package.json.tmp && mv package.json.tmp package.json
+EXPO_PACKAGES=$(direnv exec . curl -s https://api.expo.dev/v2/sdks/$EXPO_SDK/native-modules | jq -r '.data[].npmPackage')
 
-# 2. Update all dependencies with Expo constraints applied
+# 2. Update all dependencies EXCEPT Expo-managed packages
 # Note: Add --filter "!package-name" for any packages in patchedDependencies
-direnv exec . pnpm update --latest
+EXPO_FILTERS=$(echo "$EXPO_PACKAGES" | sed 's/^/--filter "!/' | sed 's/$/"/' | tr '\n' ' ')
+direnv exec . pnpm update --latest $EXPO_FILTERS
 
-# 3. Clean up temporary resolutions and review changes
-echo "{$EXPO_CONSTRAINTS}" | jq -r 'keys[]' | while read pkg; do jq "del(.resolutions[\"$pkg\"])" package.json > package.json.tmp && mv package.json.tmp package.json; done
+# 3. Review changes
 git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.yaml
 
 # 4. Validate consistency and Expo compatibility
@@ -46,6 +44,10 @@ This process updates dependencies across:
 ## Exclusions
 
 We exclude certain packages from automatic updates:
+
+**Expo-managed packages:** Automatically excluded to ensure SDK compatibility
+- All packages from Expo SDK API (react, react-native, expo-*, etc.)
+- Prevents incompatible versions that break Expo examples
 
 **Patched dependencies:** Packages with custom patches
 - Check `patchedDependencies` in root `package.json` for current list
