@@ -8,13 +8,14 @@
  * 1. **Discovery**: Uses `npm-check-updates --jsonUpgraded` to find all available updates
  * 2. **Expo constraints**: Fetches constraints from Expo API (113+ managed packages)
  * 3. **Global application**: Applies Expo constraints to ALL packages for consistency
- * 4. **Automated updates**: Executes `pnpm update package@version` for all packages
+ * 4. **Direct updates**: Modifies package.json files directly, then runs `pnpm install --fix-lockfile`
  * 5. **Validation**: Runs `syncpack` and `expo install --check` automatically
  *
  * Benefits: Ensures consistent versions across the entire monorepo, preventing
  * type conflicts and bundle bloat from multiple versions of the same package.
  */
 
+import fs from 'node:fs'
 import {
   Console,
   Effect,
@@ -70,9 +71,9 @@ const readPatchedDependencies = () =>
   Effect.withSpan('readPatchedDependencies')(
     Effect.gen(function* () {
       const packageJsonPath = './package.json'
-      
+
       const packageJsonContent = yield* Effect.try({
-        try: () => require('fs').readFileSync(packageJsonPath, 'utf8'),
+        try: () => fs.readFileSync(packageJsonPath, 'utf8'),
         catch: () => new Error('Failed to read root package.json'),
       })
 
@@ -83,8 +84,9 @@ const readPatchedDependencies = () =>
 
       const patchedDeps = packageJson?.pnpm?.patchedDependencies ?? {}
       const validated = yield* Schema.decodeUnknown(PatchedDependencies)(patchedDeps)
-      
-      return Object.keys(validated)
+
+      // Extract just package names from package@version format
+      return Object.keys(validated).map((packageWithVersion) => packageWithVersion.split('@')[0]!)
     }),
   )
 
@@ -149,7 +151,11 @@ const fetchExpoConstraints = () =>
     }),
   )
 
-const applyExpoConstraints = (ncuOutput: typeof NCUOutput.Type, expoConstraints: typeof ExpoConstraints.Type, patchedDeps: readonly string[]) =>
+const applyExpoConstraints = (
+  ncuOutput: typeof NCUOutput.Type,
+  expoConstraints: typeof ExpoConstraints.Type,
+  patchedDeps: readonly string[],
+) =>
   Effect.withSpan('applyExpoConstraints')(
     Effect.gen(function* () {
       yield* Console.log('Applying Expo constraints to package updates...')
@@ -192,7 +198,9 @@ const applyExpoConstraints = (ncuOutput: typeof NCUOutput.Type, expoConstraints:
         }
       }
 
-      yield* Console.log(`Processing ${totalUpdates} package updates (${constrainedByExpo} constrained by Expo, ${excludedByPatches} excluded as patched, ${excludedByDenyList} excluded by deny list)`)
+      yield* Console.log(
+        `Processing ${totalUpdates} package updates (${constrainedByExpo} constrained by Expo, ${excludedByPatches} excluded as patched, ${excludedByDenyList} excluded by deny list)`,
+      )
 
       return updates
     }),
@@ -203,19 +211,52 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
     Effect.gen(function* () {
       const results: UpdateResult[] = []
 
+      // Update all package.json files directly
       for (const [packageFile, updates] of Object.entries(filteredUpdates)) {
         if (Object.keys(updates).length === 0) continue
 
-        const dir = packageFile === 'package.json' ? '.' : packageFile.replace('/package.json', '')
+        const packageJsonPath = packageFile === 'package.json' ? './package.json' : `./${packageFile}`
         const packages = Object.entries(updates)
           .map(([pkg, version]) => `${pkg}@${version}`)
           .join(' ')
 
-        yield* Console.log(`${dryRun ? '[DRY RUN] ' : ''}Updating ${dir}: ${packages}`)
+        yield* Console.log(`${dryRun ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
 
         if (!dryRun) {
-          const updateResult = yield* cmd(`pnpm update ${packages}`, { cwd: dir }).pipe(
-            Effect.map(() => ({ success: true }) as const),
+          const updateResult = yield* Effect.gen(function* () {
+            // Read current package.json
+            const content = yield* Effect.try({
+              try: () => fs.readFileSync(packageJsonPath, 'utf8'),
+              catch: () => new Error(`Failed to read ${packageJsonPath}`),
+            })
+
+            const packageJson = yield* Effect.try({
+              try: () => JSON.parse(content),
+              catch: () => new Error(`Failed to parse ${packageJsonPath}`),
+            })
+
+            // Update dependencies in all sections
+            for (const [pkg, version] of Object.entries(updates)) {
+              if (packageJson.dependencies?.[pkg]) {
+                packageJson.dependencies[pkg] = version
+              }
+              if (packageJson.devDependencies?.[pkg]) {
+                packageJson.devDependencies[pkg] = version
+              }
+              if (packageJson.peerDependencies?.[pkg]) {
+                packageJson.peerDependencies[pkg] = version
+              }
+            }
+
+            // Write back to file with consistent formatting
+            yield* Effect.try({
+              try: () => fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n'),
+              catch: () => new Error(`Failed to write ${packageJsonPath}`),
+            })
+
+            return { success: true } as const
+          }).pipe(
+            Effect.withSpan(`updatePackageJson:${packageFile}`, { attributes: { packageFile } }),
             Effect.catchAll((error) => Effect.succeed({ success: false, error: String(error) } as const)),
           )
 
@@ -229,6 +270,12 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             ...updateResult,
           })
         }
+      }
+
+      // After all files updated, run pnpm install once to update lockfile
+      if (!dryRun && Object.keys(filteredUpdates).length > 0) {
+        yield* Console.log('Running pnpm install to update lockfile...')
+        yield* cmd('pnpm install --fix-lockfile')
       }
 
       return results
@@ -264,10 +311,14 @@ export const updateDepsCommand = Cli.Command.make(
     // Step 1: Read patched dependencies
     const patchedDeps = yield* readPatchedDependencies()
     if (patchedDeps.length > 0) {
-      yield* Console.log(`Found ${patchedDeps.length} patched dependencies that will be excluded from updates: ${patchedDeps.join(', ')}`)
+      yield* Console.log(
+        `Found ${patchedDeps.length} patched dependencies that will be excluded from updates: ${patchedDeps.join(', ')}`,
+      )
     }
     if (DEPENDENCY_DENY_LIST.length > 0) {
-      yield* Console.log(`Found ${DEPENDENCY_DENY_LIST.length} deny-listed dependencies that will be excluded from updates: ${DEPENDENCY_DENY_LIST.join(', ')}`)
+      yield* Console.log(
+        `Found ${DEPENDENCY_DENY_LIST.length} deny-listed dependencies that will be excluded from updates: ${DEPENDENCY_DENY_LIST.join(', ')}`,
+      )
     }
 
     // Step 2: Discover available updates

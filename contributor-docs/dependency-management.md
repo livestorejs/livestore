@@ -63,7 +63,6 @@ After dependency updates, verify these meta-items:
 - [ ] Version constants updated appropriately
 - [ ] TypeScript build passes: `mono ts`
 - [ ] Linting passes: `mono lint` (run `mono lint --fix` if needed)
-- [ ] Final `pnpm install --fix-lockfile` run
 
 ## Troubleshooting
 
