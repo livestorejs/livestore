@@ -33,8 +33,7 @@
     "react-markdown": "10.1.0",
     "react-router-dom": "7.7.1",
     "react-virtualized-auto-sizer": "1.0.26",
-    "react-window": "1.8.11",
-    "tiptap-markdown": "0.8.10"
+    "react-window": "1.8.11"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.2-dev.10",
