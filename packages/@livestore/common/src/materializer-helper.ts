@@ -24,14 +24,8 @@ export const getExecStatementsFromMaterializer = ({
   dbState: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
-    | {
-        decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
-        encoded: undefined
-      }
-    | {
-        decoded: undefined
-        encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
-      }
+    | { decoded: LiveStoreEvent.AnyDecoded; encoded: undefined }
+    | { decoded: undefined; encoded: LiveStoreEvent.AnyEncoded }
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -85,7 +79,7 @@ export const getExecStatementsFromMaterializer = ({
 
 export const makeMaterializerHash =
   ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
-  (event: LiveStoreEvent.AnyEncodedGlobal): Option.Option<number> => {
+  (event: LiveStoreEvent.AnyEncoded): Option.Option<number> => {
     if (isDevEnv()) {
       const { eventDef, materializer } = getEventDef(schema, event.name)
       const materializerResults = getExecStatementsFromMaterializer({

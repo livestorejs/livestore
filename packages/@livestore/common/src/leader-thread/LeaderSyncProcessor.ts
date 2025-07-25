@@ -700,7 +700,7 @@ const backgroundBackendPulling = ({
             batch.map((_) =>
               LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
-                materializerHashLeader: hashMaterializerResult(_.eventEncoded),
+                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.encodedFromGlobal(_.eventEncoded)),
                 materializerHashSession: Option.none(),
               }),
             ),

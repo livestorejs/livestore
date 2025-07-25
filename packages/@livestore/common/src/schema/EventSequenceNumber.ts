@@ -122,8 +122,14 @@ export const fromString = (str: string): EventSequenceNumber => {
   }
 }
 
+export const fromGlobal = (seqNum: GlobalEventSequenceNumber) => ({
+  global: seqNum,
+  client: clientDefault,
+  rebaseGeneration: rebaseGenerationDefault,
+})
+
 export const isEqual = (a: EventSequenceNumber, b: EventSequenceNumber) =>
-  a.global === b.global && a.client === b.client
+  a.global === b.global && a.client === b.client && a.rebaseGeneration === b.rebaseGeneration
 
 export type EventSequenceNumberPair = { seqNum: EventSequenceNumber; parentSeqNum: EventSequenceNumber }
 
