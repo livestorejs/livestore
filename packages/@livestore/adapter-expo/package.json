@@ -25,9 +25,9 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "expo-application": "~6.1.5",
-    "expo-file-system": "~18.1.11",
-    "expo-sqlite": "~15.2.14"
+    "expo-application": "^6.1.5",
+    "expo-file-system": "^18.1.11",
+    "expo-sqlite": "^15.2.14"
   },
   "publishConfig": {
     "access": "public",

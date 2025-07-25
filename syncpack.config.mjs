@@ -82,8 +82,8 @@ const config = {
       packages: ['**'],
     },
     {
-      label: 'default all to patch range for peer deps',
-      range: '~',
+      label: 'default all to minor range for peer deps',
+      range: '^',
       dependencyTypes: ['peer'],
       packages: ['**'],
     },

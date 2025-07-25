@@ -22,7 +22,7 @@
   "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "~53.0.20"
+    "expo": "^53.0.20"
   },
   "publishConfig": {
     "access": "public"
