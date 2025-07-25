@@ -49,6 +49,7 @@ export {
   Chunk,
   // Logger,
   Config,
+  Console,
   Context,
   Data,
   Deferred,

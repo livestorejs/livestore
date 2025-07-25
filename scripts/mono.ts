@@ -2,13 +2,14 @@ import fs from 'node:fs'
 
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
 import { deployToNetlify } from './shared/netlify.ts'
+import { updateDepsCommand } from './update-deps.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -313,6 +314,7 @@ const command = Cli.Command.make('mono').pipe(
     circularCommand,
     docsCommand,
     releaseCommand,
+    updateDepsCommand,
   ]),
 )
 
@@ -325,6 +327,7 @@ if (import.meta.main) {
 
   const layer = Layer.mergeAll(
     PlatformNode.NodeContext.layer,
+    FetchHttpClient.layer,
     OtelLiveHttp({
       serviceName: 'mono',
       rootSpanName: 'cli',
