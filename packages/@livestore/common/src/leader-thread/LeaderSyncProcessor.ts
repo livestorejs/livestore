@@ -700,6 +700,8 @@ const backgroundBackendPulling = ({
             batch.map((_) =>
               LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
+                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
+                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
                 materializerHashLeader: hashMaterializerResult(LiveStoreEvent.encodedFromGlobal(_.eventEncoded)),
                 materializerHashSession: Option.none(),
               }),
