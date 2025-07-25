@@ -7,7 +7,7 @@ import { EditorContent, type Extensions, useEditor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import { StarterKit } from '@tiptap/starter-kit'
 import { useEffect, useRef } from 'react'
-import { Markdown } from 'tiptap-markdown'
+// import { Markdown } from 'tiptap-markdown' // Temporarily disabled for Tiptap v3 compatibility
 import EditorMenu from '@/components/common/editor-menu'
 
 const Editor = ({
@@ -24,7 +24,7 @@ const Editor = ({
   placeholder?: string
 }) => {
   const markdownValue = useRef<string | null>(null)
-  const extensions: Extensions = [StarterKit, Markdown, Table, TableRow, TableHeader, TableCell]
+  const extensions: Extensions = [StarterKit, Table, TableRow, TableHeader, TableCell]
   const editor = useEditor({
     extensions,
     editorProps: {
@@ -35,13 +35,13 @@ const Editor = ({
     content: value || undefined,
     onBlur: onBlur
       ? ({ editor }) => {
-          markdownValue.current = editor.storage.markdown.getMarkdown()
+          markdownValue.current = editor.getHTML()
           onBlur(markdownValue.current || '')
         }
       : undefined,
     onUpdate: onChange
       ? ({ editor }) => {
-          markdownValue.current = editor.storage.markdown.getMarkdown()
+          markdownValue.current = editor.getHTML()
           onChange(markdownValue.current || '')
         }
       : undefined,
