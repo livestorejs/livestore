@@ -178,7 +178,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install dependencies
-        # We're only installing pnpm instead of the ./.github/actions/setup-env action to simulate a simple user-facing setup
+        # We're only using pnpm instead of the ./.github/actions/setup-env action to simulate a simple, user-facing setup.
         uses: pnpm/action-setup@v4
         with:
           standalone: true
@@ -190,14 +190,14 @@ jobs:
             pnpm list --only-projects --json | \
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
-      - run: pnpm dlx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}
+      - run: pnpm dlx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Use snapshot version of workspace dependencies
-        working-directory: ${{ runner.temp }}
+        working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: |
           pnpm add $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - working-directory: ${{ runner.temp }}
+      - working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build
