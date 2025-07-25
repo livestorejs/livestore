@@ -8,16 +8,20 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
+import { UnknownEventDemo } from './components/UnknownEventDemo.js'
 import { schema } from './livestore/schema.js'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { getStoreId } from './util/store-id.js'
 
 const AppBody: React.FC = () => (
-  <section className="todoapp">
-    <Header />
-    <MainSection />
-    <Footer />
-  </section>
+  <>
+    <section className="todoapp">
+      <Header />
+      <MainSection />
+      <Footer />
+    </section>
+    <UnknownEventDemo />
+  </>
 )
 
 const storeId = getStoreId()

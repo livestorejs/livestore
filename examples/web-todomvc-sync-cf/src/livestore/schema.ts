@@ -55,4 +55,90 @@ const materializers = State.SQLite.materializers(events, {
 
 const state = State.SQLite.makeState({ tables, materializers })
 
-export const schema = makeSchema({ events, state })
+// Schema 1: Default behavior (no callback provided)
+// → Logs warning and continues processing
+export const schema1 = makeSchema({ 
+  events, 
+  state
+  // No onUnknownEvent callback = default warning logging
+})
+
+// Schema 2: Custom callback with environment-specific logic
+export const schema2 = makeSchema({ 
+  events, 
+  state,
+  onUnknownEvent: ({ eventName, eventData, availableEvents }) => {
+    // User-provided callback disables default logging
+    
+    // Example: Log information about unknown events for debugging
+    console.group(`🔍 Unknown Event: ${eventName}`)
+    console.log('Event Data:', eventData)
+    console.log('Available Events:', availableEvents)
+    console.log('Schema Version: v1.x')
+    console.groupEnd()
+    
+    // NOTE: Event migration/aliasing should be handled through schema evolution
+    // and replay mechanisms rather than runtime retry actions
+    
+    // Handle events that might be from newer versions
+    // Note: In LiveStore, events are never removed once defined (append-only evolution)
+    // This is just for demonstration of unknown event handling
+    
+    // Development vs Production behavior
+    if (import.meta.env.DEV) {
+      console.warn(`⚠️ DEV: Unknown event '${eventName}' - continuing for development`)
+      return { action: 'continue' }
+    } else {
+      console.error(`❌ PROD: Unknown event '${eventName}' not allowed`)
+      return { 
+        action: 'fail', 
+        error: `Unknown event '${eventName}' - please update your app to the latest version` 
+      }
+    }
+  }
+})
+
+// Schema 3: Silent handling (ignore unknown events)
+export const schema3 = makeSchema({ 
+  events, 
+  state,
+  onUnknownEvent: ({ eventName }) => {
+    // Silently ignore all unknown events
+    return { action: 'continue' }
+  }
+})
+
+// Schema 4: Strict handling (fail on any unknown event)
+export const schema4 = makeSchema({ 
+  events, 
+  state,
+  onUnknownEvent: ({ eventName }) => {
+    return { 
+      action: 'fail', 
+      error: `Unknown event '${eventName}' not allowed in this application version` 
+    }
+  }
+})
+
+// Schema 5: Custom logging with metrics
+export const schema5 = makeSchema({ 
+  events, 
+  state,
+  onUnknownEvent: ({ eventName, eventData, availableEvents }) => {
+    // Custom logging format
+    console.group(`🔍 Unknown Event: ${eventName}`)
+    console.log('Event Data:', eventData)
+    console.log('Available Events:', availableEvents)
+    console.log('Timestamp:', new Date().toISOString())
+    console.groupEnd()
+    
+    // Example: Send to analytics/metrics service
+    // analytics.track('unknown_event', { eventName, timestamp: Date.now() })
+    
+    // Continue processing after logging
+    return { action: 'continue' }
+  }
+})
+
+// Default export - using the migration callback for the demo
+export const schema = schema2
