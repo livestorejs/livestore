@@ -2,6 +2,9 @@
   "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
   // WORKAROUND: Biome 2.1.x nested root configuration issue
   // Prevents "Found a nested root configuration" errors in parent repo
+  // Related issues:
+  // - https://github.com/biomejs/biome/issues/6792 (Linter hangs after upgrading from 2.0.6 to 2.1.1)
+  // - https://github.com/biomejs/biome/issues/6801 (Biome 2.1.1 doesn't stop and threatens to freeze the OS)
   // TODO: Remove "root": false once Biome properly supports git submodules
   // "root": false,
   "vcs": {

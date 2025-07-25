@@ -33,6 +33,4 @@ _tmp*
 
 scripts/.completions
 
-# Claude directory - ignore everything except settings
-.claude/*
-!.claude/settings.json
+backlog
