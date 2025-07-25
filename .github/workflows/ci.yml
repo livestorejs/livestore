@@ -17,10 +17,7 @@ env:
 
 jobs:
   lint:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -28,10 +25,7 @@ jobs:
       - run: mono lint
 
   test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -116,11 +110,8 @@ jobs:
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [test]
+    needs: test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -133,10 +124,7 @@ jobs:
       - run: mono release snapshot --git-sha=${{ github.sha }}
 
   build-and-deploy-examples-src:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -150,10 +138,7 @@ jobs:
           VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-docs:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -165,12 +150,11 @@ jobs:
 
   build-examples-tiged:
     if: github.event.pull_request.head.repo.fork != true
+    needs: publish-snapshot-version
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
+    runs-on: ubuntu-latest
     env:
       APP_PATH: examples/${{ matrix.app }}
       SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
