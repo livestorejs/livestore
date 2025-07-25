@@ -218,8 +218,19 @@ const tsCommand = Cli.Command.make(
   'ts',
   {
     watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
+    clean: Cli.Options.boolean('clean').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Clean build artifacts before compilation'),
+    ),
   },
-  Effect.fn(function* ({ watch }) {
+  Effect.fn(function* ({ watch, clean }) {
+    if (clean) {
+      yield* cmd(
+        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
+        { cwd, shell: true },
+      )
+    }
+
     if (watch) {
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
     } else {
