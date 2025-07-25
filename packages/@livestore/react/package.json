@@ -18,15 +18,15 @@
     "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@testing-library/dom": "^10.4.0",
-    "@testing-library/react": "^16.2.0",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.0.4",
-    "jsdom": "^26.0.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "jsdom": "^26.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-window": "^1.8.11",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4",
+    "vite": "^7.0.6",
     "vitest": "catalog:"
   },
   "files": [
@@ -36,7 +36,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "react": "~19.0.0"
+    "react": "^19.0.0"
   },
   "publishConfig": {
     "access": "public",

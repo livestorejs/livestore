@@ -7,6 +7,6 @@ packages:
   - tests/*
 
 catalog:
+  '@types/node': 24.1.0
+  '@vitest/ui': 3.2.4
   vitest: 3.2.4
-  "@vitest/ui": 3.2.4
-  "@types/node": 22.16.4

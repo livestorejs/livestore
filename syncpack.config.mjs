@@ -52,7 +52,7 @@ const config = {
   ],
   versionGroups: [
     {
-      label: 'use workspace protocol for local packages',
+      label: 'workspace protocol for local packages',
       dependencies: [...localPackages, '@local/**'],
       dependencyTypes: ['!local'],
       // Except for examples
@@ -60,7 +60,7 @@ const config = {
       pinVersion: 'workspace:*',
     },
     {
-      label: 'Enforce pnpm default catalog',
+      label: 'catalog protocol for catalog dependencies',
       dependencies: getPnpmCatalogDependencies(),
       dependencyTypes: ['!local'],
       // Except for examples
@@ -76,21 +76,15 @@ const config = {
       packages: ['**'],
     },
     {
-      label: 'default all to exact version for prod deps',
+      label: 'exact versions for prod dependencies',
       range: '',
       dependencyTypes: ['prod'],
       packages: ['**'],
     },
     {
-      label: 'default all to patch range for peer deps',
-      range: '~',
-      dependencyTypes: ['peer'],
-      packages: ['**'],
-    },
-    {
-      label: 'default all to minor range for dev deps',
+      label: 'minor range for dev and peer dependencies',
       range: '^',
-      dependencyTypes: ['dev'],
+      dependencyTypes: ['dev', 'peer'],
       packages: ['**'],
     },
   ],

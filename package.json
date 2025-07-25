@@ -4,13 +4,13 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
-    "@effect/language-service": "^0.27.0",
+    "@effect/language-service": "^0.29.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "madge": "^8.0.0",
-    "syncpack": "^13.0.2",
+    "syncpack": "^13.0.4",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4",
+    "vite": "^7.0.6",
     "vitest": "catalog:",
     "yaml": "^2.8.0"
   },
@@ -38,8 +38,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "esbuild": "0.25.6",
-    "react-native": "^0.79.2"
+    "esbuild": "0.25.6"
   },
   "resolutions#": {
     "esbuild": "Needed for CF Wrangler / vinxi build",

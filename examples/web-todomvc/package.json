@@ -9,18 +9,18 @@
     "@livestore/peer-deps": "0.3.2-dev.10",
     "@livestore/react": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5",
-    "@overengineering/fps-meter": "0.1.2",
+    "@overengineering/fps-meter": "0.2.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.2-dev.10",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.0.4",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.7.0",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.6"
   },
   "engines": {
     "node": ">=23.0.0"
