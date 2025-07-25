@@ -21,7 +21,7 @@
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.35.0"
+    "rollup": "^4.45.1"
   },
   "files": [
     "package.json",

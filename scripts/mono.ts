@@ -95,6 +95,7 @@ const lintCommand = Cli.Command.make(
     const fixFlag = fix ? '--fix --unsafe' : ''
     yield* cmd(`biome check scripts tests packages docs examples ${fixFlag}`, { shell: true })
     if (fix) {
+      yield* cmd('syncpack fix-mismatches', { cwd })
       yield* cmd('syncpack format', { cwd })
     }
 

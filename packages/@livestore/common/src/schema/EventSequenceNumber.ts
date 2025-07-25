@@ -122,8 +122,14 @@ export const fromString = (str: string): EventSequenceNumber => {
   }
 }
 
+export const fromGlobal = (seqNum: GlobalEventSequenceNumber) => ({
+  global: seqNum,
+  client: clientDefault,
+  rebaseGeneration: rebaseGenerationDefault,
+})
+
 export const isEqual = (a: EventSequenceNumber, b: EventSequenceNumber) =>
-  a.global === b.global && a.client === b.client
+  a.global === b.global && a.client === b.client && a.rebaseGeneration === b.rebaseGeneration
 
 export type EventSequenceNumberPair = { seqNum: EventSequenceNumber; parentSeqNum: EventSequenceNumber }
 
@@ -185,7 +191,7 @@ export const nextPair = ({
     seqNum: {
       global: (seqNum.global + 1) as any as GlobalEventSequenceNumber,
       client: clientDefault,
-      rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
+      rebaseGeneration: rebaseGenerationDefault,
     },
     // NOTE we always point to `client: 0` for non-clientOnly events
     parentSeqNum: { global: seqNum.global, client: clientDefault, rebaseGeneration: seqNum.rebaseGeneration },

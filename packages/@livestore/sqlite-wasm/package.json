@@ -7,7 +7,8 @@
     "./load-wasm": {
       "browser": "./src/load-wasm/mod.browser.ts",
       "worker": "./src/load-wasm/mod.browser.ts",
-      "default": "./src/load-wasm/mod.node.ts"
+      "node": "./src/load-wasm/mod.node.ts",
+      "default": "./src/load-wasm/mod.browser.ts"
     },
     "./node": "./src/node/mod.ts",
     "./browser": "./src/browser/mod.ts"
@@ -39,7 +40,8 @@
         "types": "./dist/load-wasm/mod.browser.d.ts",
         "browser": "./dist/load-wasm/mod.browser.js",
         "worker": "./dist/load-wasm/mod.browser.js",
-        "default": "./dist/load-wasm/mod.node.js"
+        "node": "./dist/load-wasm/mod.node.js",
+        "default": "./dist/load-wasm/mod.browser.js"
       },
       "./node": {
         "types": "./dist/node/mod.d.ts",

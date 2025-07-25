@@ -152,6 +152,12 @@ export const makeEventDefPartialSchema = <TSchema extends LiveStoreSchema>(
 
 export const makeEventDefSchemaMemo = memoizeByRef(makeEventDefSchema)
 
+export const encodedFromGlobal = (event: AnyEncodedGlobal): AnyEncoded => ({
+  ...event,
+  seqNum: EventSequenceNumber.fromGlobal(event.seqNum),
+  parentSeqNum: EventSequenceNumber.fromGlobal(event.parentSeqNum),
+})
+
 /** Equivalent to AnyEncoded but with a meta field and some convenience methods */
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.EncodedWithMeta')({
   name: Schema.String,

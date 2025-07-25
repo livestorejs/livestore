@@ -381,13 +381,14 @@ export interface ClientSessionSyncProcessor {
 // TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
 const SIMULATION_ENABLED = true
 
+// Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 1000)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 1000)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 1000)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 1000)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 1000)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 25)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 25)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 25)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 25)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 25)),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
