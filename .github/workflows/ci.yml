@@ -199,52 +199,23 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 
-  # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
-  # to simulate a simple user-facing setup
-
-  build-example-tiged-todomvc:
+  build-examples-tiged:
     if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
-    steps:
-      - uses: oven-sh/setup-bun@v2
-      # TODO bring back once repo is public
-      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
-      - uses: actions/checkout@v4
-        with:
-          path: example-repo
-      - run: cp -r example-repo/examples/web-todomvc example
-      - name: Add snapshot resolution to package.json
-        run: |
-          for pkg in livestore adapter-web peer-deps react common utils; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
-          done
-        working-directory: example
-      - uses: nick-fields/retry@v3
-        with:
-          retry_wait_seconds: 10
-          timeout_minutes: 5
-          max_attempts: 2
-          command: cd example && bun install
-      - run: bun run build
-        working-directory: example
-
-  build-example-linearlite:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
+        app: [web-todomvc, web-linearlite, expo-linearlite]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     env:
-      APP_PATH: examples/web-linearlite/
+      APP_PATH: examples/${{ matrix.app }}
       SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        # We're only using pnpm instead of the ./.github/actions/setup-env action to simulate a simple, user-facing setup.
+        uses: pnpm/action-setup@v4
         with:
           standalone: true
           run_install: true
@@ -255,109 +226,14 @@ jobs:
             pnpm list --only-projects --json | \
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
-      - name: Isolate app in a temporary directory
-        working-directory: ${{ env.APP_PATH }}
-        run: |
-          pnpm pack --out standalone.tgz
-          tar -xzf standalone.tgz -C $RUNNER_TEMP
-          echo "STANDALONE_PATH=$RUNNER_TEMP/package" >> $GITHUB_ENV
-      - name: Install snapshot version of workspace dependencies
-        working-directory: ${{ env.STANDALONE_PATH }}
+      - run: pnpm dlx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}
+      - name: Use snapshot version of workspace dependencies
+        working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: |
           pnpm add $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - working-directory: ${{ env.STANDALONE_PATH }}
+      - working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build
-
-  build-example-tiged-linearlite-pnpm:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
-    needs: [ publish-snapshot-version ]
-    env:
-      APP_PATH: examples/web-linearlite/
-      SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          standalone: true
-          run_install: true
-      - name: Get app’s workspace dependencies
-        working-directory: ${{ env.APP_PATH }}
-        run: |
-          echo "WORKSPACE_DEPS=$( \
-            pnpm list --only-projects --json | \
-            jq -r '.[0].dependencies | keys | join(" ")' \
-          )" >> $GITHUB_ENV
-      - run: pnpm dlx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}
-      - name: Use snapshot version of workspace dependencies
-        working-directory: ${{ runner.temp }}
-        run: |
-          pnpm add $(
-            for dep in $WORKSPACE_DEPS; do
-              echo "$dep@${{ env.SNAPSHOT_VERSION }}"
-            done
-          )
-      - working-directory: ${{ runner.temp }}
-        run: pnpm build
-
-  build-example-tiged-linearlite-bun:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
-    needs: [ publish-snapshot-version ]
-    env:
-      APP_PATH: examples/web-linearlite/
-      SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
-    steps:
-      - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}
-      - name: Use snapshot version of workspace dependencies
-        working-directory: ${{ runner.temp }}
-        run: |
-          bun add $(
-            for pkg in livestore adapter-web peer-deps react; do
-               echo "@livestore/$pkg@${{ env.SNAPSHOT_VERSION }}"
-            done
-          )
-      - working-directory: ${{ runner.temp }}
-        run: bun run build
-
-  build-example-tiged-expo-linearlite:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
-    steps:
-      - uses: oven-sh/setup-bun@v2
-      # TODO bring back once repo is public
-      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
-      - uses: actions/checkout@v4
-        with:
-          path: example-repo
-      - run: cp -r example-repo/examples/expo-linearlite example
-      - name: Add snapshot resolution to package.json
-        run: |
-          for pkg in livestore adapter-web peer-deps react common utils; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
-          done
-        working-directory: example
-      - uses: nick-fields/retry@v3
-        with:
-          retry_wait_seconds: 10
-          timeout_minutes: 5
-          max_attempts: 2
-          command: cd example && bun install
-      # TODO EAS build
-      # - run: bun run build
-      #   working-directory: example
