@@ -10,24 +10,27 @@ pnpm --version  # Check current version
 pnpm view pnpm version  # Check latest version
 # Update via corepack: corepack use pnpm@latest
 
-# 1. Update all dependencies except React/Expo packages and patched dependencies
-# Note: Add --filter "!package-name" for any packages in patchedDependencies
-direnv exec . pnpm update --latest --filter "!react*" --filter "!@expo/*" --filter "!@types/react*" --filter "!@livestore/*"
+# 1. Build Expo constraints and apply to resolutions
+EXPO_SDK=$(pnpm view expo version | sed 's/\([0-9]*\.[0-9]*\)\..*/\1.0/')
+# Thanks to Kudo from the Expo team for sharing this trick!
+EXPO_CONSTRAINTS=$(direnv exec . curl -s https://api.expo.dev/v2/sdks/$EXPO_SDK/native-modules | jq -r 'reduce .data[] as $item ({}; .[$item.npmPackage] = $item.versionRange) | to_entries | map("\"" + .key + "\": \"" + .value + "\"") | join(", ")')
+jq ".resolutions += {$EXPO_CONSTRAINTS}" package.json > package.json.tmp && mv package.json.tmp package.json
 
-# 2. Review changes
+# 2. Update all dependencies with Expo constraints applied
+# Note: Add --filter "!package-name" for any packages in patchedDependencies
+direnv exec . pnpm update --latest
+
+# 3. Clean up temporary resolutions and review changes
+echo "{$EXPO_CONSTRAINTS}" | jq -r 'keys[]' | while read pkg; do jq "del(.resolutions[\"$pkg\"])" package.json > package.json.tmp && mv package.json.tmp package.json; done
 git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.yaml
 
-# 3. Validate consistency
+# 4. Validate consistency and Expo compatibility
 direnv exec . syncpack lint && direnv exec . syncpack fix-mismatches
-
-# 4. Check Expo examples
 for dir in examples/expo-*; do (cd "$dir" && bunx expo install --check); done
 
-# 5. Update version constants (see below)
-# 6. Update catalog if needed (see below)
-# 7. Test build and linting
-direnv exec . mono ts
-direnv exec . mono lint
+# 5. Update version constants and catalog (see below)
+# 6. Test build and linting
+direnv exec . mono ts && direnv exec . mono lint
 ```
 
 ## What Gets Updated
@@ -44,26 +47,8 @@ This process updates dependencies across:
 
 We exclude certain packages from automatic updates:
 
-**React/Expo packages:** Require manual coordination with Expo SDK versions
-- `react*`, `@expo/*`, `@types/react*`
-
-**Internal packages:** Workspace packages managed separately  
-- `@livestore/*`
-
 **Patched dependencies:** Packages with custom patches
 - Check `patchedDependencies` in root `package.json` for current list
-
-
-## React and Expo Special Handling
-
-**⚠️ CRITICAL:** React/React Native packages require manual coordination with Expo SDK versions.
-
-**Process for React updates:**
-1. Check [Expo SDK versions](https://docs.expo.dev/versions/latest/) for React compatibility
-2. Update only when Expo SDK supports the new React version
-3. Update React packages across all package.json files simultaneously
-4. Validate Expo examples: `for dir in examples/expo-*; do (cd "$dir" && bunx expo install --check); done`
-5. Test all Expo examples after React updates
 
 ## Version Constants Update
 

@@ -45,6 +45,7 @@
             caddy
             act
             pkgsUnstable.deno
+            jq # Needed by some scripts
             
             self.packages.${system}.find-free-port
 
