@@ -1,5 +1,3 @@
 {
-  "hooks": {
-    "on-startup-hook": "[ -z \"$WORKSPACE_ROOT\" ] && [ -f .envrc ] && direnv allow || true"
-  }
+  "hooks": {}
 }
