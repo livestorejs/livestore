@@ -9,7 +9,7 @@
     "@livestore/sync-cf": "0.3.2-dev.10"
   },
   "devDependencies": {
-    "@types/node": "^22.15.33",
+    "@types/node": "^22.16.5",
     "typescript": "^5.8.3"
   },
   "engines": {

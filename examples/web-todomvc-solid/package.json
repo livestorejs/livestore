@@ -8,17 +8,17 @@
     "@livestore/peer-deps": "0.3.2-dev.10",
     "@livestore/solid": "0.3.2-dev.10",
     "@livestore/wa-sqlite": "1.0.5",
-    "solid-js": "1.9.4",
+    "solid-js": "1.9.7",
     "todomvc-app-css": "2.4.3",
-    "uuid": "11.0.5"
+    "uuid": "11.1.0"
   },
   "description": "",
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.2-dev.10",
-    "solid-devtools": "^0.33.0",
+    "solid-devtools": "^0.34.3",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4",
-    "vite-plugin-solid": "^2.11.6"
+    "vite": "^7.0.6",
+    "vite-plugin-solid": "^2.11.7"
   },
   "engines": {
     "node": ">=23.0.0"

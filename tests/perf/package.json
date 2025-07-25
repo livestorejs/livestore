@@ -12,16 +12,16 @@
     "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
     "@opentelemetry/resources": "2.0.1",
     "@opentelemetry/sdk-trace-base": "2.0.1",
-    "@opentelemetry/sdk-trace-web": "2.0.0",
+    "@opentelemetry/sdk-trace-web": "2.0.1",
     "@playwright/test": "1.53.1",
     "@types/node": "catalog:",
-    "@types/react": "19.1.2",
-    "@types/react-dom": "19.0.4",
-    "@vitejs/plugin-react": "4.3.4",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@vitejs/plugin-react": "4.7.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "typescript": "5.8.3",
-    "vite": "7.0.4"
+    "vite": "7.0.6"
   },
   "scripts": {
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",

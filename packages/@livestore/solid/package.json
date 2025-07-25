@@ -13,10 +13,10 @@
   },
   "devDependencies": {
     "@opentelemetry/sdk-trace-base": "^2.0.1",
-    "jsdom": "^26.0.0",
-    "solid-js": "^1.9.4",
+    "jsdom": "^26.1.0",
+    "solid-js": "^1.9.7",
     "typescript": "^5.8.3",
-    "vite": "^7.0.4",
+    "vite": "^7.0.6",
     "vitest": "catalog:"
   },
   "files": [
@@ -26,7 +26,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "solid-js": "~1.9.4"
+    "solid-js": "~1.9.7"
   },
   "publishConfig": {
     "access": "public",

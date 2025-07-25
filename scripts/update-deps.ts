@@ -250,7 +250,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 
             // Write back to file with consistent formatting
             yield* Effect.try({
-              try: () => fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n'),
+              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`),
               catch: () => new Error(`Failed to write ${packageJsonPath}`),
             })
 

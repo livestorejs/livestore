@@ -13,10 +13,10 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "expo-application": "^6.1.4",
-    "expo-file-system": "^18.1.8",
-    "expo-sqlite": "^15.2.10",
-    "react-native": "^0.79.2"
+    "expo-application": "^6.1.5",
+    "expo-file-system": "^18.1.11",
+    "expo-sqlite": "^15.2.14",
+    "react-native": "^0.79.5"
   },
   "files": [
     "package.json",
@@ -25,9 +25,9 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "expo-application": "~6.1.4",
-    "expo-file-system": "~18.1.8",
-    "expo-sqlite": "~15.2.10"
+    "expo-application": "~6.1.5",
+    "expo-file-system": "~18.1.11",
+    "expo-sqlite": "~15.2.14"
   },
   "publishConfig": {
     "access": "public",
