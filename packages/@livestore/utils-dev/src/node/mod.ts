@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
-import { Command, Config, Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
+import { Command, Config, Effect, FetchHttpClient, HttpClient, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -13,8 +13,6 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-
-export * as FileLogger from './FileLogger.ts'
 
 export const OtelLiveHttp = ({
   serviceName,
@@ -46,10 +44,21 @@ export const OtelLiveHttp = ({
 
     if (configRes._tag === 'None') {
       const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
+      return RootSpanLive.pipe(Layer.provide(OtelLiveDummy))
     }
 
     const config = configRes.value
+    const exporterUrl = `${config.exporterUrl}/v1/traces`
+
+    // Test the connection to the OpenTelemetry exporter to ensure the backend
+    // is available before setting up the corresponding layers
+    const isOtelAvailable = yield* Effect.isSuccess(HttpClient.options(config.exporterUrl))
+
+    // Return a dummy layer if the OpenTelemetry backend is unavailable
+    if (!isOtelAvailable) {
+      const RootSpanLive = Layer.span('DummyRoot', {})
+      return RootSpanLive.pipe(Layer.provide(OtelLiveDummy))
+    }
 
     const resource = { serviceName: config.serviceName }
 
@@ -62,7 +71,7 @@ export const OtelLiveHttp = ({
       resource,
       metricReader,
       spanProcessor: new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
+        new OTLPTraceExporter({ url: exporterUrl, headers: {} }),
         { scheduledDelayMillis: 50 },
       ),
     }))
@@ -108,7 +117,10 @@ export const OtelLiveHttp = ({
     }
 
     return layer
-  }).pipe(Layer.unwrapScoped) as any
+  }).pipe(
+    Layer.unwrapScoped,
+    Layer.provide(FetchHttpClient.layer),
+  ) as any
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   getTracingBackendUrl(span).pipe(
@@ -152,10 +164,10 @@ export const cmd: (
   commandInput: string | (string | undefined)[],
   options?:
     | {
-        cwd?: string
-        shell?: boolean
-        env?: Record<string, string | undefined>
-      }
+      cwd?: string
+      shell?: boolean
+      env?: Record<string, string | undefined>
+    }
     | undefined,
 ) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn(
   'cmd',
@@ -164,7 +176,7 @@ export const cmd: (
   const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}='${value}' `)
+    .map(([key, value]) => `${key}=${value} `)
     .join('')
   const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
@@ -199,7 +211,7 @@ export const cmdText: (
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
+      .map(([key, value]) => `${key}=${value} `)
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
