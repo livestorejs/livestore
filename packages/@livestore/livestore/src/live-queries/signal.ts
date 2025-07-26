@@ -1,3 +1,4 @@
+import { Equal, Hash } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import type * as RG from '../reactive.ts'
@@ -27,6 +28,12 @@ export const signal = <T>(
           def,
         }),
     ),
+    [Equal.symbol](that: SignalDef<T>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def

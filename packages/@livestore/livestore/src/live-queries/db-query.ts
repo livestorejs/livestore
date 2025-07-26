@@ -10,7 +10,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
@@ -131,6 +131,12 @@ export const queryDb: {
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def

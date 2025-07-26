@@ -3,7 +3,7 @@ import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
@@ -68,6 +68,12 @@ export const queryGraphQL = <
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueries.LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
