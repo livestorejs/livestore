@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
-import { Command, Config, Effect, FetchHttpClient, FiberRef, HttpClient, HttpClientResponse, identity, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Command, Config, Effect, FetchHttpClient, HttpClient, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -13,8 +13,6 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-
-export * as FileLogger from './FileLogger.ts'
 
 export const OtelLiveHttp = ({
   serviceName,
@@ -46,7 +44,7 @@ export const OtelLiveHttp = ({
 
     if (configRes._tag === 'None') {
       const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
+      return RootSpanLive.pipe(Layer.provide(OtelLiveDummy))
     }
 
     const config = configRes.value
@@ -76,7 +74,7 @@ export const OtelLiveHttp = ({
         new OTLPTraceExporter({ url: exporterUrl, headers: {} }),
         { scheduledDelayMillis: 50 },
       ),
-    })).pipe(Layer.locally(FiberRef.currentMinimumLogLevel, LogLevel.None))
+    }))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
@@ -178,7 +176,7 @@ export const cmd: (
   const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}='${value}' `)
+    .map(([key, value]) => `${key}=${value} `)
     .join('')
   const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
@@ -213,7 +211,7 @@ export const cmdText: (
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
+      .map(([key, value]) => `${key}=${value} `)
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
