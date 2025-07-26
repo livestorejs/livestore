@@ -167,12 +167,14 @@ const hasStateTables = (db: SqliteDb) => {
   return isSubsetOf(stateTables, tableNames)
 }
 
-const isSubsetOf = (a: Set<string>, b: Set<string>) => {
+const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
     if (!b.has(item)) {
       return false
     }
   }
+
+  return true
 }
 
 const getInitialSyncState = ({
