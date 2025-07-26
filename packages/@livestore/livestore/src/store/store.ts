@@ -16,6 +16,7 @@ import {
   type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  StoreAlreadyShutdownError,
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -78,6 +79,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
   tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
+
+  /** Tracks whether the store has been shut down */
+  private isShutdown = false
 
   private effectContext: {
     runtime: Runtime.Runtime<Scope.Scope>
@@ -293,6 +297,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     return this.clientSession.clientId
   }
 
+  private checkShutdown = (operation: string): void => {
+    if (this.isShutdown) {
+      throw new StoreAlreadyShutdownError({ operation, storeId: this.storeId })
+    }
+  }
+
   /**
    * Subscribe to the results of a query
    * Returns a function to cancel the subscription.
@@ -321,65 +331,68 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       stackInfo?: StackInfo
     },
   ): Unsubscribe =>
-    this.otel.tracer.startActiveSpan(
-      `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
-      options?.otelContext ?? this.otel.queriesSpanContext,
-      (span) => {
-        // console.debug('store sub', query$.id, query$.label)
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+    {
+      this.checkShutdown('subscribe')
 
-        const queryRcRef = isQueryBuilder(query)
-          ? queryDb(query).make(this.reactivityGraph.context!)
-          : query._tag === 'def' || query._tag === 'signal-def'
-            ? query.make(this.reactivityGraph.context!)
-            : {
+      return this.otel.tracer.startActiveSpan(
+        `LiveStore.subscribe`,
+        { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+        options?.otelContext ?? this.otel.queriesSpanContext,
+        (span) => {
+          // console.debug('store sub', query$.id, query$.label)
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+          const queryRcRef = isQueryBuilder(query)
+            ? queryDb(query).make(this.reactivityGraph.context!)
+            : query._tag === 'def' || query._tag === 'signal-def'
+              ? query.make(this.reactivityGraph.context!)
+              : {
                 value: query as LiveQuery<TResult>,
-                deref: () => {},
+                deref: () => { },
               }
-        const query$ = queryRcRef.value
+          const query$ = queryRcRef.value
 
-        const label = `subscribe:${options?.label}`
-        const effect = this.reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) =>
-            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
-          { label },
-        )
+          const label = `subscribe:${options?.label}`
+          const effect = this.reactivityGraph.makeEffect(
+            (get, _otelContext, debugRefreshReason) => options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+            { label }
+          )
 
-        if (options?.stackInfo) {
-          query$.activeSubscriptions.add(options.stackInfo)
-        }
-
-        options?.onSubscribe?.(query$)
-
-        this.activeQueries.add(query$ as LiveQuery<TResult>)
-
-        // Running effect right away to get initial value (unless `skipInitialRun` is set)
-        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
-        }
-
-        const unsubscribe = () => {
-          // console.debug('store unsub', query$.id, query$.label)
-          try {
-            this.reactivityGraph.destroyNode(effect)
-            this.activeQueries.remove(query$ as LiveQuery<TResult>)
-
-            if (options?.stackInfo) {
-              query$.activeSubscriptions.delete(options.stackInfo)
-            }
-
-            queryRcRef.deref()
-
-            options?.onUnsubsubscribe?.()
-          } finally {
-            span.end()
+          if (options?.stackInfo) {
+            query$.activeSubscriptions.add(options.stackInfo)
           }
-        }
 
-        return unsubscribe
-      },
-    )
+          options?.onSubscribe?.(query$)
+
+          this.activeQueries.add(query$ as LiveQuery<TResult>)
+
+          // Running effect right away to get initial value (unless `skipInitialRun` is set)
+          if (options?.skipInitialRun !== true && !query$.isDestroyed) {
+            effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+          }
+
+          const unsubscribe = () => {
+            // console.debug('store unsub', query$.id, query$.label)
+            try {
+              this.reactivityGraph.destroyNode(effect)
+              this.activeQueries.remove(query$ as LiveQuery<TResult>)
+
+              if (options?.stackInfo) {
+                query$.activeSubscriptions.delete(options.stackInfo)
+              }
+
+              queryRcRef.deref()
+
+              options?.onUnsubsubscribe?.()
+            } finally {
+              span.end()
+            }
+          }
+
+          return unsubscribe
+        }
+      )
+    }
 
   subscribeStream = <TResult>(
     query$: LiveQueryDef<TResult>,
@@ -428,6 +441,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
+    this.checkShutdown('query')
+
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
       const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
@@ -490,6 +505,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   setSignal = <T>(signalDef: SignalDef<T>, value: T | ((prev: T) => T)): void => {
+    this.checkShutdown('setSignal')
+
     const signalRef = signalDef.make(this.reactivityGraph.context!)
     const newValue: T = typeof value === 'function' ? (value as any)(signalRef.value.get()) : value
     signalRef.value.set(newValue)
@@ -574,6 +591,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       ) => void,
     ): void
   } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    this.checkShutdown('commit')
+
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
     for (const event of events) {
@@ -677,10 +696,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('events')
+
     return notYetImplemented(`store.events() is not yet implemented but planned soon`)
   }
 
   eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('eventsStream')
+
     return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
   }
 
@@ -689,6 +712,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * We might need a better solution for this. Let's see.
    */
   manualRefresh = (options?: { label?: string }) => {
+    this.checkShutdown('manualRefresh')
+
     const { label } = options ?? {}
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
@@ -708,6 +733,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * This is called automatically when the store was created using the React or Effect API.
    */
   shutdownPromise = async (cause?: UnexpectedError) => {
+    this.checkShutdown('shutdownPromise')
+
+    this.isShutdown = true
     await this.shutdown(cause ? Cause.fail(cause) : undefined)
       .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
   }
@@ -717,7 +745,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError>): Effect.Effect<void> => this.clientSession.shutdown(cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })))
+  shutdown = (cause?: Cause.Cause<UnexpectedError>): Effect.Effect<void> => {
+    this.checkShutdown('shutdown')
+
+    this.isShutdown = true
+    return this.clientSession.shutdown(cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })))
+  }
 
   /**
    * Helper methods useful during development

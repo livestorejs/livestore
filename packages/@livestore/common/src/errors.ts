@@ -47,3 +47,9 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
 }) {}
+
+/** Error thrown when attempting to use a store operation after the store has been shut down */
+export class StoreAlreadyShutdownError extends Schema.TaggedError<StoreAlreadyShutdownError>()('LiveStore.StoreAlreadyShutdownError', {
+  operation: Schema.String,
+  storeId: Schema.String,
+}) {}
