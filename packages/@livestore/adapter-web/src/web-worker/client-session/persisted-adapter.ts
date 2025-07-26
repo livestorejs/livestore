@@ -374,7 +374,13 @@ export const makePersistedAdapter =
       // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
       // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
       const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable.select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration').first(),
+        sessionChangesetMetaTable
+          .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
+          .orderBy([
+            { col: 'seqNumGlobal', direction: 'desc' },
+            { col: 'seqNumClient', direction: 'desc' },
+          ])
+          .first(),
       )
 
       const initialLeaderHead = initialLeaderHeadRes
