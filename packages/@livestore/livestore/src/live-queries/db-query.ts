@@ -320,8 +320,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
 
-    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => (a: TResult, b: TResult) =>
-      a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : Schema.equivalence(resultSchema)(a, b)
+    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
+      // Creating the equivalence function eagerly in outer scope as it might be expensive
+      const eq = Schema.equivalence(resultSchema)
+      return (a: TResult, b: TResult) => a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b)
+    }
 
     // NOTE we try to create the equality function eagerly as it might be expensive
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
