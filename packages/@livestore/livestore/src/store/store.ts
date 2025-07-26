@@ -330,69 +330,69 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
       stackInfo?: StackInfo
     },
-  ): Unsubscribe =>
-    {
-      this.checkShutdown('subscribe')
+  ): Unsubscribe => {
+    this.checkShutdown('subscribe')
 
-      return this.otel.tracer.startActiveSpan(
-        `LiveStore.subscribe`,
-        { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
-        options?.otelContext ?? this.otel.queriesSpanContext,
-        (span) => {
-          // console.debug('store sub', query$.id, query$.label)
-          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+    return this.otel.tracer.startActiveSpan(
+      `LiveStore.subscribe`,
+      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+      options?.otelContext ?? this.otel.queriesSpanContext,
+      (span) => {
+        // console.debug('store sub', query$.id, query$.label)
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-          const queryRcRef = isQueryBuilder(query)
-            ? queryDb(query).make(this.reactivityGraph.context!)
-            : query._tag === 'def' || query._tag === 'signal-def'
-              ? query.make(this.reactivityGraph.context!)
-              : {
+        const queryRcRef = isQueryBuilder(query)
+          ? queryDb(query).make(this.reactivityGraph.context!)
+          : query._tag === 'def' || query._tag === 'signal-def'
+            ? query.make(this.reactivityGraph.context!)
+            : {
                 value: query as LiveQuery<TResult>,
-                deref: () => { },
+                deref: () => {},
               }
-          const query$ = queryRcRef.value
+        const query$ = queryRcRef.value
 
-          const label = `subscribe:${options?.label}`
-          const effect = this.reactivityGraph.makeEffect(
-            (get, _otelContext, debugRefreshReason) => options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
-            { label }
-          )
+        const label = `subscribe:${options?.label}`
+        const effect = this.reactivityGraph.makeEffect(
+          (get, _otelContext, debugRefreshReason) =>
+            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          { label },
+        )
 
-          if (options?.stackInfo) {
-            query$.activeSubscriptions.add(options.stackInfo)
-          }
-
-          options?.onSubscribe?.(query$)
-
-          this.activeQueries.add(query$ as LiveQuery<TResult>)
-
-          // Running effect right away to get initial value (unless `skipInitialRun` is set)
-          if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-            effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
-          }
-
-          const unsubscribe = () => {
-            // console.debug('store unsub', query$.id, query$.label)
-            try {
-              this.reactivityGraph.destroyNode(effect)
-              this.activeQueries.remove(query$ as LiveQuery<TResult>)
-
-              if (options?.stackInfo) {
-                query$.activeSubscriptions.delete(options.stackInfo)
-              }
-
-              queryRcRef.deref()
-
-              options?.onUnsubsubscribe?.()
-            } finally {
-              span.end()
-            }
-          }
-
-          return unsubscribe
+        if (options?.stackInfo) {
+          query$.activeSubscriptions.add(options.stackInfo)
         }
-      )
-    }
+
+        options?.onSubscribe?.(query$)
+
+        this.activeQueries.add(query$ as LiveQuery<TResult>)
+
+        // Running effect right away to get initial value (unless `skipInitialRun` is set)
+        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
+          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+        }
+
+        const unsubscribe = () => {
+          // console.debug('store unsub', query$.id, query$.label)
+          try {
+            this.reactivityGraph.destroyNode(effect)
+            this.activeQueries.remove(query$ as LiveQuery<TResult>)
+
+            if (options?.stackInfo) {
+              query$.activeSubscriptions.delete(options.stackInfo)
+            }
+
+            queryRcRef.deref()
+
+            options?.onUnsubsubscribe?.()
+          } finally {
+            span.end()
+          }
+        }
+
+        return unsubscribe
+      },
+    )
+  }
 
   subscribeStream = <TResult>(
     query$: LiveQueryDef<TResult>,
@@ -736,8 +736,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.checkShutdown('shutdownPromise')
 
     this.isShutdown = true
-    await this.shutdown(cause ? Cause.fail(cause) : undefined)
-      .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+    await this.shutdown(cause ? Cause.fail(cause) : undefined).pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
   }
 
   /**
@@ -749,7 +748,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.checkShutdown('shutdown')
 
     this.isShutdown = true
-    return this.clientSession.shutdown(cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })))
+    return this.clientSession.shutdown(
+      cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
+    )
   }
 
   /**
