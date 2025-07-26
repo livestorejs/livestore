@@ -1,4 +1,5 @@
 import { getDurationMsFromSpan } from '@livestore/common'
+import { Equal, Hash } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
@@ -35,6 +36,12 @@ export const computed = <TResult>(
     // TODO we should figure out whether this could cause some problems and/or if there's a better way to do this
     // NOTE `fn.toString()` doesn't work in Expo as it always produces `[native code]`
     hash,
+    [Equal.symbol](that: LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def

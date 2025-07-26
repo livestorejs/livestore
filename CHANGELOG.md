@@ -11,6 +11,7 @@
 - Detection of non-pure materializers (during development)
 - fix: store.subscribe() QueryBuilder support #371 (thanks @rgbkrk)
 - Store operations now throw `StoreAlreadyShutdownError` when called after shutdown
+- Add Effect `Equal` and `Hash` trait implementations to `LiveQueryDef` and `SignalDef`
 
 ### New features
 

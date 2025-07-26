@@ -1,5 +1,5 @@
 import { isNotNil } from '@livestore/utils'
-import { Predicate } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import * as RG from '../reactive.ts'
@@ -41,6 +41,8 @@ export interface SignalDef<T> extends LiveQueryDef<T, 'signal-def'> {
   hash: string
   label: string
   make: (ctx: ReactivityGraphContext) => RcRef<ISignal<T>>
+  [Equal.symbol](that: SignalDef<T>): boolean
+  [Hash.symbol](): number
 }
 
 export interface ISignal<T> extends LiveQuery<T> {
@@ -77,6 +79,8 @@ export interface LiveQueryDef<TResult, TTag extends string = 'def'> {
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult> | ISignal<TResult>>
   label: string
   hash: string
+  [Equal.symbol](that: LiveQueryDef<TResult, TTag>): boolean
+  [Hash.symbol](): number
 }
 
 export namespace LiveQueryDef {
