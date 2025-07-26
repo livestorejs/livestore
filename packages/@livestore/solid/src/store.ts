@@ -1,4 +1,4 @@
-import { type IntentionalShutdownCause, provideOtel, StoreInterrupted } from '@livestore/common'
+import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type SyncError } from '@livestore/common'
 import type {
   BootStatus,
   CreateStoreOptions,
@@ -124,12 +124,13 @@ const setupStore = async ({
         setupDone()
       }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
-      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted) =>
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) =>
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/solid] shutdown', Cause.pretty(cause))),
-        Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
+        Effect.tap((intentionalShutdown) => shutdownContext(intentionalShutdown)),
+        Effect.catchTag('LiveStore.SyncError', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),

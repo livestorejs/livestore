@@ -164,7 +164,9 @@ export const makePersistedAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -195,7 +197,7 @@ export const makePersistedAdapter =
         Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
-        Effect.tapErrorCause(shutdown),
+        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -237,7 +239,7 @@ export const makePersistedAdapter =
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause(shutdown),
+          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -246,9 +248,10 @@ export const makePersistedAdapter =
         yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-        yield* sharedWorker
-          .executeEffect(new WorkerSchema.SharedWorkerUpdateMessagePort({ port: mc.port2 }))
-          .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
+        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorkerUpdateMessagePort({ port: mc.port2 })).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
@@ -324,7 +327,9 @@ export const makePersistedAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
+        Effect.tapErrorCause((cause) =>
+          Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)),
+        ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,

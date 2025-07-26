@@ -1,6 +1,6 @@
 import {
-  type Cause,
   type Effect,
+  type Exit,
   type Queue,
   Schema,
   type Scope,
@@ -27,7 +27,7 @@ export interface ClientSession {
   sessionId: string
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause | SyncError>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
   /** A unique identifier for the current instance of the client session. Used for debugging purposes. */
@@ -119,7 +119,7 @@ export interface AdapterArgs {
   devtoolsEnabled: boolean
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
-  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  shutdown: (exit: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**
    * Payload that will be passed to the sync backend when connecting

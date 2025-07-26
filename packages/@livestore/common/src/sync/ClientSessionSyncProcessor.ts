@@ -3,6 +3,7 @@ import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
   Effect,
+  Exit,
   FiberHandle,
   Option,
   Queue,
@@ -316,7 +317,7 @@ export const makeClientSessionSyncProcessor = ({
           refreshTables(writeTables)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => clientSession.shutdown(cause)),
+          Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
       ),
       Stream.runDrain,

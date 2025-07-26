@@ -22,7 +22,18 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Inspectable,
+  Option,
+  OtelTracer,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -696,11 +707,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = async (cause?: Cause.Cause<UnexpectedError>) => {
-    await this.clientSession
-      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+  shutdownPromise = async (cause?: UnexpectedError) => {
+    await this.shutdown(cause ? Cause.fail(cause) : undefined)
       .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
   }
+
+  /**
+   * Shuts down the store and closes the client session.
+   *
+   * This is called automatically when the store was created using the React or Effect API.
+   */
+  shutdown = (cause?: Cause.Cause<UnexpectedError>): Effect.Effect<void> => this.clientSession.shutdown(cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })))
 
   /**
    * Helper methods useful during development

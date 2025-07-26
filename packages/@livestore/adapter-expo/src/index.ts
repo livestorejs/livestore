@@ -17,7 +17,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Exit, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
@@ -76,7 +76,9 @@ export const makePersistedAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,

@@ -8,6 +8,7 @@ import {
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
+  type SyncError,
   type SyncOptions,
   UnexpectedError,
 } from '@livestore/common'
@@ -19,6 +20,7 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
   Cause,
   Effect,
+  Exit,
   FetchHttpClient,
   Fiber,
   Layer,
@@ -135,7 +137,9 @@ const makeAdapterImpl = ({
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -299,7 +303,7 @@ const makeWorkerLeaderThread = ({
   syncPayload,
   testing,
 }: {
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string
@@ -333,7 +337,7 @@ const makeWorkerLeaderThread = ({
     }).pipe(
       Effect.provide(nodeWorkerLayer),
       UnexpectedError.mapToUnexpectedError,
-      Effect.tapErrorCause(shutdown),
+      Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
@@ -377,7 +381,7 @@ const makeWorkerLeaderThread = ({
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
+      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

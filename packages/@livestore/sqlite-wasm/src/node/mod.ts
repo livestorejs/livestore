@@ -115,7 +115,9 @@ const makeNodeFsDb = ({
     const vfsName = `node-fs-${directory}`
     if (nodeFsVfsMap.has(vfsName) === false) {
       // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of NodeFS
-      const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
+      const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory, () => {
+        nodeFsVfsMap.delete(vfsName)
+      })
       // @ts-expect-error TODO fix types
       sqlite3.vfs_register(nodeFsVfs, false)
       nodeFsVfsMap.set(vfsName, nodeFsVfs)

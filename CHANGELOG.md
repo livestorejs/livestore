@@ -18,6 +18,21 @@
 
 ### Breaking changes
 
+- **BREAKING**: Changed `store.shutdown` API to expose Effect directly
+  - `store.shutdown` now returns an Effect instead of a Promise
+  - Use `store.shutdownPromise` for the Promise-based API
+  - Migration:
+    ```ts
+    // Before
+    await store.shutdown()
+    
+    // After (Effect API)
+    yield* store.shutdown()
+    
+    // Or use the Promise API
+    await store.shutdownPromise()
+    ```
+
 - **BREAKING**: Adjusted `QueryBuilder.first()` API and default behaviour
   - Before: `first()` without arguments would throw an error if the query didn't
     match any rows

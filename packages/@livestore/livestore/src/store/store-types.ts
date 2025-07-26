@@ -3,6 +3,7 @@ import type {
   ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
   StoreInterrupted,
+  SyncError,
   UnexpectedError,
 } from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
@@ -22,13 +23,16 @@ export type LiveStoreContext =
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted
+      cause: IntentionalShutdownCause | StoreInterrupted | SyncError
     }
 
-export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
+export type ShutdownDeferred = Deferred.Deferred<
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted
+>
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
-  void,
-  UnexpectedError | IntentionalShutdownCause | StoreInterrupted
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted
 >()
 
 export type LiveStoreContextRunning = {

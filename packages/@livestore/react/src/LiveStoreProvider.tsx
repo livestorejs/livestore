@@ -1,4 +1,4 @@
-import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport } from '@livestore/common'
+import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport, SyncError } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
@@ -48,7 +48,7 @@ export interface LiveStoreProviderProps {
   otelOptions?: Partial<OtelOptions>
   renderLoading?: (status: BootStatus) => React.ReactNode
   renderError?: (error: UnexpectedError | unknown) => React.ReactNode
-  renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => React.ReactNode
+  renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => React.ReactNode
   adapter: Adapter
   /**
    * In order for LiveStore to apply multiple events in a single render,
@@ -86,19 +86,21 @@ export interface LiveStoreProviderProps {
 const defaultRenderError = (error: UnexpectedError | unknown) =>
   IS_REACT_NATIVE ? null : Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)
 
-const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted) => {
+const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => {
   const reason =
     cause._tag === 'LiveStore.StoreInterrupted'
       ? `interrupted due to: ${cause.reason}`
-      : cause.reason === 'devtools-import'
-        ? 'devtools import'
-        : cause.reason === 'devtools-reset'
-          ? 'devtools reset'
-          : cause.reason === 'adapter-reset'
-            ? 'adapter reset'
-            : cause.reason === 'manual'
-              ? 'manual shutdown'
-              : 'unknown reason'
+      : cause._tag === 'LiveStore.SyncError'
+        ? `sync error: ${cause.cause}`
+        : cause.reason === 'devtools-import'
+          ? 'devtools import'
+          : cause.reason === 'devtools-reset'
+            ? 'devtools reset'
+            : cause.reason === 'adapter-reset'
+              ? 'adapter reset'
+              : cause.reason === 'manual'
+                ? 'manual shutdown'
+                : 'unknown reason'
 
   return IS_REACT_NATIVE ? null : <>LiveStore Shutdown due to {reason}</>
 }
@@ -348,12 +350,13 @@ const useCreateStore = ({
         setContextValue({ stage: 'running', store })
       }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
-      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted) =>
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) =>
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', Cause.pretty(cause))),
-        Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
+        Effect.tap((intentionalShutdown) => shutdownContext(intentionalShutdown)),
+        Effect.catchTag('LiveStore.SyncError', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
