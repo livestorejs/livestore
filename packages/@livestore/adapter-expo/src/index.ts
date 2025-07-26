@@ -1,22 +1,31 @@
-import './polyfill.js'
+import './polyfill.ts'
 
-import type { Adapter, BootStatus, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, makeClientSession, UnexpectedError } from '@livestore/common'
+import {
+  type Adapter,
+  type BootStatus,
+  ClientSessionLeaderThreadProxy,
+  Devtools,
+  type LockStatus,
+  liveStoreStorageFormatVersion,
+  makeClientSession,
+  type SyncOptions,
+  UnexpectedError,
+} from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Exit, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
 import * as RN from 'react-native'
 
-import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
-import { makeSqliteDb } from './make-sqlite-db.js'
-import { makeShutdownChannel } from './shutdown-channel.js'
+import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
+import { makeSqliteDb } from './make-sqlite-db.ts'
+import { makeShutdownChannel } from './shutdown-channel.ts'
 
 export type MakeDbOptions = {
   sync?: SyncOptions
@@ -37,7 +46,6 @@ export type MakeDbOptions = {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var RN$Bridgeless: boolean | undefined
 }
 
@@ -68,7 +76,9 @@ export const makePersistedAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -211,7 +221,7 @@ const makeLeaderThread = ({
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
@@ -227,7 +237,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+      })
 
       const initialSnapshot = db.export()
 
@@ -301,7 +311,6 @@ const getDevtoolsUrl = () => {
   const url = new URL(process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `ws://0.0.0.0:4242`)
   const port = url.port
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
   const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
   const devServer = getDevServer().url.replace(/\/?$/, '') as string
 

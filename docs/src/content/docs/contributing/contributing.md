@@ -54,6 +54,10 @@ There are many ways to contribute to LiveStore.
 
 Please get in touch if you'd like to discuss any of these topics!
 
+## Bug reports
+
+- Please include a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) for how to reproduce the bug.
+
 ## Guiding principles {#guiding-principles}
 
 - Keep it as simple as possible

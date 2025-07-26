@@ -5,11 +5,11 @@ import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.js'
-import { NOT_REFRESHED_YET } from '../reactive.js'
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.js'
-import type { ReferenceCountedSet } from '../utils/data-structures.js'
+import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.ts'
+import { NOT_REFRESHED_YET } from '../reactive.ts'
+import type { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
+import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.ts'
+import type { ReferenceCountedSet } from '../utils/data-structures.ts'
 
 type IStore = {
   clientSession: ClientSession

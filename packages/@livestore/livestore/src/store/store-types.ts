@@ -1,12 +1,19 @@
-import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
+import type {
+  ClientSession,
+  ClientSessionSyncProcessorSimulationParams,
+  IntentionalShutdownCause,
+  StoreInterrupted,
+  SyncError,
+  UnexpectedError,
+} from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { StackInfo } from '../utils/stack-info.js'
-import type { Store } from './store.js'
+import type { DebugRefreshReasonBase } from '../reactive.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
+import type { Store } from './store.ts'
 
 export type LiveStoreContext =
   | LiveStoreContextRunning
@@ -16,13 +23,16 @@ export type LiveStoreContext =
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted
+      cause: IntentionalShutdownCause | StoreInterrupted | SyncError
     }
 
-export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
+export type ShutdownDeferred = Deferred.Deferred<
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted
+>
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
-  void,
-  UnexpectedError | IntentionalShutdownCause | StoreInterrupted
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted
 >()
 
 export type LiveStoreContextRunning = {
@@ -49,6 +59,9 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
+    }
   }
   __runningInDevtools: boolean
 }

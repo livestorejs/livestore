@@ -1,15 +1,15 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from '../adapter-types.js'
-import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.js'
-import { insertRow } from '../sql-queries/index.js'
-import { sql } from '../util.js'
-import { execSql, execSqlPrepared } from './connection.js'
-import * as Eventlog from './eventlog.js'
-import type { MaterializeEvent } from './types.js'
+import { type SqliteDb, UnexpectedError } from '../adapter-types.ts'
+import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.ts'
+import { insertRow } from '../sql-queries/index.ts'
+import { sql } from '../util.ts'
+import { execSql, execSqlPrepared } from './connection.ts'
+import * as Eventlog from './eventlog.ts'
+import type { MaterializeEvent } from './types.ts'
 
 export const makeMaterializeEvent = ({
   schema,
@@ -74,6 +74,8 @@ export const makeMaterializeEvent = ({
           yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
+        dbState.debug.head = eventEncoded.seqNum
+
         const changeset = session.changeset()
         session.finish()
 
@@ -86,6 +88,7 @@ export const makeMaterializeEvent = ({
             values: {
               seqNumGlobal: eventEncoded.seqNum.global,
               seqNumClient: eventEncoded.seqNum.client,
+              seqNumRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
               // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
               debug: LS_DEV ? execArgsArr : null,
@@ -149,7 +152,11 @@ export const rollback = ({
         sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
       .map((_) => ({
-        seqNum: { global: _.seqNumGlobal, client: _.seqNumClient },
+        seqNum: {
+          global: _.seqNumGlobal,
+          client: _.seqNumClient,
+          rebaseGeneration: -1, // unused in this code path
+        },
         changeset: _.changeset,
         debug: _.debug,
       }))

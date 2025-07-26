@@ -1,3 +1,3 @@
-export * from './fixture.js'
-export * from './otel.js'
-export * as RG from '../../reactive.js'
+export * as RG from '../../reactive.ts'
+export * from './fixture.ts'
+export * from './otel.ts'

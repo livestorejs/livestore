@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
 import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
@@ -5,7 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as ReactTesting from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
 import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
@@ -152,13 +154,7 @@ Vitest.describe('useClientDocument', () => {
 
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() =>
-        store.commit(
-          LiveStore.rawSqlEvent({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-          }),
-        ),
-      )
+      ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
       expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')

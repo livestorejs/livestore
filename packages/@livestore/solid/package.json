@@ -1,14 +1,10 @@
 {
   "name": "@livestore/solid",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.10",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    }
+    ".": "./src/mod.ts"
   },
-  "types": "./dist/mod.d.ts",
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
@@ -16,12 +12,12 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "jsdom": "^26.0.0",
-    "solid-js": "^1.9.4",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "jsdom": "^26.1.0",
+    "solid-js": "^1.9.7",
     "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "vite": "^7.0.6",
+    "vitest": "catalog:"
   },
   "files": [
     "package.json",
@@ -30,10 +26,13 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "solid-js": "~1.9.4"
+    "solid-js": "^1.9.7"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js"
+    }
   },
   "scripts": {
     "build": "tsc",

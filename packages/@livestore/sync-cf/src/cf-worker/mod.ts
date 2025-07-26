@@ -1,2 +1,3 @@
-export * from './durable-object.js'
-export * from './worker.js'
+export * from './cf-types.ts'
+export * from './durable-object.ts'
+export * from './worker.ts'

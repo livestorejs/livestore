@@ -1,0 +1,36 @@
+{
+  "name": "livestore-example-web-todomvc-sync-cf",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.3.2-dev.10",
+    "@livestore/livestore": "0.3.2-dev.10",
+    "@livestore/peer-deps": "0.3.2-dev.10",
+    "@livestore/react": "0.3.2-dev.10",
+    "@livestore/sync-cf": "0.3.2-dev.10",
+    "@livestore/wa-sqlite": "1.0.5",
+    "@overengineering/fps-meter": "0.2.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "todomvc-app-css": "2.4.3"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.3.2-dev.10",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "wrangler": "^4.26.0"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite --force",
+    "preview": "vite preview",
+    "wrangler:deploy": "wrangler deploy"
+  }
+}

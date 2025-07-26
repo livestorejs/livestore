@@ -14,9 +14,9 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import * as WebmeshSchema from '../mesh-schema.js'
-import type { MakeDirectChannelArgs } from './direct-channel-internal.js'
-import { makeDirectChannelInternal } from './direct-channel-internal.js'
+import * as WebmeshSchema from '../mesh-schema.ts'
+import type { MakeDirectChannelArgs } from './direct-channel-internal.ts'
+import { makeDirectChannelInternal } from './direct-channel-internal.ts'
 
 /**
  * Behaviour:

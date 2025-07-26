@@ -1,4 +1,4 @@
-import './thread-polyfill.js'
+import './thread-polyfill.ts'
 
 import inspector from 'node:inspector'
 
@@ -29,9 +29,9 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
 
-import type { TestingOverrides } from './leader-thread-shared.js'
-import { makeLeaderThread } from './leader-thread-shared.js'
-import * as WorkerSchema from './worker-schema.js'
+import type { TestingOverrides } from './leader-thread-shared.ts'
+import { makeLeaderThread } from './leader-thread-shared.ts'
+import * as WorkerSchema from './worker-schema.ts'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
@@ -47,7 +47,10 @@ export type WorkerOptions = {
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(Effect.runFork)
+  makeWorkerEffect(options).pipe(
+    Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
+    PlatformNode.NodeRuntime.runMain,
+  )
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
@@ -57,7 +60,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
-  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
+  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: (args) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
@@ -153,7 +156,9 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread',
       processId: process.pid,
     }),
-    Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
+    // TODO bring back with Effect 4 once it's easier to work with replacing loggers.
+    // We basically only want to provide this logger if it's replacing the default logger, not if there's a custom logger already provided.
+    // Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
     Effect.provide(FetchHttpClient.layer),
     Effect.provide(PlatformNode.NodeFileSystem.layer),
     TracingLive ? Effect.provide(TracingLive) : identity,

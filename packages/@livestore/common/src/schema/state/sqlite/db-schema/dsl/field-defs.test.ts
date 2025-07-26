@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
-import * as F from './field-defs.js'
+import * as F from './field-defs.ts'
 
 describe.concurrent('FieldDefs', () => {
   test('text', () => {

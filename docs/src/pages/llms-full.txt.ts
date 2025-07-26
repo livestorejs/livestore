@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro'
 import { getCollection } from 'astro:content'
+import type { APIRoute } from 'astro'
 
 const docs = await getCollection(
   'docs',
@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ site }) => {
 
 ${docs
   .map((doc) => {
-    const path = doc.id.replace(/\.(md|mdx)$/, '').replace(/\index$/, '')
+    const path = doc.id.replace(/\.(md|mdx)$/, '').replace(/index$/, '')
     const url = new URL(path, site)
     // TODO actually render the docs
     return `# [${doc.data.title}](${url.href}/)\n\n## Overview\n\n${doc.body}\n\n`

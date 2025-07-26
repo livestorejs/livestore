@@ -1,9 +1,9 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { provideOtel } from '@livestore/common'
+import { provideOtel, type UnexpectedError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
-import type { Store } from '@livestore/livestore'
+import type { LiveStoreSchema, SqliteDsl, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
@@ -87,7 +87,23 @@ export const tables = { todos, app, userInfo, AppRouterSchema }
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })
 
-export const makeTodoMvcReact = ({
+export const makeTodoMvcReact: ({
+  otelTracer,
+  otelContext,
+  strictMode,
+}?: {
+  otelTracer?: otel.Tracer
+  otelContext?: otel.Context
+  strictMode?: boolean
+}) => Effect.Effect<
+  {
+    wrapper: ({ children }: any) => React.JSX.Element
+    store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreReact.ReactApi
+    renderCount: { readonly val: number; inc: () => void }
+  },
+  UnexpectedError,
+  Scope.Scope
+> = ({
   otelTracer,
   otelContext,
   strictMode,

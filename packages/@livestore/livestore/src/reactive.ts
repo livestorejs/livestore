@@ -21,13 +21,11 @@
 //   is maintained eagerly as edges are added and removed.)
 // - At every thunk we check value equality with the previous value and cutoff propagation if possible.
 
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
 import { BoundArray } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-// import { getDurationMsFromSpan } from './otel.js'
+// import { getDurationMsFromSpan } from './otel.ts'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
@@ -213,8 +211,10 @@ export class ReactiveGraph<
 
   private refreshCallbacks: Set<() => void> = new Set()
 
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private nodeIdCounter = 0
   private uniqueNodeId = () => `node-${++this.nodeIdCounter}`
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private refreshInfoIdCounter = 0
   private uniqueRefreshInfoId = () => `refresh-info-${++this.refreshInfoIdCounter}`
 
@@ -279,7 +279,7 @@ export class ReactiveGraph<
             return compute(atom, otelContext, debugRefreshReason)
           }
 
-          let debugInfo: TDebugThunkInfo | undefined = undefined
+          let debugInfo: TDebugThunkInfo | undefined
           const setDebugInfo = (debugInfo_: TDebugThunkInfo) => {
             debugInfo = debugInfo_
           }

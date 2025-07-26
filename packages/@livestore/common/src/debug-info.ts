@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { ParseResult, Schema } from '@livestore/utils/effect'
 
-import { BoundArray } from './bounded-collections.js'
-import { PreparedBindValues } from './util.js'
+import { BoundArray } from './bounded-collections.ts'
+import { PreparedBindValues } from './util.ts'
 
 export type SlowQueryInfo = {
   queryStr: string

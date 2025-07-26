@@ -2,6 +2,11 @@ packages:
   - scripts
   - docs
   - packages/@livestore/*
-  - examples/src/*
-  - examples/standalone/*
+  - packages/@local/*
+  - examples/*
   - tests/*
+
+catalog:
+  '@types/node': 24.1.0
+  '@vitest/ui': 3.2.4
+  vitest: 3.2.4

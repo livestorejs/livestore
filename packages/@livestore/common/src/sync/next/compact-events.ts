@@ -1,8 +1,8 @@
-import { EventSequenceNumber } from '../../schema/mod.js'
-import { replacesFacts } from './facts.js'
-import { graphologyDag } from './graphology_.js'
-import type { HistoryDag } from './history-dag-common.js'
-import { emptyHistoryDag } from './history-dag-common.js'
+import { EventSequenceNumber } from '../../schema/mod.ts'
+import { replacesFacts } from './facts.ts'
+import { graphologyDag } from './graphology_.ts'
+import type { HistoryDag } from './history-dag-common.ts'
+import { emptyHistoryDag } from './history-dag-common.ts'
 
 /**
  * Idea:

@@ -1,24 +1,25 @@
-import './thread-polyfill.js'
+import './thread-polyfill.ts'
 
 import * as ChildProcess from 'node:child_process'
 import * as inspector from 'node:inspector'
-
-import { IS_CI } from '@livestore/utils'
-import { Effect, identity, Layer, Logger, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
+import { IS_CI, stringifyObject } from '@livestore/utils'
+import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+import { makeFileLogger } from './fixtures/file-logger.ts'
+import * as WorkerSchema from './worker-schema.ts'
 
-import * as WorkerSchema from './worker-schema.js'
-
-const testTimeout = IS_CI ? 120_000 : 15_000
-const propTestTimeout = IS_CI ? 300_000 : 120_000
+// Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
+// A single test run can take significant time depending on the passed todo count and simulation params.
+const testTimeout = IS_CI ? 600_000 : 900_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
-Vitest.describe('node-sync', { timeout: testTimeout }, () => {
+Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.StorageType, WorkerSchema.AdapterType],
@@ -48,7 +49,8 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
     { fastCheck: { numRuns: 4 } },
   )
 
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
+  // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
+  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
@@ -58,11 +60,20 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
     DEBUGGER_ACTIVE
       ? [
           Schema.Literal('fs'),
-          Schema.Literal('single-threaded'),
+          Schema.Literal('worker'),
+          Schema.Literal(3),
+          Schema.Literal(391),
           Schema.Literal(1),
-          Schema.Literal(405),
-          Schema.Literal(100),
           Schema.Literal(2),
+          Schema.Struct({
+            pull: Schema.Struct({
+              '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
+              '2_before_leader_push_queue_clear': Schema.Literal(10),
+              '3_before_rebase_rollback': Schema.Literal(0),
+              '4_before_leader_push_queue_offer': Schema.Literal(20),
+              '5_before_leader_push_fiber_run': Schema.Literal(0),
+            }),
+          }),
         ]
       : [
           WorkerSchema.StorageType,
@@ -71,17 +82,31 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
           CreateCount,
           CommitBatchSize,
           LEADER_PUSH_BATCH_SIZE,
+          // TODO extend simulation tests to cover all parts of the client session and leader sync processor
+          ClientSessionSyncProcessorSimulationParams,
         ],
-    ([storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
+    (
+      [storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams],
+      test,
+    ) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
-        console.log('concurrent push', { adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize })
+        yield* Effect.log('concurrent push', {
+          storageType,
+          adapterType,
+          todoCountA,
+          todoCountB,
+          commitBatchSize,
+          leaderPushBatchSize,
+          simulationParams,
+        })
+        const params = { leaderPushBatchSize, simulation: simulationParams }
 
         const [clientA, clientB] = yield* Effect.all(
           [
-            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, leaderPushBatchSize }),
-            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType, leaderPushBatchSize }),
+            makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, params }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType, storageType, params }),
           ],
           { concurrency: 'unbounded' },
         )
@@ -120,13 +145,19 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
       }).pipe(
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withCtx(test, {
-          skipOtel: !DEBUGGER_ACTIVE,
-          suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
+          suffix: stringifyObject({
+            adapterType,
+            todoCountA,
+            todoCountB,
+            commitBatchSize,
+            leaderPushBatchSize,
+            simulationParams,
+          }),
         }),
       ),
     DEBUGGER_ACTIVE
-      ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: 6 }, timeout: propTestTimeout },
+      ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
+      : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
   )
 })
 
@@ -135,17 +166,17 @@ const makeWorker = ({
   storeId,
   adapterType,
   storageType,
-  leaderPushBatchSize,
+  params,
 }: {
   clientId: string
   storeId: string
   adapterType: typeof WorkerSchema.AdapterType.Type
   storageType: typeof WorkerSchema.StorageType.Type
-  leaderPushBatchSize?: number
+  params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
-      new URL('../../../dist/src/tests/node-sync/client-node-worker.js', import.meta.url),
+      new URL('./client-node-worker.ts', import.meta.url),
       // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
       [clientId],
     )
@@ -153,14 +184,7 @@ const makeWorker = ({
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () =>
-        WorkerSchema.InitialMessage.make({
-          storeId,
-          clientId,
-          adapterType,
-          storageType,
-          params: { leaderPushBatchSize },
-        }),
+      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params }),
     }).pipe(
       Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
       Effect.tapCauseLogPretty,
@@ -173,13 +197,23 @@ const makeWorker = ({
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TestContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
+  (testContext: Vitest.TestContext, { suffix }: { suffix?: string } = {}) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>) => {
+    const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
+
+    return self.pipe(
+      // Only provide logger here so we still see timeout logs in the console
+      Effect.provide(makeFileLogger('runner', { testContext })),
+      DEBUGGER_ACTIVE
+        ? identity
+        : Effect.logWarnIfTakesLongerThan({
+            duration: testTimeout * 0.8,
+            label: `${spanName} approaching timeout (timeout: ${Duration.format(testTimeout)})`,
+          }),
       DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
-      Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
+      Effect.withSpan(spanName),
       Effect.annotateLogs({ suffix }),
-      skipOtel ? identity : Effect.provide(otelLayer),
+      DEBUGGER_ACTIVE ? Effect.provide(otelLayer) : identity,
     )
+  }

@@ -1,35 +1,27 @@
 {
   "name": "@livestore/sqlite-wasm",
-  "version": "0.3.1",
+  "version": "0.3.2-dev.10",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
+    ".": "./src/index.ts",
     "./load-wasm": {
-      "types": "./dist/load-wasm/mod.browser.d.ts",
-      "node": "./dist/load-wasm/mod.node.js",
-      "browser": "./dist/load-wasm/mod.browser.js"
+      "browser": "./src/load-wasm/mod.browser.ts",
+      "worker": "./src/load-wasm/mod.browser.ts",
+      "node": "./src/load-wasm/mod.node.ts",
+      "default": "./src/load-wasm/mod.browser.ts"
     },
-    "./node": {
-      "types": "./dist/node/mod.d.ts",
-      "default": "./dist/node/mod.js"
-    },
-    "./browser": {
-      "types": "./dist/browser/mod.d.ts",
-      "default": "./dist/browser/mod.js"
-    }
+    "./node": "./src/node/mod.ts",
+    "./browser": "./src/browser/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.2"
+    "@livestore/wa-sqlite": "1.0.5"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.304",
-    "@types/node": "^22.15.17",
-    "@types/wicg-file-system-access": "^2023.10.5"
+    "@types/chrome": "^0.1.1",
+    "@types/node": "catalog:",
+    "@types/wicg-file-system-access": "^2023.10.6"
   },
   "files": [
     "package.json",
@@ -38,7 +30,28 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./load-wasm": {
+        "types": "./dist/load-wasm/mod.browser.d.ts",
+        "browser": "./dist/load-wasm/mod.browser.js",
+        "worker": "./dist/load-wasm/mod.browser.js",
+        "node": "./dist/load-wasm/mod.node.js",
+        "default": "./dist/load-wasm/mod.browser.js"
+      },
+      "./node": {
+        "types": "./dist/node/mod.d.ts",
+        "default": "./dist/node/mod.js"
+      },
+      "./browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
+      }
+    }
   },
   "scripts": {}
 }

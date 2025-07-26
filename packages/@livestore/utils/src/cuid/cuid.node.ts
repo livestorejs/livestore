@@ -15,32 +15,31 @@
 import crypto from 'node:crypto'
 import os from 'node:os'
 
-const lim = Math.pow(2, 32) - 1
+const lim = 2 ** 32 - 1
 
 const getRandomValue = () => {
   return Math.abs(crypto.randomBytes(4).readInt32BE() / lim)
 }
 
 const pad = (num: number | string, size: number) => {
-  const s = '000000000' + num
+  const s = `000000000${num}`
   return s.slice(s.length - size)
 }
 
 const fingerprint = () => {
-  const padding = 2,
-    pid = pad(process.pid.toString(36), padding),
-    hostname = os.hostname(),
-    length = hostname.length,
-    hostId = pad(
-      hostname
-        .split('')
-        .reduce((prev, char) => {
-          // eslint-disable-next-line unicorn/prefer-code-point
-          return +prev + char.charCodeAt(0)
-        }, +length + 36)
-        .toString(36),
-      padding,
-    )
+  const padding = 2
+  const pid = pad(process.pid.toString(36), padding)
+  const hostname = os.hostname()
+  const length = hostname.length
+  const hostId = pad(
+    hostname
+      .split('')
+      .reduce((prev, char) => {
+        return +prev + char.charCodeAt(0)
+      }, +length + 36)
+      .toString(36),
+    padding,
+  )
 
   return pid + hostId
 }
@@ -48,7 +47,7 @@ const fingerprint = () => {
 let c = 0
 const blockSize = 4
 const base = 36
-const discreteValues = Math.pow(base, blockSize)
+const discreteValues = base ** blockSize
 
 const randomBlock = () => {
   return pad(Math.trunc(getRandomValue() * discreteValues).toString(base), blockSize)
@@ -63,28 +62,28 @@ const safeCounter = () => {
 export const cuid = () => {
   // Starting with a lowercase letter makes
   // it HTML element ID friendly.
-  const letter = 'c', // hard-coded allows for sequential access
-    // timestamp
-    // warning: this exposes the exact date and time
-    // that the uid was created.
-    timestamp = Date.now().toString(base),
-    // Prevent same-machine collisions.
-    counter = pad(safeCounter().toString(base), blockSize),
-    // A few chars to generate distinct ids for different
-    // clients (so different computers are far less
-    // likely to generate the same id)
-    print = fingerprint(),
-    // Grab some more chars from Math.random()
-    random = randomBlock() + randomBlock()
+  const letter = 'c' // hard-coded allows for sequential access
+  // timestamp
+  // warning: this exposes the exact date and time
+  // that the uid was created.
+  const timestamp = Date.now().toString(base)
+  // Prevent same-machine collisions.
+  const counter = pad(safeCounter().toString(base), blockSize)
+  // A few chars to generate distinct ids for different
+  // clients (so different computers are far less
+  // likely to generate the same id)
+  const print = fingerprint()
+  // Grab some more chars from Math.random()
+  const random = randomBlock() + randomBlock()
 
   return letter + timestamp + counter + print + random
 }
 
 export const slug = () => {
-  const date = Date.now().toString(36),
-    counter = safeCounter().toString(36).slice(-4),
-    print = fingerprint().slice(0, 1) + fingerprint().slice(-1),
-    random = randomBlock().slice(-2)
+  const date = Date.now().toString(36)
+  const counter = safeCounter().toString(36).slice(-4)
+  const print = fingerprint().slice(0, 1) + fingerprint().slice(-1)
+  const random = randomBlock().slice(-2)
 
   return date.slice(-2) + counter + print + random
 }
