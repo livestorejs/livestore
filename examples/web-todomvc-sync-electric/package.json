@@ -4,12 +4,12 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.3.2-dev.10",
-    "@livestore/common": "0.3.2-dev.10",
-    "@livestore/livestore": "0.3.2-dev.10",
-    "@livestore/peer-deps": "0.3.2-dev.10",
-    "@livestore/react": "0.3.2-dev.10",
-    "@livestore/sync-electric": "0.3.2-dev.10",
+    "@livestore/adapter-web": "0.3.2-dev.11",
+    "@livestore/common": "0.3.2-dev.11",
+    "@livestore/livestore": "0.3.2-dev.11",
+    "@livestore/peer-deps": "0.3.2-dev.11",
+    "@livestore/react": "0.3.2-dev.11",
+    "@livestore/sync-electric": "0.3.2-dev.11",
     "@livestore/wa-sqlite": "1.0.5",
     "@overengineering/fps-meter": "0.2.1",
     "@tanstack/react-start": "1.129.8",
@@ -19,7 +19,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.2-dev.10",
+    "@livestore/devtools-vite": "0.3.2-dev.11",
     "@tanstack/react-router": "^1.129.8",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
