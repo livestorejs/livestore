@@ -70,12 +70,19 @@ Vitest.describe('todomvc-node', () => {
       yield* store.shutdown()
 
       // All operations should throw after shutdown
-      expect(() => store.commit(events.todoCreated({ id: nanoid(), title: 'Test' }))).toThrowErrorMatchingInlineSnapshot(`[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"commit\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`)
-      expect(() => store.query(tables.todo)).toThrowErrorMatchingInlineSnapshot(`[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"query\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`) 
-      expect(() => store.subscribe(tables.todo, { onUpdate: () => {} })).toThrowErrorMatchingInlineSnapshot(`[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"subscribe\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`)
+      expect(() =>
+        store.commit(events.todoCreated({ id: nanoid(), title: 'Test' })),
+      ).toThrowErrorMatchingInlineSnapshot(
+        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"commit\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+      )
+      expect(() => store.query(tables.todo)).toThrowErrorMatchingInlineSnapshot(
+        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"query\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+      )
+      expect(() => store.subscribe(tables.todo, { onUpdate: () => {} })).toThrowErrorMatchingInlineSnapshot(
+        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"subscribe\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+      )
     }).pipe(withCtx(test)),
   )
-
 
   Vitest.scopedLive('should handle concurrent commits before shutdown', (test) =>
     Effect.gen(function* () {
