@@ -5,6 +5,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/sync-impl/mod.ts",
+    "./common": "./src/common/mod.ts",
     "./cf-worker": "./src/cf-worker/mod.ts",
     "./cf-worker/durable-object": "./src/cf-worker/durable-object.ts",
     "./cf-worker/worker": "./src/cf-worker/worker.ts"
@@ -25,6 +26,7 @@
     "access": "public",
     "exports": {
       ".": "./dist/sync-impl/mod.js",
+      "./common": "./dist/common/mod.js",
       "./cf-worker": "./dist/cf-worker/mod.js",
       "./cf-worker/durable-object": "./dist/cf-worker/durable-object.js",
       "./cf-worker/worker": "./dist/cf-worker/worker.js"
