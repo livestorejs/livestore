@@ -323,7 +323,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
       const eq = Schema.equivalence(resultSchema)
-      return (a: TResult, b: TResult) => a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b)
+      return (a: TResult, b: TResult) => (a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b))
     }
 
     // NOTE we try to create the equality function eagerly as it might be expensive
