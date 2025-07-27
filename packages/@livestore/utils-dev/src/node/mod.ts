@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
-import { Command, Config, Effect, FetchHttpClient, HttpClient, identity, Layer, OtelTracer } from '@livestore/utils/effect'
+import { Command, Config, Effect, FiberRef, identity, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -13,6 +13,8 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+
+export * as FileLogger from './FileLogger.ts'
 
 export const OtelLiveHttp = ({
   serviceName,
@@ -48,17 +50,6 @@ export const OtelLiveHttp = ({
     }
 
     const config = configRes.value
-    const exporterUrl = `${config.exporterUrl}/v1/traces`
-
-    // Test the connection to the OpenTelemetry exporter to ensure the backend
-    // is available before setting up the corresponding layers
-    const isOtelAvailable = yield* Effect.isSuccess(HttpClient.options(config.exporterUrl))
-
-    // Return a dummy layer if the OpenTelemetry backend is unavailable
-    if (!isOtelAvailable) {
-      const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provide(OtelLiveDummy))
-    }
 
     const resource = { serviceName: config.serviceName }
 
@@ -71,10 +62,13 @@ export const OtelLiveHttp = ({
       resource,
       metricReader,
       spanProcessor: new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: exporterUrl, headers: {} }),
+        new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
         { scheduledDelayMillis: 50 },
       ),
-    }))
+    })).pipe(Layer.locally(
+      FiberRef.currentMinimumLogLevel,
+      LogLevel.None
+    ))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
@@ -117,10 +111,7 @@ export const OtelLiveHttp = ({
     }
 
     return layer
-  }).pipe(
-    Layer.unwrapScoped,
-    Layer.provide(FetchHttpClient.layer),
-  ) as any
+  }).pipe(Layer.unwrapScoped) as any
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   getTracingBackendUrl(span).pipe(
