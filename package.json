@@ -7,6 +7,7 @@
     "@effect/language-service": "^0.29.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
+    "husky": "^9.1.7",
     "madge": "^8.0.0",
     "syncpack": "^13.0.4",
     "typescript": "^5.8.3",
@@ -52,6 +53,7 @@
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "test": "CI=1 pnpm --parallel run test",
     "test:perf": "pnpm --filter '@local/tests-perf' test",
-    "update-lockfile": "CI=1 pnpm install --lockfile-only"
+    "update-lockfile": "CI=1 pnpm install --lockfile-only",
+    "prepare": "husky"
   }
 }
