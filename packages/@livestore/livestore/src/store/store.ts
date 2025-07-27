@@ -65,7 +65,7 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> extends Inspectable.Class {
+export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper

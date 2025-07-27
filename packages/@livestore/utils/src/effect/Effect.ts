@@ -37,6 +37,11 @@ export const scopeWithCloseable = <R, E, A>(
     return yield* fn(scope).pipe(Scope.extend(scope))
   })
 
+export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
+  | TResult
+  | Promise<TResult>
+  | Effect.Effect<TResult, TError, TContext>
+
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E, never>
