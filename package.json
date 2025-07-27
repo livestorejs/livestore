@@ -51,9 +51,9 @@
     "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
+    "prepare": "husky",
     "test": "CI=1 pnpm --parallel run test",
     "test:perf": "pnpm --filter '@local/tests-perf' test",
-    "update-lockfile": "CI=1 pnpm install --lockfile-only",
-    "prepare": "husky"
+    "update-lockfile": "CI=1 pnpm install --lockfile-only"
   }
 }
