@@ -6,10 +6,11 @@ import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/uti
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
+import { updateDepsCommand } from './commands/update-deps.ts'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
+import { hasParentGitRepo } from './shared/misc.ts'
 import { deployToNetlify } from './shared/netlify.ts'
-import { updateDepsCommand } from './update-deps.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -98,6 +99,10 @@ const lintCommand = Cli.Command.make(
     if (fix) {
       yield* cmd('syncpack fix-mismatches', { cwd })
       yield* cmd('syncpack format', { cwd })
+
+      if ((yield* hasParentGitRepo) === false) {
+        yield* cmd('pnpm install --fix-lockfile', { cwd })
+      }
     }
 
     yield* cmd('syncpack lint', { cwd })
@@ -258,7 +263,7 @@ const releaseSnapshotCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ gitShaOption, dryRun }) {
     const originalVersion = yield* Effect.promise(() =>
-      import('../packages/@livestore/common/package.json').then((m: any) => m.version as string),
+      import('../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
 
     const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD')
