@@ -103,6 +103,7 @@
 - chore: Update dependency management and Renovate configuration
 - chore: Clean up global type definitions and improve command debug output
 - chore: Update package.json exports structure and add workaround in biome.jsonc
+- chore: Update @livestore/wa-sqlite to version 1.0.8-dev.2
 - refactor: Update worker execution to use PlatformNode runtime
 - refactor: Restructure examples and make tsconfigs self-contained
 - refactor: Update Card component to improve accessibility

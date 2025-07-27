@@ -9,7 +9,7 @@
     "@livestore/livestore": "0.3.2-dev.11",
     "@livestore/peer-deps": "0.3.2-dev.11",
     "@livestore/react": "0.3.2-dev.11",
-    "@livestore/wa-sqlite": "1.0.5",
+    "@livestore/wa-sqlite": "1.0.8-dev.2",
     "@overengineering/fps-meter": "0.2.1",
     "@tailwindcss/forms": "0.5.10",
     "@tiptap/core": "3.0.7",
