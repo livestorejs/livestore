@@ -188,8 +188,6 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
 
     yield* validateStoreId(storeId)
 
-    yield* Effect.addFinalizerLog('closing store')
-
     yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
