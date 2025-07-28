@@ -3,12 +3,11 @@
   "version": "0.3.2-dev.11",
   "type": "module",
   "sideEffects": [
-    "./dist/node-vitest/polyfill.js"
+    "./src/node-vitest/polyfill.ts"
   ],
   "exports": {
     "./node": "./src/node/mod.ts",
-    "./node-vitest": "./src/node-vitest/mod.ts",
-    "./node-vitest-polyfill": "./src/node-vitest/polyfill.ts"
+    "./node-vitest": "./src/node-vitest/mod.ts"
   },
   "dependencies": {
     "@effect/opentelemetry": "0.56.0",
@@ -31,10 +30,12 @@
   "peerDependencies": {},
   "publishConfig": {
     "access": "public",
+    "sideEffects": [
+      "./dist/node-vitest/polyfill.js"
+    ],
     "exports": {
       "./node": "./dist/node/mod.js",
-      "./node-vitest": "./dist/node-vitest/mod.js",
-      "./node-vitest-polyfill": "./dist/node-vitest/polyfill.js"
+      "./node-vitest": "./dist/node-vitest/mod.js"
     }
   },
   "scripts": {

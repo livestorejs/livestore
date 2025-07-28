@@ -1,13 +1,11 @@
 import './thread-polyfill.ts'
 
 import * as ChildProcess from 'node:child_process'
-import * as inspector from 'node:inspector'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Duration, Effect, identity, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Effect, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
@@ -17,7 +15,12 @@ import * as WorkerSchema from './worker-schema.ts'
 // A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = IS_CI ? 600_000 : 900_000
 
-const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
+const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
+  Vitest.makeWithTestCtx({
+    suffix,
+    timeout: testTimeout,
+    makeLayer: (testContext) => makeFileLogger('runner', { testContext }),
+  })
 
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
@@ -45,7 +48,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         expect(result.length).toEqual(todoCount)
-      }).pipe(withCtx(test)),
+      }).pipe(withTestCtx()(test)),
     { fastCheck: { numRuns: 4 } },
   )
 
@@ -57,7 +60,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
   Vitest.scopedLive.prop(
     'node-sync prop tests',
-    DEBUGGER_ACTIVE
+    Vitest.DEBUGGER_ACTIVE
       ? [
           Schema.Literal('fs'),
           Schema.Literal('worker'),
@@ -144,7 +147,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         yield* Effect.raceFirst(exec, onShutdown)
       }).pipe(
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
-        withCtx(test, {
+        withTestCtx({
           suffix: stringifyObject({
             adapterType,
             todoCountA,
@@ -153,9 +156,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
             leaderPushBatchSize,
             simulationParams,
           }),
-        }),
+        })(test),
       ),
-    DEBUGGER_ACTIVE
+    Vitest.DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
       : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
   )
@@ -193,27 +196,3 @@ const makeWorker = ({
 
     return worker
   })
-
-const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
-
-const withCtx =
-  (testContext: Vitest.TestContext, { suffix }: { suffix?: string } = {}) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) => {
-    const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
-
-    return self.pipe(
-      // Only provide logger here so we still see timeout logs in the console
-      Effect.provide(makeFileLogger('runner', { testContext })),
-      DEBUGGER_ACTIVE
-        ? identity
-        : Effect.logWarnIfTakesLongerThan({
-            duration: testTimeout * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(testTimeout)})`,
-          }),
-      DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(spanName),
-      Effect.annotateLogs({ suffix }),
-      DEBUGGER_ACTIVE ? Effect.provide(otelLayer) : identity,
-    )
-  }
