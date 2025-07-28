@@ -1,6 +1,4 @@
 /** biome-ignore-all lint/a11y: test */
-import '@livestore/utils-dev/node-vitest-polyfill'
-
 import * as LiveStore from '@livestore/livestore'
 import { queryDb, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'

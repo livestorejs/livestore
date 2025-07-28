@@ -101,7 +101,7 @@ export const RpcLogger = (testRunId: string, serverPort: number) =>
       Layer.provide(HttpProtocol),
       Layer.provide(PlatformNode.NodeHttpServer.layer(() => createServer(), { port: serverPort })),
     )
-  }).pipe(Layer.unwrapScoped)
+  }).pipe(Layer.unwrapScoped, Layer.orDie)
 
 export const makeRpcClient = (threadName: string) => {
   const prettyLogger = FileLogger.prettyLoggerTty({
