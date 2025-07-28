@@ -5,15 +5,18 @@
   "exports": {
     ".": "./src/index.ts",
     "./load-wasm": {
+      "workerd": "./src/load-wasm/mod.workerd.ts",
       "browser": "./src/load-wasm/mod.browser.ts",
       "worker": "./src/load-wasm/mod.browser.ts",
       "node": "./src/load-wasm/mod.node.ts",
       "default": "./src/load-wasm/mod.browser.ts"
     },
     "./node": "./src/node/mod.ts",
+    "./cf": "./src/cf/mod.ts",
     "./browser": "./src/browser/mod.ts"
   },
   "dependencies": {
+    "@cloudflare/workers-types": "4.20250725.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*"
@@ -21,7 +24,9 @@
   "devDependencies": {
     "@types/chrome": "^0.1.1",
     "@types/node": "catalog:",
-    "@types/wicg-file-system-access": "^2023.10.6"
+    "@types/wicg-file-system-access": "^2023.10.6",
+    "vitest": "catalog:",
+    "wrangler": "^4.26.0"
   },
   "files": [
     "package.json",
@@ -41,11 +46,16 @@
         "browser": "./dist/load-wasm/mod.browser.js",
         "worker": "./dist/load-wasm/mod.browser.js",
         "node": "./dist/load-wasm/mod.node.js",
+        "workerd": "./dist/load-wasm/mod.workerd.js",
         "default": "./dist/load-wasm/mod.browser.js"
       },
       "./node": {
         "types": "./dist/node/mod.d.ts",
         "default": "./dist/node/mod.js"
+      },
+      "./cf": {
+        "types": "./dist/cf/mod.d.ts",
+        "default": "./dist/cf/mod.js"
       },
       "./browser": {
         "types": "./dist/browser/mod.d.ts",
@@ -53,5 +63,9 @@
       }
     }
   },
-  "scripts": {}
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch"
+  }
 }

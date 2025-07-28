@@ -250,6 +250,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const err = WSMessage.Error.make({
                 message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHead}`,
                 requestId,
+                storeId,
               })
 
               yield* Effect.logError(err)
@@ -305,7 +306,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           }
           case 'WSMessage.AdminResetRoomReq': {
             if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId, storeId })))
               return
             }
 
@@ -316,7 +317,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           }
           case 'WSMessage.AdminInfoReq': {
             if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId, storeId })))
               return
             }
 
@@ -356,7 +357,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       _wasClean: boolean,
     ): Promise<void> => {
       // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
-      ws.close(code, 'Durable Object is closing WebSocket')
+      // Code 1006 is reserved and cannot be used by applications, so use 1000 (Normal Closure) instead
+      const closeCode = code === 1006 ? 1000 : code
+      ws.close(closeCode, 'Durable Object is closing WebSocket')
     }
   }
 }

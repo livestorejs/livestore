@@ -1,0 +1,26 @@
+{
+  "name": "@tests/integration-cloudflare",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250725.0",
+    "@types/node": "catalog:",
+    "typescript": "^5.8.3",
+    "vitest": "catalog:",
+    "wrangler": "^4.26.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

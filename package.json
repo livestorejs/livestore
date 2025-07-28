@@ -32,6 +32,7 @@
     ]
   },
   "resolutions": {
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-expo": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
@@ -59,7 +60,7 @@
   "scripts": {
     "_build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json",
     "build": "pnpm run build:ts",
-    "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:clean": "bash -c \"find {examples,packages,tests,docs} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "prepare": "husky",

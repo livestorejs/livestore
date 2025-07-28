@@ -12,6 +12,7 @@ import {
   Queue,
   Schedule,
   Schema,
+  type Scope,
   Stream,
   SubscriptionRef,
   UrlParams,
@@ -24,6 +25,11 @@ import type { SyncMetadata } from '../common/ws-message-types.ts'
 
 export interface WsSyncOptions {
   url: string
+  /**
+   * Optional WebSocket factory for custom WebSocket implementations (e.g., Cloudflare Durable Objects)
+   * If not provided, uses standard WebSocket from @livestore/utils/effect
+   */
+  webSocketFactory?: (wsUrl: string) => Effect.Effect<globalThis.WebSocket, WebSocket.WebSocketError, Scope.Scope>
 }
 
 export const makeCfSync =
@@ -38,7 +44,7 @@ export const makeCfSync =
       const urlParams = UrlParams.fromInput(urlParamsData)
       const wsUrl = `${options.url}/websocket?${UrlParams.toString(urlParams)}`
 
-      const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
+      const { isConnected, incomingMessages, send } = yield* connect(wsUrl, options.webSocketFactory)
 
       /**
        * We need to account for the scenario where push-caused PullRes message arrive before the pull-caused PullRes message.
@@ -148,7 +154,10 @@ export const makeCfSync =
       return api
     })
 
-const connect = (wsUrl: string) =>
+const connect = (
+  wsUrl: string,
+  webSocketFactory?: (wsUrl: string) => Effect.Effect<globalThis.WebSocket, WebSocket.WebSocketError, Scope.Scope>,
+) =>
   Effect.gen(function* () {
     const isConnected = yield* SubscriptionRef.make(false)
     const socketRef: { current: globalThis.WebSocket | undefined } = { current: undefined }
@@ -194,7 +203,9 @@ const connect = (wsUrl: string) =>
       //   yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
       // }
 
-      const socket = yield* WebSocket.makeWebSocket({ url: wsUrl, reconnect: Schedule.exponential(100) })
+      const socket = yield* webSocketFactory
+        ? webSocketFactory(wsUrl)
+        : WebSocket.makeWebSocket({ url: wsUrl, reconnect: Schedule.exponential(100) })
       // socket.binaryType = 'arraybuffer'
 
       yield* SubscriptionRef.set(isConnected, true)

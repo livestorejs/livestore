@@ -20,6 +20,7 @@ export default defineConfig({
       // path.join(rootDir, 'tests/'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/node-misc/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration-cloudflare/vitest.config.ts'),
       path.join(rootDir, 'tests/package-common'),
       path.join(rootDir, 'tests/wa-sqlite/vitest.config.ts'),
     ],

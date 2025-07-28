@@ -45,6 +45,7 @@ export type PushAck = typeof PushAck.Type
 export const Error = Schema.TaggedStruct('WSMessage.Error', {
   requestId: Schema.String,
   message: Schema.String,
+  storeId: Schema.optional(Schema.String),
 }).annotations({ title: '@livestore/sync-cf:Error' })
 
 export type Error = typeof Error.Type

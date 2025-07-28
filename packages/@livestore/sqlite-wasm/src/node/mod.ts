@@ -96,7 +96,6 @@ export const sqliteDbFactory = ({
       }),
   )
 
-const nodeFsVfsMap = new Map<string, NodeFS>()
 
 const makeNodeFsDb = ({
   sqlite3,
@@ -113,14 +112,11 @@ const makeNodeFsDb = ({
     // NOTE to keep the filePath short, we use the directory name in the vfs name
     // If this is becoming a problem, we can use a hashed version of the directory name
     const vfsName = `node-fs-${directory}`
-    if (nodeFsVfsMap.has(vfsName) === false) {
+    if (sqlite3.vfs_registered.has(vfsName) === false) {
       // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of NodeFS
-      const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory, () => {
-        nodeFsVfsMap.delete(vfsName)
-      })
+      const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
       // @ts-expect-error TODO fix types
       sqlite3.vfs_register(nodeFsVfs, false)
-      nodeFsVfsMap.set(vfsName, nodeFsVfs)
     }
 
     yield* fs.makeDirectory(directory, { recursive: true })
@@ -133,7 +129,5 @@ const makeNodeFsDb = ({
     // NOTE SQLite will return a "disk I/O error" if the file path is too long.
     const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
 
-    const vfs = nodeFsVfsMap.get(vfsName)!
-
-    return { dbPointer, vfs }
+    return { dbPointer, vfs: {} as UNUSED<'only needed in web adapter currently and should longer-term be removed'> }
   }).pipe(UnexpectedError.mapToUnexpectedError)
