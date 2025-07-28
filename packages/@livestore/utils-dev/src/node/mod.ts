@@ -3,7 +3,17 @@ import { performance } from 'node:perf_hooks'
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
-import { Command, Config, Effect, FiberRef, identity, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import {
+  Command,
+  Config,
+  Effect,
+  FiberRef,
+  identity,
+  Layer,
+  LogLevel,
+  OtelTracer,
+  Schema,
+} from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -67,19 +77,16 @@ export const OtelLiveHttp = ({
       ),
     })).pipe(
       // If an OpenTelemetry backend is not available, the `OtelNodeSdk` layer
-      // will ignore the error when attempting to connect and emit a debug log 
-      // stating the reason for the error (in this case `ECONNREFUSED`). This 
-      // can cause problems for programs which rely on clean `stdout` (e.g. 
+      // will ignore the error when attempting to connect and emit a debug log
+      // stating the reason for the error (in this case `ECONNREFUSED`). This
+      // can cause problems for programs which rely on clean `stdout` (e.g.
       // command-line applications). To remedy this, the below code sets the
       // minimum log level `FiberRef` to `"None"` for the duration of the
       // `OtelNodeSdk`'s layer constructor.
       //
       // This can likely be removed when Livestore is migrated to the Effect
       // native Otlp exporters.
-      Layer.locally(
-        FiberRef.currentMinimumLogLevel,
-        LogLevel.None
-      )
+      Layer.locally(FiberRef.currentMinimumLogLevel, LogLevel.None),
     )
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
