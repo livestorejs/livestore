@@ -42,4 +42,5 @@ export {
   makeShutdownDeferred,
   type ShutdownDeferred,
 } from './store/store-types.ts'
+export { exposeDebugUtils } from './utils/dev.ts'
 export * from './utils/stack-info.ts'

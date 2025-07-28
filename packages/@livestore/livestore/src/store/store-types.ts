@@ -45,7 +45,7 @@ export type OtelOptions = {
   rootSpanContext: otel.Context
 }
 
-export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> = {
+export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = {
   clientSession: ClientSession
   schema: TSchema
   storeId: string

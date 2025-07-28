@@ -4,7 +4,7 @@ import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { type CmdError, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import { downloadChromeExtension } from './download-chrome-extension.ts'
 
@@ -44,7 +44,7 @@ const viteDevServer = ({
 export const miscTest: Cli.Command.Command<
   'misc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -85,7 +85,7 @@ export const miscTest: Cli.Command.Command<
 export const nodeSyncTest: Cli.Command.Command<
   'node-sync',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {}
 > = Cli.Command.make(
   'node-sync',
@@ -100,7 +100,7 @@ export const nodeSyncTest: Cli.Command.Command<
 export const todomvcTest: Cli.Command.Command<
   'todomvc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -159,7 +159,7 @@ export const setupDevtools: Cli.Command.Command<
 export const devtoolsTest: Cli.Command.Command<
   'devtools',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -209,7 +209,7 @@ export const devtoolsTest: Cli.Command.Command<
 export const runAll: Cli.Command.Command<
   'all',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly concurrency: 'sequential' | 'parallel'
     readonly localDevtoolsPreview: boolean
@@ -240,7 +240,7 @@ export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runA
 export const command: Cli.Command.Command<
   'integration',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
   }

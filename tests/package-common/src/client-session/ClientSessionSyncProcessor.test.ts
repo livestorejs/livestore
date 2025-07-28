@@ -1,5 +1,3 @@
-import '@livestore/utils-dev/node-vitest-polyfill'
-
 import { makeAdapter } from '@livestore/adapter-node'
 import {
   type BootStatus,
@@ -13,25 +11,12 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
-import { IS_CI } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import {
-  Context,
-  Effect,
-  FetchHttpClient,
-  Layer,
-  Logger,
-  LogLevel,
-  Queue,
-  Schema,
-  Stream,
-} from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Queue, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 import type { MockSyncBackend } from '../mock-sync-backend.ts'
 import { makeMockSyncBackend } from '../mock-sync-backend.ts'
@@ -41,6 +26,10 @@ const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
   schema,
 ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
 const encode = Schema.encodeSync(eventSchema)
+
+const withTestCtx = Vitest.makeWithTestCtx({
+  makeLayer: () => Layer.mergeAll(TestContextLive, PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer),
+})
 
 // TODO use property tests for simulation params
 Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
@@ -52,7 +41,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       store.commit(events.todoCreated({ id: '1', text: 't1', completed: false }))
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   // TODO also add a test where there's a merge conflict in the leader <> backend
@@ -89,7 +78,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         Stream.take(1),
         Stream.runDrain,
       )
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   Vitest.scopedLive('sync backend is ahead', (test) =>
@@ -110,7 +99,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   Vitest.scopedLive('race condition between client session and sync backend', (test) =>
@@ -136,7 +125,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       }
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(5), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   Vitest.scopedLive('should fail for event that is not larger than expected upstream', (test) =>
@@ -194,7 +183,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       expect(exit.cause).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   // Scenario:
@@ -273,7 +262,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         { id: 'client_0', text: 't1', completed: false },
         { id: 'backend_0', text: 't2', completed: false },
       ])
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   // In cases where the materializer is non-pure (e.g. for events.todoDeletedNonPure calling `new Date()`),
@@ -289,7 +278,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(error._tag).toEqual('LiveStore.UnexpectedError')
       expect(error.cause).includes('Materializer hash mismatch detected for event')
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx(test)),
   )
 
   // TODO write tests for:
@@ -340,20 +329,3 @@ const TestContextLive = Layer.scoped(
     return { makeStore, mockSyncBackend, shutdownDeferred }
   }),
 )
-
-const otelLayer = IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName: 'store-test', skipLogUrl: false })
-
-const withCtx =
-  (testContext: Vitest.TaskContext, { suffix }: { suffix?: string; skipOtel?: boolean } = {}) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 10_000),
-      Effect.provide(TestContextLive),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.provide(Logger.prettyWithThread('test-main-thread')),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      Effect.provide(otelLayer),
-    )

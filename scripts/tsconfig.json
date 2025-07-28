@@ -6,7 +6,7 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["./**/*.ts"],
+  "include": ["./src", "./standalone"],
   "references": [
     { "path": "../packages/@livestore/utils" },
     { "path": "../packages/@livestore/utils-dev" },

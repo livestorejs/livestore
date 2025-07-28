@@ -264,14 +264,15 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.orderBy('createdAt', 'desc')
+     * db.todos.orderBy([{ col: 'createdAt', direction: 'desc' }])
      * ```
      */
     readonly orderBy: {
-      <TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
+      <const TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
         col: TColName,
         direction: 'asc' | 'desc',
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
-      <TParams extends QueryBuilder.OrderByParams<TTableDef>>(
+      <const TParams extends QueryBuilder.OrderByParams<TTableDef>>(
         params: TParams,
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
     }

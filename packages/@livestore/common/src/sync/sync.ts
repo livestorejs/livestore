@@ -31,6 +31,7 @@ export type SyncOptions = {
   onSyncError?: 'shutdown' | 'ignore'
 }
 
+// TODO rename to `SyncProviderClientConstructor`
 export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
   args: MakeBackendArgs,
 ) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
@@ -41,6 +42,7 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
 // - dynamic sync backend data;
 //   - data center location (e.g. colo on CF workers)
 
+// TODO rename to `SyncProviderClient`
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.

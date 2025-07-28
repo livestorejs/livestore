@@ -18,7 +18,6 @@ export interface Env {
 
 const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.BackendToClientMessage))
 const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
-const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
 export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime
@@ -68,6 +67,30 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
   new (ctx: CfWorker.DurableObjectState, env: Env): CfWorker.DurableObject
 }
 
+/**
+ * Creates a Durable Object class for handling WebSocket-based sync.
+ *
+ * Example:
+ * ```ts
+ * // In your Cloudflare Worker file
+ * import { makeDurableObject } from '@livestore/sync-cf/cf-worker'
+ *
+ * export class WebSocketServer extends makeDurableObject({
+ *   onPush: async (message) => {
+ *     console.log('onPush', message.batch)
+ *   },
+ *   onPull: async (message) => {
+ *     console.log('onPull', message)
+ *   },
+ * }) {}
+ * ```
+ *
+ * ```toml
+ * # wrangler.toml
+ * [new_classes]
+ * WebSocketServer = "src/websocket-server.ts"
+ * ```
+ */
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase implements CfWorker.DurableObject, CfWorker.Rpc.DurableObjectBranded {
     __DURABLE_OBJECT_BRAND = 'WebSocketServerBase' as never
@@ -115,189 +138,200 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
 
     webSocketMessage = (ws: CfWorker.WebSocket, message: ArrayBuffer | string): Promise<void> | undefined => {
-      console.log('webSocketMessage', message)
-      const decodedMessageRes = decodeIncomingMessage(message)
+      const decodedMessageRes = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))(message)
 
       if (decodedMessageRes._tag === 'Left') {
-        console.error('Invalid message received', decodedMessageRes.left)
+        Effect.logError('Invalid message received', { message }).pipe(
+          Effect.provide(Logger.prettyWithThread('durable-object')),
+          Effect.runSync,
+        )
         return
       }
 
       const decodedMessage = decodedMessageRes.right
+
       const requestId = decodedMessage.requestId
 
       return Effect.gen(this, function* () {
         const { storeId, payload } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
         const storage = makeStorage(this.ctx, this.env, storeId)
 
-        try {
-          switch (decodedMessage._tag) {
-            // TODO allow pulling concurrently to not block incoming push requests
-            case 'WSMessage.PullReq': {
-              if (options?.onPull) {
-                yield* Effect.tryAll(() => options.onPull!(decodedMessage, { storeId, payload }))
-              }
-
-              const respond = (message: WSMessage.PullRes) =>
-                Effect.gen(function* () {
-                  if (options?.onPullRes) {
-                    yield* Effect.tryAll(() => options.onPullRes!(message))
-                  }
-                  ws.send(encodeOutgoingMessage(message))
-                })
-
-              const cursor = decodedMessage.cursor
-
-              // TODO use streaming
-              const remainingEvents = yield* storage.getEvents(cursor)
-
-              // Send at least one response, even if there are no events
-              const batches =
-                remainingEvents.length === 0
-                  ? [[]]
-                  : Array.from({ length: Math.ceil(remainingEvents.length / PULL_CHUNK_SIZE) }, (_, i) =>
-                      remainingEvents.slice(i * PULL_CHUNK_SIZE, (i + 1) * PULL_CHUNK_SIZE),
-                    )
-
-              for (const [index, batch] of batches.entries()) {
-                const remaining = Math.max(0, remainingEvents.length - (index + 1) * PULL_CHUNK_SIZE)
-                yield* respond(WSMessage.PullRes.make({ batch, remaining, requestId: { context: 'pull', requestId } }))
-              }
-
-              break
+        switch (decodedMessage._tag) {
+          // TODO allow pulling concurrently to not block incoming push requests
+          case 'WSMessage.PullReq': {
+            if (options?.onPull) {
+              yield* Effect.tryAll(() => options.onPull!(decodedMessage, { storeId, payload }))
             }
-            case 'WSMessage.PushReq': {
-              const respond = (message: WSMessage.PushAck | WSMessage.Error) =>
-                Effect.gen(function* () {
-                  if (options?.onPushRes) {
-                    yield* Effect.tryAll(() => options.onPushRes!(message))
-                  }
-                  ws.send(encodeOutgoingMessage(message))
-                })
 
-              if (decodedMessage.batch.length === 0) {
-                yield* respond(WSMessage.PushAck.make({ requestId }))
-                return
-              }
-
-              yield* this.pushSemaphore.take(1)
-
-              if (options?.onPush) {
-                yield* Effect.tryAll(() => options.onPush!(decodedMessage, { storeId, payload }))
-              }
-
-              // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-              // const expectedParentNum = yield* storage.getHead
-
-              let currentHead: EventSequenceNumber.GlobalEventSequenceNumber
-              if (this.currentHead === 'uninitialized') {
-                const currentHeadFromStorage = yield* Effect.promise(() => this.ctx.storage.get('currentHead'))
-                // console.log('currentHeadFromStorage', currentHeadFromStorage)
-                if (currentHeadFromStorage === undefined) {
-                  // console.log('currentHeadFromStorage is null, getting from D1')
-                  // currentHead = yield* storage.getHead
-                  // console.log('currentHeadFromStorage is null, using root')
-                  currentHead = EventSequenceNumber.ROOT.global
-                } else {
-                  currentHead = currentHeadFromStorage as EventSequenceNumber.GlobalEventSequenceNumber
-                }
-              } else {
-                // console.log('currentHead is already initialized', this.currentHead)
-                currentHead = this.currentHead
-              }
-
-              // TODO handle clientId unique conflict
-              // Validate the batch
-              const firstEvent = decodedMessage.batch[0]!
-              if (firstEvent.parentSeqNum !== currentHead) {
-                const err = WSMessage.Error.make({
-                  message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHead}`,
-                  requestId,
-                })
-
-                yield* Effect.logError(err)
-
-                yield* respond(err)
-                yield* this.pushSemaphore.release(1)
-                return
-              }
-
-              yield* respond(WSMessage.PushAck.make({ requestId }))
-
-              const createdAt = new Date().toISOString()
-
-              // NOTE we're not waiting for this to complete yet to allow the broadcast to happen right away
-              // while letting the async storage write happen in the background
-              const storeFiber = yield* storage.appendEvents(decodedMessage.batch, createdAt).pipe(Effect.fork)
-
-              this.currentHead = decodedMessage.batch.at(-1)!.seqNum
-              yield* Effect.promise(() => this.ctx.storage.put('currentHead', this.currentHead))
-
-              yield* this.pushSemaphore.release(1)
-
-              const connectedClients = this.ctx.getWebSockets()
-
-              // console.debug(`Broadcasting push batch to ${this.subscribedWebSockets.size} clients`)
-              if (connectedClients.length > 0) {
-                // TODO refactor to batch api
-                const pullRes = WSMessage.PullRes.make({
-                  batch: decodedMessage.batch.map((eventEncoded) => ({
-                    eventEncoded,
-                    metadata: Option.some({ createdAt }),
-                  })),
-                  remaining: 0,
-                  requestId: { context: 'push', requestId },
-                })
-                const pullResEnc = encodeOutgoingMessage(pullRes)
-
-                // Only calling once for now.
+            const respond = (message: WSMessage.PullRes) =>
+              Effect.gen(function* () {
                 if (options?.onPullRes) {
-                  yield* Effect.tryAll(() => options.onPullRes!(pullRes))
+                  yield* Effect.tryAll(() => options.onPullRes!(message))
                 }
 
-                // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
-                for (const conn of connectedClients) {
-                  conn.send(pullResEnc)
+                if (ws.readyState !== WebSocket.OPEN) {
+                  yield* Effect.logWarning('WebSocket not open, skipping send', {
+                    readyState: ws.readyState,
+                    message,
+                  })
+                  return
                 }
-              }
 
-              // Wait for the storage write to complete before finishing this request
-              yield* storeFiber
+                yield* Effect.try({
+                  try: () => ws.send(encodeOutgoingMessage(message)),
+                  catch: (cause) =>
+                    new UnexpectedError({ cause, note: 'Failed to send pull response', payload: { message } }),
+                })
+              })
 
-              break
+            const cursor = decodedMessage.cursor
+
+            // TODO use streaming
+            const remainingEvents = yield* storage.getEvents(cursor)
+
+            // Send at least one response, even if there are no events
+            const batches =
+              remainingEvents.length === 0
+                ? [[]]
+                : Array.from({ length: Math.ceil(remainingEvents.length / PULL_CHUNK_SIZE) }, (_, i) =>
+                    remainingEvents.slice(i * PULL_CHUNK_SIZE, (i + 1) * PULL_CHUNK_SIZE),
+                  )
+
+            for (const [index, batch] of batches.entries()) {
+              const remaining = Math.max(0, remainingEvents.length - (index + 1) * PULL_CHUNK_SIZE)
+              yield* respond(WSMessage.PullRes.make({ batch, remaining, requestId: { context: 'pull', requestId } }))
             }
-            case 'WSMessage.AdminResetRoomReq': {
-              if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-                ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-                return
-              }
 
-              yield* storage.resetStore
-              ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
-
-              break
-            }
-            case 'WSMessage.AdminInfoReq': {
-              if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-                ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-                return
-              }
-
-              ws.send(
-                encodeOutgoingMessage(
-                  WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } }),
-                ),
-              )
-
-              break
-            }
-            default: {
-              console.error('unsupported message', decodedMessage)
-              return shouldNeverHappen()
-            }
+            break
           }
-        } catch (error: any) {
-          ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: error.message, requestId })))
+          case 'WSMessage.PushReq': {
+            const respond = (message: WSMessage.PushAck | WSMessage.Error) =>
+              Effect.gen(function* () {
+                if (options?.onPushRes) {
+                  yield* Effect.tryAll(() => options.onPushRes!(message))
+                }
+                ws.send(encodeOutgoingMessage(message))
+              })
+
+            if (decodedMessage.batch.length === 0) {
+              yield* respond(WSMessage.PushAck.make({ requestId }))
+              return
+            }
+
+            yield* this.pushSemaphore.take(1)
+
+            if (options?.onPush) {
+              yield* Effect.tryAll(() => options.onPush!(decodedMessage, { storeId, payload }))
+            }
+
+            // TODO check whether we could use the Durable Object storage for this to speed up the lookup
+            // const expectedParentNum = yield* storage.getHead
+            let currentHead: EventSequenceNumber.GlobalEventSequenceNumber
+            if (this.currentHead === 'uninitialized') {
+              const currentHeadFromStorage = yield* Effect.promise(() => this.ctx.storage.get('currentHead'))
+              // console.log('currentHeadFromStorage', currentHeadFromStorage)
+              if (currentHeadFromStorage === undefined) {
+                // console.log('currentHeadFromStorage is null, getting from D1')
+                // currentHead = yield* storage.getHead
+                // console.log('currentHeadFromStorage is null, using root')
+                currentHead = EventSequenceNumber.ROOT.global
+              } else {
+                currentHead = currentHeadFromStorage as EventSequenceNumber.GlobalEventSequenceNumber
+              }
+            } else {
+              // console.log('currentHead is already initialized', this.currentHead)
+              currentHead = this.currentHead
+            }
+
+            // TODO handle clientId unique conflict
+            // Validate the batch
+            const firstEvent = decodedMessage.batch[0]!
+            if (firstEvent.parentSeqNum !== currentHead) {
+              const err = WSMessage.Error.make({
+                message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHead}`,
+                requestId,
+              })
+
+              yield* Effect.logError(err)
+
+              yield* respond(err)
+              yield* this.pushSemaphore.release(1)
+              return
+            }
+
+            yield* respond(WSMessage.PushAck.make({ requestId }))
+
+            const createdAt = new Date().toISOString()
+
+            // NOTE we're not waiting for this to complete yet to allow the broadcast to happen right away
+            // while letting the async storage write happen in the background
+            const storeFiber = yield* storage.appendEvents(decodedMessage.batch, createdAt).pipe(Effect.fork)
+
+            this.currentHead = decodedMessage.batch.at(-1)!.seqNum
+            yield* Effect.promise(() => this.ctx.storage.put('currentHead', this.currentHead))
+
+            yield* this.pushSemaphore.release(1)
+
+            const connectedClients = this.ctx.getWebSockets()
+
+            // console.debug(`Broadcasting push batch to ${this.subscribedWebSockets.size} clients`)
+            if (connectedClients.length > 0) {
+              // TODO refactor to batch api
+              const pullRes = WSMessage.PullRes.make({
+                batch: decodedMessage.batch.map((eventEncoded) => ({
+                  eventEncoded,
+                  metadata: Option.some({ createdAt }),
+                })),
+                remaining: 0,
+                requestId: { context: 'push', requestId },
+              })
+              const pullResEnc = encodeOutgoingMessage(pullRes)
+
+              // Only calling once for now.
+              if (options?.onPullRes) {
+                yield* Effect.tryAll(() => options.onPullRes!(pullRes))
+              }
+
+              // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
+              for (const conn of connectedClients) {
+                conn.send(pullResEnc)
+              }
+            }
+
+            // Wait for the storage write to complete before finishing this request
+            yield* storeFiber
+
+            break
+          }
+          case 'WSMessage.AdminResetRoomReq': {
+            if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+              return
+            }
+
+            yield* storage.resetStore
+            ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
+
+            break
+          }
+          case 'WSMessage.AdminInfoReq': {
+            if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+              return
+            }
+
+            ws.send(
+              encodeOutgoingMessage(
+                WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } }),
+              ),
+            )
+
+            break
+          }
+          default: {
+            console.error('unsupported message', decodedMessage)
+            return shouldNeverHappen()
+          }
         }
       }).pipe(
         Effect.withSpan(`@livestore/sync-cf:durable-object:webSocketMessage:${decodedMessage._tag}`, {

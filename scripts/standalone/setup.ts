@@ -3,9 +3,14 @@
 import { existsSync } from 'node:fs'
 import { $ } from 'bun'
 
+// Preserve nice colorful output 🌈
 process.env.FORCE_COLOR = '1'
 
-$.cwd(process.env.WORKSPACE_ROOT!)
+if (process.env.WORKSPACE_ROOT === undefined) {
+  throw new Error('WORKSPACE_ROOT is not set')
+}
+
+$.cwd(process.env.WORKSPACE_ROOT)
 
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT!
 const lastGitHashFile = `${WORKSPACE_ROOT}/node_modules/.last_git_hash`

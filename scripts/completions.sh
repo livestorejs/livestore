@@ -15,7 +15,7 @@
 # This also didn't work `path_add fish_complete_path "$WORKSPACE_ROOT/scripts/.completions/fish"`
 if command -v fish >/dev/null 2>&1; then
     mkdir -p ~/.config/fish/completions
-    bun $WORKSPACE_ROOT/scripts/mono.ts --completions=fish > ~/.config/fish/completions/mono.fish
+    bun $WORKSPACE_ROOT/scripts/src/mono.ts --completions=fish > ~/.config/fish/completions/mono.fish
     bun $WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts --completions=fish > ~/.config/fish/completions/livestore.fish
 fi
 

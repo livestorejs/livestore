@@ -1,22 +1,16 @@
-import '@livestore/utils-dev/node-vitest-polyfill'
-
 import type { LeaderAheadError, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { IS_CI } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
   Context,
   Effect,
   FetchHttpClient,
-  identity,
   Layer,
-  Logger,
-  LogLevel,
   Predicate,
   Queue,
   Schema,
@@ -24,7 +18,6 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
@@ -45,6 +38,11 @@ TODO:
 - expose sync state: number of events left to pull + push
 - make connected state settable
 */
+
+const withTestCtx = (args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> = {}) =>
+  Vitest.makeWithTestCtx({
+    makeLayer: () => Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer),
+  })
 
 Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('sync', (test) =>
@@ -70,7 +68,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   // TODO property based testing to test following cases:
@@ -116,7 +114,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('many local pushes', (test) =>
@@ -145,7 +143,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('concurrent pushes', (test) =>
@@ -173,7 +171,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   // Duplicate local push events could e.g. caused by multiple client sessions
@@ -192,16 +190,10 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
     }).pipe(
-      withCtx(test, {
-        syncProcessor: {
-          delays: {
-            localPushProcessing: Effect.sleep(10),
-          },
-        },
-        params: {
-          localPushBatchSize: 2,
-        },
-      }),
+      withTestCtx({
+        testing: { syncProcessor: { delays: { localPushProcessing: Effect.sleep(10) } } },
+        params: { localPushBatchSize: 2 },
+      })(test),
     ),
   )
 
@@ -309,32 +301,3 @@ const LeaderThreadCtxLive = ({
 
     return leaderContextLayer.pipe(Layer.merge(testContextLayer))
   }).pipe(Layer.unwrapScoped)
-
-const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'sync-test', skipLogUrl: false })
-
-const withCtx =
-  (
-    testContext: Vitest.TestContext,
-    {
-      suffix,
-      skipOtel = false,
-      params,
-      syncProcessor,
-    }: {
-      suffix?: string
-      params?: MakeLeaderThreadLayerParams['params']
-      syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
-      skipOtel?: boolean
-    } = {},
-  ) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 5000),
-      Effect.provide(LeaderThreadCtxLive({ syncProcessor, params })),
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.provide(Logger.pretty),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      skipOtel ? identity : Effect.provide(otelLayer),
-    )

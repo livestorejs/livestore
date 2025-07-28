@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import { IS_BUN, isNonEmptyString, isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import type { CommandExecutor, PlatformError, Tracer } from '@livestore/utils/effect'
-import { Command, Config, Effect, FiberRef, identity, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Command, Config, Effect, FiberRef, identity, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -167,37 +167,54 @@ export const cmd: (
   commandInput: string | (string | undefined)[],
   options?:
     | {
-      cwd?: string
-      shell?: boolean
-      env?: Record<string, string | undefined>
-    }
+        cwd?: string
+        stderr?: 'inherit' | 'pipe'
+        stdout?: 'inherit' | 'pipe'
+        shell?: boolean
+        env?: Record<string, string | undefined>
+      }
     | undefined,
-) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn(
-  'cmd',
-)(function* (commandInput, options) {
-  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError | CmdError, CommandExecutor.CommandExecutor> =
+  Effect.fn('cmd')(function* (commandInput, options) {
+    const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+    const [command, ...args] = Array.isArray(commandInput)
+      ? commandInput.filter(isNotUndefined)
+      : commandInput.split(' ')
 
-  const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}='${value}' `)
-    .join('')
-  const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+    const debugEnvStr = Object.entries(options?.env ?? {})
+      .map(([key, value]) => `${key}='${value}' `)
+      .join('')
+    const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
-  yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
-  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
+    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
+    yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
 
-  return yield* Command.make(command!, ...args).pipe(
-    // TODO don't forward abort signal to the command
-    Command.stdin('inherit'), // Forward stdin to the command
-    Command.stdout('inherit'), // Stream stdout to process.stdout
-    Command.stderr('inherit'), // Stream stderr to process.stderr
-    Command.workingDirectory(cwd),
-    options?.shell ? Command.runInShell(true) : identity,
-    Command.env(options?.env ?? {}),
-    Command.exitCode,
-    Effect.tap((exitCode) => (exitCode === 0 ? Effect.void : Effect.die(`${commandDebugStr} failed`))),
-  )
-})
+    return yield* Command.make(command!, ...args).pipe(
+      // TODO don't forward abort signal to the command
+      Command.stdin('inherit'), // Forward stdin to the command
+      // inherit = Stream stdout to process.stdout, pipe = Stream stdout to process.stderr
+      Command.stdout(options?.stdout ?? 'inherit'),
+      // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
+      Command.stderr(options?.stderr ?? 'inherit'),
+      Command.workingDirectory(cwd),
+      options?.shell ? Command.runInShell(true) : identity,
+      Command.env(options?.env ?? {}),
+      Command.exitCode,
+      Effect.tap((exitCode) =>
+        exitCode === 0
+          ? Effect.void
+          : Effect.fail(
+              CmdError.make({
+                command: command!,
+                args,
+                cwd,
+                env: options?.env ?? {},
+                stderr: options?.stderr ?? 'inherit',
+              }),
+            ),
+      ),
+    )
+  })
 
 export const cmdText: (
   commandInput: string | (string | undefined)[],
@@ -232,3 +249,11 @@ export const cmdText: (
     )
   },
 )
+
+export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
+  command: Schema.String,
+  args: Schema.Array(Schema.String),
+  cwd: Schema.String,
+  env: Schema.Record({ key: Schema.String, value: Schema.String.pipe(Schema.UndefinedOr) }),
+  stderr: Schema.Literal('inherit', 'pipe'),
+}) {}

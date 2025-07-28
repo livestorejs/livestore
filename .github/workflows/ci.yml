@@ -27,7 +27,18 @@ jobs:
         uses: ./.github/actions/setup-env
       - run: mono lint
 
-  test:
+  test-unit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+      - run: mono test unit
+
+  test-integration-node-sync:
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -46,9 +57,6 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - run: mono test unit
-      - run: mono test integration misc
-      - run: mono test integration todomvc
       - run: mono test integration node-sync
       - name: Display node-sync logs
         if: always()
@@ -72,24 +80,52 @@ jobs:
           name: node-sync-logs
           path: tests/integration/tmp/logs/
           retention-days: 30
-      # - run: mono test integration devtools
-      # TODO fix flaky devtools test
-      - run: mono test integration devtools || echo "::warning::Script failed but continuing"
 
+  test-integration-playwright:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        suite: [misc, todomvc, devtools]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Run integration tests
+        env:
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
+        run: |
+          if [ "${{ matrix.suite }}" = "devtools" ]; then
+            # TODO fix flaky devtools test
+            mono test integration devtools || echo "::warning::Script failed but continuing"
+          else
+            mono test integration ${{ matrix.suite }}
+          fi
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.suite }}
           path: tests/integration/playwright-report/
           retention-days: 30
       - name: "Upload trace"
         if: ${{ !cancelled() }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
           # TODO surface deploy url in github UI via environments
         run: |
           if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
           else
             echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
           fi
@@ -120,7 +156,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    needs: [test]
+    needs: [test-unit, test-integration-node-sync, test-integration-playwright]
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment

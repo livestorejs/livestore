@@ -28,6 +28,10 @@ export interface LiveStoreSchema<
   }
 }
 
+export namespace LiveStoreSchema {
+  export type Any = LiveStoreSchema<any, any>
+}
+
 // TODO abstract this further away from sqlite/tables
 export interface InternalState {
   readonly sqlite: {

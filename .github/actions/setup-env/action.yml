@@ -25,9 +25,9 @@ runs:
       with:
         path: |
           .direnv
-        key: direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-${{ github.sha }}
+        key: direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/standalone/setup.ts') }}-${{ github.sha }}
         restore-keys: |
-          direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/setup.ts') }}-
+          direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/standalone/setup.ts') }}-
 
     - name: Install direnv
       shell: bash

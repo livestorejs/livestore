@@ -87,9 +87,9 @@ LIMIT ${CHUNK_SIZE}
     let processedEvents = 0
 
     yield* Stream.unfoldChunk<
-      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial ' },
+      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
       SystemTables.EventlogMetaRow
-    >({ _tag: 'Initial ' }, (item) => {
+    >({ _tag: 'Initial' }, (item) => {
       // End stream if no more rows
       if (Chunk.isChunk(item) && item.length === 0) return Option.none()
 

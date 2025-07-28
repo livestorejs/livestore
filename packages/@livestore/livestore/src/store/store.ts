@@ -16,7 +16,6 @@ import {
   type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  StoreAlreadyShutdownError,
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -66,7 +65,7 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> extends Inspectable.Class {
+export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper
@@ -299,7 +298,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
   private checkShutdown = (operation: string): void => {
     if (this.isShutdown) {
-      throw new StoreAlreadyShutdownError({ operation, storeId: this.storeId })
+      throw new UnexpectedError({
+        cause: `Store has been shut down (while performing "${operation}").`,
+        note: `You cannot perform this operation after the store has been shut down.`,
+      })
     }
   }
 

@@ -98,7 +98,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
       migrationsReport: MigrationsReport
       parentSpan: otel.Span
     },
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  ) => Effect.SyncOrPromiseOrEffect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   batchUpdates?: (run: () => void) => void
   /**
    * Whether to disable devtools.
@@ -133,7 +133,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
 }
 
 /** Create a new LiveStore Store */
-export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
+export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
   signal,
   otelOptions,
   ...options
@@ -164,7 +164,7 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
     Effect.runPromise,
   )
 
-export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
+export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
   schema,
   adapter,
   storeId,
