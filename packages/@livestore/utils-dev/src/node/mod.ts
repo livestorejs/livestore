@@ -65,10 +65,22 @@ export const OtelLiveHttp = ({
         new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
         { scheduledDelayMillis: 50 },
       ),
-    })).pipe(Layer.locally(
-      FiberRef.currentMinimumLogLevel,
-      LogLevel.None
-    ))
+    })).pipe(
+      // If an OpenTelemetry backend is not available, the `OtelNodeSdk` layer
+      // will ignore the error when attempting to connect and emit a debug log 
+      // stating the reason for the error (in this case `ECONNREFUSED`). This 
+      // can cause problems for programs which rely on clean `stdout` (e.g. 
+      // command-line applications). To remedy this, the below code sets the
+      // minimum log level `FiberRef` to `"None"` for the duration of the
+      // `OtelNodeSdk`'s layer constructor.
+      //
+      // This can likely be removed when Livestore is migrated to the Effect
+      // native Otlp exporters.
+      Layer.locally(
+        FiberRef.currentMinimumLogLevel,
+        LogLevel.None
+      )
+    )
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
