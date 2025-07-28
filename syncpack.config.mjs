@@ -38,6 +38,7 @@ const config = {
   sortFirst: ['name', 'version', 'type', 'sideEffects', 'private', 'exports', 'types', 'typesVersions'],
   sortExports: [
     'types', // should be first
+    'workerd', // Cloudflare Workers (needs to be before browser)
     'browser',
     'worker',
     'node-addons',

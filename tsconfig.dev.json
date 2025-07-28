@@ -5,9 +5,11 @@
   "references": [
     { "path": "./scripts" },
     { "path": "./tests/integration" },
+    { "path": "./tests/integration-cloudflare" },
     { "path": "./tests/package-common" },
     { "path": "./tests/perf" },
     { "path": "./packages/@local/shared" },
+    { "path": "./packages/@livestore/adapter-cloudflare" },
     { "path": "./packages/@livestore/adapter-expo" },
     { "path": "./packages/@livestore/adapter-node" },
     { "path": "./packages/@livestore/adapter-web" },
