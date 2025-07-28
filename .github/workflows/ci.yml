@@ -17,10 +17,7 @@ env:
 
 jobs:
   lint:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -28,10 +25,7 @@ jobs:
       - run: mono lint
 
   test-unit:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -39,10 +33,7 @@ jobs:
       - run: mono test unit
 
   test-integration-node-sync:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -84,9 +75,8 @@ jobs:
   test-integration-playwright:
     strategy:
       matrix:
-        os: [ubuntu-latest]
         suite: [misc, todomvc, devtools]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -152,10 +142,7 @@ jobs:
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: [test-unit, test-integration-node-sync, test-integration-playwright]
     steps:
       - uses: actions/checkout@v4
@@ -169,10 +156,7 @@ jobs:
       - run: mono release snapshot --git-sha=${{ github.sha }}
 
   build-and-deploy-examples-src:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -186,10 +170,7 @@ jobs:
           VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-docs:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -204,10 +185,7 @@ jobs:
 
   build-example-tiged-todomvc:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
@@ -234,10 +212,7 @@ jobs:
 
   build-example-tiged-linearlite:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
@@ -264,10 +239,7 @@ jobs:
 
   build-example-tiged-expo-linearlite:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
