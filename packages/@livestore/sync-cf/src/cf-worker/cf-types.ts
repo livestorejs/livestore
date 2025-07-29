@@ -3,6 +3,7 @@ export {
   type D1Result,
   type DurableObject,
   type DurableObjectState,
+  type DurableObjectStub,
   Request,
   Response,
   Rpc,

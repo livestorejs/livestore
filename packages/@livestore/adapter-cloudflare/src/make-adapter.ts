@@ -135,6 +135,9 @@ export const makeAdapter =
       })
 
       return clientSession
-    }).pipe(Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', {attributes: {clientId, sessionId}}), Effect.provide(FetchHttpClient.layer))
+    }).pipe(
+      Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', { attributes: { clientId, sessionId } }),
+      Effect.provide(FetchHttpClient.layer),
+    )
 
 const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
