@@ -17,12 +17,12 @@ import { table } from './table-def.ts'
  * - Synced across client sessions (e.g. tabs) but not across different clients
  * - Derived setters
  *   - Emits client-only events
- *   - Has implicit setter-reducers
+ *   - Has implicit setter-materializers
  * - Similar to `React.useState` (except it's persisted)
  *
  * Careful:
  * - When changing the table definitions in a non-backwards compatible way, the state might be lost without
- *   explicit reducers to handle the old auto-generated events
+ *   explicit materializers to handle the old auto-generated events
  *
  * Usage:
  *
