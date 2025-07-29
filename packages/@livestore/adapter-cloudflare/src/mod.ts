@@ -8,5 +8,5 @@ export {
   type Env,
   type MakeDurableObjectClass,
   type MakeDurableObjectClassOptions,
-  makeClientDurableObject,
+  // makeClientDurableObject,
 } from './make-client-durable-object.ts'

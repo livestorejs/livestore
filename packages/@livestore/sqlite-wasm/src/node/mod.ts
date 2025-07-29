@@ -96,7 +96,6 @@ export const sqliteDbFactory = ({
       }),
   )
 
-
 const makeNodeFsDb = ({
   sqlite3,
   fileName,

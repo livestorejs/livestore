@@ -1,7 +1,7 @@
 import type { SyncBackendConstructor } from '@livestore/common'
 import { makeCfSync } from '@livestore/sync-cf'
-import { Effect, Schedule, type Scope, type WebSocket } from '@livestore/utils/effect'
 import type { WSMessage } from '@livestore/sync-cf/common'
+import { Effect, Schedule, type Scope, type WebSocket } from '@livestore/utils/effect'
 import type * as CfWorker from './cf-types.ts'
 import { makeWebSocket } from './WebSocket.ts'
 
