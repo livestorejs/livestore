@@ -1,15 +1,14 @@
-import type { SyncBackend, UnexpectedError } from '@livestore/common'
-import { validatePushPayload } from '@livestore/common'
+import { SyncBackend, type UnexpectedError, validatePushPayload } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { EventSequenceNumber } from '@livestore/common/schema'
-import type { Scope } from '@livestore/utils/effect'
+import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 export interface MockSyncBackend {
   pushedEvents: Stream.Stream<LiveStoreEvent.AnyEncodedGlobal>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
-  makeSyncBackend: Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope>
+  makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnexpectedError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.AnyEncodedGlobal[]) => Effect.Effect<void>
 }
 
@@ -25,7 +24,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
     const semaphore = yield* Effect.makeSemaphore(1)
 
     const makeSyncBackend = Effect.gen(function* () {
-      return {
+      return SyncBackend.of<Schema.JsonValue>({
         isConnected: syncIsConnectedRef,
         connect: Effect.void,
         pull: () =>
@@ -60,7 +59,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
           name: '@livestore/mock-sync',
           description: 'Just a mock sync backend',
         },
-      } satisfies SyncBackend
+      })
     })
 
     const advance = (...batch: LiveStoreEvent.AnyEncodedGlobal[]) =>

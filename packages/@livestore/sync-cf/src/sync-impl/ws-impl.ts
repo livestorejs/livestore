@@ -1,7 +1,6 @@
 /// <reference lib="dom" />
 
-import type { SyncBackend, SyncBackendConstructor } from '@livestore/common'
-import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import {
@@ -33,7 +32,7 @@ export interface WsSyncOptions {
 }
 
 export const makeCfSync =
-  (options: WsSyncOptions): SyncBackendConstructor<SyncMetadata> =>
+  (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
@@ -57,7 +56,7 @@ export const makeCfSync =
       // We currently only support one pull stream for a sync backend.
       let pullStarted = false
 
-      const api = {
+      return SyncBackend.of<SyncMetadata>({
         isConnected,
         // Currently we're already eagerly connecting when the sync backend is created but we might want to refactor this later to clean this up
         connect: Effect.void,
@@ -149,9 +148,7 @@ export const makeCfSync =
           protocol: 'ws',
           url: options.url,
         },
-      } satisfies SyncBackend<SyncMetadata>
-
-      return api
+      })
     })
 
 const connect = (

@@ -8,6 +8,7 @@ export {
   FetchHttpClient,
   FileSystem,
   Headers,
+  HttpApp,
   HttpClient,
   HttpClientError,
   HttpClientRequest,

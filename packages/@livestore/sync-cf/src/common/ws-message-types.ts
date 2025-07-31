@@ -1,10 +1,10 @@
-import { LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
 export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
   requestId: Schema.String,
   /** Omitting the cursor will start from the beginning */
-  cursor: Schema.optional(Schema.Number),
+  cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
 }).annotations({ title: '@livestore/sync-cf:PullReq' })
 
 export type PullReq = typeof PullReq.Type
