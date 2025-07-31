@@ -1,7 +1,7 @@
+import type { CfWorker } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../FacadeVFS.ts'
 import { BlockManager } from './BlockManager.ts'
-import type * as Cf from './cf-types.ts'
 
 const SECTOR_SIZE = 4096
 
@@ -53,7 +53,7 @@ export interface SqlVfsOptions {
 export class CloudflareSqlVFS extends FacadeVFS {
   log = null
 
-  #sql: Cf.SqlStorage
+  #sql: CfWorker.SqlStorage
   #initialized = false
   #blockManager: BlockManager
 
@@ -61,13 +61,13 @@ export class CloudflareSqlVFS extends FacadeVFS {
   #openFiles = new Map<number, FileHandle>()
   #maxFiles: number
 
-  static async create(name: string, sql: Cf.SqlStorage, module: any, options: SqlVfsOptions = {}) {
+  static async create(name: string, sql: CfWorker.SqlStorage, module: any, options: SqlVfsOptions = {}) {
     const vfs = new CloudflareSqlVFS(name, sql, module, options)
     await vfs.isReady()
     return vfs
   }
 
-  constructor(name: string, sql: Cf.SqlStorage, module: any, options: SqlVfsOptions = {}) {
+  constructor(name: string, sql: CfWorker.SqlStorage, module: any, options: SqlVfsOptions = {}) {
     super(name, module)
     this.#sql = sql
     this.#maxFiles = options.maxFiles || DEFAULT_MAX_FILES

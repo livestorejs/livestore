@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20250725.0",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*"
