@@ -125,14 +125,12 @@ export const makeClientSessionSyncProcessor = ({
     })
     yield* Effect.annotateCurrentSpan({ batchSize: encodedEventDefs.length })
 
-    const mergeResult = yield* Effect.sync(() =>
-      SyncState.merge({
-        syncState: syncStateRef.current,
-        payload: { _tag: 'local-push', newEvents: encodedEventDefs },
-        isClientEvent,
-        isEqualEvent: LiveStoreEvent.isEqualEncoded,
-      }),
-    )
+    const mergeResult = SyncState.merge({
+      syncState: syncStateRef.current,
+      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
+      isClientEvent,
+      isEqualEvent: LiveStoreEvent.isEqualEncoded,
+    })
 
     if (mergeResult._tag === 'unexpected-error') {
       return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
@@ -164,10 +162,8 @@ export const makeClientSessionSyncProcessor = ({
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      yield* Effect.sync(() => {
-        event.meta.sessionChangeset = sessionChangeset
-        event.meta.materializerHashSession = materializerHash
-      })
+      event.meta.sessionChangeset = sessionChangeset
+      event.meta.materializerHashSession = materializerHash
     }
 
     // Trigger push to leader
