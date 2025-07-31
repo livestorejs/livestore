@@ -608,11 +608,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     Runtime.runSync(
       this.effectContext.runtime,
       Effect.gen(this, function* () {
-        yield* Effect.sync(() => {
-          for (const event of events) {
-            replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
-          }
-        })
+        for (const event of events) {
+          replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
+        }
 
         if (events.length === 0) return
 
@@ -655,12 +653,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const skipRefresh = options?.skipRefresh ?? false
 
         // Update all table refs together in a batch, to only trigger one reactive update
-        yield* Effect.sync(() => {
-          this.reactivityGraph.setRefs(tablesToUpdate, {
-            debugRefreshReason,
-            otelContext,
-            skipRefresh,
-          })
+        this.reactivityGraph.setRefs(tablesToUpdate, {
+          debugRefreshReason,
+          otelContext,
+          skipRefresh,
         })
       }).pipe(
         Effect.withSpan('LiveStore:commit', {
