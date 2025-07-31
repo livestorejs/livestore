@@ -163,45 +163,44 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
-            return yield* Effect.sync(() => {
-              const writeTablesForEvent = new Set<string>()
 
-              const exec = () => {
-                for (const {
-                  statementSql,
-                  bindValues,
-                  writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
-                } of execArgsArr) {
-                  try {
-                    this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
-                  } catch (cause) {
-                    throw UnexpectedError.make({
-                      cause,
-                      note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
-                    })
-                  }
+            const writeTablesForEvent = new Set<string>()
 
-                  // durationMsTotal += durationMs
-                  for (const table of writeTables) {
-                    writeTablesForEvent.add(table)
-                  }
-
-                  this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
+            const exec = () => {
+              for (const {
+                statementSql,
+                bindValues,
+                writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
+              } of execArgsArr) {
+                try {
+                  this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+                } catch (cause) {
+                  throw UnexpectedError.make({
+                    cause,
+                    note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                  })
                 }
-              }
 
-              let sessionChangeset:
-                | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
-                | { _tag: 'no-op' }
-                | { _tag: 'unset' } = { _tag: 'unset' }
-              if (withChangeset === true) {
-                sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
-              } else {
-                exec()
-              }
+                // durationMsTotal += durationMs
+                for (const table of writeTables) {
+                  writeTablesForEvent.add(table)
+                }
 
-              return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-            })
+                this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
+              }
+            }
+
+            let sessionChangeset:
+              | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
+              | { _tag: 'no-op' }
+              | { _tag: 'unset' } = { _tag: 'unset' }
+            if (withChangeset === true) {
+              sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
+            } else {
+              exec()
+            }
+
+            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
           }),
       ),
       rollback: (changeset) => {
