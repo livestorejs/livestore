@@ -1,0 +1,6 @@
+- [ ] Hard code JSON serialization
+  - Adjust rpc interface to `(payload: string) => Promise<string | ReadableStream>`
+- [ ] Simplify single-item array for single requests
+- [ ] Embrace Effect RPC for the test <> worker communication as well
+- [ ] handle aborts in the ReadableStream
+- [ ] Add more tests inspired by effect-rpc tests
