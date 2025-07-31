@@ -98,7 +98,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     shutdownChannel: ShutdownChannel
     eventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
-    syncBackend: SyncBackend | undefined
+    syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {

@@ -167,7 +167,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
     // Get the stream schemas for proper chunk-level encoding
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const chunkEncoder = Option.isSome(streamSchemas) 
+    const chunkEncoder = Option.isSome(streamSchemas)
       ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success))
       : Schema.encodeUnknown(Schema.Array(Schema.Any))
 
@@ -176,7 +176,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       start(controller) {
         // Run the stream and send chunks + final exit
         const runStream = Effect.gen(function* () {
-          // Process stream chunks - let chunk encoder handle Effect objects properly  
+          // Process stream chunks - let chunk encoder handle Effect objects properly
           yield* Stream.runForEachChunk(stream, (chunk) =>
             Effect.gen(function* () {
               const chunkArray = Chunk.toReadonlyArray(chunk)
@@ -231,7 +231,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           ),
         )
 
-        // Run the stream processing  
+        // Run the stream processing
         // @ts-ignore - Complex context requirements but functionality works correctly
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
