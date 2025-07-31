@@ -1,6 +1,6 @@
+import type { CfWorker } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../FacadeVFS.ts'
-import type { DurableObjectStorage } from './cf-types.ts'
 
 const SECTOR_SIZE = 4096
 
@@ -53,7 +53,7 @@ interface FileHandle {
 export class CloudflareWorkerVFS extends FacadeVFS {
   log = null
 
-  #storage: DurableObjectStorage
+  #storage: CfWorker.DurableObjectStorage
   #initialized = false
 
   // In-memory caches for synchronous operations
@@ -66,13 +66,13 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   #maxCacheSize: number
   #maxFiles: number
 
-  static async create(name: string, storage: DurableObjectStorage, module: any) {
+  static async create(name: string, storage: CfWorker.DurableObjectStorage, module: any) {
     const vfs = new CloudflareWorkerVFS(name, storage, module)
     await vfs.isReady()
     return vfs
   }
 
-  constructor(name: string, storage: DurableObjectStorage, module: any) {
+  constructor(name: string, storage: CfWorker.DurableObjectStorage, module: any) {
     super(name, module)
     this.#storage = storage
     this.#maxCacheSize = DEFAULT_CACHE_SIZE

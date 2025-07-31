@@ -1,4 +1,4 @@
-import type * as Cf from './cf-types.ts'
+import type { CfWorker } from '@livestore/common-cf'
 
 export interface BlockRange {
   startBlock: number
@@ -43,7 +43,7 @@ export class BlockManager {
   /**
    * Read blocks from SQL storage and return as a Map
    */
-  readBlocks(sql: Cf.SqlStorage, filePath: string, blockIds: number[]): Map<number, Uint8Array> {
+  readBlocks(sql: CfWorker.SqlStorage, filePath: string, blockIds: number[]): Map<number, Uint8Array> {
     const blocks = new Map<number, Uint8Array>()
 
     if (blockIds.length === 0) {
@@ -71,7 +71,7 @@ export class BlockManager {
   /**
    * Write blocks to SQL storage using exec for now (prepared statements later)
    */
-  writeBlocks(sql: Cf.SqlStorage, filePath: string, blocks: Map<number, Uint8Array>): void {
+  writeBlocks(sql: CfWorker.SqlStorage, filePath: string, blocks: Map<number, Uint8Array>): void {
     if (blocks.size === 0) {
       return
     }
@@ -89,7 +89,7 @@ export class BlockManager {
   /**
    * Delete blocks at or after the specified block ID (used for truncation)
    */
-  deleteBlocksAfter(sql: Cf.SqlStorage, filePath: string, startBlockId: number): void {
+  deleteBlocksAfter(sql: CfWorker.SqlStorage, filePath: string, startBlockId: number): void {
     sql.exec('DELETE FROM vfs_blocks WHERE file_path = ? AND block_id >= ?', filePath, startBlockId)
   }
 
@@ -160,7 +160,7 @@ export class BlockManager {
    * Handle partial block writes by reading existing block, modifying, and returning complete block
    */
   mergePartialBlock(
-    sql: Cf.SqlStorage,
+    sql: CfWorker.SqlStorage,
     filePath: string,
     blockId: number,
     blockOffset: number,
@@ -182,7 +182,7 @@ export class BlockManager {
    * Get statistics about block usage for a file
    */
   getBlockStats(
-    sql: Cf.SqlStorage,
+    sql: CfWorker.SqlStorage,
     filePath: string,
   ): { totalBlocks: number; storedBlocks: number; totalBytes: number } {
     const blockStatsCursor = sql.exec<{ stored_blocks: number; total_bytes: number }>(

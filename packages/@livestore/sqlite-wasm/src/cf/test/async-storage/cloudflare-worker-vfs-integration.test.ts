@@ -1,12 +1,13 @@
 /// <reference types="vitest/globals" />
 
+import type { CfWorker } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { type Cf, CloudflareWorkerVFS } from '../../mod.ts'
+import { CloudflareWorkerVFS } from '../../mod.ts'
 
 describe('CloudflareWorkerVFS - Integration Tests', () => {
   let vfs: CloudflareWorkerVFS
-  let mockStorage: Cf.DurableObjectStorage
+  let mockStorage: CfWorker.DurableObjectStorage
   let storageData: Map<string, any>
   let storageOperations: string[]
 
@@ -30,7 +31,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
           storageOperations.push(`get: ${_key}`)
           return storageData.get(_key)
         }
-      }) as Cf.DurableObjectStorage['get'],
+      }) as CfWorker.DurableObjectStorage['get'],
 
       put: async (_key: string | Record<string, any>, _value?: any) => {
         if (typeof _key === 'string') {
@@ -56,7 +57,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
           storageOperations.push(`delete: ${_key}`)
           return storageData.delete(_key)
         }
-      }) as Cf.DurableObjectStorage['delete'],
+      }) as CfWorker.DurableObjectStorage['delete'],
 
       list: async () => {
         storageOperations.push('list')

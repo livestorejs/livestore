@@ -1,12 +1,13 @@
 /// <reference types="vitest/globals" />
 
+import type { CfWorker } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { type Cf, CloudflareSqlVFS } from '../../mod.ts'
+import { CloudflareSqlVFS } from '../../mod.ts'
 
 describe('CloudflareSqlVFS - Core Functionality', () => {
   let vfs: CloudflareSqlVFS
-  let mockSql: Cf.SqlStorage
+  let mockSql: CfWorker.SqlStorage
   let mockDatabase: Map<string, any[]>
   let queryLog: string[]
 
@@ -16,10 +17,10 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
 
     // Mock SQL storage that mimics the Cloudflare DurableObject SQL API
     mockSql = {
-      exec: <T extends Record<string, Cf.SqlStorageValue>>(
+      exec: <T extends Record<string, CfWorker.SqlStorageValue>>(
         query: string,
         ...bindings: any[]
-      ): Cf.SqlStorageCursor<T> => {
+      ): CfWorker.SqlStorageCursor<T> => {
         queryLog.push(`${query} [${bindings.join(', ')}]`)
 
         // Simple SQL parser for testing - handles basic CREATE, INSERT, SELECT, UPDATE, DELETE
@@ -129,9 +130,11 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
 
       Cursor: {} as any,
       Statement: {} as any,
-    } as Cf.SqlStorage
+    } as CfWorker.SqlStorage
 
-    function createMockCursor<T extends Record<string, Cf.SqlStorageValue>>(data: T[]): Cf.SqlStorageCursor<T> {
+    function createMockCursor<T extends Record<string, CfWorker.SqlStorageValue>>(
+      data: T[],
+    ): CfWorker.SqlStorageCursor<T> {
       let index = 0
 
       return {
@@ -150,7 +153,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
         },
         raw: function* () {
           for (const item of data) {
-            yield Object.values(item) as Cf.SqlStorageValue[]
+            yield Object.values(item) as CfWorker.SqlStorageValue[]
           }
         },
         columnNames: Object.keys(data[0] || {}),
@@ -165,7 +168,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
             yield item
           }
         },
-      } as Cf.SqlStorageCursor<T>
+      } as CfWorker.SqlStorageCursor<T>
     }
 
     vfs = new CloudflareSqlVFS('test-sql-vfs', mockSql, {})
