@@ -96,7 +96,10 @@ export const makeClientSessionSyncProcessor = ({
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
-  const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
+    batch,
+    { otelContext },
+  ) {
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
@@ -117,6 +120,7 @@ export const makeClientSessionSyncProcessor = ({
         }),
       )
     })
+    yield* Effect.annotateCurrentSpan({ batchSize: encodedEventDefs.length })
 
     const mergeResult = SyncState.merge({
       syncState: syncStateRef.current,
@@ -129,17 +133,14 @@ export const makeClientSessionSyncProcessor = ({
       return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
     }
 
-    span.addEvent('local-push', {
-      batchSize: encodedEventDefs.length,
-      mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-    })
+    if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
       return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
     }
 
     syncStateRef.current = mergeResult.newSyncState
-    syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
+    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
 
     // Materialize events to state
     const writeTables = new Set<string>()
@@ -164,10 +165,10 @@ export const makeClientSessionSyncProcessor = ({
 
     // Trigger push to leader
     // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
-    BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
+    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs)
 
     return { writeTables }
-  }
+  })
 
   const debugInfo = {
     rebaseCount: 0,
@@ -241,7 +242,6 @@ export const makeClientSessionSyncProcessor = ({
               newEventsCount: mergeResult.newEvents.length,
               rollbackCount: mergeResult.rollbackEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              rebaseGeneration: mergeResult.newSyncState.localHead.rebaseGeneration,
             })
 
             debugInfo.rebaseCount++
@@ -362,9 +362,12 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
-  ) => {
-    writeTables: Set<string>
-  }
+  ) => Effect.Effect<
+    {
+      writeTables: Set<string>
+    },
+    never
+  >
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
    * Only used for debugging / observability.
