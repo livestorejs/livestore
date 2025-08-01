@@ -38,6 +38,13 @@ export const getExecStatementsFromMaterializer = ({
     ? undefined
     : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
+  // Extract clientId from the event object to pass to materializer
+  const clientId = event.decoded?.clientId ?? event.encoded!.clientId
+
+  if (!clientId) {
+    throw new Error('clientId is required for materializer execution')
+  }
+
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
       | {
@@ -63,6 +70,7 @@ export const getExecStatementsFromMaterializer = ({
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      clientId,
     }),
   )
 
@@ -73,7 +81,11 @@ export const getExecStatementsFromMaterializer = ({
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
 
-    return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
+    return {
+      statementSql,
+      bindValues: prepareBindValues(bindValues ?? {}, statementSql),
+      writeTables,
+    }
   })
 }
 
@@ -114,9 +126,21 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
+    return [
+      {
+        sql: query,
+        bindValues: bindValues as BindValues,
+        writeTables: usedTables,
+      },
+    ]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+    return [
+      {
+        sql: materializerResult,
+        bindValues: {} as BindValues,
+        writeTables: undefined,
+      },
+    ]
   } else {
     return [
       {

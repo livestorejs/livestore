@@ -9,11 +9,13 @@ export namespace ForEventDef {
   export type PartialDecoded<TEventDef extends EventDef.Any> = {
     name: TEventDef['name']
     args: Schema.Schema.Type<TEventDef['schema']>
+    clientId?: string
   }
 
   export type PartialEncoded<TEventDef extends EventDef.Any> = {
     name: TEventDef['name']
     args: Schema.Schema.Encoded<TEventDef['schema']>
+    clientId?: string
   }
 
   export type Decoded<TEventDef extends EventDef.Any> = {
@@ -238,7 +240,11 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   }) =>
     new EncodedWithMeta({
       ...this,
-      ...EventSequenceNumber.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
+      ...EventSequenceNumber.nextPair({
+        seqNum: parentSeqNum,
+        isClient,
+        rebaseGeneration,
+      }),
     })
 
   static fromGlobal = (
