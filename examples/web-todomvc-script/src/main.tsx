@@ -8,22 +8,7 @@ const adapter = makeInMemoryAdapter({
   devtools: { sharedWorker: LiveStoreSharedWorker },
 })
 
-const getStoreId = () => {
-  if (typeof window === 'undefined') return 'unused'
-
-  const searchParams = new URLSearchParams(window.location.search)
-  const storeId = searchParams.get('storeId')
-  if (storeId !== null) return storeId
-
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
-
-  window.location.search = searchParams.toString()
-
-  return newAppId
-}
-
-const store = await createStorePromise({ adapter, schema, storeId: getStoreId() })
+const store = await createStorePromise({ adapter, schema, storeId: 'store-1' })
 
 store.commit(events.todoCreated({ id: '1', text: 'Buy milk' }))
 store.commit(events.todoCreated({ id: '2', text: 'Buy bread' }))
