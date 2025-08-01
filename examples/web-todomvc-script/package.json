@@ -1,0 +1,25 @@
+{
+  "name": "livestore-example-web-todomvc-script",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.3.2-dev.11",
+    "@livestore/livestore": "0.3.2-dev.11",
+    "@livestore/peer-deps": "0.3.2-dev.11",
+    "@livestore/wa-sqlite": "1.0.5"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.3.2-dev.11",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --force",
+    "preview": "vite preview"
+  }
+}
