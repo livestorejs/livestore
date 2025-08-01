@@ -5,10 +5,10 @@
   "dependencies": {
     "@headlessui/react": "2.2.6",
     "@heroicons/react": "2.2.0",
-    "@livestore/adapter-web": "0.3.2-dev.11",
-    "@livestore/livestore": "0.3.2-dev.11",
-    "@livestore/peer-deps": "0.3.2-dev.11",
-    "@livestore/react": "0.3.2-dev.11",
+    "@livestore/adapter-web": "0.3.2-dev.12",
+    "@livestore/livestore": "0.3.2-dev.12",
+    "@livestore/peer-deps": "0.3.2-dev.12",
+    "@livestore/react": "0.3.2-dev.12",
     "@livestore/wa-sqlite": "1.0.8-dev.3",
     "@overengineering/fps-meter": "0.2.1",
     "@tailwindcss/forms": "0.5.10",
@@ -36,7 +36,7 @@
     "react-window": "1.8.11"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.2-dev.11",
+    "@livestore/devtools-vite": "0.3.2-dev.12",
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.16",
