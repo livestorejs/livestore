@@ -73,7 +73,7 @@ export class SqliteDbWrapper implements SqliteDb {
   prepare(queryStr: string): PreparedStatement {
     return this.db.prepare(queryStr)
   }
-  import(data: Uint8Array<ArrayBufferLike> | SqliteDb<any, any>) {
+  import(data: Uint8Array<ArrayBuffer> | SqliteDb<any, any>) {
     return this.db.import(data)
   }
   close(): void {
@@ -85,7 +85,7 @@ export class SqliteDbWrapper implements SqliteDb {
   session(): SqliteDbSession {
     return this.db.session()
   }
-  makeChangeset(data: Uint8Array): SqliteDbChangeset {
+  makeChangeset(data: Uint8Array<ArrayBuffer>): SqliteDbChangeset {
     return this.db.makeChangeset(data)
   }
 
@@ -112,7 +112,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   withChangeset<TRes>(callback: () => TRes): {
     result: TRes
-    changeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    changeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
   } {
     const session = this.db.session()
     const result = callback()
@@ -126,7 +126,7 @@ export class SqliteDbWrapper implements SqliteDb {
     }
   }
 
-  rollback(changeset: Uint8Array) {
+  rollback(changeset: Uint8Array<ArrayBuffer>) {
     const invertedChangeset = this.db.makeChangeset(changeset).invert()
     invertedChangeset.apply()
   }

@@ -30,7 +30,13 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    blobUrl: (buffer: Uint8Array) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+    blobUrl: (buffer: Uint8Array) => {
+      // Create a new Uint8Array backed by ArrayBuffer to satisfy TypeScript 5.9 strict typing
+      const arrayBuffer = new ArrayBuffer(buffer.length)
+      const safeBuffer = new Uint8Array(arrayBuffer)
+      safeBuffer.set(buffer)
+      return URL.createObjectURL(new Blob([safeBuffer], { type: 'application/octet-stream' }))
+    },
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }

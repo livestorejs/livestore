@@ -214,7 +214,7 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
     : TColumnType extends 'real'
       ? number
       : TColumnType extends 'blob'
-        ? Uint8Array
+        ? Uint8Array<ArrayBuffer>
         : never
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(

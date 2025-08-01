@@ -5,7 +5,7 @@
   "sideEffects": false,
   "dependencies": {
     "@effect/cli": "0.69.0",
-    "@effect/experimental": "0.54.0",
+    "@effect/experimental": "0.54.3",
     "@effect/opentelemetry": "0.56.0",
     "@effect/platform": "0.90.0",
     "@effect/platform-browser": "0.70.0",
@@ -16,7 +16,7 @@
     "@effect/typeclass": "0.36.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.0.1",
-    "effect": "3.17.2"
+    "effect": "3.17.4"
   },
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
   "files": [

@@ -17,7 +17,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.8-dev.3",
+    "@livestore/wa-sqlite": "1.0.8-dev.4",
     "@local/shared": "workspace:*"
   },
   "devDependencies": {
@@ -27,17 +27,17 @@
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@opentelemetry/sdk-trace-web": "^2.0.1",
     "@playwright/test": "^1.53.1",
-    "@tanstack/react-router": "^1.130.10",
-    "@tanstack/router-plugin": "^1.130.10",
+    "@tanstack/react-router": "^1.130.11",
+    "@tanstack/router-plugin": "^1.130.11",
     "@types/node": "catalog:",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "todomvc-app-css": "^2.4.3",
     "vite": "^7.0.6",
     "vitest": "catalog:",
-    "wrangler": "^4.26.0"
+    "wrangler": "^4.27.0"
   },
   "scripts": {
     "test": "CI=1 bun ./scripts/run-tests.ts"

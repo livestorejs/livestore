@@ -3,7 +3,7 @@ import { prettyBytes } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
 export const downloadBlob = (
-  data: Uint8Array | Blob | string,
+  data: Uint8Array<ArrayBuffer> | Blob | string,
   fileName: string,
   mimeType = 'application/octet-stream',
 ) => {

@@ -122,7 +122,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         stmt.finalizeSync()
       }
     }),
-    export: SqliteDbHelper.makeExport(() => db.serializeSync()),
+    export: SqliteDbHelper.makeExport(() => db.serializeSync() as Uint8Array<ArrayBuffer>),
     select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
@@ -172,7 +172,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       const session = db.createSessionSync()
       session.attachSync(null)
       return {
-        changeset: () => session.createChangesetSync(),
+        changeset: () => session.createChangesetSync() as Uint8Array<ArrayBuffer>,
         finish: () => session.closeSync(),
       }
     },
@@ -182,7 +182,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       // apply an inverted changeset
       return {
         invert: () => {
-          const inverted = session.invertChangesetSync(data)
+          const inverted = session.invertChangesetSync(data) as Uint8Array<ArrayBuffer>
           return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {
