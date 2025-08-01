@@ -10,9 +10,9 @@
 
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { ServerRoute as ApiElectricServerRouteImport } from './routes/api/electric'
+import { Route as rootRouteImport } from './routes/__root.tsx'
+import { ServerRoute as ApiElectricServerRouteImport } from './routes/api/electric.ts'
+import { Route as IndexRouteImport } from './routes/index/index.tsx'
 
 const rootServerRouteImport = createServerRootRoute()
 
@@ -96,9 +96,7 @@ declare module '@tanstack/react-start/server' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
 }
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
   ApiElectricServerRoute: ApiElectricServerRoute,
 }
