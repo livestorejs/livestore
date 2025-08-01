@@ -1,5 +1,10 @@
-import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
-import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
+import {
+  InvalidPullError,
+  InvalidPushError,
+  type IsOfflineError,
+  SyncBackend,
+  UnexpectedError,
+} from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import {
@@ -195,7 +200,7 @@ type SyncMetadata = {
 }
 
 export const makeSyncBackend =
-  ({ endpoint }: SyncBackendOptions): SyncBackendConstructor<SyncMetadata> =>
+  ({ endpoint }: SyncBackendOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
@@ -290,7 +295,7 @@ export const makeSyncBackend =
         pullEndpoint.startsWith('/') ||
         (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
 
-      return {
+      return SyncBackend.of({
         // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
         // otherwise we send a HEAD request to speed up the connection process
         connect: pullEndpointHasSameOrigin
@@ -323,7 +328,7 @@ export const makeSyncBackend =
             )
 
             if (!resp.success) {
-              yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
+              return yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
             }
           }),
         isConnected,
@@ -333,7 +338,7 @@ export const makeSyncBackend =
           protocol: 'http',
           endpoint,
         },
-      } satisfies SyncBackend<SyncMetadata>
+      })
     })
 
 /**

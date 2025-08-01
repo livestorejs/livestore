@@ -19,12 +19,10 @@ export class NodeFS extends FacadeVFS {
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private lastError: Error | null = null
   private readonly directory: string
-  private readonly onShutdown: () => void
-  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string, onShutdown: () => void) {
+  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string) {
     super(name, sqlite3)
 
     this.directory = directory
-    this.onShutdown = onShutdown
   }
 
   getFilename(fileId: number): string {
@@ -104,8 +102,6 @@ export class NodeFS extends FacadeVFS {
 
   jClose(fileId: number): number {
     try {
-      this.onShutdown()
-
       const file = this.mapIdToFile.get(fileId)
       if (!file) return VFS.SQLITE_OK
 
@@ -167,8 +163,6 @@ export class NodeFS extends FacadeVFS {
 
   jDelete(zName: string, _syncDir: number): number {
     try {
-      this.onShutdown()
-
       const pathname = path.resolve(this.directory, zName)
       fs.unlinkSync(pathname)
       return VFS.SQLITE_OK
@@ -191,8 +185,6 @@ export class NodeFS extends FacadeVFS {
   }
 
   deleteDb(fileName: string) {
-    this.onShutdown()
-
     fs.unlinkSync(path.join(this.directory, fileName))
   }
 }

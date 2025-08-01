@@ -1,0 +1,13 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "sqlite-wasm-test"
+compatibility_date = "2024-04-03"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [
+  { name = "TEST_STORAGE", class_name = "TestDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TestDurableObject"]
