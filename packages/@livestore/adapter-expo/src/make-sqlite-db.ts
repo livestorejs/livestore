@@ -122,9 +122,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         stmt.finalizeSync()
       }
     }),
-    export: () => {
-      return db.serializeSync()
-    },
+    export: SqliteDbHelper.makeExport(() => db.serializeSync()),
     select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)

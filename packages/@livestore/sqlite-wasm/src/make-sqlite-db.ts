@@ -132,7 +132,7 @@ export const makeSqliteDb = <
         })
       }
     },
-    export: () => sqlite3.serialize(dbPointer, 'main'),
+    export: SqliteDbHelper.makeExport(() => sqlite3.serialize(dbPointer, 'main')),
     execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
       const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
