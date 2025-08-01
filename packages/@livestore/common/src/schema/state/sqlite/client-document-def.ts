@@ -2,27 +2,39 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../adapter-types.js'
-import { sql } from '../../../util.js'
-import type { EventDef, Materializer } from '../../EventDef.js'
-import { defineEvent, defineMaterializer } from '../../EventDef.js'
-import { SqliteDsl } from './db-schema/mod.js'
-import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.js'
-import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.js'
-import type { TableDef, TableDefBase } from './table-def.js'
-import { table } from './table-def.js'
+import { SessionIdSymbol } from '../../../adapter-types.ts'
+import { sql } from '../../../util.ts'
+import type { EventDef, Materializer } from '../../EventDef.ts'
+import { defineEvent, defineMaterializer } from '../../EventDef.ts'
+import { SqliteDsl } from './db-schema/mod.ts'
+import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
+import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
+import type { TableDef, TableDefBase } from './table-def.ts'
+import { table } from './table-def.ts'
 
 /**
  * Special:
  * - Synced across client sessions (e.g. tabs) but not across different clients
  * - Derived setters
  *   - Emits client-only events
- *   - Has implicit setter-reducers
+ *   - Has implicit setter-materializers
  * - Similar to `React.useState` (except it's persisted)
  *
  * Careful:
  * - When changing the table definitions in a non-backwards compatible way, the state might be lost without
- *   explicit reducers to handle the old auto-generated events
+ *   explicit materializers to handle the old auto-generated events
+ *
+ * Usage:
+ *
+ * ```ts
+ * // Querying data
+ * // `'some-id'` can be ommited for SessionIdSymbol
+ * store.queryDb(clientDocumentTable.get('some-id'))
+ *
+ * // Setting data
+ * // Again, `'some-id'` can be ommited for SessionIdSymbol
+ * store.commit(clientDocumentTable.set({ someField: 'some-value' }, 'some-id'))
+ * ```
  */
 export const clientDocument = <
   TName extends string,
@@ -109,7 +121,7 @@ export const clientDocument = <
   return clientDocumentTableDef
 }
 
-const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
+export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
   if (
     typeof defaultValues !== 'object' ||
     typeof explicitDefaultValues !== 'object' ||
@@ -119,7 +131,10 @@ const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T =>
     return explicitDefaultValues
   }
 
-  return Object.keys(defaultValues as any).reduce((acc, key) => {
+  // Get all unique keys from both objects
+  const allKeys = new Set([...Object.keys(defaultValues as any), ...Object.keys(explicitDefaultValues as any)])
+
+  return Array.from(allKeys).reduce((acc, key) => {
     acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
   }, {} as any)
@@ -386,37 +401,49 @@ export namespace ClientDocumentTableDef {
     }
   }
 
-  export type GetOptions<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions> ? TOptions : never
+  export type GetOptions<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions
+    : never
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type DefaultIdType<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
-      ? TOptions['default']['id'] extends SessionIdSymbol | string
-        ? TOptions['default']['id']
-        : never
+  export type DefaultIdType<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions['default']['id'] extends SessionIdSymbol | string
+      ? TOptions['default']['id']
       : never
+    : never
 
-  export type SetEventDefLike<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> =
-    // Helper to create partial event
-    (TOptions['default']['id'] extends undefined
-      ? (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }
-      : (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id?: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+  export type SetEventDefLike<
+    TName extends string,
+    TType,
+    TOptions extends ClientDocumentTableOptions<TType>,
+  > = (TOptions['default']['id'] extends undefined // Helper to create partial event
+    ? (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }
+    : (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id?: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+    readonly name: `${TName}Set`
+    readonly schema: Schema.Schema<any>
+    readonly Event: {
       readonly name: `${TName}Set`
-      readonly schema: Schema.Schema<any>
-      readonly Event: {
-        readonly name: `${TName}Set`
-        readonly args: { id: string; value: TType }
-      }
-      readonly options: { derived: true; clientOnly: true; facts: undefined }
+      readonly args: { id: string; value: TType }
     }
+    readonly options: { derived: true; clientOnly: true; facts: undefined }
+  }
 
   export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<
     TName,

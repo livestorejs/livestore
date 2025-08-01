@@ -33,7 +33,7 @@ export const getDirHandle = async (absDirPath: string | undefined) => {
 export const printTree = async (
   directoryHandle_: FileSystemDirectoryHandle | Promise<FileSystemDirectoryHandle> = rootHandlePromise,
   depth: number = Number.POSITIVE_INFINITY,
-  prefix: string = '',
+  prefix = '',
 ): Promise<void> => {
   if (depth < 0) return
 

@@ -1,8 +1,8 @@
 import type { LiveStoreContextRunning } from '@livestore/livestore'
 import React from 'react'
 
-import type { useClientDocument } from './useClientDocument.js'
-import type { useQuery } from './useQuery.js'
+import type { useClientDocument } from './useClientDocument.ts'
+import type { useQuery } from './useQuery.ts'
 
 export type ReactApi = {
   useQuery: typeof useQuery

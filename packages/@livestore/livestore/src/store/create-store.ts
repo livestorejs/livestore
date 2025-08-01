@@ -1,15 +1,17 @@
-import type {
-  Adapter,
-  BootStatus,
-  ClientSession,
-  ClientSessionDevtoolsChannel,
-  IntentionalShutdownCause,
-  MigrationsReport,
+import {
+  type Adapter,
+  type BootStatus,
+  type ClientSession,
+  type ClientSessionDevtoolsChannel,
+  type ClientSessionSyncProcessorSimulationParams,
+  type IntentionalShutdownCause,
+  type MigrationsReport,
+  provideOtel,
+  type SyncError,
+  UnexpectedError,
 } from '@livestore/common'
-import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type { Cause, Schema } from '@livestore/utils/effect'
 import {
   Context,
   Deferred,
@@ -23,19 +25,20 @@ import {
   OtelTracer,
   Queue,
   Runtime,
+  type Schema,
   Scope,
   TaskTracing,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import { connectDevtoolsToStore } from './devtools.js'
-import { Store } from './store.js'
+import { connectDevtoolsToStore } from './devtools.ts'
+import { Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
-} from './store-types.js'
+} from './store-types.ts'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
@@ -95,7 +98,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
       migrationsReport: MigrationsReport
       parentSpan: otel.Span
     },
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  ) => Effect.SyncOrPromiseOrEffect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   batchUpdates?: (run: () => void) => void
   /**
    * Whether to disable devtools.
@@ -120,6 +123,9 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
+    }
   }
   debug?: {
     instanceId?: string
@@ -127,7 +133,7 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
 }
 
 /** Create a new LiveStore Store */
-export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
+export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
   signal,
   otelOptions,
   ...options
@@ -158,7 +164,7 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
     Effect.runPromise,
   )
 
-export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
+export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
   schema,
   adapter,
   storeId,
@@ -211,9 +217,9 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
+      const shutdown = (exit: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) =>
         Effect.gen(function* () {
-          yield* Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
+          yield* Scope.close(lifetimeScope, exit).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
             Effect.catchTag('TimeoutException', () =>
@@ -222,7 +228,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
           )
 
           if (shutdownDeferred) {
-            yield* Deferred.failCause(shutdownDeferred, cause)
+            yield* Deferred.done(shutdownDeferred, exit)
           }
 
           yield* Effect.logDebug('LiveStore shutdown complete')
@@ -274,6 +280,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          simulation: params?.simulation,
         },
       })
 

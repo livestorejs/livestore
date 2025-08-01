@@ -1,7 +1,16 @@
 // @ts-check
-import fs from 'node:fs'
+import fs, { readFileSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
+
+import { parse } from 'yaml'
+
+const getPnpmCatalogDependencies = () => {
+  const workspaceConfig = readFileSync('pnpm-workspace.yaml', 'utf8')
+  const pnpmWorkspaceConfig = parse(workspaceConfig)
+
+  return Object.keys(pnpmWorkspaceConfig.catalog)
+}
 
 /*
 Semver calculator: https://semver.npmjs.com
@@ -28,45 +37,55 @@ const localPackages = fs
 const config = {
   sortFirst: ['name', 'version', 'type', 'sideEffects', 'private', 'exports', 'types', 'typesVersions'],
   sortExports: [
-    'types',
+    'types', // should be first
+    'browser',
+    'worker',
     'node-addons',
     'node',
-    'browser',
+    'bun',
     'react-native',
     'import',
     'require',
     'development',
     'production',
-    'default',
+    'default', // should be last
+  ],
+  versionGroups: [
+    {
+      label: 'workspace protocol for local packages',
+      dependencies: [...localPackages, '@local/**'],
+      dependencyTypes: ['!local'],
+      // Except for examples
+      packages: ['!livestore-example-**'],
+      pinVersion: 'workspace:*',
+    },
+    {
+      label: 'catalog protocol for catalog dependencies',
+      dependencies: getPnpmCatalogDependencies(),
+      dependencyTypes: ['!local'],
+      // Except for examples
+      packages: ['!livestore-example-**'],
+      pinVersion: 'catalog:',
+    },
   ],
   semverGroups: [
     {
-      label: 'default all to exact version for prod deps',
+      label: 'ignore catalog dependencies',
+      dependencies: getPnpmCatalogDependencies(),
+      isIgnored: true,
+      packages: ['**'],
+    },
+    {
+      label: 'exact versions for prod dependencies',
       range: '',
       dependencyTypes: ['prod'],
       packages: ['**'],
     },
     {
-      label: 'default all to patch range for peer deps',
-      range: '~',
-      dependencyTypes: ['peer'],
-      packages: ['**'],
-    },
-    {
-      label: 'default all to minor range for dev deps',
+      label: 'minor range for dev and peer dependencies',
       range: '^',
-      dependencyTypes: ['dev'],
+      dependencyTypes: ['dev', 'peer'],
       packages: ['**'],
-    },
-  ],
-  versionGroups: [
-    {
-      label: 'use workspace protocol for local packages',
-      dependencies: [...localPackages, '@local/**'],
-      dependencyTypes: ['!local'],
-      // Except for standalone examples
-      packages: ['!livestore-example-standalone-**'],
-      pinVersion: 'workspace:*',
     },
   ],
 }

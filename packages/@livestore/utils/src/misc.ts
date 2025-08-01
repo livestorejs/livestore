@@ -26,7 +26,7 @@ export const objectToString = (error: any): string => {
   } catch (e: any) {
     console.log(error)
 
-    return 'Error while printing error: ' + e
+    return `Error while printing error: ${e}`
   }
 }
 
@@ -37,8 +37,7 @@ export const tryAsFunctionAndNew = <TArg, TResult>(
   try {
     // @ts-expect-error try out as constructor
     return new fnOrConstructor(arg)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e) {
+  } catch (_e) {
     // @ts-expect-error try out as function
     return fnOrConstructor(arg)
   }
@@ -50,6 +49,7 @@ export const envTruish = (env: string | undefined) =>
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
   if (isDevEnv()) {
+    // biome-ignore lint/suspicious/noDebugger: debugging
     debugger
   }
 

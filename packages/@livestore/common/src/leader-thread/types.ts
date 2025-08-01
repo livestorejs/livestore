@@ -12,21 +12,21 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
+import type { MigrationsReport } from '../defs.ts'
+import type { SqliteError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
   LeaderAheadError,
   MakeSqliteDb,
-  MigrationsReport,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
   UnexpectedError,
-} from '../index.js'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
-import type * as SyncState from '../sync/syncstate.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
+} from '../index.ts'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.ts'
+import type * as SyncState from '../sync/syncstate.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -136,16 +136,12 @@ export type InitialBlockingSyncContext = {
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    cursor: LeaderPullCursor
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: LeaderPullCursor
-  }) => Effect.Effect<
-    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
-    UnexpectedError,
-    Scope.Scope
-  >
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnexpectedError, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -173,5 +169,4 @@ export interface LeaderSyncProcessor {
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  getMergeCounter: () => number
 }

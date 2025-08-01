@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { extractStackInfoFromStackTrace } from './stack-info.js'
+import { extractStackInfoFromStackTrace } from './stack-info.ts'
 
 it('RouteLink stacktrace', async () => {
   const stackTrace = `\
@@ -19,7 +19,9 @@ Error
 
   const stackInfo = extractStackInfoFromStackTrace(stackTrace)
   // Replacing file paths for snapshot testing as they are not stable
-  stackInfo.frames.forEach((_) => (_.filePath = '__REPLACED_FOR_SNAPSHOT__'))
+  stackInfo.frames.forEach((_) => {
+    _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+  })
   expect(stackInfo).toMatchInlineSnapshot(`
     {
       "frames": [
@@ -61,7 +63,9 @@ Error
 
   const stackInfo = extractStackInfoFromStackTrace(stackTrace)
   // Replacing file paths for snapshot testing as they are not stable
-  stackInfo.frames.forEach((_) => (_.filePath = '__REPLACED_FOR_SNAPSHOT__'))
+  stackInfo.frames.forEach((_) => {
+    _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+  })
   expect(stackInfo).toMatchInlineSnapshot(`
     {
       "frames": [

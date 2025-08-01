@@ -6,9 +6,9 @@ import type {
   SqliteDbChangeset,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
-
-import { makeInMemoryDb } from './in-memory-vfs.js'
+import { makeInMemoryDb } from './in-memory-vfs.ts'
 
 export const makeSqliteDb = <
   TMetadata extends {
@@ -32,6 +32,10 @@ export const makeSqliteDb = <
   const sqliteDb: SqliteDb<TMetadata> = {
     _tag: 'SqliteDb',
     metadata,
+    debug: {
+      // Setting initially to root but will be set to correct value shortly after
+      head: EventSequenceNumber.ROOT,
+    },
     prepare: (queryStr) => {
       try {
         const stmts = sqlite3.statements(dbPointer, queryStr.trim(), { unscoped: true })
@@ -75,10 +79,9 @@ export const makeSqliteDb = <
 
             try {
               // NOTE `column_names` only works for `SELECT` statements, ignoring other statements for now
-              let columns = undefined
+              let columns: string[] | undefined
               try {
                 columns = sqlite3.column_names(stmt)
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
               } catch (_e) {}
 
               while (sqlite3.step(stmt) === SqliteConstants.SQLITE_ROW) {
@@ -129,7 +132,7 @@ export const makeSqliteDb = <
         })
       }
     },
-    export: () => sqlite3.serialize(dbPointer, 'main'),
+    export: SqliteDbHelper.makeExport(() => sqlite3.serialize(dbPointer, 'main')),
     execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
       const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
@@ -209,7 +212,7 @@ export const makeSqliteDb = <
           try {
             sqlite3.changeset_apply(dbPointer, data)
             // @ts-expect-error data should be garbage collected after use
-            // biome-ignore lint/style/noParameterAssign:
+            // biome-ignore lint/style/noParameterAssign: ...
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

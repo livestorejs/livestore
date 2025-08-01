@@ -15,12 +15,12 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { makeDirectChannel } from './channel/direct-channel.js'
-import { makeProxyChannel } from './channel/proxy-channel.js'
-import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.js'
-import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.js'
-import * as WebmeshSchema from './mesh-schema.js'
-import { TimeoutSet } from './utils.js'
+import { makeDirectChannel } from './channel/direct-channel.ts'
+import { makeProxyChannel } from './channel/proxy-channel.ts'
+import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.ts'
+import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.ts'
+import * as WebmeshSchema from './mesh-schema.ts'
+import { TimeoutSet } from './utils.ts'
 
 type EdgeChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
@@ -298,7 +298,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           yield* edgeChannel.send({ ...packet, hops })
         }
         // In this case we have an expected route back we should follow
-        // eslint-disable-next-line unicorn/no-negated-condition
         else if (packet.remainingHops !== undefined) {
           const hopTarget =
             packet.remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)

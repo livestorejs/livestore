@@ -25,15 +25,12 @@ export const useStateRefWithReactiveInput = <T>(
     stateRef.current = inputState
   }
 
-  const setStateAndRerender = React.useCallback(
-    (newState: ((prev: T) => T) | T) => {
-      // @ts-expect-error https://github.com/microsoft/TypeScript/issues/37663
-      const val = typeof newState === 'function' ? newState(stateRef.current) : newState
-      stateRef.current = val
-      rerender((c) => c + 1)
-    },
-    [rerender],
-  )
+  const setStateAndRerender = React.useCallback((newState: ((prev: T) => T) | T) => {
+    // @ts-expect-error https://github.com/microsoft/TypeScript/issues/37663
+    const val = typeof newState === 'function' ? newState(stateRef.current) : newState
+    stateRef.current = val
+    rerender((c) => c + 1)
+  }, [])
 
   return [stateRef, setStateAndRerender]
 }

@@ -36,6 +36,7 @@ export const events = {
 ### Best Practices
 
 - It's strongly recommended to use past-tense event names (e.g. `todoCreated`/`createdTodo` instead of `todoCreate`/`createTodo`) to indicate something already occurred.
+- When generating IDs for events (e.g. for the todo in the example above), it's recommended to use a globally unique ID generator (e.g. UUID, nanoid, etc.) to avoid conflicts. For convenience, `@livestore/livestore` re-exports the `nanoid` function.
 - TODO: write down more best practices
 - TODO: mention AI linting (either manually or via a CI step)
   - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not

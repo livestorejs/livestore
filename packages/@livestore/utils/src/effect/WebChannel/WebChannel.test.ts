@@ -2,7 +2,7 @@ import * as Vitest from '@effect/vitest'
 import { Effect, Schema, Stream } from 'effect'
 import { JSDOM } from 'jsdom'
 
-import * as WebChannel from './WebChannel.js'
+import * as WebChannel from './WebChannel.ts'
 
 Vitest.describe('WebChannel', () => {
   Vitest.describe('windowChannel', () => {

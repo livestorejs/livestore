@@ -1,9 +1,9 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
-import type { EventDef, EventDefRecord } from './EventDef.js'
-import * as EventSequenceNumber from './EventSequenceNumber.js'
-import type { LiveStoreSchema } from './schema.js'
+import type { EventDef, EventDefRecord } from './EventDef.ts'
+import * as EventSequenceNumber from './EventSequenceNumber.ts'
+import type { LiveStoreSchema } from './schema.ts'
 
 export namespace ForEventDef {
   export type PartialDecoded<TEventDef extends EventDef.Any> = {
@@ -152,6 +152,12 @@ export const makeEventDefPartialSchema = <TSchema extends LiveStoreSchema>(
 
 export const makeEventDefSchemaMemo = memoizeByRef(makeEventDefSchema)
 
+export const encodedFromGlobal = (event: AnyEncodedGlobal): AnyEncoded => ({
+  ...event,
+  seqNum: EventSequenceNumber.fromGlobal(event.seqNum),
+  parentSeqNum: EventSequenceNumber.fromGlobal(event.parentSeqNum),
+})
+
 /** Equivalent to AnyEncoded but with a meta field and some convenience methods */
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.EncodedWithMeta')({
   name: Schema.String,
@@ -221,10 +227,18 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
    *          +---- global number
    * Client num is ommitted for global events
    */
-  rebase = (parentSeqNum: EventSequenceNumber.EventSequenceNumber, isClient: boolean) =>
+  rebase = ({
+    parentSeqNum,
+    isClient,
+    rebaseGeneration,
+  }: {
+    parentSeqNum: EventSequenceNumber.EventSequenceNumber
+    isClient: boolean
+    rebaseGeneration: number
+  }) =>
     new EncodedWithMeta({
       ...this,
-      ...EventSequenceNumber.nextPair(parentSeqNum, isClient),
+      ...EventSequenceNumber.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
     })
 
   static fromGlobal = (
@@ -237,8 +251,16 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   ) =>
     new EncodedWithMeta({
       ...event,
-      seqNum: { global: event.seqNum, client: EventSequenceNumber.clientDefault },
-      parentSeqNum: { global: event.parentSeqNum, client: EventSequenceNumber.clientDefault },
+      seqNum: {
+        global: event.seqNum,
+        client: EventSequenceNumber.clientDefault,
+        rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      },
+      parentSeqNum: {
+        global: event.parentSeqNum,
+        client: EventSequenceNumber.clientDefault,
+        rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      },
       meta: {
         sessionChangeset: { _tag: 'unset' as const },
         syncMetadata: meta.syncMetadata,

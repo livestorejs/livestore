@@ -1,10 +1,10 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../../adapter-types.js'
-import type { SqlValue } from '../../../../util.js'
-import type { State } from '../../../mod.js'
-import type { QueryBuilderAst } from './api.js'
+import { SessionIdSymbol } from '../../../../adapter-types.ts'
+import type { SqlValue } from '../../../../util.ts'
+import type { State } from '../../../mod.ts'
+import type { QueryBuilderAst } from './api.ts'
 
 // Helper functions for SQL generation
 const formatWhereClause = (
@@ -65,8 +65,9 @@ const formatReturningClause = (returning?: string[]): string => {
   return ` RETURNING ${returning.join(', ')}`
 }
 
-export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: SqlValue[] } => {
+export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: SqlValue[]; usedTables: Set<string> } => {
   const bindValues: SqlValue[] = []
+  const usedTables = new Set<string>([ast.tableDef.sqliteDef.name])
 
   // INSERT query
   if (ast._tag === 'InsertQuery') {
@@ -134,7 +135,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     query += conflictClause
 
     query += formatReturningClause(ast.returning)
-    return { query, bindValues }
+    return { query, bindValues, usedTables }
   }
 
   // UPDATE query
@@ -145,7 +146,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       console.warn(
         `UPDATE query requires at least one column to set (for table ${ast.tableDef.sqliteDef.name}). Running no-op query instead to skip this update query.`,
       )
-      return { query: 'SELECT 1', bindValues: [] }
+      return { query: 'SELECT 1', bindValues: [], usedTables }
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
@@ -162,7 +163,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     if (whereClause) query += ` ${whereClause}`
 
     query += formatReturningClause(ast.returning)
-    return { query, bindValues }
+    return { query, bindValues, usedTables }
   }
 
   // DELETE query
@@ -173,7 +174,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     if (whereClause) query += ` ${whereClause}`
 
     query += formatReturningClause(ast.returning)
-    return { query, bindValues }
+    return { query, bindValues, usedTables }
   }
 
   // COUNT query
@@ -185,7 +186,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       .filter((clause) => clause.length > 0)
       .join(' ')
 
-    return { query, bindValues }
+    return { query, bindValues, usedTables }
   }
 
   // ROW query
@@ -202,6 +203,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     return {
       query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE id = ?`,
       bindValues: [encodedId as SqlValue],
+      usedTables,
     }
   }
 
@@ -228,5 +230,5 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     .filter((clause) => clause.length > 0)
     .join(' ')
 
-  return { query, bindValues }
+  return { query, bindValues, usedTables }
 }

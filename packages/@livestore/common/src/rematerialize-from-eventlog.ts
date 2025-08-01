@@ -1,12 +1,12 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from './adapter-types.js'
-import type { MaterializeEvent } from './leader-thread/mod.js'
-import type { EventDef, LiveStoreSchema } from './schema/mod.js'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
-import type { PreparedBindValues } from './util.js'
-import { sql } from './util.js'
+import { type SqliteDb, UnexpectedError } from './adapter-types.ts'
+import type { MaterializeEvent } from './leader-thread/mod.ts'
+import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
+import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.ts'
+import type { PreparedBindValues } from './util.ts'
+import { sql } from './util.ts'
 
 export const rematerializeFromEventlog = ({
   dbEventlog,
@@ -56,8 +56,16 @@ This likely means the schema has changed in an incompatible way.
         )
 
         const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
-          seqNum: { global: row.seqNumGlobal, client: row.seqNumClient },
-          parentSeqNum: { global: row.parentSeqNumGlobal, client: row.parentSeqNumClient },
+          seqNum: {
+            global: row.seqNumGlobal,
+            client: row.seqNumClient,
+            rebaseGeneration: row.seqNumRebaseGeneration,
+          },
+          parentSeqNum: {
+            global: row.parentSeqNumGlobal,
+            client: row.parentSeqNumClient,
+            rebaseGeneration: row.parentSeqNumRebaseGeneration,
+          },
           name: row.name,
           args,
           clientId: row.clientId,
@@ -79,9 +87,9 @@ LIMIT ${CHUNK_SIZE}
     let processedEvents = 0
 
     yield* Stream.unfoldChunk<
-      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial ' },
+      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
       SystemTables.EventlogMetaRow
-    >({ _tag: 'Initial ' }, (item) => {
+    >({ _tag: 'Initial' }, (item) => {
       // End stream if no more rows
       if (Chunk.isChunk(item) && item.length === 0) return Option.none()
 

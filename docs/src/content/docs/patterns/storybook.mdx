@@ -1,0 +1,210 @@
+---
+title: Storybook Testing (React)
+description: How to set up LiveStore with Storybook for component development and testing in React.
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
+export const CODE = {
+  todoInputStories: `import type { Meta, StoryObj } from '@storybook/react'
+import { TodoInput } from './TodoInput'
+import { createLiveStoreDecorator } from './decorator'
+import { events } from './schema'
+
+const meta: Meta<typeof TodoInput> = {
+  title: 'TodoMVC/TodoInput',
+  component: TodoInput,
+}
+
+export default meta
+type Story = StoryObj<typeof TodoInput>
+
+export const Default: Story = {}
+
+export const WithInitialText: Story = {
+  decorators: [
+    createLiveStoreDecorator([
+      events.uiStateSet({ newTodoText: 'Buy groceries' })
+    ])
+  ],
+}`,
+  
+  storybookPreview: `import React from 'react'
+import { createLiveStoreDecorator } from '../src/decorator'
+
+// Default decorator with no seed data
+const LiveStoreDecorator = createLiveStoreDecorator()
+
+export const decorators = [LiveStoreDecorator]`,
+
+  decorator: `import React from 'react'
+import { LiveStoreProvider } from '@livestore/react'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { schema } from './schema'
+
+// Create LiveStore decorator with optional seeding
+export const createLiveStoreDecorator = (seedEvents = []) => (Story) => {
+  const onBoot = (store) => {
+    // Seed data through events during boot
+    if (seedEvents.length > 0) {
+      store.commit(...seedEvents)
+    }
+  }
+
+  return (
+    <LiveStoreProvider
+      schema={schema}
+      adapter={makeInMemoryAdapter()}
+      batchUpdates={batchUpdates}
+      boot={onBoot}
+      renderLoading={(status) => <div>Loading LiveStore ({status.stage})...</div>}
+    >
+      <Story />
+    </LiveStoreProvider>
+  )
+}`,
+
+  todoInput: `import React from 'react'
+import { useStore } from '@livestore/react'
+import { queryDb } from '@livestore/livestore'
+import { tables, events } from './schema'
+
+// Define queries (like in TodoMVC)
+const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
+
+export const TodoInput = () => {
+  const { store } = useStore()
+  const { newTodoText } = store.useQuery(uiState$)
+
+  const updateNewTodoText = (text: string) => 
+    store.commit(events.uiStateSet({ newTodoText: text }))
+
+  const createTodo = () => {
+    if (newTodoText.trim()) {
+      store.commit(
+        events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+        events.uiStateSet({ newTodoText: '' }),
+      )
+    }
+  }
+
+  return (
+    <div>
+      <h2>Add Todo</h2>
+      <input
+        type="text"
+        placeholder="What needs to be done?"
+        value={newTodoText}
+        onChange={(e) => updateNewTodoText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            createTodo()
+          }
+        }}
+      />
+      <button onClick={createTodo}>
+        Add
+      </button>
+    </div>
+  )
+}`,
+
+  schema: `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+
+// Define tables (based on TodoMVC example)
+export const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+      completed: State.SQLite.boolean({ default: false }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    },
+  }),
+  // Client document for UI state
+  uiState: State.SQLite.clientDocument({
+    name: 'uiState',
+    schema: Schema.Struct({ 
+      newTodoText: Schema.String, 
+      filter: Schema.Literal('all', 'active', 'completed') 
+    }),
+    default: { 
+      id: SessionIdSymbol, 
+      value: { newTodoText: '', filter: 'all' } 
+    },
+  }),
+}
+
+// Define events (exactly from TodoMVC)
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'v1.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoUncompleted: Events.synced({
+    name: 'v1.TodoUncompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+  }),
+  todoClearedCompleted: Events.synced({
+    name: 'v1.TodoClearedCompleted',
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
+  }),
+  // Auto-generated client document event
+  uiStateSet: tables.uiState.set,
+}
+
+// Define materializers to map events to state
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
+  'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
+  'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
+  'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
+  'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ events, state })`
+}
+
+LiveStore works seamlessly with Storybook for React component development and testing.
+
+**Note:** This guide focuses on React. For other frameworks, adapt patterns accordingly.
+
+## Setup
+
+First, [install Storybook](https://storybook.js.org/docs/get-started/install) in your React project.
+
+## Configuration
+
+Create a decorator that wraps stories with a fresh LiveStore instance and use the TodoMVC schema for realistic examples.
+
+<Tabs>
+<TabItem label="Stories">
+<Code code={CODE.todoInputStories} lang="tsx" title="src/TodoInput.stories.tsx" />
+</TabItem>
+<TabItem label="Storybook Config">
+<Code code={CODE.storybookPreview} lang="js" title=".storybook/preview.js" />
+</TabItem>
+<TabItem label="Decorator">
+<Code code={CODE.decorator} lang="js" title="src/decorator.js" />
+</TabItem>
+<TabItem label="Component">
+<Code code={CODE.todoInput} lang="tsx" title="src/TodoInput.tsx" />
+</TabItem>
+<TabItem label="Schema">
+<Code code={CODE.schema} lang="ts" title="src/schema.ts" />
+</TabItem>
+</Tabs>
+
+

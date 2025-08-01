@@ -1,22 +1,16 @@
-import '@livestore/utils-dev/node-vitest-polyfill'
-
-import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
+import type { LeaderAheadError, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { IS_CI } from '@livestore/utils'
+import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
   Context,
   Effect,
   FetchHttpClient,
-  identity,
   Layer,
-  Logger,
-  LogLevel,
   Predicate,
   Queue,
   Schema,
@@ -24,13 +18,12 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import type { MockSyncBackend } from '../mock-sync-backend.js'
-import { makeMockSyncBackend } from '../mock-sync-backend.js'
-import { events, schema, tables } from './fixture.js'
+import type { MockSyncBackend } from '../mock-sync-backend.ts'
+import { makeMockSyncBackend } from '../mock-sync-backend.ts'
+import { events, schema, tables } from './fixture.ts'
 
 /*
 TODO:
@@ -46,7 +39,12 @@ TODO:
 - make connected state settable
 */
 
-Vitest.describe('LeaderSyncProcessor', () => {
+const withTestCtx = (args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> = {}) =>
+  Vitest.makeWithTestCtx({
+    makeLayer: () => Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer),
+  })
+
+Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -70,12 +68,13 @@ Vitest.describe('LeaderSyncProcessor', () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   // TODO property based testing to test following cases:
   // push first, then pull + latency in between (need to adjust the backend id accordingly)
   // pull first, then push + latency in between
+
   // In this test we're simulating a client leader that is behind the backend
   Vitest.scopedLive('invalid push', (test) =>
     Effect.gen(function* () {
@@ -115,7 +114,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('many local pushes', (test) =>
@@ -144,7 +143,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('concurrent pushes', (test) =>
@@ -172,7 +171,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
-    }).pipe(withCtx(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   // Duplicate local push events could e.g. caused by multiple client sessions
@@ -191,22 +190,22 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
     }).pipe(
-      withCtx(test, {
-        syncProcessor: {
-          delays: {
-            localPushProcessing: Effect.sleep(10),
-          },
-        },
-        params: {
-          localPushBatchSize: 2,
-        },
-      }),
+      withTestCtx({
+        testing: { syncProcessor: { delays: { localPushProcessing: Effect.sleep(10) } } },
+        params: { localPushBatchSize: 2 },
+      })(test),
     ),
   )
 
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
+  // - test for filtering out local push queue items with an older rebase generation
+  //   this can happen in a scenario like this
+  //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)
+  //   2) pulling from backend -> causes rebase (rebase generation 1)
+  //   3) new local push events are queued (rebase generation 1)
+  //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -216,7 +215,7 @@ class TestContext extends Context.Tag('TestContext')<
     encodeLiveStoreEvent: (
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
-    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>
+    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
     localPush: (
       ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
@@ -237,7 +236,7 @@ const LeaderThreadCtxLive = ({
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
+    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
@@ -273,7 +272,7 @@ const LeaderThreadCtxLive = ({
       const currentLiveStoreEventSequenceNumber = { current: EventSequenceNumber.ROOT }
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
-        cursor: { mergeCounter: 0, eventNum: EventSequenceNumber.ROOT },
+        cursor: EventSequenceNumber.ROOT,
       })
 
       const toEncodedLiveStoreEvent = (event: LiveStoreEvent.PartialAnyDecoded | LiveStoreEvent.AnyDecoded) => {
@@ -281,7 +280,10 @@ const LeaderThreadCtxLive = ({
           return encodeLiveStoreEvent(event)
         }
 
-        const nextNumPair = EventSequenceNumber.nextPair(currentLiveStoreEventSequenceNumber.current, false)
+        const nextNumPair = EventSequenceNumber.nextPair({
+          seqNum: currentLiveStoreEventSequenceNumber.current,
+          isClient: false,
+        })
         currentLiveStoreEventSequenceNumber.current = nextNumPair.seqNum
         return encodeLiveStoreEvent({ ...event, ...nextNumPair })
       }
@@ -299,32 +301,3 @@ const LeaderThreadCtxLive = ({
 
     return leaderContextLayer.pipe(Layer.merge(testContextLayer))
   }).pipe(Layer.unwrapScoped)
-
-const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'sync-test', skipLogUrl: false })
-
-const withCtx =
-  (
-    testContext: Vitest.TestContext,
-    {
-      suffix,
-      skipOtel = false,
-      params,
-      syncProcessor,
-    }: {
-      suffix?: string
-      params?: MakeLeaderThreadLayerParams['params']
-      syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
-      skipOtel?: boolean
-    } = {},
-  ) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 5000),
-      Effect.provide(LeaderThreadCtxLive({ syncProcessor, params })),
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.provide(Logger.pretty),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      skipOtel ? identity : Effect.provide(otelLayer),
-    )

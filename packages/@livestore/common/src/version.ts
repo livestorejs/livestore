@@ -2,7 +2,7 @@
 // import packageJson from '../package.json' with { type: 'json' }
 // export const liveStoreVersion = packageJson.version
 
-export const liveStoreVersion = '0.3.1' as const
+export const liveStoreVersion = '0.3.2-dev.13' as const
 
 /**
  * This version number is incremented whenever the internal storage format changes in a breaking way.
@@ -11,4 +11,4 @@ export const liveStoreVersion = '0.3.1' as const
  * While LiveStore is in beta, this might happen more frequently.
  * In the future, LiveStore will provide a migration path for older database files to avoid the impression of data loss.
  */
-export const liveStoreStorageFormatVersion = 4
+export const liveStoreStorageFormatVersion = 5

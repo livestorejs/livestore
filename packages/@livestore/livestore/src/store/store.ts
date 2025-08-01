@@ -1,12 +1,7 @@
 import {
+  type Bindable,
   type ClientSession,
   type ClientSessionSyncProcessor,
-  type ParamsObject,
-  type PreparedBindValues,
-  type QueryBuilder,
-  UnexpectedError,
-} from '@livestore/common'
-import {
   Devtools,
   getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
@@ -16,15 +11,29 @@ import {
   isQueryBuilder,
   liveStoreVersion,
   makeClientSessionSyncProcessor,
+  type PreparedBindValues,
   prepareBindValues,
+  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Inspectable,
+  Option,
+  OtelTracer,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -34,15 +43,15 @@ import type {
   ReactivityGraph,
   ReactivityGraphContext,
   SignalDef,
-} from '../live-queries/base-class.js'
-import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
-import { queryDb } from '../live-queries/db-query.js'
-import type { Ref } from '../reactive.js'
-import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { ReferenceCountedSet } from '../utils/data-structures.js'
-import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
-import type { StackInfo } from '../utils/stack-info.js'
+} from '../live-queries/base-class.ts'
+import { makeReactivityGraph } from '../live-queries/base-class.ts'
+import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
+import { queryDb } from '../live-queries/db-query.ts'
+import type { Ref } from '../reactive.ts'
+import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
+import { ReferenceCountedSet } from '../utils/data-structures.ts'
+import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
@@ -50,13 +59,13 @@ import type {
   StoreOptions,
   StoreOtel,
   Unsubscribe,
-} from './store-types.js'
+} from './store-types.ts'
 
 if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> extends Inspectable.Class {
+export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper
@@ -69,6 +78,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
   tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
+
+  /** Tracks whether the store has been shut down */
+  private isShutdown = false
 
   private effectContext: {
     runtime: Runtime.Runtime<Scope.Scope>
@@ -164,6 +176,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             for (const table of writeTables) {
               writeTablesForEvent.add(table)
             }
+
+            this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
           }
         }
 
@@ -195,6 +209,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       span: syncSpan,
       params: {
         leaderPushBatchSize: params.leaderPushBatchSize,
+        simulation: params.simulation?.clientSessionSyncProcessor,
       },
       confirmUnsavedChanges,
     })
@@ -281,6 +296,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     return this.clientSession.clientId
   }
 
+  private checkShutdown = (operation: string): void => {
+    if (this.isShutdown) {
+      throw new UnexpectedError({
+        cause: `Store has been shut down (while performing "${operation}").`,
+        note: `You cannot perform this operation after the store has been shut down.`,
+      })
+    }
+  }
+
   /**
    * Subscribe to the results of a query
    * Returns a function to cancel the subscription.
@@ -308,8 +332,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
       stackInfo?: StackInfo
     },
-  ): Unsubscribe =>
-    this.otel.tracer.startActiveSpan(
+  ): Unsubscribe => {
+    this.checkShutdown('subscribe')
+
+    return this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
       { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
@@ -368,6 +394,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         return unsubscribe
       },
     )
+  }
 
   subscribeStream = <TResult>(
     query$: LiveQueryDef<TResult>,
@@ -413,13 +440,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | LiveQuery<TResult>
       | LiveQueryDef<TResult>
       | SignalDef<TResult>
-      | { query: string; bindValues: ParamsObject },
+      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
+    this.checkShutdown('query')
+
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
+      const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
+      if (query.schema) {
+        return Schema.decodeSync(query.schema)(res)
+      }
+      return res
     } else if (isQueryBuilder(query)) {
       const ast = query[QueryBuilderAstSymbol]
       if (ast._tag === 'RowQuery') {
@@ -433,6 +466,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
+
+      // Replace SessionIdSymbol in bind values before executing the query
+      if (sqlRes.bindValues) {
+        replaceSessionIdSymbol(sqlRes.bindValues, this.clientSession.sessionId)
+      }
+
       const rawRes = this.sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
@@ -468,6 +507,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   setSignal = <T>(signalDef: SignalDef<T>, value: T | ((prev: T) => T)): void => {
+    this.checkShutdown('setSignal')
+
     const signalRef = signalDef.make(this.reactivityGraph.context!)
     const newValue: T = typeof value === 'function' ? (value as any)(signalRef.value.get()) : value
     signalRef.value.set(newValue)
@@ -552,6 +593,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       ) => void,
     ): void
   } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    this.checkShutdown('commit')
+
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
     for (const event of events) {
@@ -655,10 +698,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('events')
+
     return notYetImplemented(`store.events() is not yet implemented but planned soon`)
   }
 
   eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('eventsStream')
+
     return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
   }
 
@@ -667,6 +714,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * We might need a better solution for this. Let's see.
    */
   manualRefresh = (options?: { label?: string }) => {
+    this.checkShutdown('manualRefresh')
+
     const { label } = options ?? {}
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
@@ -685,10 +734,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = async (cause?: Cause.Cause<UnexpectedError>) => {
-    await this.clientSession
-      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
-      .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+  shutdownPromise = async (cause?: UnexpectedError) => {
+    this.checkShutdown('shutdownPromise')
+
+    this.isShutdown = true
+    await this.shutdown(cause ? Cause.fail(cause) : undefined).pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+  }
+
+  /**
+   * Shuts down the store and closes the client session.
+   *
+   * This is called automatically when the store was created using the React or Effect API.
+   */
+  shutdown = (cause?: Cause.Cause<UnexpectedError>): Effect.Effect<void> => {
+    this.checkShutdown('shutdown')
+
+    this.isShutdown = true
+    return this.clientSession.shutdown(
+      cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
+    )
   }
 
   /**

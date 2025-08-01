@@ -5,9 +5,9 @@ import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
 import { Chunk, Effect, Stream } from 'effect'
 
-import * as ChildProcessWorker from '../ChildProcessWorker.js'
-import type { WorkerMessage } from './schema.js'
-import { GetPersonById, GetUserById, InitialMessage, Person, User } from './schema.js'
+import * as ChildProcessWorker from '../ChildProcessWorker.ts'
+import type { WorkerMessage } from './schema.ts'
+import { GetPersonById, GetUserById, InitialMessage, Person, User } from './schema.ts'
 
 const WorkerLive = ChildProcessWorker.layer(() =>
   ChildProcess.fork(

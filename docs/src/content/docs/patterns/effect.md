@@ -24,3 +24,8 @@ import { Schema } from '@livestore/livestore'
 // which is equivalent to (if you have `effect` as a dependency)
 import { Schema } from 'effect'
 ```
+
+## `Equal` and `Hash` Traits
+
+LiveStore's reactive primitives (`LiveQueryDef` and `SignalDef`) implement Effect's `Equal` and `Hash` traits, enabling efficient integration with Effect's data structures and collections.
+```

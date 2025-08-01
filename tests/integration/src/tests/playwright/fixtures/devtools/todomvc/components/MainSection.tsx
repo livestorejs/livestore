@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y: testing */
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import React from 'react'
@@ -38,7 +39,7 @@ export const MainSection: React.FC = () => {
               <button
                 className="destroy"
                 onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-              ></button>
+              />
             </div>
           </li>
         ))}

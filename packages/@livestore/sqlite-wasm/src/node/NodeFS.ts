@@ -1,13 +1,12 @@
 /// <reference types="node" />
 
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import * as fs from 'node:fs'
 import path from 'node:path'
 
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
-import { FacadeVFS } from '../FacadeVFS.js'
+import { FacadeVFS } from '../FacadeVFS.ts'
 
 interface NodeFsFile {
   pathname: string
@@ -17,12 +16,15 @@ interface NodeFsFile {
 
 export class NodeFS extends FacadeVFS {
   private mapIdToFile = new Map<number, NodeFsFile>()
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private lastError: Error | null = null
   private readonly directory: string
-  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string) {
+  private readonly onShutdown: () => void
+  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string, onShutdown: () => void) {
     super(name, sqlite3)
 
     this.directory = directory
+    this.onShutdown = onShutdown
   }
 
   getFilename(fileId: number): string {
@@ -102,6 +104,8 @@ export class NodeFS extends FacadeVFS {
 
   jClose(fileId: number): number {
     try {
+      this.onShutdown()
+
       const file = this.mapIdToFile.get(fileId)
       if (!file) return VFS.SQLITE_OK
 
@@ -163,6 +167,8 @@ export class NodeFS extends FacadeVFS {
 
   jDelete(zName: string, _syncDir: number): number {
     try {
+      this.onShutdown()
+
       const pathname = path.resolve(this.directory, zName)
       fs.unlinkSync(pathname)
       return VFS.SQLITE_OK
@@ -185,6 +191,8 @@ export class NodeFS extends FacadeVFS {
   }
 
   deleteDb(fileName: string) {
+    this.onShutdown()
+
     fs.unlinkSync(path.join(this.directory, fileName))
   }
 }

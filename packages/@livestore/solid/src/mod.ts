@@ -1,2 +1,2 @@
-export { getStore } from './store.js'
-export { query } from './query.js'
+export { query } from './query.ts'
+export { getStore } from './store.ts'

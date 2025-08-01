@@ -1,10 +1,10 @@
 import type { Effect, HttpClient, Option, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type { UnexpectedError } from '../adapter-types.js'
-import type { InitialSyncOptions } from '../leader-thread/types.js'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import type * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import type { UnexpectedError } from '../adapter-types.ts'
+import type { InitialSyncOptions } from '../leader-thread/types.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
@@ -31,6 +31,7 @@ export type SyncOptions = {
   onSyncError?: 'shutdown' | 'ignore'
 }
 
+// TODO rename to `SyncProviderClientConstructor`
 export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
   args: MakeBackendArgs,
 ) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
@@ -41,6 +42,7 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
 // - dynamic sync backend data;
 //   - data center location (e.g. colo on CF workers)
 
+// TODO rename to `SyncProviderClient`
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.
@@ -80,6 +82,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
   reason: Schema.Union(
     Schema.TaggedStruct('Unexpected', {
@@ -92,10 +95,12 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
   ),
 }) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
   message: Schema.String,
 }) {}
 
+// TODO gt rid of this error in favour of SyncError
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.EventSequenceNumber,
   providedNum: EventSequenceNumber.EventSequenceNumber,

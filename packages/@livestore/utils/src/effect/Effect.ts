@@ -5,8 +5,8 @@ import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isPromise } from '../index.js'
-import { UnknownError } from './Error.js'
+import { isPromise } from '../mod.ts'
+import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
 
@@ -37,6 +37,11 @@ export const scopeWithCloseable = <R, E, A>(
     return yield* fn(scope).pipe(Scope.extend(scope))
   })
 
+export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
+  | TResult
+  | Promise<TResult>
+  | Effect.Effect<TResult, TError, TContext>
+
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E, never>
@@ -57,7 +62,10 @@ export const tryAll = <Res>(
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
 
-export const addFinalizerLog = (...msgs: any[]) => Effect.addFinalizer(() => Effect.log(...msgs))
+export const addFinalizerLog = (...msgs: any[]) =>
+  Effect.addFinalizer((exit) =>
+    Effect.log(...msgs, exit._tag === 'Success' ? 'with success' : `with failure: ${Cause.pretty(exit.cause)}`),
+  )
 
 export const logBefore =
   (...msgs: any[]) =>
@@ -206,12 +214,12 @@ export const withPerformanceMeasure =
   (meaureLabel: string) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.acquireUseRelease(
-      Effect.sync(() => performance.mark(`${meaureLabel}:start`)),
+      Effect.sync(() => globalThis.performance.mark(`${meaureLabel}:start`)),
       () => eff,
       () =>
         Effect.sync(() => {
-          performance.mark(`${meaureLabel}:end`)
-          performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
+          globalThis.performance.mark(`${meaureLabel}:end`)
+          globalThis.performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
         }),
     )
 

@@ -28,7 +28,8 @@ dist
 
 _tmp*
 
-.vinxi
+.nitro
+.tanstack
 .output
 
 scripts/.completions

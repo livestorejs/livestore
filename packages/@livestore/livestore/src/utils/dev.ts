@@ -1,7 +1,7 @@
-import { isDevEnv } from '@livestore/utils'
+import type { SqliteDb } from '@livestore/common'
+import { prettyBytes } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
-/* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
   fileName: string,
@@ -27,11 +27,17 @@ export const downloadURL = (data: string, fileName: string) => {
 }
 
 export const exposeDebugUtils = () => {
-  if (isDevEnv()) {
-    globalThis.__debugLiveStoreUtils = {
-      downloadBlob,
-      runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-      runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
-    }
+  globalThis.__debugLiveStoreUtils = {
+    downloadBlob,
+    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
+    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    dumpDb: (db: SqliteDb) => {
+      const tables = db.select<{ name: string }>(`SELECT name FROM sqlite_master WHERE type='table'`)
+      for (const table of tables) {
+        const rows = db.select<any>(`SELECT * FROM ${table.name}`)
+        console.log(`Table: ${table.name} (${prettyBytes(table.name.length)}, ${rows.length} rows)`)
+        console.table(rows)
+      }
+    },
   }
 }
