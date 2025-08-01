@@ -1,13 +1,13 @@
 import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
-import { createAPIFileRoute } from '@tanstack/react-start/api'
+import { createServerFileRoute } from '@tanstack/react-start/server'
 
 import { makeDb } from '@/server/db.ts'
 
 // You can change this to your own ElectricSQL endpoint
 const electricHost = 'http://localhost:30000'
 
-export const APIRoute = createAPIFileRoute('/api/electric')({
+export const ServerRoute = createServerFileRoute('/api/electric').methods({
   // Client pulls from the server to get the latest mutation events
   GET: async ({ request }) => {
     const searchParams = new URL(request.url).searchParams

@@ -1,0 +1,39 @@
+// @ts-check
+import path from 'node:path'
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
+import { defineConfig } from 'vite'
+
+const __dirname = import.meta.dirname
+
+const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
+
+// https://vitejs.dev/config
+export default defineConfig({
+  server: {
+    port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+    fs: {
+      strict: false,
+    },
+  },
+  worker: { format: 'es' },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
+  optimizeDeps: {
+    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+    exclude: ['@livestore/wa-sqlite'],
+  },
+  plugins: [
+    tanstackStart({ customViteReactPlugin: true }),
+    viteReact(),
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    shouldAnalyze
+      ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
+      : undefined,
+  ],
+})

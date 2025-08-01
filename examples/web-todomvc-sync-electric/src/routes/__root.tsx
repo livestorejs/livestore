@@ -8,7 +8,8 @@ import type * as React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
-import { schema } from '@/livestore/schema.js'
+import { schema } from '@/livestore/schema.ts'
+import { getStoreId } from '@/util/store-id.ts'
 
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 
@@ -55,16 +56,3 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
 export const Route = createRootRoute({
   component: RootComponent,
 })
-
-const getStoreId = () => {
-  if (typeof window === 'undefined') return 'unused'
-
-  const searchParams = new URLSearchParams(window.location.search)
-  const storeId = searchParams.get('storeId')
-  if (storeId !== null) return storeId
-
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
-
-  window.location.search = searchParams.toString()
-}

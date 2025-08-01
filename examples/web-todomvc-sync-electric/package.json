@@ -12,7 +12,7 @@
     "@livestore/sync-electric": "0.3.2-dev.11",
     "@livestore/wa-sqlite": "1.0.5",
     "@overengineering/fps-meter": "0.2.1",
-    "@tanstack/react-start": "1.129.8",
+    "@tanstack/react-start": "1.130.10",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-error-boundary": "6.0.0",
@@ -20,7 +20,9 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.2-dev.11",
-    "@tanstack/react-router": "^1.129.8",
+    "@tanstack/react-router": "^1.130.10",
+    "@tanstack/router-devtools": "^1.130.10",
+    "@tanstack/router-plugin": "^1.130.10",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -28,15 +30,14 @@
     "postgres": "^3.4.7",
     "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "^5.8.3",
-    "vinxi": "^0.5.8",
     "vite": "^7.0.6"
   },
   "engines": {
     "node": ">=23.0.0"
   },
   "scripts": {
-    "build": "vinxi build",
-    "dev": "vinxi dev",
-    "preview": "vinxi start"
+    "build": "vite build",
+    "dev": "vite dev",
+    "start": "vite preview"
   }
 }
