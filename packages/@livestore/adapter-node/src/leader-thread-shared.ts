@@ -7,7 +7,7 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -93,6 +93,11 @@ export const makeLeaderThread = ({
 
     // Might involve some async work, so we're running them concurrently
     const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
+
+    if (storage.type === 'in-memory' && storage.importSnapshot !== undefined) {
+      dbState.import(storage.importSnapshot)
+      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+    }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({ devtools, dbState, dbEventlog, storeId, clientId })
 

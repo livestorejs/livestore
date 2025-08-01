@@ -12,6 +12,11 @@ export const WorkerArgv = Schema.parseJson(
 
 export const StorageTypeInMemory = Schema.Struct({
   type: Schema.Literal('in-memory'),
+  /**
+   * Only works with single-threaded leader thread for now.
+   * Should be mostly used for testing.
+   */
+  importSnapshot: Schema.optional(Schema.Uint8Array),
 })
 
 export type StorageTypeInMemory = typeof StorageTypeInMemory.Type
