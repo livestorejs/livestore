@@ -30,7 +30,7 @@ import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
 const sqlite3Promise = loadSqlite3Wasm()
 
 export interface InMemoryAdapterOptions {
-  importSnapshot?: Uint8Array
+  importSnapshot?: Uint8Array<ArrayBuffer>
   sync?: SyncOptions
   /**
    * The client ID to use for the adapter.
@@ -141,7 +141,7 @@ export interface MakeLeaderThreadArgs {
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
   syncPayload: Schema.JsonValue | undefined
-  importSnapshot: Uint8Array | undefined
+  importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
 }

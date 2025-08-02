@@ -16,7 +16,7 @@ export const StorageTypeInMemory = Schema.Struct({
    * Only works with single-threaded leader thread for now.
    * Should be mostly used for testing.
    */
-  importSnapshot: Schema.optional(Schema.Uint8Array),
+  importSnapshot: Schema.optional(Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>),
 })
 
 export type StorageTypeInMemory = typeof StorageTypeInMemory.Type
@@ -115,7 +115,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
-  success: Transferable.Uint8Array,
+  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
   failure: UnexpectedError,
 }) {}
 
@@ -124,7 +124,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array,
+      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
     failure: UnexpectedError,
@@ -135,7 +135,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   'ExportEventlog',
   {
     payload: {},
-    success: Transferable.Uint8Array,
+    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
     failure: UnexpectedError,
   },
 ) {}

@@ -8,7 +8,7 @@
     "@livestore/livestore": "0.3.2-dev.13",
     "@livestore/peer-deps": "0.3.2-dev.13",
     "@livestore/react": "0.3.2-dev.13",
-    "@livestore/wa-sqlite": "1.0.8-dev.3",
+    "@livestore/wa-sqlite": "1.0.8-dev.4",
     "@overengineering/fps-meter": "0.2.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -16,10 +16,10 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.2-dev.13",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^4.7.0",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "vite": "^7.0.6"
   },
   "engines": {

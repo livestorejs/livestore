@@ -170,7 +170,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   meta: Schema.Struct({
     sessionChangeset: Schema.Union(
       Schema.TaggedStruct('sessionChangeset', {
-        data: Schema.Uint8Array,
+        data: Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
         debug: Schema.Any.pipe(Schema.optional),
       }),
       Schema.TaggedStruct('no-op', {}),

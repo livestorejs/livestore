@@ -90,7 +90,9 @@ export type MigrationOptions =
     }
   | {
       strategy: 'manual'
-      migrate: (oldDb: Uint8Array) => Uint8Array | Promise<Uint8Array> | Effect.Effect<Uint8Array, unknown>
+      migrate: (
+        oldDb: Uint8Array<ArrayBuffer>,
+      ) => Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>> | Effect.Effect<Uint8Array<ArrayBuffer>, unknown>
     }
 
 export type MigrationHooks = {

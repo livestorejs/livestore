@@ -55,10 +55,13 @@ export const makeClientSessionSyncProcessor = ({
     options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => {
     writeTables: Set<string>
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } | { _tag: 'unset' }
+    sessionChangeset:
+      | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
+      | { _tag: 'no-op' }
+      | { _tag: 'unset' }
     materializerHash: Option.Option<number>
   }
-  rollback: (changeset: Uint8Array) => void
+  rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
   params: {

@@ -122,7 +122,7 @@ export type MaterializeEvent = (
   },
 ) => Effect.Effect<
   {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
     hash: Option.Option<number>
   },
   SqliteError | UnexpectedError

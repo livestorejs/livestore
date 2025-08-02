@@ -25,12 +25,12 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   select<T>(queryBuilder: QueryBuilder<T, any, any>): T
 
-  export(): Uint8Array
-  import: (data: Uint8Array | SqliteDb<TReq>) => void
+  export(): Uint8Array<ArrayBuffer>
+  import: (data: Uint8Array<ArrayBuffer> | SqliteDb<TReq>) => void
   close(): void
   destroy(): void
   session(): SqliteDbSession
-  makeChangeset: (data: Uint8Array) => SqliteDbChangeset
+  makeChangeset: (data: Uint8Array<ArrayBuffer>) => SqliteDbChangeset
 }
 
 export type SqliteDebugInfo = { head: EventSequenceNumber.EventSequenceNumber }
@@ -56,7 +56,7 @@ export interface PreparedStatement {
 }
 
 export type SqliteDbSession = {
-  changeset: () => Uint8Array | undefined
+  changeset: () => Uint8Array<ArrayBuffer> | undefined
   finish: () => void
 }
 

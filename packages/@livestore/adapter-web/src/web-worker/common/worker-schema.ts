@@ -103,7 +103,7 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
-  success: Transferable.Uint8Array,
+  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
   failure: UnexpectedError,
 }) {}
 
@@ -111,7 +111,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   'ExportEventlog',
   {
     payload: {},
-    success: Transferable.Uint8Array,
+    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
     failure: UnexpectedError,
   },
 ) {}
@@ -121,7 +121,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array,
+      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
     failure: UnexpectedError,

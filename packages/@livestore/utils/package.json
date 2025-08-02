@@ -25,8 +25,8 @@
   },
   "devDependencies": {
     "@effect/cli": "^0.69.0",
-    "@effect/cluster": "^0.46.0",
-    "@effect/experimental": "^0.54.0",
+    "@effect/cluster": "^0.46.2",
+    "@effect/experimental": "^0.54.3",
     "@effect/opentelemetry": "^0.56.0",
     "@effect/platform": "^0.90.0",
     "@effect/platform-browser": "^0.70.0",
@@ -34,7 +34,7 @@
     "@effect/platform-node": "^0.94.0",
     "@effect/printer": "^0.45.0",
     "@effect/printer-ansi": "^0.45.0",
-    "@effect/rpc": "^0.68.0",
+    "@effect/rpc": "^0.68.1",
     "@effect/sql": "^0.44.0",
     "@effect/typeclass": "^0.36.0",
     "@effect/vitest": "^0.25.0",
@@ -43,8 +43,8 @@
     "@types/bun": "^1.2.19",
     "@types/jsdom": "^21.1.7",
     "@types/node": "catalog:",
-    "@types/web": "^0.0.254",
-    "effect": "^3.17.2",
+    "@types/web": "^0.0.257",
+    "effect": "^3.17.4",
     "jsdom": "^26.1.0",
     "vitest": "catalog:"
   },
@@ -56,8 +56,8 @@
   "license": "Apache-2.0",
   "peerDependencies": {
     "@effect/cli": "^0.69.0",
-    "@effect/cluster": "^0.46.0",
-    "@effect/experimental": "^0.54.0",
+    "@effect/cluster": "^0.46.2",
+    "@effect/experimental": "^0.54.3",
     "@effect/opentelemetry": "^0.56.0",
     "@effect/platform": "^0.90.0",
     "@effect/platform-browser": "^0.70.0",
@@ -65,12 +65,12 @@
     "@effect/platform-node": "^0.94.0",
     "@effect/printer": "^0.45.0",
     "@effect/printer-ansi": "^0.45.0",
-    "@effect/rpc": "^0.68.0",
+    "@effect/rpc": "^0.68.1",
     "@effect/sql": "^0.44.0",
     "@effect/typeclass": "^0.36.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.1",
-    "effect": "^3.17.2"
+    "effect": "^3.17.4"
   },
   "publishConfig": {
     "access": "public",

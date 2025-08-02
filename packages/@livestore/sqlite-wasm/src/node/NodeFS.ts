@@ -67,7 +67,7 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
       if (!file?.fileHandle) return VFS.SQLITE_IOERR_READ
@@ -87,7 +87,7 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
       if (!file?.fileHandle) return VFS.SQLITE_IOERR_WRITE

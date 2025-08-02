@@ -119,7 +119,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
     const nBytes = file.accessHandle.read(pData.subarray(), {
       at: HEADER_OFFSET_DATA + iOffset,
@@ -131,7 +131,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
     const nBytes = file.accessHandle.write(pData.subarray(), {
       at: HEADER_OFFSET_DATA + iOffset,
@@ -261,7 +261,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     const files = [] as [string, FileSystemFileHandle][]
     for await (const [name, handle] of this.#directoryHandle!) {
       if (handle.kind === 'file') {
-        files.push([name, handle])
+        files.push([name, handle as FileSystemFileHandle])
       }
     }
 
