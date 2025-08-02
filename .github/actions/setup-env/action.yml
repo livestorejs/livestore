@@ -3,6 +3,11 @@ description: Set up the environment with Nix and direnv.
 runs:
   using: composite
   steps:
+    - name: Check Nix flake inputs
+      uses: DeterminateSystems/flake-checker-action@main
+      with:
+        flake-lock-path: ./nix/flake.lock
+
     - name: Install Determinate Nix
       uses: DeterminateSystems/determinate-nix-action@v3
 
@@ -10,15 +15,17 @@ runs:
       # NOTE Flakehub cache is still faster than magic-nix-cache-action
       uses: DeterminateSystems/flakehub-cache-action@main
 
-    - name: Cache node_modules
+    - name: Get pnpm store directory
+      id: pnpm-store
+      shell: bash
+      run: echo "DIR_PATH=$(nix develop ./nix --command pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+    - name: Cache pnpm store
       uses: actions/cache@v4
       with:
-        path: |
-          node_modules
-          .pnpm-store
-        key: node_modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
-        restore-keys: |
-          node_modules-${{ runner.os }}-
+       path: ${{ steps.pnpm-store.outputs.DIR_PATH }}
+       key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+       restore-keys: ${{ runner.os }}-pnpm-store-
 
     - name: Cache direnv setup
       uses: actions/cache@v4
