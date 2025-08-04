@@ -30,24 +30,15 @@
       in
       {
 
-        packages = {
-          find-free-port = pkgsUnstable.callPackage ./find-free-port.nix { };
-        };
-
         devShell = with pkgs; pkgs.mkShell {
 
           buildInputs = [
             pkgsUnstable.nodejs_24
             corepack
             pkgsUnstable.bun
-            pkgsUnstable.esbuild
-            watchman
             caddy
-            act
             pkgsUnstable.deno
             jq # Needed by some scripts
-            
-            self.packages.${system}.find-free-port
 
             # needed for Expo
             (lib.optionals stdenv.isDarwin [
