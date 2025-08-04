@@ -123,7 +123,6 @@ export const makeClientSessionSyncProcessor = ({
         }),
       )
     })
-    yield* Effect.annotateCurrentSpan({ batchSize: encodedEventDefs.length })
 
     const mergeResult = SyncState.merge({
       syncState: syncStateRef.current,
@@ -132,11 +131,14 @@ export const makeClientSessionSyncProcessor = ({
       isEqualEvent: LiveStoreEvent.isEqualEncoded,
     })
 
+    yield* Effect.annotateCurrentSpan({
+      batchSize: encodedEventDefs.length,
+      ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
+    })
+
     if (mergeResult._tag === 'unexpected-error') {
       return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
     }
-
-    if (TRACE_VERBOSE) yield* Effect.annotateCurrentSpan({ mergeResult: JSON.stringify(mergeResult) })
 
     if (mergeResult._tag !== 'advance') {
       return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
