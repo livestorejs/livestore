@@ -11,7 +11,7 @@
     "@livestore/react": "0.3.2-dev.13",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native/assets-registry": "0.80.2",
-    "@react-navigation/native": "7.1.14",
+    "@react-navigation/native": "7.1.16",
     "expo": "53.0.20",
     "expo-application": "6.1.5",
     "expo-asset": "11.1.7",
@@ -29,7 +29,7 @@
     "expo-system-ui": "5.0.10",
     "expo-updates": "0.28.17",
     "expo-web-browser": "14.2.0",
-    "lucide-react-native": "0.525.0",
+    "lucide-react-native": "0.536.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -46,12 +46,12 @@
     "@babel/plugin-syntax-import-attributes": "^7.27.1",
     "@babel/runtime": "^7.28.2",
     "@faker-js/faker": "^9.9.0",
-    "@types/react": "^19.1.8",
+    "@types/react": "^19.1.9",
     "@types/react-test-renderer": "^19.1.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",
-    "react-test-renderer": "^19.1.0",
-    "typescript": "^5.8.3"
+    "react-test-renderer": "^19.1.1",
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=23.0.0"

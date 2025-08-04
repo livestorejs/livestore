@@ -52,7 +52,7 @@ export const validateSnapshot = (snapshot: Uint8Array) => {
   }
 }
 
-export const makeExport = (exportFn: () => Uint8Array) => () => {
+export const makeExport = (exportFn: () => Uint8Array<ArrayBuffer>) => () => {
   const snapshot = exportFn()
   validateSnapshot(snapshot)
   return snapshot

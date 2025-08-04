@@ -182,7 +182,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
 
         let sessionChangeset:
-          | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
+          | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
           | { _tag: 'no-op' }
           | { _tag: 'unset' } = { _tag: 'unset' }
 

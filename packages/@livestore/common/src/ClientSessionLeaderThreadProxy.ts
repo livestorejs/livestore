@@ -23,8 +23,8 @@ export interface ClientSessionLeaderThreadProxy {
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
   }
-  export: Effect.Effect<Uint8Array, UnexpectedError>
-  getEventlogData: Effect.Effect<Uint8Array, UnexpectedError>
+  export: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
+  getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
   getSyncState: Effect.Effect<SyncState, UnexpectedError>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
   sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
