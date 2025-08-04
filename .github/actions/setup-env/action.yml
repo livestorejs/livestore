@@ -10,16 +10,15 @@ runs:
       # NOTE Flakehub cache is still faster than magic-nix-cache-action
       uses: DeterminateSystems/flakehub-cache-action@main
 
-    # TODO: Disable node_modules caching for now until fixed https://github.com/livestorejs/livestore/issues/529
-    # - name: Cache node_modules
-    #   uses: actions/cache@v4
-    #   with:
-    #     path: |
-    #       node_modules
-    #       .pnpm-store
-    #     key: node_modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
-    #     restore-keys: |
-    #       node_modules-${{ runner.os }}-
+    - name: Cache node_modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          node_modules
+          .pnpm-store
+        key: node_modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
+        restore-keys: |
+          node_modules-${{ runner.os }}-
 
     - name: Cache direnv setup
       uses: actions/cache@v4
