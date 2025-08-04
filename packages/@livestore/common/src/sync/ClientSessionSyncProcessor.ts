@@ -367,12 +367,7 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
-  ) => Effect.Effect<
-    {
-      writeTables: Set<string>
-    },
-    never
-  >
+  ) => Effect.Effect<{ writeTables: Set<string> }>
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
    * Only used for debugging / observability.
