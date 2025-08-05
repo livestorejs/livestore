@@ -60,7 +60,7 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
 
       process.env.TEST_RUN_ID = testRunId
 
-      const serverPort = Math.floor(Math.random() * 10000) + 50000
+      const serverPort = Math.floor(Math.random() * 10_000) + 50_000
       process.env.LOGGER_SERVER_PORT = String(serverPort)
 
       return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
