@@ -11,7 +11,11 @@ export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly primaryKey: boolean
 }
 
-export const isColumnDefinition = (value: unknown): value is ColumnDefinition<any, any> => {
+export declare namespace ColumnDefinition {
+  export type Any = ColumnDefinition<any, any>
+}
+
+export const isColumnDefinition = (value: unknown): value is ColumnDefinition.Any => {
   const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
   return (
     typeof value === 'object' &&
