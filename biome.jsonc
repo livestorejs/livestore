@@ -73,6 +73,9 @@
           "level": "warn"
         },
         "useYield": "off"
+      },
+      "nursery": {
+        "useNumericSeparators": "error"
       }
     }
   },
