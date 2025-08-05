@@ -24,14 +24,14 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
-        "mergeResult": "advance",
+        "mergeResultTag": "advance",
       },
     },
     {
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
-        "mergeResult": "advance",
+        "mergeResultTag": "advance",
       },
     },
     {
@@ -264,14 +264,14 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
-        "mergeResult": "advance",
+        "mergeResultTag": "advance",
       },
     },
     {
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
-        "mergeResult": "advance",
+        "mergeResultTag": "advance",
       },
     },
     {
