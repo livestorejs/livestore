@@ -25,9 +25,7 @@ describe('table function overloads', () => {
       completed: Schema.Boolean,
     }).annotations({ identifier: 'TodoItem' })
 
-    const todosTable = State.SQLite.table({
-      schema: TodoSchema,
-    })
+    const todosTable = State.SQLite.table({ schema: TodoSchema })
 
     expect(todosTable.sqliteDef.name).toBe('TodoItem')
   })
@@ -42,9 +40,7 @@ describe('table function overloads', () => {
       identifier: 'TodoItem',
     })
 
-    const todosTable = State.SQLite.table({
-      schema: TodoSchema,
-    })
+    const todosTable = State.SQLite.table({ schema: TodoSchema })
 
     expect(todosTable.sqliteDef.name).toBe('todos')
   })
@@ -56,11 +52,9 @@ describe('table function overloads', () => {
       completed: Schema.Boolean,
     })
 
-    expect(() =>
-      State.SQLite.table({
-        schema: TodoSchema,
-      }),
-    ).toThrow('When using schema without explicit name, the schema must have a title or identifier annotation')
+    expect(() => State.SQLite.table({ schema: TodoSchema })).toThrow(
+      'When using schema without explicit name, the schema must have a title or identifier annotation',
+    )
   })
 
   it('should work with columns parameter', () => {
@@ -212,6 +206,13 @@ describe('table function overloads', () => {
     type AgeColumn = typeof userTable.sqliteDef.columns.age
     type ActiveColumn = typeof userTable.sqliteDef.columns.active
     type MetadataColumn = typeof userTable.sqliteDef.columns.metadata
+
+    // Should derive proper column schema
+    expect((userTable.rowSchema as any).fields.age.toString()).toMatchInlineSnapshot(`"number"`)
+    expect((userTable.rowSchema as any).fields.active.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
+    expect((userTable.rowSchema as any).fields.metadata.toString()).toMatchInlineSnapshot(
+      `"(parseJson <-> { readonly [x: string]: unknown })"`,
+    )
 
     // These should compile without errors
     const _idCheck: IdColumn['schema']['Type'] = 'string'

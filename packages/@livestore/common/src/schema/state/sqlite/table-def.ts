@@ -33,6 +33,7 @@ export type TableDef<
   TOptions extends TableOptions = TableOptions,
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
   // as we don't want the alias type for users to show up, so we're redefining it here
+  // TODO adjust this to `TSchema = Schema.TypeLiteral<` but requires some advance type-level work
   TSchema = Schema.Schema<
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
@@ -67,6 +68,76 @@ export type TableOptions = {
   readonly isClientDocumentTable: boolean
 }
 
+/**
+ * Creates a SQLite table definition from columns or an Effect Schema.
+ *
+ * This function supports two main ways to define a table:
+ * 1. Using explicit column definitions
+ * 2. Using an Effect Schema (either the `name` property needs to be provided or the schema needs to have a title/identifier)
+ *
+ * ```ts
+ * // Using explicit columns
+ * const usersTable = State.SQLite.table({
+ *   name: 'users',
+ *   columns: {
+ *     id: State.SQLite.text({ primaryKey: true }),
+ *     name: State.SQLite.text({ nullable: false }),
+ *     email: State.SQLite.text({ nullable: false }),
+ *     age: State.SQLite.integer({ nullable: true }),
+ *   },
+ * })
+ * ```
+ *
+ * ```ts
+ * // Using Effect Schema with annotations
+ * import { Schema } from '@livestore/utils/effect'
+ *
+ * const UserSchema = Schema.Struct({
+ *   id: Schema.Int.pipe(State.SQLite.withPrimaryKey).pipe(State.SQLite.withAutoIncrement),
+ *   email: Schema.String.pipe(State.SQLite.withUnique),
+ *   name: Schema.String,
+ *   active: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
+ *   createdAt: Schema.optional(Schema.Date),
+ * })
+ *
+ * // Option 1: With explicit name
+ * const usersTable = State.SQLite.table({
+ *   name: 'users',
+ *   schema: UserSchema,
+ * })
+ *
+ * // Option 2: With name from schema annotation (title or identifier)
+ * const AnnotatedUserSchema = UserSchema.annotations({ title: 'users' })
+ * const usersTable2 = State.SQLite.table({
+ *   schema: AnnotatedUserSchema,
+ * })
+ * ```
+ *
+ * ```ts
+ * // Adding indexes
+ * const PostSchema = Schema.Struct({
+ *   id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+ *   title: Schema.String,
+ *   authorId: Schema.String,
+ *   createdAt: Schema.Date,
+ * }).annotations({ identifier: 'posts' })
+ *
+ * const postsTable = State.SQLite.table({
+ *   schema: PostSchema,
+ *   indexes: [
+ *     { name: 'idx_posts_author', columns: ['authorId'] },
+ *     { name: 'idx_posts_created', columns: ['createdAt'], isUnique: false },
+ *   ],
+ * })
+ * ```
+ *
+ * @remarks
+ * - Primary key columns are automatically non-nullable
+ * - Columns with `State.SQLite.withUnique` annotation automatically get unique indexes
+ * - The `State.SQLite.withAutoIncrement` annotation only works with integer primary keys
+ * - Default values can be literal values or SQL expressions
+ * - When using Effect Schema without explicit name, the schema must have a title or identifier annotation
+ */
 // Overload 1: With columns
 export function table<
   TName extends string,
