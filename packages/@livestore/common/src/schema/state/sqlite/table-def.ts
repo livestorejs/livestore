@@ -1,7 +1,7 @@
 import { type Nullable, shouldNeverHappen, type Writeable } from '@livestore/utils'
 import { Option, Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
-import { ColumnType, PrimaryKeyId } from './column-annotations.ts'
+import { AutoIncrement, ColumnType, Default, PrimaryKeyId, Unique } from './column-annotations.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder } from './query-builder/mod.ts'
 import { makeQueryBuilder, QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
@@ -132,6 +132,7 @@ export function table<
 
   let tableName: string
   let columns: SqliteDsl.Columns
+  let additionalIndexes: SqliteDsl.Index[] = []
 
   if ('columns' in args) {
     tableName = args.name
@@ -139,18 +140,20 @@ export function table<
     columns = (
       SqliteDsl.isColumnDefinition(columnOrColumns) ? { value: columnOrColumns } : columnOrColumns
     ) as SqliteDsl.Columns
+    additionalIndexes = []
   } else if ('schema' in args) {
-    // Check if the schema is a struct type
-    const ast = args.schema.ast
+    const result = schemaFieldsToColumns(SchemaAST.getPropertySignatures(args.schema.ast))
+    columns = result.columns
 
-    columns = schemaFieldsToColumns(SchemaAST.getPropertySignatures(ast))
+    // We'll set tableName first, then use it for index names
+    let tempTableName: string
 
     // If name is provided, use it; otherwise extract from schema annotations
     if ('name' in args) {
-      tableName = args.name
+      tempTableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
+      tempTableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
         Option.orElse(() => SchemaAST.getIdentifierAnnotation(args.schema.ast)),
         Option.getOrElse(() =>
           shouldNeverHappen(
@@ -159,6 +162,15 @@ export function table<
         ),
       )
     }
+
+    tableName = tempTableName
+
+    // Create unique indexes for columns with unique annotation
+    additionalIndexes = (result.uniqueColumns || []).map((columnName) => ({
+      name: `idx_${tableName}_${columnName}_unique`,
+      columns: [columnName],
+      isUnique: true,
+    }))
   } else {
     return shouldNeverHappen('Either `columns` or `schema` must be provided when calling `table()`')
   }
@@ -167,7 +179,9 @@ export function table<
     isClientDocumentTable: false,
   }
 
-  const sqliteDef = SqliteDsl.table(tableName, columns, options?.indexes ?? [])
+  // Combine user-provided indexes with unique column indexes
+  const allIndexes = [...(options?.indexes ?? []), ...additionalIndexes]
+  const sqliteDef = SqliteDsl.table(tableName, columns, allIndexes)
 
   const rowSchema = SqliteDsl.structSchemaForTable(sqliteDef)
   const insertSchema = SqliteDsl.insertStructSchemaForTable(sqliteDef)
@@ -309,7 +323,10 @@ export declare namespace TableDefInput {
   >
 }
 
-// Helper function to check if a property has an annotation
+/**
+ * Checks if a property signature has a specific annotation, checking both
+ * the property signature itself and its type AST.
+ */
 const hasPropertyAnnotation = <T>(
   propertySignature: SchemaAST.PropertySignature,
   annotationId: symbol,
@@ -328,9 +345,15 @@ const hasPropertyAnnotation = <T>(
   return SchemaAST.getAnnotation<T>(annotationId)(propertySignature.type)
 }
 
-// Helper function to map schema fields to SQLite columns
-const schemaFieldsToColumns = (propertySignatures: ReadonlyArray<SchemaAST.PropertySignature>): SqliteDsl.Columns => {
+/**
+ * Maps schema property signatures to SQLite column definitions.
+ * Returns both columns and unique column names for index creation.
+ */
+const schemaFieldsToColumns = (
+  propertySignatures: ReadonlyArray<SchemaAST.PropertySignature>,
+): { columns: SqliteDsl.Columns; uniqueColumns: string[] } => {
   const columns: SqliteDsl.Columns = {}
+  const uniqueColumns: string[] = []
 
   for (const prop of propertySignatures) {
     if (typeof prop.name === 'string') {
@@ -338,21 +361,30 @@ const schemaFieldsToColumns = (propertySignatures: ReadonlyArray<SchemaAST.Prope
       const fieldSchema = Schema.make(prop.type)
       // Check if property has primary key annotation
       const hasPrimaryKey = hasPropertyAnnotation<boolean>(prop, PrimaryKeyId).pipe(Option.getOrElse(() => false))
-      columns[prop.name] = schemaFieldToColumn(fieldSchema, prop.isOptional, hasPrimaryKey)
+      // Check if property has unique annotation
+      const hasUnique = hasPropertyAnnotation<boolean>(prop, Unique).pipe(Option.getOrElse(() => false))
+
+      columns[prop.name] = schemaFieldToColumn(fieldSchema, prop, hasPrimaryKey)
+
+      if (hasUnique) {
+        uniqueColumns.push(prop.name)
+      }
     }
   }
 
-  return columns
+  return { columns, uniqueColumns }
 }
 
-// Map a single schema field to a SQLite column
+/**
+ * Converts a schema field and its property signature to a SQLite column definition.
+ */
 const schemaFieldToColumn = (
   fieldSchema: Schema.Schema.AnyNoContext,
-  isOptional: boolean,
+  propertySignature: SchemaAST.PropertySignature,
   forceHasPrimaryKey?: boolean,
 ): SqliteDsl.ColumnDefinition.Any => {
   // Determine column type based on schema type
-  const columnDef = getColumnDefForSchema(fieldSchema)
+  const columnDef = getColumnDefForSchema(fieldSchema, propertySignature)
 
   // Create a new object with appropriate properties
   const result: Partial<Writeable<SqliteDsl.ColumnDefinition.Any>> = {
@@ -362,7 +394,7 @@ const schemaFieldToColumn = (
   }
 
   // Only add nullable if it's true
-  if (isOptional && !forceHasPrimaryKey && !columnDef.primaryKey) {
+  if (propertySignature.isOptional && !forceHasPrimaryKey && !columnDef.primaryKey) {
     result.nullable = true
   } else if (columnDef.nullable) {
     result.nullable = true
@@ -373,21 +405,54 @@ const schemaFieldToColumn = (
     result.primaryKey = true
   }
 
+  // Only add autoIncrement if it's true
+  if (columnDef.autoIncrement) {
+    result.autoIncrement = true
+  }
+
   return result as SqliteDsl.ColumnDefinition.Any
 }
 
-// Map schema types to SQLite column types
-export const getColumnDefForSchema = (schema: Schema.Schema.AnyNoContext): SqliteDsl.ColumnDefinition.Any => {
-  // Make sure we have a valid AST
-  if (!schema || !schema.ast) {
-    // If no AST, default to JSON column
-    return SqliteDsl.json({ schema: Schema.Any })
-  }
-
+/**
+ * Maps a schema to a SQLite column definition, respecting column annotations.
+ */
+export const getColumnDefForSchema = (
+  schema: Schema.Schema.AnyNoContext,
+  propertySignature?: SchemaAST.PropertySignature,
+): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
 
-  // Check for primary key annotation first
-  const hasPrimaryKey = SchemaAST.getAnnotation<boolean>(PrimaryKeyId)(ast).pipe(Option.getOrElse(() => false))
+  // Check for annotations
+  const hasPrimaryKey = propertySignature
+    ? hasPropertyAnnotation<boolean>(propertySignature, PrimaryKeyId).pipe(Option.getOrElse(() => false))
+    : SchemaAST.getAnnotation<boolean>(PrimaryKeyId)(ast).pipe(Option.getOrElse(() => false))
+
+  const hasAutoIncrement = propertySignature
+    ? hasPropertyAnnotation<boolean>(propertySignature, AutoIncrement).pipe(Option.getOrElse(() => false))
+    : SchemaAST.getAnnotation<boolean>(AutoIncrement)(ast).pipe(Option.getOrElse(() => false))
+
+  const defaultValue = propertySignature
+    ? hasPropertyAnnotation<unknown>(propertySignature, Default)
+    : SchemaAST.getAnnotation<unknown>(Default)(ast)
+
+  /** Adds annotations to a column definition if they are present. */
+  const withAnnotationsIfNeeded = (columnDef: SqliteDsl.ColumnDefinition.Any): SqliteDsl.ColumnDefinition.Any => {
+    const result = { ...columnDef }
+
+    if (hasPrimaryKey) {
+      result.primaryKey = true
+    }
+
+    if (hasAutoIncrement) {
+      result.autoIncrement = true
+    }
+
+    if (Option.isSome(defaultValue)) {
+      result.default = Option.some(defaultValue.value)
+    }
+
+    return result
+  }
 
   // Check for custom column type annotation
   const columnTypeAnnotation = SchemaAST.getAnnotation<SqliteDsl.FieldColumnType>(ColumnType)(ast)
@@ -411,19 +476,7 @@ export const getColumnDefForSchema = (schema: Schema.Schema.AnyNoContext): Sqlit
         return shouldNeverHappen(`Unsupported column type annotation: ${columnType}`)
     }
 
-    // Add primary key if present
-    if (hasPrimaryKey) {
-      return { ...columnDef, primaryKey: true }
-    }
-    return columnDef
-  }
-
-  // Helper to add primary key annotation if needed
-  const withPrimaryKeyIfNeeded = (columnDef: SqliteDsl.ColumnDefinition.Any) => {
-    if (hasPrimaryKey) {
-      return { ...columnDef, primaryKey: true }
-    }
-    return columnDef
+    return withAnnotationsIfNeeded(columnDef)
   }
 
   // Check for refinements (e.g., Schema.Int)
@@ -431,25 +484,25 @@ export const getColumnDefForSchema = (schema: Schema.Schema.AnyNoContext): Sqlit
     // Check if this is specifically Schema.Int by looking at the identifier annotation
     const identifier = SchemaAST.getIdentifierAnnotation(ast).pipe(Option.getOrElse(() => ''))
     if (identifier === 'Int') {
-      return withPrimaryKeyIfNeeded(SqliteDsl.integer())
+      return withAnnotationsIfNeeded(SqliteDsl.integer())
     }
     // For other refinements, check the underlying type
-    return getColumnDefForSchema(Schema.make(ast.from))
+    return getColumnDefForSchema(Schema.make(ast.from), propertySignature)
   }
 
   // Check for string types
   if (SchemaAST.isStringKeyword(ast)) {
-    return withPrimaryKeyIfNeeded(SqliteDsl.text())
+    return withAnnotationsIfNeeded(SqliteDsl.text())
   }
 
   // Check for number types
   if (SchemaAST.isNumberKeyword(ast)) {
-    return withPrimaryKeyIfNeeded(SqliteDsl.real())
+    return withAnnotationsIfNeeded(SqliteDsl.real())
   }
 
   // Check for boolean types
   if (SchemaAST.isBooleanKeyword(ast)) {
-    return withPrimaryKeyIfNeeded(SqliteDsl.boolean())
+    return withAnnotationsIfNeeded(SqliteDsl.boolean())
   }
 
   // Check for unions (like optional)
@@ -459,8 +512,8 @@ export const getColumnDefForSchema = (schema: Schema.Schema.AnyNoContext): Sqlit
       if (!SchemaAST.isUndefinedKeyword(type)) {
         // Create a new schema with this type but preserve the primary key annotation
         const innerSchema = Schema.make(type)
-        const innerColumnDef = getColumnDefForSchema(innerSchema)
-        return withPrimaryKeyIfNeeded(innerColumnDef)
+        const innerColumnDef = getColumnDefForSchema(innerSchema, propertySignature)
+        return withAnnotationsIfNeeded(innerColumnDef)
       }
     }
   }
@@ -468,21 +521,21 @@ export const getColumnDefForSchema = (schema: Schema.Schema.AnyNoContext): Sqlit
   // Check for Date types
   if (SchemaAST.isTransformation(ast)) {
     // Try to map the transformation's target type
-    return getColumnDefForSchema(Schema.make(ast.to))
+    return getColumnDefForSchema(Schema.make(ast.to), propertySignature)
   }
 
   // Check for literal types
   if (SchemaAST.isLiteral(ast)) {
     const value = ast.literal
     if (typeof value === 'string') {
-      return withPrimaryKeyIfNeeded(SqliteDsl.text())
+      return withAnnotationsIfNeeded(SqliteDsl.text())
     } else if (typeof value === 'number') {
-      return withPrimaryKeyIfNeeded(SqliteDsl.real())
+      return withAnnotationsIfNeeded(SqliteDsl.real())
     } else if (typeof value === 'boolean') {
-      return withPrimaryKeyIfNeeded(SqliteDsl.boolean())
+      return withAnnotationsIfNeeded(SqliteDsl.boolean())
     }
   }
 
   // Default to JSON column for complex types
-  return withPrimaryKeyIfNeeded(SqliteDsl.json({ schema }))
+  return withAnnotationsIfNeeded(SqliteDsl.json({ schema }))
 }

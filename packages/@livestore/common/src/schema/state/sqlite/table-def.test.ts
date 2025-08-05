@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 import { State } from '../../mod.ts'
-import { withColumnType, withPrimaryKey } from './column-annotations.ts'
+import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
 
 describe('table function overloads', () => {
   it('should extract table name from title annotation', () => {
@@ -627,6 +627,104 @@ describe('getColumnDefForSchema', () => {
       })
     })
 
+    describe('withAutoIncrement', () => {
+      it('should add autoIncrement annotation to schema', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          name: Schema.String,
+        })
+        const userTable = State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+        })
+        expect(userTable.sqliteDef.columns.id.autoIncrement).toBe(true)
+        expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
+        expect(userTable.sqliteDef.columns.id.columnType).toBe('integer')
+      })
+    })
+
+    describe('withDefault', () => {
+      it('should add default value annotation to schema', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.String,
+          active: Schema.Boolean.pipe(withDefault(true)),
+          createdAt: Schema.String.pipe(withDefault('CURRENT_TIMESTAMP')),
+        })
+        const userTable = State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+        })
+        expect(userTable.sqliteDef.columns.active.default._tag).toBe('Some')
+        expect(
+          userTable.sqliteDef.columns.active.default._tag === 'Some' &&
+            userTable.sqliteDef.columns.active.default.value,
+        ).toBe(true)
+        expect(userTable.sqliteDef.columns.createdAt.default._tag).toBe('Some')
+        expect(
+          userTable.sqliteDef.columns.createdAt.default._tag === 'Some' &&
+            userTable.sqliteDef.columns.createdAt.default.value,
+        ).toBe('CURRENT_TIMESTAMP')
+      })
+
+      it('should work with dual API', () => {
+        const schema1 = withDefault(Schema.Int, 0)
+        const schema2 = Schema.Int.pipe(withDefault(0))
+        const UserSchema1 = Schema.Struct({ count: schema1 })
+        const UserSchema2 = Schema.Struct({ count: schema2 })
+        const table1 = State.SQLite.table({ name: 't1', schema: UserSchema1 })
+        const table2 = State.SQLite.table({ name: 't2', schema: UserSchema2 })
+        expect(table1.sqliteDef.columns.count.default._tag).toBe('Some')
+        expect(
+          table1.sqliteDef.columns.count.default._tag === 'Some' && table1.sqliteDef.columns.count.default.value,
+        ).toBe(0)
+        expect(table2.sqliteDef.columns.count.default._tag).toBe('Some')
+        expect(
+          table2.sqliteDef.columns.count.default._tag === 'Some' && table2.sqliteDef.columns.count.default.value,
+        ).toBe(0)
+      })
+    })
+
+    describe('withUnique', () => {
+      it('should create unique index for column with unique annotation', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.String,
+          email: Schema.String.pipe(withUnique),
+          username: Schema.String.pipe(withUnique),
+        })
+        const userTable = State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+        })
+
+        // Check that unique indexes were created
+        const uniqueIndexes = userTable.sqliteDef.indexes?.filter((idx) => idx.isUnique) || []
+        expect(uniqueIndexes).toHaveLength(2)
+        expect(
+          uniqueIndexes.some((idx) => idx.name === 'idx_users_email_unique' && idx.columns.includes('email')),
+        ).toBe(true)
+        expect(
+          uniqueIndexes.some((idx) => idx.name === 'idx_users_username_unique' && idx.columns.includes('username')),
+        ).toBe(true)
+      })
+
+      it('should combine unique indexes with user-provided indexes', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.String,
+          email: Schema.String.pipe(withUnique),
+        })
+        const userTable = State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+          indexes: [{ name: 'idx_custom', columns: ['id', 'email'] }],
+        })
+
+        // Should have both custom index and unique index
+        expect(userTable.sqliteDef.indexes).toHaveLength(2)
+        expect(userTable.sqliteDef.indexes?.some((idx) => idx.name === 'idx_custom')).toBe(true)
+        expect(userTable.sqliteDef.indexes?.some((idx) => idx.name === 'idx_users_email_unique')).toBe(true)
+      })
+    })
+
     describe('combined annotations', () => {
       it('should work with multiple annotations', () => {
         const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob')).pipe(withPrimaryKey)
@@ -643,6 +741,40 @@ describe('getColumnDefForSchema', () => {
 
         expect(userTable.sqliteDef.columns.id.columnType).toBe('blob')
         expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
+      })
+
+      it('should combine all annotations', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          email: Schema.String.pipe(withUnique),
+          status: Schema.String.pipe(withDefault('active')),
+          metadata: Schema.Unknown.pipe(withColumnType('text')),
+        })
+        const userTable = State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+        })
+
+        // Check id column
+        expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
+        expect(userTable.sqliteDef.columns.id.autoIncrement).toBe(true)
+        expect(userTable.sqliteDef.columns.id.columnType).toBe('integer')
+
+        // Check email column and unique index
+        expect(userTable.sqliteDef.columns.email.columnType).toBe('text')
+        expect(userTable.sqliteDef.indexes?.some((idx) => idx.name === 'idx_users_email_unique' && idx.isUnique)).toBe(
+          true,
+        )
+
+        // Check status column
+        expect(userTable.sqliteDef.columns.status.default._tag).toBe('Some')
+        expect(
+          userTable.sqliteDef.columns.status.default._tag === 'Some' &&
+            userTable.sqliteDef.columns.status.default.value,
+        ).toBe('active')
+
+        // Check metadata column
+        expect(userTable.sqliteDef.columns.metadata.columnType).toBe('text')
       })
     })
   })
