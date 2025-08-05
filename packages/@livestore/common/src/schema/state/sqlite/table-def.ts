@@ -18,6 +18,7 @@ export const TableDefInternalsSymbol = Symbol('TableDefInternals')
 export type TableDefInternalsSymbol = typeof TableDefInternalsSymbol
 
 export type TableDefBase<
+  // TODO replace SqliteDef type param with Effect Schema
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
 > = {
@@ -29,6 +30,7 @@ export type TableDefBase<
 }
 
 export type TableDef<
+  // TODO replace SqliteDef type param with Effect Schema
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
