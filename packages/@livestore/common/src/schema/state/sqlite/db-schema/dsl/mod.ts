@@ -92,6 +92,7 @@ const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
       default: column.default as any,
       nullable: column.nullable ?? false,
       primaryKey: column.primaryKey ?? false,
+      autoIncrement: column.autoIncrement ?? false,
       type: { _tag: column.columnType },
     } satisfies SqliteAst.Column
   })

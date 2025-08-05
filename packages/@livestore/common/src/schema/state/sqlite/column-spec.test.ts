@@ -1,18 +1,19 @@
 import { Option, Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
-import type { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
-import { makeColumnSpec } from './migrations.js'
+import { makeColumnSpec } from './column-spec.ts'
+import type { SqliteAst } from './db-schema/mod.ts'
 
 const createColumn = (
   name: string,
   type: 'text' | 'integer',
-  options: { nullable?: boolean; primaryKey?: boolean } = {},
+  options: { nullable?: boolean; primaryKey?: boolean; autoIncrement?: boolean } = {},
 ) => ({
   _tag: 'column' as const,
   name,
   type: { _tag: type },
   nullable: options.nullable ?? true,
   primaryKey: options.primaryKey ?? false,
+  autoIncrement: options.autoIncrement ?? false,
   default: Option.none(),
   schema: type === 'text' ? Schema.String : Schema.Number,
 })
@@ -27,7 +28,7 @@ describe('makeColumnSpec', () => {
     }
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(`"'order' integer not null , 'group' text  "`)
+    expect(result).toMatchInlineSnapshot(`"'order' integer not null  , 'group' text   "`)
     expect(result).toContain("'order'")
     expect(result).toContain("'group'")
   })
@@ -41,7 +42,7 @@ describe('makeColumnSpec', () => {
     }
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(`"'id' text not null , 'name' text  , PRIMARY KEY ('id')"`)
+    expect(result).toMatchInlineSnapshot(`"'id' text not null  , 'name' text   , PRIMARY KEY ('id')"`)
     expect(result).toContain("PRIMARY KEY ('id')")
   })
 
@@ -58,8 +59,25 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'tenant_id' text not null , 'user_id' text not null , PRIMARY KEY ('tenant_id', 'user_id')"`,
+      `"'tenant_id' text not null  , 'user_id' text not null  , PRIMARY KEY ('tenant_id', 'user_id')"`,
     )
     expect(result).toContain("PRIMARY KEY ('tenant_id', 'user_id')")
+  })
+
+  it('should handle auto-increment columns', () => {
+    const table: SqliteAst.Table = {
+      _tag: 'table',
+      name: 'posts',
+      columns: [
+        createColumn('id', 'integer', { nullable: false, primaryKey: true, autoIncrement: true }),
+        createColumn('title', 'text'),
+      ],
+      indexes: [],
+    }
+
+    const result = makeColumnSpec(table)
+    expect(result).toMatchInlineSnapshot(`"'id' integer not null autoincrement , 'title' text   , PRIMARY KEY ('id')"`)
+    expect(result).toContain('autoincrement')
+    expect(result).toContain("PRIMARY KEY ('id')")
   })
 })

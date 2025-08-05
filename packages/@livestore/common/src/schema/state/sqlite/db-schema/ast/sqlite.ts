@@ -22,6 +22,7 @@ export type Column = {
   type: ColumnType.ColumnType
   primaryKey: boolean
   nullable: boolean
+  autoIncrement: boolean
   default: Option.Option<any>
   schema: Schema.Schema<any>
 }
@@ -106,6 +107,7 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
         type: obj.type._tag,
         primaryKey: obj.primaryKey,
         nullable: obj.nullable,
+        autoIncrement: obj.autoIncrement,
         default: obj.default,
       }
     }
