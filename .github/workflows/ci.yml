@@ -206,7 +206,11 @@ jobs:
             pnpm list --only-projects --json | \
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
-      - run: pnpm dlx tiged https://github.com/livestorejs/livestore/${{ env.APP_PATH }}#${{ github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}
+      - name: Copy example app
+        # We use `github.ref_name` instead of `github.sha` because, when a workflow is triggered by a pull request,
+        # `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
+        # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
+        run: pnpm dlx tiged github:${{ github.repository }}/${{ env.APP_PATH }}#${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Use snapshot version of workspace dependencies
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: |
