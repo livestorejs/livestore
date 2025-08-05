@@ -633,7 +633,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           const { writeTables } = (() => {
             try {
               const materializeEvents = () => {
-                return this.syncProcessor.push(events, { otelContext }).pipe(Runtime.runSync(this.effectContext.runtime))
+                return this.syncProcessor
+                  .push(events, { otelContext })
+                  .pipe(Runtime.runSync(this.effectContext.runtime))
               }
 
               if (events.length > 1) {
