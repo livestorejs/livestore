@@ -269,7 +269,7 @@ const TestContextLive = Layer.scoped(
 const otelLayer = IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName: 'store-test', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TaskContext, { suffix }: { suffix?: string; skipOtel?: boolean } = {}) =>
+  (testContext: Vitest.TaskContext, { suffix }: { suffix?: string | undefined; skipOtel?: boolean | undefined } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
       Effect.timeout(IS_CI ? 60_000 : 10_000),

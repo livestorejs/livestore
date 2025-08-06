@@ -18,7 +18,7 @@ export const makeExecBeforeFirstRun =
     table,
     otelContext: otelContext_,
   }: {
-    id?: string | SessionIdSymbol
+    id?: string | SessionIdSymbol | undefined
     explicitDefaultValues?: any
     table: State.SQLite.TableDefBase
     otelContext: otel.Context | undefined

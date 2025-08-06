@@ -17,7 +17,8 @@
     "declaration": false,
     "declarationMap": false,
     "target": "ESNext",
-    "strict": true
+    "strict": true,
+    "exactOptionalPropertyTypes": false
   },
 
   "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]

@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import * as Playwright from '@livestore/effect-playwright'
-import { envTruish, shouldNeverHappen } from '@livestore/utils'
+import { envTruish, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Fiber, Layer, Logger, OtelTracer } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type * as otel from '@opentelemetry/api'
@@ -123,7 +123,9 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
   const extensionPath = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
 
-  return Playwright.browserContextLayer({ persistentContextPath, extensionPath, launchOptions: { devtools: true } })
+  return Playwright.browserContextLayer(
+    omitUndefineds({ persistentContextPath, extensionPath, launchOptions: { devtools: true } }),
+  )
 }).pipe(Layer.unwrapEffect)
 
 test(

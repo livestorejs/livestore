@@ -26,7 +26,8 @@
     "noUncheckedIndexedAccess": true,
     // "noUnusedLocals": true,
     // "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src"]
 }

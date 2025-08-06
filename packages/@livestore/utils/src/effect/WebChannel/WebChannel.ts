@@ -93,7 +93,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
 }: {
   listenWindow: Window
   sendWindow: Window
-  targetOrigin?: string
+  targetOrigin?: string | undefined
   ids: { own: string; other: string }
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
@@ -162,7 +162,7 @@ export const messagePortChannel: {
   <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
     port: MessagePort
     schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
+    debugId?: string | number | undefined
   }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 } = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
@@ -251,7 +251,7 @@ export const messagePortChannelWithAck: {
   <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
     port: MessagePort
     schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
+    debugId?: string | number | undefined
   }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 } = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
@@ -414,16 +414,20 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
  */
 export const toOpenChannel = (
   channel: WebChannel<any, any>,
-  options?: {
-    /**
-     * Sends a heartbeat message to the other end of the channel every `interval`.
-     * If the other end doesn't respond within `timeout` milliseconds, the channel is shutdown.
-     */
-    heartbeat?: {
-      interval: DurationInput
-      timeout: DurationInput
-    }
-  },
+  options?:
+    | {
+        /**
+         * Sends a heartbeat message to the other end of the channel every `interval`.
+         * If the other end doesn't respond within `timeout` milliseconds, the channel is shutdown.
+         */
+        heartbeat?:
+          | {
+              interval: DurationInput
+              timeout: DurationInput
+            }
+          | undefined
+      }
+    | undefined,
 ): Effect.Effect<WebChannel<any, any>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const queue = yield* Queue.unbounded<Either.Either<any, any>>().pipe(Effect.acquireRelease(Queue.shutdown))

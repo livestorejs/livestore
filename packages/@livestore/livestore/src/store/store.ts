@@ -22,7 +22,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
+import { assertNever, isDevEnv, notYetImplemented, omitUndefineds } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -295,18 +295,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     options: {
       /** Called when the query result has changed */
       onUpdate: (value: TResult) => void
-      onSubscribe?: (query$: LiveQuery<TResult>) => void
+      onSubscribe?: ((query$: LiveQuery<TResult>) => void) | undefined
       /** Gets called after the query subscription has been removed */
-      onUnsubsubscribe?: () => void
+      onUnsubsubscribe?: (() => void) | undefined
       label?: string
       /**
        * Skips the initial `onUpdate` callback
        * @default false
        */
-      skipInitialRun?: boolean
-      otelContext?: otel.Context
+      skipInitialRun?: boolean | undefined
+      otelContext?: otel.Context | undefined
       /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
-      stackInfo?: StackInfo
+      stackInfo?: StackInfo | undefined
     },
   ): Unsubscribe =>
     this.otel.tracer.startActiveSpan(
@@ -371,7 +371,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
   subscribeStream = <TResult>(
     query$: LiveQueryDef<TResult>,
-    options?: { label?: string; skipInitialRun?: boolean } | undefined,
+    options?: { label?: string | undefined; skipInitialRun?: boolean | undefined } | undefined,
   ): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
@@ -385,7 +385,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
             this.subscribe(query$, {
               onUpdate: (result) => emit.single(result),
               otelContext,
-              label: options?.label,
+              ...omitUndefineds({ label: options?.label }),
             }),
           ),
           (unsub) => Effect.sync(() => unsub()),
@@ -414,7 +414,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       | LiveQueryDef<TResult>
       | SignalDef<TResult>
       | { query: string; bindValues: ParamsObject },
-    options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
+    options?: { otelContext?: otel.Context | undefined; debugRefreshReason?: RefreshReason | undefined },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
       return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
@@ -573,14 +573,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
     return this.otel.tracer.startActiveSpan(
       'LiveStore:commit',
-      {
-        attributes: {
+      omitUndefineds({
+        attributes: omitUndefineds({
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
           'livestore.commitLabel': options?.label,
-        },
+        }),
         links: options?.spanLinks,
-      },
+      }),
       options?.otelContext ?? this.otel.commitsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -666,7 +666,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * This can be used in combination with `skipRefresh` when committing events.
    * We might need a better solution for this. Let's see.
    */
-  manualRefresh = (options?: { label?: string }) => {
+  manualRefresh = (options?: { label?: string | undefined }) => {
     const { label } = options ?? {}
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',

@@ -31,16 +31,16 @@ export const column = (props: Omit<Column, '_tag'>): Column => ({ _tag: 'column'
 export type Index = {
   _tag: 'index'
   columns: ReadonlyArray<string>
-  name?: string
-  unique?: boolean
-  primaryKey?: boolean
+  name?: string | undefined
+  unique?: boolean | undefined
+  primaryKey?: boolean | undefined
 }
 
 export const index = (
   columns: ReadonlyArray<string>,
-  name?: string,
-  unique?: boolean,
-  primaryKey?: boolean,
+  name?: string | undefined,
+  unique?: boolean | undefined,
+  primaryKey?: boolean | undefined,
 ): Index => ({
   _tag: 'index',
   columns,

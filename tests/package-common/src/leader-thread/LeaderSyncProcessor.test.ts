@@ -227,8 +227,8 @@ const LeaderThreadCtxLive = ({
   syncProcessor,
   params,
 }: {
-  syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
-  params?: MakeLeaderThreadLayerParams['params']
+  syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor'] | undefined
+  params?: MakeLeaderThreadLayerParams['params'] | undefined
 }) =>
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend
@@ -311,10 +311,10 @@ const withCtx =
       params,
       syncProcessor,
     }: {
-      suffix?: string
-      params?: MakeLeaderThreadLayerParams['params']
-      syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
-      skipOtel?: boolean
+      suffix?: string | undefined
+      params?: MakeLeaderThreadLayerParams['params'] | undefined
+      syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor'] | undefined
+      skipOtel?: boolean | undefined
     } = {},
   ) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>

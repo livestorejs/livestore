@@ -47,7 +47,7 @@ export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   computeResult: () => T
   sub: Set<Atom<any, TContext, TDebugRefreshReason>> // always empty
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
-  label?: string
+  label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
   meta?: any
   equal: (a: T, b: T) => boolean
@@ -63,9 +63,9 @@ export type Thunk<TResult, TContext, TDebugRefreshReason extends DebugRefreshRea
   previousResult: TResult | NOT_REFRESHED_YET
   sub: Set<Atom<any, TContext, TDebugRefreshReason>>
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
-  label?: string
+  label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any
+  meta?: any | undefined
   equal: (a: TResult, b: TResult) => boolean
   recomputations: number
 
@@ -82,7 +82,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   isDestroyed: boolean
   doEffect: (otelContext?: otel.Context | undefined, debugRefreshReason?: TDebugRefreshReason | undefined) => void
   sub: Set<Atom<any, TODO, TODO>>
-  label?: string
+  label?: string | undefined
   invocations: number
 }
 
@@ -105,10 +105,10 @@ export type DebugRefreshReasonBase =
   /** Usually in response to some `commit` calls with `skipRefresh: true` */
   | {
       _tag: 'runDeferredEffects'
-      originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase>
-      manualRefreshReason?: DebugRefreshReasonBase
+      originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase> | undefined
+      manualRefreshReason?: DebugRefreshReasonBase | undefined
     }
-  | { _tag: 'makeThunk'; label?: string }
+  | { _tag: 'makeThunk'; label?: string | undefined }
   | { _tag: 'unknown' }
 
 export type DebugRefreshReason<T extends string = string> = DebugRefreshReasonBase | { _tag: T }
@@ -137,7 +137,7 @@ const unknownRefreshReason = () => {
   return { _tag: 'unknown' as const }
 }
 
-export type EncodedOption<A> = { _tag: 'Some'; value?: A } | { _tag: 'None' }
+export type EncodedOption<A> = { _tag: 'Some'; value?: A | undefined } | { _tag: 'None' }
 const encodedOptionSome = <A>(value: A): EncodedOption<A> => ({ _tag: 'Some', value })
 const encodedOptionNone = <A>(): EncodedOption<A> => ({ _tag: 'None' })
 
@@ -194,7 +194,7 @@ export const __resetIds = () => {
 export class ReactiveGraph<
   TDebugRefreshReason extends DebugRefreshReason,
   TDebugThunkInfo extends DebugThunkInfo,
-  TContext extends { effectsWrapper?: (runEffects: () => void) => void } = {},
+  TContext extends { effectsWrapper?: ((runEffects: () => void) => void) | undefined } = {},
 > {
   id = uniqueGraphId()
 
@@ -220,7 +220,7 @@ export class ReactiveGraph<
 
   makeRef<T>(
     val: T,
-    options?: { label?: string; meta?: unknown; equal?: (a: T, b: T) => boolean },
+    options?: { label?: string | undefined; meta?: unknown; equal?: ((a: T, b: T) => boolean) | undefined },
   ): Ref<T, TContext, TDebugRefreshReason> {
     const ref: Ref<T, TContext, TDebugRefreshReason> = {
       _tag: 'ref',
@@ -252,9 +252,9 @@ export class ReactiveGraph<
     ) => T,
     options?:
       | {
-          label?: string
+          label?: string | undefined
           meta?: any
-          equal?: (a: T, b: T) => boolean
+          equal?: ((a: T, b: T) => boolean) | undefined
         }
       | undefined,
   ): Thunk<T, TContext, TDebugRefreshReason> {
@@ -381,7 +381,7 @@ export class ReactiveGraph<
       otelContext: otel.Context | undefined,
       debugRefreshReason: DebugRefreshReason | undefined,
     ) => void,
-    options?: { label?: string } | undefined,
+    options?: { label?: string | undefined } | undefined,
   ): Effect<TDebugRefreshReason> {
     const effect: Effect<TDebugRefreshReason> = {
       _tag: 'effect',
@@ -421,9 +421,9 @@ export class ReactiveGraph<
     val: T,
     options?:
       | {
-          skipRefresh?: boolean
-          debugRefreshReason?: TDebugRefreshReason
-          otelContext?: otel.Context
+          skipRefresh?: boolean | undefined
+          debugRefreshReason?: TDebugRefreshReason | undefined
+          otelContext?: otel.Context | undefined
         }
       | undefined,
   ) {
@@ -434,9 +434,9 @@ export class ReactiveGraph<
     refs: [Ref<T, TContext, TDebugRefreshReason>, T][],
     options?:
       | {
-          skipRefresh?: boolean
-          debugRefreshReason?: TDebugRefreshReason
-          otelContext?: otel.Context
+          skipRefresh?: boolean | undefined
+          debugRefreshReason?: TDebugRefreshReason | undefined
+          otelContext?: otel.Context | undefined
         }
       | undefined,
   ) {
@@ -470,7 +470,7 @@ export class ReactiveGraph<
     effectsToRefresh: Set<Effect<TDebugRefreshReason>>,
     options: {
       debugRefreshReason: TDebugRefreshReason
-      otelContext?: otel.Context
+      otelContext?: otel.Context | undefined
     },
   ) => {
     const effectsWrapper = this.context?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
@@ -500,7 +500,10 @@ export class ReactiveGraph<
     })
   }
 
-  runDeferredEffects = (options?: { debugRefreshReason?: TDebugRefreshReason; otelContext?: otel.Context }) => {
+  runDeferredEffects = (options?: {
+    debugRefreshReason?: TDebugRefreshReason | undefined
+    otelContext?: otel.Context | undefined
+  }) => {
     // TODO improve how refresh reasons are propagated for deferred effect execution
     // TODO also improve "batching" of running deferred effects (i.e. in a single `this.runEffects` call)
     // but need to be careful to not overwhelm the main thread
@@ -554,7 +557,7 @@ export class ReactiveGraph<
   }
 
   // NOTE This function is performance-optimized (i.e. not using `Array.from`)
-  getSnapshot = (opts?: { includeResults: boolean }): ReactiveGraphSnapshot => {
+  getSnapshot = (opts?: { includeResults: boolean } | undefined): ReactiveGraphSnapshot => {
     const { includeResults = false } = opts ?? {}
     const atoms: SerializedAtom[] = []
     for (const atom of this.atoms) {

@@ -41,7 +41,7 @@ export interface LiveStoreProviderProps {
    *
    * @default 'default'
    */
-  storeId?: string
+  storeId?: string | undefined
   boot?: (
     store: Store<LiveStoreSchema>,
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
@@ -174,8 +174,8 @@ const useCreateStore = ({
   syncPayload,
   debug,
 }: CreateStoreOptions<LiveStoreSchema> & {
-  signal?: AbortSignal
-  otelOptions?: Partial<OtelOptions>
+  signal?: AbortSignal | undefined
+  otelOptions?: Partial<OtelOptions> | undefined
 }) => {
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<{

@@ -24,14 +24,14 @@ import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-que
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
   schema: Schema.Schema<TDecoded, TEncoded>
-  bindValues?: Bindable
+  bindValues?: Bindable | undefined
   /**
    * Can be provided explicitly to slightly speed up initial query performance
    *
    * NOTE In the future we want to do this automatically at build time
    */
-  queriedTables?: Set<string>
-  execBeforeFirstRun?: (ctx: ReactivityGraphContext) => void
+  queriedTables?: Set<string> | undefined
+  execBeforeFirstRun?: ((ctx: ReactivityGraphContext) => void) | undefined
 }
 
 export const isQueryInputRaw = (value: unknown): value is QueryInputRaw<any, any> =>
@@ -74,14 +74,16 @@ export type QueryInput<TDecoded, TEncoded> = QueryInputRaw<TDecoded, TEncoded> |
 export const queryDb: {
   <TResultSchema, TResult = TResultSchema>(
     queryInput: QueryInputRaw<TResultSchema, ReadonlyArray<any>> | QueryBuilder<TResultSchema, any, any>,
-    options?: {
-      map?: (rows: TResultSchema) => TResult
-      /**
-       * Used for debugging / devtools
-       */
-      label?: string
-      deps?: DepKey
-    },
+    options?:
+      | {
+          map?: (rows: TResultSchema) => TResult
+          /**
+           * Used for debugging / devtools
+           */
+          label?: string | undefined
+          deps?: DepKey | undefined
+        }
+      | undefined,
   ): LiveQueryDef<TResult>
   // NOTE in this "thunk case", we can't directly derive label/queryInfo from the queryInput,
   // so the caller needs to provide them explicitly otherwise queryInfo will be set to `None`,
@@ -90,14 +92,16 @@ export const queryDb: {
     queryInput:
       | ((get: GetAtomResult) => QueryInputRaw<TResultSchema, ReadonlyArray<any>>)
       | ((get: GetAtomResult) => QueryBuilder<TResultSchema, any, any>),
-    options?: {
-      map?: (rows: TResultSchema) => TResult
-      /**
-       * Used for debugging / devtools
-       */
-      label?: string
-      deps?: DepKey
-    },
+    options?:
+      | {
+          map?: ((rows: TResultSchema) => TResult) | undefined
+          /**
+           * Used for debugging / devtools
+           */
+          label?: string | undefined
+          deps?: DepKey | undefined
+        }
+      | undefined,
   ): LiveQueryDef<TResult>
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
@@ -190,14 +194,14 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     otelContext,
     def,
   }: {
-    label?: string
+    label?: string | undefined
     queryInput:
       | QueryInput<TResultSchema, ReadonlyArray<any>>
       | ((get: GetAtomResult, ctx: ReactivityGraphContext) => QueryInput<TResultSchema, ReadonlyArray<any>>)
     reactivityGraph: ReactivityGraph
-    map?: (rows: TResultSchema) => TResult
+    map?: ((rows: TResultSchema) => TResult) | undefined
     /** Only used for the initial query execution */
-    otelContext?: otel.Context
+    otelContext?: otel.Context | undefined
     def: LiveQueryDef<TResult>
   }) {
     super()

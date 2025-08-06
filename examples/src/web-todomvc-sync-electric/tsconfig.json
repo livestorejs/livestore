@@ -10,7 +10,8 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src"],
   "references": [

@@ -5,12 +5,7 @@ import type { RefreshReason } from '../store/store-types.js'
 import type { ISignal, ReactivityGraph, ReactivityGraphContext, SignalDef } from './base-class.js'
 import { LiveStoreQueryBase, withRCMap } from './base-class.js'
 
-export const signal = <T>(
-  defaultValue: T,
-  options?: {
-    label?: string
-  },
-): SignalDef<T> => {
+export const signal = <T>(defaultValue: T, options?: { label?: string | undefined } | undefined): SignalDef<T> => {
   const id = nanoid()
   const def: SignalDef<T> = {
     _tag: 'signal-def',

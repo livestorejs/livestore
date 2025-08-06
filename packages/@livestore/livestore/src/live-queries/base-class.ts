@@ -100,7 +100,7 @@ export interface LiveQuery<TResult> {
 
   label: string
 
-  run: (args: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason }) => TResult
+  run: (args: { otelContext?: otel.Context | undefined; debugRefreshReason?: RefreshReason | undefined }) => TResult
 
   destroy: () => void
   isDestroyed: boolean
@@ -153,7 +153,7 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
   isDestroyed = false
   abstract destroy: () => void
 
-  run = (args: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason }): TResult => {
+  run = (args: { otelContext?: otel.Context | undefined; debugRefreshReason?: RefreshReason | undefined }): TResult => {
     return this.results$.computeResult(args.otelContext, args.debugRefreshReason)
   }
 

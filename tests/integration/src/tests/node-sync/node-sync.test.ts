@@ -173,7 +173,10 @@ const makeWorker = ({
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TestContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
+  (
+    testContext: Vitest.TestContext,
+    { suffix, skipOtel = false }: { suffix?: string | undefined; skipOtel?: boolean | undefined } = {},
+  ) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
       DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),

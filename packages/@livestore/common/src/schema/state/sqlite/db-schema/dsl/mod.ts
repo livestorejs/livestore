@@ -107,7 +107,7 @@ const indexesToAst = (indexes: ReadonlyArray<Index>): ReadonlyArray<SqliteAst.In
 export type TableDefinition<TName extends string, TColumns extends Columns> = {
   name: TName
   columns: TColumns
-  indexes?: ReadonlyArray<Index>
+  indexes?: ReadonlyArray<Index> | undefined
   ast: SqliteAst.Table
 }
 

@@ -130,7 +130,7 @@ export const unwrapThunk = <T>(_: T | (() => T)): T => {
 
 export type NullableFieldsToOptional<T> = Types.Simplify<
   Partial<T> & {
-    [K in keyof T as null extends T[K] ? K : never]?: Exclude<T[K], null>
+    [K in keyof T as null extends T[K] ? K : never]?: Exclude<T[K], null> | undefined
   } & {
     [K in keyof T as null extends T[K] ? never : K]: T[K]
   }
@@ -222,5 +222,14 @@ export const isNonEmptyString = (str: string | undefined | null): str is string 
 export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
 
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
+
+/** This utility "lies" as a means of compat with libs that don't explicitly type optionals as unioned with `undefined`. */
+export const omitUndefineds = <T extends Record<keyof any, unknown>>(
+  rec: T,
+): {
+  [K in keyof T]: Exclude<T[K], undefined>
+} => {
+  return rec as never
+}
 
 export { objectToString as errorToString } from './misc.js'

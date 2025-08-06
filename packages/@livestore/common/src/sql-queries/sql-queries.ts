@@ -19,7 +19,7 @@ export const findManyRows = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   where: ClientTypes.WhereValuesForColumns<TColumns>
-  limit?: number
+  limit?: number | undefined
 }): [string, BindValues] => {
   const whereSql = buildWhereSql({ where })
   const whereModifier = whereSql === '' ? '' : `WHERE ${whereSql}`
@@ -56,7 +56,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   values: ClientTypes.DecodedValuesForColumns<TColumns>
-  options?: { orReplace: boolean }
+  options?: { orReplace: boolean } | undefined
 }): [string, BindValues] => {
   const stmt = insertRowPrepared({
     tableName,
@@ -74,7 +74,7 @@ export const insertRowPrepared = <TColumns extends SqliteDsl.Columns>({
 }: {
   tableName: string
   columns: TColumns
-  options?: { orReplace: boolean; keys?: string[] }
+  options?: { orReplace: boolean; keys?: string[] | undefined } | undefined
 }): string => {
   const keys = options?.keys ?? Object.keys(columns)
   const keysStr = keys.join(', ')

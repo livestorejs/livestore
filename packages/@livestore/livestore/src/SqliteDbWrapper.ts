@@ -161,12 +161,14 @@ export class SqliteDbWrapper implements SqliteDb {
   cachedExecute(
     queryStr: string,
     bindValues?: PreparedBindValues | undefined,
-    options?: {
-      hasNoEffects?: boolean
-      otelContext?: otel.Context
-      writeTables?: ReadonlySet<string>
-      onRowsChanged?: (rowsChanged: number) => void
-    },
+    options?:
+      | {
+          hasNoEffects?: boolean | undefined
+          otelContext?: otel.Context | undefined
+          writeTables?: ReadonlySet<string> | undefined
+          onRowsChanged?: ((rowsChanged: number) => void) | undefined
+        }
+      | undefined,
   ): { durationMs: number } {
     // console.debug('in-memory-db:execute', query, bindValues)
 
@@ -230,11 +232,13 @@ export class SqliteDbWrapper implements SqliteDb {
   cachedSelect<T = any>(
     queryStr: string,
     bindValues?: PreparedBindValues | undefined,
-    options?: {
-      queriedTables?: ReadonlySet<string>
-      skipCache?: boolean
-      otelContext?: otel.Context
-    },
+    options?:
+      | {
+          queriedTables?: ReadonlySet<string> | undefined
+          skipCache?: boolean | undefined
+          otelContext?: otel.Context | undefined
+        }
+      | undefined,
   ): ReadonlyArray<T> {
     const { queriedTables, skipCache = false, otelContext } = options ?? {}
 

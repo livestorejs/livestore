@@ -49,9 +49,9 @@ export class NoopTracer {
   ): ReturnType<F>
   startActiveSpan<F extends (span: otel.Span) => ReturnType<F>>(
     name: string,
-    arg2?: F | otel.SpanOptions,
-    arg3?: F | otel.Context,
-    arg4?: F,
+    arg2?: F | otel.SpanOptions | undefined,
+    arg3?: F | otel.Context | undefined,
+    arg4?: F | undefined,
   ): ReturnType<F> | undefined {
     let _opts: otel.SpanOptions | undefined
     let _ctx: otel.Context | undefined

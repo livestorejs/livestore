@@ -31,13 +31,15 @@ export const useQuery = <TQuery extends LiveQueryDef.Any>(
  */
 export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   queryDef: TQuery,
-  options?: {
-    store?: Store
-    /** Parent otel context for the query */
-    otelContext?: otel.Context
-    /** The name of the span to use for the query */
-    otelSpanName?: string
-  },
+  options?:
+    | {
+        store?: Store | undefined
+        /** Parent otel context for the query */
+        otelContext?: otel.Context | undefined
+        /** The name of the span to use for the query */
+        otelSpanName?: string | undefined
+      }
+    | undefined,
 ): {
   valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>

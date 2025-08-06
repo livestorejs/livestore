@@ -6,7 +6,8 @@
     "composite": false,
     "outDir": "./dist",
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src"],
   "references": [

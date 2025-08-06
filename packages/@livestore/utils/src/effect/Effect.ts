@@ -90,7 +90,7 @@ export const eventListener = <TEvent = unknown>(
   target: Stream.EventListener<TEvent>,
   type: string,
   handler: (event: TEvent) => Effect.Effect<void, never, never>,
-  options?: { once?: boolean },
+  options?: { once?: boolean | undefined } | undefined,
 ) =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()

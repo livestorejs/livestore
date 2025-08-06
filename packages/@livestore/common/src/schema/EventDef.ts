@@ -173,7 +173,7 @@ export type MaterializerResult =
   | {
       sql: string
       bindValues: BindValues
-      writeTables?: ReadonlySet<string>
+      writeTables?: ReadonlySet<string> | undefined
     }
   | QueryBuilder.Any
   | string

@@ -23,7 +23,8 @@
     "paths": {
       "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],
       "@livestore/*": ["./packages/@livestore/*"]
-    }
+    },
+    "exactOptionalPropertyTypes": true
   },
   "exclude": ["packages/**/dist", "node_modules", "packages/**/node_modules"]
 }

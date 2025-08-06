@@ -44,8 +44,8 @@ export const makeTodoMvc = ({
   otelTracer,
   otelContext,
 }: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
+  otelTracer?: otel.Tracer | undefined
+  otelContext?: otel.Context | undefined
 } = {}) =>
   Effect.gen(function* () {
     const store = yield* createStore({

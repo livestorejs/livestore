@@ -19,21 +19,23 @@ import { makeSqliteDb } from './make-sqlite-db.js'
 import { makeShutdownChannel } from './shutdown-channel.js'
 
 export type MakeDbOptions = {
-  sync?: SyncOptions
-  storage?: {
-    /**
-     * Relative to expo-sqlite's default directory
-     *
-     * Example of a resulting path for `subDirectory: 'my-app'`:
-     * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
-     */
-    subDirectory?: string
-  }
+  sync?: SyncOptions | undefined
+  storage?:
+    | {
+        /**
+         * Relative to expo-sqlite's default directory
+         *
+         * Example of a resulting path for `subDirectory: 'my-app'`:
+         * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
+         */
+        subDirectory?: string | undefined
+      }
+    | undefined
   // syncBackend?: TODO
   /** @default android/ios id (see https://docs.expo.dev/versions/latest/sdk/application) */
-  clientId?: string
+  clientId?: string | undefined
   /** @default 'static' */
-  sessionId?: string
+  sessionId?: string | undefined
 }
 
 declare global {
@@ -141,7 +143,7 @@ const makeLeaderThread = ({
   makeSqliteDb: MakeExpoSqliteDb
   syncOptions: SyncOptions | undefined
   storage: {
-    subDirectory?: string
+    subDirectory?: string | undefined
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>

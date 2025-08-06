@@ -3,7 +3,13 @@ import { Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 export const provideOtel =
-  ({ otelTracer, parentSpanContext }: { otelTracer?: otel.Tracer; parentSpanContext?: otel.Context }) =>
+  ({
+    otelTracer,
+    parentSpanContext,
+  }: {
+    otelTracer?: otel.Tracer | undefined
+    parentSpanContext?: otel.Context | undefined
+  }) =>
   <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer>> => {
     const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, otelTracer ?? makeNoopTracer())
 

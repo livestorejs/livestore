@@ -9,8 +9,8 @@ export const withLock =
     options,
   }: {
     lockName: string
-    onTaken?: Effect.Effect<void, E2>
-    options?: Omit<LockOptions, 'signal'>
+    onTaken?: Effect.Effect<void, E2> | undefined
+    options?: Omit<LockOptions, 'signal'> | undefined
   }) =>
   <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A | void, E | E2, Ctx> =>
     Effect.gen(function* () {

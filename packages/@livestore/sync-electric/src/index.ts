@@ -118,11 +118,11 @@ export const makeElectricUrl = ({
    */
   searchParams: URLSearchParams
   /** Needed for Electric Cloud */
-  sourceId?: string
+  sourceId?: string | undefined
   /** Needed for Electric Cloud */
-  sourceSecret?: string
+  sourceSecret?: string | undefined
   /** For self-hosted ElectricSQL */
-  apiSecret?: string
+  apiSecret?: string | undefined
 }) => {
   const endpointUrl = `${electricHost}/v1/shape`
   const argsResult = Schema.decodeUnknownEither(Schema.Struct({ args: Schema.parseJson(ApiSchema.PullPayload) }))(

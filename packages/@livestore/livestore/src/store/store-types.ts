@@ -67,12 +67,12 @@ export type RefreshReason =
       // TODO rename to a more appropriate name which is framework-agnostic
       _tag: 'react'
       api: string
-      label?: string
-      stackInfo?: StackInfo
+      label?: string | undefined
+      stackInfo?: StackInfo | undefined
     }
-  | { _tag: 'subscribe.initial'; label?: string }
-  | { _tag: 'subscribe.update'; label?: string }
-  | { _tag: 'manual'; label?: string }
+  | { _tag: 'subscribe.initial'; label?: string | undefined }
+  | { _tag: 'subscribe.update'; label?: string | undefined }
+  | { _tag: 'manual'; label?: string | undefined }
 
 export type QueryDebugInfo = {
   _tag: string
@@ -89,10 +89,10 @@ export type StoreOtel = {
 }
 
 export type StoreCommitOptions = {
-  label?: string
-  skipRefresh?: boolean
-  spanLinks?: otel.Link[]
-  otelContext?: otel.Context
+  label?: string | undefined
+  skipRefresh?: boolean | undefined
+  spanLinks?: otel.Link[] | undefined
+  otelContext?: otel.Context | undefined
 }
 
 export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
@@ -100,22 +100,22 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    * By default only new events are returned.
    * Use this to get all events from a specific point in time.
    */
-  cursor?: EventSequenceNumber.EventSequenceNumber
+  cursor?: EventSequenceNumber.EventSequenceNumber | undefined
   /**
    * Only include events of the given names
    * @default undefined (include all)
    */
-  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
+  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']> | undefined
   /**
    * Whether to include client-only events or only return synced events
    * @default true
    */
-  includeClientOnly?: boolean
+  includeClientOnly?: boolean | undefined
   /**
    * Exclude own events that have not been pushed to the sync backend yet
    * @default false
    */
-  excludeUnpushed?: boolean
+  excludeUnpushed?: boolean | undefined
 }
 
 export type Unsubscribe = () => void

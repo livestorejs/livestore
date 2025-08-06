@@ -40,7 +40,7 @@ export const deployToNetlify = ({
   dir: string
   target: Target
   cwd: string
-  filter?: string
+  filter?: string | undefined
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })

@@ -443,6 +443,8 @@ describe('query builder', () => {
     })
 
     it('should handle UPDATE queries with undefined values', () => {
+      db.todos.update({ status: undefined, text: 'some text' })
+
       expect(dump(db.todos.update({ status: undefined, text: 'some text' }).where({ id: '123' })))
         .toMatchInlineSnapshot(`
         {

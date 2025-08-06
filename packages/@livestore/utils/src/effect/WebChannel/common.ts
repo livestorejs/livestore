@@ -15,7 +15,7 @@ export interface WebChannel<MsgListen, MsgSend, E = never> {
   closedDeferred: Deferred.Deferred<void>
   shutdown: Effect.Effect<void>
   schema: { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
-  debugInfo?: Record<string, any>
+  debugInfo?: Record<string, any> | undefined
 }
 
 export const DebugPingMessage = Schema.TaggedStruct('WebChannel.DebugPing', {

@@ -32,7 +32,11 @@ import { makeMeshNode } from './node.js'
 
 const ExampleSchema = Schema.Struct({ message: Schema.String })
 
-const connectNodesViaMessageChannel = (nodeA: MeshNode, nodeB: MeshNode, options?: { replaceIfExists?: boolean }) =>
+const connectNodesViaMessageChannel = (
+  nodeA: MeshNode,
+  nodeB: MeshNode,
+  options?: { replaceIfExists?: boolean | undefined } | undefined,
+) =>
   Effect.gen(function* () {
     const mc = new MessageChannel()
     const meshChannelAToB = yield* WebChannel.messagePortChannel({ port: mc.port1, schema: Packet })
@@ -50,7 +54,11 @@ const connectNodesViaMessageChannel = (nodeA: MeshNode, nodeB: MeshNode, options
     })
   }).pipe(Effect.withSpan(`connectNodesViaMessageChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
-const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, options?: { replaceIfExists?: boolean }) =>
+const connectNodesViaBroadcastChannel = (
+  nodeA: MeshNode,
+  nodeB: MeshNode,
+  options?: { replaceIfExists?: boolean | undefined },
+) =>
   Effect.gen(function* () {
     // Need to instantiate two different channels because they filter out messages they sent themselves
     const broadcastWebChannelA = yield* WebChannel.broadcastChannelWithAck({
@@ -75,7 +83,11 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, optio
     })
   }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
-const createChannel = (source: MeshNode, target: string, options?: Partial<Parameters<MeshNode['makeChannel']>[0]>) =>
+const createChannel = (
+  source: MeshNode,
+  target: string,
+  options?: Partial<Parameters<MeshNode['makeChannel']>[0]> | undefined,
+) =>
   source.makeChannel({
     target,
     channelName: options?.channelName ?? 'test',
@@ -144,8 +156,8 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     nodeX: MeshNode
     nodeY: MeshNode
     channelType: 'direct' | 'proxy' | 'proxy(via-messagechannel-edge)'
-    numberOfMessages?: number
-    delays?: { x?: number; y?: number; connect?: number }
+    numberOfMessages?: number | undefined
+    delays?: { x?: number | undefined; y?: number | undefined; connect?: number | undefined } | undefined
   }) =>
     Effect.gen(function* () {
       const nodeLabel = { x: nodeX.nodeName, y: nodeY.nodeName }
@@ -1054,7 +1066,11 @@ const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'webmesh-nod
 const withCtx =
   (
     testContext: Vitest.TaskContext,
-    { suffix, skipOtel = false, timeout = testTimeout }: { suffix?: string; skipOtel?: boolean; timeout?: number } = {},
+    {
+      suffix,
+      skipOtel = false,
+      timeout = testTimeout,
+    }: { suffix?: string | undefined; skipOtel?: boolean | undefined; timeout?: number | undefined } = {},
   ) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(

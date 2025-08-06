@@ -16,9 +16,9 @@ export type MakeBackendArgs = {
 }
 
 export type SyncOptions = {
-  backend?: SyncBackendConstructor<any>
+  backend?: SyncBackendConstructor<any> | undefined
   /** @default { _tag: 'Skip' } */
-  initialSyncOptions?: InitialSyncOptions
+  initialSyncOptions?: InitialSyncOptions | undefined
   /**
    * What to do if there is an error during sync.
    *
@@ -28,7 +28,7 @@ export type SyncOptions = {
    *
    * @default 'ignore'
    * */
-  onSyncError?: 'shutdown' | 'ignore'
+  onSyncError?: 'shutdown' | 'ignore' | undefined
 }
 
 export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (

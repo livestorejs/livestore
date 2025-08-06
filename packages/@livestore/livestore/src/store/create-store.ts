@@ -67,63 +67,63 @@ export type LiveStoreContextProps<TSchema extends LiveStoreSchema, TContext = {}
    *
    * @default 'default'
    */
-  storeId?: string
+  storeId?: string | undefined
   /** Can be useful for custom live query implementations (e.g. see `@livestore/graphql`) */
-  context?: TContext
-  boot?: (
-    store: Store<TSchema, TContext>,
-  ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  context?: TContext | undefined
+  boot?:
+    | ((
+        store: Store<TSchema, TContext>,
+      ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>)
+    | undefined
   adapter: Adapter
   /**
    * Whether to disable devtools.
    *
    * @default 'auto'
    */
-  disableDevtools?: boolean | 'auto'
-  onBootStatus?: (status: BootStatus) => void
-  batchUpdates: (run: () => void) => void
+  disableDevtools?: boolean | 'auto' | undefined
+  onBootStatus?: ((status: BootStatus) => void) | undefined
+  batchUpdates: ((run: () => void) => void) | undefined
 }
 
 export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> {
   schema: TSchema
   adapter: Adapter
   storeId: string
-  context?: TContext
-  boot?: (
-    store: Store<TSchema, TContext>,
-    ctx: {
-      migrationsReport: MigrationsReport
-      parentSpan: otel.Span
-    },
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
-  batchUpdates?: (run: () => void) => void
+  context?: TContext | undefined
+  boot?:
+    | ((
+        store: Store<TSchema, TContext>,
+        ctx: {
+          migrationsReport: MigrationsReport
+          parentSpan: otel.Span
+        },
+      ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>)
+    | undefined
+  batchUpdates?: ((run: () => void) => void) | undefined
   /**
    * Whether to disable devtools.
    *
    * @default 'auto'
    */
-  disableDevtools?: boolean | 'auto'
-  onBootStatus?: (status: BootStatus) => void
-  shutdownDeferred?: ShutdownDeferred
+  disableDevtools?: boolean | 'auto' | undefined
+  onBootStatus?: ((status: BootStatus) => void) | undefined
+  shutdownDeferred?: ShutdownDeferred | undefined
   /**
    * Currently only used in the web adapter:
    * If true, registers a beforeunload event listener to confirm unsaved changes.
    *
    * @default true
    */
-  confirmUnsavedChanges?: boolean
+  confirmUnsavedChanges?: boolean | undefined
   /**
    * Payload that will be passed to the sync backend when connecting
    *
    * @default undefined
    */
-  syncPayload?: Schema.JsonValue
-  params?: {
-    leaderPushBatchSize?: number
-  }
-  debug?: {
-    instanceId?: string
-  }
+  syncPayload?: Schema.JsonValue | undefined
+  params?: { leaderPushBatchSize?: number | undefined } | undefined
+  debug?: { instanceId?: string | undefined } | undefined
 }
 
 /** Create a new LiveStore Store */
@@ -132,8 +132,8 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
   otelOptions,
   ...options
 }: CreateStoreOptions<TSchema, TContext> & {
-  signal?: AbortSignal
-  otelOptions?: Partial<OtelOptions>
+  signal?: AbortSignal | undefined
+  otelOptions?: Partial<OtelOptions> | undefined
 }): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()

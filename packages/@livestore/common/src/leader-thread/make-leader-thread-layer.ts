@@ -34,17 +34,15 @@ export interface MakeLeaderThreadLayerParams {
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
-  params?: {
-    localPushBatchSize?: number
-    backendPushBatchSize?: number
-  }
-  testing?: {
-    syncProcessor?: {
-      delays?: {
-        localPushProcessing?: Effect.Effect<void>
+  params?:
+    | {
+        localPushBatchSize?: number
+        backendPushBatchSize?: number
       }
-    }
-  }
+    | undefined
+  testing?:
+    | { syncProcessor?: { delays?: { localPushProcessing?: Effect.Effect<void> | undefined } | undefined } | undefined }
+    | undefined
 }
 
 export const makeLeaderThreadLayer = ({

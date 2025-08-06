@@ -89,16 +89,14 @@ export const makeLeaderSyncProcessor = ({
     /**
      * @default 10
      */
-    localPushBatchSize?: number
+    localPushBatchSize?: number | undefined
     /**
      * @default 50
      */
-    backendPushBatchSize?: number
+    backendPushBatchSize?: number | undefined
   }
   testing: {
-    delays?: {
-      localPushProcessing?: Effect.Effect<void>
-    }
+    delays?: { localPushProcessing?: Effect.Effect<void> | undefined } | undefined
   }
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {

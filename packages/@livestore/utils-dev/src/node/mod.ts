@@ -22,12 +22,12 @@ export const OtelLiveHttp = ({
   skipLogUrl,
   traceNodeBootstrap,
 }: {
-  serviceName?: string
-  rootSpanName?: string
-  parentSpan?: Tracer.AnySpan
-  rootSpanAttributes?: Record<string, unknown>
-  skipLogUrl?: boolean
-  traceNodeBootstrap?: boolean
+  serviceName?: string | undefined
+  rootSpanName?: string | undefined
+  parentSpan?: Tracer.AnySpan | undefined
+  rootSpanAttributes?: Record<string, unknown> | undefined
+  skipLogUrl?: boolean | undefined
+  traceNodeBootstrap?: boolean | undefined
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan, never, never> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
@@ -148,9 +148,9 @@ export const cmd: (
   commandInput: string | (string | undefined)[],
   options?:
     | {
-        cwd?: string
-        shell?: boolean
-        env?: Record<string, string | undefined>
+        cwd?: string | undefined
+        shell?: boolean | undefined
+        env?: Record<string, string | undefined> | undefined
       }
     | undefined,
 ) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn(
@@ -182,12 +182,14 @@ export const cmd: (
 
 export const cmdText: (
   commandInput: string | (string | undefined)[],
-  options?: {
-    cwd?: string
-    stderr?: 'inherit' | 'pipe'
-    runInShell?: boolean
-    env?: Record<string, string | undefined>
-  },
+  options?:
+    | {
+        cwd?: string | undefined
+        stderr?: 'inherit' | 'pipe' | undefined
+        runInShell?: boolean | undefined
+        env?: Record<string, string | undefined> | undefined
+      }
+    | undefined,
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
   function* (commandInput, options) {
     const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')

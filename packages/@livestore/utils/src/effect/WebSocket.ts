@@ -20,7 +20,7 @@ export const makeWebSocket = ({
   reconnect,
 }: {
   url: string
-  reconnect?: Schedule.Schedule<unknown> | false
+  reconnect?: Schedule.Schedule<unknown> | false | undefined
 }): Effect.Effect<globalThis.WebSocket, WebSocketError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     yield* validateUrl(url)

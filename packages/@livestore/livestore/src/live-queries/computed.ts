@@ -9,10 +9,12 @@ import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from '
 
 export const computed = <TResult>(
   fn: (get: GetAtomResult) => TResult,
-  options?: {
-    label?: string
-    deps?: DepKey
-  },
+  options?:
+    | {
+        label?: string | undefined
+        deps?: DepKey | undefined
+      }
+    | undefined,
 ): LiveQueryDef<TResult> => {
   const hash = options?.deps ? depsToString(options.deps) : fn.toString()
   if (isValidFunctionString(hash)._tag === 'invalid') {

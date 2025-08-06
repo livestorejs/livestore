@@ -238,9 +238,7 @@ const makeLocalLeaderThread = ({
   storage: WorkerSchema.StorageType
   syncPayload: Schema.JsonValue | undefined
   devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
-  testing?: {
-    overrides?: TestingOverrides
-  }
+  testing?: { overrides?: TestingOverrides | undefined } | undefined
 }) =>
   Effect.gen(function* () {
     const layer = yield* Layer.build(

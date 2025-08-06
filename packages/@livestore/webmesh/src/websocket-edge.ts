@@ -46,7 +46,7 @@ export const connectViaWebSocket = ({
 }: {
   node: MeshNode
   url: string
-  openTimeout?: number
+  openTimeout?: number | undefined
 }): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const socket = yield* Socket.makeWebSocket(url, { openTimeout })
@@ -77,7 +77,7 @@ export const makeWebSocketEdge = ({
 }: {
   socket: Socket.Socket
   socketType: SocketType
-  debug?: { id?: string }
+  debug?: { id?: string | undefined } | undefined
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>

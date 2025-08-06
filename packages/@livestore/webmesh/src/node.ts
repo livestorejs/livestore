@@ -57,7 +57,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
     (options: {
       target: MeshNodeName
       edgeChannel: EdgeChannel
-      replaceIfExists?: boolean
+      replaceIfExists?: boolean | undefined
     }): Effect.Effect<void, EdgeAlreadyExistsError, Scope.Scope>
   }
 
@@ -107,13 +107,13 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      *
      * @default 1 second
      */
-    timeout?: Duration.DurationInput
+    timeout?: Duration.DurationInput | undefined
     /**
      * If true, will close an existing channel if it exists.
      *
      * @default false
      */
-    closeExisting?: boolean
+    closeExisting?: boolean | undefined
   }) => Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 
   listenForChannel: Stream.Stream<ListenForChannelResult>

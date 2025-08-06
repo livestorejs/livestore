@@ -1,5 +1,6 @@
 import type * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
+import { omitUndefineds } from '@livestore/utils'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
@@ -148,13 +149,14 @@ export const handleWebSocket = <
   env: TEnv,
   _ctx: CfWorker.ExecutionContext,
   options: {
-    headers?: CfWorker.HeadersInit
-    durableObject?: MakeWorkerOptions<TEnv>['durableObject']
-    validatePayload?: (payload: Schema.JsonValue | undefined) => void | Promise<void>
+    headers?: CfWorker.HeadersInit | undefined
+    durableObject?: MakeWorkerOptions<TEnv>['durableObject'] | undefined
+    validatePayload?: ((payload: Schema.JsonValue | undefined) => void | Promise<void>) | undefined
   },
 ): Promise<CfWorker.Response> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
+    const headersSpreadable = omitUndefineds({ headers: options.headers })
 
     const urlParams = UrlParams.fromInput(url.searchParams)
     const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)
@@ -162,7 +164,7 @@ export const handleWebSocket = <
     if (paramsResult._tag === 'Left') {
       return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
         status: 500,
-        headers: options?.headers,
+        ...headersSpreadable,
       })
     }
 
@@ -176,7 +178,10 @@ export const handleWebSocket = <
 
       if (result._tag === 'Left') {
         console.error('Invalid payload', result.left)
-        return new Response(result.left.toString(), { status: 400, headers: options.headers })
+        return new Response(result.left.toString(), {
+          status: 400,
+          ...headersSpreadable,
+        })
       }
     }
 
@@ -184,7 +189,7 @@ export const handleWebSocket = <
     if (!(durableObjectName in env)) {
       return new Response(`Failed dependency: Required Durable Object binding '${durableObjectName}' not available`, {
         status: 424,
-        headers: options.headers,
+        ...headersSpreadable,
       })
     }
 
@@ -199,7 +204,7 @@ export const handleWebSocket = <
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
       return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
-        headers: options?.headers,
+        ...headersSpreadable,
       })
     }
 
