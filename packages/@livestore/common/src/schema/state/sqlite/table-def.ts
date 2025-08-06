@@ -460,22 +460,29 @@ const schemaFieldToColumn = (
   const columnDef = getColumnDefForSchema(fieldSchema, propertySignature)
 
   // Create a new object with appropriate properties
-  const result: Partial<Writeable<SqliteDsl.ColumnDefinition.Any>> = {
+  const result: Writeable<SqliteDsl.ColumnDefinition.Any> = {
     columnType: columnDef.columnType,
     schema: columnDef.schema,
     default: columnDef.default,
+    nullable: columnDef.nullable,
+    primaryKey: columnDef.primaryKey,
+    autoIncrement: columnDef.autoIncrement,
   }
 
-  // Only add nullable if it's true
+  // Set nullable property explicitly
   if (propertySignature.isOptional && !forceHasPrimaryKey && !columnDef.primaryKey) {
     result.nullable = true
   } else if (columnDef.nullable) {
     result.nullable = true
+  } else {
+    result.nullable = false
   }
 
-  // Only add primaryKey if it's true
+  // Set primaryKey property explicitly
   if (forceHasPrimaryKey || columnDef.primaryKey) {
     result.primaryKey = true
+  } else {
+    result.primaryKey = false
   }
 
   // Only add autoIncrement if it's true

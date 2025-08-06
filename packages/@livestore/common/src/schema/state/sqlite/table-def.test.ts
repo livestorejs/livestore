@@ -114,8 +114,8 @@ describe('table function overloads', () => {
       schema: UserSchema,
     })
 
-    expect(userTable.sqliteDef.columns.id.nullable).toBeUndefined()
-    expect(userTable.sqliteDef.columns.name.nullable).toBeUndefined()
+    expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
+    expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
     expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
   })
 
@@ -573,9 +573,10 @@ describe('getColumnDefForSchema', () => {
         })
 
         expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
-        expect(userTable.sqliteDef.columns.id.nullable).toBeUndefined()
-        expect(userTable.sqliteDef.columns.name.primaryKey).toBeUndefined()
-        expect(userTable.sqliteDef.columns.email.primaryKey).toBeUndefined()
+        expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
+        expect(userTable.sqliteDef.columns.name.primaryKey).toBe(false)
+        expect(userTable.sqliteDef.columns.email.primaryKey).toBe(false)
+        expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
       })
 
       it('should not make primary key columns nullable even if optional', () => {
@@ -594,7 +595,7 @@ describe('getColumnDefForSchema', () => {
 
         // Primary key should not be nullable even though schema is optional
         expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
-        expect(userTable.sqliteDef.columns.id.nullable).toBeUndefined()
+        expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
       })
 
       it('should work with column type annotation', () => {
