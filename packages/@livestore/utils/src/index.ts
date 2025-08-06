@@ -39,6 +39,10 @@ export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
 
 export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 
+export type PartialOrUndefinedValues<T> = {
+  [K in keyof T]?: T[K] | undefined
+}
+
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const ref = <T>(val: T): { current: T } => ({ current: val })

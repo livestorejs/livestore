@@ -1,4 +1,4 @@
-import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
+import type { GetValForKey, PartialOrUndefinedValues, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
 import type { SessionIdSymbol } from '../../../../adapter-types.js'
@@ -151,7 +151,7 @@ export namespace QueryBuilder {
     | 'returning'
     | 'onConflict'
 
-  export type WhereParams<TTableDef extends TableDefBase> = Partial<{
+  export type WhereParams<TTableDef extends TableDefBase> = PartialOrUndefinedValues<{
     [K in keyof TTableDef['sqliteDef']['columns']]:
       | TTableDef['sqliteDef']['columns'][K]['schema']['Type']
       | { op: QueryBuilder.WhereOps.SingleValue; value: TTableDef['sqliteDef']['columns'][K]['schema']['Type'] }
@@ -345,7 +345,7 @@ export namespace QueryBuilder {
       <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(
         target: TTarget,
         action: 'update',
-        updateValues: Partial<TTableDef['rowSchema']['Type']>,
+        updateValues: PartialOrUndefinedValues<TTableDef['rowSchema']['Type']>,
       ): QueryBuilder<
         TResult,
         TTableDef,
@@ -379,7 +379,7 @@ export namespace QueryBuilder {
      * ```
      */
     readonly update: (
-      values: Partial<TTableDef['rowSchema']['Type']>,
+      values: PartialOrUndefinedValues<TTableDef['rowSchema']['Type']>,
     ) => QueryBuilder<
       TResult,
       TTableDef,
@@ -406,7 +406,7 @@ export namespace QueryBuilder {
 
 export namespace RowQuery {
   export type GetOrCreateOptions<TTableDef extends ClientDocumentTableDef.TraitAny> = {
-    default: Partial<TTableDef['Value']>
+    default: PartialOrUndefinedValues<TTableDef['Value']>
   }
 
   // TODO get rid of this

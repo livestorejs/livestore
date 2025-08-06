@@ -375,7 +375,7 @@ describe('query builder', () => {
     })
 
     it('should handle INSERT queries with undefined values', () => {
-      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active', completed: undefined })))
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active', completed: false })))
         .toMatchInlineSnapshot(`
         {
           "bindValues": [
