@@ -4,6 +4,7 @@ runs:
   using: composite
   steps:
     - name: Check Nix flake inputs
+      # Performs health checks on the flake.lock file to ensure we stay on recent and supported versions of Nixpkgs.
       uses: DeterminateSystems/flake-checker-action@main
       with:
         flake-lock-path: ./nix/flake.lock
@@ -12,17 +13,21 @@ runs:
       uses: DeterminateSystems/determinate-nix-action@v3
 
     - name: Use FlakeHub Cache for Nix binaries
-      # NOTE Flakehub cache is still faster than magic-nix-cache-action
+      # flakehub-cache-action supersedes and is faster than magic-nix-cache-action.
       uses: DeterminateSystems/flakehub-cache-action@main
 
     - name: Get pnpm store directory
+      # This is needed because pnpm's store path is not fixed and can vary based on the environment.
       id: pnpm-store
       shell: bash
+      # We use `nix develop --command` because the `pnpm` CLI is installed via Nix.
       run: echo "DIR_PATH=$(nix develop ./nix --command pnpm store path --silent)" >> $GITHUB_OUTPUT
 
     - name: Cache pnpm store
       uses: actions/cache@v4
       with:
+       # We only should cache the pnpm store, and not the node_modules directory. Caching it duplicates effort since the
+       # pnpm store already covers the package contents, and leads to issues with package resolution.
        path: ${{ steps.pnpm-store.outputs.DIR_PATH }}
        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
        restore-keys: ${{ runner.os }}-pnpm-store-
