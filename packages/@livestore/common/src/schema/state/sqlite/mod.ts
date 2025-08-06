@@ -16,6 +16,8 @@ export {
   clientDocument,
   tableIsClientDocumentTable,
 } from './client-document-def.ts'
+export * from './column-annotations.ts'
+export * from './column-spec.ts'
 export * from './table-def.ts'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {

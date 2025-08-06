@@ -1,11 +1,12 @@
 import { memoizeByStringifyArgs } from '@livestore/utils'
-import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
 import type { UnexpectedError } from '../errors.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
+import { makeColumnSpec } from '../schema/state/sqlite/column-spec.ts'
+import { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
 import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.ts'
 import {
   isStateSystemTable,
@@ -170,34 +171,4 @@ export const migrateTable = ({
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''
   return sql`create ${uniqueStr} index if not exists '${index.name}' on '${tableName}' (${index.columns.map((col) => `'${col}'`).join(', ')})`
-}
-
-export const makeColumnSpec = (tableAst: SqliteAst.Table) => {
-  const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => `'${_.name}'`)
-  const columnDefStrs = tableAst.columns.map(toSqliteColumnSpec)
-  if (primaryKeys.length > 0) {
-    columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
-  }
-
-  return columnDefStrs.join(', ')
-}
-
-/** NOTE primary keys are applied on a table level not on a column level to account for multi-column primary keys */
-const toSqliteColumnSpec = (column: SqliteAst.Column) => {
-  const columnTypeStr = column.type._tag
-  const nullableStr = column.nullable === false ? 'not null' : ''
-  const defaultValueStr = (() => {
-    if (column.default._tag === 'None') return ''
-
-    if (column.default.value === null) return 'default null'
-    if (SqliteDsl.isSqlDefaultValue(column.default.value)) return `default ${column.default.value.sql}`
-
-    const encodeValue = EffectSchema.encodeSync(column.schema)
-    const encodedDefaultValue = encodeValue(column.default.value)
-
-    if (columnTypeStr === 'text') return `default '${encodedDefaultValue}'`
-    return `default ${encodedDefaultValue}`
-  })()
-
-  return `'${column.name}' ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
 }

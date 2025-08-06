@@ -17,6 +17,35 @@
 
 - feat: Expose sync payload and store id to `onPull/onPush`, expose `storeId` to `validatePayload` (#451)
 - feat: Improve node sync testing infrastructure and fix logging issues (#452)
+- feat: Enable schema-first SQLite table definitions (#518)
+  - **Fixes #518**: Automatically derive column definitions from Effect schemas, eliminating the need to manually define both schemas and table structures separately
+  - **Previous behavior:** Tables required duplicate definitions - once in the schema and once in the column definitions
+  - **New behavior:** Tables can now be defined using only an Effect schema, with columns automatically derived
+  - **Example:**
+    ```ts
+    const Recipe = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      name: Schema.String,
+      createdAt: Schema.String.pipe(State.SQLite.withDefault(() => "CURRENT_TIMESTAMP"))
+    })
+    
+    // Before: Manual column definitions required
+    const recipes = State.SQLite.table({
+      name: "recipes",
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        name: State.SQLite.text(),
+        createdAt: State.SQLite.text({ default: sql`CURRENT_TIMESTAMP` })
+      }
+    })
+    
+    // After: Columns automatically derived from schema
+    const recipes = State.SQLite.table({
+      name: "recipes", 
+      schema: Recipe
+    })
+    ```
+  - This reduces boilerplate, ensures consistency between TypeScript types and SQLite table structure, and aligns with Effect's schema-first philosophy
 
 ### Breaking changes
 

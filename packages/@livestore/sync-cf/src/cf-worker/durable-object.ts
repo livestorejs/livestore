@@ -1,4 +1,4 @@
-import { makeColumnSpec, UnexpectedError } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema, UrlParams } from '@livestore/utils/effect'
@@ -128,7 +128,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           ),
         )
 
-        const colSpec = makeColumnSpec(eventlogTable.sqliteDef.ast)
+        const colSpec = State.SQLite.makeColumnSpec(eventlogTable.sqliteDef.ast)
         this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
 
         return new Response(null, {

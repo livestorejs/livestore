@@ -25,7 +25,7 @@ test(
             { stage: 'done' },
           ],
           migrationsReport: {
-            migrations: [{ tableName: 'todos', hashes: { expected: 27_118_251_376, actual: undefined } }],
+            migrations: [{ tableName: 'todos', hashes: { expected: -35_462_037_457, actual: undefined } }],
           },
         }),
       )
