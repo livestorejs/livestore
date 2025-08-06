@@ -7,7 +7,7 @@ import {
   SqliteError,
 } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
+import { ensureUint8ArrayBuffer, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 // TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
 // // @ts-expect-error package misses `exports`
@@ -122,7 +122,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         stmt.finalizeSync()
       }
     }),
-    export: SqliteDbHelper.makeExport(() => db.serializeSync() as Uint8Array<ArrayBuffer>),
+    export: SqliteDbHelper.makeExport(() => ensureUint8ArrayBuffer(db.serializeSync())),
     select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
@@ -172,7 +172,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       const session = db.createSessionSync()
       session.attachSync(null)
       return {
-        changeset: () => session.createChangesetSync() as Uint8Array<ArrayBuffer>,
+        changeset: () => ensureUint8ArrayBuffer(session.createChangesetSync()),
         finish: () => session.closeSync(),
       }
     },
@@ -182,7 +182,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       // apply an inverted changeset
       return {
         invert: () => {
-          const inverted = session.invertChangesetSync(data) as Uint8Array<ArrayBuffer>
+          const inverted = ensureUint8ArrayBuffer(session.invertChangesetSync(data))
           return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {

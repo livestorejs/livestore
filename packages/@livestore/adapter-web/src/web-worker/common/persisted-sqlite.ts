@@ -1,4 +1,5 @@
 import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { ensureUint8ArrayBuffer } from '@livestore/utils'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
 import { Effect, Schedule, Schema } from '@livestore/utils/effect'

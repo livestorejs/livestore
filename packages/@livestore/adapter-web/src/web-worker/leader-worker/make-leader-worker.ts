@@ -7,7 +7,7 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, LS_DEV } from '@livestore/utils'
+import { ensureUint8ArrayBuffer, isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -41,13 +41,7 @@ export type WorkerOptions = {
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
     opfs: OpfsUtils,
-    blobUrl: (buffer: Uint8Array) => {
-      // Create a new Uint8Array backed by ArrayBuffer to satisfy TypeScript 5.9 strict typing
-      const arrayBuffer = new ArrayBuffer(buffer.length)
-      const safeBuffer = new Uint8Array(arrayBuffer)
-      safeBuffer.set(buffer)
-      return URL.createObjectURL(new Blob([safeBuffer], { type: 'application/octet-stream' }))
-    },
+    blobUrl: (buffer: Uint8Array<ArrayBuffer>) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
