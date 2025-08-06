@@ -1,7 +1,7 @@
 import { Devtools, UnexpectedError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
-import { ensureUint8ArrayBuffer, isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
+import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
   BrowserWorker,
   BrowserWorkerRunner,
@@ -30,7 +30,8 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    blobUrl: (buffer: Uint8Array<ArrayBuffer>) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+    blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
+      URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
