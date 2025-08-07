@@ -27,8 +27,8 @@
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@opentelemetry/sdk-trace-web": "^2.0.1",
     "@playwright/test": "^1.53.1",
-    "@tanstack/react-router": "^1.130.11",
-    "@tanstack/router-plugin": "^1.130.11",
+    "@tanstack/react-router": "^1.130.12",
+    "@tanstack/router-plugin": "^1.130.15",
     "@types/node": "catalog:",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
@@ -37,7 +37,7 @@
     "todomvc-app-css": "^2.4.3",
     "vite": "^7.0.6",
     "vitest": "catalog:",
-    "wrangler": "^4.27.0"
+    "wrangler": "^4.28.0"
   },
   "scripts": {
     "test": "CI=1 bun ./scripts/run-tests.ts"
