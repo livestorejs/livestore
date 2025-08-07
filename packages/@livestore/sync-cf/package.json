@@ -11,7 +11,7 @@
     "./cf-worker/worker": "./src/cf-worker/worker.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250801.0",
+    "@cloudflare/workers-types": "4.20250807.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },

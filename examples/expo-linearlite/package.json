@@ -11,7 +11,7 @@
     "@livestore/react": "0.3.2-dev.14",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native/assets-registry": "0.80.2",
-    "@react-navigation/native": "7.1.16",
+    "@react-navigation/native": "7.1.17",
     "expo": "53.0.20",
     "expo-application": "6.1.5",
     "expo-asset": "11.1.7",

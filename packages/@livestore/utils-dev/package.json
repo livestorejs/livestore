@@ -10,7 +10,7 @@
     "./node-vitest": "./src/node-vitest/mod.ts"
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.56.0",
+    "@effect/opentelemetry": "0.56.1",
     "@effect/vitest": "0.25.0",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",

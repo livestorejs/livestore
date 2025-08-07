@@ -5,7 +5,7 @@
   "private": true,
   "dependencies": {
     "@astrojs/check": "0.9.4",
-    "@astrojs/netlify": "6.5.5",
+    "@astrojs/netlify": "6.5.6",
     "@astrojs/react": "4.3.0",
     "@astrojs/starlight": "0.35.2",
     "@astrojs/starlight-tailwind": "4.0.1",
