@@ -1,7 +1,7 @@
 ---
 title: Materializers
 sidebar:
-  order: 4
+  order: 5
 ---
 
 Materializers are functions that allow you to write to your database in response to events. Materializers are executed in the order of the events in the eventlog.

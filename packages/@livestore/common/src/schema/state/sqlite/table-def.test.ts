@@ -591,10 +591,12 @@ describe('getColumnDefForSchema', () => {
           name: Schema.String,
         })
 
-        expect(() => State.SQLite.table({
-          name: 'users',
-          schema: UserSchema,
-        })).toThrow('Primary key columns cannot be nullable')
+        expect(() =>
+          State.SQLite.table({
+            name: 'users',
+            schema: UserSchema,
+          }),
+        ).toThrow('Primary key columns cannot be nullable')
       })
 
       it('should throw when primary key is used with NullOr schema', () => {
@@ -603,10 +605,12 @@ describe('getColumnDefForSchema', () => {
           name: Schema.String,
         })
 
-        expect(() => State.SQLite.table({
-          name: 'users',
-          schema: UserSchema,
-        })).toThrow('Primary key columns cannot be nullable')
+        expect(() =>
+          State.SQLite.table({
+            name: 'users',
+            schema: UserSchema,
+          }),
+        ).toThrow('Primary key columns cannot be nullable')
       })
 
       it('should work with column type annotation', () => {

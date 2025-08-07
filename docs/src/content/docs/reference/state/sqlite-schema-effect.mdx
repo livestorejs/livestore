@@ -1,0 +1,262 @@
+---
+title: SQLite State Schema (Effect Schema)
+sidebar:
+  order: 3
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+LiveStore supports defining SQLite tables using Effect Schema with annotations for database constraints. This approach provides strong type safety, composability, and automatic type mapping from TypeScript to SQLite.
+
+> **Note**: This approach will become the default once Effect Schema v4 is released. See [livestore#382](https://github.com/livestorejs/livestore/issues/382) for details.
+>
+> For the traditional column-based approach, see [SQLite State Schema](/reference/state/sqlite-schema).
+
+## Basic Usage
+
+Define tables using Effect Schema with database constraint annotations:
+
+```ts
+import { State, Schema } from '@livestore/livestore'
+
+const UserSchema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  email: Schema.String.pipe(State.SQLite.withUnique),
+  name: Schema.String,
+  age: Schema.Int.pipe(State.SQLite.withDefault(0)),
+  isActive: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
+  metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+}).annotations({ title: 'users' })
+
+export const userTable = State.SQLite.table({ schema: UserSchema })
+```
+
+## Schema Annotations
+
+You can annotate schema fields with database constraints:
+
+### Primary Keys
+
+```ts
+const schema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  // Other fields...
+})
+```
+
+**Important**: Primary key columns cannot be nullable. This will throw an error:
+
+```ts
+// ❌ This will throw an error
+const badSchema = Schema.Struct({
+  id: Schema.NullOr(Schema.String).pipe(State.SQLite.withPrimaryKey) // Error!
+})
+```
+
+### Auto-Increment
+
+```ts
+const schema = Schema.Struct({
+  id: Schema.Int.pipe(State.SQLite.withPrimaryKey).pipe(State.SQLite.withAutoIncrement),
+  // Other fields...
+})
+```
+
+### Default Values
+
+```ts
+const schema = Schema.Struct({
+  status: Schema.String.pipe(State.SQLite.withDefault('active')),
+  createdAt: Schema.String.pipe(State.SQLite.withDefault('CURRENT_TIMESTAMP')),
+  count: Schema.Int.pipe(State.SQLite.withDefault(0)),
+})
+```
+
+### Unique Constraints
+
+```ts
+const schema = Schema.Struct({
+  email: Schema.String.pipe(State.SQLite.withUnique),
+  username: Schema.String.pipe(State.SQLite.withUnique),
+})
+```
+
+Unique annotations automatically create unique indexes.
+
+### Custom Column Types
+
+Override the automatically inferred SQLite column type:
+
+```ts
+const schema = Schema.Struct({
+  // Store a number as text instead of real
+  version: Schema.Number.pipe(State.SQLite.withColumnType('text')),
+  // Store binary data as blob
+  data: Schema.Uint8Array.pipe(State.SQLite.withColumnType('blob')),
+})
+```
+
+### Combining Annotations
+
+Annotations can be chained together:
+
+```ts
+const schema = Schema.Struct({
+  id: Schema.Int.pipe(State.SQLite.withPrimaryKey).pipe(State.SQLite.withAutoIncrement),
+  email: Schema.String.pipe(State.SQLite.withUnique).pipe(State.SQLite.withColumnType('text')),
+})
+```
+
+## Table Naming
+
+You can specify table names in several ways:
+
+### Using Schema Annotations
+
+```ts
+// Using title annotation
+const UserSchema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  name: Schema.String,
+}).annotations({ title: 'users' })
+
+export const userTable = State.SQLite.table({ schema: UserSchema })
+
+// Using identifier annotation
+const PostSchema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  title: Schema.String,
+}).annotations({ identifier: 'posts' })
+
+export const postTable = State.SQLite.table({ schema: PostSchema })
+```
+
+### Explicit Name
+
+```ts
+const UserSchema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  name: Schema.String,
+})
+
+export const userTable = State.SQLite.table({
+  name: 'users',
+  schema: UserSchema,
+})
+```
+
+**Note**: Title annotation takes precedence over identifier annotation.
+
+## Type Mapping
+
+Effect Schema types are automatically mapped to SQLite column types:
+
+| Schema Type | SQLite Type | TypeScript Type |
+|-------------|-------------|-----------------|
+| `Schema.String` | `text` | `string` |
+| `Schema.Number` | `real` | `number` |
+| `Schema.Int` | `integer` | `number` |
+| `Schema.Boolean` | `integer` | `boolean` |
+| `Schema.Date` | `text` | `Date` |
+| `Schema.BigInt` | `text` | `bigint` |
+| Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
+| `Schema.optional(T)` | Nullable column | `T \| undefined` |
+| `Schema.NullOr(T)` | Nullable column | `T \| null` |
+
+## Advanced Examples
+
+### Complex Schema with Multiple Constraints
+
+```ts
+const ProductSchema = Schema.Struct({
+  id: Schema.Int.pipe(State.SQLite.withPrimaryKey).pipe(State.SQLite.withAutoIncrement),
+  sku: Schema.String.pipe(State.SQLite.withUnique),
+  name: Schema.String,
+  price: Schema.Number.pipe(State.SQLite.withDefault(0)),
+  category: Schema.Literal('electronics', 'clothing', 'books'),
+  metadata: Schema.optional(Schema.Struct({
+    weight: Schema.Number,
+    dimensions: Schema.Struct({
+      width: Schema.Number,
+      height: Schema.Number,
+      depth: Schema.Number,
+    }),
+  })),
+  isActive: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
+  createdAt: Schema.Date.pipe(State.SQLite.withDefault('CURRENT_TIMESTAMP')),
+}).annotations({ title: 'products' })
+
+export const productTable = State.SQLite.table({ schema: ProductSchema })
+```
+
+### Working with Schema.Class
+
+```ts
+class User extends Schema.Class<User>('User')({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  email: Schema.String.pipe(State.SQLite.withUnique),
+  name: Schema.String,
+  age: Schema.Int,
+}) {}
+
+export const userTable = State.SQLite.table({
+  name: 'users',
+  schema: User,
+})
+```
+
+### Custom Indexes
+
+```ts
+const PostSchema = Schema.Struct({
+  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+  title: Schema.String,
+  authorId: Schema.String,
+  createdAt: Schema.Date,
+}).annotations({ title: 'posts' })
+
+export const postTable = State.SQLite.table({
+  schema: PostSchema,
+  indexes: [
+    { name: 'idx_posts_author', columns: ['authorId'] },
+    { name: 'idx_posts_created', columns: ['createdAt'] },
+  ],
+})
+```
+
+## Best Practices
+
+### Schema Design
+
+- Always use `withPrimaryKey` for primary key columns - never combine it with nullable types
+- Use `Schema.optional()` for truly optional fields that can be undefined
+- Use `Schema.NullOr()` for fields that can explicitly be set to null
+- Leverage schema annotations like `title` or `identifier` to avoid repeating table names
+- Group related schemas in the same module for better organization
+
+### Type Safety
+
+- Let TypeScript infer table types rather than explicitly typing them
+- Use Effect Schema's refinements and transformations for data validation
+- Prefer Effect Schema's built-in types (`Schema.Int`, `Schema.Date`) over generic types where appropriate
+
+### Performance
+
+- Be mindful of complex types stored as JSON - they can impact query performance
+- Use appropriate indexes for frequently queried columns
+- Consider using `withColumnType` to optimize storage for specific use cases
+
+## When to Use This Approach
+
+**Use Effect Schema-based tables when:**
+- You already have Effect Schema definitions to reuse
+- You prefer Effect Schema's composability and transformations
+- Your schemas are shared across different parts of your application
+- You want automatic type mapping and strong type safety
+- You plan to migrate to Effect Schema v4 when it becomes available
+
+**Consider column-based tables when:**
+- You need precise control over SQLite column types
+- You're migrating from existing SQLite schemas
+- You prefer explicit column configuration
+- You're not already using Effect Schema extensively in your project

@@ -1,7 +1,7 @@
 ---
 title: SQL Queries
 sidebar:
-  order: 3
+  order: 4
 ---
 
 ## Query builder

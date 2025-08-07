@@ -18,7 +18,7 @@ export const TableDefInternalsSymbol = Symbol('TableDefInternals')
 export type TableDefInternalsSymbol = typeof TableDefInternalsSymbol
 
 export type TableDefBase<
-  // TODO replace SqliteDef type param with Effect Schema
+  // TODO replace SqliteDef type param with Effect Schema (see below)
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
 > = {
@@ -31,6 +31,8 @@ export type TableDefBase<
 
 export type TableDef<
   // TODO replace SqliteDef type param with Effect Schema
+  // We can only do this with Effect Schema v4 once the default values are tracked on the type level
+  // https://github.com/livestorejs/livestore/issues/382
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
@@ -141,6 +143,7 @@ export type TableOptions = {
  * - When using Effect Schema without explicit name, the schema must have a title or identifier annotation
  */
 // Overload 1: With columns
+// TODO drop support for `column` when Effect Schema v4 is released
 export function table<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
@@ -480,7 +483,7 @@ const schemaFieldToColumn = (
   if (result.primaryKey && (propertySignature.isOptional || columnDef.nullable)) {
     return shouldNeverHappen(
       `Primary key columns cannot be nullable. Found nullable primary key for column. ` +
-      `Either remove the primary key annotation or use a non-nullable schema.`
+        `Either remove the primary key annotation or use a non-nullable schema.`,
     )
   }
 
@@ -614,15 +617,15 @@ export const getColumnDefForSchema = (
     if (nonNullableType) {
       const innerSchema = Schema.make(nonNullableType)
       const innerColumnDef = getColumnDefForSchema(innerSchema, propertySignature)
-      
+
       // If the union contains null or undefined, mark as nullable
       if (hasNull || hasUndefined) {
         return withAnnotationsIfNeeded({
           ...innerColumnDef,
-          nullable: true
+          nullable: true,
         })
       }
-      
+
       return withAnnotationsIfNeeded(innerColumnDef)
     }
   }
