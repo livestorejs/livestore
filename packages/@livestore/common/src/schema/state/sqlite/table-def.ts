@@ -469,20 +469,28 @@ const schemaFieldToColumn = (
     autoIncrement: columnDef.autoIncrement,
   }
 
-  // Set nullable property explicitly
-  if (propertySignature.isOptional && !forceHasPrimaryKey && !columnDef.primaryKey) {
-    result.nullable = true
-  } else if (columnDef.nullable) {
-    result.nullable = true
-  } else {
-    result.nullable = false
-  }
-
   // Set primaryKey property explicitly
   if (forceHasPrimaryKey || columnDef.primaryKey) {
     result.primaryKey = true
   } else {
     result.primaryKey = false
+  }
+
+  // Check for invalid primary key + nullable combination
+  if (result.primaryKey && (propertySignature.isOptional || columnDef.nullable)) {
+    return shouldNeverHappen(
+      `Primary key columns cannot be nullable. Found nullable primary key for column. ` +
+      `Either remove the primary key annotation or use a non-nullable schema.`
+    )
+  }
+
+  // Set nullable property explicitly
+  if (propertySignature.isOptional) {
+    result.nullable = true
+  } else if (columnDef.nullable) {
+    result.nullable = true
+  } else {
+    result.nullable = false
   }
 
   // Only add autoIncrement if it's true
@@ -585,16 +593,37 @@ export const getColumnDefForSchema = (
     return withAnnotationsIfNeeded(SqliteDsl.boolean())
   }
 
-  // Check for unions (like optional)
+  // Check for unions (like optional or nullable)
   if (SchemaAST.isUnion(ast)) {
-    // For optional schemas, find the non-undefined type and use that
+    // Check if this union contains null or undefined (making it nullable/optional)
+    let hasNull = false
+    let hasUndefined = false
+    let nonNullableType: SchemaAST.AST | undefined
+
     for (const type of ast.types) {
-      if (!SchemaAST.isUndefinedKeyword(type)) {
-        // Create a new schema with this type but preserve the primary key annotation
-        const innerSchema = Schema.make(type)
-        const innerColumnDef = getColumnDefForSchema(innerSchema, propertySignature)
-        return withAnnotationsIfNeeded(innerColumnDef)
+      if (SchemaAST.isUndefinedKeyword(type)) {
+        hasUndefined = true
+      } else if (SchemaAST.isLiteral(type) && type.literal === null) {
+        hasNull = true
+      } else {
+        nonNullableType = type
       }
+    }
+
+    // If we found a non-nullable type, use it for the column definition
+    if (nonNullableType) {
+      const innerSchema = Schema.make(nonNullableType)
+      const innerColumnDef = getColumnDefForSchema(innerSchema, propertySignature)
+      
+      // If the union contains null or undefined, mark as nullable
+      if (hasNull || hasUndefined) {
+        return withAnnotationsIfNeeded({
+          ...innerColumnDef,
+          nullable: true
+        })
+      }
+      
+      return withAnnotationsIfNeeded(innerColumnDef)
     }
   }
 

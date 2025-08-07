@@ -565,6 +565,7 @@ describe('getColumnDefForSchema', () => {
           id: Schema.String.pipe(withPrimaryKey),
           name: Schema.String,
           email: Schema.optional(Schema.String),
+          nullable: Schema.NullOr(Schema.Int),
         })
 
         const userTable = State.SQLite.table({
@@ -577,9 +578,11 @@ describe('getColumnDefForSchema', () => {
         expect(userTable.sqliteDef.columns.name.primaryKey).toBe(false)
         expect(userTable.sqliteDef.columns.email.primaryKey).toBe(false)
         expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
+        expect(userTable.sqliteDef.columns.nullable.primaryKey).toBe(false)
+        expect(userTable.sqliteDef.columns.nullable.nullable).toBe(true)
       })
 
-      it('should not make primary key columns nullable even if optional', () => {
+      it('should throw when primary key is used with optional schema', () => {
         // Note: Schema.optional returns a property signature, not a schema, so we can't pipe it
         // Instead, we use Schema.Union to create an optional schema that can be piped
         const optionalString = Schema.Union(Schema.String, Schema.Undefined)
@@ -588,14 +591,22 @@ describe('getColumnDefForSchema', () => {
           name: Schema.String,
         })
 
-        const userTable = State.SQLite.table({
+        expect(() => State.SQLite.table({
           name: 'users',
           schema: UserSchema,
+        })).toThrow('Primary key columns cannot be nullable')
+      })
+
+      it('should throw when primary key is used with NullOr schema', () => {
+        const UserSchema = Schema.Struct({
+          id: Schema.NullOr(Schema.String).pipe(withPrimaryKey),
+          name: Schema.String,
         })
 
-        // Primary key should not be nullable even though schema is optional
-        expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
-        expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
+        expect(() => State.SQLite.table({
+          name: 'users',
+          schema: UserSchema,
+        })).toThrow('Primary key columns cannot be nullable')
       })
 
       it('should work with column type annotation', () => {
