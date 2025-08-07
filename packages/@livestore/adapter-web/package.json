@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-web",
-  "version": "0.3.2-dev.13",
+  "version": "0.3.2-dev.14",
   "type": "module",
   "sideEffects": false,
   "exports": {

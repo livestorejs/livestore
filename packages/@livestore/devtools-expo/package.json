@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.3.2-dev.13",
+  "version": "0.3.2-dev.14",
   "sideEffects": false,
   "types": "./dist/index.d.cts",
   "dependencies": {

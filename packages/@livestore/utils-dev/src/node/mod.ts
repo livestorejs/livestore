@@ -191,9 +191,10 @@ export const cmd: (
     const debugEnvStr = Object.entries(options?.env ?? {})
       .map(([key, value]) => `${key}='${value}' `)
       .join('')
+    const subshellStr = options?.shell ? ' (in subshell)' : ''
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
 
-    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
+    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
 
     return yield* Command.make(command!, ...args).pipe(
@@ -242,8 +243,9 @@ export const cmdText: (
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+    const subshellStr = options?.runInShell ? ' (in subshell)' : ''
 
-    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'`)
+    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
     return yield* Command.make(command!, ...args).pipe(
