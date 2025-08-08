@@ -28,6 +28,10 @@ table.count().where('name', 'like', '%Ali%')
 table.insert({ id: '123', name: 'Bob' })
 table.update({ name: 'Alice' }).where({ id: '123' })
 table.delete().where({ id: '123' })
+
+// Upsert queries (insert or update on conflict)
+table.insert({ id: '123', name: 'Charlie' }).onConflict('id', 'replace')
+table.insert({ id: '456', name: 'Diana' }).onConflict('id', 'update', { name: 'Diana Updated' })
 ```
 
 ## Raw SQL queries
