@@ -9,6 +9,7 @@ export default defineEcConfig({
     ecTwoSlash({
       twoslashOptions: {
         compilerOptions: {
+          allowImportingTsExtensions: true,
           moduleResolution: ts.ModuleResolutionKind.Bundler,
         },
       },
