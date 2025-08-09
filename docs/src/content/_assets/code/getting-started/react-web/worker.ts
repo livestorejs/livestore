@@ -1,4 +1,4 @@
-// @errors: 2322
+// biome-ignore-all lint: documentation
 // @filename: livestore/schema.ts
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
@@ -57,6 +57,7 @@ const materializers = State.SQLite.materializers(events, {
 
 const state = State.SQLite.makeState({ tables, materializers })
 
+// @ts-expect-error
 export const schema = makeSchema({ events, state })
 
 // @filename: index.ts
