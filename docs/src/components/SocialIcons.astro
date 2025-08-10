@@ -1,129 +1,163 @@
 ---
-import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
-import { liveStoreVersion } from '@livestore/common'
-import { IS_MAIN_BRANCH } from '../../data.js'
+import SocialIcons_ from "@astrojs/starlight/components/SocialIcons.astro";
+import { liveStoreVersion } from "@livestore/common";
+import { IS_MAIN_BRANCH } from "../../data.js";
 
-const devUrl = 'https://dev.docs.livestore.dev'
-const latestUrl = 'https://docs.livestore.dev'
+const devUrl = "https://dev.docs.livestore.dev";
+const latestUrl = "https://docs.livestore.dev";
 
 const links = Object.entries({
-	// Docs: '/',
-	// API: '/api/',
-	// Examples: '/examples/',
-	Homepage: 'https://livestore.dev',
-})
+  // Docs: '/',
+  // API: '/api/',
+  // Examples: '/examples/',
+  Homepage: "https://livestore.dev",
+});
 ---
 
 <div class="nav-link-container">
-	{
-		links.map(([text, href]) => (
-			<a href={href} class="nav-link">
-				<span>{text}</span>
-			</a>
-		))
-	}
+  {
+    links.map(([text, href]) => (
+      <a href={href} class="nav-link">
+        <span>{text}</span>
+      </a>
+    ))
+  }
 </div>
 <div class="version-selector">
-	<div class="version-select-wrapper">
-		<select id="version-select">
-			<option value={latestUrl} selected={IS_MAIN_BRANCH}
-				>Version: {IS_MAIN_BRANCH ? liveStoreVersion : 'latest'}</option
-			>
-			<option value={devUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
-		</select>
-	</div>
+  <div class="version-select-wrapper">
+    <select id="version-select">
+      <option value={latestUrl} selected={IS_MAIN_BRANCH}
+        >Version: {IS_MAIN_BRANCH ? liveStoreVersion : "latest"}</option
+      >
+      <option value={devUrl} selected={!IS_MAIN_BRANCH}
+        >Version: {IS_MAIN_BRANCH ? "dev" : liveStoreVersion}</option
+      >
+    </select>
+  </div>
 </div>
 <SocialIcons_ />
 
 <style>
-	.nav-link-container {
-		display: flex;
-		align-items: center;
-		margin-left: auto;
-		margin-right: auto;
-		visibility: hidden;
-	}
+  .nav-link-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: auto;
+    visibility: hidden;
+  }
 
-	@media (min-width: 50rem) {
-		.nav-link-container {
-			visibility: visible;
-		}
+  @media (min-width: 50rem) {
+    .nav-link-container {
+      visibility: visible;
+    }
 
-		.nav-link-container .nav-link {
-			padding-left: 0.25rem;
-			padding-right: 0.25rem;
-		}
-	}
+    .nav-link-container .nav-link {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+  }
 
-	@media (min-width: 64rem) {
-		.nav-link-container .nav-link {
-			padding-left: 0.5rem;
-			padding-right: 0.5rem;
-		}
-	}
+  @media (min-width: 64rem) {
+    .nav-link-container .nav-link {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+  }
 
-	.nav-link-container .nav-link {
-		color: var(--sl-color-text);
-		font-weight: 500;
-		text-decoration: none;
-	}
+  .nav-link-container .nav-link {
+    color: var(--sl-color-text);
+    font-weight: 500;
+    text-decoration: none;
+  }
 
-	.version-selector {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
+  .version-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
 
-	.version-select-wrapper {
-		background-color: var(--sl-color-accent-600);
-		border-radius: 0.25rem;
-		padding: 0.25rem;
-	}
+  .version-select-wrapper {
+    background-color: var(--sl-color-accent-600);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+  }
 
-	.version-select-wrapper:hover {
-		background-color: var(--sl-color-accent-700);
-	}
+  .version-select-wrapper:hover {
+    background-color: var(--sl-color-accent-700);
+  }
 
-	/* Style the select element */
-	.version-select-wrapper select {
-		appearance: none;
-		background-color: transparent;
-		background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 0.5rem center;
-		color: white;
-		border: none;
-		font-size: 0.875rem;
-		padding: 0 1.5rem 0 0.5rem;
-		cursor: pointer;
-	}
+  /* Style the select element */
+  .version-select-wrapper select {
+    appearance: none;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
 
-	/* Remove focus outline */
-	.version-select-wrapper select:focus {
-		outline: none;
-	}
+    border: none;
+    font-size: 0.875rem;
+    padding: 0 1.5rem 0 0.5rem;
+    cursor: pointer;
+  }
+
+  /* Style select options for light mode */
+  .version-select-wrapper select option {
+    background-color: var(--color-gray-200);
+    color: var(--sl-color-text);
+  }
+
+  /* Style select options for dark mode */
+  :root[data-theme="dark"] {
+    .version-select-wrapper select option {
+      background-color: var(--color-gray-800);
+      color: var(--sl-color-white);
+    }
+  }
+
+  /* fixes dropdown icon in light mode */
+  :root[data-theme="light"] {
+    .version-select-wrapper select {
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    }
+  }
+
+  .version-select-wrapper select:focus + .version-select-wrapper,
+  .version-select-wrapper:has(select:focus) {
+    border: 1px solid var(--custom-outline-color);
+  }
+
+  /* Alternative approach for browsers that don't support :has() */
+  .version-select-wrapper select:focus {
+    outline: none;
+  }
+
+  .version-select-wrapper:focus-within {
+    border: 1px solid var(--custom-outline-color);
+  }
 </style>
 
 <script>
-	// Handle version switching while preserving the current path
-	document.addEventListener('DOMContentLoaded', () => {
-		const versionSelect = document.getElementById('version-select') as HTMLSelectElement
+  // Handle version switching while preserving the current path
+  document.addEventListener("DOMContentLoaded", () => {
+    const versionSelect = document.getElementById(
+      "version-select"
+    ) as HTMLSelectElement;
 
-		if (versionSelect) {
-			versionSelect.addEventListener('change', () => {
-				const targetUrl = versionSelect.value
-				if (targetUrl === undefined || targetUrl === null) return
+    if (versionSelect) {
+      versionSelect.addEventListener("change", () => {
+        const targetUrl = versionSelect.value;
+        if (targetUrl === undefined || targetUrl === null) return;
 
-				// Get current path and search params
-				const currentPath = window.location.pathname
-				const currentSearch = window.location.search
+        // Get current path and search params
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
 
-				// Construct new URL with the same path
-				const newUrl = new URL(currentPath + currentSearch, targetUrl)
+        // Construct new URL with the same path
+        const newUrl = new URL(currentPath + currentSearch, targetUrl);
 
-				// Navigate to the new URL
-				window.location.href = newUrl.toString()
-			})
-		}
-	})
+        // Navigate to the new URL
+        window.location.href = newUrl.toString();
+      });
+    }
+  });
 </script>
