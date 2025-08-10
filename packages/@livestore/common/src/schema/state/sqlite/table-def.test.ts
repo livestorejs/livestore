@@ -63,6 +63,7 @@ describe('table function overloads', () => {
         id: State.SQLite.text({ primaryKey: true }),
         text: State.SQLite.text({ default: '' }),
         completed: State.SQLite.boolean({ default: false }),
+        optionalBoolean: State.SQLite.boolean({ default: false, nullable: true }),
         optionalComplex: State.SQLite.json({
           nullable: true,
           schema: Schema.Struct({ color: Schema.String }).pipe(Schema.UndefinedOr),
@@ -76,7 +77,17 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('text')
     expect(todosTable.sqliteDef.columns).toHaveProperty('completed')
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
+
+    expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
+    expect(todosTable.sqliteDef.columns.optionalBoolean.schema.toString()).toBe(
+      '(number <-> boolean) | null',
+    )
+    expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
+
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
+    expect(todosTable.sqliteDef.columns.optionalComplex.schema.toString()).toBe(
+      '(parseJson <-> { readonly color: string } | undefined) | null',
+    )
     expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
       '(parseJson <-> { readonly color: string } | undefined) | null',
     )
@@ -217,10 +228,10 @@ describe('table function overloads', () => {
     type MetadataColumn = typeof userTable.sqliteDef.columns.metadata
 
     // Should derive proper column schema
-    expect((userTable.rowSchema as any).fields.age.toString()).toMatchInlineSnapshot(`"number"`)
+    expect((userTable.rowSchema as any).fields.age.toString()).toMatchInlineSnapshot(`"Int"`)
     expect((userTable.rowSchema as any).fields.active.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
     expect((userTable.rowSchema as any).fields.metadata.toString()).toMatchInlineSnapshot(
-      `"(parseJson <-> { readonly [x: string]: unknown } | undefined)"`,
+      `"(parseJson <-> { readonly [x: string]: unknown }) | null"`,
     )
 
     // These should compile without errors

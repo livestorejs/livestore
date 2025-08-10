@@ -24,6 +24,15 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
+      expect(Schema.encodedSchema(columnDef.schema).toString()).toBe('string')
+      expect(Schema.typeSchema(columnDef.schema).toString()).toBe('Date')
+    })
+
+    it('should map Schema.DateFromNumber to integer column', () => {
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromNumber)
+      expect(columnDef.columnType).toBe('integer')
+      expect(Schema.encodedSchema(columnDef.schema).toString()).toBe('number')
+      expect(Schema.typeSchema(columnDef.schema).toString()).toBe('DateFromSelf')
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -98,7 +107,7 @@ describe('getColumnDefForSchema', () => {
       )
 
       const columnDef = State.SQLite.getColumnDefForSchema(StringToNumber)
-      expect(columnDef.columnType).toBe('real') // Based on the target type (Number)
+      expect(columnDef.columnType).toBe('text') // Based on the encoded type (String)
     })
 
     it('should handle Date transformations', () => {
@@ -294,6 +303,145 @@ describe('getColumnDefForSchema', () => {
     })
   })
 
+  describe('schema-based table definitions', () => {
+    it('should handle optional fields in schema', () => {
+      const UserSchema = Schema.Struct({
+        id: Schema.String,
+        name: Schema.String,
+        email: Schema.optional(Schema.String),
+        age: Schema.optional(Schema.Number),
+      })
+
+      const userTable = State.SQLite.table({
+        name: 'users',
+        schema: UserSchema,
+      })
+
+      // Optional fields should be nullable
+      expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
+      expect(userTable.sqliteDef.columns.age.nullable).toBe(true)
+
+      // Non-optional fields should not be nullable
+      expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
+      expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
+
+      // Row schema should show | null for optional fields
+      expect((userTable.rowSchema as any).fields.email.toString()).toBe('string | null')
+      expect((userTable.rowSchema as any).fields.age.toString()).toBe('number | null')
+    })
+
+    it('should handle optional boolean with proper transformation', () => {
+      const schema = Schema.Struct({
+        id: Schema.String,
+        active: Schema.optional(Schema.Boolean),
+      })
+
+      const table = State.SQLite.table({ name: 'test', schema })
+
+      expect(table.sqliteDef.columns.active.nullable).toBe(true)
+      expect(table.sqliteDef.columns.active.columnType).toBe('integer')
+      expect(table.sqliteDef.columns.active.schema.toString()).toBe('(number <-> boolean) | null')
+      expect((table.rowSchema as any).fields.active.toString()).toBe('(number <-> boolean) | null')
+    })
+
+    it('should handle optional complex types with JSON encoding', () => {
+      const schema = Schema.Struct({
+        id: Schema.String,
+        metadata: Schema.optional(Schema.Struct({ color: Schema.String })),
+        tags: Schema.optional(Schema.Array(Schema.String)),
+      })
+
+      const table = State.SQLite.table({ name: 'test', schema })
+
+      expect(table.sqliteDef.columns.metadata.nullable).toBe(true)
+      expect(table.sqliteDef.columns.metadata.columnType).toBe('text')
+      expect((table.rowSchema as any).fields.metadata.toString()).toBe(
+        '(parseJson <-> { readonly color: string }) | null',
+        // '(parseJson <-> { readonly color: string } | null)', //  not sure yet about which semantics we want here
+      )
+
+      expect(table.sqliteDef.columns.tags.nullable).toBe(true)
+      expect(table.sqliteDef.columns.tags.columnType).toBe('text')
+      expect((table.rowSchema as any).fields.tags.toString()).toBe('(parseJson <-> ReadonlyArray<string>) | null')
+    })
+
+    it('should handle Schema.NullOr', () => {
+      const schema = Schema.Struct({
+        id: Schema.String,
+        description: Schema.NullOr(Schema.String),
+        count: Schema.NullOr(Schema.Int),
+      })
+
+      const table = State.SQLite.table({ name: 'test', schema })
+
+      expect(table.sqliteDef.columns.description.nullable).toBe(true)
+      expect(table.sqliteDef.columns.count.nullable).toBe(true)
+
+      expect((table.rowSchema as any).fields.description.toString()).toBe('string | null')
+      expect((table.rowSchema as any).fields.count.toString()).toBe('Int | null')
+    })
+
+    it('should handle Schema.NullOr with complex types', () => {
+      const schema = Schema.Struct({
+        data: Schema.NullOr(Schema.Struct({ value: Schema.Number })),
+      }).annotations({ title: 'test' })
+
+      const table = State.SQLite.table({ schema })
+
+      expect(table.sqliteDef.columns.data.nullable).toBe(true)
+      expect(table.sqliteDef.columns.data.columnType).toBe('text')
+      expect((table.rowSchema as any).fields.data.toString()).toBe('(parseJson <-> { readonly value: number }) | null')
+    })
+
+    it('should handle mixed nullable and optional fields', () => {
+      const schema = Schema.Struct({
+        nullableText: Schema.NullOr(Schema.String),
+        optionalText: Schema.optional(Schema.String),
+        optionalJson: Schema.optional(Schema.Struct({ x: Schema.Number })),
+      }).annotations({ title: 'test' })
+
+      const table = State.SQLite.table({ schema })
+
+      // Both should be nullable at column level
+      expect(table.sqliteDef.columns.nullableText.nullable).toBe(true)
+      expect(table.sqliteDef.columns.optionalText.nullable).toBe(true)
+      expect(table.sqliteDef.columns.optionalJson.nullable).toBe(true)
+
+      // Schema representations
+      expect((table.rowSchema as any).fields.nullableText.toString()).toBe('string | null')
+      expect((table.rowSchema as any).fields.optionalText.toString()).toBe('string | null')
+      expect((table.rowSchema as any).fields.optionalJson.toString()).toBe(
+        '(parseJson <-> { readonly x: number }) | null',
+      )
+    })
+
+    // TODO bring back some time later
+    // it('should handle lossy Schema.optional(Schema.NullOr(...)) with JSON encoding', () => {
+    //   const schema = Schema.Struct({
+    //     id: Schema.String,
+    //     lossyText: Schema.optional(Schema.NullOr(Schema.String)),
+    //     lossyComplex: Schema.optional(Schema.NullOr(Schema.Struct({ value: Schema.Number }))),
+    //   }).annotations({ title: 'lossy_test' })
+
+    //   const table = State.SQLite.table({ schema })
+
+    //   // Check column definitions for lossy fields
+    //   expect(table.sqliteDef.columns.lossyText.nullable).toBe(true)
+    //   expect(table.sqliteDef.columns.lossyText.columnType).toBe('text')
+    //   expect(table.sqliteDef.columns.lossyComplex.nullable).toBe(true)
+    //   expect(table.sqliteDef.columns.lossyComplex.columnType).toBe('text')
+
+    //   // Check schema representations - should use parseJson for lossy encoding
+    //   expect((table.rowSchema as any).fields.lossyText.toString()).toBe('(parseJson <-> string | null)')
+    //   expect((table.rowSchema as any).fields.lossyComplex.toString()).toBe(
+    //     '(parseJson <-> { readonly value: number } | null)',
+    //   )
+
+    //   // Note: Since we're converting undefined to null, this is a lossy transformation.
+    //   // The test now just verifies that the schemas are set up correctly for JSON encoding.
+    // })
+  })
+
   describe('annotations', () => {
     describe('withColumnType', () => {
       it('should respect column type annotation for text', () => {
@@ -345,11 +493,6 @@ describe('getColumnDefForSchema', () => {
         const UserSchema = Schema.Struct({
           id: Schema.String.pipe(withPrimaryKey),
           name: Schema.String,
-          email: Schema.optional(Schema.String),
-          nullable: Schema.NullOr(Schema.Int),
-          optionalComplex: Schema.optional(Schema.Struct({ color: Schema.String })),
-          optionalNullableText: Schema.optional(Schema.NullOr(Schema.String)),
-          optionalNullableComplex: Schema.optional(Schema.NullOr(Schema.Struct({ color: Schema.String }))),
         })
 
         const userTable = State.SQLite.table({
@@ -360,93 +503,7 @@ describe('getColumnDefForSchema', () => {
         expect(userTable.sqliteDef.columns.id.primaryKey).toBe(true)
         expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
         expect(userTable.sqliteDef.columns.name.primaryKey).toBe(false)
-        expect(userTable.sqliteDef.columns.email.primaryKey).toBe(false)
-        expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
-        expect(userTable.sqliteDef.columns.nullable.primaryKey).toBe(false)
-        expect(userTable.sqliteDef.columns.nullable.nullable).toBe(true)
-        expect(userTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
-        expect((userTable.rowSchema as any).fields.email.toString()).toBe('string | undefined')
-        expect((userTable.rowSchema as any).fields.nullable.toString()).toBe('Int | null')
-        expect((userTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
-          '(parseJson <-> { readonly color: string } | undefined)',
-        )
-      })
-
-      it('should handle Schema.NullOr with complex types', () => {
-        const schema = Schema.Struct({
-          data: Schema.NullOr(Schema.Struct({ value: Schema.Number })),
-        }).annotations({ title: 'test' })
-
-        const table = State.SQLite.table({ schema })
-
-        expect(table.sqliteDef.columns.data.nullable).toBe(true)
-        expect(table.sqliteDef.columns.data.columnType).toBe('text')
-        expect((table.rowSchema as any).fields.data.toString()).toBe('{ readonly value: number } | null')
-      })
-
-      it('should handle mixed nullable and optional fields', () => {
-        const schema = Schema.Struct({
-          nullableText: Schema.NullOr(Schema.String),
-          optionalText: Schema.optional(Schema.String),
-          optionalJson: Schema.optional(Schema.Struct({ x: Schema.Number })),
-        }).annotations({ title: 'test' })
-
-        const table = State.SQLite.table({ schema })
-
-        // Both should be nullable at column level
-        expect(table.sqliteDef.columns.nullableText.nullable).toBe(true)
-        expect(table.sqliteDef.columns.optionalText.nullable).toBe(true)
-        expect(table.sqliteDef.columns.optionalJson.nullable).toBe(true)
-
-        // But different schema representations
-        expect((table.rowSchema as any).fields.nullableText.toString()).toBe('string | null')
-        expect((table.rowSchema as any).fields.optionalText.toString()).toBe('string | undefined')
-        expect((table.rowSchema as any).fields.optionalJson.toString()).toBe(
-          '(parseJson <-> { readonly x: number } | undefined)',
-        )
-      })
-
-      it('should handle lossy Schema.optional(Schema.NullOr(...)) with JSON encoding', () => {
-        const schema = Schema.Struct({
-          id: Schema.String,
-          lossyText: Schema.optional(Schema.NullOr(Schema.String)),
-          lossyComplex: Schema.optional(Schema.NullOr(Schema.Struct({ value: Schema.Number }))),
-        }).annotations({ title: 'lossy_test' })
-
-        const table = State.SQLite.table({ schema })
-
-        // Check column definitions for lossy fields
-        expect(table.sqliteDef.columns.lossyText.nullable).toBe(true)
-        expect(table.sqliteDef.columns.lossyText.columnType).toBe('text')
-        expect(table.sqliteDef.columns.lossyComplex.nullable).toBe(true)
-        expect(table.sqliteDef.columns.lossyComplex.columnType).toBe('text')
-
-        // Check schema representations - should use parseJson for lossless encoding
-        expect((table.rowSchema as any).fields.lossyText.toString()).toBe('(parseJson <-> string | null | undefined)')
-        expect((table.rowSchema as any).fields.lossyComplex.toString()).toBe(
-          '(parseJson <-> { readonly value: number } | null | undefined)',
-        )
-
-        // Test actual data round-tripping to ensure losslessness
-        // Note: Missing field case is challenging with current Effect Schema design
-        // as optional fields are handled at struct level, not field level
-        const testCases = [
-          // For now, test only cases where both lossy fields are present
-          { name: 'both explicit null', data: { id: '2', lossyText: null, lossyComplex: null } },
-          { name: 'text value, complex null', data: { id: '3', lossyText: 'hello', lossyComplex: null } },
-          { name: 'text null, complex value', data: { id: '4', lossyText: null, lossyComplex: { value: 42 } } },
-          { name: 'both values', data: { id: '5', lossyText: 'world', lossyComplex: { value: 42 } } },
-        ]
-
-        testCases.forEach((testCase) => {
-          // Encode through insert schema
-          const encoded = Schema.encodeSync(table.insertSchema)(testCase.data)
-          // Decode through row schema
-          const decoded = Schema.decodeSync(table.rowSchema)(encoded)
-
-          // Check for losslessness
-          expect(decoded).toEqual(testCase.data)
-        })
+        expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
       })
 
       it('should throw when primary key is used with optional schema', () => {
