@@ -79,9 +79,7 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
 
     expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
-    expect(todosTable.sqliteDef.columns.optionalBoolean.schema.toString()).toBe(
-      '(number <-> boolean) | null',
-    )
+    expect(todosTable.sqliteDef.columns.optionalBoolean.schema.toString()).toBe('(number <-> boolean) | null')
     expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
 
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
