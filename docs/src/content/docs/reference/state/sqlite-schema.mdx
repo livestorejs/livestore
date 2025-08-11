@@ -86,7 +86,7 @@ Migration strategies:
 - `auto`: Automatically migrate the database to the newest schema and rematerializes the state from the eventlog.
 - `manual`: Manually migrate the database to the newest schema.
 
-### Client documents
+## Client documents
 
 - Meant for convenience
 - Client-only
@@ -97,7 +97,7 @@ Migration strategies:
   - Table with `id` and `value` columns
   - `${MyTable}Set` event + materializer (which are auto-registered)
 
-#### Basic usage
+### Basic usage
 
 ```ts
 import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
@@ -124,7 +124,7 @@ const [state, setState] = store.useClientDocument(uiState)
 setState({ filter: 'active' })
 ```
 
-#### KV-style client document
+### KV-style client document
 
 Sometimes you want a simple key-value store for arbitrary values without partial merging. You can model this by using `Schema.Any` as the value schema. With `Schema.Any`, updates fully replace the stored value (no partial merge semantics).
 
