@@ -28,4 +28,225 @@ import { Schema } from 'effect'
 ## `Equal` and `Hash` Traits
 
 LiveStore's reactive primitives (`LiveQueryDef` and `SignalDef`) implement Effect's `Equal` and `Hash` traits, enabling efficient integration with Effect's data structures and collections.
+
+## Effect Atom Integration
+
+LiveStore integrates seamlessly with [Effect Atom](https://github.com/effect-atom/effect-atom) for reactive state management in React applications. This provides a powerful combination of Effect's functional programming capabilities with LiveStore's event sourcing and CQRS patterns.
+
+Effect Atom is an external package developed by [Tim Smart](https://github.com/tim-smart) (not by the LiveStore team) that provides a more Effect-idiomatic alternative to the `@livestore/react` package. While `@livestore/react` offers a straightforward React integration, Effect Atom leverages Effect's functional programming patterns throughout, making it a natural choice for applications already using Effect.
+
+### Installation
+
+```bash
+npm install @effect-atom/atom-livestore @effect-atom/atom-react
+```
+
+### Store Creation
+
+Create a LiveStore-backed atom store with persistence and worker support:
+
+```ts
+import { schema } from './schema'
+import { makePersistedAdapter } from '@livestore/adapter-web'
+import { AtomLivestore } from '@effect-atom/atom-livestore'
+import { unstable_batchedUpdates } from 'react-dom'
+
+// Create a persistent adapter with OPFS storage
+const adapter = makePersistedAdapter({
+  storage: { type: 'opfs' },
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+})
+
+// Create store atoms
+export const {
+  runtimeAtom,      // Access to Effect runtime
+  commitAtom,       // Commit events to the store
+  storeAtom,        // Access store with Effect
+  storeAtomUnsafe,  // Direct store access (may be undefined)
+  makeQueryAtom,    // Create query atoms with Effect
+  makeQueryAtomUnsafe, // Create query atoms without Effect
+} = AtomLivestore.make({
+  schema,
+  storeId: 'default',
+  adapter,
+  batchUpdates: unstable_batchedUpdates, // React batching for performance
+})
+```
+
+### Defining Query Atoms
+
+Create reactive query atoms that automatically update when the underlying data changes:
+
+```ts
+import { queryDb, sql } from '@livestore/livestore'
+import { tables } from './schema'
+import { makeQueryAtom } from './atoms'
+
+// Simple query atom
+export const usersAtom = makeQueryAtom(
+  queryDb(tables.users.all())
+)
+
+// Query with SQL
+export const activeUsersAtom = makeQueryAtom(
+  queryDb({
+    query: sql`SELECT * FROM users WHERE isActive = true ORDER BY name`,
+    schema: User.array
+  })
+)
+
+// Dynamic query based on other state
+export const searchResultsAtom = makeQueryAtom(
+  queryDb((get) => {
+    const searchTerm = get(searchTermAtom)
+    
+    if (searchTerm.trim() === '') {
+      return {
+        query: sql`SELECT * FROM products ORDER BY createdAt DESC`,
+        schema: Product.array
+      }
+    }
+    
+    return {
+      query: sql`SELECT * FROM products WHERE name LIKE ? ORDER BY name`,
+      schema: Product.array,
+      bindValues: [`%${searchTerm}%`]
+    }
+  }, { label: 'searchResults' })
+)
+```
+
+### Using Queries in React Components
+
+Access query results in React components with the `useAtomValue` hook:
+
+```tsx
+import { useAtomValue } from '@effect-atom/atom-react'
+import { Result } from '@effect-atom/atom-react'
+import { activeUsersAtom } from './queries'
+
+function UserList() {
+  const users = useAtomValue(activeUsersAtom)
+  
+  return Result.builder(users)
+    .onInitial(() => <div>Loading users...</div>)
+    .onSuccess((users) => (
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    ))
+    .onError((error) => <div>Error: {error.message}</div>)
+    .render()
+}
+```
+
+### Integrating Effect Services
+
+Combine Effect services with LiveStore operations using runtime atoms:
+
+```ts
+import { Effect } from 'effect'
+import { runtimeAtom, storeAtomUnsafe } from './atoms'
+import { events } from './schema'
+import { MyService } from './services'
+
+// Create an atom that uses Effect services
+export const createItemAtom = runtimeAtom.fn<string>()(
+  Effect.fn(function* (itemName, get) {
+    // Access Effect services
+    const service = yield* MyService
+    
+    // Perform service operations
+    const processedData = yield* service.processItem(itemName)
+    
+    // Get the store and commit events
+    const store = get(storeAtomUnsafe)
+    if (store) {
+      store.commit(events.itemCreated({
+        id: crypto.randomUUID(),
+        name: processedData.name,
+        metadata: processedData.metadata
+      }))
+    }
+  }, Effect.tapErrorCause(Effect.log))
+)
+
+// Use in a React component
+function CreateItemButton() {
+  const createItem = useAtomValue(createItemAtom)
+  
+  const handleClick = () => {
+    createItem('New Item')
+  }
+  
+  return <button onClick={handleClick}>Create Item</button>
+}
+```
+
+### Advanced Patterns
+
+#### Optimistic Updates
+
+Combine local state with LiveStore for optimistic UI updates:
+
+```ts
+export const optimisticTodoAtom = atom((get) => {
+  const todos = get(todosAtom)
+  const pending = get(pendingTodosAtom)
+  
+  return Result.map(todos, (todoList) => [
+    ...todoList,
+    ...pending
+  ])
+})
+```
+
+#### Derived State
+
+Create computed atoms based on LiveStore queries:
+
+```ts
+export const todoStatsAtom = atom((get) => {
+  const todos = get(todosAtom)
+  
+  return Result.map(todos, (todoList) => ({
+    total: todoList.length,
+    completed: todoList.filter(t => t.completed).length,
+    pending: todoList.filter(t => !t.completed).length
+  }))
+})
+```
+
+#### Batch Operations
+
+Perform multiple commits in a single transaction:
+
+```ts
+export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
+  Effect.fn(function* (ids, get) {
+    const store = get(storeAtomUnsafe)
+    if (!store) return
+    
+    // Batch multiple events
+    yield* Effect.forEach(ids, (id) =>
+      Effect.sync(() => 
+        store.commit(events.itemUpdated({ id, status: 'processed' }))
+      ),
+      { concurrency: 'unbounded' }
+    )
+  })
+)
+```
+
+### Best Practices
+
+1. **Use `makeQueryAtom` for queries**: This ensures proper Effect integration and error handling
+2. **Leverage Effect services**: Integrate business logic through Effect services for better testability
+3. **Handle loading states**: Use `Result.builder` pattern for consistent loading/error UI
+4. **Batch React updates**: Always provide `batchUpdates` for better performance
+5. **Label queries**: Add descriptive labels to queries for better debugging
+6. **Type safety**: Let TypeScript infer types from schemas rather than manual annotations
 ```
