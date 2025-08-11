@@ -64,7 +64,7 @@ export const {
   runtimeAtom,      // Access to Effect runtime
   commitAtom,       // Commit events to the store
   storeAtom,        // Access store with Effect
-  storeAtomUnsafe,  // Direct store access (may be undefined)
+  storeAtomUnsafe,  // Direct store access when store is already loaded (synchronous)
   makeQueryAtom,    // Create query atoms with Effect
   makeQueryAtomUnsafe, // Create query atoms without Effect
 } = AtomLivestore.make({
@@ -120,7 +120,7 @@ export const searchResultsAtom = makeQueryAtom(
 
 ### Using Queries in React Components
 
-Access query results in React components with the `useAtomValue` hook:
+Access query results in React components with the `useAtomValue` hook. When using `makeQueryAtom` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
 ```tsx
 import { useAtomValue } from '@effect-atom/atom-react'
@@ -150,6 +150,7 @@ Combine Effect services with LiveStore operations using runtime atoms:
 
 ```ts
 import { Effect } from 'effect'
+import { useSetAtom } from '@effect-atom/atom-react'
 import { runtimeAtom, storeAtomUnsafe } from './atoms'
 import { events } from './schema'
 import { MyService } from './services'
@@ -177,7 +178,7 @@ export const createItemAtom = runtimeAtom.fn<string>()(
 
 // Use in a React component
 function CreateItemButton() {
-  const createItem = useAtomValue(createItemAtom)
+  const createItem = useSetAtom(createItemAtom)
   
   const handleClick = () => {
     createItem('New Item')
@@ -191,27 +192,29 @@ function CreateItemButton() {
 
 #### Optimistic Updates
 
-Combine local state with LiveStore for optimistic UI updates:
+Combine local state with LiveStore for optimistic UI updates. When using `makeQueryAtomUnsafe`, the data is directly available:
 
 ```ts
+// Using unsafe API for direct access
+export const todosAtom = makeQueryAtomUnsafe(
+  queryDb(tables.todos.all())
+)
+
 export const optimisticTodoAtom = atom((get) => {
-  const todos = get(todosAtom)
+  const todos = get(todosAtom) // Direct array, not wrapped in Result
   const pending = get(pendingTodosAtom)
   
-  return Result.map(todos, (todoList) => [
-    ...todoList,
-    ...pending
-  ])
+  return [...todos, ...pending]
 })
 ```
 
 #### Derived State
 
-Create computed atoms based on LiveStore queries:
+Create computed atoms based on LiveStore queries. When using the non-unsafe API, handle the Result type:
 
 ```ts
 export const todoStatsAtom = atom((get) => {
-  const todos = get(todosAtom)
+  const todos = get(todosAtom) // Assumes todosAtom uses makeQueryAtom
   
   return Result.map(todos, (todoList) => ({
     total: todoList.length,
@@ -223,7 +226,7 @@ export const todoStatsAtom = atom((get) => {
 
 #### Batch Operations
 
-Perform multiple commits in a single transaction:
+Perform multiple commits efficiently (commits are synchronous):
 
 ```ts
 export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
@@ -231,13 +234,10 @@ export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
     const store = get(storeAtomUnsafe)
     if (!store) return
     
-    // Batch multiple events
-    yield* Effect.forEach(ids, (id) =>
-      Effect.sync(() => 
-        store.commit(events.itemUpdated({ id, status: 'processed' }))
-      ),
-      { concurrency: 'unbounded' }
-    )
+    // Commit multiple events synchronously
+    for (const id of ids) {
+      store.commit(events.itemUpdated({ id, status: 'processed' }))
+    }
   })
 )
 ```
