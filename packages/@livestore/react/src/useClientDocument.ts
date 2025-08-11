@@ -9,7 +9,7 @@ import React from 'react'
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
 
-export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
+export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: TTableDef['Value'],
   setRow: StateSetters<TTableDef>,
   id: string,
@@ -54,13 +54,17 @@ export const useClientDocument: {
       any,
       any,
       any,
-      { partialSet: boolean; default: { id: string | SessionIdSymbol; value: any } }
+      {
+        partialSet: boolean
+        /** Default value to use instead of the default value from the table definition */
+        default: any
+      }
     >,
   >(
     table: TTableDef,
     id?: State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol,
     options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-  ): UseRowResult<TTableDef>
+  ): UseClientDocumentResult<TTableDef>
 
   // case: no default id → id arg is required
   <
@@ -68,20 +72,24 @@ export const useClientDocument: {
       any,
       any,
       any,
-      { partialSet: boolean; default: { id: string | SessionIdSymbol | undefined; value: any } }
+      {
+        partialSet: boolean
+        /** Default value to use instead of the default value from the table definition */
+        default: any
+      }
     >,
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | string | SessionIdSymbol,
     options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-  ): UseRowResult<TTableDef>
+  ): UseClientDocumentResult<TTableDef>
 } = <TTableDef extends State.SQLite.ClientDocumentTableDef.Any>(
   table: TTableDef,
   idOrOptions?: string | SessionIdSymbol,
   options_?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   storeArg?: { store?: Store },
-): UseRowResult<TTableDef> => {
+): UseClientDocumentResult<TTableDef> => {
   const id =
     typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol
       ? idOrOptions
@@ -134,10 +142,13 @@ export const useClientDocument: {
 }
 
 export type Dispatch<A> = (action: A) => void
-export type SetStateAction<S> = Partial<S> | ((previousValue: S) => Partial<S>)
+export type SetStateActionPartial<S> = Partial<S> | ((previousValue: S) => Partial<S>)
+export type SetStateAction<S> = S | ((previousValue: S) => S)
 
 export type StateSetters<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = Dispatch<
-  SetStateAction<TTableDef['Value']>
+  TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
+    ? SetStateAction<TTableDef['Value']>
+    : SetStateActionPartial<TTableDef['Value']>
 >
 
 const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {

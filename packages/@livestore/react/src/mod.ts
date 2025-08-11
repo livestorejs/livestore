@@ -4,7 +4,7 @@ export {
   type Dispatch,
   type SetStateAction,
   type StateSetters,
-  type UseRowResult as UseStateResult,
+  type UseClientDocumentResult,
   useClientDocument,
 } from './useClientDocument.ts'
 export { useQuery, useQueryRef } from './useQuery.ts'

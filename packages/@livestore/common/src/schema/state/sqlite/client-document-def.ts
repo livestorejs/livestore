@@ -281,8 +281,14 @@ export namespace ClientDocumentTableOptions {
     }
   }
 
+  type IsStructLike<T> = T extends {} ? true : false
+
   export type WithDefaults<TInput extends Input<any>> = {
-    partialSet: TInput['partialSet'] extends false ? false : true
+    partialSet: TInput['partialSet'] extends false
+      ? false
+      : IsStructLike<TInput['default']['value']> extends true
+        ? true
+        : false
     default: {
       id: TInput['default']['id'] extends string | SessionIdSymbol ? TInput['default']['id'] : undefined
       value: TInput['default']['value']

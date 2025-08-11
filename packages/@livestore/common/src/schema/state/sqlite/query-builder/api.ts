@@ -437,7 +437,10 @@ export namespace QueryBuilder {
 
 export namespace RowQuery {
   export type GetOrCreateOptions<TTableDef extends ClientDocumentTableDef.TraitAny> = {
-    default: Partial<TTableDef['Value']>
+    /**
+     * Default value to use instead of the default value from the table definition
+     */
+    default: TTableDef['Value']
   }
 
   // TODO get rid of this

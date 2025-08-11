@@ -224,6 +224,34 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
+  Vitest.scopedLive('kv client document overwrites value (Schema.Any, no partial merge)', () =>
+    Effect.gen(function* () {
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
+
+      const { result } = ReactTesting.renderHook(
+        (id: string) => {
+          renderCount.inc()
+
+          const [state, setState] = store.useClientDocument(tables.kv, id)
+          return { state, setState, id }
+        },
+        { wrapper, initialProps: 'k1' },
+      )
+
+      expect(result.current.id).toBe('k1')
+      expect(result.current.state).toBe(null)
+      expect(renderCount.val).toBe(1)
+
+      ReactTesting.act(() => result.current.setState(1))
+      expect(result.current.state).toEqual(1)
+      expect(renderCount.val).toBe(2)
+
+      ReactTesting.act(() => result.current.setState({ b: 2 }))
+      expect(result.current.state).toEqual({ b: 2 })
+      expect(renderCount.val).toBe(3)
+    }),
+  )
+
   Vitest.describe('otel', () => {
     it.each([{ strictMode: true }, { strictMode: false }])(
       'should update the data based on component key strictMode=%s',

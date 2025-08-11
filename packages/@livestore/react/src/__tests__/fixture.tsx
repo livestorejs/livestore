@@ -60,6 +60,12 @@ const AppRouterSchema = State.SQLite.clientDocument({
   },
 })
 
+const kv = State.SQLite.clientDocument({
+  name: 'Kv',
+  schema: Schema.Any,
+  default: { value: null },
+})
+
 export const events = {
   todoCreated: Events.synced({
     name: 'todoCreated',
@@ -75,6 +81,7 @@ export const events = {
   }),
   AppRouterSet: AppRouterSchema.set,
   UserInfoSet: userInfo.set,
+  KvSet: kv.set,
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -82,7 +89,7 @@ const materializers = State.SQLite.materializers(events, {
   todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
 })
 
-export const tables = { todos, app, userInfo, AppRouterSchema }
+export const tables = { todos, app, userInfo, AppRouterSchema, kv }
 
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })
