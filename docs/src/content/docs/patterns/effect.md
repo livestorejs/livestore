@@ -250,4 +250,13 @@ export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
 4. **Batch React updates**: Always provide `batchUpdates` for better performance
 5. **Label queries**: Add descriptive labels to queries for better debugging
 6. **Type safety**: Let TypeScript infer types from schemas rather than manual annotations
+
+### Real-World Example
+
+For a comprehensive example of LiveStore with Effect Atom in action, check out [Cheffect](https://github.com/tim-smart/cheffect) - a recipe management application that demonstrates:
+- Complete Effect service integration
+- AI-powered recipe extraction using Effect services
+- Complex query patterns with search and filtering
+- Worker-based persistence with OPFS
+- Production-ready error handling and logging
 ```
