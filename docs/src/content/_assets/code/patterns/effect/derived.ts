@@ -12,9 +12,9 @@ export const todosAtom = StoreTag.makeQuery(queryDb(tables.todos.all()))
 export const todoStatsAtom = atom((get) => {
   const todos = get(todosAtom) // Result wrapped
 
-  return Result.map(todos, (todoList) => ({
+  return Result.map(todos, (todoList: any) => ({
     total: todoList.length,
-    completed: todoList.filter((t) => t.completed).length,
-    pending: todoList.filter((t) => !t.completed).length,
+    completed: todoList.filter((t: any) => t.completed).length,
+    pending: todoList.filter((t: any) => !t.completed).length,
   }))
 })

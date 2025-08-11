@@ -1,5 +1,4 @@
 // @ts-ignore - package will be installed by user
-// @ts-ignore - package will be installed by user
 import { Result, useAtomValue } from '@effect-atom/atom-react'
 import { activeUsersAtom } from './queries.ts'
 
@@ -8,13 +7,13 @@ function _UserList() {
 
   return Result.builder(users)
     .onInitial(() => <div>Loading users...</div>)
-    .onSuccess((users) => (
+    .onSuccess((users: any) => (
       <ul>
-        {users.map((user) => (
+        {users.map((user: any) => (
           <li key={user.id}>{user.name}</li>
         ))}
       </ul>
     ))
-    .onError((error) => <div>Error: {error.message}</div>)
+    .onError((error: any) => <div>Error: {error.message}</div>)
     .render()
 }
