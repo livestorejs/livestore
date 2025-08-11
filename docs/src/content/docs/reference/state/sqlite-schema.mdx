@@ -96,6 +96,63 @@ Migration strategies:
   - Table with `id` and `value` columns
   - `${MyTable}Set` event + materializer (which are auto-registered)
 
+#### Basic usage
+
+```ts
+import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
+
+// Define a client document for simple UI state
+export const uiState = State.SQLite.clientDocument({
+  name: 'UiState',
+  schema: Schema.Struct({
+    newTodoText: Schema.String,
+    filter: Schema.Literal('all', 'active', 'completed'),
+  }),
+  // Using a default id lets you omit the id in get/set calls
+  default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
+})
+
+// Get value (uses default id)
+const value = store.query(uiState.get())
+
+// Update value (partial updates are merged for Struct schemas by default)
+store.commit(uiState.set({ newTodoText: 'Buy milk' }))
+
+// In React
+const [state, setState] = store.useClientDocument(uiState)
+setState({ filter: 'active' })
+```
+
+#### KV-style client document
+
+Sometimes you want a simple key-value store for arbitrary values without partial merging. You can model this by using `Schema.Any` as the value schema. With `Schema.Any`, updates fully replace the stored value (no partial merge semantics).
+
+```ts
+import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
+
+export const kv = State.SQLite.clientDocument({
+  name: 'Kv',
+  // Any JSON-serializable value; updates will fully replace the value
+  schema: Schema.Any,
+  // Choose an appropriate default value
+  default: { value: null },
+})
+
+// Usage with the store API
+
+// Get value
+const value = store.query(kv.get('some-id'))
+
+// Set value
+store.commit(kv.set({ some: 'payload' }, 'some-id'))
+store.commit(kv.set(123, 'some-id'))
+
+// Usage with React
+const [value, setValue] = store.useClientDocument(kv, 'some-id')
+setValue('hello')
+setValue({ b: 2 }) // replaces the previous value
+```
+
 ## Column Types
 
 You can use these column types:
