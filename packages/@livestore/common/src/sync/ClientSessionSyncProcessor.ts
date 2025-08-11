@@ -134,6 +134,10 @@ export const makeClientSessionSyncProcessor = ({
     yield* Effect.annotateCurrentSpan({
       batchSize: encodedEventDefs.length,
       mergeResultTag: mergeResult._tag,
+      eventCounts: encodedEventDefs.reduce<Record<string, number>>((acc, event) => {
+        acc[event.name] = (acc[event.name] ?? 0) + 1
+        return acc
+      }, {}),
       ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
     })
 

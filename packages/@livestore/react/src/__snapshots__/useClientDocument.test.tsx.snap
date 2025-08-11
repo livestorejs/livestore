@@ -24,6 +24,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "UserInfoSet": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -31,6 +34,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "UserInfoSet": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -264,6 +270,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "UserInfoSet": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -271,6 +280,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "UserInfoSet": 1
+}",
         "mergeResultTag": "advance",
       },
     },

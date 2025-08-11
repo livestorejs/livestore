@@ -24,6 +24,9 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -144,6 +147,9 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -264,6 +270,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -271,6 +280,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -441,6 +453,9 @@ exports[`otel > otel 3`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -723,6 +738,9 @@ exports[`otel > with thunks 7`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
@@ -839,6 +857,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "client-session-sync-processor:push",
       "attributes": {
         "batchSize": 1,
+        "eventCounts": "{
+  "todo.created": 1
+}",
         "mergeResultTag": "advance",
       },
     },
