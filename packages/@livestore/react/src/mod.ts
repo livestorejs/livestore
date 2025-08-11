@@ -3,6 +3,7 @@ export { LiveStoreProvider } from './LiveStoreProvider.tsx'
 export {
   type Dispatch,
   type SetStateAction,
+  type SetStateActionPartial,
   type StateSetters,
   type UseClientDocumentResult,
   useClientDocument,
