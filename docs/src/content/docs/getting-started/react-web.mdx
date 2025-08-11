@@ -11,7 +11,8 @@ import { makeTiged, versionNpmSuffix } from '../../../../data.js'
 import { MIN_NODE_VERSION, LIVESTORE_WA_SQLITE_VERSION } from '@local/shared'
 import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
 import schemaCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?raw'
-import workerCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore.worker.ts?raw'
+// import workerCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore.worker.ts?raw'
+import workerCode from '../../_assets/code/getting-started/react-web/worker.ts?raw';
 import rootCode from '../../../../../examples/web-todomvc-sync-cf/src/Root.tsx?raw'
 import headerCode from '../../../../../examples/web-todomvc-sync-cf/src/components/Header.tsx?raw'
 import mainSectionCode from '../../../../../examples/web-todomvc-sync-cf/src/components/MainSection.tsx?raw'
@@ -136,13 +137,13 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
+<Code lang="ts" meta="twoslash" code={CODE.schema} title="src/livestore/schema.ts" />
 
 ## Create the LiveStore Worker
 
 Create a file named `livestore.worker.ts` inside the `src` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-<Code code={CODE.worker} lang="ts" title="src/livestore.worker.ts" />
+<Code lang="ts" meta="twoslash" code={CODE.worker} title="src/livestore.worker.ts" />
 
 ## Add the LiveStore Provider
 
