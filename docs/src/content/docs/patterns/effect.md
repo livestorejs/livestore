@@ -33,12 +33,12 @@ LiveStore's reactive primitives (`LiveQueryDef` and `SignalDef`) implement Effec
 
 LiveStore integrates seamlessly with [Effect Atom](https://github.com/effect-atom/effect-atom) for reactive state management in React applications. This provides a powerful combination of Effect's functional programming capabilities with LiveStore's event sourcing and CQRS patterns.
 
-Effect Atom is an external package developed by [Tim Smart](https://github.com/tim-smart) (not by the LiveStore team) that provides a more Effect-idiomatic alternative to the `@livestore/react` package. While `@livestore/react` offers a straightforward React integration, Effect Atom leverages Effect's functional programming patterns throughout, making it a natural choice for applications already using Effect.
+Effect Atom is an external package developed by [Tim Smart](https://github.com/tim-smart) that provides a more Effect-idiomatic alternative to the `@livestore/react` package. While `@livestore/react` offers a straightforward React integration, Effect Atom leverages Effect API/patterns throughout, making it a natural choice for applications already using Effect.
 
 ### Installation
 
 ```bash
-npm install @effect-atom/atom-livestore @effect-atom/atom-react
+pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
 ```
 
 ### Store Creation
@@ -46,6 +46,7 @@ npm install @effect-atom/atom-livestore @effect-atom/atom-react
 Create a LiveStore-backed atom store with persistence and worker support:
 
 ```ts
+// atoms.ts
 import { schema } from './schema'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import { AtomLivestore } from '@effect-atom/atom-livestore'
