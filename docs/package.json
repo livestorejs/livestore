@@ -36,18 +36,18 @@
     "typedoc-plugin-markdown": "4.8.0",
     "typescript": "5.9.2"
   },
-  "scripts": {
-    "astro": "astro",
-    "build": "astro check && astro build",
-    "dev": "astro dev",
-    "preview": "astro preview",
-    "start": "astro dev"
-  },
   "devDependencies": {
     "@effect-atom/atom": "^0.1.12",
     "@effect-atom/atom-livestore": "^0.1.10",
     "@effect-atom/atom-react": "^0.1.10",
     "@types/react-dom": "^19.1.7",
     "effect": "^3.17.7"
+  },
+  "scripts": {
+    "astro": "astro",
+    "build": "astro check && astro build",
+    "dev": "astro dev",
+    "preview": "astro preview",
+    "start": "astro dev"
   }
 }
