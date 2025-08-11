@@ -43,7 +43,7 @@ pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
 
 ### Store Creation
 
-Create a LiveStore-backed atom store with persistence and worker support:
+Create a LiveStore-backed atom store with persistence and worker support using the `AtomLivestore.Tag` pattern:
 
 ```ts
 // atoms.ts
@@ -59,21 +59,22 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-// Create store atoms
-export const {
-  runtimeAtom,      // Access to Effect runtime
-  commitAtom,       // Commit events to the store
-  storeAtom,        // Access store with Effect
-  storeAtomUnsafe,  // Direct store access when store is already loaded (synchronous)
-  makeQueryAtom,    // Create query atoms with Effect
-  makeQueryAtomUnsafe, // Create query atoms without Effect
-} = AtomLivestore.make({
+// Define the store as a service tag
+export class StoreTag extends AtomLivestore.Tag<StoreTag>()('StoreTag', {
   schema,
   storeId: 'default',
   adapter,
   batchUpdates: unstable_batchedUpdates, // React batching for performance
-})
+}) {}
 ```
+
+The `StoreTag` class provides the following static methods:
+- `StoreTag.runtime` - Access to Effect runtime
+- `StoreTag.commit` - Commit events to the store
+- `StoreTag.store` - Access store with Effect
+- `StoreTag.storeUnsafe` - Direct store access when store is already loaded (synchronous)
+- `StoreTag.makeQuery` - Create query atoms with Effect
+- `StoreTag.makeQueryUnsafe` - Create query atoms without Effect
 
 ### Defining Query Atoms
 
@@ -82,15 +83,15 @@ Create reactive query atoms that automatically update when the underlying data c
 ```ts
 import { queryDb, sql } from '@livestore/livestore'
 import { tables } from './schema'
-import { makeQueryAtom } from './atoms'
+import { StoreTag } from './atoms'
 
 // Simple query atom
-export const usersAtom = makeQueryAtom(
+export const usersAtom = StoreTag.makeQuery(
   queryDb(tables.users.all())
 )
 
 // Query with SQL
-export const activeUsersAtom = makeQueryAtom(
+export const activeUsersAtom = StoreTag.makeQuery(
   queryDb({
     query: sql`SELECT * FROM users WHERE isActive = true ORDER BY name`,
     schema: User.array
@@ -98,7 +99,7 @@ export const activeUsersAtom = makeQueryAtom(
 )
 
 // Dynamic query based on other state
-export const searchResultsAtom = makeQueryAtom(
+export const searchResultsAtom = StoreTag.makeQuery(
   queryDb((get) => {
     const searchTerm = get(searchTermAtom)
     
@@ -120,7 +121,7 @@ export const searchResultsAtom = makeQueryAtom(
 
 ### Using Queries in React Components
 
-Access query results in React components with the `useAtomValue` hook. When using `makeQueryAtom` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
+Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
 ```tsx
 import { useAtomValue } from '@effect-atom/atom-react'
@@ -146,17 +147,20 @@ function UserList() {
 
 ### Integrating Effect Services
 
-Combine Effect services with LiveStore operations using runtime atoms:
+Combine Effect services with LiveStore operations using the store's runtime:
 
 ```ts
 import { Effect } from 'effect'
-import { useSetAtom } from '@effect-atom/atom-react'
-import { runtimeAtom, storeAtomUnsafe } from './atoms'
+import { useAtomSet } from '@effect-atom/atom-react'
+import { StoreTag } from './atoms'
 import { events } from './schema'
 import { MyService } from './services'
 
+// Use the commit hook for event handling
+export const useCommit = () => useAtomSet(StoreTag.commit)
+
 // Create an atom that uses Effect services
-export const createItemAtom = runtimeAtom.fn<string>()(
+export const createItemAtom = StoreTag.runtime.fn<string>()(
   Effect.fn(function* (itemName, get) {
     // Access Effect services
     const service = yield* MyService
@@ -165,7 +169,7 @@ export const createItemAtom = runtimeAtom.fn<string>()(
     const processedData = yield* service.processItem(itemName)
     
     // Get the store and commit events
-    const store = get(storeAtomUnsafe)
+    const store = get(StoreTag.storeUnsafe)
     if (store) {
       store.commit(events.itemCreated({
         id: crypto.randomUUID(),
@@ -178,7 +182,7 @@ export const createItemAtom = runtimeAtom.fn<string>()(
 
 // Use in a React component
 function CreateItemButton() {
-  const createItem = useSetAtom(createItemAtom)
+  const createItem = useAtomSet(createItemAtom)
   
   const handleClick = () => {
     createItem('New Item')
@@ -192,11 +196,11 @@ function CreateItemButton() {
 
 #### Optimistic Updates
 
-Combine local state with LiveStore for optimistic UI updates. When using `makeQueryAtomUnsafe`, the data is directly available:
+Combine local state with LiveStore for optimistic UI updates. When using `StoreTag.makeQueryUnsafe`, the data is directly available:
 
 ```ts
 // Using unsafe API for direct access
-export const todosAtom = makeQueryAtomUnsafe(
+export const todosAtom = StoreTag.makeQueryUnsafe(
   queryDb(tables.todos.all())
 )
 
@@ -214,7 +218,7 @@ Create computed atoms based on LiveStore queries. When using the non-unsafe API,
 
 ```ts
 export const todoStatsAtom = atom((get) => {
-  const todos = get(todosAtom) // Assumes todosAtom uses makeQueryAtom
+  const todos = get(todosAtom) // Assumes todosAtom uses StoreTag.makeQuery
   
   return Result.map(todos, (todoList) => ({
     total: todoList.length,
@@ -229,9 +233,9 @@ export const todoStatsAtom = atom((get) => {
 Perform multiple commits efficiently (commits are synchronous):
 
 ```ts
-export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
+export const bulkUpdateAtom = StoreTag.runtime.fn<string[]>()(
   Effect.fn(function* (ids, get) {
-    const store = get(storeAtomUnsafe)
+    const store = get(StoreTag.storeUnsafe)
     if (!store) return
     
     // Commit multiple events synchronously
@@ -244,7 +248,7 @@ export const bulkUpdateAtom = runtimeAtom.fn<string[]>()(
 
 ### Best Practices
 
-1. **Use `makeQueryAtom` for queries**: This ensures proper Effect integration and error handling
+1. **Use `StoreTag.makeQuery` for queries**: This ensures proper Effect integration and error handling
 2. **Leverage Effect services**: Integrate business logic through Effect services for better testability
 3. **Handle loading states**: Use `Result.builder` pattern for consistent loading/error UI
 4. **Batch React updates**: Always provide `batchUpdates` for better performance
