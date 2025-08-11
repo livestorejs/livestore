@@ -1,15 +1,13 @@
-// @ts-ignore - package will be installed by user
-import { atom } from '@effect-atom/atom'
-// @ts-ignore - package will be installed by user
+import { Atom } from '@effect-atom/atom'
 import { Result } from '@effect-atom/atom-react'
 import { queryDb } from '@livestore/livestore'
 import { StoreTag } from './atoms.ts'
 import { tables } from './schema.ts'
 
 // Assume todosAtom uses StoreTag.makeQuery (non-unsafe)
-export const todosAtom = StoreTag.makeQuery(queryDb(tables.todos.all()))
+export const todosAtom = StoreTag.makeQuery(queryDb(tables.todos))
 
-export const todoStatsAtom = atom((get) => {
+export const todoStatsAtom = Atom.make((get) => {
   const todos = get(todosAtom) // Result wrapped
 
   return Result.map(todos, (todoList: any) => ({

@@ -267,7 +267,7 @@ export default defineConfig({
         strict: false,
       },
     },
-    plugins: [...tailwind()],
+    plugins: [tailwind()],
   },
   markdown: {
     syntaxHighlight: {

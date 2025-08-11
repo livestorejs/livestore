@@ -104,14 +104,27 @@ const tables = {
 
 // Define materializers
 const materializers = State.SQLite.materializers(events, {
-  userCreated: ({ id, name, email }) =>
-    tables.users.insert({ id, name, email, isActive: true, createdAt: new Date() }),
-  todoCreated: ({ id, text, completed }) =>
-    tables.todos.insert({ id, text, completed, createdAt: new Date() }),
-  todoToggled: ({ id, completed }) =>
-    tables.todos.update({ completed }).where({ id }),
+  userCreated: ({ id, name, email }) => tables.users.insert({ id, name, email, isActive: true, createdAt: new Date() }),
+  userUpdated: ({ id, name, email, isActive }) => {
+    const updates: any = {}
+    if (name) updates.name = name
+    if (email) updates.email = email
+    if (isActive !== undefined) updates.isActive = isActive
+    return tables.users.update(updates).where({ id })
+  },
+  todoCreated: ({ id, text, completed }) => tables.todos.insert({ id, text, completed, createdAt: new Date() }),
+  todoToggled: ({ id, completed }) => tables.todos.update({ completed }).where({ id }),
   productCreated: ({ id, name, description, price }) =>
     tables.products.insert({ id, name, description, price, createdAt: new Date() }),
+  productUpdated: ({ id, name, description, price }) => {
+    const updates: any = {}
+    if (name) updates.name = name
+    if (description) updates.description = description
+    if (price !== undefined) updates.price = price
+    return tables.products.update(updates).where({ id })
+  },
+  itemCreated: () => [], // Item events don't have a corresponding table
+  itemUpdated: () => [], // Item events don't have a corresponding table
 })
 
 // Create state

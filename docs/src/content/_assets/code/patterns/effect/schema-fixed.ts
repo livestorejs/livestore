@@ -55,10 +55,8 @@ const tables = {
 const materializers = State.SQLite.materializers(events, {
   userCreated: ({ id, name, email, isActive }) =>
     tables.users.insert({ id, name, email, isActive, createdAt: new Date() }),
-  todoCreated: ({ id, text, completed }) =>
-    tables.todos.insert({ id, text, completed, createdAt: new Date() }),
-  todoToggled: ({ id, completed }) =>
-    tables.todos.update({ completed }).where({ id }),
+  todoCreated: ({ id, text, completed }) => tables.todos.insert({ id, text, completed, createdAt: new Date() }),
+  todoToggled: ({ id, completed }) => tables.todos.update({ completed }).where({ id }),
 })
 
 // Create state

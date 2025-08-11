@@ -32,8 +32,7 @@ const tables = {
 
 // Define materializers
 const materializers = State.SQLite.materializers(events, {
-  userCreated: ({ id, name, email }) =>
-    tables.users.insert({ id, name, email, isActive: true, createdAt: new Date() }),
+  userCreated: ({ id, name, email }) => tables.users.insert({ id, name, email, isActive: true, createdAt: new Date() }),
 })
 
 // Create state
@@ -54,9 +53,7 @@ const adapter = makePersistedAdapter({
 })
 
 // Import AtomLivestore and React dependencies
-// @ts-ignore - These packages will be installed by the user
 import { AtomLivestore } from '@effect-atom/atom-livestore'
-// @ts-ignore - These packages will be installed by the user
 import { unstable_batchedUpdates } from 'react-dom'
 
 // Define the store as a service tag

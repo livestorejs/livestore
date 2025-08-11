@@ -1,4 +1,3 @@
-// @ts-ignore - package will be installed by user
 import { Result, useAtomValue } from '@effect-atom/atom-react'
 import { activeUsersAtom } from './queries.ts'
 
@@ -14,6 +13,6 @@ function _UserList() {
         ))}
       </ul>
     ))
-    .onError((error: any) => <div>Error: {error.message}</div>)
+    .onFailure((error: any) => <div>Error: {error.message}</div>)
     .render()
 }

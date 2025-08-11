@@ -1,5 +1,4 @@
-// @ts-ignore - package will be installed by user
-import { atom } from '@effect-atom/atom'
+import { Atom } from '@effect-atom/atom'
 import { queryDb, sql } from '@livestore/livestore'
 import { Schema } from 'effect'
 import { StoreTag } from './atoms.ts'
@@ -19,16 +18,16 @@ const Product = Schema.Struct({
 })
 
 // Assume we have a search term atom
-const searchTermAtom = atom<string>('')
+const searchTermAtom = Atom.make<string>('')
 
 // Simple query atom
-export const usersAtom = StoreTag.makeQuery(queryDb(tables.users.all()))
+export const usersAtom = StoreTag.makeQuery(queryDb(tables.users))
 
 // Query with SQL
 export const activeUsersAtom = StoreTag.makeQuery(
   queryDb({
     query: sql`SELECT * FROM users WHERE isActive = true ORDER BY name`,
-    schema: User.array,
+    schema: Schema.Array(User),
   }),
 )
 
@@ -36,18 +35,18 @@ export const activeUsersAtom = StoreTag.makeQuery(
 export const searchResultsAtom = StoreTag.makeQuery(
   queryDb(
     (get) => {
-      const searchTerm = get(searchTermAtom)
+      const searchTerm = get(searchTermAtom as any) as string
 
       if (searchTerm.trim() === '') {
         return {
           query: sql`SELECT * FROM products ORDER BY createdAt DESC`,
-          schema: Product.array,
+          schema: Schema.Array(Product),
         }
       }
 
       return {
         query: sql`SELECT * FROM products WHERE name LIKE ? ORDER BY name`,
-        schema: Product.array,
+        schema: Schema.Array(Product),
         bindValues: [`%${searchTerm}%`],
       }
     },
