@@ -25,10 +25,7 @@
       "!**/.tanstack/**",
       "!**/.direnv/**",
       "!**/playwright-report/**",
-      "!**/test-results/**",
-      "!**/*.mdx", // TODO re-enable when Biome supports MDX files
-      // https://github.com/biomejs/biome/issues/6528
-      "!**/*.astro"
+      "!**/test-results/**"
     ]
   },
   "formatter": {
@@ -87,5 +84,21 @@
   },
   "json": {
     "formatter": {}
-  }
+  },
+  "overrides": [
+    {
+      // Disable noUnusedVariables for Astro files due to false positives
+      // Biome only analyzes frontmatter, not template usage
+      // See: https://github.com/biomejs/biome/discussions/1254
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }
