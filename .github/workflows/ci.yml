@@ -211,6 +211,11 @@ jobs:
         # `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
         # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
         run: pnpm dlx tiged github:${{ github.repository }}/${{ env.APP_PATH }}#${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
+      - name: Increase pnpm fetch retries
+        # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
+        # We increase the fetch retries to mitigate this issue.
+        # See https://pnpm.io/settings#fetchretries
+        run: pnpm config set fetchRetries 3
       - name: Use snapshot version of workspace dependencies
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: |
