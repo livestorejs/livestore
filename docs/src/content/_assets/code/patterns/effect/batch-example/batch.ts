@@ -1,7 +1,8 @@
 import { Effect } from 'effect'
-import { StoreTag } from './atoms.ts'
-import { events } from './schema.ts'
+import { StoreTag } from '../store-setup/atoms.ts'
+import { events } from '../store-setup/schema.ts'
 
+// Bulk update atom for batch operations
 export const bulkUpdateAtom = StoreTag.runtime.fn<string[]>()(
   Effect.fn(function* (ids, get) {
     const store = get(StoreTag.storeUnsafe)

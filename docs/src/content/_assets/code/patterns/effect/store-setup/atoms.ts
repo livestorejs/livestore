@@ -1,14 +1,13 @@
-// atoms.ts
+/// <reference types="vite/client" />
 
 import { AtomLivestore } from '@effect-atom/atom-livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+import LiveStoreWorker from '@livestore/adapter-web/worker?worker'
 import { unstable_batchedUpdates } from 'react-dom'
 import { schema } from './schema.ts'
 
 export { schema } from './schema.ts'
-
-declare const LiveStoreWorker: (options: { name: string }) => Worker
-declare const LiveStoreSharedWorker: (options: { name: string }) => SharedWorker
 
 // Create a persistent adapter with OPFS storage
 const adapter = makePersistedAdapter({
