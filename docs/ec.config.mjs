@@ -11,6 +11,7 @@ export default defineEcConfig({
         compilerOptions: {
           allowImportingTsExtensions: true,
           moduleResolution: ts.ModuleResolutionKind.Bundler,
+          jsx: ts.JsxEmit.ReactJSX,
         },
       },
     }),

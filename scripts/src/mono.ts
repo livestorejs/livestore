@@ -134,8 +134,14 @@ const docsCommand = Cli.Command.make('docs').pipe(
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
       },
       ({ open }) =>
-        cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-          cwd: `${process.env.WORKSPACE_ROOT}/docs`,
+        Effect.gen(function* () {
+          const logPath = `${process.env.WORKSPACE_ROOT}/docs/logs/${new Date().toISOString()}.log`
+          fs.mkdirSync(`${process.env.WORKSPACE_ROOT}/docs/logs`, { recursive: true })
+
+          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined, '2>&1', '|', 'tee', logPath], {
+            cwd: `${process.env.WORKSPACE_ROOT}/docs`,
+            shell: true,
+          })
         }),
     ),
     docsBuildCommand,
@@ -236,6 +242,9 @@ const tsCommand = Cli.Command.make(
         { cwd, shell: true },
       )
     }
+
+    // Sync/generate Astro types before TS build
+    yield* cmd('pnpm astro sync', { cwd: `${process.env.WORKSPACE_ROOT}/docs` })
 
     if (watch) {
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })

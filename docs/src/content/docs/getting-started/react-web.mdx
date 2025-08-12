@@ -10,20 +10,19 @@ import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeTiged, versionNpmSuffix } from '../../../../data.js'
 import { MIN_NODE_VERSION, LIVESTORE_WA_SQLITE_VERSION } from '@local/shared'
 import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
-import schemaCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?raw'
-// import workerCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore.worker.ts?raw'
-import workerCode from '../../_assets/code/getting-started/react-web/worker.ts?raw';
-import rootCode from '../../../../../examples/web-todomvc-sync-cf/src/Root.tsx?raw'
-import headerCode from '../../../../../examples/web-todomvc-sync-cf/src/components/Header.tsx?raw'
-import mainSectionCode from '../../../../../examples/web-todomvc-sync-cf/src/components/MainSection.tsx?raw'
+import schemaCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?snippet'
+import workerCode from '../../_assets/code/getting-started/react-web/livestore.worker.ts?snippet'
+import rootCode from '../../_assets/code/getting-started/react-web/Root.tsx?snippet'
+import headerCode from '../../_assets/code/getting-started/react-web/Header.tsx?snippet'
+import mainSectionCode from '../../_assets/code/getting-started/react-web/MainSection.tsx?snippet'
 
 export const CODE = {
   viteConfig: viteConfigCode,
   schema: schemaCode,
-  worker: workerCode,
   root: rootCode,
   header: headerCode,
   mainSection: mainSectionCode,
+  worker: workerCode,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -151,7 +150,7 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
+<Code code={CODE.root} lang="tsx" meta="twoslash" title="src/Root.tsx" />
 
 ### Commit events
 
@@ -159,7 +158,7 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-<Code code={CODE.header} lang="tsx" title="src/components/Header.tsx" />
+<Code code={CODE.header} lang="tsx" meta="twoslash" title="src/components/Header.tsx" />
 
 ## Queries
 
@@ -169,4 +168,4 @@ Consider abstracting queries into a separate file to keep your code organized, t
 
 Here's an example:
 
-<Code code={CODE.mainSection} lang="tsx" title="src/components/MainSection.tsx" />
+<Code code={CODE.mainSection} lang="tsx" meta="twoslash" title="src/components/MainSection.tsx" />

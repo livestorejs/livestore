@@ -14,6 +14,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
+import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
 const port = 5252
 
@@ -267,7 +268,7 @@ export default defineConfig({
         strict: false,
       },
     },
-    plugins: [tailwind()],
+    plugins: [tailwind(), vitePluginSnippet()],
   },
   markdown: {
     syntaxHighlight: {

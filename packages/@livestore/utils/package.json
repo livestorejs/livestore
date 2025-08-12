@@ -44,7 +44,7 @@
     "@types/jsdom": "^21.1.7",
     "@types/node": "catalog:",
     "@types/web": "^0.0.260",
-    "effect": "^3.17.6",
+    "effect": "^3.17.7",
     "jsdom": "^26.1.0",
     "vitest": "catalog:"
   },
@@ -70,7 +70,7 @@
     "@effect/typeclass": "^0.36.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.1",
-    "effect": "^3.17.6"
+    "effect": "^3.17.7"
   },
   "publishConfig": {
     "access": "public",

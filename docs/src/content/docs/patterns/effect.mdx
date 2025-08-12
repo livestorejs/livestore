@@ -1,0 +1,112 @@
+---
+title: Effect
+sidebar:
+  order: 21
+---
+
+import { Code } from '@astrojs/starlight/components';
+import atomsCode from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet';
+import queriesCode from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet';
+import userListCode from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet';
+import servicesCode from '../../_assets/code/patterns/effect/store-setup/services.tsx?snippet';
+import optimisticCode from '../../_assets/code/patterns/effect/optimistic-example/optimistic.ts?snippet';
+import derivedCode from '../../_assets/code/patterns/effect/derived-example/derived.ts?snippet';
+import batchCode from '../../_assets/code/patterns/effect/batch-example/batch.ts?snippet';
+
+LiveStore itself is built on top of [Effect](https://effect.website) which is a powerful library to write production-grade TypeScript code. It's also possible (and recommended) to use Effect directly in your application code.
+
+## Schema
+
+LiveStore uses the [Effect Schema](https://effect.website/docs/schema/introduction/) library to define schemas for the following:
+
+- Read model table column definitions
+- Event event payloads definitions
+- Query response types
+
+For convenience, LiveStore re-exports the `Schema` module from the `effect` package, which is the same as if you'd import it via `import { Schema } from 'effect'` directly.
+
+## `Equal` and `Hash` Traits
+
+LiveStore's reactive primitives (`LiveQueryDef` and `SignalDef`) implement Effect's `Equal` and `Hash` traits, enabling efficient integration with Effect's data structures and collections.
+
+## Effect Atom Integration
+
+LiveStore integrates seamlessly with [Effect Atom](https://github.com/effect-atom/effect-atom) for reactive state management in React applications. This provides a powerful combination of Effect's functional programming capabilities with LiveStore's event sourcing and CQRS patterns.
+
+Effect Atom is an external package developed by [Tim Smart](https://github.com/tim-smart) that provides a more Effect-idiomatic alternative to the `@livestore/react` package. While `@livestore/react` offers a straightforward React integration, Effect Atom leverages Effect API/patterns throughout, making it a natural choice for applications already using Effect.
+
+### Installation
+
+```bash
+pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
+```
+
+### Store Creation
+
+Create a LiveStore-backed atom store with persistence and worker support using the `AtomLivestore.Tag` pattern:
+
+<Code lang="ts" code={atomsCode} meta="twoslash" title="atoms.ts" />
+
+The `StoreTag` class provides the following static methods:
+- `StoreTag.runtime` - Access to Effect runtime
+- `StoreTag.commit` - Commit events to the store
+- `StoreTag.store` - Access store with Effect
+- `StoreTag.storeUnsafe` - Direct store access when store is already loaded (synchronous)
+- `StoreTag.makeQuery` - Create query atoms with Effect
+- `StoreTag.makeQueryUnsafe` - Create query atoms without Effect
+
+### Defining Query Atoms
+
+Create reactive query atoms that automatically update when the underlying data changes:
+
+<Code lang="ts" code={queriesCode} meta="twoslash" title="queries.ts" />
+
+### Using Queries in React Components
+
+Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
+
+<Code lang="tsx" code={userListCode} meta="twoslash" title="UserList.tsx" />
+
+### Integrating Effect Services
+
+Combine Effect services with LiveStore operations using the store's runtime:
+
+<Code lang="tsx" code={servicesCode} meta="twoslash" title="services.tsx" />
+
+### Advanced Patterns
+
+#### Optimistic Updates
+
+Combine local state with LiveStore for optimistic UI updates. When using `StoreTag.makeQueryUnsafe`, the data is directly available:
+
+<Code lang="ts" code={optimisticCode} meta="twoslash" title="optimistic.ts" />
+
+#### Derived State
+
+Create computed atoms based on LiveStore queries. When using the non-unsafe API, handle the Result type:
+
+<Code lang="ts" code={derivedCode} meta="twoslash" title="derived.ts" />
+
+#### Batch Operations
+
+Perform multiple commits efficiently (commits are synchronous):
+
+<Code lang="ts" code={batchCode} meta="twoslash" title="batch.ts" />
+
+### Best Practices
+
+1. **Use `StoreTag.makeQuery` for queries**: This ensures proper Effect integration and error handling
+2. **Leverage Effect services**: Integrate business logic through Effect services for better testability
+3. **Handle loading states**: Use `Result.builder` pattern for consistent loading/error UI
+4. **Batch React updates**: Always provide `batchUpdates` for better performance
+5. **Label queries**: Add descriptive labels to queries for better debugging
+6. **Type safety**: Let TypeScript infer types from schemas rather than manual annotations
+
+### Real-World Example
+
+For a comprehensive example of LiveStore with Effect Atom in action, check out [Cheffect](https://github.com/tim-smart/cheffect) - a recipe management application that demonstrates:
+- Complete Effect service integration
+- AI-powered recipe extraction using Effect services
+- Complex query patterns with search and filtering
+- Worker-based persistence with OPFS
+- Production-ready error handling and logging

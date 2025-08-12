@@ -1,5 +1,3 @@
-// biome-ignore-all lint: documentation
-// @filename: livestore/schema.ts
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 // You can model your state as SQLite tables (https://docs.livestore.dev/reference/state/sqlite-schema)
@@ -58,18 +56,3 @@ const materializers = State.SQLite.materializers(events, {
 const state = State.SQLite.makeState({ tables, materializers })
 
 export const schema = makeSchema({ events, state })
-
-// @filename: index.ts
-// ---cut---
-import { makeWorker } from '@livestore/adapter-web/worker'
-import { makeCfSync } from '@livestore/sync-cf'
-
-import { schema } from './livestore/schema.ts'
-
-makeWorker({
-  schema,
-  sync: {
-    backend: makeCfSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL! }),
-    initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
-  },
-})
