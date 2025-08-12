@@ -21,29 +21,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -63,17 +40,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -128,6 +94,45 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
 }
 `;
 
+exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
 {
   "_name": "createStore",
@@ -149,29 +154,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -191,17 +173,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -256,6 +227,45 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
 }
 `;
 
+exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
 {
   "_name": "createStore",
@@ -275,52 +285,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
-    },
-    {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
@@ -349,26 +313,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -449,6 +393,79 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
 }
 `;
 
+exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > otel 3`] = `
 {
   "_name": "createStore",
@@ -470,29 +487,6 @@ exports[`otel > otel 3`] = `
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -512,17 +506,6 @@ exports[`otel > otel 3`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -565,6 +548,45 @@ exports[`otel > otel 3`] = `
     },
   ],
 }
+`;
+
+exports[`otel > otel 4`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;
 
 exports[`otel > with thunks 1`] = `
@@ -760,29 +782,6 @@ exports[`otel > with thunks 7`] = `
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -802,17 +801,6 @@ exports[`otel > with thunks 7`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -863,6 +851,45 @@ exports[`otel > with thunks 7`] = `
 }
 `;
 
+exports[`otel > with thunks 8`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > with thunks with query builder and without labels 3`] = `
 {
   "_name": "createStore",
@@ -884,29 +911,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       },
     },
     {
-      "_name": "client-session-sync-processor:push",
-      "attributes": {
-        "batchSize": 1,
-        "eventCounts": "{
-  "todo.created": 1
-}",
-        "mergeResultTag": "advance",
-      },
-      "children": [
-        {
-          "_name": "client-session-sync-processor:materialize-event",
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
@@ -926,17 +930,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "todo.created",
-            ],
-            "livestore.eventsCount": 1,
-          },
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -985,4 +978,43 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
     },
   ],
 }
+`;
+
+exports[`otel > with thunks with query builder and without labels 4`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;

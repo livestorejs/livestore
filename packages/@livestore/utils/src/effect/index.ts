@@ -1,6 +1,5 @@
 import '../global.ts'
 
-export * as OtelTracer from '@effect/opentelemetry/Tracer'
 export {
   Command,
   CommandExecutor,
@@ -114,6 +113,7 @@ export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
 export * as Logger from './Logger.ts'
+export * as OtelTracer from './OtelTracer.ts'
 export * as Schema from './Schema/index.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'

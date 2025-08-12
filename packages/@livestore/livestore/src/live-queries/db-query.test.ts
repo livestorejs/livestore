@@ -6,7 +6,7 @@ import { expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
 import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
-import { getSimplifiedRootSpan } from '../utils/tests/otel.ts'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '../utils/tests/otel.ts'
 import { computed } from './computed.ts'
 import { queryDb } from './db-query.ts'
 
@@ -83,7 +83,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -139,7 +140,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -183,7 +185,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -228,7 +231,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -283,7 +287,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -324,7 +329,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),

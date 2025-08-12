@@ -3,7 +3,6 @@ import {
   type ClientSession,
   type ClientSessionSyncProcessor,
   Devtools,
-  getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
   getResultSchema,
   hashMaterializerResults,
@@ -601,89 +600,76 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    for (const event of events) {
-      replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
-    }
+    Effect.gen(this, function* () {
+      const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)
+      commitsSpan?.addEvent('commit')
+      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      commitsSpan?.addLink({ context: currentSpan.spanContext() })
 
-    if (events.length === 0) return
+      for (const event of events) {
+        replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
+      }
 
-    const skipRefresh = options?.skipRefresh ?? false
+      if (events.length === 0) return
 
-    const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)!
-    commitsSpan.addEvent('commit')
+      const localRuntime = yield* Effect.runtime()
 
-    // console.group('LiveStore.commit', { skipRefresh })
-    // events.forEach((_) => console.debug(_.name, _.args))
-    // console.groupEnd()
+      const materializeEventsTx = Effect.try({
+        try: () => {
+          const runMaterializeEvents = () => {
+            return this.syncProcessor.push(events).pipe(Runtime.runSync(localRuntime))
+          }
 
-    let durationMs: number
+          if (events.length > 1) {
+            return this.sqliteDbWrapper.txn(runMaterializeEvents)
+          } else {
+            return runMaterializeEvents()
+          }
+        },
+        catch: (cause) => UnexpectedError.make({ cause }),
+      })
 
-    return this.otel.tracer.startActiveSpan(
-      'LiveStore:commit',
-      {
+      // Materialize events to state
+      const { writeTables } = yield* materializeEventsTx
+
+      const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
+      for (const tableName of writeTables) {
+        const tableRef = this.tableRefs[tableName]
+        assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+        tablesToUpdate.push([tableRef!, null])
+      }
+
+      const debugRefreshReason: RefreshReason = {
+        _tag: 'commit',
+        events,
+        writeTables: Array.from(writeTables),
+      }
+      const skipRefresh = options?.skipRefresh ?? false
+
+      // Update all table refs together in a batch, to only trigger one reactive update
+      this.reactivityGraph.setRefs(tablesToUpdate, {
+        debugRefreshReason,
+        skipRefresh,
+        otelContext: otel.trace.setSpan(otel.context.active(), currentSpan),
+      })
+    }).pipe(
+      Effect.withSpan('LiveStore:commit', {
+        root: true,
         attributes: {
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
-          'livestore.commitLabel': options?.label,
+          ...(options?.label && { 'livestore.commitLabel': options.label }),
         },
-        links: options?.spanLinks,
-      },
-      options?.otelContext ?? this.otel.commitsSpanContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-        try {
-          // Materialize events to state
-          const { writeTables } = (() => {
-            try {
-              const materializeEvents = () => {
-                return this.syncProcessor.push(events).pipe(
-                  Effect.tapErrorCause((cause) => Effect.fork(this.shutdown(cause))),
-                  Runtime.runSync(this.effectContext.runtime),
-                )
-              }
-
-              if (events.length > 1) {
-                return this.sqliteDbWrapper.txn(materializeEvents)
-              } else {
-                return materializeEvents()
-              }
-            } catch (e: any) {
-              console.error(e)
-              span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-              throw e
-            } finally {
-              span.end()
-            }
-          })()
-
-          const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
-          for (const tableName of writeTables) {
-            const tableRef = this.tableRefs[tableName]
-            assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-            tablesToUpdate.push([tableRef!, null])
-          }
-
-          const debugRefreshReason = {
-            _tag: 'commit' as const,
-            events,
-            writeTables: Array.from(writeTables),
-          }
-
-          // Update all table refs together in a batch, to only trigger one reactive update
-          this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
-        } catch (e: any) {
-          console.error(e)
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-          throw e
-        } finally {
-          span.end()
-
-          durationMs = getDurationMsFromSpan(span)
-        }
-
-        return { durationMs }
-      },
+        links: [
+          // Span link to LiveStore:commits
+          OtelTracer.makeSpanLink({ context: otel.trace.getSpanContext(this.otel.commitsSpanContext)! }),
+          // User-provided span links
+          ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
+        ],
+      }),
+      Effect.tapErrorCause(Effect.logError),
+      Effect.catchAllCause((cause) => Effect.fork(this.shutdown(cause))),
+      Runtime.runSync(this.effectContext.runtime),
     )
   }
   // #endregion commit
