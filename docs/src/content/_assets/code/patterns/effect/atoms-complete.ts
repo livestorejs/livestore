@@ -1,7 +1,9 @@
 // atoms.ts - Complete working example
 
+import { AtomLivestore } from '@effect-atom/atom-livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+import { unstable_batchedUpdates } from 'react-dom'
 
 // Define events
 const events = {
@@ -87,9 +89,6 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-// Import AtomLivestore and React dependencies
-import { AtomLivestore } from '@effect-atom/atom-livestore'
-import { unstable_batchedUpdates } from 'react-dom'
 
 // Define the store as a service tag
 export class StoreTag extends AtomLivestore.Tag<StoreTag>()('StoreTag', {

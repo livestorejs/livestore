@@ -1,4 +1,5 @@
 {
   "extends": "astro/tsconfigs/strict",
+  "include": ["src", "data.ts"],
   "references": [{ "path": "../packages/@local/shared" }]
 }

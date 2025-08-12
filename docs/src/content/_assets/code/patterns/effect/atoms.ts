@@ -4,6 +4,7 @@ import { AtomLivestore } from '@effect-atom/atom-livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import { unstable_batchedUpdates } from 'react-dom'
 import { schema } from './schema.ts'
+
 export { schema } from './schema.ts'
 
 declare const LiveStoreWorker: (options: { name: string }) => Worker

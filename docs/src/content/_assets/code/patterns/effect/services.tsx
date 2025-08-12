@@ -18,8 +18,8 @@ export class MyService extends Context.Tag('MyService')<
 export const useCommit = () => useAtomSet(StoreTag.commit)
 
 // Create an atom that uses Effect services
-export const createItemAtom = StoreTag.runtime.fn<string>()(
-  (itemName, get) => Effect.gen(function* () {
+export const createItemAtom = StoreTag.runtime.fn<string>()((itemName: string, get: any) => {
+  return Effect.gen(function* () {
     // Access Effect services
     const service = yield* MyService
 
@@ -37,8 +37,8 @@ export const createItemAtom = StoreTag.runtime.fn<string>()(
         }),
       )
     }
-  }).pipe(Effect.tapErrorCause(Effect.log)),
-)
+  }).pipe(Effect.tapErrorCause(Effect.log)) as any
+})
 
 // Use in a React component
 function _CreateItemButton() {

@@ -4,7 +4,7 @@ import { activeUsersAtom } from './queries.ts'
 function _UserList() {
   const users = useAtomValue(activeUsersAtom)
 
-  return Result.builder(users)
+  return (Result.builder(users) as any)
     .onInitial(() => <div>Loading users...</div>)
     .onSuccess((users: any) => (
       <ul>
@@ -13,6 +13,6 @@ function _UserList() {
         ))}
       </ul>
     ))
-    .onFailure((error: any) => <div>Error: {error.message}</div>)
+    .onError((error: any) => <div>Error: {error.message}</div>)
     .render()
 }
