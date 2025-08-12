@@ -89,7 +89,6 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-
 // Define the store as a service tag
 export class StoreTag extends AtomLivestore.Tag<StoreTag>()('StoreTag', {
   schema,

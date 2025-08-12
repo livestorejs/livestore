@@ -1,7 +1,23 @@
+import React from 'react'
 import { useAtomSet } from '@effect-atom/atom-react'
 import { Context, Effect } from 'effect'
-import { StoreTag } from './atoms.ts'
-import { events } from './schema.ts'
+
+// These would normally be imported from './atoms.ts' and './schema.ts'
+declare const StoreTag: {
+  runtime: {
+    fn: <T>() => (fn: (arg: T, get: any) => any) => any
+  }
+  commit: any
+  storeUnsafe: any
+}
+
+declare const events: {
+  itemCreated: (payload: {
+    id: string
+    name: string
+    metadata: Record<string, unknown>
+  }) => any
+}
 
 // Example service definition
 export class MyService extends Context.Tag('MyService')<

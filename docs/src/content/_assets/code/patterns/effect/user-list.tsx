@@ -1,10 +1,14 @@
+import React from 'react'
 import { Result, useAtomValue } from '@effect-atom/atom-react'
-import { activeUsersAtom } from './queries.ts'
+
+// This example assumes activeUsersAtom is imported from queries.ts
+// which uses StoreTag.makeQuery to create a reactive query atom
+declare const activeUsersAtom: any
 
 function _UserList() {
   const users = useAtomValue(activeUsersAtom)
 
-  return (Result.builder(users) as any)
+  return Result.builder(users)
     .onInitial(() => <div>Loading users...</div>)
     .onSuccess((users: any) => (
       <ul>

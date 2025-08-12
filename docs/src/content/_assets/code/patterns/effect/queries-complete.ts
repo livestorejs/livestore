@@ -16,6 +16,7 @@ const Product = Schema.Struct({
 
 // Import dependencies (will be available in user's project)
 import { Atom } from '@effect-atom/atom'
+
 // Assume StoreTag and schema are imported from atoms.ts
 declare const StoreTag: any
 declare const schema: any
