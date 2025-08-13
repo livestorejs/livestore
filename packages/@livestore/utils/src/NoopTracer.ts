@@ -9,6 +9,7 @@ export const makeNoopSpan = () => {
     setAttribute: () => null,
     setAttributes: () => null,
     addEvent: () => null,
+    addLink: () => null,
     setStatus: () => null,
     updateName: () => null,
     recordException: () => null,

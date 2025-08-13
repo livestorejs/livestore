@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
-import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
@@ -323,7 +323,8 @@ Vitest.describe('useClientDocument', () => {
           })
         }
 
-        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+        expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+        expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
 
         await provider.shutdown()
       },
