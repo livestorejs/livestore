@@ -12,7 +12,7 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Queue, Schema, Stream } from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -177,10 +177,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         }),
       ).pipe(Effect.repeatN(1))
 
-      const exit = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(exit._tag).toEqual('LiveStore.SyncError')
-      expect(exit.cause).toEqual(
+      expect(error._tag).toEqual('LiveStore.SyncError')
+      expect(error.cause).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
     }).pipe(withTestCtx(test)),
@@ -267,6 +267,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
   // In cases where the materializer is non-pure (e.g. for events.todoDeletedNonPure calling `new Date()`),
   // the ClientSessionSyncProcessor will fail gracefully when detecting a materializer hash mismatch.
+  // This covers the leader-side hash mismatch detection, which occurs during the push path (when sending events to the leader)
   Vitest.scopedLive('should fail gracefully if materializer is side effecting', (test) =>
     Effect.gen(function* () {
       const { makeStore, shutdownDeferred } = yield* TestContext
@@ -276,8 +277,63 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(error._tag).toEqual('LiveStore.UnexpectedError')
-      expect(error.cause).includes('Materializer hash mismatch detected for event')
+      expect(error._tag).toEqual('LiveStore.MaterializerHashMismatchError')
+    }).pipe(withTestCtx(test)),
+  )
+
+  // This test covers the client-session-side hash mismatch detection, which occurs during the pull path (when receiving events from the leader).
+  Vitest.scopedLive('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
+
+      const { makeStore, shutdownDeferred } = yield* TestContext
+
+      yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: () => ({
+                events: {
+                  pull: () =>
+                    Stream.fromQueue(pullQueue).pipe(
+                      Stream.map((item) => ({
+                        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                      })),
+                    ),
+                  push: () => Effect.void,
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(schema)
+      const encode = Schema.encodeSync(eventSchema)
+
+      // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
+      const eventFromLeader = LiveStoreEvent.EncodedWithMeta.make({
+        ...encode(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false })),
+        seqNum: EventSequenceNumber.make({ global: 0, client: 1 }),
+        parentSeqNum: EventSequenceNumber.ROOT,
+        clientId: 'this-client',
+        sessionId: 'static-session-id',
+        meta: {
+          sessionChangeset: { _tag: 'no-op' } as const,
+          syncMetadata: Option.none(),
+          materializerHashSession: Option.none(),
+          // Set a leader hash that won't match what our non-deterministic materializer computes
+          materializerHashLeader: Option.some(99), // This hash will not match the computed hash
+        },
+      })
+
+      // Send the event from the leader to trigger the pull path
+      yield* Queue.offer(pullQueue, eventFromLeader)
+
+      // Wait for the shutdown to be triggered by the client-side hash mismatch detection
+      const error = yield* shutdownDeferred.pipe(Effect.flip)
+
+      expect(error._tag).toEqual('LiveStore.MaterializerHashMismatchError')
     }).pipe(withTestCtx(test)),
   )
 

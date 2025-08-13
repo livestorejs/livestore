@@ -13,7 +13,7 @@ import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
 import type { MigrationsReport } from '../defs.ts'
-import type { SqliteError } from '../errors.ts'
+import type { MaterializerHashMismatchError, SqliteError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
@@ -125,7 +125,7 @@ export type MaterializeEvent = (
     sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
     hash: Option.Option<number>
   },
-  SqliteError | UnexpectedError
+  SqliteError | MaterializerHashMismatchError
 >
 
 export type InitialBlockingSyncContext = {

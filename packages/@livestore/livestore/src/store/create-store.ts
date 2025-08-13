@@ -5,8 +5,12 @@ import {
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
+  type InvalidPullError,
+  type IsOfflineError,
+  type MaterializerHashMismatchError,
   type MigrationsReport,
   provideOtel,
+  type SqliteError,
   type SyncError,
   UnexpectedError,
 } from '@livestore/common'
@@ -217,7 +221,12 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      const shutdown = (exit: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) =>
+      const shutdown = (
+        exit: Exit.Exit<
+          IntentionalShutdownCause,
+          UnexpectedError | MaterializerHashMismatchError | SyncError | InvalidPullError | SqliteError | IsOfflineError
+        >,
+      ) =>
         Effect.gen(function* () {
           yield* Scope.close(lifetimeScope, exit).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),

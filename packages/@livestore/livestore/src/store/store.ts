@@ -10,6 +10,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
   prepareBindValues,
@@ -128,72 +129,75 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       schema,
       clientSession,
       runtime: effectContext.runtime,
-      materializeEvent: (eventDecoded, { otelContext, withChangeset, materializerHashLeader }) => {
-        const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
+      materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
+        (eventDecoded, { withChangeset, materializerHashLeader }) =>
+          // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
+          Effect.gen(this, function* () {
+            const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
 
-        const execArgsArr = getExecStatementsFromMaterializer({
-          eventDef,
-          materializer,
-          dbState: this.sqliteDbWrapper,
-          event: { decoded: eventDecoded, encoded: undefined },
-        })
+            const execArgsArr = getExecStatementsFromMaterializer({
+              eventDef,
+              materializer,
+              dbState: this.sqliteDbWrapper,
+              event: { decoded: eventDecoded, encoded: undefined },
+            })
 
-        const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+            const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
 
-        if (
-          materializerHashLeader._tag === 'Some' &&
-          materializerHash._tag === 'Some' &&
-          materializerHashLeader.value !== materializerHash.value
-        ) {
-          void this.shutdown(
-            Cause.fail(
-              UnexpectedError.make({
-                cause: `Materializer hash mismatch detected for event "${eventDecoded.name}".`,
-                note: `Please make sure your event materializer is a pure function without side effects.`,
-              }),
-            ),
-          )
-        }
-
-        const writeTablesForEvent = new Set<string>()
-
-        const exec = () => {
-          for (const {
-            statementSql,
-            bindValues,
-            writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
-          } of execArgsArr) {
-            try {
-              this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
-            } catch (cause) {
-              throw UnexpectedError.make({
-                cause,
-                note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
-              })
+            // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
+            // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
+            // will never be met. The check happens when the same event comes back from the leader during sync,
+            // allowing us to compare the leader's computed hash with our local re-materialization hash.
+            if (
+              materializerHashLeader._tag === 'Some' &&
+              materializerHash._tag === 'Some' &&
+              materializerHashLeader.value !== materializerHash.value
+            ) {
+              return yield* MaterializerHashMismatchError.make({ eventName: eventDecoded.name })
             }
 
-            // durationMsTotal += durationMs
-            for (const table of writeTables) {
-              writeTablesForEvent.add(table)
+            const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+            const writeTablesForEvent = new Set<string>()
+
+            const exec = () => {
+              for (const {
+                statementSql,
+                bindValues,
+                writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
+              } of execArgsArr) {
+                try {
+                  this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+                } catch (cause) {
+                  throw UnexpectedError.make({
+                    cause,
+                    note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                  })
+                }
+
+                // durationMsTotal += durationMs
+                for (const table of writeTables) {
+                  writeTablesForEvent.add(table)
+                }
+
+                this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
+              }
             }
 
-            this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
-          }
-        }
+            let sessionChangeset:
+              | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
+              | { _tag: 'no-op' }
+              | { _tag: 'unset' } = { _tag: 'unset' }
+            if (withChangeset === true) {
+              sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
+            } else {
+              exec()
+            }
 
-        let sessionChangeset:
-          | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-          | { _tag: 'no-op' }
-          | { _tag: 'unset' } = { _tag: 'unset' }
-
-        if (withChangeset === true) {
-          sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
-        } else {
-          exec()
-        }
-
-        return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-      },
+            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
+          }),
+      ),
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
       },
@@ -633,9 +637,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           const { writeTables } = (() => {
             try {
               const materializeEvents = () => {
-                return this.syncProcessor
-                  .push(events, { otelContext })
-                  .pipe(Runtime.runSync(this.effectContext.runtime))
+                return this.syncProcessor.push(events).pipe(
+                  Effect.tapErrorCause((cause) => Effect.fork(this.shutdown(cause))),
+                  Runtime.runSync(this.effectContext.runtime),
+                )
               }
 
               if (events.length > 1) {
@@ -750,9 +755,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError>): Effect.Effect<void> => {
-    this.checkShutdown('shutdown')
-
+  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializerHashMismatchError>): Effect.Effect<void> => {
     this.isShutdown = true
     return this.clientSession.shutdown(
       cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),

@@ -1,7 +1,7 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from '../adapter-types.ts'
+import { MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.ts'
@@ -19,7 +19,7 @@ export const makeMaterializeEvent = ({
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent, UnexpectedError> =>
+}): Effect.Effect<MaterializeEvent, MaterializerHashMismatchError> =>
   Effect.gen(function* () {
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -49,10 +49,7 @@ export const makeMaterializeEvent = ({
           eventEncoded.meta.materializerHashSession._tag === 'Some' &&
           eventEncoded.meta.materializerHashSession.value !== materializerHash.value
         ) {
-          yield* UnexpectedError.make({
-            cause: `Materializer hash mismatch detected for event "${eventEncoded.name}".`,
-            note: `Please make sure your event materializer is a pure function without side effects.`,
-          })
+          yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
         }
 
         // NOTE we might want to bring this back if we want to debug no-op events

@@ -2,6 +2,7 @@ import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE 
 import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
+  Cause,
   Deferred,
   Effect,
   Exit,
@@ -16,13 +17,18 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-
-import type { SqliteDb } from '../adapter-types.ts'
-import { SyncError, UnexpectedError } from '../adapter-types.ts'
+import {
+  type IntentionalShutdownCause,
+  type MaterializerHashMismatchError,
+  type SqliteDb,
+  type SqliteError,
+  SyncError,
+  UnexpectedError,
+} from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import { LeaderAheadError } from '../sync/sync.ts'
+import { type InvalidPullError, type IsOfflineError, LeaderAheadError } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -224,12 +230,25 @@ export const makeLeaderSyncProcessor = ({
         }
       }
 
-      const shutdownOnError = (cause: unknown) =>
+      const shutdownOnError = (
+        cause: Cause.Cause<
+          | UnexpectedError
+          | SyncError
+          | IntentionalShutdownCause
+          | IsOfflineError
+          | MaterializerHashMismatchError
+          | InvalidPullError
+          | SqliteError
+          | never
+        >,
+      ) =>
         Effect.gen(function* () {
-          if (onError === 'shutdown') {
-            yield* shutdownChannel.send(UnexpectedError.make({ cause }))
-            yield* Effect.die(cause)
-          }
+          if (onError === 'ignore') return
+
+          const errorToSend = Cause.isFailType(cause) ? cause.error : UnexpectedError.make({ cause })
+          yield* shutdownChannel.send(errorToSend)
+
+          return yield* Effect.die(cause)
         })
 
       yield* backgroundApplyLocalPushes({
@@ -496,7 +515,7 @@ type MaterializeEventsBatch = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
-}) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
+}) => Effect.Effect<void, SqliteError | MaterializerHashMismatchError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
@@ -536,7 +555,6 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
       attributes: { batchSize: batchItems.length },
     }),
     Effect.tapCauseLogPretty,
-    UnexpectedError.mapToUnexpectedError,
   )
 
 const backgroundBackendPulling = ({

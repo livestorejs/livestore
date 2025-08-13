@@ -2,6 +2,10 @@ import type {
   ClientSession,
   ClientSessionSyncProcessorSimulationParams,
   IntentionalShutdownCause,
+  InvalidPullError,
+  IsOfflineError,
+  MaterializerHashMismatchError,
+  SqliteError,
   StoreInterrupted,
   SyncError,
   UnexpectedError,
@@ -28,11 +32,23 @@ export type LiveStoreContext =
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted
+  | UnexpectedError
+  | SyncError
+  | StoreInterrupted
+  | MaterializerHashMismatchError
+  | InvalidPullError
+  | SqliteError
+  | IsOfflineError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted
+  | UnexpectedError
+  | SyncError
+  | StoreInterrupted
+  | MaterializerHashMismatchError
+  | InvalidPullError
+  | SqliteError
+  | IsOfflineError
 >()
 
 export type LiveStoreContextRunning = {

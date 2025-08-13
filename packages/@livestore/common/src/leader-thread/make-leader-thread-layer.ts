@@ -1,9 +1,14 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
-
-import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.ts'
-import { UnexpectedError } from '../adapter-types.ts'
+import {
+  type BootStatus,
+  type MakeSqliteDb,
+  type MaterializerHashMismatchError,
+  type SqliteDb,
+  type SqliteError,
+  UnexpectedError,
+} from '../adapter-types.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
@@ -280,7 +285,7 @@ const bootLeaderThread = ({
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
+  UnexpectedError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {

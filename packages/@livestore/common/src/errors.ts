@@ -21,6 +21,16 @@ export class SyncError extends Schema.TaggedError<SyncError>()('LiveStore.SyncEr
   cause: Schema.Defect,
 }) {}
 
+export class MaterializerHashMismatchError extends Schema.TaggedError<MaterializerHashMismatchError>()(
+  'LiveStore.MaterializerHashMismatchError',
+  {
+    eventName: Schema.String,
+    note: Schema.optionalWith(Schema.String, {
+      default: () => 'Please make sure your event materializer is a pure function without side effects.',
+    }),
+  },
+) {}
+
 export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
   'LiveStore.IntentionalShutdownCause',
   {

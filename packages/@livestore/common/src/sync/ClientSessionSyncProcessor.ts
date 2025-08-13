@@ -13,9 +13,14 @@ import {
   Stream,
   Subscribable,
 } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, SyncError, type UnexpectedError } from '../adapter-types.ts'
+import {
+  type ClientSession,
+  type MaterializerHashMismatchError,
+  SyncError,
+  type UnexpectedError,
+} from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
@@ -52,15 +57,18 @@ export const makeClientSessionSyncProcessor = ({
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
     eventDecoded: LiveStoreEvent.AnyDecoded,
-    options: { otelContext: otel.Context; withChangeset: boolean; materializerHashLeader: Option.Option<number> },
-  ) => {
-    writeTables: Set<string>
-    sessionChangeset:
-      | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-      | { _tag: 'no-op' }
-      | { _tag: 'unset' }
-    materializerHash: Option.Option<number>
-  }
+    options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
+  ) => Effect.Effect<
+    {
+      writeTables: Set<string>
+      sessionChangeset:
+        | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
+        | { _tag: 'no-op' }
+        | { _tag: 'unset' }
+      materializerHash: Option.Option<number>
+    },
+    MaterializerHashMismatchError
+  >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
@@ -99,10 +107,7 @@ export const makeClientSessionSyncProcessor = ({
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
-    batch,
-    { otelContext },
-  ) {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
@@ -161,8 +166,7 @@ export const makeClientSessionSyncProcessor = ({
         writeTables: newWriteTables,
         sessionChangeset,
         materializerHash,
-      } = materializeEvent(decodedEventDef, {
-        otelContext,
+      } = yield* materializeEvent(decodedEventDef, {
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
@@ -185,8 +189,6 @@ export const makeClientSessionSyncProcessor = ({
     advanceCount: 0,
     rejectCount: 0,
   }
-
-  const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (confirmUnsavedChanges && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
@@ -311,8 +313,7 @@ export const makeClientSessionSyncProcessor = ({
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
-            } = materializeEvent(decodedEventDef, {
-              otelContext,
+            } = yield* materializeEvent(decodedEventDef, {
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
@@ -371,8 +372,7 @@ export const makeClientSessionSyncProcessor = ({
 export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
-    options: { otelContext: otel.Context },
-  ) => Effect.Effect<{ writeTables: Set<string> }>
+  ) => Effect.Effect<{ writeTables: Set<string> }, MaterializerHashMismatchError>
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
    * Only used for debugging / observability.

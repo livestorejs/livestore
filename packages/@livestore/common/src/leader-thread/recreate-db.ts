@@ -2,8 +2,16 @@ import { casesHandled } from '@livestore/utils'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from '../defs.ts'
-import type { BootStatus, MigrationHooks, SqliteDb, SqliteError } from '../index.ts'
-import { migrateDb, rematerializeFromEventlog, UnexpectedError } from '../index.ts'
+import {
+  type BootStatus,
+  type MaterializerHashMismatchError,
+  type MigrationHooks,
+  migrateDb,
+  rematerializeFromEventlog,
+  type SqliteDb,
+  type SqliteError,
+  UnexpectedError,
+} from '../index.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { configureConnection } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
@@ -20,7 +28,10 @@ export const recreateDb = ({
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
-}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnexpectedError | SqliteError> =>
+}): Effect.Effect<
+  { migrationsReport: MigrationsReport },
+  UnexpectedError | SqliteError | MaterializerHashMismatchError
+> =>
   Effect.gen(function* () {
     const migrationOptions = schema.state.sqlite.migrations
     let migrationsReport: MigrationsReport
