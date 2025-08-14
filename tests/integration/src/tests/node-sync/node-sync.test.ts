@@ -61,14 +61,14 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'node-sync prop tests',
     Vitest.DEBUGGER_ACTIVE
-      ? [
-          Schema.Literal('fs'),
-          Schema.Literal('worker'),
-          Schema.Literal(3),
-          Schema.Literal(391),
-          Schema.Literal(1),
-          Schema.Literal(2),
-          Schema.Struct({
+      ? {
+          storageType: Schema.Literal('fs'),
+          adapterType: Schema.Literal('worker'),
+          todoCountA: Schema.Literal(3),
+          todoCountB: Schema.Literal(391),
+          commitBatchSize: Schema.Literal(1),
+          leaderPushBatchSize: Schema.Literal(2),
+          simulationParams: Schema.Struct({
             pull: Schema.Struct({
               '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
               '2_before_leader_push_queue_clear': Schema.Literal(10),
@@ -77,19 +77,19 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
               '5_before_leader_push_fiber_run': Schema.Literal(0),
             }),
           }),
-        ]
-      : [
-          WorkerSchema.StorageType,
-          WorkerSchema.AdapterType,
-          CreateCount,
-          CreateCount,
-          CommitBatchSize,
-          LEADER_PUSH_BATCH_SIZE,
+        }
+      : {
+          storageType: WorkerSchema.StorageType,
+          adapterType: WorkerSchema.AdapterType,
+          todoCountA: CreateCount,
+          todoCountB: CreateCount,
+          commitBatchSize: CommitBatchSize,
+          leaderPushBatchSize: LEADER_PUSH_BATCH_SIZE,
           // TODO extend simulation tests to cover all parts of the client session and leader sync processor
-          ClientSessionSyncProcessorSimulationParams,
-        ],
+          simulationParams: ClientSessionSyncProcessorSimulationParams,
+        },
     (
-      [storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams],
+      { storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams },
       test,
     ) =>
       Effect.gen(function* () {
