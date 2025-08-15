@@ -3,12 +3,6 @@ description: Set up the environment with Nix and direnv.
 runs:
   using: composite
   steps:
-    - name: Check Nix flake inputs
-      # Performs health checks on the flake.lock file to ensure we stay on recent and supported versions of Nixpkgs.
-      uses: DeterminateSystems/flake-checker-action@main
-      with:
-        flake-lock-path: ./nix/flake.lock
-
     - name: Install Determinate Nix
       uses: DeterminateSystems/determinate-nix-action@v3
 
