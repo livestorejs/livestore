@@ -1,13 +1,13 @@
 /// <reference types="vitest/globals" />
 
-import type { CfWorker } from '@livestore/common-cf'
+import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { CloudflareWorkerVFS } from '../../mod.ts'
 
 describe('CloudflareWorkerVFS - Core Functionality', () => {
   let vfs: CloudflareWorkerVFS
-  let mockStorage: CfWorker.DurableObjectStorage
+  let mockStorage: CfTypes.DurableObjectStorage
   let storageData: Map<string, any>
 
   beforeEach(async () => {
@@ -19,7 +19,7 @@ describe('CloudflareWorkerVFS - Core Functionality', () => {
           return new Map()
         }
         return storageData.get(_key)
-      }) as CfWorker.DurableObjectStorage['get'],
+      }) as CfTypes.DurableObjectStorage['get'],
 
       put: async (_key: string | Record<string, any>, _value?: any) => {
         if (typeof _key === 'string') {
@@ -41,7 +41,7 @@ describe('CloudflareWorkerVFS - Core Functionality', () => {
         } else {
           return storageData.delete(_key)
         }
-      }) as CfWorker.DurableObjectStorage['delete'],
+      }) as CfTypes.DurableObjectStorage['delete'],
 
       list: async () => new Map(storageData),
       sync: async () => {},
@@ -57,7 +57,7 @@ describe('CloudflareWorkerVFS - Core Functionality', () => {
       setAlarm: async (_timestamp: number | Date) => {},
       deleteAlarm: async () => {},
       sql: {} as any,
-    } as CfWorker.DurableObjectStorage
+    } as CfTypes.DurableObjectStorage
 
     vfs = new CloudflareWorkerVFS('test-vfs', mockStorage, {})
     await vfs.isReady()

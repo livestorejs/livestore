@@ -1137,6 +1137,28 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
 
+  packages/@livestore/common-cf:
+    dependencies:
+      '@cloudflare/workers-types':
+        specifier: 4.20250725.0
+        version: 4.20250725.0
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
+      wrangler:
+        specifier: ^4.26.1
+        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/adapter-node':
@@ -1379,6 +1401,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../common-cf
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1677,6 +1702,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common-cf
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1693,6 +1721,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250725.0
         version: 4.20250725.0
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils-dev
       '@types/node':
         specifier: 'catalog:'
         version: 24.2.0
@@ -1790,6 +1821,49 @@ importers:
       vite:
         specifier: 7.0.6
         version: 7.0.6(@types/node@24.2.0)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
+
+  tests/sync-provider:
+    dependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250725.0
+        version: 4.20250807.0
+      '@livestore/adapter-cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-cloudflare
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common-cf
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sqlite-wasm
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sync-cf
+      '@livestore/sync-electric':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sync-electric
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+      postgres:
+        specifier: 3.4.7
+        version: 3.4.7
+    devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils-dev
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
 
 packages:
 
@@ -2960,7 +3034,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.24.20':
     resolution: {integrity: sha512-uF1pOVcd+xizNtVTuZqNGzy7I6IJon5YMmQidsURds1Ww96AFDxrR/NEACqeATNAmY60m8wy1VZZpSg5zLNkpw==}

@@ -1,0 +1,27 @@
+{
+  "name": "@local/tests-sync-provider",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/sync-electric": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@cloudflare/workers-types": "^4.20250725.0",
+    "postgres": "3.4.7"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

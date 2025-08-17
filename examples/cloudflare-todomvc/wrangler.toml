@@ -8,8 +8,8 @@ compatibility_date = "2025-05-07"
 command = ""
 
 [[durable_objects.bindings]]
-name = "WEBSOCKET_SERVER"
-class_name = "WebSocketServer"
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
 
 [[durable_objects.bindings]]
 name = "CLIENT_DO"
@@ -17,7 +17,7 @@ class_name = "LiveStoreClientDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketServer"]
+new_classes = ["SyncBackendDO"]
 new_sqlite_classes = ["LiveStoreClientDO"]
 
 [[d1_databases]]

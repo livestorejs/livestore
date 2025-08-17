@@ -7,12 +7,14 @@
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "ws": "8.18.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250725.0",
+    "@livestore/utils-dev": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "^5.8.3",
     "vitest": "catalog:",

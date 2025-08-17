@@ -13,7 +13,7 @@ import {
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
-import type * as CfWorker from '../cf-types.ts'
+import type * as CfTypes from '../cf-types.ts'
 
 /**
  * Construct a Durable Object RPC handler from an `RpcGroup`.
@@ -28,7 +28,9 @@ export const toDurableObjectHandler =
       readonly spanPrefix?: string | undefined
       readonly spanAttributes?: Record<string, unknown> | undefined
     },
-  ): ((serializedPayload: Uint8Array) => Promise<Uint8Array | CfWorker.ReadableStream>) =>
+  ): ((
+    serializedPayload: Uint8Array<ArrayBuffer>,
+  ) => Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>) =>
   (serializedPayload) =>
     Effect.gen(function* () {
       const parser = RpcSerialization.msgPack.unsafeMake()
@@ -137,9 +139,9 @@ export const toDurableObjectHandler =
         responses.push(result)
       }
 
-      const encoded = parser.encode(responses) as Uint8Array
+      const encoded = parser.encode(responses) as Uint8Array<ArrayBuffer>
       return encoded
-    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
 
 /**
  * Creates a ReadableStream response for streaming RPCs.
@@ -151,7 +153,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   request: any,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
-): Effect.Effect<CfWorker.ReadableStream, any, Scope.Scope> =>
+): Effect.Effect<CfTypes.ReadableStream, any, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
     const handlerResult = entry.handler(request.payload, Headers.empty)
@@ -191,7 +193,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
                 values: encodedValues,
               }
 
-              const serialized = parser.encode([chunkMessage]) as Uint8Array
+              const serialized = parser.encode([chunkMessage]) as Uint8Array<ArrayBuffer>
               controller.enqueue(serialized)
             }),
           )
@@ -207,7 +209,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
             exit: encodedExit,
           }
 
-          const exitSerialized = parser.encode([exitMessage]) as Uint8Array
+          const exitSerialized = parser.encode([exitMessage]) as Uint8Array<ArrayBuffer>
           controller.enqueue(exitSerialized)
           controller.close()
         }).pipe(
@@ -224,7 +226,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
                 exit: encodedExit,
               }
 
-              const exitSerialized = parser.encode([exitMessage]) as Uint8Array
+              const exitSerialized = parser.encode([exitMessage]) as Uint8Array<ArrayBuffer>
               controller.enqueue(exitSerialized)
               controller.close()
             }),
@@ -235,7 +237,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // @ts-ignore - Complex context requirements but functionality works correctly
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
-    }) as any as CfWorker.ReadableStream
+    }) as any as CfTypes.ReadableStream
 
     // yield* Effect.addFinalizer(() => Effect.promise(() => readableStream.cancel()))
 

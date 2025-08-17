@@ -1,6 +1,5 @@
-import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-// Define SQLite tables
 export const tables = {
   todos: State.SQLite.table({
     name: 'todos',
@@ -8,11 +7,16 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
       completed: State.SQLite.boolean({ default: false }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     },
+  }),
+  uiState: State.SQLite.clientDocument({
+    name: 'uiState',
+    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literal('all', 'active', 'completed') }),
+    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),
 }
 
-// Define events with proper versioning
 export const events = {
   todoCreated: Events.synced({
     name: 'v1.TodoCreated',
@@ -22,20 +26,31 @@ export const events = {
     name: 'v1.TodoCompleted',
     schema: Schema.Struct({ id: Schema.String }),
   }),
-  todoDeleted: Events.synced({
-    name: 'v1.TodoDeleted',
+  todoUncompleted: Events.synced({
+    name: 'v1.TodoUncompleted',
     schema: Schema.Struct({ id: Schema.String }),
   }),
+  todoDeleted: Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+  }),
+  todoClearedCompleted: Events.synced({
+    name: 'v1.TodoClearedCompleted',
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
+  }),
+  uiStateSet: tables.uiState.set,
 }
 
-// Map events to state changes
 const materializers = State.SQLite.materializers(events, {
   'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
   'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
-  'v1.TodoDeleted': ({ id }) => tables.todos.delete().where({ id }),
+  'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
+  'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
+  'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })
+
 export const schema = makeSchema({ events, state })
 
 export type TodoCreatedEvent = typeof events.todoCreated.schema.Type

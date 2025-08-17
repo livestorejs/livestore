@@ -1,12 +1,12 @@
 import { Effect, Layer, RpcClient, RpcSerialization, type Scope } from '@livestore/utils/effect'
-import type * as CfWorker from '../cf-types.ts'
+import type * as CfTypes from '../cf-types.ts'
 
 /**
  * Processes a ReadableStream response from streaming RPCs.
  * Reads chunks from the stream and writes them as RPC responses.
  */
 const processReadableStream = (
-  stream: CfWorker.ReadableStream,
+  stream: CfTypes.ReadableStream,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
   writeResponse: (response: any) => Effect.Effect<void, never, never>,
 ): Effect.Effect<void, never, never> =>
@@ -56,7 +56,7 @@ const processReadableStream = (
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
 export const layerProtocolDurableObject = (
-  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfWorker.ReadableStream>,
+  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>,
 ): Layer.Layer<RpcClient.Protocol, never, never> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(callRpc))
 
 /**
@@ -64,7 +64,7 @@ export const layerProtocolDurableObject = (
  * Provides the core protocol methods required by @effect/rpc.
  */
 const makeProtocolDurableObject = (
-  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfWorker.ReadableStream>,
+  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>,
 ): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
@@ -86,7 +86,7 @@ const makeProtocolDurableObject = (
 
           // Handle ReadableStream for streaming responses
           if (serializedResponse instanceof ReadableStream) {
-            yield* processReadableStream(serializedResponse as CfWorker.ReadableStream, parser, writeResponse)
+            yield* processReadableStream(serializedResponse as CfTypes.ReadableStream, parser, writeResponse)
             return
           }
 

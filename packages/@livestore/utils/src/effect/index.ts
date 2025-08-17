@@ -7,6 +7,10 @@ export {
   FetchHttpClient,
   FileSystem,
   Headers,
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
   HttpApp,
   HttpClient,
   HttpClientError,
@@ -30,6 +34,7 @@ export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 export {
   Rpc,
   RpcClient,
+  RpcClientError,
   RpcGroup,
   RpcMessage,
   RpcMiddleware,
@@ -107,7 +112,7 @@ export {
   Tracer,
   Types,
 } from 'effect'
-export { dual } from 'effect/Function'
+export { constVoid, dual } from 'effect/Function'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 

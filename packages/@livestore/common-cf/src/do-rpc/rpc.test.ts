@@ -1,120 +1,167 @@
-import { describe, expect, it } from 'vitest'
+import {
+  Chunk,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Option,
+  RpcClient,
+  RpcSerialization,
+  Stream,
+} from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
+import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
 /**
- * Test Architecture - Effect RPC between 2 Durable Objects
+ * Test Architecture - Effect RPC via HTTP
  *
- *   ┌─────────────┐    HTTP     ┌─────────────────┐
- *   │ Test Client │ ──────────▶ │ Worker (router) │
- *   │  (vitest)   │             └─────────────────┘
- *   └─────────────┘                       │
- *                                         │ routes to DOs
- *              ┌────────────────────────────────────────────┐
- *              │                                            │
- *              │ /test-rpc-client                           │ /test-rpc
- *              ▼                                            ▼
- *   ┌─────────────────┐        CF DO RPC          ┌─────────────────┐
- *   │   Client DO     │ ─────────────────────────▶│   Server DO     │
- *   │                 │  serverDO.rpc(payload)    │                 │
- *   │ RpcClient.make  │                           │ toDurableObject │
- *   │ TestRpcs        │                           │ Handler         │
- *   │                 │                           │                 │
- *   │ client.Ping()   │                           │ TestRpcs.toLayer│
- *   │ client.Echo()   │                           │                 │
- *   │ client.Add()    │                           │ Ping/Echo/Add   │
- *   └─────────────────┘                           └─────────────────┘
+ *   ┌─────────────┐    HTTP RPC   ┌──────────────────┐
+ *   │ Test Client │ ────────────▶ │ Worker (router)  │
+ *   │  (vitest)   │               └──────────────────┘
+ *   └─────────────┘                        │
+ *                                          │ Durable Object RPC
+ *                                          │
+ *                                          ▼
+ *                                 ┌──────────────────┐
+ *                                 │   Server DO      │
+ *                                 │ TestRpcs.toLayer │
+ *                                 └──────────────────┘
  *
- * Test Path: Test → Worker → Client DO → Server DO (full Effect RPC)
+ * Test Path: Test → Worker /rpc → Server DO (HTTP RPC)
  */
 
-describe('Durable Object RPC', { timeout: 5000 }, () => {
-  // Idiomatic Effect RPC client tests
-  it('should use RPC client to call ping method', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=ping&message=Hello RPC Client`)
+Vitest.describe('Durable Object RPC', { timeout: 5000 }, () => {
+  const port = process.env.LIVESTORE_SYNC_PORT
+  const ProtocolLive = RpcClient.layerProtocolHttp({
+    url: `http://localhost:${port}/rpc`,
+  }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]))
 
-    expect(response.status).toBe(200)
-    const result: any = await response.json()
-    expect(result.success).toBe(true)
-    expect(result.result).toEqual({ response: 'Pong: Hello RPC Client' })
-  })
+  // Direct HTTP RPC client tests
+  Vitest.scopedLive(
+    'should call ping method',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const result = yield* client.Ping({ message: 'Hello HTTP RPC' })
+      expect(result).toEqual({ response: 'Pong: Hello HTTP RPC' })
+    }, Effect.provide(ProtocolLive)),
+  )
 
-  it('should use RPC client to call echo method', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=echo&text=Echo via RPC Client`)
+  Vitest.scopedLive(
+    'should call echo method',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const result = yield* client.Echo({ text: 'Echo' })
+      expect(result).toEqual({ echo: 'Echo: Echo' })
+    }, Effect.provide(ProtocolLive)),
+  )
 
-    expect(response.status).toBe(200)
-    const result: any = await response.json()
-    expect(result.success).toBe(true)
-    expect(result.result).toEqual({ echo: 'Echo: Echo via RPC Client' })
-  })
+  Vitest.scopedLive(
+    'should call add method',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const result = yield* client.Add({ a: 15, b: 25 })
+      expect(result).toEqual({ result: 40 })
+    }, Effect.provide(ProtocolLive)),
+  )
 
-  it('should use RPC client to call add method', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=add&a=10&b=20`)
+  Vitest.scopedLive(
+    'should handle RPC fail method',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
+      expect(error.toString()).toMatchInlineSnapshot(`
+        "{
+          "_id": "Exit",
+          "_tag": "Failure",
+          "cause": {
+            "_id": "Cause",
+            "_tag": "Die",
+            "defect": "RPC failure: test http failure"
+          }
+        }"
+      `)
+    }, Effect.provide(ProtocolLive)),
+  )
 
-    expect(response.status).toBe(200)
-    const result: any = await response.json()
-    expect(result.success).toBe(true)
-    expect(result.result).toEqual({ result: 30 })
-  })
+  Vitest.scopedLive(
+    'should handle defect method',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
+      expect(error.toString()).toMatchInlineSnapshot(`
+        "{
+          "_id": "Exit",
+          "_tag": "Failure",
+          "cause": {
+            "_id": "Cause",
+            "_tag": "Die",
+            "defect": "some defect: test http defect"
+          }
+        }"
+      `)
+    }, Effect.provide(ProtocolLive)),
+  )
 
-  it('should handle RPC fail method using Effect.fail', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=fail&message=test failure`)
+  Vitest.scopedLive(
+    'should handle streaming RPC via HTTP',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const stream = client.Stream({}).pipe(
+        Stream.take(4),
+        Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
+      )
+      const chunks = yield* Stream.runCollect(stream)
+      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
+    }, Effect.provide(ProtocolLive)),
+  )
 
-    expect(response.status).toBe(500)
-    const result: any = await response.json()
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('RPC failure: test failure')
-  })
+  Vitest.scopedLive(
+    'should handle streaming RPC with error via HTTP',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const stream = client.StreamError({ count: 5, errorAfter: 4 })
+      const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
+      expect(error.toString()).toMatchInlineSnapshot(`
+        "{
+          "_id": "Exit",
+          "_tag": "Failure",
+          "cause": {
+            "_id": "Cause",
+            "_tag": "Die",
+            "defect": "Stream error after 4: got 9"
+          }
+        }"
+      `)
+    }, Effect.provide(ProtocolLive)),
+  )
 
-  it('should handle defect method using Effect.die', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=defect&message=test defect`)
+  Vitest.scopedLive(
+    'should handle streaming RPC with defect via HTTP',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const stream = client.StreamDefect({ count: 4, defectAfter: 1 })
+      const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
+      expect(error.toString()).toMatchInlineSnapshot(`
+        "{
+          "_id": "Exit",
+          "_tag": "Failure",
+          "cause": {
+            "_id": "Cause",
+            "_tag": "Die",
+            "defect": "Stream defect after 1: got 4"
+          }
+        }"
+      `)
+    }, Effect.provide(ProtocolLive)),
+  )
 
-    expect(response.status).toBe(500)
-    const result: any = await response.json()
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('some defect: test defect')
-  })
-
-  it('should handle streaming RPC method', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=stream&count=4`)
-
-    expect(response.status).toBe(200)
-    const result: any = await response.json()
-    expect(result.success).toBe(true)
-    expect(result.result).toEqual({ streamValues: [1, 4, 9, 16] }) // squares of 1,2,3,4
-  })
-
-  it('should handle streaming RPC with different count', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=stream&count=2`)
-
-    expect(response.status).toBe(200)
-    const result: any = await response.json()
-    expect(result.success).toBe(true)
-    expect(result.result).toEqual({ streamValues: [1, 4] }) // squares of 1,2
-  })
-
-  it('should handle streaming RPC with error during stream', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=stream-error&count=5&errorAfter=4`)
-
-    expect(response.status).toBe(500)
-    const result: any = await response.json()
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Stream error after 4: got 9') // Fails at square of 3 (9 > 4)
-  })
-
-  it('should handle streaming RPC with defect during stream', async () => {
-    const port = process.env.LIVESTORE_SYNC_PORT
-    const response = await fetch(`http://localhost:${port}/test-rpc-client?method=stream-defect&count=4&defectAfter=1`)
-
-    expect(response.status).toBe(500)
-    const result: any = await response.json()
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Stream defect after 1: got 4') // Dies at square of 2 (4 > 1)
-  })
+  Vitest.scopedLive(
+    'should handle stream interruption via HTTP',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
+      const chunks = yield* Stream.runCollect(stream)
+      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+    }, Effect.provide(ProtocolLive)),
+  )
 })

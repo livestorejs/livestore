@@ -1,3 +1,3 @@
-import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
+import { startWranglerDevServerPromise } from '@livestore/utils-dev/node-vitest'
 
-await startWranglerDevServer({ cwd: import.meta.dirname })
+await startWranglerDevServerPromise({ cwd: import.meta.dirname })

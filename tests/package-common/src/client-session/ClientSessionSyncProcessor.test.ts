@@ -1,7 +1,9 @@
 import { makeAdapter } from '@livestore/adapter-node'
+import type { MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
   type ClientSessionLeaderThreadProxy,
+  makeMockSyncBackend,
   SyncState,
   type UnexpectedError,
 } from '@livestore/common'
@@ -18,8 +20,6 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { events, schema, tables } from '../leader-thread/fixture.ts'
-import type { MockSyncBackend } from '../mock-sync-backend.ts'
-import { makeMockSyncBackend } from '../mock-sync-backend.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(

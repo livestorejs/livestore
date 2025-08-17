@@ -4,7 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./declare": "./src/declare/mod.ts"
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20250725.0",
@@ -26,7 +27,8 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": "./dist/mod.js"
+      ".": "./dist/mod.js",
+      "./declare": "./dist/declare/mod.js"
     }
   },
   "scripts": {

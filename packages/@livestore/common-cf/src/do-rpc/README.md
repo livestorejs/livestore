@@ -65,7 +65,7 @@ const handler = toDurableObjectHandler(MyRpcs, {
 
 // In Durable Object
 async rpc(payload: Uint8Array): Promise<Uint8Array | ReadableStream> {
-  return handler(payload)
+  return handler(payload).pipe(Effect.runPromise)
 }
 
 // Client setup  

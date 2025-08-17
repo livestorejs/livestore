@@ -4,12 +4,12 @@ compatibility_date = "2025-05-08"
 # compatibility_flags = ["nodejs_compat"]
 
 [[durable_objects.bindings]]
-name = "WEBSOCKET_SERVER"
-class_name = "WebSocketServer"
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketServer"]
+new_classes = ["SyncBackendDO"]
 
 [[d1_databases]]
 binding = "DB"

@@ -1,8 +1,10 @@
+import path from 'node:path'
 import { defineConfig } from 'vitest/config'
+
+const pkgDir = import.meta.dirname
 
 export default defineConfig({
   test: {
-    setupFiles: ['./src/do-rpc/test-fixtures/vitest-setup.ts'],
-    testTimeout: 60000,
+    projects: [path.join(pkgDir, 'src/do-rpc/vitest.config.ts'), path.join(pkgDir, 'src/ws-rpc/vitest.config.ts')],
   },
 })

@@ -8,7 +8,7 @@ export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOffl
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
   reason: Schema.Union(
     Schema.TaggedStruct('Unexpected', {
-      message: Schema.String,
+      cause: Schema.Defect,
     }),
     Schema.TaggedStruct('ServerAhead', {
       minimumExpectedNum: Schema.Number,
@@ -19,7 +19,7 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
 
 // TODO gt rid of this error in favour of SyncError
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
-  message: Schema.String,
+  cause: Schema.Defect,
 }) {}
 
 // TODO gt rid of this error in favour of SyncError

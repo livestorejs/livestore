@@ -5,7 +5,6 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022", "WebWorker"],
-    // "types": ["@cloudflare/workers-types"],
     "outDir": "./dist",
     "rootDir": ".",
     "declarationDir": "./dist"
@@ -14,6 +13,7 @@
     { "path": "../../packages/@livestore/livestore" },
     { "path": "../../packages/@livestore/utils" },
     { "path": "../../packages/@livestore/utils-dev" },
+    { "path": "../../packages/@livestore/common-cf" },
     { "path": "../../packages/@livestore/sync-cf" }
   ]
 }

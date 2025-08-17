@@ -1,7 +1,16 @@
-import type { Effect, HttpClient, Option, Schema, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  type Cause,
+  type Effect,
+  type HttpClient,
+  Option,
+  type Schema,
+  type Scope,
+  type Stream,
+  type SubscriptionRef,
+} from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
-import type { EventSequenceNumber } from '../schema/mod.ts'
+import { EventSequenceNumber } from '../schema/mod.ts'
 import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
 
 /**
@@ -18,7 +27,7 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
   args: MakeBackendArgs,
 ) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
 
-// TODO add more runtime sync metadata
+// TODO add more runtime sync metadata/metrics
 // - latency histogram
 // - number of events pushed/pulled
 // - dynamic sync backend data;
@@ -29,13 +38,23 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.
    */
-  connect: Effect.Effect<void, IsOfflineError | UnexpectedError, HttpClient.HttpClient | Scope.Scope>
+  connect: Effect.Effect<void, IsOfflineError | UnexpectedError, Scope.Scope>
   pull: (
     args: Option.Option<{
+      // TODO change to global sequence number
       cursor: EventSequenceNumber.EventSequenceNumber
+      /** Metadata is needed by some sync backends */
       metadata: Option.Option<TSyncMetadata>
     }>,
-  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError, HttpClient.HttpClient>
+    options?: {
+      /**
+       * If true, the sync backend will return a stream of events that have been pushed after the cursor.
+       *
+       * @default false
+       */
+      live?: boolean
+    },
+  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError>
   // TODO support transactions (i.e. group of mutation events which need to be applied together)
   push: (
     /**
@@ -44,7 +63,9 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - sequence numbers must be in ascending order
      * */
     batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
-  ) => Effect.Effect<void, IsOfflineError | InvalidPushError, HttpClient.HttpClient>
+  ) => Effect.Effect<void, IsOfflineError | InvalidPushError>
+  ping: Effect.Effect<void, IsOfflineError | UnexpectedError | Cause.TimeoutException>
+  // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**
    * Metadata describing the sync backend. (Currently only used by devtools.)
@@ -61,3 +82,22 @@ export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
 }
 
 export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetadata>) => obj
+
+/**
+ * Useful to continue pulling from the last event in the batch.
+ */
+export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
+  item: PullResItem<TSyncMetadata>,
+): Option.Option<{
+  cursor: EventSequenceNumber.EventSequenceNumber
+  metadata: Option.Option<TSyncMetadata>
+}> => {
+  const lastEvent = item.batch.at(-1)
+  if (!lastEvent) {
+    return Option.none()
+  }
+  return Option.some({
+    cursor: EventSequenceNumber.make({ global: lastEvent.eventEncoded.seqNum, client: 0 }),
+    metadata: lastEvent.metadata,
+  })
+}

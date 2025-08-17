@@ -3,7 +3,7 @@
   "version": "0.4.0-dev.3",
   "type": "module",
   "sideEffects": [
-    "./src/node-vitest/polyfill.ts"
+    "./src/node-vitest/global.ts"
   ],
   "exports": {
     "./node": "./src/node/mod.ts",
@@ -31,7 +31,7 @@
   "publishConfig": {
     "access": "public",
     "sideEffects": [
-      "./dist/node-vitest/polyfill.js"
+      "./dist/node-vitest/global.js"
     ],
     "exports": {
       "./node": "./dist/node/mod.js",

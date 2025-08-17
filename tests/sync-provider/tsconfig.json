@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["./src", "vitest.config.ts"],
+  "references": [
+    { "path": "../../packages/@livestore/common" },
+    { "path": "../../packages/@livestore/common-cf" },
+    { "path": "../../packages/@livestore/utils" },
+    { "path": "../../packages/@livestore/utils-dev" },
+    { "path": "../../packages/@livestore/sqlite-wasm" },
+    { "path": "../../packages/@livestore/adapter-node" },
+    { "path": "../../packages/@livestore/adapter-cloudflare" },
+    { "path": "../../packages/@livestore/sync-cf" },
+    { "path": "../../packages/@livestore/sync-electric" },
+    { "path": "../../packages/@livestore/livestore" }
+  ]
+}

@@ -1,7 +1,7 @@
 // import path from 'node:path'
 
 import { type MakeSqliteDb, type PersistenceInfo, type SqliteDb, UnexpectedError } from '@livestore/common'
-import type { CfWorker } from '@livestore/common-cf'
+import type { CfTypes } from '@livestore/common-cf'
 import { Effect } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
@@ -44,7 +44,7 @@ export type CloudflareDatabaseInputFs = {
   // directory: string
   fileName: string
   configureDb?: (db: SqliteDb) => void
-  storage: CfWorker.DurableObjectStorage
+  storage: CfTypes.DurableObjectStorage
 }
 
 export type CloudflareDatabaseInput = CloudflareDatabaseInputInMemory | CloudflareDatabaseInputFs
@@ -108,7 +108,7 @@ const makeCloudflareFsDb = ({
   sqlite3: WaSqlite.SQLiteAPI
   fileName: string
   // directory: string
-  storage: CfWorker.DurableObjectStorage
+  storage: CfTypes.DurableObjectStorage
 }) =>
   Effect.gen(function* () {
     // NOTE to keep the filePath short, we use the directory name in the vfs name

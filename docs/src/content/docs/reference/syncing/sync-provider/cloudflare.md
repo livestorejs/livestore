@@ -34,7 +34,7 @@ In your CF worker file, you can use the `makeDurableObject` and `makeWorker` fun
 ```ts
 import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
 
-export class WebSocketServer extends makeDurableObject({
+export class SyncBackendDO extends makeDurableObject({
   onPush: async (message) => {
     console.log('onPush', message.batch)
   },

@@ -6,12 +6,12 @@ import { events, schema, tables } from './livestore/schema.ts'
 
 type Env = {
   CLIENT_DO: CfWorker.DurableObjectNamespace<LiveStoreClientDO>
-  WEBSOCKET_SERVER: CfWorker.DurableObjectNamespace
+  SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace
   DB: CfWorker.D1Database
   ADMIN_SECRET: string
 }
 
-export class WebSocketServer extends SyncBackend.makeDurableObject({}) {}
+export class SyncBackendDO extends SyncBackend.makeDurableObject({}) {}
 
 declare class Response extends CfWorker.Response {}
 

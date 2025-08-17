@@ -1,8 +1,9 @@
-import { SyncBackend, type UnexpectedError, validatePushPayload } from '@livestore/common'
-import type { LiveStoreEvent } from '@livestore/common/schema'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { UnexpectedError } from '../errors.ts'
+import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
+import * as SyncBackend from './sync-backend.ts'
+import { validatePushPayload } from './validate-push-payload.ts'
 
 export interface MockSyncBackend {
   pushedEvents: Stream.Stream<LiveStoreEvent.AnyEncodedGlobal>
@@ -27,6 +28,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
       return SyncBackend.of<Schema.JsonValue>({
         isConnected: syncIsConnectedRef,
         connect: Effect.void,
+        ping: Effect.void,
         pull: () =>
           Stream.fromQueue(syncPullQueue).pipe(
             Stream.chunks,
