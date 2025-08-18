@@ -21,7 +21,6 @@ export const startWranglerDevServer = (args: StartWranglerDevServerArgs) =>
 // TODO allow for config to be passed in via code instead of `wrangler.toml` file
 /**
  * Starts a Wrangler dev server for testing with automatic cleanup.
- * Sets LIVESTORE_SYNC_PORT environment variable with the allocated port.
  *
  * @param wranglerConfigPath - Path to wrangler.toml file (defaults to `${cwd}/wrangler.toml`)
  * @param cwd - Working directory for Wrangler commands
@@ -57,7 +56,6 @@ export const startWranglerDevServerPromise = async ({
 
   const setup = async () => {
     const syncPort = await getFreePort()
-    process.env.LIVESTORE_SYNC_PORT = syncPort.toString()
 
     const resolvedWranglerConfigPath = path.resolve(wranglerConfigPath ?? path.join(cwd, 'wrangler.toml'))
 

@@ -5,6 +5,9 @@ const pkgDir = import.meta.dirname
 
 export default defineConfig({
   test: {
-    projects: [path.join(pkgDir, 'src/do-rpc/vitest.config.ts'), path.join(pkgDir, 'src/ws-rpc/vitest.config.ts')],
+    setupFiles: [
+      path.join(pkgDir, 'src/do-rpc/test-fixtures/vitest-setup.ts'),
+      path.join(pkgDir, 'src/ws-rpc/test-fixtures/vitest-setup.ts'),
+    ],
   },
 })

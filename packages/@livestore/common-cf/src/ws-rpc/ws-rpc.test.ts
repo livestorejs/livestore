@@ -4,7 +4,7 @@ import { expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
 Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
-  const port = process.env.LIVESTORE_SYNC_PORT
+  const port = process.env.LIVESTORE_WS_PORT || process.env.LIVESTORE_SYNC_PORT
 
   const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
     Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
