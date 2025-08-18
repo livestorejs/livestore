@@ -1,27 +1,30 @@
 /// <reference types="@cloudflare/workers-types" />
 import { DurableObject } from 'cloudflare:workers'
+import type { SyncBackend } from '@livestore/common'
 import { layerRpcServerWebsocket } from '@livestore/common-cf'
+import type { CfDeclare } from '@livestore/common-cf/declare'
 import { makeDoRpcSync } from '@livestore/sync-cf'
 import {
-  type CfWorker,
+  type CfTypes,
   type ClientDOInterface,
   handleHttp,
   handleWebSocket,
   makeDurableObject,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
-import { Effect, FetchHttpClient, Layer, Mailbox, RpcSerialization, RpcServer } from '@livestore/utils/effect'
-import { SyncProxyRpcs } from './test-rpc-schema.ts'
+import type { SyncMessage } from '@livestore/sync-cf/common'
+import { Effect, FetchHttpClient, Layer, Mailbox, RpcSerialization, RpcServer, Stream } from '@livestore/utils/effect'
+import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 
-declare class Request extends CfWorker.Request {}
-declare class Response extends CfWorker.Response {}
-declare class WebSocketPair extends CfWorker.WebSocketPair {}
+declare class Request extends CfDeclare.Request {}
+declare class Response extends CfDeclare.Response {}
+declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 
 export interface Env {
-  SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace<SyncBackendRpcInterface>
-  TEST_CLIENT_DO: CfWorker.DurableObjectNamespace
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
+  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace
   /** Eventlog database */
-  DB: CfWorker.D1Database
+  DB: CfTypes.D1Database
   ADMIN_SECRET: string
 }
 
@@ -35,18 +38,18 @@ export class SyncBackendDO extends makeDurableObject({
 }) {}
 
 const DurableObjectBase = DurableObject as any as new (
-  state: CfWorker.DurableObjectState,
+  state: CfTypes.DurableObjectState,
   env: Env,
-) => CfWorker.DurableObject
+) => CfTypes.DurableObject
 
 export class TestClientDo extends DurableObjectBase implements ClientDOInterface {
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
-  ctx: CfWorker.DurableObjectState
+  ctx: CfTypes.DurableObjectState
   // store: Store<typeof schema> | undefined
   incomingQueue: Mailbox.Mailbox<Uint8Array<ArrayBufferLike> | string> | undefined
 
-  constructor(state: CfWorker.DurableObjectState, env: Env) {
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
     super(state, env)
     this.ctx = state
     this.env = env
@@ -67,18 +70,29 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
     this.ctx.acceptWebSocket(server)
 
     Effect.gen(this, function* () {
-      const storeId = 'test-store'
-      const clientId = 'test-client'
-      const payload = undefined
+      const syncBackendMap = new Map<string, SyncBackend.SyncBackend<SyncMessage.SyncMetadata>>()
 
-      const syncBackend = yield* makeDoRpcSync({
-        clientId,
-        syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-        durableObjectId: this.ctx.id.toString(),
-      })({ storeId, clientId, payload })
+      const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
+        Effect.gen(this, function* () {
+          const key = JSON.stringify({ clientId, storeId, payload })
+          if (syncBackendMap.has(key)) {
+            return syncBackendMap.get(key)!
+          }
+
+          const syncBackend = yield* makeDoRpcSync({
+            clientId,
+            syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+            durableObjectId: this.ctx.id.toString(),
+          })({ storeId, clientId, payload })
+
+          syncBackendMap.set(key, syncBackend)
+
+          return syncBackend
+        }).pipe(Effect.orDie, Effect.provide(FetchHttpClient.layer))
 
       const incomingQueue = yield* Mailbox.make<Uint8Array<ArrayBufferLike> | string>()
 
+      // We'd use this for non-hibernated WebSocket connections
       // server.addEventListener('message', (event) => {
       //   console.log('message from client', event.data)
       //   incomingQueue.offer(event.data).pipe(Effect.tapCauseLogPretty, Effect.runFork)
@@ -91,36 +105,43 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
         incomingQueue,
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
-      const handlersLayer = SyncProxyRpcs.toLayer({
-        Connect: () => syncBackend.connect.pipe(Effect.tapCauseLogPretty),
-        Pull: (args) => syncBackend.pull(args as any),
-        Push: (batch) => syncBackend.push(batch.batch).pipe(Effect.tapCauseLogPretty),
+      const handlersLayer = DoRpcProxyRpcs.toLayer({
+        Connect: (args) =>
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend(args)
+            yield* syncBackend.connect
+          }),
+        Pull: (args) =>
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend(args)
+            return syncBackend.pull(args.args as any)
+          }).pipe(Stream.unwrap),
+        Push: ({ batch, ...args }) =>
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend(args)
+            yield* syncBackend.push(batch)
+          }),
         Ping: () =>
-          syncBackend.ping.pipe(
-            Effect.catchTag('TimeoutException', (e) => Effect.die(e)),
-            Effect.tapCauseLogPretty,
-          ),
-        IsConnected: () => syncBackend.isConnected.changes,
-        GetMetadata: () => Effect.succeed(syncBackend.metadata),
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+            yield* syncBackend.ping
+          }).pipe(Effect.orDie),
+        IsConnected: () =>
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+            return syncBackend.isConnected.changes
+          }).pipe(Stream.unwrap),
+        GetMetadata: () =>
+          Effect.gen(function* () {
+            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+            return syncBackend.metadata
+          }),
       }).pipe(Layer.provide(ProtocolLive))
 
-      const ServerLive = RpcServer.layer(SyncProxyRpcs).pipe(Layer.provide(handlersLayer), Layer.provide(ProtocolLive))
-
-      // yield* Stream.fromEventListener(server, 'message', (event) => incomingQueue.offer(event.data)).pipe(
-      //   Stream.runDrain,
-      //   Effect.tapCauseLogPretty,
-      //   Effect.forkScoped,
-      // )
-
-      // let i = 0
-      // setInterval(() => {
-      //   console.log('i', i++)
-      // }, 100)
-
-      yield* Effect.addFinalizerLog('ServerLive finalized')
+      const ServerLive = RpcServer.layer(DoRpcProxyRpcs).pipe(Layer.provide(handlersLayer), Layer.provide(ProtocolLive))
 
       yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty)
-    }).pipe(Effect.tapCauseLogPretty, Effect.scoped, Effect.provide(FetchHttpClient.layer), Effect.runPromise)
+    }).pipe(Effect.tapCauseLogPretty, Effect.scoped, Effect.provide(FetchHttpClient.layer), Effect.runFork)
 
     return new Response(null, {
       status: 101,
@@ -128,20 +149,20 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
     })
   }
 
-  async webSocketMessage(_ws: CfWorker.WebSocket, message: string | ArrayBuffer): Promise<void> {
+  async webSocketMessage(_ws: CfTypes.WebSocket, message: string | ArrayBuffer): Promise<void> {
     // console.log('webSocketMessage', message, this.incomingQueue !== undefined)
     if (!this.incomingQueue) {
       return
     }
 
-    this.incomingQueue
+    await this.incomingQueue
       .offer(message as Uint8Array<ArrayBufferLike> | string)
       .pipe(Effect.tapCauseLogPretty, Effect.runPromise)
   }
 }
 
 export default {
-  fetch: async (request: CfWorker.Request, env: Env, ctx: CfWorker.ExecutionContext) => {
+  fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
     if (url.pathname.endsWith('/websocket')) {
       return handleWebSocket(request, env, ctx)

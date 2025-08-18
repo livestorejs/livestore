@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@cloudflare/workers-types": "4.20250725.0",
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
@@ -13,7 +14,6 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@cloudflare/workers-types": "^4.20250725.0",
     "postgres": "3.4.7"
   },
   "devDependencies": {

@@ -2,23 +2,32 @@ import { InvalidPullError, InvalidPushError, IsOfflineError, UnexpectedError } f
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
+const commonFields = {
+  clientId: Schema.String,
+  storeId: Schema.String,
+  payload: Schema.UndefinedOr(Schema.JsonValue),
+}
+
 // RPC definitions that mirror the SyncBackend interface
-export class SyncProxyRpcs extends RpcGroup.make(
+export class DoRpcProxyRpcs extends RpcGroup.make(
   // Mirror the connect method
   Rpc.make('Connect', {
-    payload: Schema.Struct({}),
+    payload: Schema.Struct(commonFields),
     success: Schema.Void,
     error: Schema.Union(IsOfflineError, UnexpectedError),
   }),
 
   // Mirror the pull method
   Rpc.make('Pull', {
-    payload: Schema.Option(
-      Schema.Struct({
-        cursor: EventSequenceNumber.EventSequenceNumber,
-        metadata: Schema.Option(Schema.Option(Schema.JsonValue)),
-      }),
-    ),
+    payload: Schema.Struct({
+      ...commonFields,
+      args: Schema.Option(
+        Schema.Struct({
+          cursor: EventSequenceNumber.EventSequenceNumber,
+          metadata: Schema.Option(Schema.JsonValue),
+        }),
+      ),
+    }),
     // Mirror the PullResItem from SyncBackend
     success: Schema.Struct({
       batch: Schema.Array(
@@ -36,6 +45,7 @@ export class SyncProxyRpcs extends RpcGroup.make(
   // Mirror the push method
   Rpc.make('Push', {
     payload: Schema.Struct({
+      ...commonFields,
       batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
     }),
     success: Schema.Void,
@@ -44,21 +54,27 @@ export class SyncProxyRpcs extends RpcGroup.make(
 
   // Mirror the ping method
   Rpc.make('Ping', {
-    payload: Schema.Struct({}),
+    payload: Schema.Struct({
+      ...commonFields,
+    }),
     success: Schema.Void,
     error: Schema.Union(IsOfflineError, UnexpectedError),
   }),
 
   // Mirror the isConnected subscription
   Rpc.make('IsConnected', {
-    payload: Schema.Struct({}),
+    payload: Schema.Struct({
+      ...commonFields,
+    }),
     success: Schema.Boolean,
     stream: true,
   }),
 
   // Additional method to get metadata
   Rpc.make('GetMetadata', {
-    payload: Schema.Struct({}),
+    payload: Schema.Struct({
+      ...commonFields,
+    }),
     success: Schema.Struct({
       name: Schema.String,
       description: Schema.String,

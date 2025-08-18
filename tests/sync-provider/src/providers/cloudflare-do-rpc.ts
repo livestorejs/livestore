@@ -3,7 +3,7 @@ import { SyncBackend } from '@livestore/common'
 import { Effect, Layer, RpcClient, RpcSerialization, Socket, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
 import { SyncProviderImpl } from '../types.ts'
-import { SyncProxyRpcs } from './cloudflare/test-rpc-schema.ts'
+import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
 export const name = 'Cloudflare Durable Object RPC'
 
@@ -37,7 +37,7 @@ export const layer = Layer.scoped(
  */
 const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackendConstructor<any> =>
   // TODO pass through clientId, payload, storeId to worker/DO
-  Effect.fn(function* ({ clientId, payload, storeId }) {
+  Effect.fn(function* ({ clientId, storeId, payload }) {
     const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
       Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}/do-rpc-ws-proxy`)),
       Layer.provide(Socket.layerWebSocketConstructorGlobal),
@@ -47,21 +47,27 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
     // Warning: we need
     const ctx = yield* Layer.build(ProtocolLive)
 
-    const client = yield* RpcClient.make(SyncProxyRpcs).pipe(Effect.provide(ctx))
+    const client = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))
 
     const isConnected = yield* SubscriptionRef.fromStream(
-      client.IsConnected({}).pipe(Stream.catchTag('RpcClientError', (e) => Effect.die(e))),
+      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Effect.die(e))),
       false,
     )
 
-    const metadata = yield* client.GetMetadata({})
+    const metadata = yield* client.GetMetadata({ clientId, storeId, payload })
 
     return SyncBackend.of({
-      connect: client.Connect({}).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+      connect: client
+        .Connect({ clientId, storeId, payload })
+        .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       isConnected,
-      pull: (args) => client.Pull(args as any).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
-      push: (batch) => client.Push({ batch }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
-      ping: client.Ping({}).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+      pull: (args) =>
+        client.Pull({ clientId, storeId, payload, args }).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
+      push: (batch) =>
+        client
+          .Push({ clientId, storeId, payload, batch })
+          .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+      ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       metadata,
     })
   }, Effect.orDie)

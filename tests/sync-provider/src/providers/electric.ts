@@ -6,8 +6,6 @@ import * as ElectricSync from '@livestore/sync-electric'
 import {
   Effect,
   HttpClient,
-  HttpClientRequest,
-  HttpMiddleware,
   HttpRouter,
   HttpServer,
   HttpServerRequest,
@@ -19,7 +17,7 @@ import { startDockerComposeServices } from '@livestore/utils-dev/node-vitest'
 import postgres from 'postgres'
 import { SyncProviderImpl } from '../types.ts'
 
-// Also support scenarios where Docker is not running locally but via a Docker remote context
+// Also support scenarios where Docker is not running locally but via a Docker remote context (@schickling needs this)
 const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
 
 export const name = 'ElectricSQL'
@@ -55,7 +53,7 @@ const startElectricApi = Effect.gen(function* () {
 
   // Start the HTTP server in the background
   yield* makeRouter({ electricPort, postgresPort }).pipe(
-    HttpMiddleware.logger,
+    // HttpMiddleware.logger, // Can be useful for debugging
     HttpServer.serve(),
     Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
     Layer.launch,
@@ -77,7 +75,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest
 
-        const { url, storeId, needsInit, payload } = ElectricSync.makeElectricUrl({
+        const { url, storeId, needsInit /* payload */ } = ElectricSync.makeElectricUrl({
           electricHost,
           searchParams: new URL(request.url, `http://localhost`).searchParams,
           apiSecret,
@@ -96,8 +94,6 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
           yield* db.disconnect
         }
 
-        // Don't create table on GET - let Electric handle non-existent tables
-        // The table should only be created when we have data to insert (via POST)
         const electricResponse = yield* HttpClient.get(url)
 
         return yield* HttpServerResponse.stream(electricResponse.stream, {
@@ -116,6 +112,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
         const parsedPayload = yield* Schema.decodeUnknown(ElectricSync.ApiSchema.PushPayload)(body)
 
         const db = makeDb({ storeId: parsedPayload.storeId, postgresPort })
+
         yield* db.migrate
         yield* db.createEvents(parsedPayload.batch)
         yield* db.disconnect
