@@ -1,5 +1,5 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'

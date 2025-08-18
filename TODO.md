@@ -32,6 +32,9 @@
   - [ ] Refactor CF WS transport
   - [ ] Make `pull` implementation streaming based
   - [ ] Move DO related files into `worker/durable-object` directory
+  - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
+  - [ ] Rename `/websocket` to `/sync` endpoint
+  - [ ] Make storage (local SQLite vs D1) configurable
 - Sync provider tests
   - [ ] Write more sync provider tests
   - [ ] Property-based testing for various non-happy path scenarios / chaos testing

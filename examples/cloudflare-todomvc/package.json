@@ -17,6 +17,7 @@
     "node": ">=23.0.0"
   },
   "scripts": {
+    "build": "wrangler build",
     "dev": "wrangler dev",
     "wrangler:deploy": "wrangler deploy"
   }

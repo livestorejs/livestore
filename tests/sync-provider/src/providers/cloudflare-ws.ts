@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
 import { SyncProviderImpl } from '../types.ts'

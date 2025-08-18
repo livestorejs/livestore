@@ -132,7 +132,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
     fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
-        // TODO implement HTTP RPC calls
         const url = new URL(request.url)
 
         if (url.pathname.endsWith('/http-rpc')) {
@@ -221,30 +220,25 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     // #region WebSocket transport
-    webSocketMessage = (ws: CfTypes.WebSocket, message: ArrayBuffer | string): Promise<void> | undefined => {
-      const decodedMessageRes = Schema.decodeUnknownEither(Schema.parseJson(SyncMessage.ClientToBackendMessage))(
-        message,
-      )
+    webSocketMessage = (ws: CfTypes.WebSocket, messageRaw: ArrayBuffer | string): Promise<void> | undefined =>
+      Effect.gen(this, function* () {
+        const { storeId, payload } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
 
-      if (decodedMessageRes._tag === 'Left') {
-        Effect.logError('Invalid message received', { message }).pipe(
-          Effect.provide(Logger.prettyWithThread('durable-object')),
-          Effect.runSync,
-        )
-        return
-      }
+        const message = yield* Schema.decodeUnknown(Schema.parseJson(SyncMessage.ClientToBackendMessage))(messageRaw)
 
-      return handleWebSocketMessage({
-        message: decodedMessageRes.right,
-        currentHeadRef: this.currentHeadRef,
-        rpcSubscriptions: this.rpcSubscriptions,
-        pushSemaphore: this.pushSemaphore,
-        options,
-        ctx: this.ctx,
-        ws,
-        env: this.env,
+        return yield* handleWebSocketMessage({
+          message,
+          payload,
+          storeId,
+          currentHeadRef: this.currentHeadRef,
+          rpcSubscriptions: this.rpcSubscriptions,
+          pushSemaphore: this.pushSemaphore,
+          options,
+          ctx: this.ctx,
+          ws,
+          env: this.env,
+        })
       }).pipe(this.runEffectAsPromise)
-    }
 
     webSocketClose = async (
       ws: CfTypes.WebSocket,
@@ -307,7 +301,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       effect.pipe(
         Effect.tapCauseLogPretty,
         Logger.withMinimumLogLevel(LogLevel.Debug),
-        Effect.provide(Logger.prettyWithThread('SyncDo')),
+        Effect.provide(
+          Logger.prettyWithThread('SyncDo', {
+            // NOTE We need to set the mode explicity as there's currently a bug https://github.com/Effect-TS/effect/issues/5398
+            mode: 'tty',
+          }),
+        ),
         Effect.scoped,
         Effect.runPromise,
       )

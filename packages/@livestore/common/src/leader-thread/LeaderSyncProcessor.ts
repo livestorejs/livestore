@@ -698,7 +698,7 @@ const backgroundBackendPulling = ({
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
 
-    yield* syncBackend.pull(cursorInfo).pipe(
+    yield* syncBackend.pull(cursorInfo, { live: true }).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, remaining }) =>
         Effect.gen(function* () {

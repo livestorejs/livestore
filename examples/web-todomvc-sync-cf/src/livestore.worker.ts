@@ -1,5 +1,5 @@
 import { makeWorker } from '@livestore/adapter-web/worker'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 
 import { schema } from './livestore/schema.ts'
 

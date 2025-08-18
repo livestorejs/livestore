@@ -4,7 +4,7 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/client/mod.ts",
+    "./client": "./src/client/mod.ts",
     "./common": "./src/common/mod.ts",
     "./cf-worker": "./src/cf-worker/mod.ts",
     "./cf-worker/durable-object": "./src/cf-worker/durable-object.ts",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": "./dist/client/mod.js",
+      "./client": "./dist/client/mod.js",
       "./common": "./dist/common/mod.js",
       "./cf-worker": "./dist/cf-worker/mod.js",
       "./cf-worker/durable-object": "./dist/cf-worker/durable-object.js",

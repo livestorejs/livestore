@@ -1,5 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
+export type { CfTypes } from '@livestore/common-cf'
+
 export { SyncHttpRpc } from './http-rpc-schema.ts'
 export * as SyncMessage from './sync-message-types.ts'
 

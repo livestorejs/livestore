@@ -168,7 +168,7 @@ export default defineConfig({
                 label: 'Syncing',
                 items: [
                   {
-                    label: '@livestore/sync-cf',
+                    label: '@livestore/sync-cf/client',
                     autogenerate: { directory: 'api/sync-cf' },
                     collapsed: true,
                   },

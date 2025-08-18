@@ -18,6 +18,8 @@
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
 
+    "types": ["@cloudflare/workers-types"],
+
     // "noUnusedLocals": true,
     // "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true

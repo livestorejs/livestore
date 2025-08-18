@@ -17,8 +17,7 @@ class_name = "LiveStoreClientDO"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SyncBackendDO"]
-new_sqlite_classes = ["LiveStoreClientDO"]
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [[d1_databases]]
 binding = "DB"

@@ -8,11 +8,12 @@ const defaultDateFormat = (date: Date): string =>
     .toString()
     .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`
 
-export const prettyWithThread = (threadName: string) =>
+export const prettyWithThread = (threadName: string, options: { mode?: 'tty' | 'browser' } = {}) =>
   Logger.replace(
     Logger.defaultLogger,
     Logger.prettyLogger({
       formatDate: (date) => `${defaultDateFormat(date)} ${threadName}`,
+      mode: options.mode,
     }),
     // consoleLogger(threadName),
   )

@@ -3,7 +3,6 @@ import { DurableObject } from 'cloudflare:workers'
 import type { SyncBackend } from '@livestore/common'
 import { layerRpcServerWebsocket } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
-import { makeDoRpcSync } from '@livestore/sync-cf'
 import {
   type CfTypes,
   type ClientDOInterface,
@@ -12,6 +11,7 @@ import {
   makeDurableObject,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
+import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import type { SyncMessage } from '@livestore/sync-cf/common'
 import { Effect, FetchHttpClient, Layer, Mailbox, RpcSerialization, RpcServer, Stream } from '@livestore/utils/effect'
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'

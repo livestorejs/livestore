@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { Button, unstable_batchedUpdates as batchUpdates, StyleSheet, Text, View } from 'react-native'

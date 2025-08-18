@@ -2,7 +2,7 @@ import process from 'node:process'
 
 import { makeAdapter } from '@livestore/adapter-node'
 import { createStorePromise } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 
 import { events, schema, tables } from './livestore/schema.ts'
 

@@ -28,8 +28,7 @@ export const makeAdapter =
   }): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
-      console.log('makeAdapter', { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema })
+      const { storeId, /* devtoolsEnabled, shutdown, bootStatusQueue,  */ syncPayload, schema } = adapterArgs
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
 

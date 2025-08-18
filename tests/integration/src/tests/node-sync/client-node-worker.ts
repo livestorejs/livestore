@@ -5,7 +5,7 @@ import path from 'node:path'
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
 import {
   Context,

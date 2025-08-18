@@ -1,16 +1,15 @@
-import type * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
-
-import { SearchParamsSchema } from '../common/mod.ts'
+import { type CfTypes, SearchParamsSchema } from '../common/mod.ts'
+import type { CfDeclare } from './mod.ts'
 import type { Env } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
-declare class Response extends CfWorker.Response {}
+declare class Response extends CfDeclare.Response {}
 
 export namespace HelperTypes {
-  type AnyDON = CfWorker.DurableObjectNamespace<undefined>
+  type AnyDON = CfTypes.DurableObjectNamespace<undefined>
 
   type DOKeys<T> = {
     [K in keyof T]-?: T[K] extends AnyDON ? K : never
@@ -39,12 +38,12 @@ export namespace HelperTypes {
 }
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
-export type CFWorker<TEnv extends Env = Env, _T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
+export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined> = {
   fetch: <CFHostMetada = unknown>(
-    request: CfWorker.Request<CFHostMetada>,
+    request: CfTypes.Request<CFHostMetada>,
     env: TEnv,
-    ctx: CfWorker.ExecutionContext,
-  ) => Promise<CfWorker.Response>
+    ctx: CfTypes.ExecutionContext,
+  ) => Promise<CfTypes.Response>
 }
 
 export type MakeWorkerOptions<TEnv extends Env = Env> = {
@@ -68,7 +67,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
 
 export const makeWorker = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
 >(
   options: MakeWorkerOptions<TEnv> = {},
 ): CFWorker<TEnv, TDurableObjectRpc> => {
@@ -85,7 +84,7 @@ export const makeWorker = <
         })
       }
 
-      const corsHeaders: CfWorker.HeadersInit = options.enableCORS
+      const corsHeaders: CfTypes.HeadersInit = options.enableCORS
         ? {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -158,18 +157,18 @@ export const makeWorker = <
  */
 export const handleWebSocket = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
 >(
-  request: CfWorker.Request<CFHostMetada>,
+  request: CfTypes.Request<CFHostMetada>,
   env: TEnv,
-  _ctx: CfWorker.ExecutionContext,
+  _ctx: CfTypes.ExecutionContext,
   options: {
-    headers?: CfWorker.HeadersInit
+    headers?: CfTypes.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   } = {},
-): Promise<CfWorker.Response> =>
+): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
     const url = new URL(request.url)
 
@@ -210,7 +209,7 @@ export const handleWebSocket = <
 
     const durableObjectNamespace = env[
       durableObjectName as keyof TEnv
-    ] as CfWorker.DurableObjectNamespace<TDurableObjectRpc>
+    ] as CfTypes.DurableObjectNamespace<TDurableObjectRpc>
 
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)
@@ -229,14 +228,14 @@ export const handleWebSocket = <
 
 export const handleHttp = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
 >(
-  request: CfWorker.Request<CFHostMetada>,
+  request: CfTypes.Request<CFHostMetada>,
   env: TEnv,
-  _ctx: CfWorker.ExecutionContext,
+  _ctx: CfTypes.ExecutionContext,
   options: {
-    headers?: CfWorker.HeadersInit
+    headers?: CfTypes.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
   } = {},
@@ -260,7 +259,7 @@ export const handleHttp = <
 
     const durableObjectNamespace = env[
       durableObjectName as keyof TEnv
-    ] as CfWorker.DurableObjectNamespace<TDurableObjectRpc>
+    ] as CfTypes.DurableObjectNamespace<TDurableObjectRpc>
 
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)

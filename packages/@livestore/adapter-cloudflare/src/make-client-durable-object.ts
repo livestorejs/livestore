@@ -1,7 +1,7 @@
 import type { UnexpectedError } from '@livestore/common'
 import { createStore, type LiveStoreSchema, provideOtel, type Store, type Unsubscribe } from '@livestore/livestore'
-import { makeDoRpcSync } from '@livestore/sync-cf'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
+import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import { Effect, Logger, LogLevel, Scope } from '@livestore/utils/effect'
 import type * as CfWorker from './cf-types.ts'
 import { makeAdapter } from './make-adapter.ts'

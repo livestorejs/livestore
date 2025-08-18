@@ -38,7 +38,6 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
       },
       'SyncDoRpc.Pull': (req) =>
         Effect.gen(this, function* () {
-          console.log('pull', req)
           ensureProps(req.storeId)
           const pull = makePull({ storage: makeStorage(ctx, env, req.storeId) })
 
@@ -76,7 +75,6 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
           ensureProps(req.storeId)
 
           // const subscribe = makeSubscribe({ storage: makeStorage(ctx, env, req.storeId), requestId: 'ping' })
-          console.log('subscribe', req)
 
           rpcSubscriptions.set(req.durableObjectId, {
             clientId: req.clientId,
@@ -87,6 +85,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
 
           // const res = yield* subscribe(req)
 
+          // TODO get rid of "hard coded" 1s interval in favour of proper reactive subscription
           return Stream.succeed('ok').pipe(Stream.repeat(Schedule.spaced(1000)))
         }).pipe(Stream.unwrap),
       'SyncDoRpc.Unsubscribe': (req) =>

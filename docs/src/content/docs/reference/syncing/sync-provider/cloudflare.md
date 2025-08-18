@@ -13,7 +13,7 @@ The `@livestore/sync-cf` package provides a LiveStore sync provider targeting Cl
 In your `livestore.worker.ts` file, you can use the `makeCfSync` function to create a sync backend.
 
 ```ts
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf/client'
 import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './livestore/schema.js'

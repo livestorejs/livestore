@@ -37,7 +37,7 @@ export const makePush =
   }) =>
   (decodedMessage: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
-      yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
+      // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
 
       const respondPush = (message: SyncMessage.PushAck | SyncMessage.SyncError) =>
         Effect.gen(function* () {

@@ -2,7 +2,7 @@ import { UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, type Schema, Stream } from '@livestore/utils/effect'
 import { SyncMessage } from '../../common/mod.ts'
 import { makePull } from '../pull.ts'
 import { makePush } from '../push.ts'
@@ -12,12 +12,13 @@ import {
   type MakeDurableObjectClassOptions,
   type RpcSubscription,
   type StoreId,
-  WebSocketAttachmentSchema,
 } from '../shared.ts'
 import { makeStorage } from '../sync-storage.ts'
 
 export const handleWebSocketMessage = ({
   message,
+  payload,
+  storeId,
   rpcSubscriptions,
   pushSemaphore,
   currentHeadRef,
@@ -28,6 +29,8 @@ export const handleWebSocketMessage = ({
 }: {
   message: SyncMessage.ClientToBackendMessage
   rpcSubscriptions: Map<StoreId, RpcSubscription>
+  payload: Schema.JsonValue | undefined
+  storeId: StoreId
   pushSemaphore: Effect.Semaphore
   currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
   options: MakeDurableObjectClassOptions | undefined
@@ -36,8 +39,6 @@ export const handleWebSocketMessage = ({
   env: Env
 }) =>
   Effect.gen(function* () {
-    const { storeId, payload } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
-
     const requestId = message.requestId
 
     const respond = (message: SyncMessage.BackendToClientMessage) =>
@@ -146,4 +147,5 @@ export const handleWebSocketMessage = ({
         ),
       ),
     ),
+    Effect.annotateLogs({ storeId }),
   )
