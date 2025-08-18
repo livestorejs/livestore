@@ -20,3 +20,4 @@
 
 - Request-response model for each RPC call
 - Streams are handled via pagination requests
+- Requires `enable_request_signal` compatibility flag to properly support `pull` streaming responses

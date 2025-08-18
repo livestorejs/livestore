@@ -186,6 +186,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
     /**
      * Handles HTTP RPC calls
+     *
+     * Requires the `enable_request_signal` compatibility flag to properly support `pull` streaming responses
      */
     handleHttp = (request: Request) =>
       createHttpRpcHandler({

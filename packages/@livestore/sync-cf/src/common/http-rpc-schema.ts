@@ -15,8 +15,9 @@ export class SyncHttpRpc extends RpcGroup.make(
       payload: Schema.optional(Schema.JsonValue),
       ...SyncMessage.PullRequest.fields,
     }),
-    success: Schema.Chunk(SyncMessage.PullResponse),
+    success: SyncMessage.PullResponse,
     error: SyncMessage.SyncError,
+    stream: true,
   }),
   Rpc.make('SyncHttpRpc.Push', {
     payload: Schema.Struct({

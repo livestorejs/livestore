@@ -38,6 +38,9 @@ export interface HttpSyncOptions {
   }
 }
 
+/**
+ * Note: This implementation requires the `enable_request_signal` compatibility flag to properly support `pull` streaming responses
+ */
 export const makeHttpSync =
   (options: HttpSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
@@ -99,8 +102,8 @@ export const makeHttpSync =
           requestId,
           cursor,
         }).pipe(
-          Effect.map(Stream.fromIterable),
-          Stream.unwrap,
+          // Effect.map(Stream.fromIterable),
+          // Stream.unwrap,
           // Stream.map((pullRes) => ({
           //   batch: pullRes.batch,
           //   remaining: pullRes.remaining,

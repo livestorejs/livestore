@@ -45,9 +45,10 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
           yield* Effect.tryAll(() => options.doOptions!.onPull!(req, { storeId: req.storeId, payload: req.payload }))
         }
 
-        return yield* pull(req).pipe(Stream.runCollect)
+        return pull(req)
       }).pipe(
-        Effect.mapError((e) =>
+        Stream.unwrap,
+        Stream.mapError((e) =>
           SyncMessage.SyncError.make({
             requestId: req.requestId,
             message: e.message,
