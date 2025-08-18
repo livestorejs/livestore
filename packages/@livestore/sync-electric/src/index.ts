@@ -6,7 +6,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
+import { notYetImplemented } from '@livestore/utils'
 import {
   Chunk,
   type Duration,
@@ -170,10 +170,12 @@ export const makeSyncBackend =
       ): Effect.Effect<
         Option.Option<
           readonly [
+            /** The batch of events */
             Chunk.Chunk<{
               metadata: Option.Option<SyncMetadata>
               eventEncoded: LiveStoreEvent.AnyEncodedGlobal
             }>,
+            /** The next handle to use for the next pull */
             Option.Option<SyncMetadata>,
           ]
         >,
@@ -238,13 +240,6 @@ export const makeSyncBackend =
               eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
-          // // TODO implement proper `remaining` handling
-          // remaining: 0,
-
-          // if (listenForNew === false && items.length === 0) {
-          //   return Option.none()
-          // }
-
           return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
@@ -283,18 +278,40 @@ export const makeSyncBackend =
 
       return SyncBackend.of({
         connect,
-        pull: (args, options) =>
-          Stream.unfoldChunkEffect(
+        pull: (args, options) => {
+          return Stream.unfoldChunkEffect(
             args.pipe(
               Option.map((_) => _.metadata),
               Option.flatten,
             ),
-            (metadataOption) => pull(metadataOption, { live: options?.live ?? false }),
+            (metadataOption) =>
+              Effect.gen(function* () {
+                const result = yield* pull(metadataOption, { live: options?.live ?? false })
+                if (Option.isNone(result)) return Option.none()
+
+                const [batch, nextHandle] = result.value
+
+                // Continue pagination if we have data
+                if (!Chunk.isEmpty(batch)) {
+                  return Option.some([batch, nextHandle] as const)
+                }
+
+                // Stop on empty batch
+                return Option.none()
+              }),
           ).pipe(
             Stream.chunks,
-            Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
+            // Zip with next to know whether there are remaining items
+            Stream.zipWithNext,
+            Stream.map(([chunk, next]) => ({
+              batch: Chunk.toArray(chunk),
+              // Electric doesn't provide exact counts
+              // We use: 1 = more data available, 0 = no more data
+              remaining: Option.isSome(next) ? 1 : 0,
+            })),
             Stream.withSpan('electric-provider:pull'),
-          ),
+          )
+        },
 
         push: (batch) =>
           Effect.gen(function* () {

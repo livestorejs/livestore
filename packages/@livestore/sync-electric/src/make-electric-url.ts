@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Hash, Schema } from '@livestore/utils/effect'
 import * as ApiSchema from './api-schema.ts'
 
 /**
@@ -58,7 +58,9 @@ export const makeElectricUrl = ({
   const tableName = toTableName(args.storeId)
   // TODO refactor with Effect URLSearchParams schema
   const searchParams = new URLSearchParams()
-  searchParams.set('table', tableName)
+  // Electric requires table names with capital letters to be quoted
+  // Since our table names include the storeId which may have capitals, we always quote
+  searchParams.set('table', `"${tableName}"`)
   if (sourceId !== undefined) {
     searchParams.set('source_id', sourceId)
   }
@@ -85,7 +87,19 @@ export const makeElectricUrl = ({
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')
-  return `eventlog_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
+  const tableName = `eventlog_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
+
+  if (tableName.length > 63) {
+    const hashedStoreId = Hash.string(storeId)
+
+    console.warn(
+      `Table name is too long: "${tableName}". Postgres table names are limited to 63 characters. Using hashed storeId instead: "${hashedStoreId}".`,
+    )
+
+    return `eventlog_${PERSISTENCE_FORMAT_VERSION}_hash_${hashedStoreId}`
+  }
+
+  return tableName
 }
 
 /**

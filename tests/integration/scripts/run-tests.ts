@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { type CmdError, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
@@ -97,6 +97,23 @@ export const nodeSyncTest: Cli.Command.Command<
   }),
 )
 
+// the sync provider tests are actually part of another tests package but for now we run them from here too
+// TODO clean this up at some point
+export const syncProviderTest: Cli.Command.Command<
+  'sync-provider',
+  CommandExecutor.CommandExecutor,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
+  {}
+> = Cli.Command.make(
+  'sync-provider',
+  {},
+  Effect.fn(function* () {
+    yield* cmd(['vitest', 'run', '../sync-provider/src/sync-provider.test.ts'], {
+      cwd,
+    })
+  }),
+)
+
 export const todomvcTest: Cli.Command.Command<
   'todomvc',
   CommandExecutor.CommandExecutor,
@@ -150,7 +167,7 @@ export const setupDevtools: Cli.Command.Command<
 
     yield* downloadChromeExtension({
       targetDir,
-    }).pipe(Effect.provide(FetchHttpClient.layer), Effect.provide(PlatformNode.NodeContext.layer))
+    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
 
     yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
   }, UnexpectedError.mapToUnexpectedError),
@@ -240,6 +257,7 @@ export const runAll: Cli.Command.Command<
       [
         miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         nodeSyncTest.handler({}),
+        syncProviderTest.handler({}),
         todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
         devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
         waSqliteTest.handler({}),
@@ -255,6 +273,7 @@ export const commands = [
   todomvcTest,
   devtoolsTest,
   waSqliteTest,
+  syncProviderTest,
   runAll,
   setupDevtools,
 ] as const
@@ -276,8 +295,9 @@ if (import.meta.main) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(PlatformNode.NodeContext.layer),
-    Effect.provide(Logger.prettyWithThread('cli-run-tests')),
+    Effect.provide(
+      Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.prettyWithThread('cli-run-tests')),
+    ),
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

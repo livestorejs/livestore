@@ -1,7 +1,6 @@
 export * from 'effect/Stream'
 
-import type { Chunk } from 'effect'
-import { Effect, Option, pipe, Ref, Stream } from 'effect'
+import { type Cause, Chunk, Effect, Option, pipe, Ref, Stream } from 'effect'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
   tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(_))))(stream)
@@ -61,3 +60,21 @@ export const skipRepeated_ = <R, E, A>(
       ),
     ),
   )
+
+/**
+ * Returns the first element of the stream or `None` if the stream is empty.
+ * It's different than `Stream.runHead` which runs the stream to completion.
+ * */
+export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, R> =>
+  stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Chunk.head))
+
+/**
+ * Returns the first element of the stream or throws a `NoSuchElementException` if the stream is empty.
+ * It's different than `Stream.runHead` which runs the stream to completion.
+ * */
+export const runFirstUnsafe = <A, E, R>(
+  stream: Stream.Stream<A, E, R>,
+): Effect.Effect<A, Cause.NoSuchElementException | E, R> => runFirst(stream).pipe(Effect.flatten)
+
+export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
+  stream.pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
