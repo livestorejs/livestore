@@ -47,7 +47,7 @@ importers:
   .:
     devDependencies:
       '@biomejs/biome':
-        specifier: ^2.1.3
+        specifier: ^2.2.0
         version: 2.2.0
       '@effect/language-service':
         specifier: ^0.34.0
@@ -201,8 +201,8 @@ importers:
   examples/cloudflare-todomvc:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20250725.0
-        version: 4.20250725.0
+        specifier: 4.20250807.0
+        version: 4.20250807.0
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-cloudflare
@@ -217,8 +217,8 @@ importers:
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
-        specifier: ^4.26.1
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        specifier: ^4.30.0
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   examples/expo-linearlite:
     dependencies:
@@ -439,7 +439,7 @@ importers:
         version: 5.9.2
       wrangler:
         specifier: ^4.30.0
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   examples/node-effect-cli:
     dependencies:
@@ -907,7 +907,7 @@ importers:
         version: 7.0.6(@types/node@24.3.0)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
         specifier: ^4.30.0
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   examples/web-todomvc-sync-electric:
     dependencies:
@@ -991,8 +991,8 @@ importers:
   packages/@livestore/adapter-cloudflare:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20250725.0
-        version: 4.20250725.0
+        specifier: 4.20250807.0
+        version: 4.20250807.0
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1013,8 +1013,8 @@ importers:
         version: link:../utils
     devDependencies:
       wrangler:
-        specifier: ^4.26.1
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        specifier: ^4.30.0
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   packages/@livestore/adapter-expo:
     dependencies:
@@ -1143,8 +1143,8 @@ importers:
   packages/@livestore/common-cf:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20250725.0
-        version: 4.20250725.0
+        specifier: 4.20250807.0
+        version: 4.20250807.0
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1159,8 +1159,8 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.26.1
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        specifier: ^4.30.0
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   packages/@livestore/devtools-expo:
     dependencies:
@@ -1399,8 +1399,8 @@ importers:
   packages/@livestore/sqlite-wasm:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20250725.0
-        version: 4.20250725.0
+        specifier: 4.20250807.0
+        version: 4.20250807.0
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1427,8 +1427,8 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.26.1
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        specifier: ^4.30.0
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   packages/@livestore/sync-cf:
     dependencies:
@@ -1698,7 +1698,7 @@ importers:
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
         specifier: ^4.30.0
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   tests/integration-cloudflare:
     dependencies:
@@ -1725,8 +1725,8 @@ importers:
         version: 8.18.3
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20250725.0
-        version: 4.20250725.0
+        specifier: ^4.20250807.0
+        version: 4.20250807.0
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils-dev
@@ -1734,14 +1734,14 @@ importers:
         specifier: 'catalog:'
         version: 24.2.0
       typescript:
-        specifier: ^5.8.3
-        version: 5.8.3
+        specifier: ^5.9.2
+        version: 5.9.2
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.26.1
-        version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
+        specifier: ^4.30.0
+        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
   tests/package-common:
     dependencies:
@@ -1831,8 +1831,8 @@ importers:
   tests/sync-provider:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20250725.0
-        version: 4.20250725.0
+        specifier: 4.20250807.0
+        version: 4.20250807.0
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-cloudflare
@@ -2630,9 +2630,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@cloudflare/workers-types@4.20250725.0':
-    resolution: {integrity: sha512-A8x/8yHY6G2xCkz/WVJ3n/iJ2XRRf8lfWsAJJjxPBPyt5CtkPpEIw7w04nrE4A2yLEr3ZOPhm4AJLVdt4NSBjA==}
 
   '@cloudflare/workers-types@4.20250807.0':
     resolution: {integrity: sha512-Zbrz9egAfwmlkUaZ1tQ+19pt5eomCJ57mAviT1HCsvnSFP1MoffMbYiU/xUomuekHtx0aVO4EacZwchCgjSvmw==}
@@ -3829,7 +3826,6 @@ packages:
   '@oclif/screen@3.0.8':
     resolution: {integrity: sha512-yx6KAqlt3TAHBduS2fMQtJDL2ufIHnDRArrJEOoTTuizxqmjLT+psGYOHpmMl3gvQpFJ11Hs76guUUktzAF9Bg==}
     engines: {node: '>=12.0.0'}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@oozcitak/dom@1.15.10':
     resolution: {integrity: sha512-0JT29/LaxVgRcGKvHmSrUTEvZ8BXvZhGl2LASRUgHqDTC1M5g1pLmVv56IYNyt3bG2CUjDkc67wnyZC14pbQrQ==}
@@ -6325,7 +6321,6 @@ packages:
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
     engines: {node: '>=10.0.0'}
-    deprecated: this version is no longer supported, please update to at least 0.8.*
 
   '@xmldom/xmldom@0.8.10':
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
@@ -8425,7 +8420,6 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
@@ -9454,7 +9448,6 @@ packages:
 
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
-    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -10108,7 +10101,6 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
-    deprecated: Use your platform's native DOMException instead
 
   node-fetch-native@1.6.6:
     resolution: {integrity: sha512-8Mc2HhqPdlIfedsuZoc3yioPuzp6b+L5jRCRY1QzuWZh2EGJVQrGppC6V6cF0bLdbW0+O2YpqCA25aF/1lvipQ==}
@@ -11295,7 +11287,6 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
@@ -11801,7 +11792,6 @@ packages:
 
   sudo-prompt@9.1.1:
     resolution: {integrity: sha512-es33J1g2HjMpyAhz8lOR+ICmXXAqTuKbuXuUWLhOLew20oN9oUCgCJx615U/v7aioZg7IX5lIh9x34vwneu4pA==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   supports-color@10.0.0:
     resolution: {integrity: sha512-HRVVSbCCMbj7/kdWF9Q+bbckjBHLtHMEoJWlkmYzzdwhYMkjkOwubLM6t7NbWKjgKamGDrWL1++KrjUO1t9oAQ==}
@@ -12125,11 +12115,6 @@ packages:
 
   typescript-auto-import-cache@0.3.5:
     resolution: {integrity: sha512-fAIveQKsoYj55CozUiBoj4b/7WpN0i4o74wiGY5JVUEoD0XiqDk1tJqTEjgzL2/AizKQrXxyRosSebyDzBZKjw==}
-
-  typescript@5.8.3:
-    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
-    engines: {node: '>=14.17'}
-    hasBin: true
 
   typescript@5.9.2:
     resolution: {integrity: sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A==}
@@ -14116,8 +14101,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20250813.0':
     optional: true
-
-  '@cloudflare/workers-types@4.20250725.0': {}
 
   '@cloudflare/workers-types@4.20250807.0': {}
 
@@ -26450,8 +26433,6 @@ snapshots:
     dependencies:
       semver: 7.7.2
 
-  typescript@5.8.3: {}
-
   typescript@5.9.2: {}
 
   ua-parser-js@1.0.40: {}
@@ -27216,7 +27197,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20250813.0
       '@cloudflare/workerd-windows-64': 1.20250813.0
 
-  wrangler@4.30.0(@cloudflare/workers-types@4.20250725.0):
+  wrangler@4.30.0(@cloudflare/workers-types@4.20250807.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.0
       '@cloudflare/unenv-preset': 2.6.1(unenv@2.0.0-rc.19)(workerd@1.20250813.0)
@@ -27227,7 +27208,7 @@ snapshots:
       unenv: 2.0.0-rc.19
       workerd: 1.20250813.0
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20250725.0
+      '@cloudflare/workers-types': 4.20250807.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil

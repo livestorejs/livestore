@@ -29,7 +29,7 @@ if (typeof globalThis.document === 'undefined') {
 
 // WeakRef polyfill for Cloudflare Workers
 if (typeof WeakRef === 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error
   globalThis.WeakRef = class WeakRef<T> {
     private target: T | undefined
 

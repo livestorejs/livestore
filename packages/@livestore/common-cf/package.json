@@ -8,14 +8,14 @@
     "./declare": "./src/declare/mod.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250725.0",
+    "@cloudflare/workers-types": "4.20250807.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
     "vitest": "catalog:",
-    "wrangler": "^4.26.1"
+    "wrangler": "^4.30.0"
   },
   "files": [
     "dist",

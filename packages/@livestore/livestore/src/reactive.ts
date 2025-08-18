@@ -211,10 +211,8 @@ export class ReactiveGraph<
 
   private refreshCallbacks: Set<() => void> = new Set()
 
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private nodeIdCounter = 0
   private uniqueNodeId = () => `node-${++this.nodeIdCounter}`
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private refreshInfoIdCounter = 0
   private uniqueRefreshInfoId = () => `refresh-info-${++this.refreshInfoIdCounter}`
 

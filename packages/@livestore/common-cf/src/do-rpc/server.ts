@@ -234,7 +234,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        // @ts-ignore - Complex context requirements but functionality works correctly
+        // @ts-expect-error - Complex context requirements but functionality works correctly
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
     }) as any as CfTypes.ReadableStream

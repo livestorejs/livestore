@@ -283,5 +283,4 @@ export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
   a.name === b.name &&
   a.clientId === b.clientId &&
   a.sessionId === b.sessionId &&
-  // TODO use schema equality here
-  JSON.stringify(a.args) === JSON.stringify(b.args)
+  JSON.stringify(a.args) === JSON.stringify(b.args) // TODO use schema equality here

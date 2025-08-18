@@ -13,12 +13,12 @@
     "ws": "8.18.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250725.0",
+    "@cloudflare/workers-types": "^4.20250807.0",
     "@livestore/utils-dev": "workspace:*",
     "@types/node": "catalog:",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "vitest": "catalog:",
-    "wrangler": "^4.26.1"
+    "wrangler": "^4.30.0"
   },
   "scripts": {
     "dev": "wrangler dev",

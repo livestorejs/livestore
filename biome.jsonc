@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
   // WORKAROUND: Biome 2.1.x nested root configuration issue
   // Prevents "Found a nested root configuration" errors in parent repo
   // TODO: Remove "root": false once Biome properly supports git submodules
@@ -13,20 +13,20 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
-      "!**/dist/**",
-      "!**/.wrangler/**",
-      "!**/node_modules/**",
-      "!**/tmp/**",
-      "!**/.output/**",
-      "!**/.vercel/**",
-      "!**/.netlify/**",
-      "!**/.astro/**",
-      "!**/.nitro/**",
-      "!**/.tanstack/**",
-      "!**/.direnv/**",
-      "!**/packages/@livestore/wa-sqlite/**",
-      "!**/playwright-report/**",
-      "!**/test-results/**"
+      "!**/dist",
+      "!**/.wrangler",
+      "!**/node_modules",
+      "!**/tmp",
+      "!**/.output",
+      "!**/.vercel",
+      "!**/.netlify",
+      "!**/.astro",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.direnv",
+      "!**/packages/@livestore/wa-sqlite",
+      "!**/playwright-report",
+      "!**/test-results"
     ]
   },
   "formatter": {
@@ -72,9 +72,7 @@
         },
         "useYield": "off"
       },
-      "nursery": {
-        "useNumericSeparators": "error"
-      }
+      "nursery": {}
     }
   },
   "javascript": {
@@ -97,6 +95,19 @@
           "correctness": {
             "noUnusedVariables": "off",
             "noUnusedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      // Disable noUnknownAtRules for CSS files that use Tailwind CSS
+      // Tailwind uses custom at-rules like @apply, @config, @theme, @custom-variant
+      // See: https://github.com/biomejs/biome/discussions/3195
+      "includes": ["**/*.css", "**/tailwind.css", "**/style.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
           }
         }
       }
