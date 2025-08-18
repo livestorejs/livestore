@@ -3,11 +3,10 @@ import { DurableObject } from 'cloudflare:workers'
 
 import type * as CfWorker from '@cloudflare/workers-types'
 import { type CreateStoreDoOptions, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { EventSequenceNumber, exposeDebugUtils, nanoid, type Store } from '@livestore/livestore'
+import { exposeDebugUtils, nanoid, type Store } from '@livestore/livestore'
 import * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
-import { SyncMessage } from '@livestore/sync-cf/common'
+import type { SyncMessage } from '@livestore/sync-cf/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Option } from '@livestore/utils/effect'
 import { events, schema, tables } from './schema.ts'
 
 exposeDebugUtils()
@@ -167,62 +166,6 @@ const worker = {
       const storeId = url.searchParams.get('storeId') ?? shouldNeverHappen(`No storeId provided`)
       const client = env.CLIENT_DO.get(env.CLIENT_DO.idFromName(storeId))
       return client.fetch(request)
-    }
-
-    // Test RPC functionality
-    if (url.pathname === '/test-rpc') {
-      const storeId = url.searchParams.get('storeId') ?? shouldNeverHappen(`No storeId provided`)
-      const clientStub = env.CLIENT_DO.get(env.CLIENT_DO.idFromName(storeId))
-
-      try {
-        // Test ping method
-        // const pingResult = await clientStub.ping()
-        // console.log('RPC ping result:', pingResult)
-
-        // Test onPullNotification with a mock message (simplified for serialization)
-        const mockPullRes = SyncMessage.PullResponse.make({
-          batch: [
-            {
-              eventEncoded: {
-                seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-                parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(0),
-                name: 'test.event',
-                args: { test: 'data' },
-                clientId: 'test-client',
-                sessionId: 'test-session',
-              },
-              metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt: new Date().toISOString() })),
-            },
-          ],
-          requestId: { context: 'push' as const, requestId: 'test-rpc-call' },
-          remaining: 0,
-        })
-
-        // await clientStub.onPullNotification(mockPullRes)
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            // pingResult,
-            message: 'RPC methods tested successfully',
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-          },
-        )
-      } catch (error) {
-        console.error('RPC test failed:', error)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: error?.toString(),
-          }),
-          {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        )
-      }
     }
 
     return new Response('Not found', { status: 404 })

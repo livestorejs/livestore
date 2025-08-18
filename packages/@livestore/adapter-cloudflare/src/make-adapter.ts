@@ -29,6 +29,7 @@ export const makeAdapter =
   (adapterArgs) =>
     Effect.gen(function* () {
       const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+      console.log('makeAdapter', { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema })
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
 
@@ -117,6 +118,7 @@ export const makeAdapter =
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
+          console.log('connectWebmeshNode', { webmeshNode })
           // if (devtoolsOptions.enabled) {
           //   yield* Webmesh.connectViaWebSocket({
           //     node: webmeshNode,

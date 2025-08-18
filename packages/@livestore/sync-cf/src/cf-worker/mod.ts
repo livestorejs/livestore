@@ -1,3 +1,3 @@
-export * from './cf-types.ts'
 export * from './durable-object.ts'
+export * from './shared.ts'
 export * from './worker.ts'

@@ -1,6 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
-export * as WSMessage from './ws-message-types.ts'
+export { SyncHttpRpc } from './http-rpc-schema.ts'
+export * as SyncMessage from './sync-message-types.ts'
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,

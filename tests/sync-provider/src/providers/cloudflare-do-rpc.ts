@@ -44,7 +44,8 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
       Layer.provide(RpcSerialization.layerJson),
     )
 
-    // Warning: we need
+    // Warning: we need to build the layer here eagerly to tie it to the scope
+    // instead of using `Effect.provide(ProtocolLive)` which would close the layer scope too early
     const ctx = yield* Layer.build(ProtocolLive)
 
     const client = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))

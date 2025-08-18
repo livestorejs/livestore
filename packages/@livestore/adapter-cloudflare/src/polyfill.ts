@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 // TODO remove all unused polyfills once we're closer to the release
 globalThis.performance = globalThis.performance ?? {}
 globalThis.performance.mark = globalThis.performance.mark ?? (() => {})

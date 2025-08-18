@@ -19,8 +19,8 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { SearchParamsSchema, WSMessage } from '../common/mod.ts'
-import type { SyncMetadata } from '../common/ws-message-types.ts'
+import { SearchParamsSchema, SyncMessage } from '../../common/mod.ts'
+import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
 export interface WsSyncOptions {
   url: string
@@ -51,7 +51,7 @@ export const makeCfSync =
        * another client triggers a PullRes message sent to this client which we need to stash until our pull-caused
        * PullRes message arrives at which point we can combine the stashed events with the pull-caused events and continue.
        */
-      const stashedPullBatch: WSMessage.PullRes['batch'][number][] = []
+      const stashedPullBatch: SyncMessage.PullResponse['batch'][number][] = []
 
       // We currently only support one pull stream for a sync backend.
       let pullStarted = false
@@ -59,7 +59,7 @@ export const makeCfSync =
       return SyncBackend.of<SyncMetadata>({
         isConnected,
         // Currently we're already eagerly connecting when the sync backend is created but we might want to refactor this later to clean this up
-        connect: Effect.void,
+        connect: isConnected.pipe(SubscriptionRef.waitUntil(Boolean), Effect.asVoid),
         pull: (args) =>
           Effect.gen(function* () {
             if (pullStarted) {
@@ -73,16 +73,16 @@ export const makeCfSync =
             const requestId = nanoid()
             const cursor = Option.getOrUndefined(args)?.cursor.global
 
-            yield* send(WSMessage.PullReq.make({ cursor, requestId }))
+            yield* send(SyncMessage.PullRequest.make({ cursor, requestId }))
 
             return Stream.fromPubSub(incomingMessages).pipe(
               Stream.tap((_) =>
-                _._tag === 'WSMessage.Error' && _.requestId === requestId
-                  ? new InvalidPullError({ message: _.message })
+                _._tag === 'SyncMessage.SyncError' && _.requestId === requestId
+                  ? new InvalidPullError({ cause: _ })
                   : Effect.void,
               ),
               Stream.filterMap((msg) => {
-                if (msg._tag === 'WSMessage.PullRes') {
+                if (msg._tag === 'SyncMessage.PullResponse') {
                   if (msg.requestId.context === 'pull') {
                     if (msg.requestId.requestId === requestId) {
                       pullResponseReceived = true
@@ -121,16 +121,20 @@ export const makeCfSync =
 
         push: (batch) =>
           Effect.gen(function* () {
+            if (batch.length === 0) {
+              return
+            }
+
             const pushAck = yield* Deferred.make<void, InvalidPushError>()
             const requestId = nanoid()
 
             yield* Stream.fromPubSub(incomingMessages).pipe(
               Stream.tap((_) =>
-                _._tag === 'WSMessage.Error' && _.requestId === requestId
-                  ? Deferred.fail(pushAck, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
+                _._tag === 'SyncMessage.SyncError' && _.requestId === requestId
+                  ? Deferred.fail(pushAck, new InvalidPushError({ reason: { _tag: 'Unexpected', cause: _ } }))
                   : Effect.void,
               ),
-              Stream.filter((_) => _._tag === 'WSMessage.PushAck' && _.requestId === requestId),
+              Stream.filter((_) => _._tag === 'SyncMessage.PushAck' && _.requestId === requestId),
               Stream.take(1),
               Stream.tap(() => Deferred.succeed(pushAck, void 0)),
               Stream.runDrain,
@@ -138,10 +142,15 @@ export const makeCfSync =
               Effect.fork,
             )
 
-            yield* send(WSMessage.PushReq.make({ batch, requestId }))
+            yield* send(SyncMessage.PushRequest.make({ batch, requestId }))
 
             yield* pushAck
           }),
+        ping: Effect.gen(function* () {
+          // yield* send(SyncMessage.Ping.make({ requestId: 'ping' }))
+          // yield* send({ _tag: 'SyncMessage.Ping', requestId: 'ping' })
+          // TODO wait for pong
+        }),
         metadata: {
           name: '@livestore/cf-sync',
           description: 'LiveStore sync backend implementation using Cloudflare Workers & Durable Objects',
@@ -159,30 +168,30 @@ const connect = (
     const isConnected = yield* SubscriptionRef.make(false)
     const socketRef: { current: globalThis.WebSocket | undefined } = { current: undefined }
 
-    const incomingMessages = yield* PubSub.unbounded<Exclude<WSMessage.BackendToClientMessage, WSMessage.Pong>>().pipe(
-      Effect.acquireRelease(PubSub.shutdown),
-    )
+    const incomingMessages = yield* PubSub.unbounded<
+      Exclude<SyncMessage.BackendToClientMessage, SyncMessage.Pong>
+    >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
     const waitUntilOnline = isConnected.changes.pipe(Stream.filter(Boolean), Stream.take(1), Stream.runDrain)
 
-    const send = (message: WSMessage.Message) =>
+    const send = (message: SyncMessage.Message) =>
       Effect.gen(function* () {
         // Wait first until we're online
         yield* waitUntilOnline
 
         // TODO use MsgPack instead of JSON to speed up the serialization / reduce the size of the messages
-        socketRef.current!.send(Schema.encodeSync(Schema.parseJson(WSMessage.Message))(message))
+        socketRef.current!.send(Schema.encodeSync(Schema.parseJson(SyncMessage.Message))(message))
 
         if (LS_DEV) {
           yield* Effect.spanEvent(
             `Sent message: ${message._tag}`,
-            message._tag === 'WSMessage.PushReq'
+            message._tag === 'SyncMessage.PushRequest'
               ? {
                   seqNum: message.batch[0]!.seqNum,
                   parentSeqNum: message.batch[0]!.parentSeqNum,
                   batchLength: message.batch.length,
                 }
-              : message._tag === 'WSMessage.PullReq'
+              : message._tag === 'SyncMessage.PullRequest'
                 ? { cursor: message.cursor ?? '-' }
                 : {},
           )
@@ -210,11 +219,11 @@ const connect = (
 
       const connectionClosed = yield* Deferred.make<void>()
 
-      const pongMessages = yield* Queue.unbounded<WSMessage.Pong>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const pongMessages = yield* Queue.unbounded<SyncMessage.Pong>().pipe(Effect.acquireRelease(Queue.shutdown))
 
       yield* Effect.eventListener(socket, 'message', (event: MessageEvent) =>
         Effect.gen(function* () {
-          const decodedEventRes = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.BackendToClientMessage))(
+          const decodedEventRes = Schema.decodeUnknownEither(Schema.parseJson(SyncMessage.BackendToClientMessage))(
             event.data,
           )
 
@@ -222,7 +231,7 @@ const connect = (
             console.error('Sync: Invalid message received', decodedEventRes.left)
             return
           } else {
-            if (decodedEventRes.right._tag === 'WSMessage.Pong') {
+            if (decodedEventRes.right._tag === 'SyncMessage.Pong') {
               yield* Queue.offer(pongMessages, decodedEventRes.right)
             } else {
               // yield* Effect.logDebug(`decodedEventRes: ${decodedEventRes.right._tag}`)
@@ -259,7 +268,7 @@ const connect = (
 
       const checkPingPong = Effect.gen(function* () {
         // TODO include pong latency infomation in network status
-        yield* send({ _tag: 'WSMessage.Ping', requestId: 'ping' })
+        yield* send({ _tag: 'SyncMessage.Ping', requestId: 'ping' })
 
         // NOTE those numbers might need more fine-tuning to allow for bad network conditions
         yield* Queue.take(pongMessages).pipe(Effect.timeout(5000))

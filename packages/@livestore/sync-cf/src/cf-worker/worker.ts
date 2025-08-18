@@ -4,8 +4,7 @@ import type { Schema } from '@livestore/utils/effect'
 import { Effect, UrlParams } from '@livestore/utils/effect'
 
 import { SearchParamsSchema } from '../common/mod.ts'
-
-import type { Env } from './durable-object.ts'
+import type { Env } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Response extends CfWorker.Response {}
@@ -27,11 +26,11 @@ export namespace HelperTypes {
    *  type PlatformEnv = {
    *    DB: D1Database
    *    ADMIN_TOKEN: string
-   *    WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
+   *    SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
    * }
    *  export default makeWorker<PlatformEnv>({
-   *    durableObject: { name: "WEBSOCKET_SERVER" },
-   *    // ^ (property) name?: "WEBSOCKET_SERVER" | undefined
+   *    durableObject: { name: "SYNC_BACKEND_DO" },
+   *    // ^ (property) name?: "SYNC_BACKEND_DO" | undefined
    *  });
    */
   export type ExtractDurableObjectKeys<TEnv = Env> = DOKeys<NonBuiltins<TEnv>> extends never
@@ -61,7 +60,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
     /**
      * Needs to match the binding name from the wrangler config
      *
-     * @default 'WEBSOCKET_SERVER'
+     * @default 'SYNC_BACKEND_DO'
      */
     name?: HelperTypes.ExtractDurableObjectKeys<TEnv>
   }
@@ -98,6 +97,14 @@ export const makeWorker = <
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
+        })
+      }
+
+      if (request.method === 'POST' && url.pathname.endsWith('/http-rpc')) {
+        return handleHttp<TEnv, TDurableObjectRpc>(request, env, _ctx, {
+          headers: corsHeaders,
+          validatePayload: options.validatePayload,
+          durableObject: options.durableObject,
         })
       }
 
@@ -190,7 +197,7 @@ export const handleWebSocket = <
       }
     }
 
-    const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
+    const durableObjectName = options.durableObject?.name ?? 'SYNC_BACKEND_DO'
     if (!(durableObjectName in env)) {
       return new Response(
         `Failed dependency: Required Durable Object binding '${durableObjectName as string}' not available`,
@@ -217,5 +224,46 @@ export const handleWebSocket = <
     }
 
     // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
+    return yield* Effect.promise(() => durableObject.fetch(request))
+  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+
+export const handleHttp = <
+  TEnv extends Env = Env,
+  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  CFHostMetada = unknown,
+>(
+  request: CfWorker.Request<CFHostMetada>,
+  env: TEnv,
+  _ctx: CfWorker.ExecutionContext,
+  options: {
+    headers?: CfWorker.HeadersInit
+    durableObject?: MakeWorkerOptions<TEnv>['durableObject']
+    validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
+  } = {},
+) =>
+  Effect.gen(function* () {
+    const storeId = request.headers.get('x-livestore-store-id')
+    if (!storeId) {
+      return new Response('Missing x-livestore-store-id header', { status: 400, headers: options.headers })
+    }
+
+    const durableObjectName = options.durableObject?.name ?? 'SYNC_BACKEND_DO'
+    if (!(durableObjectName in env)) {
+      return new Response(
+        `Failed dependency: Required Durable Object binding '${durableObjectName as string}' not available`,
+        {
+          status: 424,
+          headers: options.headers,
+        },
+      )
+    }
+
+    const durableObjectNamespace = env[
+      durableObjectName as keyof TEnv
+    ] as CfWorker.DurableObjectNamespace<TDurableObjectRpc>
+
+    const id = durableObjectNamespace.idFromName(storeId)
+    const durableObject = durableObjectNamespace.get(id)
+
     return yield* Effect.promise(() => durableObject.fetch(request))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
