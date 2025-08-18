@@ -7,7 +7,7 @@ import {
   type CfTypes,
   type ClientDOInterface,
   handleHttp,
-  handleWebSocket,
+  handleSync,
   makeDurableObject,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
@@ -164,8 +164,8 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
 export default {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
-    if (url.pathname.endsWith('/websocket')) {
-      return handleWebSocket(request, env, ctx)
+    if (url.pathname.endsWith('/sync')) {
+      return handleSync(request, env, ctx)
     }
 
     if (url.pathname.endsWith('/http-rpc')) {

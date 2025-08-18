@@ -6,7 +6,6 @@
     { "path": "./docs" },
     { "path": "./scripts" },
     { "path": "./tests/integration" },
-    { "path": "./tests/integration-cloudflare" },
     { "path": "./tests/package-common" },
     { "path": "./tests/perf" },
     { "path": "./tests/wa-sqlite" },

@@ -17,7 +17,7 @@ export const makeWebSocket = ({
   url,
   durableObject,
 }: {
-  /** CF Sync Backend DO with `/websocket` endpoint */
+  /** CF Sync Backend DO with `/sync` endpoint */
   durableObject: CfWorker.DurableObjectStub
   url: URL
   reconnect?: Schedule.Schedule<unknown> | false

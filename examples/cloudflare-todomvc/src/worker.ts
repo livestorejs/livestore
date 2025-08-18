@@ -92,9 +92,9 @@ export default {
   fetch: async (request, env, ctx) => {
     const url = new URL(request.url)
 
-    if (url.pathname.endsWith('/websocket')) {
+    if (url.pathname.endsWith('/sync')) {
       // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-      return SyncBackend.handleWebSocket(request, env, ctx, { headers: {} }) as Promise<Response>
+      return SyncBackend.handleSync(request, env, ctx, { headers: {} }) as Promise<Response>
     }
 
     // Forward request to client DO

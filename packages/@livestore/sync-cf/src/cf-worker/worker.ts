@@ -107,8 +107,8 @@ export const makeWorker = <
         })
       }
 
-      if (url.pathname.endsWith('/websocket')) {
-        return handleWebSocket<TEnv, TDurableObjectRpc>(request, env, _ctx, {
+      if (url.pathname.endsWith('/sync')) {
+        return handleSync<TEnv, TDurableObjectRpc>(request, env, _ctx, {
           headers: corsHeaders,
           validatePayload: options.validatePayload,
           durableObject: options.durableObject,
@@ -130,7 +130,7 @@ export const makeWorker = <
 }
 
 /**
- * Handles `/websocket` endpoint.
+ * Handles `/sync` endpoint.
  *
  * @example
  * ```ts
@@ -143,8 +143,8 @@ export const makeWorker = <
  *
  * export default {
  *   fetch: async (request, env, ctx) => {
- *     if (request.url.endsWith('/websocket')) {
- *       return handleWebSocket(request, env, ctx, { headers: {}, validatePayload })
+ *     if (request.url.endsWith('/sync')) {
+ *       return handleSync(request, env, ctx, { headers: {}, validatePayload })
  *     }
  *
  *     return new Response('Invalid path', { status: 400 })
@@ -155,7 +155,7 @@ export const makeWorker = <
  *
  * @throws {UnexpectedError} If the payload is invalid
  */
-export const handleWebSocket = <
+export const handleSync = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,

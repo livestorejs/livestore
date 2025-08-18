@@ -41,7 +41,7 @@ export const makeCfSync =
       }).pipe(UnexpectedError.mapToUnexpectedError)
 
       const urlParams = UrlParams.fromInput(urlParamsData)
-      const wsUrl = `${options.url}/websocket?${UrlParams.toString(urlParams)}`
+      const wsUrl = `${options.url}/sync?${UrlParams.toString(urlParams)}`
 
       const { isConnected, incomingMessages, send } = yield* connect(wsUrl, options.webSocketFactory)
 

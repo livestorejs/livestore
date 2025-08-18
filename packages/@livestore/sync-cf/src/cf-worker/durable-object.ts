@@ -25,7 +25,7 @@ import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage, type SyncStorage } from './sync-storage.ts'
 import { createDoRpcHandler } from './transport/do-rpc.ts'
 import { createHttpRpcHandler } from './transport/http-rpc.ts'
-import { handleWebSocketMessage } from './transport/ws.ts'
+import { handleSyncMessage } from './transport/ws.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Request extends CfDeclare.Request {}
@@ -138,7 +138,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           return yield* this.handleHttp(request)
         }
 
-        if (url.pathname.endsWith('/websocket')) {
+        if (url.pathname.endsWith('/sync')) {
           const { storeId, payload } = getRequestSearchParams(request)
           const storage = makeStorage(this.ctx, this.env, storeId)
 
@@ -226,7 +226,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
         const message = yield* Schema.decodeUnknown(Schema.parseJson(SyncMessage.ClientToBackendMessage))(messageRaw)
 
-        return yield* handleWebSocketMessage({
+        return yield* handleSyncMessage({
           message,
           payload,
           storeId,

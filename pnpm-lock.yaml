@@ -1700,49 +1700,6 @@ importers:
         specifier: ^4.30.0
         version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
 
-  tests/integration-cloudflare:
-    dependencies:
-      '@livestore/adapter-cloudflare':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/adapter-cloudflare
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/common
-      '@livestore/common-cf':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/common-cf
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
-      '@livestore/sync-cf':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/sync-cf
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/utils
-      ws:
-        specifier: 8.18.3
-        version: 8.18.3
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20250807.0
-        version: 4.20250807.0
-      '@livestore/utils-dev':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/utils-dev
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.2.0
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
-      wrangler:
-        specifier: ^4.30.0
-        version: 4.30.0(@cloudflare/workers-types@4.20250807.0)
-
   tests/package-common:
     dependencies:
       '@livestore/adapter-node':

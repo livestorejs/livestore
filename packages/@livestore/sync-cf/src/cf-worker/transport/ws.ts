@@ -15,7 +15,7 @@ import {
 } from '../shared.ts'
 import { makeStorage } from '../sync-storage.ts'
 
-export const handleWebSocketMessage = ({
+export const handleSyncMessage = ({
   message,
   payload,
   storeId,
