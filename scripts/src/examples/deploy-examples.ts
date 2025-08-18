@@ -66,6 +66,7 @@ export const command = Cli.Command.make(
         'node-effect-cli',
         'node-todomvc-sync-cf',
         'web-todomvc-sync-electric',
+        'cloudflare-todomvc',
       ])
       const examplesToDeploy = fs
         .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
