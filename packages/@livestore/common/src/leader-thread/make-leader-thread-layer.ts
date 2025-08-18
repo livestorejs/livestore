@@ -9,6 +9,7 @@ import {
   type SqliteError,
   UnexpectedError,
 } from '../adapter-types.ts'
+import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
@@ -91,6 +92,16 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
+    yield* Eventlog.initEventlogDb(dbEventlog)
+
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+
+    // Recreate state database if needed BEFORE creating sync processor
+    // This ensures all system tables exist before any queries are made
+    const { migrationsReport } = dbStateMissing
+      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      : { migrationsReport: { migrations: [] } }
+
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
       dbState,
@@ -118,8 +129,6 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
-
     const ctx = {
       schema,
       bootStatusQueue,
@@ -146,7 +155,7 @@ export const makeLeaderThreadLayer = ({
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
     ctx.initialState = yield* bootLeaderThread({
-      dbStateMissing,
+      migrationsReport,
       initialBlockingSyncContext,
       devtoolsOptions,
     }).pipe(Effect.provide(layer))
@@ -276,11 +285,11 @@ const makeInitialBlockingSyncContext = ({
  * It also starts various background processes (e.g. syncing)
  */
 const bootLeaderThread = ({
-  dbStateMissing,
+  migrationsReport,
   initialBlockingSyncContext,
   devtoolsOptions,
 }: {
-  dbStateMissing: boolean
+  migrationsReport: MigrationsReport
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
@@ -289,13 +298,7 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbEventlog, bootStatusQueue, syncProcessor, schema, materializeEvent, dbState } = yield* LeaderThreadCtx
-
-    yield* Eventlog.initEventlogDb(dbEventlog)
-
-    const { migrationsReport } = dbStateMissing
-      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
-      : { migrationsReport: { migrations: [] } }
+    const { bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot
