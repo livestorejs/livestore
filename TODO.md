@@ -27,7 +27,6 @@
 - [ ] Rebase from `dev`
 - [ ] Refactor `SyncProvider` types
   - [ ] Rename to `SyncProvider` instead of `SyncBackend`
-  - [ ] use global event sequence number for cursor instead of client sequence number
 - [ ] Refactor `@livestore/sync-cf`
   - [ ] Refactor CF WS transport
   - [ ] Make `pull` implementation streaming based

@@ -23,7 +23,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       ...commonFields,
       args: Schema.Option(
         Schema.Struct({
-          cursor: EventSequenceNumber.EventSequenceNumber,
+          cursor: EventSequenceNumber.GlobalEventSequenceNumber,
           metadata: Schema.Option(Schema.JsonValue),
         }),
       ),

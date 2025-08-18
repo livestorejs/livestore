@@ -43,7 +43,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventSequenceNumber.EventSequenceNumber
+  cursor: EventSequenceNumber.GlobalEventSequenceNumber
   metadata: Option.Option<Schema.JsonValue>
 }>
 

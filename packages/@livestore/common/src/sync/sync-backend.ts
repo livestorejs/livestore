@@ -10,7 +10,7 @@ import {
 } from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
-import { EventSequenceNumber } from '../schema/mod.ts'
+import type { EventSequenceNumber } from '../schema/mod.ts'
 import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
 
 /**
@@ -41,8 +41,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   connect: Effect.Effect<void, IsOfflineError | UnexpectedError, Scope.Scope>
   pull: (
     args: Option.Option<{
-      // TODO change to global sequence number
-      cursor: EventSequenceNumber.EventSequenceNumber
+      cursor: EventSequenceNumber.GlobalEventSequenceNumber
       /** Metadata is needed by some sync backends */
       metadata: Option.Option<TSyncMetadata>
     }>,
@@ -89,15 +88,12 @@ export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetad
 export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
   item: PullResItem<TSyncMetadata>,
 ): Option.Option<{
-  cursor: EventSequenceNumber.EventSequenceNumber
+  cursor: EventSequenceNumber.GlobalEventSequenceNumber
   metadata: Option.Option<TSyncMetadata>
 }> => {
   const lastEvent = item.batch.at(-1)
   if (!lastEvent) {
     return Option.none()
   }
-  return Option.some({
-    cursor: EventSequenceNumber.make({ global: lastEvent.eventEncoded.seqNum, client: 0 }),
-    metadata: lastEvent.metadata,
-  })
+  return Option.some({ cursor: lastEvent.eventEncoded.seqNum, metadata: lastEvent.metadata })
 }

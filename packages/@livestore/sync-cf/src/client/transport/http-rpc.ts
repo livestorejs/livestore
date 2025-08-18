@@ -93,7 +93,7 @@ export const makeHttpSync =
       const connect = ping.pipe(UnexpectedError.mapToUnexpectedError)
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args) => {
-        const cursor = Option.getOrUndefined(args)?.cursor.global
+        const cursor = Option.getOrUndefined(args)?.cursor
         const requestId = nanoid()
 
         return rpcClient.SyncHttpRpc.Pull({

@@ -213,11 +213,7 @@ export const getSyncBackendCursorInfo = ({
     ).pipe(Effect.andThen(Schema.decode(EventlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
 
     return Option.some({
-      cursor: {
-        global: remoteHead,
-        client: EventSequenceNumber.clientDefault,
-        rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
-      },
+      cursor: remoteHead,
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/common:eventlog:getSyncBackendCursorInfo', { attributes: { remoteHead } }))

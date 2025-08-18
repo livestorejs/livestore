@@ -50,7 +50,7 @@ export const makeDoRpcSync =
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args, options) =>
         Effect.gen(function* () {
-          const initialCursor = Option.getOrUndefined(args)?.cursor.global
+          const initialCursor = Option.getOrUndefined(args)?.cursor
           const live = options?.live ?? false
 
           // const incomingMessages = yield* PubSub.unbounded<SyncBackend.PullResItem>()

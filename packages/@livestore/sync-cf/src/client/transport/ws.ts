@@ -71,7 +71,7 @@ export const makeCfSync =
             let pullResponseReceived = false
 
             const requestId = nanoid()
-            const cursor = Option.getOrUndefined(args)?.cursor.global
+            const cursor = Option.getOrUndefined(args)?.cursor
 
             yield* send(SyncMessage.PullRequest.make({ cursor, requestId }))
 
