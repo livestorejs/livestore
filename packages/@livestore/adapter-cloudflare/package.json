@@ -11,13 +11,14 @@
   "dependencies": {
     "@cloudflare/workers-types": "4.20250725.0",
     "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "wrangler": "^4.26.0"
+    "wrangler": "^4.26.1"
   },
   "files": [
     "package.json",

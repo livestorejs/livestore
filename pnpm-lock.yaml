@@ -217,7 +217,7 @@ importers:
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
-        specifier: ^4.26.0
+        specifier: ^4.26.1
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   examples/expo-linearlite:
@@ -438,7 +438,7 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
       wrangler:
-        specifier: ^4.28.0
+        specifier: ^4.30.0
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   examples/node-effect-cli:
@@ -906,7 +906,7 @@ importers:
         specifier: ^7.0.6
         version: 7.0.6(@types/node@24.3.0)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.28.0
+        specifier: ^4.30.0
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   examples/web-todomvc-sync-electric:
@@ -996,6 +996,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../common-cf
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../livestore
@@ -1010,7 +1013,7 @@ importers:
         version: link:../utils
     devDependencies:
       wrangler:
-        specifier: ^4.26.0
+        specifier: ^4.26.1
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   packages/@livestore/adapter-expo:
@@ -1424,7 +1427,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.26.0
+        specifier: ^4.26.1
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   packages/@livestore/sync-cf:
@@ -1435,6 +1438,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../common-cf
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1691,7 +1697,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.28.0
+        specifier: ^4.30.0
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   tests/integration-cloudflare:
@@ -1734,7 +1740,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       wrangler:
-        specifier: ^4.26.0
+        specifier: ^4.26.1
         version: 4.30.0(@cloudflare/workers-types@4.20250725.0)
 
   tests/package-common:
@@ -1825,8 +1831,8 @@ importers:
   tests/sync-provider:
     dependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20250725.0
-        version: 4.20250807.0
+        specifier: 4.20250725.0
+        version: 4.20250725.0
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-cloudflare
@@ -18859,7 +18865,7 @@ snapshots:
 
   '@types/jsdom@21.1.7':
     dependencies:
-      '@types/node': 24.2.0
+      '@types/node': 24.3.0
       '@types/tough-cookie': 4.0.5
       parse5: 7.3.0
 
@@ -19863,7 +19869,7 @@ snapshots:
 
   bun-types@1.2.19(@types/react@19.1.9):
     dependencies:
-      '@types/node': 24.2.0
+      '@types/node': 24.3.0
       '@types/react': 19.1.9
 
   bunyan@1.8.15:

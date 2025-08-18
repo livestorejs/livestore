@@ -36,7 +36,7 @@
     "todomvc-app-css": "^2.4.3",
     "vite": "^7.0.6",
     "vitest": "catalog:",
-    "wrangler": "^4.28.0"
+    "wrangler": "^4.30.0"
   },
   "scripts": {
     "test": "CI=1 bun ./scripts/run-tests.ts"

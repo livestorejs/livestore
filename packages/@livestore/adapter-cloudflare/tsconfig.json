@@ -12,6 +12,7 @@
     { "path": "../utils" },
     { "path": "../livestore" },
     { "path": "../sqlite-wasm" },
-    { "path": "../sync-cf" }
+    { "path": "../sync-cf" },
+    { "path": "../common-cf" }
   ]
 }

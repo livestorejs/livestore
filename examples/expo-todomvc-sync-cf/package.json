@@ -28,7 +28,7 @@
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^16.17.4",
     "typescript": "^5.9.2",
-    "wrangler": "^4.28.0"
+    "wrangler": "^4.30.0"
   },
   "engines": {
     "node": ">=23.0.0"

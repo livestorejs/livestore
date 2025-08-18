@@ -11,7 +11,7 @@
     "@livestore/sync-cf": "0.3.2-dev.11"
   },
   "devDependencies": {
-    "wrangler": "^4.26.0"
+    "wrangler": "^4.26.1"
   },
   "engines": {
     "node": ">=23.0.0"

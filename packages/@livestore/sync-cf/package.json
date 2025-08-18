@@ -13,6 +13,7 @@
   "dependencies": {
     "@cloudflare/workers-types": "4.20250807.0",
     "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "files": [

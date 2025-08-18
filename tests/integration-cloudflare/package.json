@@ -6,8 +6,8 @@
   "dependencies": {
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
     "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "ws": "8.18.3"
@@ -18,7 +18,7 @@
     "@types/node": "catalog:",
     "typescript": "^5.8.3",
     "vitest": "catalog:",
-    "wrangler": "^4.26.0"
+    "wrangler": "^4.26.1"
   },
   "scripts": {
     "dev": "wrangler dev",
