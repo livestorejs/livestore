@@ -7,4 +7,4 @@ bindings = [{ name = "TEST_RPC_DO", class_name = "TestRpcDurableObject" }]
 
 [[migrations]]
 tag = "v1"
-new_classes = ["TestRpcDurableObject"]
+new_sqlite_classes = ["TestRpcDurableObject"]

@@ -9,7 +9,7 @@ class_name = "SyncBackendDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["SyncBackendDO"]
+new_sqlite_classes = ["SyncBackendDO"]
 
 [[d1_databases]]
 binding = "DB"
