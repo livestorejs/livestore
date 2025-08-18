@@ -47,7 +47,6 @@
   - [ ] Write docs for CF DO client adapter
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
 - [ ] Lay foundation for S2 sync backend
-- [ ] Get rid of `compatibility_flags = ["nodejs_compat"]` in `wrangler.toml` (if possible)
 - Cleanup work
   - [ ] Reduce logs of sync provider tests
 

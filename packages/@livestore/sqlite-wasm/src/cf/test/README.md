@@ -92,7 +92,6 @@ pnpm test --coverage
 
 - **Runtime**: Cloudflare Workers (via workerd)
 - **Storage**: Isolated per-test storage instances
-- **Compatibility**: Uses `nodejs_compat` flag for Node.js compatibility
 
 ## Test Structure
 

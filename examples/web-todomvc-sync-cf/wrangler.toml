@@ -1,7 +1,9 @@
 name = "websocket-server"
 main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-05-08"
-# compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+]
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"

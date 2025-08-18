@@ -1,7 +1,9 @@
 name = "cloudflare-todomvc"
 main = "./src/worker.ts"
 compatibility_date = "2025-05-07"
-# compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+]
 
 [build]
 # Enable source maps for better debugging

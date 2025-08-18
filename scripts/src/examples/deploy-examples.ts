@@ -49,6 +49,7 @@ const buildAndDeployExample = ({
   }).pipe(
     Effect.withSpan(`deploy-example-${example}`, { attributes: { example, prod, alias } }),
     Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
+    Effect.annotateLogs({ example }),
   )
 
 export const command = Cli.Command.make(
