@@ -14,21 +14,17 @@
 
 - [ ] Multiple stores in a single client DO
 
-## Sync refactor
-
-- Make sync transport layers pluggable in sync client 
-- Transports
- - [ ] DO RPC
- - [ ] HTTP JSON-RPC
- - [ ] WebSocket
-
 ## Next steps 2025-08-16
 
-- [ ] Rebase from `dev`
 - [ ] Refactor `SyncProvider` types
   - [ ] Rename to `SyncProvider` instead of `SyncBackend`
+- [ ] CF DO adapter
+  - [ ] Clean up CF DO client adapter example
+  - [ ] Write docs for CF DO client adapter
+  - [ ] Get rid of (or minimize) adapter `polyfill.ts`
+- [ ] Lay foundation for S2 sync backend
 - [ ] Refactor `@livestore/sync-cf`
-  - [ ] Refactor CF WS transport
+  - [ ] Refactor/fix CF WS transport
   - [ ] Make `pull` implementation streaming based
   - [ ] Move DO related files into `worker/durable-object` directory
   - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
@@ -40,11 +36,6 @@
   - [ ] Test `payload` parameter
   - [ ] Sometimes tests "get stuck" / don't finish
   - [ ] Performance/load testing
-- [ ] CF DO adapter
-  - [ ] Clean up CF DO client adapter example
-  - [ ] Write docs for CF DO client adapter
-  - [ ] Get rid of (or minimize) adapter `polyfill.ts`
-- [ ] Lay foundation for S2 sync backend
 - Cleanup work
   - [ ] Reduce logs of sync provider tests
 
@@ -52,4 +43,5 @@
 
 ### Cloudflare
 
+- [ ] Allow for Sync DO and client DO to be deployed via separate workers
 - [ ] Support for read replicas

@@ -147,7 +147,7 @@ export const makeCfSync =
             yield* pushAck
           }),
         ping: Effect.gen(function* () {
-          // yield* send(SyncMessage.Ping.make({ requestId: 'ping' }))
+          yield* send(SyncMessage.Ping.make({ requestId: 'ping' }))
           // yield* send({ _tag: 'SyncMessage.Ping', requestId: 'ping' })
           // TODO wait for pong
         }),

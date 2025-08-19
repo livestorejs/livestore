@@ -13,7 +13,18 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import type { SyncMessage } from '@livestore/sync-cf/common'
-import { Effect, FetchHttpClient, Layer, Mailbox, RpcSerialization, RpcServer, Stream } from '@livestore/utils/effect'
+import {
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Logger,
+  LogLevel,
+  Mailbox,
+  RpcSerialization,
+  RpcServer,
+  Stream,
+} from '@livestore/utils/effect'
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 
 declare class Request extends CfDeclare.Request {}
@@ -46,8 +57,14 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
-  // store: Store<typeof schema> | undefined
-  incomingQueue: Mailbox.Mailbox<Uint8Array<ArrayBufferLike> | string> | undefined
+
+  private serverCtxMap: Map<
+    CfTypes.WebSocket,
+    {
+      fiber: Fiber.Fiber<any>
+      onMessage: (message: string | ArrayBuffer) => Promise<void>
+    }
+  > = new Map()
 
   constructor(state: CfTypes.DurableObjectState, env: Env) {
     super(state, env)
@@ -64,12 +81,47 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
     const { 0: client, 1: server } = new WebSocketPair()
 
     // Accept the connection
+    // We'd use this for non-hibernated WebSocket connections
     // server.accept()
+    // server.addEventListener('message', (event) => {
+    //   console.log('message from client', event.data)
+    //   incomingQueue.offer(event.data).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    // })
 
     // Hibernate the server
     this.ctx.acceptWebSocket(server)
 
+    await this.launchServer(server)
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    })
+  }
+
+  async webSocketMessage(ws: CfTypes.WebSocket, message: string | ArrayBuffer): Promise<void> {
+    console.log('webSocketMessage', message, this.serverCtxMap.has(ws))
+    const { onMessage } = await this.launchServer(ws)
+
+    await onMessage(message)
+  }
+
+  webSocketClose(ws: CfDeclare.WebSocket, _code: number, _reason: string, _wasClean: boolean): void | Promise<void> {
+    const ctx = this.serverCtxMap.get(ws)
+    if (ctx) {
+      ctx.fiber.pipe(Fiber.interrupt, Effect.runFork)
+      this.serverCtxMap.delete(ws)
+    }
+  }
+
+  private launchServer = (ws: CfTypes.WebSocket) =>
     Effect.gen(this, function* () {
+      if (this.serverCtxMap.has(ws)) {
+        return this.serverCtxMap.get(ws)!
+      }
+
+      yield* Effect.logDebug(`Launching WebSocket Effect RPC server`)
+
       const syncBackendMap = new Map<string, SyncBackend.SyncBackend<SyncMessage.SyncMetadata>>()
 
       const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
@@ -88,77 +140,77 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
           syncBackendMap.set(key, syncBackend)
 
           return syncBackend
-        }).pipe(Effect.orDie, Effect.provide(FetchHttpClient.layer))
+        }).pipe(Effect.orDie)
 
       const incomingQueue = yield* Mailbox.make<Uint8Array<ArrayBufferLike> | string>()
 
-      // We'd use this for non-hibernated WebSocket connections
-      // server.addEventListener('message', (event) => {
-      //   console.log('message from client', event.data)
-      //   incomingQueue.offer(event.data).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-      // })
+      const fiber = yield* Effect.gen(function* () {
+        const ProtocolLive = layerRpcServerWebsocket({
+          send: (msg) => Effect.succeed(ws.send(msg)),
+          incomingQueue,
+        }).pipe(Layer.provide(RpcSerialization.layerJson))
 
-      this.incomingQueue = incomingQueue
+        const handlersLayer = DoRpcProxyRpcs.toLayer({
+          Connect: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              yield* syncBackend.connect
+            }),
+          Pull: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              return syncBackend.pull(args.args as any)
+            }).pipe(Stream.unwrap),
+          Push: ({ batch, ...args }) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              yield* syncBackend.push(batch)
+            }),
+          Ping: () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+              yield* syncBackend.ping
+            }).pipe(Effect.orDie),
+          IsConnected: () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+              return syncBackend.isConnected.changes
+            }).pipe(Stream.unwrap),
+          GetMetadata: () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
+              return syncBackend.metadata
+            }),
+        }).pipe(Layer.provide(ProtocolLive))
 
-      const ProtocolLive = layerRpcServerWebsocket({
-        send: (msg) => Effect.succeed(server.send(msg)),
-        incomingQueue,
-      }).pipe(Layer.provide(RpcSerialization.layerJson))
+        const ServerLive = RpcServer.layer(DoRpcProxyRpcs).pipe(
+          Layer.provide(handlersLayer),
+          Layer.provide(ProtocolLive),
+        )
 
-      const handlersLayer = DoRpcProxyRpcs.toLayer({
-        Connect: (args) =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend(args)
-            yield* syncBackend.connect
-          }),
-        Pull: (args) =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend(args)
-            return syncBackend.pull(args.args as any)
-          }).pipe(Stream.unwrap),
-        Push: ({ batch, ...args }) =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend(args)
-            yield* syncBackend.push(batch)
-          }),
-        Ping: () =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
-            yield* syncBackend.ping
-          }).pipe(Effect.orDie),
-        IsConnected: () =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
-            return syncBackend.isConnected.changes
-          }).pipe(Stream.unwrap),
-        GetMetadata: () =>
-          Effect.gen(function* () {
-            const syncBackend = yield* getSyncBackend({ clientId: 'test', storeId: 'test', payload: {} })
-            return syncBackend.metadata
-          }),
-      }).pipe(Layer.provide(ProtocolLive))
+        return yield* Layer.launch(ServerLive)
+      }).pipe(Effect.tapCauseLogPretty, Effect.scoped, Effect.provide(FetchHttpClient.layer), Effect.forkDaemon)
 
-      const ServerLive = RpcServer.layer(DoRpcProxyRpcs).pipe(Layer.provide(handlersLayer), Layer.provide(ProtocolLive))
+      const runtime = yield* Effect.runtime()
 
-      yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty)
-    }).pipe(Effect.tapCauseLogPretty, Effect.scoped, Effect.provide(FetchHttpClient.layer), Effect.runFork)
+      const ctx = {
+        fiber,
+        onMessage: (message: string | ArrayBuffer) =>
+          incomingQueue
+            .offer(message as Uint8Array<ArrayBufferLike> | string)
+            .pipe(Effect.asVoid, Effect.provide(runtime), Effect.runPromise),
+      }
 
-    return new Response(null, {
-      status: 101,
-      webSocket: client,
-    })
-  }
+      this.serverCtxMap.set(ws, ctx)
 
-  async webSocketMessage(_ws: CfTypes.WebSocket, message: string | ArrayBuffer): Promise<void> {
-    // console.log('webSocketMessage', message, this.incomingQueue !== undefined)
-    if (!this.incomingQueue) {
-      return
-    }
-
-    await this.incomingQueue
-      .offer(message as Uint8Array<ArrayBufferLike> | string)
-      .pipe(Effect.tapCauseLogPretty, Effect.runPromise)
-  }
+      return ctx
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      // Logger.withMinimumLogLevel(LogLevel.Debug), // Useful for debugging
+      Effect.provide(Logger.prettyWithThread('test-worker')),
+      Effect.withSpan('effect-ws-rpc-server'),
+      Effect.runPromise,
+    )
 }
 
 export default {
