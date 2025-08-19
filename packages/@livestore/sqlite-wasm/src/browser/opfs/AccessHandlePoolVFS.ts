@@ -20,7 +20,33 @@ const HEADER_OFFSET_DATA = SECTOR_SIZE
 const PERSISTENT_FILE_TYPES =
   VFS.SQLITE_OPEN_MAIN_DB | VFS.SQLITE_OPEN_MAIN_JOURNAL | VFS.SQLITE_OPEN_SUPER_JOURNAL | VFS.SQLITE_OPEN_WAL
 
-const DEFAULT_CAPACITY = 6
+// OPFS file pool capacity must be predicted rather than dynamically increased because
+// capacity expansion (addCapacity) is async while SQLite operations are synchronous.
+// We cannot await in the middle of sqlite3.step() calls without making the API async.
+//
+// We over-allocate because:
+// 1. SQLite’s temporary file usage is not part of its API contract.
+//    Future SQLite versions may create additional temporary files without notice.
+//    See: https://www.sqlite.org/tempfiles.html
+// 2. In the future, we may change how we operate the SQLite DBs,
+//    which may increase the number of files needed.
+//    e.g. enabling the WAL mode, using multi-DB transactions, etc.
+//
+// TRADEOFF: Higher capacity means the VFS opens and keeps more file handles, consuming
+// browser resources. Lower capacity risks "SQLITE_CANTOPEN" errors during operations.
+//
+// CAPACITY CALCULATION:
+// - 2 main databases (state + eventlog) × 4 files each (main, journal, WAL, shm) = 8 files
+// - Up to 5 SQLite temporary files (super-journal, temp DB, materializations,
+//   transient indices, VACUUM temp DB) = 5 files
+// - 3 old state databases after migrations for debugging during development = 3 files
+// - Safety buffer for future SQLite versions and unpredictable usage = 4 files
+// Total: 20 files
+//
+// References:
+// - https://sqlite.org/forum/info/a3da1e34d8
+// - https://www.sqlite.org/tempfiles.html
+const DEFAULT_CAPACITY = 20
 
 /**
  * This VFS uses the updated Access Handle API with all synchronous methods
@@ -213,6 +239,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    */
   getCapacity(): number {
     return this.#mapAccessHandleToName.size
+  }
+
+  /**
+   * Get all currently tracked SQLite file paths.
+   * This can be used by higher-level components for file management operations.
+   *
+   * @returns Array of currently active SQLite file paths
+   */
+  getTrackedFilePaths(): string[] {
+    return Array.from(this.#mapPathToAccessHandle.keys())
   }
 
   /**
