@@ -4,7 +4,7 @@ import { expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
 Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
-  const port = process.env.LIVESTORE_WS_PORT || process.env.LIVESTORE_SYNC_PORT
+  const port = process.env.LIVESTORE_WS_PORT
 
   const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
     Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
@@ -138,6 +138,132 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
       const chunks = yield* Stream.runCollect(stream)
       expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+    }, Effect.provide(ProtocolLive)),
+  )
+})
+
+Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
+  const port = process.env.LIVESTORE_WS_PORT
+
+  const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
+    Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
+    Layer.provide(Socket.layerWebSocketConstructorGlobal),
+    Layer.provide(RpcSerialization.layerJson),
+  )
+
+  Vitest.scopedLive(
+    'should maintain RPC functionality after hibernation',
+    Effect.fn(function* () {
+      console.log('🧪 Testing RPC server persistence across hibernation...')
+
+      // Step 1: Create client and test initial functionality
+      console.log('Step 1: Establishing initial connection and testing RPC methods...')
+      const client = yield* RpcClient.make(TestRpcs)
+
+      // Test various RPC methods to ensure full functionality
+      console.log('Testing initial ping...')
+      const ping1 = yield* client.Ping({ message: 'before hibernation' })
+      expect(ping1).toEqual({ response: 'Pong: before hibernation' })
+      console.log('✅ Initial ping successful')
+
+      console.log('Testing initial echo...')
+      const echo1 = yield* client.Echo({ text: 'hibernate test' })
+      expect(echo1).toEqual({ echo: 'Echo: hibernate test' })
+      console.log('✅ Initial echo successful')
+
+      console.log('Testing initial add...')
+      const add1 = yield* client.Add({ a: 10, b: 5 })
+      expect(add1).toEqual({ result: 15 })
+      console.log('✅ Initial add successful')
+
+      // Step 2: Wait for hibernation (DO hibernates after 10 seconds of inactivity)
+      // Reference: https://developers.cloudflare.com/durable-objects/best-practices/websockets/
+      // "When a Durable Object receives no events (like alarms) or messages for 10 seconds, 
+      // the Durable Object is evicted from memory to avoid unnecessary charges."
+      console.log('Step 2: Waiting for hibernation (12 seconds)...')
+      yield* Effect.sleep(12000)
+
+      // Step 3: Test RPC functionality after hibernation
+      console.log('Step 3: Testing RPC methods after hibernation...')
+
+      console.log('Testing ping after hibernation...')
+      const ping2 = yield* client.Ping({ message: 'after hibernation' })
+      expect(ping2).toEqual({ response: 'Pong: after hibernation' })
+      console.log('✅ Ping after hibernation successful')
+
+      console.log('Testing echo after hibernation...')
+      const echo2 = yield* client.Echo({ text: 'hibernation recovered' })
+      expect(echo2).toEqual({ echo: 'Echo: hibernation recovered' })
+      console.log('✅ Echo after hibernation successful')
+
+      console.log('Testing add after hibernation...')
+      const add2 = yield* client.Add({ a: 25, b: 15 })
+      expect(add2).toEqual({ result: 40 })
+      console.log('✅ Add after hibernation successful')
+
+      // Step 4: Test streaming after hibernation
+      console.log('Testing streaming after hibernation...')
+      const stream = client.Stream({}).pipe(
+        Stream.take(3),
+        Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
+      )
+      const chunks = yield* Stream.runCollect(stream)
+      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9]) // squares of 1,2,3
+      console.log('✅ Streaming after hibernation successful')
+
+      console.log('🎉 All RPC operations successful after hibernation!')
+    }, Effect.provide(ProtocolLive)),
+  )
+
+  Vitest.scopedLive(
+    'should handle rapid operations after hibernation',
+    Effect.fn(function* () {
+      console.log('🧪 Testing rapid operations after hibernation...')
+
+      console.log('Step 1: Establishing initial connection...')
+      const client = yield* RpcClient.make(TestRpcs)
+      yield* client.Ping({ message: 'setup' })
+      console.log('✅ Initial connection established')
+
+      // Wait for hibernation - Durable Objects hibernate after 10 seconds of inactivity
+      // Reference: https://developers.cloudflare.com/durable-objects/best-practices/websockets/
+      console.log('Step 2: Waiting for hibernation...')
+      yield* Effect.sleep(12000)
+
+      console.log('Step 3: Performing rapid operations after hibernation...')
+
+      // Perform multiple rapid operations to stress-test hibernation recovery
+      const operations = Array.from({ length: 5 }, (_, i) =>
+        Effect.gen(function* () {
+          const ping = yield* client.Ping({ message: `rapid-${i + 1}` })
+          const add = yield* client.Add({ a: i + 1, b: i + 2 })
+          const echo = yield* client.Echo({ text: `test-${i + 1}` })
+
+          return {
+            operation: i + 1,
+            ping: ping.response,
+            add: add.result,
+            echo: echo.echo,
+          }
+        }),
+      )
+
+      const results = yield* Effect.all(operations, { concurrency: 5 })
+
+      // Verify all operations succeeded with correct results
+      expect(results).toHaveLength(5)
+      results.forEach((result, i) => {
+        expect(result.operation).toBe(i + 1)
+        expect(result.ping).toBe(`Pong: rapid-${i + 1}`)
+        expect(result.add).toBe(i + 1 + (i + 2)) // a + b
+        expect(result.echo).toBe(`Echo: test-${i + 1}`)
+      })
+
+      console.log(
+        '✅ All rapid operations successful:',
+        results.map((r) => r.operation),
+      )
+      console.log('🎉 Rapid operations work correctly after hibernation!')
     }, Effect.provide(ProtocolLive)),
   )
 })

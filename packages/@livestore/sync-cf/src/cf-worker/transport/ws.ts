@@ -49,20 +49,6 @@ export const handleSyncMessage = ({
 
     const storage = makeStorage(ctx, env, storeId)
 
-    const pull = makePull({ storage })
-    const push = makePush({
-      storage,
-      requestId,
-      options,
-      rpcSubscriptions,
-      pushSemaphore,
-      currentHeadRef,
-      storeId,
-      payload,
-      ctx,
-      respond,
-    })
-
     switch (message._tag) {
       // TODO allow pulling concurrently to not block incoming push requests
       case 'SyncMessage.PullRequest': {
@@ -71,6 +57,8 @@ export const handleSyncMessage = ({
             UnexpectedError.mapToUnexpectedError,
           )
         }
+
+        const pull = makePull({ storage })
 
         yield* pull(message).pipe(
           Stream.tap(
@@ -96,6 +84,19 @@ export const handleSyncMessage = ({
         break
       }
       case 'SyncMessage.PushRequest': {
+        const push = makePush({
+          storage,
+          requestId,
+          options,
+          rpcSubscriptions,
+          pushSemaphore,
+          currentHeadRef,
+          storeId,
+          payload,
+          ctx,
+          respond,
+        })
+
         yield* push(message)
 
         break

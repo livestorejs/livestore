@@ -19,6 +19,7 @@ export const startWranglerDevServer = (args: StartWranglerDevServerArgs) =>
 // TODO refactor implementation with Effect
 // TODO add test for this
 // TODO allow for config to be passed in via code instead of `wrangler.toml` file
+// TODO fix zombie workerd processes causing high CPU usage - see https://github.com/livestorejs/livestore/issues/568
 /**
  * Starts a Wrangler dev server for testing with automatic cleanup.
  *
