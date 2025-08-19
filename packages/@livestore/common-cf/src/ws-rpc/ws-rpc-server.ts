@@ -1,17 +1,17 @@
 /**
  * @fileoverview WebSocket RPC server implementation for Cloudflare Durable Objects.
- * 
+ *
  * This module provides functionality to set up WebSocket-based RPC communication
  * on Cloudflare Durable Objects with hibernation support. It handles the complete
  * lifecycle of WebSocket RPC servers, including message routing, protocol handling,
  * and automatic recovery after hibernation cycles.
- * 
+ *
  * Key features:
  * - Hibernation-compatible WebSocket handling
- * - Automatic RPC server lifecycle management  
+ * - Automatic RPC server lifecycle management
  * - Effect-based RPC protocol implementation
  * - Cost optimization through hibernation support
- * 
+ *
  * @see {@link https://developers.cloudflare.com/durable-objects/best-practices/websockets/ Cloudflare WebSocket Best Practices}
  */
 
@@ -37,7 +37,7 @@ import type * as CfTypes from '../cf-types.ts'
 export interface DurableObjectWebSocketRpcConfig {
   /** The Durable Object instance to configure */
   doSelf: CfTypes.DurableObject
-  /** 
+  /**
    * WebSocket handling mode:
    * - 'hibernate': Use hibernation-compatible WebSocket handling (recommended for cost optimization)
    * - 'accept': Use traditional WebSocket handling (not yet implemented)
@@ -49,42 +49,42 @@ export interface DurableObjectWebSocketRpcConfig {
 
 /**
  * Sets up WebSocket RPC functionality on a Cloudflare Durable Object with hibernation support.
- * 
+ *
  * Configures hibernation-compatible WebSocket RPC communication using Effect's type-safe RPC framework.
  * Hibernation reduces costs by evicting DOs from memory after 10 seconds of inactivity while keeping
  * WebSocket connections alive and automatically restoring RPC server state when the DO wakes up.
- * 
+ *
  * **Effect RPC Integration:**
  * - Uses Effect's RPC framework for type-safe client-server communication
  * - Supports streaming responses, error handling, and automatic serialization
  * - Handlers are defined as Effect operations for composable, testable logic
  * - Provides automatic message routing and protocol management
- * 
+ *
  * **Hibernation Benefits:**
  * - Cost optimization: DOs hibernate after 10 seconds of inactivity
  * - Persistent connections: WebSocket connections survive hibernation
  * - Automatic recovery: RPC infrastructure restores seamlessly on wake-up
- * 
+ *
  * **Usage Example:**
  * ```typescript
  * export class MyDurableObject extends DurableObject {
  *   constructor(state: DurableObjectState, env: Env) {
  *     super(state, env)
- *     
+ *
  *     const handlersLayer = MyRpcs.toLayer({
  *       Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
  *       // ... other RPC handlers
  *     })
- *     
+ *
  *     const ServerLive = RpcServer.layer(MyRpcs).pipe(Layer.provide(handlersLayer))
- *     
+ *
  *     setupDurableObjectWebSocketRpc({
  *       doSelf: this,
  *       rpcLayer: ServerLive,
  *       webSocketMode: 'hibernate',
  *     })
  *   }
- *   
+ *
  *   async fetch(request: Request): Promise<Response> {
  *     // Handle WebSocket upgrades
  *     const { 0: client, 1: server } = new WebSocketPair()
@@ -93,17 +93,17 @@ export interface DurableObjectWebSocketRpcConfig {
  *   }
  * }
  * ```
- * 
+ *
  * **What this function does:**
  * 1. Sets up WebSocket message routing and RPC protocol handling
  * 2. Configures hibernation-compatible WebSocket handlers (`webSocketMessage`, `webSocketClose`)
  * 3. Manages RPC server lifecycle (start, stop, cleanup)
  * 4. Handles incoming queue management for message processing
  * 5. Provides automatic recovery after hibernation cycles
- * 
+ *
  * @param config Configuration for WebSocket RPC setup
  * @returns Configured WebSocket handler functions
- * 
+ *
  * @see {@link https://developers.cloudflare.com/durable-objects/best-practices/websockets/ Cloudflare WebSocket Best Practices}
  * @see {@link https://effect-ts.github.io/effect/docs/rpc Effect RPC Documentation}
  */
@@ -200,13 +200,13 @@ export interface WsRpcServerArgs {
 
 /**
  * Creates an RPC server protocol layer for WebSocket communication.
- * 
+ *
  * This layer handles the low-level WebSocket protocol details for RPC communication,
  * including message serialization, routing, and error handling.
- * 
+ *
  * @param args Configuration for WebSocket RPC protocol
  * @returns Effect layer that provides RPC server protocol functionality
- * 
+ *
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
@@ -214,13 +214,13 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.
- * 
+ *
  * Handles message parsing, encoding, streaming, and client lifecycle management
  * for WebSocket-based RPC communication in Durable Objects.
- * 
+ *
  * @param args WebSocket RPC server configuration
  * @returns Effect that provides the RPC protocol implementation
- * 
+ *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
 const makeSocketProtocol = ({ incomingQueue, send: writeRaw }: WsRpcServerArgs) =>

@@ -178,7 +178,7 @@ Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
 
       // Step 2: Wait for hibernation (DO hibernates after 10 seconds of inactivity)
       // Reference: https://developers.cloudflare.com/durable-objects/best-practices/websockets/
-      // "When a Durable Object receives no events (like alarms) or messages for 10 seconds, 
+      // "When a Durable Object receives no events (like alarms) or messages for 10 seconds,
       // the Durable Object is evicted from memory to avoid unnecessary charges."
       console.log('Step 2: Waiting for hibernation (12 seconds)...')
       yield* Effect.sleep(12000)
