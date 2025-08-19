@@ -54,8 +54,6 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
             storage: makeStorage(ctx, env, req.storeId),
             requestId: req.requestId,
             ctx: ctx,
-            // TODO: Implement proper respond
-            respond: (message) => Effect.succeed(message),
             currentHeadRef,
             storeId: req.storeId,
             payload: undefined,
@@ -64,9 +62,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
             options: options.doOptions,
           })
 
-          yield* push(req)
-
-          return SyncMessage.PushAck.make({ requestId: req.requestId })
+          return yield* push(req)
         }).pipe(
           Effect.mapError((error) => SyncMessage.SyncError.make({ message: error.message, requestId: req.requestId })),
         ),

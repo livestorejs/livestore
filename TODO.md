@@ -31,6 +31,7 @@
   - [ ] Make storage (local SQLite vs D1) configurable
 - Sync provider tests
   - [ ] Write more sync provider tests
+  - [ ] Tests for concurrent pulls / sequential pushes
   - [ ] Property-based testing for various non-happy path scenarios / chaos testing
   - [ ] Make Electric sync provider tests stateless (i.e. reset docker compose containers between tests)
   - [ ] Test `payload` parameter

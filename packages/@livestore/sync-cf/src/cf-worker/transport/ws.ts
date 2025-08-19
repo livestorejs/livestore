@@ -94,10 +94,10 @@ export const handleSyncMessage = ({
           storeId,
           payload,
           ctx,
-          respond,
         })
 
-        yield* push(message)
+        const pushRes = yield* push(message)
+        yield* respond(pushRes)
 
         break
       }

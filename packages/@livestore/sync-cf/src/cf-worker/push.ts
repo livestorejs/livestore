@@ -22,7 +22,6 @@ export const makePush =
     storeId,
     payload,
     ctx,
-    respond,
   }: {
     options: MakeDurableObjectClassOptions | undefined
     storage: SyncStorage
@@ -33,23 +32,13 @@ export const makePush =
     storeId: StoreId
     payload: Schema.JsonValue | undefined
     ctx: CfTypes.DurableObjectState
-    respond: (message: SyncMessage.BackendToClientMessage) => Effect.Effect<void, UnexpectedError>
   }) =>
   (decodedMessage: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
 
-      const respondPush = (message: SyncMessage.PushAck | SyncMessage.SyncError) =>
-        Effect.gen(function* () {
-          if (options?.onPushRes) {
-            yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnexpectedError.mapToUnexpectedError)
-          }
-          yield* respond(message)
-        })
-
       if (decodedMessage.batch.length === 0) {
-        yield* respondPush(SyncMessage.PushAck.make({ requestId }))
-        return
+        return SyncMessage.PushAck.make({ requestId })
       }
 
       yield* pushSemaphore.take(1)
@@ -89,18 +78,12 @@ export const makePush =
           `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHeadRef.current}`,
         )
 
-        yield* respondPush(
-          SyncMessage.SyncError.make({
-            message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHeadRef.current}`,
-            requestId,
-            storeId,
-          }),
-        )
-
-        return
+        return yield* SyncMessage.SyncError.make({
+          message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHeadRef.current}`,
+          requestId,
+          storeId,
+        })
       }
-
-      yield* respondPush(SyncMessage.PushAck.make({ requestId }))
 
       const createdAt = new Date().toISOString()
 
@@ -115,38 +98,54 @@ export const makePush =
 
       yield* pushSemaphore.release(1)
 
-      const connectedClients = ctx.getWebSockets()
+      // Run in background but already return the push ack to the client
+      yield* Effect.gen(function* () {
+        const connectedClients = ctx.getWebSockets()
 
-      // Dual broadcasting: WebSocket + RPC clients
-      const pullRes = SyncMessage.PullResponse.make({
-        batch: decodedMessage.batch.map((eventEncoded) => ({
-          eventEncoded,
-          metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-        })),
-        remaining: 0,
-        requestId: { context: 'push', requestId },
-      })
+        // Dual broadcasting: WebSocket + RPC clients
+        const pullRes = SyncMessage.PullResponse.make({
+          batch: decodedMessage.batch.map((eventEncoded) => ({
+            eventEncoded,
+            metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+          })),
+          remaining: 0,
+          requestId: { context: 'push', requestId },
+        })
 
-      // Broadcast to WebSocket clients
-      if (connectedClients.length > 0) {
-        const pullResEnc = encodeOutgoingMessage(pullRes)
+        // Broadcast to WebSocket clients
+        if (connectedClients.length > 0) {
+          const pullResEnc = encodeOutgoingMessage(pullRes)
 
-        // Only calling once for now.
-        if (options?.onPullRes) {
-          yield* Effect.tryAll(() => options.onPullRes!(pullRes)).pipe(UnexpectedError.mapToUnexpectedError)
+          // Only calling once for now.
+          if (options?.onPullRes) {
+            yield* Effect.tryAll(() => options.onPullRes!(pullRes)).pipe(UnexpectedError.mapToUnexpectedError)
+          }
+
+          // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
+          for (const conn of connectedClients) {
+            conn.send(pullResEnc)
+          }
+
+          console.debug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
         }
 
-        // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
-        for (const conn of connectedClients) {
-          conn.send(pullResEnc)
+        // RPC broadcasting would require reconstructing client stubs from clientIds
+        // For now, we'll implement this later when we have the proper client registry
+        if (rpcSubscriptions.size > 0) {
+          // TODO re-write DO RPC to be poke-to-pull based (i.e. sync backend calls back to client DOs)
+          console.debug(`RPC clients registered: ${rpcSubscriptions.size} (broadcasting not yet implemented)`)
         }
 
-        console.debug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
-      }
+        // TODO double check forking is safe here and won't be interrupted by the RPC server
+      }).pipe(Effect.fork)
 
-      // RPC broadcasting would require reconstructing client stubs from clientIds
-      // For now, we'll implement this later when we have the proper client registry
-      if (rpcSubscriptions.size > 0) {
-        console.debug(`RPC clients registered: ${rpcSubscriptions.size} (broadcasting not yet implemented)`)
-      }
-    })
+      return SyncMessage.PushAck.make({ requestId })
+    }).pipe(
+      Effect.tap(
+        Effect.fn(function* (message) {
+          if (options?.onPushRes) {
+            yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnexpectedError.mapToUnexpectedError)
+          }
+        }),
+      ),
+    )

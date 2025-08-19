@@ -1,5 +1,5 @@
 import { SyncBackend } from '@livestore/common'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/livestore'
+import { EventSequenceNumber, LiveStoreEvent, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import {
   Chunk,
@@ -40,8 +40,10 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
 
 Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<SyncProviderImpl | HttpClient.HttpClient, never>
+  let testId: string
 
   Vitest.beforeAll(async () => {
+    testId = nanoid()
     runtime = ManagedRuntime.make(
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
@@ -61,7 +63,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
       Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider({
           // Isolated store for each provider and test to avoid conflicts
-          storeId: `test-store-${name}-${testName}`,
+          storeId: `test-store-${name}-${testName}-${testId}`,
           clientId: 'test-client',
           payload: undefined,
         }),

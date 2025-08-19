@@ -67,8 +67,6 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
           storage: options.makeStorage(req.storeId),
           requestId: req.requestId,
           ctx: options.ctx,
-          // TODO: Implement proper respond
-          respond: (message) => Effect.succeed(message),
           currentHeadRef: options.currentHeadRef,
           storeId: req.storeId,
           payload: undefined,
@@ -77,9 +75,7 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
           options: options.doOptions,
         })
 
-        yield* push(req)
-
-        return SyncMessage.PushAck.make({ requestId: req.requestId })
+        return yield* push(req)
       }).pipe(
         Effect.mapError((e) =>
           SyncMessage.SyncError.make({

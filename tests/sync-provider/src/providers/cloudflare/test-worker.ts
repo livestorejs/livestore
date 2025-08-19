@@ -30,12 +30,12 @@ export interface Env {
 }
 
 export class SyncBackendDO extends makeDurableObject({
-  onPush: async (message) => {
-    console.log('onPush', message.batch)
-  },
-  onPull: async (message) => {
-    console.log('onPull', message)
-  },
+  // onPush: async (message) => {
+  //   console.log('onPush', message.batch)
+  // },
+  // onPull: async (message) => {
+  //   console.log('onPull', message)
+  // },
 }) {}
 
 const DurableObjectBase = DurableObject as any as new (
