@@ -1,0 +1,13 @@
+{
+  "name": "@local/tests-wa-sqlite",
+  "version": "0.0.54-dev.23",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@livestore/wa-sqlite": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "scripts": {
+    "test": "vitest"
+  }
+}

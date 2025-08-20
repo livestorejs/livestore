@@ -64,6 +64,7 @@
     "prepare": "husky",
     "test": "CI=1 pnpm --parallel run test",
     "test:perf": "pnpm --filter '@local/tests-perf' test",
+    "test:wa-sqlite": "pnpm --filter '@local/tests-wa-sqlite' test",
     "update-lockfile": "CI=1 pnpm install --lockfile-only"
   }
 }

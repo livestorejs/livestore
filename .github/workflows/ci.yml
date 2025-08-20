@@ -139,6 +139,26 @@ jobs:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
+  wa-sqlite-test:
+    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+      - name: Run wa-sqlite tests
+        run: pnpm test:wa-sqlite
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
+          GRAFANA_ENDPOINT: https://livestore.grafana.net
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true

@@ -1481,6 +1481,8 @@ importers:
         specifier: 2.0.1
         version: 2.0.1(@opentelemetry/api@1.9.0)
 
+  packages/@livestore/wa-sqlite: {}
+
   packages/@livestore/webmesh:
     dependencies:
       '@livestore/utils':
@@ -1696,6 +1698,15 @@ importers:
       vite:
         specifier: 7.0.6
         version: 7.0.6(@types/node@24.2.0)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
+
+  tests/wa-sqlite:
+    devDependencies:
+      '@livestore/wa-sqlite':
+        specifier: file:../../wa-sqlite
+        version: file:wa-sqlite
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
 
 packages:
 
@@ -3409,6 +3420,9 @@ packages:
 
   '@livestore/wa-sqlite@1.0.8-dev.4':
     resolution: {integrity: sha512-3/Ps7upJ0N9BQxodvEctj5/M+pev6hCIW1F2g3f8/bzYgmT6+6KtUGO+UOSnv6IXsn0OqvGUeij22bWHpf2emw==}
+
+  '@livestore/wa-sqlite@file:wa-sqlite':
+    resolution: {directory: wa-sqlite, type: directory}
 
   '@mapbox/node-pre-gyp@2.0.0':
     resolution: {integrity: sha512-llMXd39jtP0HpQLVI37Bf1m2ADlEb35GYSh1SDSLsBhR+5iCxiNGlT31yqbNtVHygHAtMy6dWFERpU2JgufhPg==}
@@ -14725,6 +14739,8 @@ snapshots:
       vite: 7.0.6(@types/node@24.2.0)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
 
   '@livestore/wa-sqlite@1.0.8-dev.4': {}
+
+  '@livestore/wa-sqlite@file:wa-sqlite': {}
 
   '@mapbox/node-pre-gyp@2.0.0':
     dependencies:
