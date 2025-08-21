@@ -15,7 +15,7 @@ const adapter = makeAdapter({
 	storage: { type: 'fs' },
 	// or in-memory:
 	// storage: { type: 'in-memory' },
-	sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
+	sync: { backend: makeWsSync({ url: 'ws://localhost:8787' }) },
 	// To enable devtools:
 	// devtools: { schemaPath: new URL('./schema.ts', import.meta.url) },
 })
@@ -40,6 +40,6 @@ const adapter = makeAdapter({
 	storage: { type: 'fs' },
 	// or in-memory:
 	// storage: { type: 'in-memory' },
-	sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
+	sync: { backend: makeWsSync({ url: 'ws://localhost:8787' }) },
 })
 ```

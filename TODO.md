@@ -16,19 +16,18 @@
 
 ## Next steps 2025-08-16
 
-- [ ] Refactor `SyncProvider` types
-  - [ ] Rename to `SyncProvider` instead of `SyncBackend`
+- [ ] Refactor `@livestore/sync-cf`
+  - [ ] Make `pull` DB querying streaming based
+  - [ ] Use `ctx.blockConcurrency` instead of `pushSemaphore`
+  - [ ] Refactor DO RPC transport streaming implementation to be "poking-to-pull" based
+  - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
+  - [ ] Make storage (local SQLite vs D1) configurable
 - [ ] CF DO adapter
   - [ ] Clean up CF DO client adapter example
   - [ ] Write docs for CF DO client adapter
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
+  - [ ] Create CF worker only example (without DO)
 - [ ] Lay foundation for S2 sync backend
-- [ ] Refactor `@livestore/sync-cf`
-  - [ ] Make `pull` DB querying streaming based
-  - [ ] Refactor DO RPC transport streaming implementation to be "poking-to-pull" based
-  - [ ] Move DO related files into `worker/durable-object` directory
-  - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
-  - [ ] Make storage (local SQLite vs D1) configurable
 - Sync provider tests
   - [ ] Write more sync provider tests
   - [ ] Tests for concurrent pulls / sequential pushes
@@ -38,6 +37,7 @@
   - [ ] Sometimes tests "get stuck" / don't finish
   - [ ] Performance/load testing
 - Cleanup work
+  - [ ] Rename to `SyncProvider` instead of `SyncBackend`
   - [ ] Reduce logs of sync provider tests
 
 ## Future work

@@ -2,8 +2,8 @@ import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
-import { SyncMetadata } from '../common/sync-message-types.ts'
-import { type Env, PERSISTENCE_FORMAT_VERSION, type StoreId } from './shared.ts'
+import { SyncMetadata } from '../../common/sync-message-types.ts'
+import { type Env, PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
 import { eventlogTable } from './sqlite.ts'
 
 export type SyncStorage = {

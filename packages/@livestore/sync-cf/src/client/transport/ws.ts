@@ -24,6 +24,13 @@ import type { SyncMetadata } from '../../common/sync-message-types.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
 
 export interface WsSyncOptions {
+  /**
+   * URL of the sync backend
+   *
+   * The protocol can either `http`/`https` or `ws`/`wss`
+   *
+   * @example 'https://sync.example.com'
+   */
   url: string
   /**
    * Optional WebSocket factory for custom WebSocket implementations (e.g., Cloudflare Durable Objects)
@@ -48,17 +55,27 @@ export interface WsSyncOptions {
   }
 }
 
-export const makeCfSync =
+/**
+ * Creates a sync backend that uses WebSocket to communicate with the sync backend.
+ *
+ * @example
+ * ```ts
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const syncBackend = makeWsSync({ url: 'wss://sync.example.com' })
+ */
+export const makeWsSync =
   (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
         storeId,
         payload,
+        transport: 'ws',
       }).pipe(UnexpectedError.mapToUnexpectedError)
 
       const urlParams = UrlParams.fromInput(urlParamsData)
-      const wsUrl = `${options.url}/sync?${UrlParams.toString(urlParams)}`
+      const wsUrl = `${options.url}?${UrlParams.toString(urlParams)}`
 
       const isConnected = yield* SubscriptionRef.make(false)
 

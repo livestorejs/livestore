@@ -168,7 +168,7 @@
   later):
   ```ts
   const adapter = makePersistedAdapter({
-    sync: { backend: makeCfSync({ url: `https://...` }) },
+    sync: { backend: makeWsSync({ url: `https://...` }) },
   });
   ```
 
@@ -319,7 +319,7 @@
   `graphql` from peer dependencies of `@livestore/livestore`.
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to
   `store._dev.downloadDb()`
-- Breaking `@livestore/sync-cf`: Renamed `makeWsSync` to `makeCfSync`
+- Breaking `@livestore/sync-cf`: Renamed `makeWsSync` to `makeWsSync`
 
 ### Notable improvements & fixes
 

@@ -10,15 +10,26 @@ import {
   RpcClient,
   RpcSerialization,
   Schedule,
+  Schema,
   Stream,
   SubscriptionRef,
+  UrlParams,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
+import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
 export interface HttpSyncOptions {
-  baseUrl: string
+  /**
+   * URL of the sync backend
+   *
+   * @example
+   * ```ts
+   * const syncBackend = makeHttpSync({ url: 'https://sync.example.com' })
+   * ```
+   */
+  url: string
   headers?: Record<string, string>
   ping?: {
     /**
@@ -48,9 +59,17 @@ export const makeHttpSync =
       // Based on ping responses
       const isConnected = yield* SubscriptionRef.make(false)
 
+      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+        storeId,
+        payload,
+        transport: 'http',
+      }).pipe(UnexpectedError.mapToUnexpectedError)
+
+      const urlParams = UrlParams.fromInput(urlParamsData)
+
       // Setup HTTP RPC Protocol
       const HttpProtocolLive = RpcClient.layerProtocolHttp({
-        url: `${options.baseUrl}/http-rpc`,
+        url: `${options.url}?${UrlParams.toString(urlParams)}`,
         transformClient: HttpClient.mapRequest((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -146,7 +165,7 @@ export const makeHttpSync =
           name: '@livestore/cf-sync-http',
           description: 'LiveStore sync backend implementation using HTTP RPC',
           protocol: 'http',
-          url: options.baseUrl,
+          url: options.url,
         },
         supports: {
           pullRemainingCount: true,

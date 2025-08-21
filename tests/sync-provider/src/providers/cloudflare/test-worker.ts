@@ -7,8 +7,8 @@ import type { CfDeclare } from '@livestore/common-cf/declare'
 import {
   type CfTypes,
   type ClientDOInterface,
-  handleHttp,
-  handleSync,
+  getSyncRequestSearchParams,
+  handleSyncRequest,
   makeDurableObject,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
@@ -149,12 +149,14 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
 export default {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
-    if (url.pathname.endsWith('/sync')) {
-      return handleSync(request, env, ctx)
-    }
-
-    if (url.pathname.endsWith('/http-rpc')) {
-      return handleHttp(request, env, ctx)
+    const requestParamsResult = getSyncRequestSearchParams(request)
+    if (requestParamsResult._tag === 'Some') {
+      return handleSyncRequest({
+        request,
+        searchParams: requestParamsResult.value,
+        env,
+        ctx,
+      })
     }
 
     if (url.pathname.endsWith('/do-rpc-ws-proxy')) {

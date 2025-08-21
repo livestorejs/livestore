@@ -1,9 +1,9 @@
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
-import { Effect, UrlParams } from '@livestore/utils/effect'
-import { type CfTypes, SearchParamsSchema } from '../common/mod.ts'
+import { Effect } from '@livestore/utils/effect'
+import type { CfTypes, SearchParams } from '../common/mod.ts'
 import type { CfDeclare } from './mod.ts'
-import type { Env } from './shared.ts'
+import { DEFAULT_SYNC_DURABLE_OBJECT_NAME, type Env, getSyncRequestSearchParams } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Response extends CfDeclare.Response {}
@@ -99,19 +99,18 @@ export const makeWorker = <
         })
       }
 
-      if (request.method === 'POST' && url.pathname.endsWith('/http-rpc')) {
-        return handleHttp<TEnv, TDurableObjectRpc>(request, env, _ctx, {
-          headers: corsHeaders,
-          validatePayload: options.validatePayload,
-          durableObject: options.durableObject,
-        })
-      }
-
-      if (url.pathname.endsWith('/sync')) {
-        return handleSync<TEnv, TDurableObjectRpc>(request, env, _ctx, {
-          headers: corsHeaders,
-          validatePayload: options.validatePayload,
-          durableObject: options.durableObject,
+      const requestParamsResult = getSyncRequestSearchParams(request)
+      if (requestParamsResult._tag === 'Some') {
+        return handleSyncRequest<TEnv, TDurableObjectRpc>({
+          request,
+          searchParams: requestParamsResult.value,
+          env,
+          ctx: _ctx,
+          options: {
+            headers: corsHeaders,
+            validatePayload: options.validatePayload,
+            durableObject: options.durableObject,
+          },
         })
       }
 
@@ -143,11 +142,19 @@ export const makeWorker = <
  *
  * export default {
  *   fetch: async (request, env, ctx) => {
- *     if (request.url.endsWith('/sync')) {
- *       return handleSync(request, env, ctx, { headers: {}, validatePayload })
+ *     const requestParamsResult = getSyncRequestSearchParams(request)
+ *
+ *     // Is LiveStore sync request
+ *     if (requestParamsResult._tag === 'Some') {
+ *       return handleSyncRequest({
+ *         request,
+ *         searchParams: requestParamsResult.value,
+ *         env,
+ *         ctx,
+ *         options: { headers: {}, validatePayload }
+ *       })
  *     }
  *
- *     return new Response('Invalid path', { status: 400 })
  *     return new Response('Invalid path', { status: 400 })
  *   }
  * }
@@ -155,34 +162,29 @@ export const makeWorker = <
  *
  * @throws {UnexpectedError} If the payload is invalid
  */
-export const handleSync = <
+export const handleSyncRequest = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
->(
-  request: CfTypes.Request<CFHostMetada>,
-  env: TEnv,
-  _ctx: CfTypes.ExecutionContext,
-  options: {
+>({
+  request,
+  searchParams,
+  env,
+  options = {},
+}: {
+  request: CfTypes.Request<CFHostMetada>
+  searchParams: SearchParams
+  env: TEnv
+  /** Only there for type-level reasons */
+  ctx: CfTypes.ExecutionContext
+  options?: {
     headers?: CfTypes.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
-  } = {},
-): Promise<CfTypes.Response> =>
+  }
+}): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
-    const url = new URL(request.url)
-
-    const urlParams = UrlParams.fromInput(url.searchParams)
-    const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)
-
-    if (paramsResult._tag === 'Left') {
-      return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
-        status: 500,
-        headers: options?.headers,
-      })
-    }
-
-    const { storeId, payload } = paramsResult.right
+    const { storeId, payload, transport } = searchParams
 
     if (options.validatePayload !== undefined) {
       const result = yield* Effect.promise(async () => options.validatePayload!(payload, { storeId })).pipe(
@@ -196,7 +198,7 @@ export const handleSync = <
       }
     }
 
-    const durableObjectName = options.durableObject?.name ?? 'SYNC_BACKEND_DO'
+    const durableObjectName = options.durableObject?.name ?? DEFAULT_SYNC_DURABLE_OBJECT_NAME
     if (!(durableObjectName in env)) {
       return new Response(
         `Failed dependency: Required Durable Object binding '${durableObjectName as string}' not available`,
@@ -214,55 +216,14 @@ export const handleSync = <
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)
 
+    // Handle WebSocket upgrade request
     const upgradeHeader = request.headers.get('Upgrade')
-    if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    if (transport === 'ws' && (upgradeHeader === null || upgradeHeader !== 'websocket')) {
       return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
         headers: options?.headers,
       })
     }
-
-    // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
-    return yield* Effect.promise(() => durableObject.fetch(request))
-  }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
-
-export const handleHttp = <
-  TEnv extends Env = Env,
-  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
-  CFHostMetada = unknown,
->(
-  request: CfTypes.Request<CFHostMetada>,
-  env: TEnv,
-  _ctx: CfTypes.ExecutionContext,
-  options: {
-    headers?: CfTypes.HeadersInit
-    durableObject?: MakeWorkerOptions<TEnv>['durableObject']
-    validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
-  } = {},
-) =>
-  Effect.gen(function* () {
-    const storeId = request.headers.get('x-livestore-store-id')
-    if (!storeId) {
-      return new Response('Missing x-livestore-store-id header', { status: 400, headers: options.headers })
-    }
-
-    const durableObjectName = options.durableObject?.name ?? 'SYNC_BACKEND_DO'
-    if (!(durableObjectName in env)) {
-      return new Response(
-        `Failed dependency: Required Durable Object binding '${durableObjectName as string}' not available`,
-        {
-          status: 424,
-          headers: options.headers,
-        },
-      )
-    }
-
-    const durableObjectNamespace = env[
-      durableObjectName as keyof TEnv
-    ] as CfTypes.DurableObjectNamespace<TDurableObjectRpc>
-
-    const id = durableObjectNamespace.idFromName(storeId)
-    const durableObject = durableObjectNamespace.get(id)
 
     return yield* Effect.promise(() => durableObject.fetch(request))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)

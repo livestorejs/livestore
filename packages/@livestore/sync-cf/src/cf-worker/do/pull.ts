@@ -1,6 +1,6 @@
 import { Effect, identity, pipe, ReadonlyArray, Stream } from '@livestore/utils/effect'
-import { SyncMessage } from '../common/mod.ts'
-import { PULL_CHUNK_SIZE } from './shared.ts'
+import { SyncMessage } from '../../common/mod.ts'
+import { PULL_CHUNK_SIZE } from '../shared.ts'
 import type { SyncStorage } from './sync-storage.ts'
 
 export const makePull =

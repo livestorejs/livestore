@@ -1,5 +1,5 @@
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+import { Effect, type Option, Schema, UrlParams } from '@livestore/utils/effect'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
 export interface Env {
@@ -20,6 +20,16 @@ export type MakeDurableObjectClassOptions = {
   ) => Effect.SyncOrPromiseOrEffect<void>
   onPullRes?: (message: SyncMessage.PullResponse | SyncMessage.SyncError) => Effect.SyncOrPromiseOrEffect<void>
   // TODO make storage configurable: D1, DO SQLite, later: external SQLite
+
+  /**
+   * Enabled transports for sync backend
+   * - `http`: HTTP JSON-RPC
+   * - `ws`: WebSocket
+   * - `do-rpc`: Durable Object RPC calls (only works in combination with `@livestore/adapter-cf`)
+   *
+   * @default Set(['http', 'ws', 'do-rpc'])
+   */
+  enabledTransports?: Set<'http' | 'ws' | 'do-rpc'>
 }
 
 export type StoreId = string
@@ -32,19 +42,22 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
+export const DEFAULT_SYNC_DURABLE_OBJECT_NAME = 'SYNC_BACKEND_DO'
+
 export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
 export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
 
-export const getRequestSearchParams = (request: CfTypes.Request) => {
+export const getSyncRequestSearchParams = (request: CfTypes.Request): Option.Option<typeof SearchParamsSchema.Type> => {
   const url = new URL(request.url)
   const urlParams = UrlParams.fromInput(url.searchParams)
-  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.runSync)
+  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
+
   return paramsResult
 }
 
 export const PULL_CHUNK_SIZE = 100
 
-// RPC subscription storage
+// RPC subscription storage (TODO refactor)
 export type RpcSubscription = {
   clientId: string
   storeId: StoreId

@@ -1,5 +1,5 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
-import { makeCfSync } from '@livestore/sync-cf/client'
+import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
@@ -18,7 +18,7 @@ const layer = Layer.mergeAll(
 
 makeWorkerEffect({
   sync: {
-    backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
+    backend: makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
   },
   schema,
 }).pipe(Effect.provide(layer), PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }))

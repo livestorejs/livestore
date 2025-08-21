@@ -10,11 +10,11 @@ import {
   Schedule,
   Stream,
 } from '@livestore/utils/effect'
-import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
-import { SyncMessage } from '../../common/mod.ts'
+import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
+import { SyncMessage } from '../../../common/mod.ts'
+import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
 import { makePull } from '../pull.ts'
 import { makePush } from '../push.ts'
-import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../shared.ts'
 import { makeStorage } from '../sync-storage.ts'
 
 export interface DoRpcHandlerOptions {
@@ -25,12 +25,12 @@ export interface DoRpcHandlerOptions {
   rpcSubscriptions: Map<StoreId, RpcSubscription>
   currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
   payload: Uint8Array<ArrayBuffer>
-  ensureProps: (storeId: StoreId) => void
+  ensureStorageCache: (storeId: StoreId) => void
 }
 
 export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
   Effect.gen(this, function* () {
-    const { ctx, env, pushSemaphore, rpcSubscriptions, currentHeadRef, payload, ensureProps } = options
+    const { ctx, env, pushSemaphore, rpcSubscriptions, currentHeadRef, payload, ensureStorageCache } = options
 
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': (_req) => {
@@ -38,7 +38,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
       },
       'SyncDoRpc.Pull': (req) =>
         Effect.gen(this, function* () {
-          ensureProps(req.storeId)
+          ensureStorageCache(req.storeId)
           const pull = makePull({ storage: makeStorage(ctx, env, req.storeId) })
 
           return pull(req)
@@ -48,7 +48,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
         ),
       'SyncDoRpc.Push': (req) =>
         Effect.gen(this, function* () {
-          ensureProps(req.storeId)
+          ensureStorageCache(req.storeId)
 
           const push = makePush({
             storage: makeStorage(ctx, env, req.storeId),
@@ -72,7 +72,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
         ),
       'SyncDoRpc.Subscribe': (req) =>
         Effect.gen(this, function* () {
-          ensureProps(req.storeId)
+          ensureStorageCache(req.storeId)
 
           // const subscribe = makeSubscribe({ storage: makeStorage(ctx, env, req.storeId), requestId: 'ping' })
 
@@ -90,7 +90,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
         }).pipe(Stream.unwrap),
       'SyncDoRpc.Unsubscribe': (req) =>
         Effect.gen(this, function* () {
-          ensureProps(req.storeId)
+          ensureStorageCache(req.storeId)
         }),
     })
 

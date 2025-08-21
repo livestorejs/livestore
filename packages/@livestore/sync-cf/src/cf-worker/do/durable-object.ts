@@ -9,14 +9,12 @@ import { Effect, Logger, LogLevel, Predicate, RpcMessage, Schema, type Scope } f
 import {
   type DurableObjectId,
   type Env,
-  getRequestSearchParams,
+  getSyncRequestSearchParams,
   type MakeDurableObjectClassOptions,
   type RpcSubscription,
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
-} from './shared.ts'
-
-export type { CfTypes } from '@livestore/common-cf'
+} from '../shared.ts'
 
 import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage, type SyncStorage } from './sync-storage.ts'
@@ -25,6 +23,7 @@ import { createHttpRpcHandler } from './transport/http-rpc.ts'
 import { makeRpcServer } from './transport/ws.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
+// TODO get rid of those once CF fixed their type mismatch in the worker types
 declare class Request extends CfDeclare.Request {}
 declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
@@ -35,23 +34,11 @@ const DurableObjectBase = DurableObject as any as new (
   env: Env,
 ) => CfTypes.DurableObject
 
-// RPC interface for sync backend - allows client DOs to subscribe/unsubscribe
-// Moved to protocol-durable-object.ts
-
-// RPC interface that sync backend can call on client DOs
+// RPC interface that sync backend can call on client DOs (TODO adjust for stream poke)
 export interface ClientDOInterface extends CfTypes.Rpc.DurableObjectBranded {
-  // onPullNotification(message: SyncMessage.PullRes): Promise<void>
-  // ping(): Promise<{ status: 'ok'; timestamp: number }>
+  // TODO move into common-cf
+  // streamPoke: (rpc: string) => Promise<string>
 }
-
-const PropsSchema = Schema.parseJson(
-  Schema.Struct({
-    storeId: Schema.String,
-
-    // TODO
-    currentHead: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
-  }),
-)
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
@@ -60,10 +47,6 @@ export type DoObject = CfTypes.DurableObject
 export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) => {
   new (ctx: DoState, env: Env): DoObject
 }
-
-// export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) => {
-//   new (ctx: CfTypes.DurableObjectState, env: Env): CfTypes.DurableObject
-// }
 
 /**
  * Creates a Durable Object class for handling WebSocket-based sync.
@@ -102,13 +85,29 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
  * ```
  */
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
+  const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
+
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
     ctx: CfTypes.DurableObjectState
     env: Env
 
     // Cached value
-    props: typeof PropsSchema.Type | undefined
+    private storageCache: typeof StorageCacheSchema.Type | undefined
+
+    /**
+     * Needed to prevent concurrent pushes
+     * TODO: get rid of in favour of `ctx.blockConcurrency`
+     */
+    private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+
+    // TODO move to `storageCache`
+    private currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' } = {
+      current: 'uninitialized',
+    }
+
+    /** RPC subscription storage */
+    private rpcSubscriptions = new Map<DurableObjectId, RpcSubscription>()
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
@@ -125,62 +124,61 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
-      setupDurableObjectWebSocketRpc({
-        doSelf: this,
-        rpcLayer: ServerLive,
-        webSocketMode: 'hibernate',
-        // See `pull.ts` for more details how `pull` Effect RPC requests streams are handled
-        // in combination with DO hibernation
-        onMessage: (request, ws) => {
-          if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
-            // Is Pull request: add requestId to pullRequestIds
-            const attachment = ws.deserializeAttachment()
-            const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
-            ws.serializeAttachment(
-              Schema.encodeSync(WebSocketAttachmentSchema)({
-                ...rest,
-                pullRequestIds: [...pullRequestIds, request.id],
-              }),
-            )
-          } else if (request._tag === 'Interrupt') {
-            // Is Interrupt request: remove requestId from pullRequestIds
-            const attachment = ws.deserializeAttachment()
-            const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
-            ws.serializeAttachment(
-              Schema.encodeSync(WebSocketAttachmentSchema)({
-                ...rest,
-                pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
-              }),
-            )
-          }
-        },
-      })
+      if (enabledTransports.has('ws')) {
+        setupDurableObjectWebSocketRpc({
+          doSelf: this,
+          rpcLayer: ServerLive,
+          webSocketMode: 'hibernate',
+          // See `pull.ts` for more details how `pull` Effect RPC requests streams are handled
+          // in combination with DO hibernation
+          onMessage: (request, ws) => {
+            if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
+              // Is Pull request: add requestId to pullRequestIds
+              const attachment = ws.deserializeAttachment()
+              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              ws.serializeAttachment(
+                Schema.encodeSync(WebSocketAttachmentSchema)({
+                  ...rest,
+                  pullRequestIds: [...pullRequestIds, request.id],
+                }),
+              )
+            } else if (request._tag === 'Interrupt') {
+              // Is Interrupt request: remove requestId from pullRequestIds
+              const attachment = ws.deserializeAttachment()
+              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              ws.serializeAttachment(
+                Schema.encodeSync(WebSocketAttachmentSchema)({
+                  ...rest,
+                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
+                }),
+              )
+            }
+          },
+        })
+      }
     }
-
-    /** Needed to prevent concurrent pushes */
-    private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
-
-    // TODO move to `props`
-    private currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' } = {
-      current: 'uninitialized',
-    }
-
-    /** RPC subscription storage */
-    private rpcSubscriptions = new Map<DurableObjectId, RpcSubscription>()
 
     fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
-        const url = new URL(request.url)
+        const requestParamsResult = getSyncRequestSearchParams(request)
+        if (requestParamsResult._tag === 'None') {
+          throw new Error('No search params found in request URL')
+        }
 
-        if (url.pathname.endsWith('/http-rpc')) {
+        const { storeId, payload, transport } = requestParamsResult.value
+
+        if (enabledTransports.has(transport) === false) {
+          throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)
+        }
+
+        if (transport === 'http') {
           return yield* this.handleHttp(request)
         }
 
-        if (url.pathname.endsWith('/sync')) {
-          const { storeId, payload } = getRequestSearchParams(request)
+        if (transport === 'ws') {
           const storage = makeStorage(this.ctx, this.env, storeId)
 
-          this.getProps(request)
+          this.getStorageCache(request)
 
           const { 0: client, 1: server } = new WebSocketPair()
 
@@ -216,7 +214,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           statusText: 'Bad Request',
         })
       }).pipe(
-        Effect.tapCauseLogPretty,
+        Effect.tapCauseLogPretty, // Also log errors to console before catching them
         Effect.catchAllCause((cause) =>
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
@@ -225,29 +223,13 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       )
 
     /**
-     * Handles HTTP RPC calls
-     *
-     * Requires the `enable_request_signal` compatibility flag to properly support `pull` streaming responses
-     */
-    handleHttp = (request: Request) =>
-      createHttpRpcHandler({
-        ctx: this.ctx,
-        makeStorage: (storeId) => {
-          // ensure storage is initialized
-          this.getProps({ storeId })
-          return makeStorage(this.ctx, this.env, storeId)
-        },
-        doOptions: options,
-        pushSemaphore: this.pushSemaphore,
-        rpcSubscriptions: this.rpcSubscriptions,
-        currentHeadRef: this.currentHeadRef,
-        request,
-      }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
-
-    /**
      * Handles DO <-> DO RPC calls
      */
     async rpc(payload: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> {
+      if (enabledTransports.has('do-rpc') === false) {
+        throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
+      }
+
       return createDoRpcHandler({
         ctx: this.ctx,
         env: this.env,
@@ -256,9 +238,29 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         rpcSubscriptions: this.rpcSubscriptions,
         currentHeadRef: this.currentHeadRef,
         payload,
-        ensureProps: (storeId) => this.getProps({ storeId }),
+        ensureStorageCache: (storeId) => this.getStorageCache({ storeId }),
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:rpc'), this.runEffectAsPromise)
     }
+
+    /**
+     * Handles HTTP RPC calls
+     *
+     * Requires the `enable_request_signal` compatibility flag to properly support `pull` streaming responses
+     */
+    private handleHttp = (request: Request) =>
+      createHttpRpcHandler({
+        ctx: this.ctx,
+        makeStorage: (storeId) => {
+          // ensure storage is initialized
+          this.getStorageCache({ storeId })
+          return makeStorage(this.ctx, this.env, storeId)
+        },
+        doOptions: options,
+        pushSemaphore: this.pushSemaphore,
+        rpcSubscriptions: this.rpcSubscriptions,
+        currentHeadRef: this.currentHeadRef,
+        request,
+      }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
     private initializeStorage = (storage: SyncStorage) => {
       {
@@ -271,9 +273,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }
     }
 
-    private getProps = (request: CfTypes.Request | { storeId: string }): typeof PropsSchema.Type => {
-      if (this.props !== undefined) {
-        return this.props
+    private getStorageCache = (request: CfTypes.Request | { storeId: string }): typeof StorageCacheSchema.Type => {
+      if (this.storageCache !== undefined) {
+        return this.storageCache
       }
 
       const getStoreId = (request: CfTypes.Request | { storeId: string }) => {
@@ -291,17 +293,17 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
       this.initializeStorage(storage)
 
-      const props = { storeId, currentHead: EventSequenceNumber.ROOT.global }
+      const storageCache = { storeId, currentHead: EventSequenceNumber.ROOT.global }
 
-      this.props = props
+      this.storageCache = storageCache
 
       this.ctx.storage.sql.exec(
         `INSERT OR REPLACE INTO ${contextTable.sqliteDef.name} (storeId, currentHead) VALUES (?, ?)`,
-        props.storeId,
-        props.currentHead,
+        storageCache.storeId,
+        storageCache.currentHead,
       )
 
-      return props
+      return storageCache
     }
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
@@ -319,3 +321,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       )
   }
 }
+
+const StorageCacheSchema = Schema.parseJson(
+  Schema.Struct({
+    storeId: Schema.String,
+
+    // TODO
+    currentHead: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
+  }),
+)

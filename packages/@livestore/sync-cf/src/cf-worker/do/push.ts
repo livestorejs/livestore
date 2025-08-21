@@ -2,13 +2,13 @@ import { UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
-import { SyncMessage } from '../common/mod.ts'
+import { SyncMessage } from '../../common/mod.ts'
 import {
   type MakeDurableObjectClassOptions,
   type RpcSubscription,
   type StoreId,
   WebSocketAttachmentSchema,
-} from './shared.ts'
+} from '../shared.ts'
 import type { SyncStorage } from './sync-storage.ts'
 
 export const makePush =

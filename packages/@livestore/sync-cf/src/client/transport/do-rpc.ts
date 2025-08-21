@@ -27,6 +27,11 @@ export interface DoRpcSyncOptions {
   durableObjectId: string
 }
 
+/**
+ * Creates a sync backend that uses Durable Object RPC to communicate with the sync backend.
+ *
+ * Used internally by `@livestore/adapter-cf` to connect to the sync backend.
+ */
 export const makeDoRpcSync =
   ({
     syncBackendStub,
