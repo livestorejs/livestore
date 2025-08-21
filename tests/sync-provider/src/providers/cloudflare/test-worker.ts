@@ -59,7 +59,6 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
       Effect.gen(this, function* () {
         const key = JSON.stringify({ clientId, storeId, payload })
         if (syncBackendMap.has(key)) {
-          console.log('using cached sync backend', syncBackendMap.get(key))
           return syncBackendMap.get(key)!
         }
 

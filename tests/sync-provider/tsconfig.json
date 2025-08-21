@@ -7,7 +7,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["./src", "vitest.config.ts"],
+  "include": ["./src"],
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/common-cf" },

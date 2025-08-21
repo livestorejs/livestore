@@ -70,6 +70,18 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
    * Metadata describing the sync backend. (Currently only used by devtools.)
    */
   metadata: { name: string; description: string } & Record<string, Schema.JsonValue>
+  /** Information about the sync backend capabilities. */
+  supports: {
+    /**
+     * Whether the sync backend supports the `remaining` field in the pull response.
+     */
+    pullRemainingCount: boolean
+    /**
+     * Whether the sync backend supports the `live` option for the pull method and thus
+     * long-lived, reactive pull streams.
+     */
+    pullLive: boolean
+  }
 }
 
 export interface PullResItem<TSyncMetadata = Schema.JsonValue> {

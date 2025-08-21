@@ -1,92 +1,71 @@
 import { UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
-import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, type Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, RpcServer, Stream } from '@livestore/utils/effect'
 import { SyncMessage } from '../../common/mod.ts'
+import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
 import { makePull } from '../pull.ts'
 import { makePush } from '../push.ts'
-import {
-  type Env,
-  encodeOutgoingMessage,
-  type MakeDurableObjectClassOptions,
-  type RpcSubscription,
-  type StoreId,
-} from '../shared.ts'
+import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../shared.ts'
 import { makeStorage } from '../sync-storage.ts'
 
-export const handleSyncMessage = ({
-  message,
-  payload,
-  storeId,
+export const makeRpcServer = ({
+  options,
+  ctx,
+  env,
   rpcSubscriptions,
   pushSemaphore,
   currentHeadRef,
-  options,
-  ctx,
-  ws,
-  env,
 }: {
-  message: SyncMessage.ClientToBackendMessage
-  rpcSubscriptions: Map<StoreId, RpcSubscription>
-  payload: Schema.JsonValue | undefined
-  storeId: StoreId
-  pushSemaphore: Effect.Semaphore
-  currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
   options: MakeDurableObjectClassOptions | undefined
   ctx: CfTypes.DurableObjectState
-  ws: CfTypes.WebSocket
   env: Env
-}) =>
-  Effect.gen(function* () {
-    const requestId = message.requestId
+  rpcSubscriptions: Map<StoreId, RpcSubscription>
+  pushSemaphore: Effect.Semaphore
+  currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
+}) => {
+  const handlersLayer = SyncWsRpc.toLayer({
+    'SyncWsRpc.Pull': (req) =>
+      Effect.gen(function* () {
+        const { storeId, payload } = req
+        const storage = makeStorage(ctx, env, storeId)
 
-    const respond = (message: SyncMessage.BackendToClientMessage) =>
-      Effect.try({
-        try: () => ws.send(encodeOutgoingMessage(message)),
-        catch: (cause) => new UnexpectedError({ cause, note: 'Failed response', payload: { message } }),
-      })
-
-    const storage = makeStorage(ctx, env, storeId)
-
-    switch (message._tag) {
-      // TODO allow pulling concurrently to not block incoming push requests
-      case 'SyncMessage.PullRequest': {
         if (options?.onPull) {
-          yield* Effect.tryAll(() => options.onPull!(message, { storeId, payload })).pipe(
+          yield* Effect.tryAll(() => options.onPull!(req, { storeId, payload })).pipe(
             UnexpectedError.mapToUnexpectedError,
           )
         }
 
         const pull = makePull({ storage })
 
-        yield* pull(message).pipe(
+        return pull(req).pipe(
           Stream.tap(
-            Effect.fn(function* (message) {
+            Effect.fn(function* (res) {
               if (options?.onPullRes) {
-                yield* Effect.tryAll(() => options.onPullRes!(message)).pipe(UnexpectedError.mapToUnexpectedError)
+                yield* Effect.tryAll(() => options.onPullRes!(res)).pipe(UnexpectedError.mapToUnexpectedError)
               }
-
-              if (ws.readyState !== WebSocket.OPEN) {
-                yield* Effect.logWarning('WebSocket not open, skipping send', {
-                  readyState: ws.readyState,
-                  message,
-                })
-                return
-              }
-
-              yield* respond(message)
             }),
           ),
-          Stream.runDrain,
         )
+      }).pipe(
+        Stream.unwrap,
+        Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
+      ),
+    'SyncWsRpc.Push': (req) =>
+      // TODO use `ctx.blockConcurrencyWhile` to block concurrent push requests
+      Effect.gen(function* () {
+        const { storeId, payload } = req
+        const storage = makeStorage(ctx, env, storeId)
 
-        break
-      }
-      case 'SyncMessage.PushRequest': {
+        if (options?.onPush) {
+          yield* Effect.tryAll(() => options.onPush!(req, { storeId, payload })).pipe(
+            UnexpectedError.mapToUnexpectedError,
+          )
+        }
+
         const push = makePush({
           storage,
-          requestId,
+          requestId: req.requestId,
           options,
           rpcSubscriptions,
           pushSemaphore,
@@ -96,57 +75,16 @@ export const handleSyncMessage = ({
           ctx,
         })
 
-        const pushRes = yield* push(message)
-        yield* respond(pushRes)
-
-        break
-      }
-      case 'SyncMessage.AdminResetRoomRequest': {
-        if (message.adminSecret !== env.ADMIN_SECRET) {
-          ws.send(
-            encodeOutgoingMessage(SyncMessage.SyncError.make({ message: 'Invalid admin secret', requestId, storeId })),
-          )
-          return
-        }
-
-        yield* storage.resetStore
-        ws.send(encodeOutgoingMessage(SyncMessage.AdminResetRoomResponse.make({ requestId })))
-
-        break
-      }
-      case 'SyncMessage.AdminInfoRequest': {
-        if (message.adminSecret !== env.ADMIN_SECRET) {
-          ws.send(
-            encodeOutgoingMessage(SyncMessage.SyncError.make({ message: 'Invalid admin secret', requestId, storeId })),
-          )
-          return
-        }
-
-        ws.send(
-          encodeOutgoingMessage(
-            SyncMessage.AdminInfoResponse.make({ requestId, info: { durableObjectId: ctx.id.toString() } }),
-          ),
-        )
-
-        break
-      }
-      default: {
-        yield* Effect.logError('unsupported message', { message: message })
-        return shouldNeverHappen(`unsupported message: ${message._tag}`)
-      }
-    }
-  }).pipe(
-    Effect.withSpan(`@livestore/sync-cf:durable-object:webSocketMessage:${message._tag}`, {
-      attributes: { requestId: message.requestId },
-    }),
-    Effect.tapErrorCause((cause) =>
-      Effect.sync(() =>
-        ws.send(
-          encodeOutgoingMessage(
-            SyncMessage.SyncError.make({ message: cause.toString(), requestId: message.requestId }),
-          ),
+        return yield* push(req)
+        // TODO implement admin requests
+      }).pipe(
+        Effect.mapError((cause) =>
+          cause._tag === 'LiveStore.UnexpectedError'
+            ? SyncMessage.SyncError.make({ cause, storeId: req.storeId })
+            : cause,
         ),
       ),
-    ),
-    Effect.annotateLogs({ storeId }),
-  )
+  })
+
+  return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
+}

@@ -1,13 +1,13 @@
 import { UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Option, type Schema } from '@livestore/utils/effect'
+import { Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 import { SyncMessage } from '../common/mod.ts'
 import {
-  encodeOutgoingMessage,
   type MakeDurableObjectClassOptions,
   type RpcSubscription,
   type StoreId,
+  WebSocketAttachmentSchema,
 } from './shared.ts'
 import type { SyncStorage } from './sync-storage.ts'
 
@@ -40,6 +40,8 @@ export const makePush =
       if (decodedMessage.batch.length === 0) {
         return SyncMessage.PushAck.make({ requestId })
       }
+
+      // TODO use ctx.blockConcurrencyWhile()
 
       yield* pushSemaphore.take(1)
 
@@ -74,13 +76,11 @@ export const makePush =
       if (firstEvent.parentSeqNum !== currentHeadRef.current) {
         yield* pushSemaphore.release(1)
 
-        yield* Effect.log(
-          `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHeadRef.current}`,
-        )
-
         return yield* SyncMessage.SyncError.make({
-          message: `Invalid parent event number. Received e${firstEvent.parentSeqNum} but expected e${currentHeadRef.current}`,
-          requestId,
+          cause: SyncMessage.InvalidParentEventNumber.make({
+            expected: currentHeadRef.current,
+            received: firstEvent.parentSeqNum,
+          }),
           storeId,
         })
       }
@@ -114,7 +114,7 @@ export const makePush =
 
         // Broadcast to WebSocket clients
         if (connectedClients.length > 0) {
-          const pullResEnc = encodeOutgoingMessage(pullRes)
+          const pullResEnc = Schema.encodeSync(SyncMessage.PullResponse)(pullRes)
 
           // Only calling once for now.
           if (options?.onPullRes) {
@@ -123,10 +123,23 @@ export const makePush =
 
           // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
           for (const conn of connectedClients) {
-            conn.send(pullResEnc)
+            // conn.send(pullResEnc)
+            const attachment = Schema.decodeSync(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+
+            // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
+            // response messsages on the Effect RPC-managed websocket connection to the WS client.
+            // For this we need to get the RPC `requestId` from the WebSocket attachment.
+            for (const requestId of attachment.pullRequestIds) {
+              const res: RpcMessage.ResponseChunkEncoded = {
+                _tag: 'Chunk',
+                requestId,
+                values: [pullResEnc],
+              }
+              conn.send(JSON.stringify(res))
+            }
           }
 
-          console.debug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
+          yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
         }
 
         // RPC broadcasting would require reconstructing client stubs from clientIds
@@ -139,8 +152,12 @@ export const makePush =
         // TODO double check forking is safe here and won't be interrupted by the RPC server
       }).pipe(Effect.fork)
 
+      // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
+      yield* Effect.yieldNow()
+
       return SyncMessage.PushAck.make({ requestId })
     }).pipe(
+      Effect.tapCauseLogPretty,
       Effect.tap(
         Effect.fn(function* (message) {
           if (options?.onPushRes) {

@@ -14,6 +14,9 @@ export const layer = Layer.scoped(
 
     return {
       makeProvider: makeProxyDoRpcSync({ port }),
+      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+      push: () => Effect.log('TODO implement push'),
     }
   }),
 )
@@ -70,5 +73,9 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
           .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       metadata,
+      supports: {
+        pullRemainingCount: true,
+        pullLive: true,
+      },
     })
   }, Effect.orDie)

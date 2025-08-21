@@ -17,7 +17,7 @@ export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
 
 // export const OtelLiveHttp = (args: any): Layer.Layer<never> => Layer.empty
 
-export const getFreePort = Effect.async<number, UnknownError>((cb, signal) => {
+export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<number, UnknownError>((cb, signal) => {
   const server = http.createServer()
 
   signal.addEventListener('abort', () => {

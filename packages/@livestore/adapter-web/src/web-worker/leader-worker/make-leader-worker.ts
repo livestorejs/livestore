@@ -59,16 +59,16 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
+  const layer = Layer.mergeAll(Logger.prettyWithThread(self.name), FetchHttpClient.layer, TracingLive ?? Layer.empty)
+
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.prettyWithThread(self.name)),
-    Effect.provide(FetchHttpClient.layer),
+    Effect.provide(layer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    TracingLive ? Effect.provide(TracingLive) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.

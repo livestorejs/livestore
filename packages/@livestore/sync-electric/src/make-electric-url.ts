@@ -42,9 +42,8 @@ export const makeElectricUrl = ({
   payload: Schema.JsonValue | undefined
 } => {
   const endpointUrl = `${electricHost}/v1/shape`
-  const argsResult = Schema.decodeUnknownEither(Schema.Struct({ args: Schema.parseJson(ApiSchema.PullPayload) }))(
-    Object.fromEntries(providedSearchParams.entries()),
-  )
+  const UrlParamsSchema = Schema.Struct({ args: ApiSchema.ArgsSchema })
+  const argsResult = Schema.decodeUnknownEither(UrlParamsSchema)(Object.fromEntries(providedSearchParams.entries()))
 
   if (argsResult._tag === 'Left') {
     return shouldNeverHappen(
@@ -57,6 +56,7 @@ export const makeElectricUrl = ({
   const args = argsResult.right.args
   const tableName = toTableName(args.storeId)
   // TODO refactor with Effect URLSearchParams schema
+  // https://electric-sql.com/openapi.html
   const searchParams = new URLSearchParams()
   // Electric requires table names with capital letters to be quoted
   // Since our table names include the storeId which may have capitals, we always quote

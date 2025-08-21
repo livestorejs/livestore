@@ -13,6 +13,9 @@ export const layer = Layer.scoped(
 
     return {
       makeProvider: makeHttpSync({ baseUrl: `http://localhost:${port}` }),
+      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+      push: () => Effect.log('TODO implement push'),
     }
   }),
 )

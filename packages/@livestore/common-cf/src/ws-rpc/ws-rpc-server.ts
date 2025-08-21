@@ -19,7 +19,7 @@ import { notYetImplemented } from '@livestore/utils'
 import {
   constVoid,
   Effect,
-  Fiber,
+  Exit,
   Layer,
   Logger,
   LogLevel,
@@ -27,6 +27,7 @@ import {
   RpcMessage,
   RpcSerialization,
   RpcServer,
+  Scope,
   Stream,
 } from '@livestore/utils/effect'
 import type * as CfTypes from '../cf-types.ts'
@@ -45,6 +46,8 @@ export interface DurableObjectWebSocketRpcConfig {
   webSocketMode: 'hibernate' | 'accept'
   /** Effect RPC layer that defines the available RPC methods and handlers */
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol>
+  /** Function to get access to incoming requests */
+  onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
 }
 
 /**
@@ -111,6 +114,7 @@ export const setupDurableObjectWebSocketRpc = ({
   doSelf,
   rpcLayer,
   webSocketMode,
+  onMessage,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
     return notYetImplemented(`WebSocket mode 'accept' is not yet implemented`)
@@ -119,7 +123,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const serverCtxMap = new Map<
     CfTypes.WebSocket,
     {
-      fiber: Fiber.Fiber<any>
+      scope: Scope.CloseableScope
       onMessage: (message: string | ArrayBuffer) => Promise<void>
     }
   >()
@@ -132,21 +136,26 @@ export const setupDurableObjectWebSocketRpc = ({
 
       yield* Effect.logDebug(`Launching WebSocket Effect RPC server`)
 
+      const scope = yield* Scope.make()
+
       const incomingQueue = yield* Mailbox.make<Uint8Array<ArrayBufferLike> | string>()
 
+      yield* Scope.addFinalizer(scope, incomingQueue.shutdown)
+
       const ProtocolLive = layerRpcServerWebsocket({
-        send: (msg) => Effect.succeed(ws.send(msg)),
+        ws,
         incomingQueue,
+        onMessage,
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
 
-      const fiber = yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkDaemon)
+      yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkIn(scope))
 
       const runtime = yield* Effect.runtime()
 
       const ctx = {
-        fiber,
+        scope,
         onMessage: (message: string | ArrayBuffer) =>
           incomingQueue
             .offer(message as Uint8Array<ArrayBufferLike> | string)
@@ -174,7 +183,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
     const ctx = serverCtxMap.get(ws)
     if (ctx) {
-      await ctx.fiber.pipe(Fiber.interrupt, Effect.runPromise)
+      await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
     }
   }
@@ -192,8 +201,8 @@ export const setupDurableObjectWebSocketRpc = ({
  * Arguments for creating a WebSocket RPC server protocol layer.
  */
 export interface WsRpcServerArgs {
-  /** Function to send messages through the WebSocket */
-  send: (msg: Uint8Array<ArrayBufferLike> | string) => Effect.Effect<void>
+  ws: CfTypes.WebSocket
+  onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   /** Mailbox queue for receiving incoming messages from the WebSocket */
   incomingQueue: Mailbox.Mailbox<Uint8Array<ArrayBufferLike> | string>
 }
@@ -223,10 +232,12 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, send: writeRaw }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Mailbox.make<number>()
+
+    const writeRaw = (msg: Uint8Array<ArrayBufferLike> | string) => Effect.succeed(ws.send(msg))
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
@@ -257,7 +268,13 @@ const makeSocketProtocol = ({ incomingQueue, send: writeRaw }: WsRpcServerArgs) 
             let i = 0
             return Effect.whileLoop({
               while: () => i < decoded.length,
-              body: () => writeRequest(id, decoded[i++]!),
+              body: () => {
+                const request = decoded[i++]!
+                if (onMessage) {
+                  onMessage(request, ws)
+                }
+                return writeRequest(id, request)
+              },
               step: constVoid,
             })
           } catch (cause) {
@@ -276,6 +293,7 @@ const makeSocketProtocol = ({ incomingQueue, send: writeRaw }: WsRpcServerArgs) 
         end(_clientId) {
           return Effect.void
         },
+        // Always just one client
         clientIds: Effect.sync(() => [id]),
         initialMessage: Effect.succeedNone,
         supportsAck: true,

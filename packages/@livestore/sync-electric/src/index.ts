@@ -182,7 +182,7 @@ export const makeSyncBackend =
         InvalidPullError | IsOfflineError
       > =>
         Effect.gen(function* () {
-          const argsJson = yield* Schema.encode(Schema.parseJson(ApiSchema.PullPayload))(
+          const argsJson = yield* Schema.encode(ApiSchema.ArgsSchema)(
             ApiSchema.PullPayload.make({ storeId, handle, payload, live }),
           )
           const url = `${pullEndpoint}?args=${argsJson}`
@@ -236,7 +236,7 @@ export const makeSyncBackend =
           const items = body
             .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
             .map((item) => ({
-              metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
+              metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
               eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
@@ -289,26 +289,25 @@ export const makeSyncBackend =
                 const result = yield* pull(metadataOption, { live: options?.live ?? false })
                 if (Option.isNone(result)) return Option.none()
 
-                const [batch, nextHandle] = result.value
+                const [batch, nextMetadataOption] = result.value
 
                 // Continue pagination if we have data
-                if (!Chunk.isEmpty(batch)) {
-                  return Option.some([batch, nextHandle] as const)
+                if (Chunk.isEmpty(batch) === false) {
+                  return Option.some([batch, nextMetadataOption] as const)
                 }
 
-                // Stop on empty batch
+                if (options?.live) {
+                  return Option.some([batch, nextMetadataOption] as const)
+                }
+
+                // Stop on empty batch (when not live)
                 return Option.none()
               }),
           ).pipe(
             Stream.chunks,
-            // Zip with next to know whether there are remaining items
-            Stream.zipWithNext,
-            Stream.map(([chunk, next]) => ({
-              batch: Chunk.toArray(chunk),
-              // Electric doesn't provide exact counts
-              // We use: 1 = more data available, 0 = no more data
-              remaining: Option.isSome(next) ? 1 : 0,
-            })),
+            // Filter out empty batches to not emit `{ batch: [], remaining: 0 }` items
+            Stream.filter((batch) => Chunk.isEmpty(batch) === false),
+            Stream.map((batch) => ({ batch: Chunk.toArray(batch), remaining: 0 })),
             Stream.withSpan('electric-provider:pull'),
           )
         },
@@ -336,6 +335,12 @@ export const makeSyncBackend =
           description: 'LiveStore sync backend implementation using ElectricSQL',
           protocol: 'http',
           endpoint,
+        },
+        supports: {
+          // Given Electric is heavily optimized for immutable caching, we can't know the remaining count
+          // until we've reached the end of the stream
+          pullRemainingCount: false,
+          pullLive: true,
         },
       })
     })

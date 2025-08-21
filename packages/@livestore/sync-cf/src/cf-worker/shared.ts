@@ -66,5 +66,6 @@ export const WebSocketAttachmentSchema = Schema.parseJson(
     storeId: Schema.String,
     // Different for each websocket connection
     payload: Schema.optional(Schema.JsonValue),
+    pullRequestIds: Schema.Array(Schema.String),
   }),
 )

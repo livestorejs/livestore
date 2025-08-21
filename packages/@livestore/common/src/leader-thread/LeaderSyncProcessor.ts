@@ -7,6 +7,7 @@ import {
   Effect,
   Exit,
   FiberHandle,
+  Layer,
   Option,
   OtelTracer,
   pipe,
@@ -278,7 +279,6 @@ export const makeLeaderSyncProcessor = ({
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
-        initialBackendHead: initialSyncState.upstreamHead.global,
         isClientEvent,
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
@@ -301,7 +301,17 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         connectedClientSessionPullQueues,
         advancePushHead,
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
+      }).pipe(
+        Effect.retry({
+          // We want to retry pulling if we've lost connection to the sync backend
+          while: (cause) => cause._tag === 'IsOfflineError',
+        }),
+        Effect.catchAllCause(shutdownOnError),
+        // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
+        // This might be a bug in Effect. Only seems to happen in the browser.
+        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.forkScoped,
+      )
 
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
@@ -558,7 +568,6 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
   )
 
 const backgroundBackendPulling = ({
-  initialBackendHead,
   isClientEvent,
   restartBackendPushing,
   otelSpan,
@@ -571,7 +580,6 @@ const backgroundBackendPulling = ({
   connectedClientSessionPullQueues,
   advancePushHead,
 }: {
-  initialBackendHead: EventSequenceNumber.GlobalEventSequenceNumber
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
@@ -694,7 +702,9 @@ const backgroundBackendPulling = ({
         }
       })
 
-    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: initialBackendHead })
+    const syncState = yield* syncStateSref
+    if (syncState === undefined) return shouldNeverHappen('Not initialized')
+    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
 
@@ -708,12 +718,10 @@ const backgroundBackendPulling = ({
           //     batch: TRACE_VERBOSE ? batch : undefined,
           //   },
           // })
-
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
-
           yield* onNewPullChunk(
             batch.map((_) =>
               LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, {
@@ -726,7 +734,6 @@ const backgroundBackendPulling = ({
             ),
             remaining,
           )
-
           yield* initialBlockingSyncContext.update({ processed: batch.length, remaining })
         }),
       ),

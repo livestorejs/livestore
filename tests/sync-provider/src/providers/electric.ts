@@ -29,6 +29,9 @@ export const layer = Layer.scoped(
 
     return {
       makeProvider: ElectricSync.makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
+      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+      push: () => Effect.log('TODO implement push'),
     }
   }),
 )

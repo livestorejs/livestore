@@ -101,6 +101,7 @@ export const makeHttpSync =
           payload,
           requestId,
           cursor,
+          live: false, // TODO
         }).pipe(
           // Effect.map(Stream.fromIterable),
           // Stream.unwrap,
@@ -146,6 +147,10 @@ export const makeHttpSync =
           description: 'LiveStore sync backend implementation using HTTP RPC',
           protocol: 'http',
           url: options.baseUrl,
+        },
+        supports: {
+          pullRemainingCount: true,
+          pullLive: true,
         },
       })
     })

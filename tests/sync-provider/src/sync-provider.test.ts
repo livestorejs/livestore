@@ -144,15 +144,39 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
       const secondPullCount = yield* syncBackend
         .pull(SyncBackend.cursorFromPullResItem(firstPull))
         .pipe(Stream.runCount)
-      expect(secondPullCount).toBe(0)
 
-      // Verify structure
-      // for (const item of [...firstPull, ...secondPull]) {
-      //   expect(item).toHaveProperty('batch')
-      //   expect(item).toHaveProperty('remaining')
-      // }
+      expect(secondPullCount).toBe(0)
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.describe('connection management', () => {
+    Vitest.scopedLive('can reconnect to sync backend', (test) =>
+      Effect.gen(function* () {
+        const syncBackend = yield* makeProvider(test.task.name)
+
+        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(Stream.runFirstUnsafe, Effect.fork)
+
+        const syncProvider = yield* SyncProviderImpl
+
+        yield* syncProvider.turnBackendOffline
+        yield* Effect.sleep(100)
+        yield* syncProvider.turnBackendOnline
+
+        yield* syncBackend.push([
+          LiveStoreEvent.AnyEncodedGlobal.make({
+            ...events.todoCreated({ id: '1', text: 'Test event 1', completed: false }),
+            clientId: 'test-client',
+            sessionId: 'test-session',
+            seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
+            parentSeqNum: EventSequenceNumber.ROOT.global,
+          }),
+        ])
+
+        const result = yield* fiber
+        expect(result.batch.length).toBe(1)
+      }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    )
+  })
 
   Vitest.scopedLive('remaining field works correctly', (test) =>
     Effect.gen(function* () {

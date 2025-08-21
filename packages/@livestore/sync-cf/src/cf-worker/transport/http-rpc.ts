@@ -1,7 +1,7 @@
+import { UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, HttpApp, Layer, RpcSerialization, RpcServer, Stream } from '@livestore/utils/effect'
-
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import * as SyncMessage from '../../common/sync-message-types.ts'
 import { makePull } from '../pull.ts'
@@ -42,25 +42,23 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
         })
 
         if (options.doOptions?.onPull) {
-          yield* Effect.tryAll(() => options.doOptions!.onPull!(req, { storeId: req.storeId, payload: req.payload }))
+          yield* Effect.tryAll(() =>
+            options.doOptions!.onPull!(req, { storeId: req.storeId, payload: req.payload }),
+          ).pipe(UnexpectedError.mapToUnexpectedError)
         }
 
         return pull(req)
       }).pipe(
         Stream.unwrap,
-        Stream.mapError((e) =>
-          SyncMessage.SyncError.make({
-            requestId: req.requestId,
-            message: e.message,
-            storeId: req.storeId,
-          }),
-        ),
+        Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
       ),
 
     'SyncHttpRpc.Push': (req) =>
       Effect.gen(function* () {
         if (options.doOptions?.onPush) {
-          yield* Effect.tryAll(() => options.doOptions!.onPush!(req, { storeId: req.storeId, payload: req.payload }))
+          yield* Effect.tryAll(() =>
+            options.doOptions!.onPush!(req, { storeId: req.storeId, payload: req.payload }),
+          ).pipe(UnexpectedError.mapToUnexpectedError)
         }
 
         const push = makePush({
@@ -77,12 +75,10 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
 
         return yield* push(req)
       }).pipe(
-        Effect.mapError((e) =>
-          SyncMessage.SyncError.make({
-            requestId: req.requestId,
-            message: e.message,
-            storeId: req.storeId,
-          }),
+        Effect.mapError((cause) =>
+          cause._tag === 'LiveStore.UnexpectedError'
+            ? SyncMessage.SyncError.make({ cause, storeId: req.storeId })
+            : cause,
         ),
       ),
 

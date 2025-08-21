@@ -2,16 +2,13 @@
 
 import { DurableObject } from 'cloudflare:workers'
 import { EventSequenceNumber, State } from '@livestore/common/schema'
-import type { CfTypes } from '@livestore/common-cf'
+import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Logger, LogLevel, Predicate, Schema, type Scope } from '@livestore/utils/effect'
-import { SyncMessage } from '../common/mod.ts'
+import { Effect, Logger, LogLevel, Predicate, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
 import {
   type DurableObjectId,
   type Env,
-  encodeIncomingMessage,
-  encodeOutgoingMessage,
   getRequestSearchParams,
   type MakeDurableObjectClassOptions,
   type RpcSubscription,
@@ -25,7 +22,7 @@ import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage, type SyncStorage } from './sync-storage.ts'
 import { createDoRpcHandler } from './transport/do-rpc.ts'
 import { createHttpRpcHandler } from './transport/http-rpc.ts'
-import { handleSyncMessage } from './transport/ws.ts'
+import { makeRpcServer } from './transport/ws.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Request extends CfDeclare.Request {}
@@ -117,6 +114,47 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       super(ctx, env)
       this.ctx = ctx
       this.env = env
+
+      const ServerLive = makeRpcServer({
+        options,
+        ctx: this.ctx,
+        env: this.env,
+        currentHeadRef: this.currentHeadRef,
+        rpcSubscriptions: this.rpcSubscriptions,
+        pushSemaphore: this.pushSemaphore,
+      })
+
+      // This registers the `webSocketMessage` and `webSocketClose` handlers
+      setupDurableObjectWebSocketRpc({
+        doSelf: this,
+        rpcLayer: ServerLive,
+        webSocketMode: 'hibernate',
+        // See `pull.ts` for more details how `pull` Effect RPC requests streams are handled
+        // in combination with DO hibernation
+        onMessage: (request, ws) => {
+          if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
+            // Is Pull request: add requestId to pullRequestIds
+            const attachment = ws.deserializeAttachment()
+            const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+            ws.serializeAttachment(
+              Schema.encodeSync(WebSocketAttachmentSchema)({
+                ...rest,
+                pullRequestIds: [...pullRequestIds, request.id],
+              }),
+            )
+          } else if (request._tag === 'Interrupt') {
+            // Is Interrupt request: remove requestId from pullRequestIds
+            const attachment = ws.deserializeAttachment()
+            const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+            ws.serializeAttachment(
+              Schema.encodeSync(WebSocketAttachmentSchema)({
+                ...rest,
+                pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
+              }),
+            )
+          }
+        },
+      })
     }
 
     /** Needed to prevent concurrent pushes */
@@ -147,16 +185,19 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           const { 0: client, 1: server } = new WebSocketPair()
 
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
-          server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload }))
+          server.serializeAttachment(
+            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [] }),
+          )
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
           this.ctx.acceptWebSocket(server)
 
+          // Ping requests are sent by Effect RPC internally
           this.ctx.setWebSocketAutoResponse(
             new WebSocketRequestResponsePair(
-              encodeIncomingMessage(SyncMessage.Ping.make({ requestId: 'ping' })),
-              encodeOutgoingMessage(SyncMessage.Pong.make({ requestId: 'ping' })),
+              JSON.stringify(RpcMessage.constPing),
+              JSON.stringify(RpcMessage.constPong),
             ),
           )
 
@@ -218,40 +259,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         ensureProps: (storeId) => this.getProps({ storeId }),
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:rpc'), this.runEffectAsPromise)
     }
-
-    // #region WebSocket transport
-    webSocketMessage = (ws: CfTypes.WebSocket, messageRaw: ArrayBuffer | string): Promise<void> | undefined =>
-      Effect.gen(this, function* () {
-        const { storeId, payload } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
-
-        const message = yield* Schema.decodeUnknown(Schema.parseJson(SyncMessage.ClientToBackendMessage))(messageRaw)
-
-        return yield* handleSyncMessage({
-          message,
-          payload,
-          storeId,
-          currentHeadRef: this.currentHeadRef,
-          rpcSubscriptions: this.rpcSubscriptions,
-          pushSemaphore: this.pushSemaphore,
-          options,
-          ctx: this.ctx,
-          ws,
-          env: this.env,
-        })
-      }).pipe(this.runEffectAsPromise)
-
-    webSocketClose = async (
-      ws: CfTypes.WebSocket,
-      code: number,
-      _reason: string,
-      _wasClean: boolean,
-    ): Promise<void> => {
-      // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
-      // Code 1006 is reserved and cannot be used by applications, so use 1000 (Normal Closure) instead
-      const closeCode = code === 1006 ? 1000 : code
-      ws.close(closeCode, 'Durable Object is closing WebSocket')
-    }
-    // #endregion
 
     private initializeStorage = (storage: SyncStorage) => {
       {

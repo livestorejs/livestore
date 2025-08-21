@@ -1,3 +1,4 @@
+import { UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
@@ -18,6 +19,8 @@ export const PullRequest = Schema.TaggedStruct('SyncMessage.PullRequest', {
   requestId: Schema.String,
   /** Omitting the cursor will start from the beginning */
   cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
+  /** Whether to keep the pull stream alive and wait for more events */
+  live: Schema.Boolean,
 }).annotations({ title: '@livestore/sync-cf:PullRequest' })
 
 export type PullRequest = typeof PullRequest.Type
@@ -51,12 +54,16 @@ export const PushAck = Schema.TaggedStruct('SyncMessage.PushAck', {
 
 export type PushAck = typeof PushAck.Type
 
+export const InvalidParentEventNumber = Schema.TaggedStruct('SyncMessage.SyncError.InvalidParentEventNumber', {
+  expected: EventSequenceNumber.GlobalEventSequenceNumber,
+  received: EventSequenceNumber.GlobalEventSequenceNumber,
+}).annotations({ title: '@livestore/sync-cf:InvalidParentEventNumber' })
+export type InvalidParentEventNumber = typeof InvalidParentEventNumber.Type
+
 export class SyncError extends Schema.TaggedError<SyncError>()(
   'SyncMessage.SyncError',
   {
-    requestId: Schema.String,
-    // TODO refactor to use `cause` instead of `message`
-    message: Schema.String,
+    cause: Schema.Union(UnexpectedError, InvalidParentEventNumber),
     storeId: Schema.optional(Schema.String),
   },
   { title: '@livestore/sync-cf:SyncError' },

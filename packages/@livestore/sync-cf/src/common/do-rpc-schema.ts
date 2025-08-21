@@ -40,6 +40,8 @@ export class SyncDoRpc extends RpcGroup.make(
     payload: {
       /** Omitting the cursor will start from the beginning */
       cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
+      /** Whether to keep the pull stream alive and wait for more events */
+      live: Schema.Boolean,
       ...commonPayloadFields,
     },
     success: SyncMessage.PullResponse,

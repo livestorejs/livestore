@@ -61,6 +61,10 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
           name: '@livestore/mock-sync',
           description: 'Just a mock sync backend',
         },
+        supports: {
+          pullRemainingCount: true,
+          pullLive: true,
+        },
       })
     })
 

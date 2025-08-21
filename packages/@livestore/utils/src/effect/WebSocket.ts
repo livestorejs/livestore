@@ -88,7 +88,7 @@ export const makeWebSocket = ({
             socket.close(1000)
           }
         } catch (error) {
-          yield* Effect.die(new WebSocketError({ cause: error }))
+          return yield* Effect.die(new WebSocketError({ cause: error }))
         }
       }),
     )

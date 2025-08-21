@@ -24,8 +24,8 @@
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
 - [ ] Lay foundation for S2 sync backend
 - [ ] Refactor `@livestore/sync-cf`
-  - [ ] Refactor/fix CF WS transport
-  - [ ] Make `pull` implementation streaming based
+  - [ ] Make `pull` DB querying streaming based
+  - [ ] Refactor DO RPC transport streaming implementation to be "poking-to-pull" based
   - [ ] Move DO related files into `worker/durable-object` directory
   - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
   - [ ] Make storage (local SQLite vs D1) configurable

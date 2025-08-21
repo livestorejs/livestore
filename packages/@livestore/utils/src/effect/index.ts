@@ -33,7 +33,7 @@ export {
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 export {
   Rpc,
-  RpcClient,
+  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
   RpcClientError,
   RpcGroup,
   RpcMessage,
@@ -115,11 +115,11 @@ export {
 export { constVoid, dual } from 'effect/Function'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
-
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
 export * as Logger from './Logger.ts'
 export * as OtelTracer from './OtelTracer.ts'
+export * as RpcClient from './RpcClient.ts'
 export * as Schema from './Schema/index.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'

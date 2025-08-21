@@ -62,6 +62,7 @@ export const makeDoRpcSync =
             rpcClient.SyncDoRpc.Pull({
               requestId,
               cursor,
+              live,
               storeId,
             }).pipe(
               Stream.mapError((cause) => new InvalidPullError({ cause })),
@@ -136,6 +137,10 @@ export const makeDoRpcSync =
           description: 'Cloudflare Durable Object RPC Sync Client',
           protocol: 'rpc',
           storeId,
+        },
+        supports: {
+          pullRemainingCount: true,
+          pullLive: true,
         },
       })
     })

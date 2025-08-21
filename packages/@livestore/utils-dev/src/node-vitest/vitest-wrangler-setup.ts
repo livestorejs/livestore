@@ -8,6 +8,7 @@ import { afterAll } from 'vitest'
 export type StartWranglerDevServerArgs = {
   wranglerConfigPath?: string
   cwd: string
+  port?: number
 }
 
 export const startWranglerDevServer = (args: StartWranglerDevServerArgs) =>
@@ -31,10 +32,12 @@ export const startWranglerDevServerPromise = async ({
   wranglerConfigPath,
   abortSignal,
   cwd,
+  port: inputPort,
 }: {
   wranglerConfigPath?: string
   abortSignal?: AbortSignal
   cwd: string
+  port?: number
 }) => {
   let wranglerProcess: ReturnType<typeof spawn> | undefined
 
@@ -56,7 +59,7 @@ export const startWranglerDevServerPromise = async ({
   }
 
   const setup = async () => {
-    const syncPort = await getFreePort()
+    const syncPort = inputPort ?? (await getFreePort())
 
     const resolvedWranglerConfigPath = path.resolve(wranglerConfigPath ?? path.join(cwd, 'wrangler.toml'))
 
@@ -124,5 +127,5 @@ export const startWranglerDevServerPromise = async ({
 
   const { port } = await setup()
 
-  return { port }
+  return { port, kill: killWranglerProcess }
 }

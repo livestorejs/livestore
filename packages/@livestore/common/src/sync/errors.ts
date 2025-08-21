@@ -2,7 +2,9 @@ import { Schema } from '@livestore/utils/effect'
 import { EventSequenceNumber } from '../schema/mod.ts'
 import type { SyncBackend } from './sync-backend.ts'
 
-export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}
+export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {
+  cause: Schema.Defect,
+}) {}
 
 // TODO gt rid of this error in favour of SyncError
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {

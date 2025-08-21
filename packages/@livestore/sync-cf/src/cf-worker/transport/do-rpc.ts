@@ -44,7 +44,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
           return pull(req)
         }).pipe(
           Stream.unwrap,
-          Stream.mapError((error) => SyncMessage.SyncError.make({ message: error.message, requestId: req.requestId })),
+          Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
         ),
       'SyncDoRpc.Push': (req) =>
         Effect.gen(this, function* () {
@@ -64,7 +64,11 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
 
           return yield* push(req)
         }).pipe(
-          Effect.mapError((error) => SyncMessage.SyncError.make({ message: error.message, requestId: req.requestId })),
+          Effect.mapError((cause) =>
+            cause._tag === 'LiveStore.UnexpectedError'
+              ? SyncMessage.SyncError.make({ cause, storeId: req.storeId })
+              : cause,
+          ),
         ),
       'SyncDoRpc.Subscribe': (req) =>
         Effect.gen(this, function* () {
