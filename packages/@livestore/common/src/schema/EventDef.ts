@@ -4,6 +4,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import type { BindValues } from '../sql-queries/sql-queries.ts'
 import type { ParamsObject } from '../util.ts'
+import type * as LiveStoreEvent from './LiveStoreEvent.ts'
 import type { QueryBuilder } from './state/sqlite/query-builder/mod.ts'
 
 export type EventDefMap = {
@@ -191,6 +192,8 @@ export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyW
     eventDef: TEventDef
     /** Can be used to query the current state */
     query: MaterializerContextQuery
+    /** The full LiveStore event with clientId, sessionId, etc. */
+    event: LiveStoreEvent.AnyDecoded | LiveStoreEvent.AnyEncoded
   },
 ) => SingleOrReadonlyArray<MaterializerResult>
 

@@ -63,6 +63,7 @@ export const getExecStatementsFromMaterializer = ({
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      event: event.decoded ?? event.encoded!,
     }),
   )
 
