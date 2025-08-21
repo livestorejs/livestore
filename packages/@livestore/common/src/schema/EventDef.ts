@@ -193,7 +193,7 @@ export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyW
     /** Can be used to query the current state */
     query: MaterializerContextQuery
     /** The full LiveStore event with clientId, sessionId, etc. */
-    event: LiveStoreEvent.AnyDecoded | LiveStoreEvent.AnyEncoded
+    event: LiveStoreEvent.AnyDecoded
   },
 ) => SingleOrReadonlyArray<MaterializerResult>
 
