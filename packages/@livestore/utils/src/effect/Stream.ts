@@ -106,7 +106,7 @@ export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>)
  *
  * // Piped usage
  * const result = Stream.make(1, 2, 3).pipe(
- *   concatWithLastElement(lastElement => 
+ *   concatWithLastElement(lastElement =>
  *     Stream.make(lastElement.pipe(Option.getOrElse(() => 0)) * 10)
  *   )
  * )
