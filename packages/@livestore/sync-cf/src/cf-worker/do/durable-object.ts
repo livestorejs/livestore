@@ -18,9 +18,9 @@ import {
 
 import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage } from './sync-storage.ts'
-import { createDoRpcHandler } from './transport/do-rpc.ts'
-import { createHttpRpcHandler } from './transport/http-rpc.ts'
-import { makeRpcServer } from './transport/ws.ts'
+import { createDoRpcHandler } from './transport/do-rpc-server.ts'
+import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
+import { makeRpcServer } from './transport/ws-rpc-server.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 // TODO get rid of those once CF fixed their type mismatch in the worker types

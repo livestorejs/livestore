@@ -1,3 +1,3 @@
-export * from './transport/do-rpc.ts'
-export * from './transport/http-rpc.ts'
-export * from './transport/ws.ts'
+export * from './transport/do-rpc-client.ts'
+export * from './transport/http-rpc-client.ts'
+export * from './transport/ws-rpc-client.ts'
