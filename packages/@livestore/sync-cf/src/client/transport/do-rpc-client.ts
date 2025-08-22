@@ -3,9 +3,10 @@ import type { EventSequenceNumber } from '@livestore/common/schema'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import {
   Effect,
+  identity,
   Layer,
+  Mailbox,
   Option,
-  Queue,
   RpcClient,
   RpcSerialization,
   Stream,
@@ -20,8 +21,6 @@ interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcIn
 export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
   syncBackendStub: SyncBackendRpcStub
-  /** Client identifier for subscription management */
-  clientId: string
   /** Information about this DurableObject instance so the Sync DO instance can call back to this instance */
   durableObjectContext: {
     /** See `wrangler.toml` for the binding name */
@@ -37,11 +36,7 @@ export interface DoRpcSyncOptions {
  * Used internally by `@livestore/adapter-cf` to connect to the sync backend.
  */
 export const makeDoRpcSync =
-  ({
-    syncBackendStub,
-    clientId,
-    durableObjectContext,
-  }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
+  ({ syncBackendStub, durableObjectContext }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
@@ -77,46 +72,29 @@ export const makeDoRpcSync =
               Stream.withSpan('rpc-sync-client:pull'),
             )
 
-          if (live) {
-            const messagesQueue = yield* Queue.unbounded<SyncBackend.PullResItem<SyncMetadata>>().pipe(
-              Effect.acquireRelease(Queue.shutdown),
-            )
+          return runPull(initialCursor).pipe(
+            live
+              ? Stream.concatWithLastElement((res) =>
+                  (res._tag === 'None'
+                    ? // If we're live-pulling, we need to return a no-more page info if phase-1 pull returns no results
+                      Stream.make({ batch: [], pageInfo: { _tag: 'NoMore' } } as SyncBackend.PullResItem<SyncMetadata>)
+                    : Stream.empty
+                  ).pipe(
+                    Stream.concat(
+                      Effect.gen(function* () {
+                        const mailbox = yield* Mailbox.make<SyncBackend.PullResItem<SyncMetadata>>().pipe(
+                          Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                        )
 
-            const cursorRef = { current: initialCursor }
+                        // TODO bind to durable object so we can put stuff in the mailbox
 
-            // Subscribe for future updates (but don't pull here)
-            yield* rpcClient.SyncDoRpc.Subscribe({
-              clientId,
-              storeId,
-              payload,
-              callerContext: durableObjectContext,
-            }).pipe(
-              // Stream.tapLogWithLabel('rpc-sync-client:subscribe'),
-              Stream.tap(() =>
-                runPull(cursorRef.current).pipe(
-                  Stream.tap((msg) =>
-                    Effect.sync(() => {
-                      if (msg.batch.length > 0) {
-                        cursorRef.current = msg.batch.at(-1)!.eventEncoded.seqNum
-                      }
-                    }),
+                        return Mailbox.toStream(mailbox)
+                      }).pipe(Stream.unwrapScoped),
+                    ),
                   ),
-                  Stream.tap((msg) => Queue.offer(messagesQueue, msg)),
-                  Stream.runDrain,
-                ),
-              ),
-              Stream.runDrain,
-              Effect.tapCauseLogPretty,
-              Effect.forkScoped,
-            )
-
-            // Do the initial pull
-            yield* runPull(initialCursor).pipe(Stream.runDrain)
-
-            return Stream.fromQueue(messagesQueue)
-          } else {
-            return runPull(initialCursor)
-          }
+                )
+              : identity,
+          )
         }).pipe(Stream.unwrapScoped, Stream.withSpan('rpc-sync-client:pull'))
 
       const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = (batch) =>

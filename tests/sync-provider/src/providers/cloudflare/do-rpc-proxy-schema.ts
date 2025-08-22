@@ -27,6 +27,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
           metadata: Schema.Option(Schema.JsonValue),
         }),
       ),
+      live: Schema.Boolean,
     }),
     // Mirror the PullResItem from SyncBackend
     success: Schema.Struct({

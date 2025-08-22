@@ -258,7 +258,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       request: CfTypes.Request | { storeId: string },
     ): Effect.Effect<typeof StorageCacheSchema.Type> =>
       Effect.gen(this, function* () {
-        console.log('getStorageCache', this.storageCache)
         if (this.storageCache !== undefined) {
           return this.storageCache
         }

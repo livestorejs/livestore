@@ -63,12 +63,8 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
         }
 
         const syncBackend = yield* makeDoRpcSync({
-          clientId,
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-          durableObjectContext: {
-            bindingName: 'TEST_CLIENT_DO',
-            durableObjectId: this.ctx.id.toString(),
-          },
+          durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
         })({ storeId, clientId, payload })
 
         syncBackendMap.set(key, syncBackend)
@@ -85,7 +81,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
       Pull: (args) =>
         Effect.gen(function* () {
           const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.pull(args.args as any)
+          return syncBackend.pull(args.args as any, { live: args.live })
         }).pipe(Stream.unwrap),
       Push: ({ batch, ...args }) =>
         Effect.gen(function* () {

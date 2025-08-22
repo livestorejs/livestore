@@ -2,6 +2,7 @@
 export * from 'effect/Stream'
 
 import { type Cause, Chunk, Effect, Option, pipe, Ref, Stream } from 'effect'
+import { dual } from 'effect/Function'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
   tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(_))))(stream)
@@ -79,3 +80,61 @@ export const runFirstUnsafe = <A, E, R>(
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
   stream.pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
+
+/**
+ * Concatenates two streams where the second stream has access to the last element
+ * of the first stream as an `Option`. If the first stream is empty, the callback
+ * receives `Option.none()`.
+ *
+ * @param stream - The first stream to consume
+ * @param getStream2 - Function that receives the last element from the first stream
+ *   and returns the second stream to concatenate
+ * @returns A new stream containing all elements from both streams
+ *
+ * @example
+ * ```ts
+ * // Direct usage
+ * const result = concatWithLastElement(
+ *   Stream.make(1, 2, 3),
+ *   lastElement => lastElement.pipe(
+ *     Option.match({
+ *       onNone: () => Stream.make('empty'),
+ *       onSome: last => Stream.make(`last-was-${last}`)
+ *     })
+ *   )
+ * )
+ *
+ * // Piped usage
+ * const result = Stream.make(1, 2, 3).pipe(
+ *   concatWithLastElement(lastElement => 
+ *     Stream.make(lastElement.pipe(Option.getOrElse(() => 0)) * 10)
+ *   )
+ * )
+ * ```
+ */
+export const concatWithLastElement: {
+  <A1, A2, E2, R2>(
+    getStream2: (lastElement: Option.Option<A1>) => Stream.Stream<A2, E2, R2>,
+  ): <E1, R1>(stream: Stream.Stream<A1, E1, R1>) => Stream.Stream<A1 | A2, E1 | E2, R1 | R2>
+  <A1, E1, R1, A2, E2, R2>(
+    stream: Stream.Stream<A1, E1, R1>,
+    getStream2: (lastElement: Option.Option<A1>) => Stream.Stream<A2, E2, R2>,
+  ): Stream.Stream<A1 | A2, E1 | E2, R1 | R2>
+} = dual(
+  2,
+  <A1, E1, R1, A2, E2, R2>(
+    stream1: Stream.Stream<A1, E1, R1>,
+    getStream2: (lastElement: Option.Option<A1>) => Stream.Stream<A2, E2, R2>,
+  ): Stream.Stream<A1 | A2, E1 | E2, R1 | R2> =>
+    pipe(
+      Ref.make<Option.Option<A1>>(Option.none()),
+      Stream.fromEffect,
+      Stream.flatMap((lastRef) =>
+        pipe(
+          stream1,
+          Stream.tap((value) => Ref.set(lastRef, Option.some(value))),
+          Stream.concat(pipe(Ref.get(lastRef), Effect.map(getStream2), Stream.unwrap)),
+        ),
+      ),
+    ),
+)

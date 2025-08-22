@@ -108,6 +108,7 @@ export const makeLeaderThreadLayer = ({
       initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
+      livePull: syncOptions?.livePull ?? true,
       params: {
         localPushBatchSize: params?.localPushBatchSize,
         backendPushBatchSize: params?.backendPushBatchSize,

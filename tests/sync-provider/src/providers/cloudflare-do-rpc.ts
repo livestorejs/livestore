@@ -65,8 +65,10 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
         .Connect({ clientId, storeId, payload })
         .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       isConnected,
-      pull: (args) =>
-        client.Pull({ clientId, storeId, payload, args }).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
+      pull: (args, options) =>
+        client
+          .Pull({ clientId, storeId, payload, args, live: options?.live ?? false })
+          .pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
       push: (batch) =>
         client
           .Push({ clientId, storeId, payload, batch })

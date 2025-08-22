@@ -65,13 +65,10 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
       storage,
       syncOptions: {
         backend: makeDoRpcSync({
-          clientId,
           syncBackendStub: syncBackendDurableObject,
-          durableObjectContext: {
-            bindingName,
-            durableObjectId,
-          },
+          durableObjectContext: { bindingName, durableObjectId },
         }),
+        livePull: false, // Uses DO RPC callbacks for reactive pull
         // backend: makeHttpSync({ url: `http://localhost:8787`, livePull: { pollInterval: 500 } }),
         initialSyncOptions: { _tag: 'Blocking', timeout: 500 },
         // backend: makeWsSyncProviderClient({ durableObject: syncBackendDurableObject }),

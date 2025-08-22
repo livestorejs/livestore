@@ -18,4 +18,9 @@ export type SyncOptions = {
    * @default 'ignore'
    * */
   onSyncError?: 'shutdown' | 'ignore'
+  /**
+   * Whether the sync backend should reactively pull new events from the sync backend
+   * @default true
+   */
+  livePull?: boolean
 }

@@ -78,6 +78,7 @@ export const makeLeaderSyncProcessor = ({
   initialBlockingSyncContext,
   initialSyncState,
   onError,
+  livePull,
   params,
   testing,
 }: {
@@ -97,6 +98,8 @@ export const makeLeaderSyncProcessor = ({
      */
     backendPushBatchSize?: number
   }
+  /** * Whether the sync backend should reactively pull new events from the sync backend */
+  livePull: boolean
   testing: {
     delays?: {
       localPushProcessing?: Effect.Effect<void>
@@ -295,6 +298,7 @@ export const makeLeaderSyncProcessor = ({
         syncStateSref,
         localPushesLatch,
         pullLatch,
+        livePull,
         dbState,
         otelSpan,
         initialBlockingSyncContext,
@@ -574,6 +578,7 @@ const backgroundBackendPulling = ({
   dbState,
   syncStateSref,
   localPushesLatch,
+  livePull,
   pullLatch,
   devtoolsLatch,
   initialBlockingSyncContext,
@@ -589,6 +594,7 @@ const backgroundBackendPulling = ({
   dbState: SqliteDb
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
+  livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
   connectedClientSessionPullQueues: PullQueueSet
@@ -708,7 +714,7 @@ const backgroundBackendPulling = ({
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
 
-    yield* syncBackend.pull(cursorInfo, { live: true }).pipe(
+    yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {

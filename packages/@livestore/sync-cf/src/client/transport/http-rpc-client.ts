@@ -121,8 +121,13 @@ export const makeHttpSync =
           return rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor }).pipe(
             options?.live
               ? // Phase 2: Simulate `live` pull by polling for new events
-                Stream.concat(
-                  Stream.unfoldChunkEffect(cursor, (currentCursor) =>
+                Stream.concatWithLastElement((lastElement) => {
+                  const initialPhase2Cursor = lastElement.pipe(
+                    Option.flatMap((_) => Option.fromNullable(_.batch.at(-1)?.eventEncoded.seqNum)),
+                    Option.getOrElse(() => cursor),
+                  )
+
+                  return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
                     Effect.gen(function* () {
                       yield* Effect.sleep(livePullInterval)
 
@@ -147,8 +152,8 @@ export const makeHttpSync =
 
                       return Option.some([items, nextCursor])
                     }),
-                  ),
-                )
+                  )
+                })
               : identity,
           )
         }).pipe(
