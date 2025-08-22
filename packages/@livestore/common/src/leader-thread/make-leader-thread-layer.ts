@@ -258,12 +258,12 @@ const makeInitialBlockingSyncContext = ({
 
     return {
       blockingDeferred,
-      update: ({ processed, remaining }) =>
+      update: ({ processed, pageInfo }) =>
         Effect.gen(function* () {
           if (ctx.isDone === true) return
 
-          if (ctx.total === -1) {
-            ctx.total = remaining + processed
+          if (ctx.total === -1 && pageInfo._tag === 'MoreKnown') {
+            ctx.total = pageInfo.remaining + processed
           }
 
           ctx.processedEvents += processed
@@ -272,7 +272,7 @@ const makeInitialBlockingSyncContext = ({
             progress: { done: ctx.processedEvents, total: ctx.total },
           })
 
-          if (remaining === 0 && blockingDeferred !== undefined) {
+          if (pageInfo._tag === 'NoMore' && blockingDeferred !== undefined) {
             yield* Deferred.succeed(blockingDeferred, void 0)
             ctx.isDone = true
           }

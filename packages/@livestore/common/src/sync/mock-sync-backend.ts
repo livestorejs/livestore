@@ -34,7 +34,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
             Stream.chunks,
             Stream.map((chunk) => ({
               batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
-              remaining: 0,
+              pageInfo: SyncBackend.pageInfoNoMore,
             })),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
@@ -62,7 +62,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
           description: 'Just a mock sync backend',
         },
         supports: {
-          pullRemainingCount: true,
+          pullPageInfoKnown: true,
           pullLive: true,
         },
       })

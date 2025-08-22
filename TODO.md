@@ -24,6 +24,7 @@
   - [ ] Make storage (local SQLite vs D1) configurable
 - [ ] CF DO adapter
   - [ ] Clean up CF DO client adapter example
+  - [ ] Adjust DO example so it doesn't rely on alarms to stay alive but use the DO RPC callback
   - [ ] Write docs for CF DO client adapter
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
   - [ ] Create CF worker only example (without DO)

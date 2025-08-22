@@ -16,7 +16,7 @@
 └─────────────┘                  └─────────────┘
 ```
 
-- Can send poke message
+- Support hibernated WebSockets (i.e. client DO doesn't need to stay alive during pull streaming)
 
 ### HTTP
 
@@ -42,6 +42,11 @@
 
 - Only supported from client DOs
 - RPC streams are implement via `ReadableStream` which is billed for the entire duration of the stream, not just the time it takes to send the data
+
+## Storage
+
+- D1
+- Cloudflare Durable Objects SQLite
 
 ## TODO (in readme)
 

@@ -47,10 +47,12 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
           ).pipe(UnexpectedError.mapToUnexpectedError)
         }
 
-        return pull(req)
+        const items = yield* pull(req).pipe(Stream.runCollect)
+        // return Stream.fromIterable(items)
+        return items
       }).pipe(
-        Stream.unwrap,
-        Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
+        // Stream.unwrap,
+        Effect.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
       ),
 
     'SyncHttpRpc.Push': (req) =>
@@ -63,7 +65,6 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
 
         const push = makePush({
           storage: options.makeStorage(req.storeId),
-          requestId: req.requestId,
           ctx: options.ctx,
           currentHeadRef: options.currentHeadRef,
           storeId: req.storeId,
@@ -82,7 +83,7 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
         ),
       ),
 
-    'SyncHttpRpc.Ping': (req) =>
+    'SyncHttpRpc.Ping': () =>
       Effect.gen(function* () {
         // if (!options.onPing) {
         //   return Effect.succeed({ requestId: 'ping' as const })
@@ -92,7 +93,7 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
         //   storeId: req.storeId,
         //   payload: req.payload,
         // })
-        return SyncMessage.Pong.make({ requestId: req.requestId })
+        return SyncMessage.Pong.make({})
       }),
   }).pipe(
     Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/http-rpc' })),

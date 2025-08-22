@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
@@ -36,7 +36,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
           metadata: Schema.Option(Schema.JsonValue),
         }),
       ),
-      remaining: Schema.Number,
+      pageInfo: SyncBackend.PullResPageInfo,
     }),
     error: Schema.Union(IsOfflineError, InvalidPullError),
     stream: true,

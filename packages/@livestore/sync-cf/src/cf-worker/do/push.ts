@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { SyncBackend, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
@@ -14,7 +14,6 @@ import type { SyncStorage } from './sync-storage.ts'
 export const makePush =
   ({
     storage,
-    requestId,
     options,
     rpcSubscriptions,
     pushSemaphore,
@@ -25,7 +24,6 @@ export const makePush =
   }: {
     options: MakeDurableObjectClassOptions | undefined
     storage: SyncStorage
-    requestId: string
     rpcSubscriptions: Map<StoreId, RpcSubscription>
     pushSemaphore: Effect.Semaphore
     currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
@@ -38,7 +36,7 @@ export const makePush =
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
 
       if (decodedMessage.batch.length === 0) {
-        return SyncMessage.PushAck.make({ requestId })
+        return SyncMessage.PushAck.make({})
       }
 
       // TODO use ctx.blockConcurrencyWhile()
@@ -108,8 +106,7 @@ export const makePush =
             eventEncoded,
             metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
           })),
-          remaining: 0,
-          requestId: { context: 'push', requestId },
+          pageInfo: SyncBackend.pageInfoNoMore,
         })
 
         // Broadcast to WebSocket clients
@@ -155,7 +152,7 @@ export const makePush =
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
       yield* Effect.yieldNow()
 
-      return SyncMessage.PushAck.make({ requestId })
+      return SyncMessage.PushAck.make({})
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.tap(

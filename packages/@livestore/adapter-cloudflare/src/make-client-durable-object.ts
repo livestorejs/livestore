@@ -1,7 +1,7 @@
 import type { UnexpectedError } from '@livestore/common'
 import { createStore, type LiveStoreSchema, provideOtel, type Store, type Unsubscribe } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
-import { makeDoRpcSync } from '@livestore/sync-cf/client'
+import { makeDoRpcSync, makeHttpSync } from '@livestore/sync-cf/client'
 import { Effect, Logger, LogLevel, Scope } from '@livestore/utils/effect'
 import type * as CfWorker from './cf-types.ts'
 import { makeAdapter } from './make-adapter.ts'
@@ -63,6 +63,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
       storage,
       syncOptions: {
         backend: makeDoRpcSync({ clientId, syncBackendStub: syncBackendDurableObject, durableObjectId }),
+        // backend: makeHttpSync({ url: `http://localhost:8787`, livePull: { pollInterval: 500 } }),
         initialSyncOptions: { _tag: 'Blocking', timeout: 500 },
         // backend: makeWsSyncProviderClient({ durableObject: syncBackendDurableObject }),
       },

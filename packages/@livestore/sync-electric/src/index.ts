@@ -164,14 +164,14 @@ export const makeSyncBackend =
 
       const httpClient = yield* HttpClient.HttpClient
 
-      const pull = (
+      const runPull = (
         handle: Option.Option<SyncMetadata>,
         { live }: { live: boolean },
       ): Effect.Effect<
         Option.Option<
           readonly [
             /** The batch of events */
-            Chunk.Chunk<{
+            ReadonlyArray<{
               metadata: Option.Option<SyncMetadata>
               eventEncoded: LiveStoreEvent.AnyEncodedGlobal
             }>,
@@ -197,7 +197,7 @@ export const makeSyncBackend =
           } else if (resp.status === 400) {
             // Electric returns 400 when table doesn't exist
             // Return empty result for non-existent tables
-            return Option.some([Chunk.empty(), Option.none()] as const)
+            return Option.some([[], Option.none()] as const)
           } else if (resp.status === 409) {
             // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
             // {
@@ -226,7 +226,7 @@ export const makeSyncBackend =
           // Electric completes the long-poll request after ~20 seconds with a 204 status
           // In this case we just retry where we left off
           if (resp.status === 204) {
-            return Option.some([Chunk.empty(), Option.some(nextHandle)] as const)
+            return Option.some([[], Option.some(nextHandle)] as const)
           }
 
           const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
@@ -240,10 +240,13 @@ export const makeSyncBackend =
               eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
-          return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
+          yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
+
+          return Option.some([items, Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
           Effect.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
         )
 
       const pullEndpointHasSameOrigin =
@@ -279,35 +282,39 @@ export const makeSyncBackend =
       return SyncBackend.of({
         connect,
         pull: (args, options) => {
-          return Stream.unfoldChunkEffect(
+          return Stream.unfoldEffect(
             args.pipe(
               Option.map((_) => _.metadata),
               Option.flatten,
             ),
             (metadataOption) =>
               Effect.gen(function* () {
-                const result = yield* pull(metadataOption, { live: options?.live ?? false })
+                const result = yield* runPull(metadataOption, { live: options?.live ?? false })
                 if (Option.isNone(result)) return Option.none()
 
                 const [batch, nextMetadataOption] = result.value
 
                 // Continue pagination if we have data
-                if (Chunk.isEmpty(batch) === false) {
-                  return Option.some([batch, nextMetadataOption] as const)
+                if (batch.length > 0) {
+                  return Option.some([{ batch, hasMore: true }, nextMetadataOption])
                 }
 
+                // Also continue if there's no data but we're live
                 if (options?.live) {
-                  return Option.some([batch, nextMetadataOption] as const)
+                  return Option.some([{ batch, hasMore: false }, nextMetadataOption])
                 }
 
                 // Stop on empty batch (when not live)
                 return Option.none()
               }),
           ).pipe(
-            Stream.chunks,
+            // Stream.chunks,
             // Filter out empty batches to not emit `{ batch: [], remaining: 0 }` items
-            Stream.filter((batch) => Chunk.isEmpty(batch) === false),
-            Stream.map((batch) => ({ batch: Chunk.toArray(batch), remaining: 0 })),
+            // Stream.filter((batch) => Chunk.isEmpty(batch) === false),
+            Stream.map(({ batch, hasMore }) => ({
+              batch,
+              pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
+            })),
             Stream.withSpan('electric-provider:pull'),
           )
         },
@@ -339,7 +346,7 @@ export const makeSyncBackend =
         supports: {
           // Given Electric is heavily optimized for immutable caching, we can't know the remaining count
           // until we've reached the end of the stream
-          pullRemainingCount: false,
+          pullPageInfoKnown: false,
           pullLive: true,
         },
       })

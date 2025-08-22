@@ -1,11 +1,13 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
+  Chunk,
   type Duration,
   Effect,
   HttpClient,
   HttpClientRequest,
   Layer,
+  Mailbox,
   Option,
   RpcClient,
   RpcSerialization,
@@ -31,6 +33,13 @@ export interface HttpSyncOptions {
    */
   url: string
   headers?: Record<string, string>
+  livePull?: {
+    /**
+     * How often to poll for new events
+     * @default 5 seconds
+     */
+    pollInterval?: Duration.DurationInput
+  }
   ping?: {
     /**
      * @default true
@@ -59,6 +68,8 @@ export const makeHttpSync =
       // Based on ping responses
       const isConnected = yield* SubscriptionRef.make(false)
 
+      const livePullInterval = options.livePull?.pollInterval ?? 5_000
+
       const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
         storeId,
         payload,
@@ -86,13 +97,7 @@ export const makeHttpSync =
       const pingTimeout = options.ping?.requestTimeout ?? 10_000
 
       const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
-        const requestId = nanoid()
-        const res = yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload, requestId })
-        if (res.requestId !== requestId) {
-          return shouldNeverHappen(
-            `Ping response requestId ${res.requestId} does not match expected requestId ${requestId}`,
-          )
-        }
+        yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload })
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
@@ -111,27 +116,94 @@ export const makeHttpSync =
       // Helps already establish a TCP connection to the server
       const connect = ping.pipe(UnexpectedError.mapToUnexpectedError)
 
-      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args) => {
-        const cursor = Option.getOrUndefined(args)?.cursor
-        const requestId = nanoid()
+      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args, options) =>
+        Effect.gen(function* () {
+          const cursor = Option.getOrUndefined(args)?.cursor
 
-        return rpcClient.SyncHttpRpc.Pull({
-          storeId,
-          payload,
-          requestId,
-          cursor,
-          live: false, // TODO
+          const live = options?.live ?? false
+
+          if (live) {
+            // const resMailbox = yield* Mailbox.make<SyncBackend.PullResItem<SyncMetadata>>(1)
+            // let currentCursor = cursor
+
+            // yield* Effect.gen(function* () {
+            //   const items = yield* rpcClient.SyncHttpRpc.Pull({
+            //     storeId,
+            //     payload,
+            //     cursor: currentCursor,
+            //     live: false, // We're using polling instead of streaming
+            //   })
+
+            //   if (items.length === 0) {
+            //     return
+            //   }
+
+            //   yield* resMailbox.offerAll(items)
+
+            //   currentCursor = Chunk.unsafeLast(items).batch.at(-1)?.eventEncoded.seqNum ?? cursor
+
+            //   yield* Effect.sleep(livePullInterval)
+            // }).pipe(Effect.forever, Effect.forkScoped)
+
+            // return Mailbox.toStream(resMailbox)
+            let hasAlreadyPulled = false
+
+            return Stream.unfoldChunkEffect(cursor, (currentCursor) =>
+              Effect.gen(function* () {
+                // Don't sleep on the first pull
+                if (hasAlreadyPulled) {
+                  yield* Effect.sleep(livePullInterval)
+                } else {
+                  hasAlreadyPulled = true
+                }
+
+                const items = yield* rpcClient.SyncHttpRpc.Pull({
+                  storeId,
+                  payload,
+                  cursor: currentCursor,
+                  live: false, // We're using polling instead of streaming
+                })
+
+                if (items.length === 0) {
+                  return Option.some([
+                    Chunk.make({
+                      batch: [],
+                      pageInfo: SyncBackend.pageInfoNoMore,
+                    } as SyncBackend.PullResItem<SyncMetadata>),
+                    currentCursor,
+                  ])
+                }
+
+                const nextCursor = Chunk.last(items).pipe(
+                  Option.map((item) => item.batch.at(-1)?.eventEncoded.seqNum),
+                  Option.getOrElse(() => currentCursor),
+                )
+
+                return Option.some([items, nextCursor])
+              }),
+            )
+          }
+
+          const items = yield* rpcClient.SyncHttpRpc.Pull({
+            storeId,
+            payload,
+            cursor,
+            live: false, // We're using polling instead of streaming
+          })
+
+          if (items.length === 0 && options?.live) {
+            return Stream.make({
+              batch: [],
+              pageInfo: SyncBackend.pageInfoNoMore,
+            })
+          }
+
+          return Stream.fromIterable(items)
         }).pipe(
-          // Effect.map(Stream.fromIterable),
-          // Stream.unwrap,
-          // Stream.map((pullRes) => ({
-          //   batch: pullRes.batch,
-          //   remaining: pullRes.remaining,
-          // })),
+          Stream.unwrapScoped,
           Stream.mapError((cause) => new InvalidPullError({ cause })),
           Stream.withSpan('http-sync-client:pull'),
         )
-      }
 
       const pushSemaphore = yield* Effect.makeSemaphore(1)
 
@@ -141,14 +213,7 @@ export const makeHttpSync =
             return
           }
 
-          const requestId = nanoid()
-
-          yield* rpcClient.SyncHttpRpc.Push({
-            storeId,
-            payload,
-            requestId,
-            batch,
-          })
+          yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch })
         }).pipe(
           pushSemaphore.withPermits(1),
           Effect.mapError((error) => new InvalidPushError({ reason: { _tag: 'Unexpected', cause: error } })),
@@ -168,7 +233,7 @@ export const makeHttpSync =
           url: options.url,
         },
         supports: {
-          pullRemainingCount: true,
+          pullPageInfoKnown: true,
           pullLive: true,
         },
       })

@@ -3,7 +3,7 @@ import {
   type Effect,
   type HttpClient,
   Option,
-  type Schema,
+  Schema,
   type Scope,
   type Stream,
   type SubscriptionRef,
@@ -73,9 +73,9 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /** Information about the sync backend capabilities. */
   supports: {
     /**
-     * Whether the sync backend supports the `remaining` field in the pull response.
+     * Whether the sync backend supports the `hasMore` field in the pull response.
      */
-    pullRemainingCount: boolean
+    pullPageInfoKnown: boolean
     /**
      * Whether the sync backend supports the `live` option for the pull method and thus
      * long-lived, reactive pull streams.
@@ -84,12 +84,26 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   }
 }
 
+export const PullResPageInfo = Schema.Union(
+  Schema.TaggedStruct('MoreUnknown', {}),
+  Schema.TaggedStruct('MoreKnown', {
+    remaining: Schema.Number,
+  }),
+  Schema.TaggedStruct('NoMore', {}),
+)
+
+export type PullResPageInfo = typeof PullResPageInfo.Type
+
+export const pageInfoNoMore: PullResPageInfo = { _tag: 'NoMore' } as const
+export const pageInfoMoreUnknown: PullResPageInfo = { _tag: 'MoreUnknown' } as const
+export const pageInfoMoreKnown = (remaining: number): PullResPageInfo => ({ _tag: 'MoreKnown', remaining })
+
 export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
   batch: ReadonlyArray<{
     eventEncoded: LiveStoreEvent.AnyEncodedGlobal
     metadata: Option.Option<TSyncMetadata>
   }>
-  remaining: number
+  pageInfo: PullResPageInfo
 }
 
 export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetadata>) => obj

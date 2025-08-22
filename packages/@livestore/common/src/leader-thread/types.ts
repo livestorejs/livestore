@@ -130,7 +130,7 @@ export type MaterializeEvent = (
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
-  update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
+  update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
 }
 
 export interface LeaderSyncProcessor {

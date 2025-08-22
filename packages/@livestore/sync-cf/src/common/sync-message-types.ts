@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { SyncBackend, UnexpectedError } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
@@ -15,8 +15,7 @@ export const SyncMetadata = Schema.TaggedStruct('SyncMessage.SyncMetadata', {
 
 export type SyncMetadata = typeof SyncMetadata.Type
 
-export const PullRequest = Schema.TaggedStruct('SyncMessage.PullRequest', {
-  requestId: Schema.String,
+export const PullRequest = Schema.Struct({
   /** Omitting the cursor will start from the beginning */
   cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
   /** Whether to keep the pull stream alive and wait for more events */
@@ -25,32 +24,27 @@ export const PullRequest = Schema.TaggedStruct('SyncMessage.PullRequest', {
 
 export type PullRequest = typeof PullRequest.Type
 
-export const PullResponse = Schema.TaggedStruct('SyncMessage.PullResponse', {
+export const PullResponse = Schema.Struct({
   batch: Schema.Array(
     Schema.Struct({
       eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
-  requestId: Schema.Struct({
-    context: Schema.Literal('pull', 'push'),
-    requestId: Schema.String,
-  }),
-  remaining: Schema.Number,
+  pageInfo: SyncBackend.PullResPageInfo,
 }).annotations({ title: '@livestore/sync-cf:PullResponse' })
 
 export type PullResponse = typeof PullResponse.Type
 
-export const PushRequest = Schema.TaggedStruct('SyncMessage.PushRequest', {
-  requestId: Schema.String,
+export const PushRequest = Schema.Struct({
   batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
 }).annotations({ title: '@livestore/sync-cf:PushRequest' })
 
 export type PushRequest = typeof PushRequest.Type
 
-export const PushAck = Schema.TaggedStruct('SyncMessage.PushAck', {
-  requestId: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:PushAck' })
+export const PushAck = Schema.Struct({}).annotations({
+  title: '@livestore/sync-cf:PushAck',
+})
 
 export type PushAck = typeof PushAck.Type
 
@@ -69,41 +63,34 @@ export class SyncError extends Schema.TaggedError<SyncError>()(
   { title: '@livestore/sync-cf:SyncError' },
 ) {}
 
-export const Ping = Schema.TaggedStruct('SyncMessage.Ping', {
-  requestId: Schema.Literal('ping'),
-}).annotations({ title: '@livestore/sync-cf:Ping' })
+export const Ping = Schema.TaggedStruct('SyncMessage.Ping', {}).annotations({ title: '@livestore/sync-cf:Ping' })
 
 export type Ping = typeof Ping.Type
 
-export const Pong = Schema.TaggedStruct('SyncMessage.Pong', {
-  requestId: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:Pong' })
+export const Pong = Schema.TaggedStruct('SyncMessage.Pong', {}).annotations({ title: '@livestore/sync-cf:Pong' })
 
 export type Pong = typeof Pong.Type
 
 // Admin operations
 export const AdminResetRoomRequest = Schema.TaggedStruct('SyncMessage.AdminResetRoomRequest', {
-  requestId: Schema.String,
   adminSecret: Schema.String,
 }).annotations({ title: '@livestore/sync-cf:AdminResetRoomRequest' })
 
 export type AdminResetRoomRequest = typeof AdminResetRoomRequest.Type
 
-export const AdminResetRoomResponse = Schema.TaggedStruct('SyncMessage.AdminResetRoomResponse', {
-  requestId: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:AdminResetRoomResponse' })
+export const AdminResetRoomResponse = Schema.TaggedStruct('SyncMessage.AdminResetRoomResponse', {}).annotations({
+  title: '@livestore/sync-cf:AdminResetRoomResponse',
+})
 
 export type AdminResetRoomResponse = typeof AdminResetRoomResponse.Type
 
 export const AdminInfoRequest = Schema.TaggedStruct('SyncMessage.AdminInfoRequest', {
-  requestId: Schema.String,
   adminSecret: Schema.String,
 }).annotations({ title: '@livestore/sync-cf:AdminInfoRequest' })
 
 export type AdminInfoRequest = typeof AdminInfoRequest.Type
 
 export const AdminInfoResponse = Schema.TaggedStruct('SyncMessage.AdminInfoResponse', {
-  requestId: Schema.String,
   info: Schema.Struct({
     durableObjectId: Schema.String,
   }),

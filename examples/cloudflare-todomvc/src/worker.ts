@@ -1,12 +1,13 @@
 import { DurableObject } from 'cloudflare:workers'
 import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { schema, tables } from './livestore/schema.ts'
 
 type Env = {
-  CLIENT_DO: DurableObjectNamespace<SyncBackend.ClientDOInterface>
-  SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>
+  CLIENT_DO: CfTypes.DurableObjectNamespace<SyncBackend.ClientDOInterface>
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>
   DB: D1Database
   ADMIN_SECRET: string
 }
@@ -32,6 +33,7 @@ export class LiveStoreClientDO extends DurableObject implements SyncBackend.Clie
   }
 
   async fetch(request: Request): Promise<Response> {
+    // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
     this.storeId = storeIdFromRequest(request)
 
     const store = await this.getStore()
@@ -57,7 +59,6 @@ export class LiveStoreClientDO extends DurableObject implements SyncBackend.Clie
       sessionId: nanoid(),
       durableObjectId: this.state.id.toString(),
       storage: this.state.storage,
-      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
       syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
     })
 
@@ -92,9 +93,16 @@ export default {
   fetch: async (request, env, ctx) => {
     const url = new URL(request.url)
 
-    if (url.pathname.endsWith('/sync')) {
-      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-      return SyncBackend.handleSync(request, env, ctx, { headers: {} }) as Promise<Response>
+    const requestParamsResult = SyncBackend.getSyncRequestSearchParams(request)
+
+    if (requestParamsResult._tag === 'Some') {
+      return SyncBackend.handleSyncRequest({
+        request,
+        searchParams: requestParamsResult.value,
+        env,
+        ctx,
+        options: { headers: {} },
+      })
     }
 
     // Forward request to client DO
@@ -106,16 +114,18 @@ export default {
     }
 
     if (url.pathname === '/') {
-      return new Response('CloudFlare TodoMVC LiveStore Demo')
+      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+      return new Response('CloudFlare TodoMVC LiveStore Demo') as CfTypes.Response
     }
 
-    return new Response('Invalid path', { status: 400 })
+    // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+    return new Response('Invalid path', { status: 400 }) as CfTypes.Response
   },
-} satisfies ExportedHandler<Env>
+} satisfies CfTypes.ExportedHandler<Env>
 
 /// Helper functions
 
-const storeIdFromRequest = (request: Request) => {
+const storeIdFromRequest = (request: CfTypes.Request) => {
   const url = new URL(request.url)
   const storeId = url.searchParams.get('storeId')
 

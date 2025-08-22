@@ -34,7 +34,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
 
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': (_req) => {
-        return Effect.succeed(SyncMessage.Pong.make({ requestId: 'ping' }))
+        return Effect.succeed(SyncMessage.Pong.make({}))
       },
       'SyncDoRpc.Pull': (req) =>
         Effect.gen(this, function* () {
@@ -52,7 +52,6 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
 
           const push = makePush({
             storage: makeStorage(ctx, env, req.storeId),
-            requestId: req.requestId,
             ctx: ctx,
             currentHeadRef,
             storeId: req.storeId,

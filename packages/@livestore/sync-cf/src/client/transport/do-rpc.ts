@@ -60,18 +60,14 @@ export const makeDoRpcSync =
 
           // const incomingMessages = yield* PubSub.unbounded<SyncBackend.PullResItem>()
 
-          const requestId = nanoid()
-
           // Make runPull a function so it reads the current cursor value
           const runPull = (cursor: EventSequenceNumber.GlobalEventSequenceNumber | undefined) =>
             rpcClient.SyncDoRpc.Pull({
-              requestId,
               cursor,
               live,
               storeId,
             }).pipe(
               Stream.mapError((cause) => new InvalidPullError({ cause })),
-              // Stream.map((_) => ({ batch: _.batch, remaining: _.remaining })),
               Stream.tap((msg) => Effect.log(`RPC pulled ${msg.batch.length} events from sync provider`)),
               Stream.withSpan('rpc-sync-client:pull'),
             )
@@ -84,7 +80,7 @@ export const makeDoRpcSync =
             const cursorRef = { current: initialCursor }
 
             // Subscribe for future updates (but don't pull here)
-            yield* rpcClient.SyncDoRpc.Subscribe({ clientId, storeId, requestId, durableObjectId, payload }).pipe(
+            yield* rpcClient.SyncDoRpc.Subscribe({ clientId, storeId, durableObjectId, payload }).pipe(
               // Stream.tapLogWithLabel('rpc-sync-client:subscribe'),
               Stream.tap(() =>
                 runPull(cursorRef.current).pipe(
@@ -119,14 +115,13 @@ export const makeDoRpcSync =
             return
           }
 
-          yield* rpcClient.SyncDoRpc.Push({ requestId: nanoid(), batch, storeId })
+          yield* rpcClient.SyncDoRpc.Push({ batch, storeId })
         }).pipe(
           Effect.mapError((cause) => new InvalidPushError({ reason: { _tag: 'Unexpected', cause } })),
           Effect.withSpan('rpc-sync-client:push'),
         )
 
       const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
-        requestId: nanoid(),
         storeId,
         payload,
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('rpc-sync-client:ping'))
@@ -144,7 +139,7 @@ export const makeDoRpcSync =
           storeId,
         },
         supports: {
-          pullRemainingCount: true,
+          pullPageInfoKnown: true,
           pullLive: true,
         },
       })

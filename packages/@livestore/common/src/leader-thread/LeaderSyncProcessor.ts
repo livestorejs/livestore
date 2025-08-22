@@ -29,7 +29,7 @@ import {
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import { type InvalidPullError, type IsOfflineError, LeaderAheadError } from '../sync/sync.ts'
+import { type InvalidPullError, type IsOfflineError, LeaderAheadError, type SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -599,7 +599,7 @@ const backgroundBackendPulling = ({
 
     if (syncBackend === undefined) return
 
-    const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], remaining: number) =>
+    const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], pageInfo: SyncBackend.PullResPageInfo) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -697,7 +697,7 @@ const backgroundBackendPulling = ({
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         // Allow local pushes to be processed again
-        if (remaining === 0) {
+        if (pageInfo._tag === 'NoMore') {
           yield* localPushesLatch.open
         }
       })
@@ -710,7 +710,7 @@ const backgroundBackendPulling = ({
 
     yield* syncBackend.pull(cursorInfo, { live: true }).pipe(
       // TODO only take from queue while connected
-      Stream.tap(({ batch, remaining }) =>
+      Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {
           // yield* Effect.spanEvent('batch', {
           //   attributes: {
@@ -732,9 +732,9 @@ const backgroundBackendPulling = ({
                 materializerHashSession: Option.none(),
               }),
             ),
-            remaining,
+            pageInfo,
           )
-          yield* initialBlockingSyncContext.update({ processed: batch.length, remaining })
+          yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
         }),
       ),
       Stream.runDrain,

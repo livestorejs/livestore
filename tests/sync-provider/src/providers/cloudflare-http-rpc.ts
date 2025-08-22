@@ -12,7 +12,13 @@ export const layer = Layer.scoped(
     const { port } = yield* startWranglerDevServer({ cwd: path.join(import.meta.dirname, 'cloudflare') })
 
     return {
-      makeProvider: makeHttpSync({ url: `http://localhost:${port}` }),
+      makeProvider: makeHttpSync({
+        url: `http://localhost:${port}`,
+        livePull: {
+          // For testing purposes, we're polling every 200ms (brr, brr, brr, ...)
+          pollInterval: 200,
+        },
+      }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
       push: () => Effect.log('TODO implement push'),

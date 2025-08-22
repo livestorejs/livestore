@@ -17,7 +17,6 @@ import {
   UrlParams,
   type WebSocket,
 } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
@@ -126,7 +125,6 @@ export const makeWsSync =
         connect: ping,
         pull: (args, options) =>
           rpcClient.SyncWsRpc.Pull({
-            requestId: nanoid(),
             storeId,
             payload,
             cursor: Option.getOrUndefined(args)?.cursor,
@@ -146,12 +144,7 @@ export const makeWsSync =
               return
             }
 
-            return yield* rpcClient.SyncWsRpc.Push({
-              requestId: nanoid(),
-              storeId,
-              payload,
-              batch,
-            }).pipe(
+            return yield* rpcClient.SyncWsRpc.Push({ storeId, payload, batch }).pipe(
               Effect.mapError(
                 (cause) =>
                   new InvalidPushError({
@@ -176,7 +169,7 @@ export const makeWsSync =
           url: options.url,
         },
         supports: {
-          pullRemainingCount: true,
+          pullPageInfoKnown: true,
           pullLive: true,
         },
       })

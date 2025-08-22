@@ -74,7 +74,7 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
       ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       metadata,
       supports: {
-        pullRemainingCount: true,
+        pullPageInfoKnown: true,
         pullLive: true,
       },
     })

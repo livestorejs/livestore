@@ -15,9 +15,9 @@ export class SyncHttpRpc extends RpcGroup.make(
       payload: Schema.optional(Schema.JsonValue),
       ...SyncMessage.PullRequest.fields,
     }),
-    success: SyncMessage.PullResponse,
+    success: Schema.Chunk(SyncMessage.PullResponse),
     error: SyncMessage.SyncError,
-    stream: true,
+    // stream: true,
   }),
   Rpc.make('SyncHttpRpc.Push', {
     payload: Schema.Struct({
@@ -32,7 +32,6 @@ export class SyncHttpRpc extends RpcGroup.make(
     payload: Schema.Struct({
       storeId: Schema.String,
       payload: Schema.optional(Schema.JsonValue),
-      requestId: Schema.String,
     }),
     success: SyncMessage.Pong,
     error: SyncMessage.SyncError,

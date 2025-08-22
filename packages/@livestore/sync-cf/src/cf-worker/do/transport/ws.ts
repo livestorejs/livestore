@@ -65,7 +65,6 @@ export const makeRpcServer = ({
 
         const push = makePush({
           storage,
-          requestId: req.requestId,
           options,
           rpcSubscriptions,
           pushSemaphore,
