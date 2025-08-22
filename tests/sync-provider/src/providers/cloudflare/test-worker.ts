@@ -65,7 +65,10 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
         const syncBackend = yield* makeDoRpcSync({
           clientId,
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-          durableObjectId: this.ctx.id.toString(),
+          durableObjectContext: {
+            bindingName: 'TEST_CLIENT_DO',
+            durableObjectId: this.ctx.id.toString(),
+          },
         })({ storeId, clientId, payload })
 
         syncBackendMap.set(key, syncBackend)

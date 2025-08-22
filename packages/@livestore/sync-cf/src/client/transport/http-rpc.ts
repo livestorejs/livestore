@@ -1,13 +1,12 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
-import { shouldNeverHappen } from '@livestore/utils'
 import {
   Chunk,
   type Duration,
   Effect,
   HttpClient,
   HttpClientRequest,
+  identity,
   Layer,
-  Mailbox,
   Option,
   RpcClient,
   RpcSerialization,
@@ -17,7 +16,6 @@ import {
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
@@ -120,85 +118,39 @@ export const makeHttpSync =
         Effect.gen(function* () {
           const cursor = Option.getOrUndefined(args)?.cursor
 
-          const live = options?.live ?? false
+          return rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor }).pipe(
+            options?.live
+              ? // Phase 2: Simulate `live` pull by polling for new events
+                Stream.concat(
+                  Stream.unfoldChunkEffect(cursor, (currentCursor) =>
+                    Effect.gen(function* () {
+                      yield* Effect.sleep(livePullInterval)
 
-          if (live) {
-            // const resMailbox = yield* Mailbox.make<SyncBackend.PullResItem<SyncMetadata>>(1)
-            // let currentCursor = cursor
+                      const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
+                        Stream.runCollect,
+                      )
 
-            // yield* Effect.gen(function* () {
-            //   const items = yield* rpcClient.SyncHttpRpc.Pull({
-            //     storeId,
-            //     payload,
-            //     cursor: currentCursor,
-            //     live: false, // We're using polling instead of streaming
-            //   })
+                      if (items.length === 0) {
+                        return Option.some([
+                          Chunk.make({
+                            batch: [],
+                            pageInfo: SyncBackend.pageInfoNoMore,
+                          } as SyncBackend.PullResItem<SyncMetadata>),
+                          currentCursor,
+                        ])
+                      }
 
-            //   if (items.length === 0) {
-            //     return
-            //   }
+                      const nextCursor = Chunk.last(items).pipe(
+                        Option.map((item) => item.batch.at(-1)?.eventEncoded.seqNum),
+                        Option.getOrElse(() => currentCursor),
+                      )
 
-            //   yield* resMailbox.offerAll(items)
-
-            //   currentCursor = Chunk.unsafeLast(items).batch.at(-1)?.eventEncoded.seqNum ?? cursor
-
-            //   yield* Effect.sleep(livePullInterval)
-            // }).pipe(Effect.forever, Effect.forkScoped)
-
-            // return Mailbox.toStream(resMailbox)
-            let hasAlreadyPulled = false
-
-            return Stream.unfoldChunkEffect(cursor, (currentCursor) =>
-              Effect.gen(function* () {
-                // Don't sleep on the first pull
-                if (hasAlreadyPulled) {
-                  yield* Effect.sleep(livePullInterval)
-                } else {
-                  hasAlreadyPulled = true
-                }
-
-                const items = yield* rpcClient.SyncHttpRpc.Pull({
-                  storeId,
-                  payload,
-                  cursor: currentCursor,
-                  live: false, // We're using polling instead of streaming
-                })
-
-                if (items.length === 0) {
-                  return Option.some([
-                    Chunk.make({
-                      batch: [],
-                      pageInfo: SyncBackend.pageInfoNoMore,
-                    } as SyncBackend.PullResItem<SyncMetadata>),
-                    currentCursor,
-                  ])
-                }
-
-                const nextCursor = Chunk.last(items).pipe(
-                  Option.map((item) => item.batch.at(-1)?.eventEncoded.seqNum),
-                  Option.getOrElse(() => currentCursor),
+                      return Option.some([items, nextCursor])
+                    }),
+                  ),
                 )
-
-                return Option.some([items, nextCursor])
-              }),
-            )
-          }
-
-          const items = yield* rpcClient.SyncHttpRpc.Pull({
-            storeId,
-            payload,
-            cursor,
-            live: false, // We're using polling instead of streaming
-          })
-
-          if (items.length === 0 && options?.live) {
-            return Stream.make({
-              batch: [],
-              pageInfo: SyncBackend.pageInfoNoMore,
-            })
-          }
-
-          return Stream.fromIterable(items)
+              : identity,
+          )
         }).pipe(
           Stream.unwrapScoped,
           Stream.mapError((cause) => new InvalidPullError({ cause })),

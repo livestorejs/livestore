@@ -13,6 +13,8 @@ export class SyncWsRpc extends RpcGroup.make(
     payload: Schema.Struct({
       storeId: Schema.String,
       payload: Schema.optional(Schema.JsonValue),
+      /** Whether to keep the pull stream alive and wait for more events */
+      live: Schema.Boolean,
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,

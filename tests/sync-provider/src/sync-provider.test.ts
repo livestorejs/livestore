@@ -244,12 +244,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
 
       // Pull with cursor and verify remaining is still correct
       if (pullResults.length > 0) {
-        const firstResult = pullResults[0]!
-        const cursorPullResultsChunk = yield* syncBackend
-          .pull(SyncBackend.cursorFromPullResItem(firstResult))
-          .pipe(Stream.runCollect)
-        const cursorPullResults = Chunk.toArray(cursorPullResultsChunk)
-
+        // const firstResult = pullResults[0]!
+        // const cursorPullResultsChunk = yield* syncBackend
+        //   .pull(SyncBackend.cursorFromPullResItem(firstResult))
+        //   .pipe(Stream.runCollect)
+        // const cursorPullResults = Chunk.toArray(cursorPullResultsChunk)
         // Check remaining field on cursor-based pull
         // for (let i = 0; i < cursorPullResults.length; i++) {
         //   const result = cursorPullResults[i]!
@@ -304,11 +303,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
 
       // Each result should have remaining field
       for (let i = 0; i < limitedResults.length; i++) {
-        const result = limitedResults[i]!
+        // const result = limitedResults[i]!
         // expect(result).toHaveProperty('remaining')
         // expect(typeof result.remaining).toBe('number')
         // expect(result.remaining).toBeGreaterThanOrEqual(0)
-
         // When we use Stream.take(3), we might cut off the stream
         // The last item we receive should show remaining = 0 if it's truly the last
         // or remaining = 1 if we cut it off early

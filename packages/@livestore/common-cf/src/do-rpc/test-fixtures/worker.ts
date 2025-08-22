@@ -74,13 +74,15 @@ export default {
       // Handle HTTP RPC endpoint
       if (url.pathname === '/rpc') {
         // Get the test server DO instance
-        const serverDO = env.TEST_RPC_DO.get(env.TEST_RPC_DO.idFromName('test-server'))
-
-        // Create HTTP RPC handlers that forward to the DO
-        const ProtocolLive = layerProtocolDurableObject((payload) => serverDO.rpc(payload))
+        const doId = env.TEST_RPC_DO.idFromName('test-server')
+        const serverDO = env.TEST_RPC_DO.get(doId)
+        const DoRpcProtocolLive = layerProtocolDurableObject({
+          callRpc: (payload) => serverDO.rpc(payload),
+          callerContext: { bindingName: 'TEST_RPC_DO', durableObjectId: doId.toString() },
+        })
 
         return Effect.gen(function* () {
-          const doRpcClient = yield* RpcClient.make(TestRpcs).pipe(Effect.provide(ProtocolLive))
+          const doRpcClient = yield* RpcClient.make(TestRpcs).pipe(Effect.provide(DoRpcProtocolLive))
 
           const handlersLayer = TestRpcs.toLayer({
             Ping: (msg) => doRpcClient.Ping(msg).pipe(Effect.orDie),

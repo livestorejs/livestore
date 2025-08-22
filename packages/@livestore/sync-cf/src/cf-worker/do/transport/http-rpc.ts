@@ -1,19 +1,18 @@
-import { UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, HttpApp, Layer, RpcSerialization, RpcServer, Stream } from '@livestore/utils/effect'
 import { SyncHttpRpc } from '../../../common/http-rpc-schema.ts'
 import * as SyncMessage from '../../../common/sync-message-types.ts'
-import type { MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
-import { makePull } from '../pull.ts'
+import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
+import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 import type { SyncStorage } from '../sync-storage.ts'
 
 export interface HttpTransportHandlerOptions {
   ctx: CfTypes.DurableObjectState
-  makeStorage: (storeId: StoreId) => SyncStorage
+  env: Env
+  makeStorage: (storeId: StoreId) => Effect.Effect<SyncStorage>
   doOptions: MakeDurableObjectClassOptions | undefined
-  pushSemaphore: Effect.Semaphore
   rpcSubscriptions: Map<StoreId, RpcSubscription>
   currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
   request: CfTypes.Request
@@ -29,72 +28,49 @@ export const createHttpRpcHandler = (options: HttpTransportHandlerOptions) =>
     const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
 
     return yield* Effect.promise(
-      () => webHandler(options.request as any as Request) as any as Promise<CfTypes.Response>,
+      () => webHandler(options.request as TODO as Request) as TODO as Promise<CfTypes.Response>,
     ).pipe(Effect.timeout(10000))
   }).pipe(Effect.withSpan('createHttpRpcHandler'))
 
 const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
+  // TODO implement admin requests
   SyncHttpRpc.toLayer({
     'SyncHttpRpc.Pull': (req) =>
       Effect.gen(function* () {
-        const pull = makePull({
-          storage: options.makeStorage(req.storeId),
+        const storage = yield* options.makeStorage(req.storeId)
+
+        const pull = makeEndingPullStream({
+          storage,
+          doOptions: options.doOptions,
+          storeId: req.storeId,
+          payload: req.payload,
+          emitEmptyBatch: false,
         })
 
-        if (options.doOptions?.onPull) {
-          yield* Effect.tryAll(() =>
-            options.doOptions!.onPull!(req, { storeId: req.storeId, payload: req.payload }),
-          ).pipe(UnexpectedError.mapToUnexpectedError)
-        }
-
-        const items = yield* pull(req).pipe(Stream.runCollect)
-        // return Stream.fromIterable(items)
-        return items
+        return pull(req)
       }).pipe(
-        // Stream.unwrap,
-        Effect.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
+        Stream.unwrap,
+        Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
       ),
 
     'SyncHttpRpc.Push': (req) =>
       Effect.gen(function* () {
-        if (options.doOptions?.onPush) {
-          yield* Effect.tryAll(() =>
-            options.doOptions!.onPush!(req, { storeId: req.storeId, payload: req.payload }),
-          ).pipe(UnexpectedError.mapToUnexpectedError)
-        }
-
+        const storage = yield* options.makeStorage(req.storeId)
         const push = makePush({
-          storage: options.makeStorage(req.storeId),
+          storage,
           ctx: options.ctx,
+          env: options.env,
           currentHeadRef: options.currentHeadRef,
           storeId: req.storeId,
           payload: undefined,
           rpcSubscriptions: options.rpcSubscriptions,
-          pushSemaphore: options.pushSemaphore,
           options: options.doOptions,
         })
 
         return yield* push(req)
-      }).pipe(
-        Effect.mapError((cause) =>
-          cause._tag === 'LiveStore.UnexpectedError'
-            ? SyncMessage.SyncError.make({ cause, storeId: req.storeId })
-            : cause,
-        ),
-      ),
-
-    'SyncHttpRpc.Ping': () =>
-      Effect.gen(function* () {
-        // if (!options.onPing) {
-        //   return Effect.succeed({ requestId: 'ping' as const })
-        // }
-        // return options.onPing({
-        //   requestId: 'ping' as const,
-        //   storeId: req.storeId,
-        //   payload: req.payload,
-        // })
-        return SyncMessage.Pong.make({})
       }),
+
+    'SyncHttpRpc.Ping': () => Effect.succeed(SyncMessage.Pong.make({})),
   }).pipe(
     Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/http-rpc' })),
     Layer.provideMerge(RpcSerialization.layerJson),

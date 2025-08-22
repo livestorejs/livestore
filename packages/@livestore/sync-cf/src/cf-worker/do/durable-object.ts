@@ -17,7 +17,7 @@ import {
 } from '../shared.ts'
 
 import { contextTable, eventlogTable } from './sqlite.ts'
-import { makeStorage, type SyncStorage } from './sync-storage.ts'
+import { makeStorage } from './sync-storage.ts'
 import { createDoRpcHandler } from './transport/do-rpc.ts'
 import { createHttpRpcHandler } from './transport/http-rpc.ts'
 import { makeRpcServer } from './transport/ws.ts'
@@ -42,10 +42,10 @@ export interface ClientDOInterface extends CfTypes.Rpc.DurableObjectBranded {
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
-export type DoObject = CfTypes.DurableObject
+export type DoObject<T> = CfTypes.DurableObject & T
 
 export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) => {
-  new (ctx: DoState, env: Env): DoObject
+  new (ctx: DoState, env: Env): DoObject<SyncBackendRpcInterface>
 }
 
 /**
@@ -95,17 +95,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     // Cached value
     private storageCache: typeof StorageCacheSchema.Type | undefined
 
-    /**
-     * Needed to prevent concurrent pushes
-     * TODO: get rid of in favour of `ctx.blockConcurrency`
-     */
-    private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
-
     // TODO move to `storageCache`
     private currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' } = {
       current: 'uninitialized',
     }
 
+    // TODO refactor
     /** RPC subscription storage */
     private rpcSubscriptions = new Map<DurableObjectId, RpcSubscription>()
 
@@ -114,20 +109,19 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       this.ctx = ctx
       this.env = env
 
-      const ServerLive = makeRpcServer({
+      const WebSocketRpcServerLive = makeRpcServer({
         options,
         ctx: this.ctx,
         env: this.env,
         currentHeadRef: this.currentHeadRef,
         rpcSubscriptions: this.rpcSubscriptions,
-        pushSemaphore: this.pushSemaphore,
       })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
       if (enabledTransports.has('ws')) {
         setupDurableObjectWebSocketRpc({
           doSelf: this,
-          rpcLayer: ServerLive,
+          rpcLayer: WebSocketRpcServerLive,
           webSocketMode: 'hibernate',
           // See `pull.ts` for more details how `pull` Effect RPC requests streams are handled
           // in combination with DO hibernation
@@ -152,6 +146,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
                 }),
               )
+              // TODO also emit `Exit` stream RPC message
             }
           },
         })
@@ -176,9 +171,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         }
 
         if (transport === 'ws') {
-          const storage = makeStorage(this.ctx, this.env, storeId)
-
-          this.getStorageCache(request)
+          yield* this.getStorageCache(request)
 
           const { 0: client, 1: server } = new WebSocketPair()
 
@@ -198,8 +191,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               JSON.stringify(RpcMessage.constPong),
             ),
           )
-
-          this.initializeStorage(storage)
 
           return new Response(null, {
             status: 101,
@@ -234,7 +225,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         ctx: this.ctx,
         env: this.env,
         doOptions: options,
-        pushSemaphore: this.pushSemaphore,
         rpcSubscriptions: this.rpcSubscriptions,
         currentHeadRef: this.currentHeadRef,
         payload,
@@ -250,61 +240,67 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private handleHttp = (request: Request) =>
       createHttpRpcHandler({
         ctx: this.ctx,
-        makeStorage: (storeId) => {
-          // ensure storage is initialized
-          this.getStorageCache({ storeId })
-          return makeStorage(this.ctx, this.env, storeId)
-        },
+        env: this.env,
+        makeStorage: (storeId) =>
+          Effect.gen(this, function* () {
+            // ensure storage is initialized
+            yield* this.getStorageCache({ storeId })
+            return makeStorage(this.ctx, this.env, storeId)
+          }),
         doOptions: options,
-        pushSemaphore: this.pushSemaphore,
         rpcSubscriptions: this.rpcSubscriptions,
         currentHeadRef: this.currentHeadRef,
         request,
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
-    private initializeStorage = (storage: SyncStorage) => {
-      {
-        const colSpec = State.SQLite.makeColumnSpec(eventlogTable.sqliteDef.ast)
-        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
-      }
-      {
-        const colSpec = State.SQLite.makeColumnSpec(contextTable.sqliteDef.ast)
-        this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS ${contextTable.sqliteDef.name} (${colSpec}) strict`)
-      }
-    }
+    // TODO refactor with Effect layer
+    private getStorageCache = (
+      request: CfTypes.Request | { storeId: string },
+    ): Effect.Effect<typeof StorageCacheSchema.Type> =>
+      Effect.gen(this, function* () {
+        console.log('getStorageCache', this.storageCache)
+        if (this.storageCache !== undefined) {
+          return this.storageCache
+        }
 
-    private getStorageCache = (request: CfTypes.Request | { storeId: string }): typeof StorageCacheSchema.Type => {
-      if (this.storageCache !== undefined) {
-        return this.storageCache
-      }
+        const getStoreId = (request: CfTypes.Request | { storeId: string }) => {
+          if (Predicate.hasProperty(request, 'url')) {
+            const url = new URL(request.url)
+            return (
+              url.searchParams.get('storeId') ?? shouldNeverHappen(`No storeId provided in request URL search params`)
+            )
+          }
+          return request.storeId
+        }
 
-      const getStoreId = (request: CfTypes.Request | { storeId: string }) => {
-        if (Predicate.hasProperty(request, 'url')) {
-          const url = new URL(request.url)
-          return (
-            url.searchParams.get('storeId') ?? shouldNeverHappen(`No storeId provided in request URL search params`)
+        const storeId = getStoreId(request)
+        const storage = makeStorage(this.ctx, this.env, storeId)
+
+        // Initialize database tables
+        {
+          const colSpec = State.SQLite.makeColumnSpec(eventlogTable.sqliteDef.ast)
+          // D1 database is async, so we need to use a promise
+          yield* Effect.promise(() =>
+            this.env.DB.exec(`CREATE TABLE IF NOT EXISTS "${storage.dbName}" (${colSpec}) strict`),
           )
         }
-        return request.storeId
-      }
+        {
+          const colSpec = State.SQLite.makeColumnSpec(contextTable.sqliteDef.ast)
+          this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS "${contextTable.sqliteDef.name}" (${colSpec}) strict`)
+        }
 
-      const storeId = getStoreId(request)
-      const storage = makeStorage(this.ctx, this.env, storeId)
+        const storageCache = { storeId, currentHead: EventSequenceNumber.ROOT.global }
 
-      this.initializeStorage(storage)
+        this.storageCache = storageCache
 
-      const storageCache = { storeId, currentHead: EventSequenceNumber.ROOT.global }
+        this.ctx.storage.sql.exec(
+          `INSERT OR REPLACE INTO "${contextTable.sqliteDef.name}" (storeId, currentHead) VALUES (?, ?)`,
+          storageCache.storeId,
+          storageCache.currentHead,
+        )
 
-      this.storageCache = storageCache
-
-      this.ctx.storage.sql.exec(
-        `INSERT OR REPLACE INTO ${contextTable.sqliteDef.name} (storeId, currentHead) VALUES (?, ?)`,
-        storageCache.storeId,
-        storageCache.currentHead,
-      )
-
-      return storageCache
-    }
+        return storageCache
+      }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:getStorageCache'))
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
       effect.pipe(

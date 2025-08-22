@@ -1,5 +1,11 @@
 # `@livestore/sync-cf`
 
+## Goals
+
+- Flexible: Leverage the strenghts of Cloudflare abstractions and let app developers choose right setup for their use case (configurable transports/storage)
+- Efficient: Let's durable objects hibernate when not possible to avoid CPU billing while still staying fully reactive
+- Cloudflare idiomatic: Embrace Cloudflare's APIs and abstractions so using LiveStore on Cloudflare feels right at home
+
 ## Transports
 
 | Transport           | Connection      | Encoding  | Runtime Env                                 |
@@ -40,7 +46,7 @@
 └─────────────┘                 └─────────────┘
 ```
 
-- Only supported from client DOs
+- Only supported in combination with `@livestore/adapter-cloudflare`
 - RPC streams are implement via `ReadableStream` which is billed for the entire duration of the stream, not just the time it takes to send the data
 
 ## Storage

@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-
 import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
 import {
   type Duration,

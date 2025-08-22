@@ -112,6 +112,7 @@ export {
   Tracer,
   Types,
 } from 'effect'
+export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'

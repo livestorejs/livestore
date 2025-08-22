@@ -1,11 +1,11 @@
 import { UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Layer, RpcServer, Stream } from '@livestore/utils/effect'
+import { Effect, identity, Layer, RpcServer, Stream } from '@livestore/utils/effect'
 import { SyncMessage } from '../../../common/mod.ts'
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
-import { makePull } from '../pull.ts'
+import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 import { makeStorage } from '../sync-storage.ts'
 
@@ -14,29 +14,22 @@ export const makeRpcServer = ({
   ctx,
   env,
   rpcSubscriptions,
-  pushSemaphore,
   currentHeadRef,
 }: {
   options: MakeDurableObjectClassOptions | undefined
   ctx: CfTypes.DurableObjectState
   env: Env
   rpcSubscriptions: Map<StoreId, RpcSubscription>
-  pushSemaphore: Effect.Semaphore
   currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
 }) => {
+  // TODO implement admin requests
   const handlersLayer = SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
       Effect.gen(function* () {
         const { storeId, payload } = req
         const storage = makeStorage(ctx, env, storeId)
 
-        if (options?.onPull) {
-          yield* Effect.tryAll(() => options.onPull!(req, { storeId, payload })).pipe(
-            UnexpectedError.mapToUnexpectedError,
-          )
-        }
-
-        const pull = makePull({ storage })
+        const pull = makeEndingPullStream({ storage, doOptions: options, storeId, payload, emitEmptyBatch: req.live })
 
         return pull(req).pipe(
           Stream.tap(
@@ -49,40 +42,28 @@ export const makeRpcServer = ({
         )
       }).pipe(
         Stream.unwrap,
+        // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
+        req.live ? Stream.concat(Stream.never) : identity,
         Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
       ),
     'SyncWsRpc.Push': (req) =>
-      // TODO use `ctx.blockConcurrencyWhile` to block concurrent push requests
       Effect.gen(function* () {
         const { storeId, payload } = req
         const storage = makeStorage(ctx, env, storeId)
-
-        if (options?.onPush) {
-          yield* Effect.tryAll(() => options.onPush!(req, { storeId, payload })).pipe(
-            UnexpectedError.mapToUnexpectedError,
-          )
-        }
 
         const push = makePush({
           storage,
           options,
           rpcSubscriptions,
-          pushSemaphore,
           currentHeadRef,
           storeId,
           payload,
           ctx,
+          env,
         })
 
         return yield* push(req)
-        // TODO implement admin requests
-      }).pipe(
-        Effect.mapError((cause) =>
-          cause._tag === 'LiveStore.UnexpectedError'
-            ? SyncMessage.SyncError.make({ cause, storeId: req.storeId })
-            : cause,
-        ),
-      ),
+      }),
   })
 
   return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))

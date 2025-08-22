@@ -51,21 +51,29 @@ const processReadableStream = (
     )
   })
 
+interface MakeDoRpcProtocolArgs {
+  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>
+  callerContext: {
+    bindingName: string
+    durableObjectId: string
+  }
+}
+
 /**
  * Creates a Protocol layer that uses Cloudflare Durable Object RPC calls.
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
 export const layerProtocolDurableObject = (
-  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>,
-): Layer.Layer<RpcClient.Protocol, never, never> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(callRpc))
+  args: MakeDoRpcProtocolArgs,
+): Layer.Layer<RpcClient.Protocol, never, never> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
  * Provides the core protocol methods required by @effect/rpc.
  */
-const makeProtocolDurableObject = (
-  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>,
-): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
+const makeProtocolDurableObject = ({
+  callRpc,
+}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
       const parser = RpcSerialization.msgPack.unsafeMake()

@@ -63,6 +63,12 @@ export type RpcSubscription = {
   storeId: StoreId
   payload?: Schema.JsonValue
   subscribedAt: number
+  /** Effect RPC request ID */
+  requestId: string
+  callerContext: {
+    bindingName: string
+    durableObjectId: string
+  }
 }
 
 /**

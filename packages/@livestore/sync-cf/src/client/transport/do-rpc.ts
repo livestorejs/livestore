@@ -11,7 +11,6 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 import type { SyncBackendRpcInterface } from '../../cf-worker/shared.ts'
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
@@ -23,8 +22,13 @@ export interface DoRpcSyncOptions {
   syncBackendStub: SyncBackendRpcStub
   /** Client identifier for subscription management */
   clientId: string
-  /** The durable object ID of the client (needed for callbacks) */
-  durableObjectId: string
+  /** Information about this DurableObject instance so the Sync DO instance can call back to this instance */
+  durableObjectContext: {
+    /** See `wrangler.toml` for the binding name */
+    bindingName: string
+    /** `state.id.toString()` in the DO */
+    durableObjectId: string
+  }
 }
 
 /**
@@ -36,7 +40,7 @@ export const makeDoRpcSync =
   ({
     syncBackendStub,
     clientId,
-    durableObjectId,
+    durableObjectContext,
   }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
@@ -44,9 +48,10 @@ export const makeDoRpcSync =
 
       // PubSub for incoming messages from RPC callbacks
 
-      const ProtocolLive = layerProtocolDurableObject((payload) => syncBackendStub.rpc(payload)).pipe(
-        Layer.provide(RpcSerialization.layerJson),
-      )
+      const ProtocolLive = layerProtocolDurableObject({
+        callRpc: (payload) => syncBackendStub.rpc(payload),
+        callerContext: durableObjectContext,
+      }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(ProtocolLive))
 
@@ -80,7 +85,12 @@ export const makeDoRpcSync =
             const cursorRef = { current: initialCursor }
 
             // Subscribe for future updates (but don't pull here)
-            yield* rpcClient.SyncDoRpc.Subscribe({ clientId, storeId, durableObjectId, payload }).pipe(
+            yield* rpcClient.SyncDoRpc.Subscribe({
+              clientId,
+              storeId,
+              payload,
+              callerContext: durableObjectContext,
+            }).pipe(
               // Stream.tapLogWithLabel('rpc-sync-client:subscribe'),
               Stream.tap(() =>
                 runPull(cursorRef.current).pipe(

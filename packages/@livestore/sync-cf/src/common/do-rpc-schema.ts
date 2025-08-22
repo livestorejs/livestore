@@ -16,8 +16,10 @@ const commonPayloadFields = {
 export class SyncDoRpc extends RpcGroup.make(
   Rpc.make('SyncDoRpc.Subscribe', {
     payload: {
-      /** The durable object ID of the client (needed for SyncDO to call back to the client). */
-      durableObjectId: Schema.String,
+      callerContext: Schema.Struct({
+        bindingName: Schema.String,
+        durableObjectId: Schema.String,
+      }),
       clientId: Schema.String,
       ...commonPayloadFields,
     },

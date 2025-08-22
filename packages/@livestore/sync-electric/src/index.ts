@@ -8,7 +8,6 @@ import {
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented } from '@livestore/utils'
 import {
-  Chunk,
   type Duration,
   Effect,
   HttpClient,

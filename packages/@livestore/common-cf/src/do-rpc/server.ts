@@ -4,9 +4,11 @@ import {
   Exit,
   Headers,
   type Layer,
+  type NonEmptyArray,
   Option,
   Rpc,
   type RpcGroup,
+  type RpcMessage,
   RpcSchema,
   RpcSerialization,
   Schema,
@@ -39,7 +41,7 @@ export const toDurableObjectHandler =
       const decoded = parser.decode(serializedPayload)
 
       // Handle potential nested array from client serialization
-      let requests: any[]
+      let requests: RpcMessage.FromClient<Rpcs>[]
       if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
         // Double-wrapped array [[{...}]] -> [{...}]
         requests = decoded[0]
@@ -84,7 +86,12 @@ export const toDurableObjectHandler =
 
         // Execute the handler
         const result = yield* Effect.gen(function* () {
-          const handlerResult = entry.handler(request.payload, Headers.empty)
+          const handlerResult = entry.handler(
+            request.payload,
+            Headers.fromInput({
+              'x-rpc-request-id': request.id.toString(),
+            }),
+          )
 
           let value: any
           if (Effect.isEffect(handlerResult)) {
@@ -142,6 +149,38 @@ export const toDurableObjectHandler =
       const encoded = parser.encode(responses) as Uint8Array<ArrayBuffer>
       return encoded
     }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
+
+/** Out-of-band RPC stream response emission back to the caller DO */
+export const emitStreamResponse = ({
+  callerContext,
+  env,
+  requestId,
+  values,
+}: {
+  env: Record<string, any>
+  callerContext: { bindingName: string; durableObjectId: string }
+  requestId: string
+  values: NonEmptyArray<any>
+}) =>
+  Effect.gen(function* () {
+    const clientDoNamespace = env[callerContext.bindingName]
+    if (!clientDoNamespace) {
+      throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
+    }
+
+    const clientDo = clientDoNamespace.get(clientDoNamespace.idFromName(callerContext.durableObjectId))
+    if (!clientDo) {
+      throw new Error(`Client DO not found: ${callerContext.durableObjectId}`)
+    }
+
+    const res: RpcMessage.ResponseChunkEncoded = {
+      _tag: 'Chunk',
+      requestId,
+      values,
+    }
+
+    yield* Effect.tryPromise(() => clientDo.rpcCallback(res))
+  }).pipe(Effect.withSpan('do-rpc/emitStreamResponse'))
 
 /**
  * Creates a ReadableStream response for streaming RPCs.

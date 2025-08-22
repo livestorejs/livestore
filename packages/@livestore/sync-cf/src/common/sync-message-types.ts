@@ -18,8 +18,6 @@ export type SyncMetadata = typeof SyncMetadata.Type
 export const PullRequest = Schema.Struct({
   /** Omitting the cursor will start from the beginning */
   cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
-  /** Whether to keep the pull stream alive and wait for more events */
-  live: Schema.Boolean,
 }).annotations({ title: '@livestore/sync-cf:PullRequest' })
 
 export type PullRequest = typeof PullRequest.Type
