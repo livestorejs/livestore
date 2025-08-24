@@ -119,6 +119,7 @@ export const makeHttpSync =
           const cursor = Option.getOrUndefined(args)?.cursor
 
           return rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor }).pipe(
+            Stream.emitIfEmpty(SyncBackend.pullResItemEmpty<SyncMetadata>()),
             options?.live
               ? // Phase 2: Simulate `live` pull by polling for new events
                 Stream.concatWithLastElement((lastElement) => {
@@ -134,16 +135,6 @@ export const makeHttpSync =
                       const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
                         Stream.runCollect,
                       )
-
-                      if (items.length === 0) {
-                        return Option.some([
-                          Chunk.make({
-                            batch: [],
-                            pageInfo: SyncBackend.pageInfoNoMore,
-                          } as SyncBackend.PullResItem<SyncMetadata>),
-                          currentCursor,
-                        ])
-                      }
 
                       const nextCursor = Chunk.last(items).pipe(
                         Option.map((item) => item.batch.at(-1)?.eventEncoded.seqNum),

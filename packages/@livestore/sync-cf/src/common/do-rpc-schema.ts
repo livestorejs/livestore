@@ -14,37 +14,25 @@ const commonPayloadFields = {
 }
 
 export class SyncDoRpc extends RpcGroup.make(
-  Rpc.make('SyncDoRpc.Subscribe', {
-    payload: {
-      callerContext: Schema.Struct({
-        bindingName: Schema.String,
-        durableObjectId: Schema.String,
-      }),
-      clientId: Schema.String,
-      ...commonPayloadFields,
-    },
-    error: SyncMessage.SyncError,
-    // Poke events
-    success: Schema.String,
-    stream: true,
-  }),
-  Rpc.make('SyncDoRpc.Unsubscribe', {
-    payload: {
-      durableObjectId: Schema.String,
-      ...commonPayloadFields,
-    },
-    error: SyncMessage.SyncError,
-    success: Schema.Void,
-  }),
   Rpc.make('SyncDoRpc.Pull', {
     payload: {
       /** Omitting the cursor will start from the beginning */
       cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
       /** Whether to keep the pull stream alive and wait for more events */
-      live: Schema.Boolean,
+      rpcContext: Schema.optional(
+        Schema.Struct({
+          callerContext: Schema.Struct({
+            bindingName: Schema.String,
+            durableObjectId: Schema.String,
+          }),
+        }),
+      ),
       ...commonPayloadFields,
     },
-    success: SyncMessage.PullResponse,
+    success: Schema.Struct({
+      rpcRequestId: Schema.String,
+      ...SyncMessage.PullResponse.fields,
+    }),
     error: SyncMessage.SyncError,
     stream: true,
   }),

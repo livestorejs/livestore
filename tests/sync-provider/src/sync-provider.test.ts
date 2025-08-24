@@ -120,10 +120,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
       const syncBackend = yield* makeProvider(test.task.name)
 
       // Pull without cursor (initial sync)
-      const firstPull = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollect)
+      const firstPull = yield* syncBackend.pull(Option.none()).pipe(Stream.runFirstUnsafe)
 
       // Verify we got a valid response
-      expect(firstPull.length).toBe(0)
+      expect(firstPull).toEqual(SyncBackend.pullResItemEmpty())
     }).pipe(withTestCtx()(test)),
   )
 
@@ -159,11 +159,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
       expect(firstPull.batch.length).toBe(1)
 
       // Pull with cursor from a specific position
-      const secondPullCount = yield* syncBackend
+      const secondPull = yield* syncBackend
         .pull(SyncBackend.cursorFromPullResItem(firstPull))
-        .pipe(Stream.runCount)
+        .pipe(Stream.runFirstUnsafe)
 
-      expect(secondPullCount).toBe(0)
+      expect(secondPull).toEqual(SyncBackend.pullResItemEmpty())
     }).pipe(withTestCtx()(test)),
   )
 

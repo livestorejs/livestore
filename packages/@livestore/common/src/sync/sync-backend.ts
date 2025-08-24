@@ -98,6 +98,11 @@ export const pageInfoNoMore: PullResPageInfo = { _tag: 'NoMore' } as const
 export const pageInfoMoreUnknown: PullResPageInfo = { _tag: 'MoreUnknown' } as const
 export const pageInfoMoreKnown = (remaining: number): PullResPageInfo => ({ _tag: 'MoreKnown', remaining })
 
+export const pullResItemEmpty = <TSyncMetadata = Schema.JsonValue>(): PullResItem<TSyncMetadata> => ({
+  batch: [],
+  pageInfo: pageInfoNoMore,
+})
+
 export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
   batch: ReadonlyArray<{
     eventEncoded: LiveStoreEvent.AnyEncodedGlobal

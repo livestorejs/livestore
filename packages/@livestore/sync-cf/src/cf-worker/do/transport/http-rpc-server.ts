@@ -44,7 +44,6 @@ const createHttpRpcLayer = (options: HttpTransportHandlerOptions) =>
           doOptions: options.doOptions,
           storeId: req.storeId,
           payload: req.payload,
-          emitEmptyBatch: false,
         })
 
         return pull(req)

@@ -281,6 +281,8 @@ export const makeSyncBackend =
       return SyncBackend.of({
         connect,
         pull: (args, options) => {
+          let hasEmittedAtLeastOnce = false
+
           return Stream.unfoldEffect(
             args.pipe(
               Option.map((_) => _.metadata),
@@ -295,11 +297,13 @@ export const makeSyncBackend =
 
                 // Continue pagination if we have data
                 if (batch.length > 0) {
+                  hasEmittedAtLeastOnce = true
                   return Option.some([{ batch, hasMore: true }, nextMetadataOption])
                 }
 
-                // Also continue if there's no data but we're live
-                if (options?.live) {
+                // Make sure we emit at least once even if there's no data or we're live-pulling
+                if (hasEmittedAtLeastOnce === false || options?.live) {
+                  hasEmittedAtLeastOnce = true
                   return Option.some([{ batch, hasMore: false }, nextMetadataOption])
                 }
 
@@ -307,9 +311,6 @@ export const makeSyncBackend =
                 return Option.none()
               }),
           ).pipe(
-            // Stream.chunks,
-            // Filter out empty batches to not emit `{ batch: [], remaining: 0 }` items
-            // Stream.filter((batch) => Chunk.isEmpty(batch) === false),
             Stream.map(({ batch, hasMore }) => ({
               batch,
               pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,

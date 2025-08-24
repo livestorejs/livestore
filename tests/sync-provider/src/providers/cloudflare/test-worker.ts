@@ -2,19 +2,18 @@
 
 import { DurableObject } from 'cloudflare:workers'
 import type { SyncBackend } from '@livestore/common'
-import { setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
+import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
 import {
   type CfTypes,
-  type ClientDOInterface,
   getSyncRequestSearchParams,
   handleSyncRequest,
   makeDurableObject,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
-import { makeDoRpcSync } from '@livestore/sync-cf/client'
+import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
 import type { SyncMessage } from '@livestore/sync-cf/common'
-import { Effect, FetchHttpClient, Layer, RpcServer, Stream } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, type RpcMessage, RpcServer, Stream } from '@livestore/utils/effect'
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 
 declare class Request extends CfDeclare.Request {}
@@ -43,7 +42,7 @@ const DurableObjectBase = DurableObject as any as new (
   env: Env,
 ) => CfTypes.DurableObject
 
-export class TestClientDo extends DurableObjectBase implements ClientDOInterface {
+export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
@@ -142,6 +141,10 @@ export class TestClientDo extends DurableObjectBase implements ClientDOInterface
       status: 101,
       webSocket: client,
     })
+  }
+
+  async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
+    await handleSyncUpdateRpc(payload)
   }
 }
 

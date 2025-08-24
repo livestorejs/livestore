@@ -1,5 +1,6 @@
 import '../global.ts'
 
+export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,
   CommandExecutor,

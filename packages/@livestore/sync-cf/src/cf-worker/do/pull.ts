@@ -19,13 +19,11 @@ export const makeEndingPullStream =
     doOptions,
     storeId,
     payload,
-    emitEmptyBatch,
   }: {
     storage: SyncStorage
     doOptions: MakeDurableObjectClassOptions | undefined
     storeId: StoreId
     payload: Schema.JsonValue | undefined
-    emitEmptyBatch: boolean
   }) =>
   (req: SyncMessage.PullRequest): Stream.Stream<SyncMessage.PullResponse, UnexpectedError> =>
     Effect.gen(function* () {
@@ -37,12 +35,6 @@ export const makeEndingPullStream =
 
       // TODO use streaming for db results
       const remainingEvents = yield* storage.getEvents(req.cursor)
-
-      // We need to return a no-more page info if there are no more events
-      // TODO re-write this once we're using db streaming
-      if (remainingEvents.length === 0 && emitEmptyBatch) {
-        return Stream.make(SyncMessage.PullResponse.make({ batch: [], pageInfo: SyncBackend.pageInfoNoMore }))
-      }
 
       const batches = pipe(
         remainingEvents,

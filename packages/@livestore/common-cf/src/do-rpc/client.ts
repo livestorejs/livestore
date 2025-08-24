@@ -1,4 +1,4 @@
-import { Effect, Layer, RpcClient, RpcSerialization, type Scope } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, RpcClient, type RpcMessage, RpcSerialization, type Scope } from '@livestore/utils/effect'
 import type * as CfTypes from '../cf-types.ts'
 
 /**
@@ -77,14 +77,23 @@ const makeProtocolDurableObject = ({
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
       const parser = RpcSerialization.msgPack.unsafeMake()
+      // Not using an actual `FiberMap` here because it seems to shutdown to early
+      const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
 
-      const send = (payload: any): Effect.Effect<void, never, never> => {
-        if (payload._tag !== 'Request') {
+      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void, never, never> => {
+        if (message._tag !== 'Request') {
+          if (message._tag === 'Interrupt') {
+            return Effect.gen(function* () {
+              const fiber = fiberMap.get(message.requestId)!
+              yield* Fiber.interrupt(fiber)
+            })
+          }
+
           return Effect.void
         }
 
         // Wrap single Request in array to match server expected format
-        const serializedPayload = parser.encode([payload]) as Uint8Array
+        const serializedPayload = parser.encode([message]) as Uint8Array
 
         return Effect.gen(function* () {
           const serializedResponse = yield* Effect.tryPromise({
@@ -94,7 +103,16 @@ const makeProtocolDurableObject = ({
 
           // Handle ReadableStream for streaming responses
           if (serializedResponse instanceof ReadableStream) {
-            yield* processReadableStream(serializedResponse as CfTypes.ReadableStream, parser, writeResponse)
+            const fiber = yield* processReadableStream(
+              serializedResponse as CfTypes.ReadableStream,
+              parser,
+              writeResponse,
+            ).pipe(Effect.fork)
+
+            fiberMap.set(message.id, fiber)
+
+            yield* fiber
+
             return
           }
 

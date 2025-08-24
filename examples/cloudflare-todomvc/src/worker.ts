@@ -1,25 +1,26 @@
 import { DurableObject } from 'cloudflare:workers'
-import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { schema, tables } from './livestore/schema.ts'
 
 type Env = {
-  CLIENT_DO: CfTypes.DurableObjectNamespace<SyncBackend.ClientDOInterface>
+  CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>
   DB: D1Database
   ADMIN_SECRET: string
 }
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  onPush: async (message, { storeId }) => {
-    console.log(`onPush for store (${storeId})`, message.batch)
-  },
+  // onPush: async (message, { storeId }) => {
+  //   console.log(`onPush for store (${storeId})`, message.batch)
+  // },
 }) {}
 
 // Scoped by storeId
-export class LiveStoreClientDO extends DurableObject implements SyncBackend.ClientDOInterface {
+export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcCallback {
   private storeId: string | undefined
 
   private cachedStore: Store<typeof schema> | undefined
@@ -61,6 +62,7 @@ export class LiveStoreClientDO extends DurableObject implements SyncBackend.Clie
       bindingName: 'CLIENT_DO',
       storage: this.state.storage,
       syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      livePull: true,
     })
 
     this.cachedStore = store
@@ -87,6 +89,10 @@ export class LiveStoreClientDO extends DurableObject implements SyncBackend.Clie
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
     this.subscribeToStore()
+  }
+
+  async syncUpdateRpc(payload: unknown) {
+    await handleSyncUpdateRpc(payload)
   }
 }
 

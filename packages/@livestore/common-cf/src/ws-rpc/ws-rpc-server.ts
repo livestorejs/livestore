@@ -48,6 +48,7 @@ export interface DurableObjectWebSocketRpcConfig {
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol>
   /** Function to get access to incoming requests */
   onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  mainLayer?: Layer.Layer<never, never, never>
 }
 
 /**
@@ -115,6 +116,7 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
+  mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
     return notYetImplemented(`WebSocket mode 'accept' is not yet implemented`)
@@ -159,7 +161,12 @@ export const setupDurableObjectWebSocketRpc = ({
         onMessage: (message: string | ArrayBuffer) =>
           incomingQueue
             .offer(message as Uint8Array<ArrayBufferLike> | string)
-            .pipe(Effect.asVoid, Effect.provide(runtime), Effect.runPromise),
+            .pipe(
+              Effect.asVoid,
+              Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
+              Effect.provide(runtime),
+              Effect.runPromise,
+            ),
       }
 
       serverCtxMap.set(ws, ctx)
@@ -168,7 +175,7 @@ export const setupDurableObjectWebSocketRpc = ({
     }).pipe(
       Effect.tapCauseLogPretty,
       Logger.withMinimumLogLevel(LogLevel.Debug), // Useful for debugging
-      Effect.provide(Logger.prettyWithThread('ws-rpc-server')),
+      Effect.provide(Layer.mergeAll(Logger.consoleWithThread('ws-rpc-server'), mainLayer ?? Layer.empty)),
       Effect.withSpan('effect-ws-rpc-server'),
       Effect.runPromise,
     )

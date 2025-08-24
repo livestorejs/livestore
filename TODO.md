@@ -2,16 +2,17 @@
 
 - [ ] Refactor `@livestore/sync-cf`
   - [ ] Make `pull` DB querying streaming based
-  - [ ] Use `ctx.blockConcurrency` instead of `pushSemaphore`
   - [ ] Refactor DO RPC transport streaming implementation to be "poking-to-pull" based
+  - [ ] Test deployed example
   - [ ] Introduce Effect layer for common data (e.g. storage, storeId, etc)
   - [ ] Make storage (local SQLite vs D1) configurable
+  - [ ] Setup otel
   - [ ] get rid of `enable_request_signal` mentions as we're no longer using it
     - actually, we probably want to keep it for the first pull phase
 - [ ] CF DO adapter (`@livestore/adapter-cloudflare`)
   - [ ] Clean up CF DO client adapter example
-  - [ ] Adjust DO example so it doesn't rely on alarms to stay alive but use the DO RPC callback
   - [ ] Write docs for CF DO client adapter
+  - [ ] Support for LiveStore devtools
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
   - [ ] Create CF worker only example (without DO)
   - [ ] Test with multiple stores in a single client DO
@@ -25,6 +26,7 @@
   - [ ] Sometimes tests "get stuck" / don't finish
   - [ ] Performance/load testing
 - Cleanup work
+  - [ ] Figure out why `workerd` process is leaking (causes 99% CPU usage)
   - [ ] Move `supports` into `metadata` in `SyncBackend` type
   - [ ] Rename to `SyncProvider` instead of `SyncBackend`
   - [ ] Align naming of `@livestore/sync-cf` with `@livestore/adapter-cloudflare`

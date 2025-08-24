@@ -17,6 +17,11 @@ import {
 } from '@livestore/utils/effect'
 import type * as CfTypes from '../cf-types.ts'
 
+export interface ClientDoWithRpcCallback {
+  __DURABLE_OBJECT_BRAND: never
+  syncUpdateRpc: (payload: RpcMessage.ResponseChunkEncoded) => Promise<void>
+}
+
 /**
  * Construct a Durable Object RPC handler from an `RpcGroup`.
  * This is the DO equivalent of `RpcServer.toWebHandler`.
@@ -163,23 +168,19 @@ export const emitStreamResponse = ({
   values: NonEmptyArray<any>
 }) =>
   Effect.gen(function* () {
-    const clientDoNamespace = env[callerContext.bindingName]
-    if (!clientDoNamespace) {
+    const clientDoNamespace = env[callerContext.bindingName] as
+      | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
+      | undefined
+
+    if (clientDoNamespace === undefined) {
       throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
     }
 
-    const clientDo = clientDoNamespace.get(clientDoNamespace.idFromName(callerContext.durableObjectId))
-    if (!clientDo) {
-      throw new Error(`Client DO not found: ${callerContext.durableObjectId}`)
-    }
+    const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
 
-    const res: RpcMessage.ResponseChunkEncoded = {
-      _tag: 'Chunk',
-      requestId,
-      values,
-    }
+    const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
 
-    yield* Effect.tryPromise(() => clientDo.rpcCallback(res))
+    yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(res))
   }).pipe(Effect.withSpan('do-rpc/emitStreamResponse'))
 
 /**
@@ -195,7 +196,12 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 ): Effect.Effect<CfTypes.ReadableStream, any, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
-    const handlerResult = entry.handler(request.payload, Headers.empty)
+    const handlerResult = entry.handler(
+      request.payload,
+      Headers.fromInput({
+        'x-rpc-request-id': request.id.toString(),
+      }),
+    )
 
     let stream: Stream.Stream<any, any, never>
     if (Effect.isEffect(handlerResult)) {

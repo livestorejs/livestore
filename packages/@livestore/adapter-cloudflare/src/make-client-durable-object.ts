@@ -44,6 +44,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSche
   syncBackendDurableObject: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
   durableObjectId: string
   bindingName: string
+  livePull?: boolean
 }
 
 export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>({
@@ -55,6 +56,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
   syncBackendDurableObject,
   durableObjectId,
   bindingName,
+  livePull = false,
 }: CreateStoreDoOptions<TSchema>) =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
@@ -68,7 +70,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
           syncBackendStub: syncBackendDurableObject,
           durableObjectContext: { bindingName, durableObjectId },
         }),
-        livePull: false, // Uses DO RPC callbacks for reactive pull
+        livePull, // Uses DO RPC callbacks for reactive pull
         // backend: makeHttpSync({ url: `http://localhost:8787`, livePull: { pollInterval: 500 } }),
         initialSyncOptions: { _tag: 'Blocking', timeout: 500 },
         // backend: makeWsSyncProviderClient({ durableObject: syncBackendDurableObject }),
@@ -83,7 +85,7 @@ export const createStoreDoPromise = <TSchema extends LiveStoreSchema = LiveStore
 ) =>
   createStoreDo(options).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Logger.prettyWithThread('DoClient')),
+    Effect.provide(Logger.consoleWithThread('DoClient')),
     Effect.tapCauseLogPretty,
     Effect.runPromise,
   )

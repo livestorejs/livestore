@@ -5,7 +5,18 @@ import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Logger, LogLevel, Predicate, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
+import {
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Logger,
+  LogLevel,
+  Otlp,
+  Predicate,
+  RpcMessage,
+  Schema,
+  type Scope,
+} from '@livestore/utils/effect'
 import {
   type DurableObjectId,
   type Env,
@@ -33,12 +44,6 @@ const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
 ) => CfTypes.DurableObject
-
-// RPC interface that sync backend can call on client DOs (TODO adjust for stream poke)
-export interface ClientDOInterface extends CfTypes.Rpc.DurableObjectBranded {
-  // TODO move into common-cf
-  // streamPoke: (rpc: string) => Promise<string>
-}
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
@@ -86,6 +91,18 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
  */
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
+
+  const Logging = Logger.consoleWithThread('SyncDo')
+
+  const Observability = options?.otel?.baseUrl
+    ? Otlp.layer({
+        baseUrl: options.otel.baseUrl,
+        tracerExportInterval: 50,
+        resource: {
+          serviceName: options.otel.serviceName ?? 'sync-cf-do',
+        },
+      }).pipe(Layer.provide(FetchHttpClient.layer))
+    : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
@@ -149,6 +166,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               // TODO also emit `Exit` stream RPC message
             }
           },
+          mainLayer: Observability,
         })
       }
     }
@@ -305,12 +323,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       effect.pipe(
         Effect.tapCauseLogPretty,
         Logger.withMinimumLogLevel(LogLevel.Debug),
-        Effect.provide(
-          Logger.prettyWithThread('SyncDo', {
-            // NOTE We need to set the mode explicity as there's currently a bug https://github.com/Effect-TS/effect/issues/5398
-            mode: 'tty',
-          }),
-        ),
+        Effect.provide(Layer.mergeAll(Observability, Logging)),
         Effect.scoped,
         Effect.runPromise,
       )

@@ -1,6 +1,6 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
-import type { EventSequenceNumber } from '@livestore/common/schema'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
+import { shouldNeverHappen } from '@livestore/utils'
 import {
   Effect,
   identity,
@@ -9,14 +9,20 @@ import {
   Option,
   RpcClient,
   RpcSerialization,
+  Schema,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type { SyncBackendRpcInterface } from '../../cf-worker/shared.ts'
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
+import { SyncMessage } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
-interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
+export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
+
+// TODO we probably need better scoping for the requestIdMailboxMap (i.e. support multiple stores, ...)
+type EffectRpcRequestId = string // 0, 1, 2, ...
+const requestIdMailboxMap = new Map<EffectRpcRequestId, Mailbox.Mailbox<SyncMessage.PullResponse>>()
 
 export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
@@ -41,8 +47,6 @@ export const makeDoRpcSync =
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
 
-      // PubSub for incoming messages from RPC callbacks
-
       const ProtocolLive = layerProtocolDurableObject({
         callRpc: (payload) => syncBackendStub.rpc(payload),
         callerContext: durableObjectContext,
@@ -55,47 +59,35 @@ export const makeDoRpcSync =
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args, options) =>
         Effect.gen(function* () {
-          const initialCursor = Option.getOrUndefined(args)?.cursor
           const live = options?.live ?? false
 
-          // const incomingMessages = yield* PubSub.unbounded<SyncBackend.PullResItem>()
-
-          // Make runPull a function so it reads the current cursor value
-          const runPull = (cursor: EventSequenceNumber.GlobalEventSequenceNumber | undefined) =>
-            rpcClient.SyncDoRpc.Pull({
-              cursor,
-              live,
-              storeId,
-            }).pipe(
-              Stream.mapError((cause) => new InvalidPullError({ cause })),
-              Stream.tap((msg) => Effect.log(`RPC pulled ${msg.batch.length} events from sync provider`)),
-              Stream.withSpan('rpc-sync-client:pull'),
-            )
-
-          return runPull(initialCursor).pipe(
+          return rpcClient.SyncDoRpc.Pull({
+            cursor: Option.getOrUndefined(args)?.cursor,
+            storeId,
+            rpcContext: live ? { callerContext: durableObjectContext } : undefined,
+          }).pipe(
             live
               ? Stream.concatWithLastElement((res) =>
-                  (res._tag === 'None'
-                    ? // If we're live-pulling, we need to return a no-more page info if phase-1 pull returns no results
-                      Stream.make({ batch: [], pageInfo: { _tag: 'NoMore' } } as SyncBackend.PullResItem<SyncMetadata>)
-                    : Stream.empty
-                  ).pipe(
-                    Stream.concat(
-                      Effect.gen(function* () {
-                        const mailbox = yield* Mailbox.make<SyncBackend.PullResItem<SyncMetadata>>().pipe(
-                          Effect.acquireRelease((mailbox) => mailbox.shutdown),
-                        )
+                  Effect.gen(function* () {
+                    if (res._tag === 'None')
+                      return shouldNeverHappen('There should at least be a no-more page info response')
 
-                        // TODO bind to durable object so we can put stuff in the mailbox
+                    const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
+                      Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                    )
 
-                        return Mailbox.toStream(mailbox)
-                      }).pipe(Stream.unwrapScoped),
-                    ),
-                  ),
+                    requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
+
+                    return Mailbox.toStream(mailbox)
+                  }).pipe(Stream.unwrapScoped),
                 )
               : identity,
           )
-        }).pipe(Stream.unwrapScoped, Stream.withSpan('rpc-sync-client:pull'))
+        }).pipe(
+          Stream.unwrapScoped,
+          Stream.mapError((cause) => new InvalidPullError({ cause })),
+          Stream.withSpan('rpc-sync-client:pull'),
+        )
 
       const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = (batch) =>
         Effect.gen(function* () {
@@ -132,3 +124,39 @@ export const makeDoRpcSync =
         },
       })
     })
+
+/**
+ *
+ * ```ts
+ * import { DurableObject } from 'cloudflare:workers'
+ * import { ClientDoWithRpcCallback } from '@livestore/common-cf'
+ *
+ * export class MyDurableObject extends DurableObject implements ClientDoWithRpcCallback {
+ *   // ...
+ *
+ *   async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
+ *     return handleSyncUpdateRpc(payload)
+ *   }
+ * }
+ * ```
+ */
+export const handleSyncUpdateRpc = (payload: unknown) =>
+  Effect.gen(function* () {
+    const decodedPayload = yield* Schema.decodeUnknown(ResponseChunkEncoded)(payload)
+    const decoded = yield* Schema.decodeUnknown(SyncMessage.PullResponse)(decodedPayload.values[0]!)
+
+    const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
+
+    if (pullStreamMailbox === undefined) {
+      // Case: DO was hibernated, so we need to manually update the store
+      yield* Effect.log(`No mailbox found for ${decodedPayload.requestId}`)
+    } else {
+      // Case: DO was still alive, so the existing `pull` will pick up the new events
+      yield* pullStreamMailbox.offer(decoded)
+    }
+  }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)
+
+const ResponseChunkEncoded = Schema.Struct({
+  requestId: Schema.String,
+  values: Schema.Array(Schema.Any),
+})

@@ -30,6 +30,11 @@ export type MakeDurableObjectClassOptions = {
    * @default Set(['http', 'ws', 'do-rpc'])
    */
   enabledTransports?: Set<'http' | 'ws' | 'do-rpc'>
+
+  otel?: {
+    baseUrl?: string
+    serviceName?: string
+  }
 }
 
 export type StoreId = string
@@ -59,7 +64,7 @@ export const PULL_CHUNK_SIZE = 100
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {
-  clientId: string
+  clientId?: string
   storeId: StoreId
   payload?: Schema.JsonValue
   subscribedAt: number

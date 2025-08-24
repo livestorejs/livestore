@@ -138,3 +138,35 @@ export const concatWithLastElement: {
       ),
     ),
 )
+
+/**
+ * Emits a default value if the stream is empty, otherwise passes through all elements.
+ * Uses `concatWithLastElement` internally to detect if the stream was empty.
+ *
+ * @param fallbackValue - The value to emit if the stream is empty
+ * @returns A dual function that can be used in pipe or direct call
+ *
+ * @example
+ * ```ts
+ * // Direct usage
+ * const result = emitIfEmpty(Stream.empty, 'default')
+ * // Emits: 'default'
+ *
+ * // Piped usage
+ * const result = Stream.make(1, 2, 3).pipe(emitIfEmpty('fallback'))
+ * // Emits: 1, 2, 3
+ *
+ * const empty = Stream.empty.pipe(emitIfEmpty('fallback'))
+ * // Emits: 'fallback'
+ * ```
+ */
+export const emitIfEmpty: {
+  <A>(fallbackValue: A): <E, R>(stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R> =>
+    concatWithLastElement(stream, (lastElement) =>
+      lastElement._tag === 'None' ? Stream.make(fallbackValue) : Stream.empty,
+    ),
+)

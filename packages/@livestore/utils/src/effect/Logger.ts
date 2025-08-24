@@ -15,14 +15,17 @@ export const prettyWithThread = (threadName: string, options: { mode?: 'tty' | '
       formatDate: (date) => `${defaultDateFormat(date)} ${threadName}`,
       mode: options.mode,
     }),
-    // consoleLogger(threadName),
   )
 
 export const consoleLogger = (threadName: string) =>
   Logger.make(({ message, annotations, date, logLevel, cause }) => {
+    const isCloudflareWorker = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
     const consoleFn =
       logLevel === LogLevel.Debug
-        ? console.debug
+        ? // Cloudflare Workers doesn't support console.debug 🤷
+          isCloudflareWorker
+          ? console.log
+          : console.debug
         : logLevel === LogLevel.Info
           ? console.info
           : logLevel === LogLevel.Warning
@@ -36,5 +39,11 @@ export const consoleLogger = (threadName: string) =>
       messages.push(Cause.pretty(cause, { renderErrorCause: true }))
     }
 
-    consoleFn(`[${defaultDateFormat(date)} ${threadName}]`, ...messages, annotationsObj)
+    if (Object.keys(annotationsObj).length > 0) {
+      messages.push(annotationsObj)
+    }
+
+    consoleFn(`[${defaultDateFormat(date)} ${threadName}]`, ...messages)
   })
+
+export const consoleWithThread = (threadName: string) => Logger.replace(Logger.defaultLogger, consoleLogger(threadName))

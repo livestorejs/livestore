@@ -72,13 +72,11 @@ export const makePush =
         // Validate the batch
         const firstEvent = pushRequest.batch[0]!
         if (firstEvent.parentSeqNum !== currentHeadRef.current) {
-          return yield* SyncMessage.SyncError.make({
-            cause: SyncMessage.InvalidParentEventNumber.make({
-              expected: currentHeadRef.current,
-              received: firstEvent.parentSeqNum,
-            }),
-            storeId,
+          const cause = SyncMessage.InvalidParentEventNumber.make({
+            expected: currentHeadRef.current,
+            received: firstEvent.parentSeqNum,
           })
+          return yield* SyncMessage.SyncError.make({ cause, storeId })
         }
 
         const createdAt = new Date().toISOString()
@@ -137,21 +135,27 @@ export const makePush =
         }
 
         // RPC broadcasting would require reconstructing client stubs from clientIds
-        // For now, we'll implement this later when we have the proper client registry
         if (rpcSubscriptions.size > 0) {
-          for (const subscription of rpcSubscriptions.values()) {
-            yield* emitStreamResponse({
-              callerContext: subscription.callerContext,
-              env,
-              requestId: subscription.requestId,
-              values: [pullResEnc],
-            })
-          }
+          yield* Effect.forEach(
+            rpcSubscriptions.values(),
+            (subscription) =>
+              emitStreamResponse({
+                callerContext: subscription.callerContext,
+                env,
+                requestId: subscription.requestId,
+                values: [pullResEnc],
+              }).pipe(Effect.tapCauseLogPretty, Effect.exit),
+            { concurrency: 'unbounded' },
+          )
 
-          // TODO re-write DO RPC to be poke-to-pull based (i.e. sync backend calls back to client DOs)
-          yield* Effect.logDebug(`RPC clients registered: ${rpcSubscriptions.size}`)
+          yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.size} RPC clients`)
         }
-      }).pipe(Effect.fork)
+      }).pipe(
+        Effect.tapCauseLogPretty,
+        Effect.withSpan('push-rpc-broadcast'),
+        Effect.uninterruptible, // We need to make sure Effect RPC doesn't interrupt this fiber
+        Effect.fork,
+      )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
       yield* Effect.yieldNow()

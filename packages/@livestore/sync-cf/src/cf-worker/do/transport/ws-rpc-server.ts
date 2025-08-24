@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { SyncBackend, UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, identity, Layer, RpcServer, Stream } from '@livestore/utils/effect'
@@ -29,7 +29,7 @@ export const makeRpcServer = ({
         const { storeId, payload } = req
         const storage = makeStorage(ctx, env, storeId)
 
-        const pull = makeEndingPullStream({ storage, doOptions: options, storeId, payload, emitEmptyBatch: req.live })
+        const pull = makeEndingPullStream({ storage, doOptions: options, storeId, payload })
 
         return pull(req).pipe(
           Stream.tap(
@@ -42,6 +42,7 @@ export const makeRpcServer = ({
         )
       }).pipe(
         Stream.unwrap,
+        Stream.emitIfEmpty(SyncBackend.pullResItemEmpty<SyncMessage.SyncMetadata>()),
         // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
         req.live ? Stream.concat(Stream.never) : identity,
         Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
