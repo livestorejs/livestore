@@ -30,14 +30,6 @@ export const events = {
 		name: "v1.TodoCreated",
 		schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
 	}),
-	commentCreated: Events.synced({
-		name: "v1.CommentCreated",
-		schema: Schema.Struct({
-			id: Schema.String,
-			todoId: Schema.String,
-			text: Schema.String,
-		}),
-	}),
 	todoCompleted: Events.synced({
 		name: "v1.TodoCompleted",
 		schema: Schema.Struct({ id: Schema.String }),
@@ -53,6 +45,14 @@ export const events = {
 	todoClearedCompleted: Events.synced({
 		name: "v1.TodoClearedCompleted",
 		schema: Schema.Struct({ deletedAt: Schema.Date }),
+	}),
+	commentCreated: Events.synced({
+		name: "v1.CommentCreated",
+		schema: Schema.Struct({
+			id: Schema.String,
+			todoId: Schema.String,
+			text: Schema.String,
+		}),
 	}),
 };
 
