@@ -31,8 +31,13 @@ export const getExecStatementsFromMaterializer = ({
   bindValues: PreparedBindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  const eventArgsDecoded =
-    event.decoded === undefined ? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args) : event.decoded.args
+  const eventDecoded =
+    event.decoded === undefined
+      ? {
+          ...event.encoded!,
+          args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args),
+        }
+      : event.decoded
 
   const eventArgsEncoded = isNil(event.decoded?.args)
     ? undefined
@@ -58,11 +63,12 @@ export const getExecStatementsFromMaterializer = ({
   }
 
   const statementResults = fromMaterializerResult(
-    materializer(eventArgsDecoded, {
+    materializer(eventDecoded.args, {
       eventDef,
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      event: eventDecoded,
     }),
   )
 

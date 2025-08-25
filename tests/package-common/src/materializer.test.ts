@@ -78,4 +78,68 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
       store.commit(events.emptyEventPayload())
     }).pipe(Vitest.withTestCtx(test)),
   )
+
+  Vitest.scopedLive('should pass full event with clientId to materializer', (test) =>
+    Effect.gen(function* () {
+      const testClientId = 'test-client-123'
+      const messageEvents = {
+        messageCreated: Events.synced({
+          name: 'messageCreated',
+          schema: Schema.Struct({
+            id: Schema.String,
+            content: Schema.String,
+          }),
+        }),
+      }
+
+      const messageTable = State.SQLite.table({
+        name: 'messages',
+        columns: {
+          id: State.SQLite.text({ primaryKey: true }),
+          content: State.SQLite.text(),
+          createdBy: State.SQLite.text(),
+        },
+      })
+
+      const messageMaterializers = State.SQLite.materializers(messageEvents, {
+        messageCreated: ({ id, content }, context) => {
+          const clientId = context.event.clientId
+          return messageTable.insert({
+            id,
+            content,
+            createdBy: clientId,
+          })
+        },
+      })
+
+      const messageSchema = makeSchema({
+        events: messageEvents,
+        state: State.SQLite.makeState({
+          tables: { messages: messageTable },
+          materializers: messageMaterializers,
+        }),
+      })
+
+      const adapter = makeAdapter({
+        storage: { type: 'in-memory' },
+        clientId: testClientId,
+      })
+      const store = yield* createStore({
+        schema: messageSchema,
+        adapter,
+        storeId: 'test',
+      })
+
+      store.commit(messageEvents.messageCreated({ id: 'msg1', content: 'Hello world' }))
+
+      const messages = store.query(messageTable)
+
+      expect(messages).toHaveLength(1)
+      expect(messages[0]).toMatchObject({
+        id: 'msg1',
+        content: 'Hello world',
+        createdBy: testClientId,
+      })
+    }).pipe(Vitest.withTestCtx(test)),
+  )
 })
