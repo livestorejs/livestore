@@ -15,7 +15,7 @@ runs:
       id: pnpm-store
       shell: bash
       # We use `nix develop --command` because the `pnpm` CLI is installed via Nix.
-      run: echo "DIR_PATH=$(nix develop './nix?submodules=1' --command pnpm store path --silent)" >> $GITHUB_OUTPUT
+      run: echo "DIR_PATH=$(nix develop ./nix --command pnpm store path --silent)" >> $GITHUB_OUTPUT
 
     - name: Cache pnpm store
       uses: actions/cache@v4
