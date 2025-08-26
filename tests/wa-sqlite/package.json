@@ -4,7 +4,6 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@livestore/wa-sqlite": "workspace:*",
     "vitest": "catalog:"
   },
   "scripts": {

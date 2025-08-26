@@ -1,6 +1,6 @@
-import * as WaSqlite from '@livestore/wa-sqlite'
-import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
-import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+import WaSqliteFactory from '../../../wa-sqlite/dist/wa-sqlite.node.mjs'
+import { MemoryVFS } from '../../../wa-sqlite/src/examples/MemoryVFS.js'
+import * as WaSqlite from '../../../wa-sqlite/src/sqlite-api.js'
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 
 // TODO better understand changesets and e.g. whether they are invalidated when the db schema changes
@@ -102,7 +102,7 @@ const main = async () => {
   console.log('changesets', changesets.length, changesets)
 
   for (let i = changesets.length - 1; i >= 0; i--) {
-    const inverted = sqlite3.changeset_invert(changesets[i])
+    const inverted = sqlite3.changeset_invert(changesets[i]!)
     sqlite3.changeset_apply(db, inverted)
     console.log(`app[${i}]`, syncDb.select('SELECT * FROM app'))
   }

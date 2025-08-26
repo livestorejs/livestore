@@ -1,6 +1,5 @@
-import * as WaSqlite from '@livestore/wa-sqlite'
-// @ts-expect-error TODO fix types in wa-sqlite
-import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
+import WaSqliteFactory from '../../../../wa-sqlite/dist/wa-sqlite.node.mjs'
+import * as WaSqlite from '../../../../wa-sqlite/src/sqlite-api.js'
 
 export const loadSqlite3Wasm = async () => {
   const module = await WaSqliteFactory()

@@ -7,8 +7,6 @@
       url = "github:pietdevries94/playwright-web-flake";
       inputs.nixpkgs.follows = "nixpkgsUnstable";
     };
-
-    self.submodules = true;
   };
 
   outputs =

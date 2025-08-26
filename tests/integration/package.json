@@ -17,7 +17,6 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@livestore/wa-sqlite": "workspace:*",
     "@local/shared": "workspace:*"
   },
   "devDependencies": {
