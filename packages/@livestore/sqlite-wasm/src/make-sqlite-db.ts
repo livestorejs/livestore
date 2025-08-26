@@ -7,6 +7,7 @@ import type {
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 import { makeInMemoryDb } from './in-memory-vfs.ts'
 

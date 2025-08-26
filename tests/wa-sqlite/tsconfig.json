@@ -4,5 +4,6 @@
     "noEmit": true
   },
   "include": ["test"],
-  "exclude": ["node_modules", "**/dist"]
+  "exclude": ["node_modules", "**/dist"],
+  "references": [{ "path": "../../packages/@livestore/wa-sqlite" }]
 }

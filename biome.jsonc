@@ -24,6 +24,7 @@
       "!**/.nitro/**",
       "!**/.tanstack/**",
       "!**/.direnv/**",
+      "!**/packages/@livestore/wa-sqlite/**",
       "!**/playwright-report/**",
       "!**/test-results/**"
     ]

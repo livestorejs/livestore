@@ -8,7 +8,7 @@ sidebar:
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeTiged, versionNpmSuffix } from '../../../../data.js'
-import { MIN_NODE_VERSION, LIVESTORE_WA_SQLITE_VERSION } from '@local/shared'
+import { MIN_NODE_VERSION } from '@local/shared'
 import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
 import schemaCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?snippet'
 import workerCode from '../../_assets/code/getting-started/react-web/livestore.worker.ts?snippet'
@@ -28,7 +28,7 @@ export const CODE = {
 {/* We're adjusting the package to use the dev version on the dev branch */}
 export const manualInstallDepsStr = [
   '@livestore/livestore' + versionNpmSuffix,
-  '@livestore/wa-sqlite@' + LIVESTORE_WA_SQLITE_VERSION,
+  '@livestore/wa-sqlite' + versionNpmSuffix,
   '@livestore/adapter-web' + versionNpmSuffix,
   '@livestore/react' + versionNpmSuffix,
   '@livestore/peer-deps' + versionNpmSuffix,

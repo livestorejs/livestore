@@ -1,3 +1,4 @@
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { exportDb } from './sqlite-utils.ts'

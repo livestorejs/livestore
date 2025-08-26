@@ -1,6 +1,6 @@
-import WaSqliteFactory from '../../../wa-sqlite/dist/wa-sqlite.node.mjs'
-import { MemoryVFS } from '../../../wa-sqlite/src/examples/MemoryVFS.js'
-import * as WaSqlite from '../../../wa-sqlite/src/sqlite-api.js'
+import * as WaSqlite from '@livestore/wa-sqlite'
+import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
+import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 
 // TODO better understand changesets and e.g. whether they are invalidated when the db schema changes
