@@ -63,7 +63,7 @@
           # Build using submodules automatically pulled by Nix
           wa-sqlite-livestore = pkgs.callPackage ./packages/wa-sqlite-livestore {
             inherit pkgsUnstable;
-            waSQLiteSrc = "${self}/../wa-sqlite";
+            waSQLiteSrc = "${self}/../packages/@livestore/wa-sqlite";
           };
         };
 
