@@ -24,8 +24,8 @@
     "pretty-bytes": "7.0.1"
   },
   "devDependencies": {
-    "@effect/cli": "^0.69.2",
     "@effect/ai": "^0.26.0",
+    "@effect/cli": "^0.69.2",
     "@effect/cluster": "^0.48.2",
     "@effect/experimental": "^0.54.6",
     "@effect/opentelemetry": "^0.56.4",
@@ -56,12 +56,12 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@effect/cli": "^0.69.2",
     "@effect/ai": "^0.26.0",
+    "@effect/cli": "^0.69.2",
     "@effect/cluster": "^0.48.2",
-    "@effect/experimental": "^0.54.3",
+    "@effect/experimental": "^0.54.6",
     "@effect/opentelemetry": "^0.56.4",
-    "@effect/platform": "^0.90.0",
+    "@effect/platform": "^0.90.6",
     "@effect/platform-browser": "^0.70.0",
     "@effect/platform-bun": "^0.79.0",
     "@effect/platform-node": "^0.96.0",
