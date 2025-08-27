@@ -50,11 +50,9 @@
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "esbuild": "0.25.6"
+    "@livestore/webmesh": "workspace:*"
   },
   "resolutions#": {
-    "esbuild": "Needed for CF Wrangler / vinxi build",
     "@livestore/*": "Needed to force PNPM to install local packages"
   },
   "scripts": {

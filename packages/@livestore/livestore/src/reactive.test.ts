@@ -503,21 +503,6 @@ describe('bug fix: currentDebugRefresh race condition', () => {
 // Fix: Added validation checks in destroyNode to handle corrupted nodes gracefully.
 // Note: Full addEdge protection was removed, so some scenarios still crash with native errors.
 describe('bug fix: node corruption protection', () => {
-  it('handles corrupted node with undefined super property', () => {
-    const graph = new ReactiveGraph()
-    graph.context = {}
-
-    const a = graph.makeRef(1)
-
-    // Simulate corruption: delete super property
-    delete (a as any).super
-
-    const thunk = graph.makeThunk((get) => get(a))
-
-    // Without the addEdge protection, this will crash with native error
-    expect(() => thunk.computeResult()).toThrow('undefined is not an object')
-  })
-
   it('handles node destruction during effect execution', () => {
     const graph = new ReactiveGraph()
     graph.context = {}

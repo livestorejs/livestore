@@ -75,15 +75,6 @@ export const makeWorker = <
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
 
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      if (request.method === 'GET' && url.pathname === '/') {
-        return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
-          status: 200,
-          headers: { 'Content-Type': 'text/plain' },
-        })
-      }
-
       const corsHeaders: CfTypes.HeadersInit = options.enableCORS
         ? {
             'Access-Control-Allow-Origin': '*',
@@ -100,6 +91,8 @@ export const makeWorker = <
       }
 
       const requestParamsResult = getSyncRequestSearchParams(request)
+
+      // Check if this is a sync request first, before showing info message
       if (requestParamsResult._tag === 'Some') {
         return handleSyncRequest<TEnv, TDurableObjectRpc>({
           request,
@@ -111,6 +104,14 @@ export const makeWorker = <
             validatePayload: options.validatePayload,
             durableObject: options.durableObject,
           },
+        })
+      }
+
+      // Only show info message for GET requests to / without sync parameters
+      if (request.method === 'GET' && url.pathname === '/') {
+        return new Response('Info: Sync backend endpoint for @livestore/sync-cf.', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
         })
       }
 

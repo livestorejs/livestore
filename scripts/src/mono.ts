@@ -64,6 +64,8 @@ const testUnitCommand = Cli.Command.make(
         `packages/@livestore/livestore`,
       ]
 
+      // TODO this currently doesn't fail if one of the tests fails as we're using `stderr: 'pipe'`
+      // which currently doesn't give us the exit code of the test runner
       yield* Effect.forEach(
         paths,
         (vitestPath) =>
