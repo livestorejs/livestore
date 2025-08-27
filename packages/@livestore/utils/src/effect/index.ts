@@ -1,5 +1,6 @@
 import '../global.ts'
 
+export { AiError, AiLanguageModel, AiModel, AiTool, AiToolkit, McpSchema, McpServer } from '@effect/ai'
 export {
   Command,
   CommandExecutor,
@@ -46,8 +47,8 @@ export {
   Cause,
   Channel,
   Chunk,
-  // Logger,
   Config,
+  ConfigError,
   Console,
   Context,
   Data,

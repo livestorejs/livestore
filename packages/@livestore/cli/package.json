@@ -1,0 +1,40 @@
+{
+  "name": "@livestore/cli",
+  "version": "0.4.0-dev.3",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "bin": {
+    "livestore": "./src/bin.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js"
+    },
+    "bin": {
+      "livestore": "./dist/bin.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "bun src/bin.ts"
+  },
+  "dependencies": {
+    "@effect/ai-openai": "^0.29.0",
+    "@livestore/utils": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/utils-dev": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "^5.9.2"
+  }
+}
