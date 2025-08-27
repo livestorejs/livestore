@@ -11,7 +11,7 @@
     "@livestore/react": "0.4.0-dev.3",
     "@livestore/sqlite-wasm": "0.4.0-dev.3",
     "@livestore/sync-cf": "0.4.0-dev.3",
-    "@livestore/wa-sqlite": "1.0.8-dev.4",
+    "@livestore/wa-sqlite": "0.4.0-dev.3",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },

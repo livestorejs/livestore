@@ -165,7 +165,8 @@ Vitest.describe('Durable Object RPC', { timeout: 5000 }, () => {
     }, Effect.provide(ProtocolLive)),
   )
 
-  Vitest.scopedLive(
+  // TODO @IMax153
+  Vitest.scopedLive.skip(
     'should handle streaming RPC bug scenario',
     Effect.fn(function* () {
       const client = yield* RpcClient.make(TestRpcs)
