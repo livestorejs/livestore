@@ -1,4 +1,3 @@
 #!/usr/bin/env sh
 
-node --enable-source-maps $WORKSPACE_ROOT/examples/node-effect-cli/dist/main.js "$@"
-# bun $WORKSPACE_ROOT/examples/node-effect-cli/dist/main.js "$@"
+bun $WORKSPACE_ROOT/packages/@livestore/cli/src/cli.ts "$@"

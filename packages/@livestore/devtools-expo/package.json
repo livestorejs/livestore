@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "expo": "^53.0.20",
+    "expo": "^53.0.22",
     "vite": "^7.1.3"
   },
   "files": [
@@ -22,7 +22,7 @@
   "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "^53.0.20"
+    "expo": "^53.0.22"
   },
   "publishConfig": {
     "access": "public"

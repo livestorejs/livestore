@@ -11,6 +11,7 @@
     { "path": "./tests/wa-sqlite" },
     { "path": "./tests/sync-provider" },
     { "path": "./packages/@local/shared" },
+    { "path": "./packages/@livestore/cli" },
     { "path": "./packages/@livestore/adapter-cloudflare" },
     { "path": "./packages/@livestore/adapter-expo" },
     { "path": "./packages/@livestore/adapter-node" },

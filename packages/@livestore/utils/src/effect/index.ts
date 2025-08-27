@@ -1,5 +1,6 @@
 import '../global.ts'
 
+export { AiError, AiLanguageModel, AiModel, AiTool, AiToolkit, McpSchema, McpServer } from '@effect/ai'
 export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,
@@ -54,8 +55,8 @@ export {
   Cause,
   Channel,
   Chunk,
-  // Logger,
   Config,
+  ConfigError,
   Console,
   Context,
   Data,

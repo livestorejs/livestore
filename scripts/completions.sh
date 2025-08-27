@@ -16,7 +16,8 @@
 if command -v fish >/dev/null 2>&1; then
     mkdir -p ~/.config/fish/completions
     bun $WORKSPACE_ROOT/scripts/src/mono.ts --completions=fish > ~/.config/fish/completions/mono.fish
-    bun $WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts --completions=fish > ~/.config/fish/completions/livestore.fish
+    bun $WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts --completions=fish > ~/.config/fish/completions/livestore-example-node-effect-cli.fish
+    bun $WORKSPACE_ROOT/packages/@livestore/cli/src/cli.ts --completions=fish > ~/.config/fish/completions/livestore.fish
 fi
 
 # (2) Load completions

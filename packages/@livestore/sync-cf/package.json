@@ -9,7 +9,7 @@
     "./cf-worker": "./src/cf-worker/mod.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
+    "@cloudflare/workers-types": "4.20250826.0",
     "@livestore/common": "workspace:*",
     "@livestore/common-cf": "workspace:*",
     "@livestore/utils": "workspace:*"

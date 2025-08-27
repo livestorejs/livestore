@@ -16,8 +16,8 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.3",
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.8",
     "@vitejs/plugin-react": "^5.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.3"

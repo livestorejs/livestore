@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
-    "@effect/language-service": "^0.34.0",
+    "@effect/language-service": "^0.36.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -36,6 +36,7 @@
     "@livestore/adapter-expo": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
+    "@livestore/cli": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/devtools-vite": "0.4.0-dev.3",
