@@ -250,7 +250,7 @@ const tsCommand = Cli.Command.make(
   Effect.fn(function* ({ watch, clean }) {
     if (clean) {
       yield* cmd(
-        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
+        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -a -not -path "*/wa-sqlite/dist" -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
         { cwd, shell: true },
       )
     }
