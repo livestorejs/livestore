@@ -237,8 +237,8 @@ describe('client document table', () => {
         {
           "bindValues": [
             "id1",
-            "{\"a\":1}",
-            "{\"a\":1}",
+            "{"a":1}",
+            "{"a":1}",
           ],
           "sql": "INSERT INTO 'test' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?",
           "writeTables": Set {

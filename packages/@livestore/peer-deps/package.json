@@ -4,19 +4,19 @@
   "type": "module",
   "sideEffects": false,
   "dependencies": {
-    "@effect/cli": "0.69.0",
-    "@effect/experimental": "0.54.3",
-    "@effect/opentelemetry": "0.56.1",
-    "@effect/platform": "0.90.0",
+    "@effect/cli": "0.69.2",
+    "@effect/experimental": "0.54.6",
+    "@effect/opentelemetry": "0.56.4",
+    "@effect/platform": "0.90.6",
     "@effect/platform-browser": "0.70.0",
-    "@effect/platform-bun": "0.77.0",
-    "@effect/platform-node": "0.94.1",
+    "@effect/platform-bun": "0.79.0",
+    "@effect/platform-node": "0.96.0",
     "@effect/printer": "0.45.0",
     "@effect/printer-ansi": "0.45.0",
     "@effect/typeclass": "0.36.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.0.1",
-    "effect": "3.17.7"
+    "effect": "3.17.9"
   },
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
   "files": [
