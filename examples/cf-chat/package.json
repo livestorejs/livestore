@@ -1,0 +1,45 @@
+{
+  "name": "livestore-cf-adapter-chat",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20250823.0",
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/wa-sqlite": "1.0.8-dev.4",
+    "effect": "3.17.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "@playwright/test": "^1.55.0",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.1",
+    "concurrently": "^9.0.0",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3",
+    "wrangler": "^4.32.0"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "build": "vite build && wrangler build",
+    "dev": "concurrently \"pnpm wrangler dev\" \"vite dev --force\"",
+    "lint": "biome check .",
+    "lint:fix": "biome check . --fix",
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit"
+  }
+}

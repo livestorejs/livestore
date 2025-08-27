@@ -1,6 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
+import { Deferred, Effect, KeyValueStore, Layer, PlatformError, Queue, SubscriptionRef } from '@livestore/utils/effect'
 import {
   type BootStatus,
   type MakeSqliteDb,
@@ -77,10 +77,45 @@ export const makeLeaderThreadLayer = ({
     // Either happens on initial boot or if schema changes
     const dbStateMissing = !hasStateTables(dbState)
 
+    yield* Eventlog.initEventlogDb(dbEventlog)
+
     const syncBackend =
       syncOptions?.backend === undefined
         ? undefined
-        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload })
+        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload }).pipe(
+            Effect.provide(
+              Layer.succeed(
+                KeyValueStore.KeyValueStore,
+                KeyValueStore.makeStringOnly({
+                  get: (_key) =>
+                    Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
+                      Effect.catchAllDefect((cause) =>
+                        PlatformError.BadArgument.make({
+                          method: 'getBackendIdFromDb',
+                          description: 'Failed to get backendId',
+                          module: 'KeyValueStore',
+                          cause,
+                        }),
+                      ),
+                    ),
+                  set: (_key, value) =>
+                    Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
+                      Effect.catchAllDefect((cause) =>
+                        PlatformError.BadArgument.make({
+                          method: 'updateBackendId',
+                          module: 'KeyValueStore',
+                          description: 'Failed to update backendId',
+                          cause,
+                        }),
+                      ),
+                    ),
+                  clear: Effect.dieMessage(`Not implemented. Should never be used.`),
+                  remove: () => Effect.dieMessage(`Not implemented. Should never be used.`),
+                  size: Effect.dieMessage(`Not implemented. Should never be used.`),
+                }),
+              ),
+            ),
+          )
 
     if (syncBackend !== undefined) {
       // We're already connecting to the sync backend concurrently
@@ -91,8 +126,6 @@ export const makeLeaderThreadLayer = ({
       initialSyncOptions: syncOptions?.initialSyncOptions ?? { _tag: 'Skip' },
       bootStatusQueue,
     })
-
-    yield* Eventlog.initEventlogDb(dbEventlog)
 
     const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
 

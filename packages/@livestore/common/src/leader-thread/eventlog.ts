@@ -123,6 +123,14 @@ export const getBackendHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.
 export const updateBackendHead = (dbEventlog: SqliteDb, head: EventSequenceNumber.EventSequenceNumber) =>
   dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)
 
+export const getBackendIdFromDb = (dbEventlog: SqliteDb): Option.Option<string> =>
+  Option.fromNullable(
+    dbEventlog.select<{ backendId: string | null }>(sql`select backendId from ${SYNC_STATUS_TABLE}`)[0]?.backendId,
+  )
+
+export const updateBackendId = (dbEventlog: SqliteDb, backendId: string) =>
+  dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET backendId = '${backendId}'`)
+
 export const insertIntoEventlog = (
   eventEncoded: LiveStoreEvent.EncodedWithMeta,
   dbEventlog: SqliteDb,
@@ -213,7 +221,7 @@ export const getSyncBackendCursorInfo = ({
     ).pipe(Effect.andThen(Schema.decode(EventlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
 
     return Option.some({
-      cursor: remoteHead,
+      eventSequenceNumber: remoteHead,
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/common:eventlog:getSyncBackendCursorInfo', { attributes: { remoteHead } }))

@@ -2,6 +2,7 @@ import {
   type Cause,
   type Effect,
   type HttpClient,
+  type KeyValueStore,
   Option,
   Schema,
   type Scope,
@@ -12,6 +13,8 @@ import type { UnexpectedError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'
 import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
+
+export * from './sync-backend-kv.ts'
 
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
@@ -25,7 +28,11 @@ export type MakeBackendArgs = {
 // TODO rename to `SyncProviderClientConstructor`
 export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
   args: MakeBackendArgs,
-) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
+) => Effect.Effect<
+  SyncBackend<TSyncMetadata>,
+  UnexpectedError,
+  Scope.Scope | HttpClient.HttpClient | KeyValueStore.KeyValueStore
+>
 
 // TODO add more runtime sync metadata/metrics
 // - latency histogram
@@ -40,8 +47,8 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
    */
   connect: Effect.Effect<void, IsOfflineError | UnexpectedError, Scope.Scope>
   pull: (
-    args: Option.Option<{
-      cursor: EventSequenceNumber.GlobalEventSequenceNumber
+    cursor: Option.Option<{
+      eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
       /** Metadata is needed by some sync backends */
       metadata: Option.Option<TSyncMetadata>
     }>,
@@ -119,12 +126,12 @@ export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetad
 export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
   item: PullResItem<TSyncMetadata>,
 ): Option.Option<{
-  cursor: EventSequenceNumber.GlobalEventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
   metadata: Option.Option<TSyncMetadata>
 }> => {
   const lastEvent = item.batch.at(-1)
   if (!lastEvent) {
     return Option.none()
   }
-  return Option.some({ cursor: lastEvent.eventEncoded.seqNum, metadata: lastEvent.metadata })
+  return Option.some({ eventSequenceNumber: lastEvent.eventEncoded.seqNum, metadata: lastEvent.metadata })
 }

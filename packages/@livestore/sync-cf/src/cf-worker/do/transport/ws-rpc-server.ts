@@ -1,70 +1,33 @@
-import { SyncBackend, UnexpectedError } from '@livestore/common'
-import type { EventSequenceNumber } from '@livestore/common/schema'
-import type { CfTypes } from '@livestore/common-cf'
+import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { Effect, identity, Layer, RpcServer, Stream } from '@livestore/utils/effect'
-import { SyncMessage } from '../../../common/mod.ts'
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
-import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
+import { DoCtx, type DoCtxInput } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
-import { makeStorage } from '../sync-storage.ts'
 
-export const makeRpcServer = ({
-  options,
-  ctx,
-  env,
-  rpcSubscriptions,
-  currentHeadRef,
-}: {
-  options: MakeDurableObjectClassOptions | undefined
-  ctx: CfTypes.DurableObjectState
-  env: Env
-  rpcSubscriptions: Map<StoreId, RpcSubscription>
-  currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
-}) => {
+export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) => {
   // TODO implement admin requests
   const handlersLayer = SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
-      Effect.gen(function* () {
-        const { storeId, payload } = req
-        const storage = makeStorage(ctx, env, storeId)
-
-        const pull = makeEndingPullStream({ storage, doOptions: options, storeId, payload })
-
-        return pull(req).pipe(
-          Stream.tap(
-            Effect.fn(function* (res) {
-              if (options?.onPullRes) {
-                yield* Effect.tryAll(() => options.onPullRes!(res)).pipe(UnexpectedError.mapToUnexpectedError)
-              }
-            }),
-          ),
-        )
-      }).pipe(
-        Stream.unwrap,
-        Stream.emitIfEmpty(SyncBackend.pullResItemEmpty<SyncMessage.SyncMetadata>()),
+      makeEndingPullStream(req, req.payload).pipe(
         // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
         req.live ? Stream.concat(Stream.never) : identity,
-        Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
+        Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
+        Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+        // Stream.tapErrorCause(Effect.log),
       ),
     'SyncWsRpc.Push': (req) =>
       Effect.gen(function* () {
-        const { storeId, payload } = req
-        const storage = makeStorage(ctx, env, storeId)
+        const { doOptions, storeId, ctx, env } = yield* DoCtx
 
-        const push = makePush({
-          storage,
-          options,
-          rpcSubscriptions,
-          currentHeadRef,
-          storeId,
-          payload,
-          ctx,
-          env,
-        })
+        const push = makePush({ options: doOptions, storeId, payload: req.payload, ctx, env })
 
         return yield* push(req)
-      }),
+      }).pipe(
+        Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
+        Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+        Effect.tapCauseLogPretty,
+      ),
   })
 
   return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))

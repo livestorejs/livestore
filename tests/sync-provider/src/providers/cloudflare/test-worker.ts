@@ -13,7 +13,15 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
 import type { SyncMessage } from '@livestore/sync-cf/common'
-import { Effect, FetchHttpClient, Layer, type RpcMessage, RpcServer, Stream } from '@livestore/utils/effect'
+import {
+  Effect,
+  FetchHttpClient,
+  KeyValueStore,
+  Layer,
+  type RpcMessage,
+  RpcServer,
+  Stream,
+} from '@livestore/utils/effect'
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 
 declare class Request extends CfDeclare.Request {}
@@ -71,6 +79,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
         return syncBackend
       }).pipe(Effect.orDie)
 
+    /** Proxies WS messages to the DO RPC sync backend */
     const handlersLayer = DoRpcProxyRpcs.toLayer({
       Connect: (args) =>
         Effect.gen(function* () {
@@ -80,8 +89,11 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
       Pull: (args) =>
         Effect.gen(function* () {
           const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.pull(args.args as any, { live: args.live })
-        }).pipe(Stream.unwrap),
+          return syncBackend.pull(args.cursor as any, { live: args.live })
+        }).pipe(
+          Stream.unwrap,
+          Stream.map((msg) => ({ ...msg, backendId: 'TODO' })),
+        ),
       Push: ({ batch, ...args }) =>
         Effect.gen(function* () {
           const syncBackend = yield* getSyncBackend(args)
@@ -107,6 +119,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     const ServerLive = RpcServer.layer(DoRpcProxyRpcs).pipe(
       Layer.provide(handlersLayer),
       Layer.provide(FetchHttpClient.layer),
+      Layer.provide(KeyValueStore.layerMemory),
     )
 
     setupDurableObjectWebSocketRpc({

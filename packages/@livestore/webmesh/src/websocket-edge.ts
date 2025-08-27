@@ -5,6 +5,7 @@ import {
   Either,
   Exit,
   Layer,
+  MsgPack,
   Queue,
   Schedule,
   Schema,
@@ -28,7 +29,7 @@ export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
 
 export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
 
-export const MessageMsgPack = Schema.MsgPack(WSEdgeMessage)
+export const MessageMsgPack = MsgPack.schema(WSEdgeMessage)
 
 export type SocketType =
   | {

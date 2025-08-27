@@ -23,6 +23,7 @@ export {
   HttpServerRequest,
   HttpServerResponse,
   KeyValueStore,
+  MsgPack,
   Socket,
   Terminal,
   Transferable,

@@ -1,4 +1,6 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import type { EventSequenceNumber } from '@livestore/common/schema'
+import { omit } from '@livestore/utils'
 import {
   Chunk,
   type Duration,
@@ -114,42 +116,55 @@ export const makeHttpSync =
       // Helps already establish a TCP connection to the server
       const connect = ping.pipe(UnexpectedError.mapToUnexpectedError)
 
-      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args, options) =>
-        Effect.gen(function* () {
-          const cursor = Option.getOrUndefined(args)?.cursor
+      const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
-          return rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor }).pipe(
-            Stream.emitIfEmpty(SyncBackend.pullResItemEmpty<SyncMetadata>()),
-            options?.live
-              ? // Phase 2: Simulate `live` pull by polling for new events
-                Stream.concatWithLastElement((lastElement) => {
-                  const initialPhase2Cursor = lastElement.pipe(
-                    Option.flatMap((_) => Option.fromNullable(_.batch.at(-1)?.eventEncoded.seqNum)),
-                    Option.getOrElse(() => cursor),
-                  )
+      const mapCursor = (cursor: Option.Option<{ eventSequenceNumber: number }>) =>
+        cursor.pipe(
+          Option.map((a) => ({
+            eventSequenceNumber: a.eventSequenceNumber as EventSequenceNumber.GlobalEventSequenceNumber,
+            backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+          })),
+        )
 
-                  return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
-                    Effect.gen(function* () {
-                      yield* Effect.sleep(livePullInterval)
-
-                      const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
-                        Stream.runCollect,
-                      )
-
-                      const nextCursor = Chunk.last(items).pipe(
-                        Option.map((item) => item.batch.at(-1)?.eventEncoded.seqNum),
-                        Option.getOrElse(() => currentCursor),
-                      )
-
-                      return Option.some([items, nextCursor])
-                    }),
-                  )
-                })
-              : identity,
-          )
+      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
+        rpcClient.SyncHttpRpc.Pull({
+          storeId,
+          payload,
+          cursor: mapCursor(cursor),
         }).pipe(
-          Stream.unwrapScoped,
-          Stream.mapError((cause) => new InvalidPullError({ cause })),
+          options?.live
+            ? // Phase 2: Simulate `live` pull by polling for new events
+              Stream.concatWithLastElement((lastElement) => {
+                const initialPhase2Cursor = lastElement.pipe(
+                  Option.flatMap((_) => Option.fromNullable(_.batch.at(-1)?.eventEncoded.seqNum)),
+                  Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
+                  Option.orElse(() => cursor),
+                  mapCursor,
+                )
+
+                return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
+                  Effect.gen(function* () {
+                    yield* Effect.sleep(livePullInterval)
+
+                    const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
+                      Stream.runCollect,
+                    )
+
+                    const nextCursor = Chunk.last(items).pipe(
+                      Option.flatMap((item) => Option.fromNullable(item.batch.at(-1)?.eventEncoded.seqNum)),
+                      Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
+                      Option.orElse(() => currentCursor),
+                      mapCursor,
+                    )
+
+                    return Option.some([items, nextCursor])
+                  }),
+                )
+              })
+            : identity,
+          Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
+          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
           Stream.withSpan('http-sync-client:pull'),
         )
 
@@ -161,10 +176,12 @@ export const makeHttpSync =
             return
           }
 
-          yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch })
+          yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch, backendId: backendIdHelper.get() })
         }).pipe(
           pushSemaphore.withPermits(1),
-          Effect.mapError((error) => new InvalidPushError({ reason: { _tag: 'Unexpected', cause: error } })),
+          Effect.mapError((cause) =>
+            cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
+          ),
           Effect.withSpan('http-sync-client:push'),
         )
 

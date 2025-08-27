@@ -1,5 +1,6 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { InvalidPullError, InvalidPushError, IsOfflineError, UnexpectedError } from '@livestore/common'
+import { LiveStoreEvent } from '@livestore/common/schema'
+import { SyncMessage } from '@livestore/sync-cf/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 const commonFields = {
@@ -21,24 +22,11 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
   Rpc.make('Pull', {
     payload: Schema.Struct({
       ...commonFields,
-      args: Schema.Option(
-        Schema.Struct({
-          cursor: EventSequenceNumber.GlobalEventSequenceNumber,
-          metadata: Schema.Option(Schema.JsonValue),
-        }),
-      ),
+      ...SyncMessage.PullRequest.fields,
       live: Schema.Boolean,
     }),
     // Mirror the PullResItem from SyncBackend
-    success: Schema.Struct({
-      batch: Schema.Array(
-        Schema.Struct({
-          eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
-          metadata: Schema.Option(Schema.JsonValue),
-        }),
-      ),
-      pageInfo: SyncBackend.PullResPageInfo,
-    }),
+    success: SyncMessage.PullResponse,
     error: Schema.Union(IsOfflineError, InvalidPullError),
     stream: true,
   }),

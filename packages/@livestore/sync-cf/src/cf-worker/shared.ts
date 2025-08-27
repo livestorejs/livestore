@@ -1,3 +1,4 @@
+import type { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, type Option, Schema, UrlParams } from '@livestore/utils/effect'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
@@ -13,12 +14,12 @@ export type MakeDurableObjectClassOptions = {
     message: SyncMessage.PushRequest,
     context: { storeId: StoreId; payload?: Schema.JsonValue },
   ) => Effect.SyncOrPromiseOrEffect<void>
-  onPushRes?: (message: SyncMessage.PushAck | SyncMessage.SyncError) => Effect.SyncOrPromiseOrEffect<void>
+  onPushRes?: (message: SyncMessage.PushAck | InvalidPushError) => Effect.SyncOrPromiseOrEffect<void>
   onPull?: (
     message: SyncMessage.PullRequest,
     context: { storeId: StoreId; payload?: Schema.JsonValue },
   ) => Effect.SyncOrPromiseOrEffect<void>
-  onPullRes?: (message: SyncMessage.PullResponse | SyncMessage.SyncError) => Effect.SyncOrPromiseOrEffect<void>
+  onPullRes?: (message: SyncMessage.PullResponse | InvalidPullError) => Effect.SyncOrPromiseOrEffect<void>
   // TODO make storage configurable: D1, DO SQLite, later: external SQLite
 
   /**
@@ -64,7 +65,6 @@ export const PULL_CHUNK_SIZE = 100
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {
-  clientId?: string
   storeId: StoreId
   payload?: Schema.JsonValue
   subscribedAt: number

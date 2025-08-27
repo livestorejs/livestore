@@ -9,10 +9,13 @@
   - [ ] Setup otel
   - [ ] get rid of `enable_request_signal` mentions as we're no longer using it
     - actually, we probably want to keep it for the first pull phase
+  - [ ] Potential bug: Sometimes wrangler dev WS server stops accepting new connections. Restarting fixes it but we should figure out the root cause. We need a reliably repro first. Seems to have something to do with the server before getting into a bad state.
+  - [ ] Introduce backendId per store to detect cases where the backend instance is changing (e.g. when reset)
 - [ ] CF DO adapter (`@livestore/adapter-cloudflare`)
   - [ ] Clean up CF DO client adapter example
   - [ ] Write docs for CF DO client adapter
   - [ ] Support for LiveStore devtools
+  - [ ] Bug: "Get stuck" when there's an error in the DO client pull stream https://share.cleanshot.com/QY8c4j7F
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
   - [ ] Create CF worker only example (without DO)
   - [ ] Test with multiple stores in a single client DO
@@ -21,10 +24,14 @@
   - [ ] Write more sync provider tests
   - [ ] Tests for concurrent pulls / sequential pushes
   - [ ] Property-based testing for various non-happy path scenarios / chaos testing
+  - [ ] App-level logic in sync backend for rejecting events
   - [ ] Make Electric sync provider tests stateless (i.e. reset docker compose containers between tests)
   - [ ] Test `payload` parameter
   - [ ] Sometimes tests "get stuck" / don't finish
   - [ ] Performance/load testing
+- Chat example app
+  - [ ] web adapter: Client session sync processor doesn't push to leader
+  - [ ] DO adapter: leader doesn't push to backend
 - Cleanup work
   - [ ] Figure out why `workerd` process is leaking (causes 99% CPU usage)
   - [ ] Move `supports` into `metadata` in `SyncBackend` type

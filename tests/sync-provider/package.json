@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250807.0",
+    "@cloudflare/workers-types": "catalog:",
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",

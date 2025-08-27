@@ -14,6 +14,7 @@ export {
   SessionIdSymbol,
   type SqliteDb,
   StoreInterrupted,
+  type SyncState,
   sql,
 } from '@livestore/common'
 export * from '@livestore/common/schema'

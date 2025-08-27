@@ -1,40 +1,34 @@
-import { SyncBackend, UnexpectedError } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
+import {
+  BackendIdMismatchError,
+  InvalidPushError,
+  ServerAheadError,
+  SyncBackend,
+  UnexpectedError,
+} from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 import { SyncMessage } from '../../common/mod.ts'
-import {
-  type Env,
-  type MakeDurableObjectClassOptions,
-  type RpcSubscription,
-  type StoreId,
-  WebSocketAttachmentSchema,
-} from '../shared.ts'
-import type { SyncStorage } from './sync-storage.ts'
+import { type Env, type MakeDurableObjectClassOptions, type StoreId, WebSocketAttachmentSchema } from '../shared.ts'
+import { DoCtx } from './layer.ts'
 
 export const makePush =
   ({
-    storage,
-    options,
-    rpcSubscriptions,
-    currentHeadRef,
-    storeId,
     payload,
+    options,
+    storeId,
     ctx,
     env,
   }: {
-    options: MakeDurableObjectClassOptions | undefined
-    storage: SyncStorage
-    rpcSubscriptions: Map<StoreId, RpcSubscription>
-    currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
-    storeId: StoreId
     payload: Schema.JsonValue | undefined
+    options: MakeDurableObjectClassOptions | undefined
+    storeId: StoreId
     ctx: CfTypes.DurableObjectState
     env: Env
   }) =>
   (pushRequest: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
+      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})
@@ -46,37 +40,18 @@ export const makePush =
         )
       }
 
+      if (pushRequest.backendId._tag === 'Some' && pushRequest.backendId.value !== backendId) {
+        return yield* new BackendIdMismatchError({ expected: backendId, received: pushRequest.backendId.value })
+      }
+
       // This part of the code needs to run sequentially to avoid race conditions
       const { createdAt } = yield* Effect.gen(function* () {
-        // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-        // const expectedParentNum = yield* storage.getHead
-        // let currentHead: EventSequenceNumber.GlobalEventSequenceNumber
-        if (currentHeadRef.current === 'uninitialized') {
-          // TODO move into cachedStorage (i.e. use sqlite for sync api)
-          const currentHeadFromStorage = yield* Effect.promise(() => ctx.storage.get('currentHead'))
-          // console.log('currentHeadFromStorage', currentHeadFromStorage)
-          if (currentHeadFromStorage === undefined) {
-            // console.log('currentHeadFromStorage is null, getting from D1')
-            // currentHead = yield* storage.getHead
-            // console.log('currentHeadFromStorage is null, using root')
-            currentHeadRef.current = EventSequenceNumber.ROOT.global
-          } else {
-            currentHeadRef.current = currentHeadFromStorage as EventSequenceNumber.GlobalEventSequenceNumber
-          }
-        } else {
-          // console.log('currentHead is already initialized', this.currentHead)
-          // currentHead = this.currentHead
-        }
-
+        const currentHead = currentHeadRef.current
         // TODO handle clientId unique conflict
         // Validate the batch
-        const firstEvent = pushRequest.batch[0]!
-        if (firstEvent.parentSeqNum !== currentHeadRef.current) {
-          const cause = SyncMessage.InvalidParentEventNumber.make({
-            expected: currentHeadRef.current,
-            received: firstEvent.parentSeqNum,
-          })
-          return yield* SyncMessage.SyncError.make({ cause, storeId })
+        const firstEventParent = pushRequest.batch[0]!.parentSeqNum
+        if (firstEventParent !== currentHead) {
+          return yield* new ServerAheadError({ minimumExpectedNum: currentHead, providedNum: firstEventParent })
         }
 
         const createdAt = new Date().toISOString()
@@ -84,9 +59,7 @@ export const makePush =
         // TODO possibly model this as a queue in order to speed up subsequent pushes
         yield* storage.appendEvents(pushRequest.batch, createdAt)
 
-        // TODO update currentHead in storage
-        currentHeadRef.current = pushRequest.batch.at(-1)!.seqNum
-        yield* Effect.promise(() => ctx.storage.put('currentHead', currentHeadRef.current))
+        updateCurrentHead(pushRequest.batch.at(-1)!.seqNum)
 
         return { createdAt }
       }).pipe(blockConcurrencyWhile(ctx))
@@ -102,6 +75,7 @@ export const makePush =
             metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
           })),
           pageInfo: SyncBackend.pageInfoNoMore,
+          backendId,
         })
 
         const pullResEnc = Schema.encodeSync(SyncMessage.PullResponse)(pullRes)
@@ -169,9 +143,7 @@ export const makePush =
           }
         }),
       ),
-      Effect.mapError((cause) =>
-        cause._tag === 'LiveStore.UnexpectedError' ? SyncMessage.SyncError.make({ cause, storeId }) : cause,
-      ),
+      Effect.mapError((cause) => InvalidPushError.make({ cause })),
     )
 
 /**

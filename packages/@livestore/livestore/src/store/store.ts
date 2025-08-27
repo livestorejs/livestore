@@ -791,14 +791,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         .pipe(this.runEffectFork)
     },
 
-    syncStates: () => {
+    syncStates: () =>
       Effect.gen(this, function* () {
         const session = yield* this.syncProcessor.syncState
-        console.log('Session sync state:', session.toJSON())
         const leader = yield* this.clientSession.leaderThread.getSyncState
-        console.log('Leader sync state:', leader.toJSON())
-      }).pipe(this.runEffectFork)
-    },
+        return { session, leader }
+      }).pipe(this.runEffectPromise),
 
     version: liveStoreVersion,
 
@@ -819,6 +817,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.tapCauseLogPretty,
       Runtime.runFork(this.effectContext.runtime),
     )
+
+  private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this.effectContext.runtime))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,

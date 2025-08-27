@@ -1,3 +1,4 @@
+import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 import * as SyncMessage from './sync-message-types.ts'
 
@@ -18,7 +19,7 @@ export class SyncWsRpc extends RpcGroup.make(
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
-    error: SyncMessage.SyncError,
+    error: InvalidPullError,
     stream: true,
   }),
   Rpc.make('SyncWsRpc.Push', {
@@ -28,7 +29,7 @@ export class SyncWsRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: SyncMessage.SyncError,
+    error: InvalidPushError,
   }),
   // Ping <> Pong is handled by DO WS auto-response
   // TODO add admin RPCs

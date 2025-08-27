@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@standard-schema/spec": "1.0.0",
-    "msgpackr": "1.11.5",
     "nanoid": "5.1.5",
     "pretty-bytes": "7.0.0"
   },

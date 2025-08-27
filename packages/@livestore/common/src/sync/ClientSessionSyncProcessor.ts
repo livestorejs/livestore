@@ -15,12 +15,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import {
-  type ClientSession,
-  type MaterializerHashMismatchError,
-  SyncError,
-  type UnexpectedError,
-} from '../adapter-types.ts'
+import { type ClientSession, type MaterializerHashMismatchError, UnexpectedError } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
@@ -239,7 +234,7 @@ export const makeClientSessionSyncProcessor = ({
           })
 
           if (mergeResult._tag === 'unexpected-error') {
-            return yield* new SyncError({ cause: mergeResult.message })
+            return yield* new UnexpectedError({ cause: mergeResult.message })
           } else if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }

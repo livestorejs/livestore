@@ -45,5 +45,14 @@ export class TestRpcs extends RpcGroup.make(
     success: Schema.Number,
     stream: true,
   }),
+  Rpc.make('StreamBugScenarioDoServer', {
+    payload: Schema.Struct({}),
+    success: Schema.Number,
+    stream: true,
+  }),
+  Rpc.make('StreamBugScenarioDoClient', {
+    payload: Schema.Struct({}),
+    success: Schema.Number,
+  }),
 ) {}
 export type TestRpcsI = RpcGroup.Rpcs<typeof TestRpcs>

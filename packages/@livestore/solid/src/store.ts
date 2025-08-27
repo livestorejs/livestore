@@ -130,7 +130,8 @@ const setupStore = async ({
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/solid] shutdown', Cause.pretty(cause))),
         Effect.tap((intentionalShutdown) => shutdownContext(intentionalShutdown)),
-        Effect.catchTag('LiveStore.SyncError', (cause) => shutdownContext(cause)),
+        Effect.catchTag('InvalidPullError', (cause) => shutdownContext(cause)),
+        Effect.catchTag('InvalidPushError', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),

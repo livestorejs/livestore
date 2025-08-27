@@ -10,16 +10,10 @@ import {
 
 import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
 import type * as Devtools from './devtools/mod.ts'
-import type {
-  IntentionalShutdownCause,
-  MaterializerHashMismatchError,
-  SqliteError,
-  SyncError,
-  UnexpectedError,
-} from './errors.ts'
+import type { IntentionalShutdownCause, MaterializerHashMismatchError, SqliteError, UnexpectedError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
-import type { InvalidPullError, IsOfflineError } from './sync/index.js'
+import type { IsOfflineError, SyncError } from './sync/index.js'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'
@@ -133,7 +127,7 @@ export interface AdapterArgs {
   shutdown: (
     exit: Exit.Exit<
       IntentionalShutdownCause,
-      UnexpectedError | SyncError | MaterializerHashMismatchError | InvalidPullError | SqliteError | IsOfflineError
+      UnexpectedError | SyncError | MaterializerHashMismatchError | SqliteError | IsOfflineError
     >,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore

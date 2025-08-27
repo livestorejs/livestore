@@ -33,8 +33,8 @@ export class TestRpcDurableObject extends DurableObject {
         Stream.iterate(1, (n) => n + 1).pipe(
           Stream.map((n) => ({ maybeNumber: Option.some(n * n) })), // Stream squares: 1, 4, 9, 16, ...
           Stream.schedule(Schedule.spaced(10)),
-          // Limit stream to prevent infinite streaming over HTTP
-          // TODO: remove this once Effect RPC (HTTP) supports stream cancellation
+          // TODO get rid of this - there currently seems to be a bug in the streaming interruption propagation
+          // (might need help from @IMax153 on this)
           Stream.take(100),
         ),
       StreamError: ({ count, errorAfter }) =>
@@ -56,6 +56,8 @@ export class TestRpcDurableObject extends DurableObject {
           Stream.map((n) => n),
           Stream.schedule(Schedule.spaced(delay)),
         ),
+      StreamBugScenarioDoServer: () => Stream.make(1),
+      StreamBugScenarioDoClient: () => Effect.die('never called'),
     })
 
     const result = await toDurableObjectHandler(TestRpcs, { layer: TestRpcsLive })(
@@ -82,7 +84,9 @@ export default {
         })
 
         return Effect.gen(function* () {
-          const doRpcClient = yield* RpcClient.make(TestRpcs).pipe(Effect.provide(DoRpcProtocolLive))
+          const context = yield* Layer.build(DoRpcProtocolLive)
+
+          const doRpcClient = yield* RpcClient.make(TestRpcs).pipe(Effect.provide(context))
 
           const handlersLayer = TestRpcs.toLayer({
             Ping: (msg) => doRpcClient.Ping(msg).pipe(Effect.orDie),
@@ -91,10 +95,25 @@ export default {
             Defect: (msg) => doRpcClient.Defect(msg).pipe(Effect.orDie),
             Fail: (msg) => doRpcClient.Fail(msg).pipe(Effect.orDie),
             Stream: (msg) => doRpcClient.Stream(msg).pipe(Stream.orDie),
-            StreamError: (msg) => doRpcClient.StreamError(msg).pipe(Stream.orDie),
+            StreamError: (msg) => doRpcClient.StreamError(msg).pipe(Stream.mapError((e) => e.toString())),
             StreamDefect: (msg) => doRpcClient.StreamDefect(msg).pipe(Stream.orDie),
             StreamInterruptible: (msg) =>
               doRpcClient.StreamInterruptible(msg).pipe(Stream.take(msg.interruptAfterCount), Stream.orDie),
+            StreamBugScenarioDoServer: () => Stream.die('never called'),
+            StreamBugScenarioDoClient: (msg) =>
+              doRpcClient.StreamBugScenarioDoServer(msg).pipe(
+                Stream.tap(() => Effect.fail('doh')),
+                // observed behaviour: `log1` is still logged
+                Stream.tapErrorCause((cause) => Effect.log('log1', cause)),
+                Stream.mapError((cause) => cause.toString()),
+                // observed behaviour: after this error mapping `log2` is never logged
+                Stream.tapErrorCause((cause) => Effect.log('log2', cause)),
+                Stream.tapLogWithLabel('stream'),
+                Stream.runCount,
+                Effect.orDie,
+                // observed behaviour: `log3` is also never logged
+                Effect.tapErrorCause((cause) => Effect.log('log3', cause)),
+              ),
           }).pipe(
             Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/rpc' })),
             Layer.provideMerge(RpcSerialization.layerJson),

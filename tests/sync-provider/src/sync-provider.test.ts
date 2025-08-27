@@ -6,6 +6,7 @@ import {
   Effect,
   FetchHttpClient,
   type HttpClient,
+  KeyValueStore,
   Layer,
   Logger,
   ManagedRuntime,
@@ -34,7 +35,7 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
     suffix,
     // timeout: testTimeout,
     // makeLayer: (testContext) => makeFileLogger('runner', { testContext }),
-    makeLayer: (_testContext) => Logger.prettyWithThread('test-runner'),
+    makeLayer: (_testContext) => Layer.mergeAll(Logger.prettyWithThread('test-runner'), KeyValueStore.layerMemory),
     forceOtel: true,
   })
 
@@ -210,10 +211,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, 
             clientId: 'test-client',
             sessionId: 'test-session',
             seqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq + i),
-            parentSeqNum:
-              i === 0
-                ? EventSequenceNumber.ROOT.global
-                : EventSequenceNumber.globalEventSequenceNumber(startSeq - 1 + i),
+            parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq - 1 + i),
           }),
         ])
       }

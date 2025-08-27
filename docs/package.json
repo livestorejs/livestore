@@ -16,7 +16,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@local/shared": "workspace:*",
-    "@tailwindcss/vite": "4.1.11",
+    "@tailwindcss/vite": "4.1.12",
     "@types/react": "19.1.9",
     "astro": "5.12.8",
     "astro-expressive-code": "0.41.3",
@@ -32,7 +32,7 @@
     "starlight-links-validator": "0.17.0",
     "starlight-sidebar-topics": "0.6.0",
     "starlight-typedoc": "0.21.3",
-    "tailwindcss": "4.1.11",
+    "tailwindcss": "4.1.12",
     "typedoc": "0.28.9",
     "typedoc-plugin-markdown": "4.8.0",
     "typescript": "5.9.2"

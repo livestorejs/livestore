@@ -22,5 +22,6 @@ export const contextTable = State.SQLite.table({
   columns: {
     storeId: State.SQLite.text({ primaryKey: true }),
     currentHead: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    backendId: State.SQLite.text({}),
   },
 })

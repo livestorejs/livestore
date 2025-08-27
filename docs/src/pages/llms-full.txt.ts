@@ -12,6 +12,10 @@ export const GET: APIRoute = async ({ site }) => {
   return new Response(
     `<SYSTEM>This is the full developer documentation for LiveStore.</SYSTEM>
 
+## Notes
+
+- Most LiveStore APIs are synchronous and don't need \`await\`
+
 # Start of LiveStore documentation
 
 ${docs

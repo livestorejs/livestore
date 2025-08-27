@@ -50,7 +50,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",
-    "react-test-renderer": "^19.1.1",
+    "react-test-renderer": "^19.0.0",
     "typescript": "^5.9.2"
   },
   "engines": {

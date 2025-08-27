@@ -63,7 +63,10 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
         }),
       )
       return events
-    }).pipe(UnexpectedError.mapToUnexpectedError)
+    }).pipe(
+      UnexpectedError.mapToUnexpectedError,
+      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', { attributes: { dbName, cursor } }),
+    )
 
   const appendEvents: SyncStorage['appendEvents'] = (batch, createdAt) =>
     Effect.gen(function* () {
@@ -99,9 +102,17 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
             .run(),
         )
       }
-    }).pipe(UnexpectedError.mapToUnexpectedError)
+    }).pipe(
+      UnexpectedError.mapToUnexpectedError,
+      Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
+        attributes: { dbName, batchLength: batch.length },
+      }),
+    )
 
-  const resetStore = Effect.promise(() => ctx.storage.deleteAll()).pipe(UnexpectedError.mapToUnexpectedError)
+  const resetStore = Effect.promise(() => ctx.storage.deleteAll()).pipe(
+    UnexpectedError.mapToUnexpectedError,
+    Effect.withSpan('@livestore/sync-cf:durable-object:resetStore'),
+  )
 
   return {
     dbName,

@@ -1,6 +1,5 @@
-import { SyncBackend } from '@livestore/common'
-import type { EventSequenceNumber } from '@livestore/common/schema'
-import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
+import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
   Headers,
@@ -14,24 +13,19 @@ import {
 } from '@livestore/utils/effect'
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../../common/mod.ts'
-import type { Env, MakeDurableObjectClassOptions, RpcSubscription, StoreId } from '../../shared.ts'
+import { DoCtx, type DoCtxInput } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
-import { makeStorage } from '../sync-storage.ts'
 
 export interface DoRpcHandlerOptions {
-  ctx: CfTypes.DurableObjectState
-  env: Env
-  doOptions: MakeDurableObjectClassOptions | undefined
-  rpcSubscriptions: Map<StoreId, RpcSubscription>
-  currentHeadRef: { current: EventSequenceNumber.GlobalEventSequenceNumber | 'uninitialized' }
   payload: Uint8Array<ArrayBuffer>
-  ensureStorageCache: (storeId: StoreId) => Effect.Effect<void>
+  input: Omit<DoCtxInput, 'from'>
 }
 
 export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
   Effect.gen(this, function* () {
-    const { ctx, env, rpcSubscriptions, currentHeadRef, payload, ensureStorageCache } = options
+    const { payload, input } = options
+    // const { rpcSubscriptions, backendId, doOptions, ctx, env } = yield* DoCtx
 
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
@@ -40,18 +34,11 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
       },
       'SyncDoRpc.Pull': (req, headers) =>
         Effect.gen(this, function* () {
-          yield* ensureStorageCache(req.storeId)
-          const pull = makeEndingPullStream({
-            storage: makeStorage(ctx, env, req.storeId),
-            doOptions: options.doOptions,
-            storeId: req.storeId,
-            payload: req.payload,
-          })
+          const { rpcSubscriptions } = yield* DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
           if (req.rpcContext) {
             rpcSubscriptions.set(req.storeId, {
-              // clientId: req.clientId,
               storeId: req.storeId,
               payload: req.payload,
               subscribedAt: Date.now(),
@@ -60,33 +47,28 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
             })
           }
 
-          return pull(req)
+          return makeEndingPullStream(req, req.payload)
         }).pipe(
           Stream.unwrap,
-          Stream.emitIfEmpty(SyncBackend.pullResItemEmpty<SyncMessage.SyncMetadata>()),
           Stream.map((res) => ({
             ...res,
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
-          Stream.mapError((cause) => SyncMessage.SyncError.make({ cause, storeId: req.storeId })),
+          Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.tapErrorCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>
         Effect.gen(this, function* () {
-          yield* ensureStorageCache(req.storeId)
-
-          const push = makePush({
-            storage: makeStorage(ctx, env, req.storeId),
-            ctx: ctx,
-            env,
-            currentHeadRef,
-            storeId: req.storeId,
-            payload: undefined,
-            rpcSubscriptions,
-            options: options.doOptions,
-          })
+          const { doOptions, ctx, env, storeId } = yield* DoCtx
+          const push = makePush({ storeId, payload: req.payload, options: doOptions, ctx, env })
 
           return yield* push(req)
-        }),
+        }).pipe(
+          Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+          Effect.tapCauseLogPretty,
+        ),
     })
 
     const handler = toDurableObjectHandler(SyncDoRpc, {

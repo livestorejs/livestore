@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common-cf",
-  "version": "0.3.2-dev.11",
+  "version": "0.4.0-dev.3",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -8,14 +8,14 @@
     "./declare": "./src/declare/mod.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250807.0",
+    "@cloudflare/workers-types": "catalog:",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
     "vitest": "catalog:",
-    "wrangler": "^4.30.0"
+    "wrangler": "catalog:"
   },
   "files": [
     "dist",

@@ -142,6 +142,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
 
       return {
         send: (request) => {
+          console.log('send', request)
           const encoded = parser.encode(request)
           if (encoded === undefined) return Effect.void
 

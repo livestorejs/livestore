@@ -287,7 +287,13 @@ const releaseSnapshotCommand = Cli.Command.make(
       import('../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
 
-    const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD')
+    const gitSha =
+      gitShaOption._tag === 'Some'
+        ? gitShaOption.value
+        : yield* cmdText('git rev-parse HEAD').pipe(Effect.map((name) => name.trim()))
+
+    yield* Effect.log(`Git SHA: ${gitSha}`)
+
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
     const snapshotVersion = `0.0.0-snapshot-${gitSha}`

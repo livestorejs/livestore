@@ -1,4 +1,4 @@
-import { SyncBackend, UnexpectedError } from '@livestore/common'
+import { BackendId, SyncBackend } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
@@ -17,7 +17,12 @@ export type SyncMetadata = typeof SyncMetadata.Type
 
 export const PullRequest = Schema.Struct({
   /** Omitting the cursor will start from the beginning */
-  cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
+  cursor: Schema.Option(
+    Schema.Struct({
+      backendId: BackendId,
+      eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber,
+    }),
+  ),
 }).annotations({ title: '@livestore/sync-cf:PullRequest' })
 
 export type PullRequest = typeof PullRequest.Type
@@ -30,12 +35,21 @@ export const PullResponse = Schema.Struct({
     }),
   ),
   pageInfo: SyncBackend.PullResPageInfo,
+  backendId: BackendId,
 }).annotations({ title: '@livestore/sync-cf:PullResponse' })
+
+export const emptyPullResponse = (backendId: string) =>
+  PullResponse.make({
+    batch: [],
+    pageInfo: SyncBackend.pageInfoNoMore,
+    backendId,
+  })
 
 export type PullResponse = typeof PullResponse.Type
 
 export const PushRequest = Schema.Struct({
   batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+  backendId: Schema.Option(BackendId),
 }).annotations({ title: '@livestore/sync-cf:PushRequest' })
 
 export type PushRequest = typeof PushRequest.Type
@@ -45,21 +59,6 @@ export const PushAck = Schema.Struct({}).annotations({
 })
 
 export type PushAck = typeof PushAck.Type
-
-export const InvalidParentEventNumber = Schema.TaggedStruct('SyncMessage.SyncError.InvalidParentEventNumber', {
-  expected: EventSequenceNumber.GlobalEventSequenceNumber,
-  received: EventSequenceNumber.GlobalEventSequenceNumber,
-}).annotations({ title: '@livestore/sync-cf:InvalidParentEventNumber' })
-export type InvalidParentEventNumber = typeof InvalidParentEventNumber.Type
-
-export class SyncError extends Schema.TaggedError<SyncError>()(
-  'SyncMessage.SyncError',
-  {
-    cause: Schema.Union(UnexpectedError, InvalidParentEventNumber),
-    storeId: Schema.optional(Schema.String),
-  },
-  { title: '@livestore/sync-cf:SyncError' },
-) {}
 
 export const Ping = Schema.TaggedStruct('SyncMessage.Ping', {}).annotations({ title: '@livestore/sync-cf:Ping' })
 
@@ -99,7 +98,6 @@ export type AdminInfoResponse = typeof AdminInfoResponse.Type
 export const BackendToClientMessage = Schema.Union(
   PullResponse,
   PushAck,
-  SyncError,
   Pong,
   AdminResetRoomResponse,
   AdminInfoResponse,

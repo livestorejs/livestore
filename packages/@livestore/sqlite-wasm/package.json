@@ -16,7 +16,7 @@
     "./browser": "./src/browser/mod.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250807.0",
+    "@cloudflare/workers-types": "catalog:",
     "@livestore/common": "workspace:*",
     "@livestore/common-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
@@ -27,7 +27,7 @@
     "@types/node": "catalog:",
     "@types/wicg-file-system-access": "^2023.10.6",
     "vitest": "catalog:",
-    "wrangler": "^4.30.0"
+    "wrangler": "catalog:"
   },
   "files": [
     "package.json",
@@ -44,10 +44,10 @@
       },
       "./load-wasm": {
         "types": "./dist/load-wasm/mod.browser.d.ts",
+        "workerd": "./dist/load-wasm/mod.workerd.js",
         "browser": "./dist/load-wasm/mod.browser.js",
         "worker": "./dist/load-wasm/mod.browser.js",
         "node": "./dist/load-wasm/mod.node.js",
-        "workerd": "./dist/load-wasm/mod.workerd.js",
         "default": "./dist/load-wasm/mod.browser.js"
       },
       "./node": {

@@ -1,6 +1,16 @@
 import path from 'node:path'
 import { SyncBackend } from '@livestore/common'
-import { Effect, Layer, RpcClient, RpcSerialization, Socket, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { omit } from '@livestore/utils'
+import {
+  Effect,
+  Layer,
+  Option,
+  RpcClient,
+  RpcSerialization,
+  Socket,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
 import { SyncProviderImpl } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
@@ -59,16 +69,32 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
     )
 
     const metadata = yield* client.GetMetadata({ clientId, storeId, payload })
+    const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
     return SyncBackend.of({
       connect: client
         .Connect({ clientId, storeId, payload })
         .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       isConnected,
-      pull: (args, options) =>
+      pull: (cursor, options) =>
         client
-          .Pull({ clientId, storeId, payload, args, live: options?.live ?? false })
-          .pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
+          .Pull({
+            clientId,
+            storeId,
+            payload,
+            cursor: cursor.pipe(
+              Option.map((a) => ({
+                eventSequenceNumber: a.eventSequenceNumber,
+                backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+              })),
+            ),
+            live: options?.live ?? false,
+          })
+          .pipe(
+            Stream.tap((msg) => backendIdHelper.lazySet(msg.backendId).pipe(Effect.orDie)),
+            Stream.map((res) => omit(res, ['backendId'])),
+            Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
+          ),
       push: (batch) =>
         client
           .Push({ clientId, storeId, payload, batch })

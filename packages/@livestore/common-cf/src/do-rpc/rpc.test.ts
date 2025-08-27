@@ -127,8 +127,8 @@ Vitest.describe('Durable Object RPC', { timeout: 5000 }, () => {
           "_tag": "Failure",
           "cause": {
             "_id": "Cause",
-            "_tag": "Die",
-            "defect": "Stream error after 4: got 9"
+            "_tag": "Fail",
+            "failure": "Stream error after 4: got 9"
           }
         }"
       `)
@@ -162,6 +162,62 @@ Vitest.describe('Durable Object RPC', { timeout: 5000 }, () => {
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
       const chunks = yield* Stream.runCollect(stream)
       expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+    }, Effect.provide(ProtocolLive)),
+  )
+
+  Vitest.scopedLive(
+    'should handle streaming RPC bug scenario',
+    Effect.fn(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      yield* client.StreamBugScenarioDoClient({})
+      /*
+
+
+      In `node_modules/.pnpm/@effect+rpc@0.68.4_@effect+platform@0.90.0_effect@3.17.7__effect@3.17.7/node_modules/@effect/rpc/dist/esm/RpcClient.js`:
+      add the console log
+      ```
+      yield* Scope.addFinalizerExit(scope, exit => {
+        if (!entries.has(id)) return Effect.void;
+        entries.delete(id);
+        console.log('addFinalizerExit', exit._tag, Cause.squash(exit.cause), rpc, payload)
+        // ^^^^ added this console log
+        return sendInterrupt(id, Exit.isFailure(exit) ? Array.from(Cause.interruptors(exit.cause)).flatMap(id => Array.from(FiberId.toSet(id))) : [], context);
+      });
+      ```
+
+      Will generate output like:
+
+      ```
+      [wrangler:info] Ready on http://localhost:54539
+
+      Wrangler dev server ready on port 54539
+      writeResponse { _tag: 'Chunk', requestId: '0', values: [ 1 ] }
+
+      timestamp=2025-08-27T08:10:02.114Z level=INFO fiber=#7 message=log1 cause="Error: doh"
+
+      addFinalizerExit Failure doh {
+        _tag: 'StreamBugScenarioDoServer',
+        payloadSchema: [Function: TypeLiteralClass] {
+          fields: {},
+          records: [],
+          make: [Function: make]
+        },
+        successSchema: [Function: DeclareClass] {
+          typeParameters: [ [Function: Number$], [Function: Never] ],
+          success: [Function: Number$],
+          failure: [Function: Never]
+        },
+        errorSchema: [Function: Never],
+        annotations: { _id: 'Context', services: [] },
+        middlewares: Set(0) {},
+        key: '@effect/rpc/Rpc/StreamBugScenarioDoServer'
+      } {}
+
+      Killing wrangler process...
+      Killing wrangler process...
+      ```
+
+      */
     }, Effect.provide(ProtocolLive)),
   )
 })

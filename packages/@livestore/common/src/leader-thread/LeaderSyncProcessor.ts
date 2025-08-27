@@ -23,13 +23,18 @@ import {
   type MaterializerHashMismatchError,
   type SqliteDb,
   type SqliteError,
-  SyncError,
   UnexpectedError,
 } from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import { type InvalidPullError, type IsOfflineError, LeaderAheadError, type SyncBackend } from '../sync/sync.ts'
+import {
+  type InvalidPullError,
+  type InvalidPushError,
+  type IsOfflineError,
+  LeaderAheadError,
+  type SyncBackend,
+} from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -234,23 +239,30 @@ export const makeLeaderSyncProcessor = ({
         }
       }
 
-      const shutdownOnError = (
+      const maybeShutdownOnError = (
         cause: Cause.Cause<
           | UnexpectedError
-          | SyncError
           | IntentionalShutdownCause
           | IsOfflineError
           | MaterializerHashMismatchError
+          | InvalidPushError
           | InvalidPullError
           | SqliteError
-          | never
         >,
       ) =>
         Effect.gen(function* () {
-          if (onError === 'ignore') return
+          if (onError === 'ignore') {
+            if (LS_DEV) {
+              yield* Effect.logDebug(
+                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+                Cause.pretty(cause),
+              )
+            }
+            return
+          }
 
           const errorToSend = Cause.isFailType(cause) ? cause.error : UnexpectedError.make({ cause })
-          yield* shutdownChannel.send(errorToSend)
+          yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.die(cause)
         })
@@ -269,7 +281,7 @@ export const makeLeaderSyncProcessor = ({
         testing: {
           delay: testing?.delays?.localPushProcessing,
         },
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
+      }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make()
       const backendPushingEffect = backgroundBackendPushing({
@@ -277,7 +289,7 @@ export const makeLeaderSyncProcessor = ({
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError))
+      }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
@@ -310,7 +322,7 @@ export const makeLeaderSyncProcessor = ({
           // We want to retry pulling if we've lost connection to the sync backend
           while: (cause) => cause._tag === 'IsOfflineError',
         }),
-        Effect.catchAllCause(shutdownOnError),
+        Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
@@ -438,7 +450,7 @@ const backgroundApplyLocalPushes = ({
             batchSize: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* new SyncError({ cause: mergeResult.message })
+          return yield* new UnexpectedError({ cause: mergeResult.message })
         }
         case 'rebase': {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
@@ -637,7 +649,7 @@ const backgroundBackendPulling = ({
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* new SyncError({ cause: mergeResult.message })
+          return yield* new UnexpectedError({ cause: mergeResult.message })
         }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
@@ -783,6 +795,14 @@ const backgroundBackendPushing = ({
       const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
 
       if (pushResult._tag === 'Left') {
+        if (
+          pushResult.left._tag === 'InvalidPushError' &&
+          // server ahead errors are gracefully handled
+          pushResult.left.cause._tag !== 'ServerAheadError'
+        ) {
+          return yield* pushResult.left
+        }
+
         if (LS_DEV) {
           yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
         }

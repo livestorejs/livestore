@@ -1,3 +1,4 @@
+import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 import * as SyncMessage from './sync-message-types.ts'
 
@@ -16,7 +17,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
-    error: SyncMessage.SyncError,
+    error: InvalidPullError,
     stream: true,
   }),
   Rpc.make('SyncHttpRpc.Push', {
@@ -26,7 +27,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: SyncMessage.SyncError,
+    error: InvalidPushError,
   }),
   Rpc.make('SyncHttpRpc.Ping', {
     payload: Schema.Struct({
@@ -34,6 +35,6 @@ export class SyncHttpRpc extends RpcGroup.make(
       payload: Schema.optional(Schema.JsonValue),
     }),
     success: SyncMessage.Pong,
-    error: SyncMessage.SyncError,
+    error: UnexpectedError,
   }),
 ) {}

@@ -1,15 +1,16 @@
 {
   "name": "@livestore/adapter-cloudflare",
-  "version": "0.3.2-dev.10",
+  "version": "0.4.0-dev.3",
   "type": "module",
   "sideEffects": [
     "./src/polyfill.ts"
   ],
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./polyfill": "./src/polyfill.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250807.0",
+    "@cloudflare/workers-types": "catalog:",
     "@livestore/common": "workspace:*",
     "@livestore/common-cf": "workspace:*",
     "@livestore/livestore": "workspace:*",
@@ -18,7 +19,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "wrangler": "^4.30.0"
+    "wrangler": "catalog:"
   },
   "files": [
     "package.json",
@@ -32,7 +33,8 @@
       "./dist/polyfill.js"
     ],
     "exports": {
-      ".": "./dist/mod.js"
+      ".": "./dist/mod.js",
+      "./polyfill": "./dist/polyfill.js"
     }
   },
   "scripts": {

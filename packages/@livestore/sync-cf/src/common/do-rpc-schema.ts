@@ -1,4 +1,4 @@
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 import * as SyncMessage from './sync-message-types.ts'
 
@@ -17,7 +17,8 @@ export class SyncDoRpc extends RpcGroup.make(
   Rpc.make('SyncDoRpc.Pull', {
     payload: {
       /** Omitting the cursor will start from the beginning */
-      cursor: Schema.optional(EventSequenceNumber.GlobalEventSequenceNumber),
+      cursor: SyncMessage.PullRequest.fields.cursor,
+      // TODO rename
       /** Whether to keep the pull stream alive and wait for more events */
       rpcContext: Schema.optional(
         Schema.Struct({
@@ -33,16 +34,16 @@ export class SyncDoRpc extends RpcGroup.make(
       rpcRequestId: Schema.String,
       ...SyncMessage.PullResponse.fields,
     }),
-    error: SyncMessage.SyncError,
+    error: InvalidPullError,
     stream: true,
   }),
   Rpc.make('SyncDoRpc.Push', {
     payload: {
-      batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+      ...SyncMessage.PushRequest.fields,
       ...commonPayloadFields,
     },
     success: SyncMessage.PushAck,
-    error: SyncMessage.SyncError,
+    error: InvalidPushError,
   }),
   Rpc.make('SyncDoRpc.Ping', {
     payload: {

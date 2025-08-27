@@ -1,4 +1,5 @@
 import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { omit } from '@livestore/utils'
 import {
   type Duration,
   Effect,
@@ -15,7 +16,6 @@ import {
   UrlParams,
   type WebSocket,
 } from '@livestore/utils/effect'
-
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
@@ -76,6 +76,7 @@ export const makeWsSync =
 
       const isConnected = yield* SubscriptionRef.make(false)
 
+      // TODO bring this back in a cross-platform way
       // If the browser already tells us we're offline, then we'll at least wait until the browser
       // thinks we're online again. (We'll only know for sure once the WS conneciton is established.)
       // while (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -118,20 +119,31 @@ export const makeWsSync =
         Effect.withSpan('ping'),
       )
 
+      const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
+
       return SyncBackend.of<SyncMetadata>({
         isConnected,
         connect: ping,
-        pull: (args, options) =>
+        pull: (cursor, options) =>
           rpcClient.SyncWsRpc.Pull({
             storeId,
             payload,
-            cursor: Option.getOrUndefined(args)?.cursor,
+            cursor: cursor.pipe(
+              Option.map((a) => ({
+                eventSequenceNumber: a.eventSequenceNumber,
+                backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+              })),
+            ),
             live: options?.live ?? false,
           }).pipe(
+            Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
+            Stream.map((res) => omit(res, ['backendId'])),
             Stream.mapError((cause) =>
               cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause)
                 ? new IsOfflineError({ cause: cause.cause })
-                : new InvalidPullError({ cause }),
+                : cause._tag === 'InvalidPullError'
+                  ? cause
+                  : InvalidPullError.make({ cause }),
             ),
             Stream.withSpan('pull'),
           ),
@@ -142,20 +154,16 @@ export const makeWsSync =
               return
             }
 
-            return yield* rpcClient.SyncWsRpc.Push({ storeId, payload, batch }).pipe(
-              Effect.mapError(
-                (cause) =>
-                  new InvalidPushError({
-                    reason:
-                      cause._tag === 'SyncMessage.SyncError' &&
-                      cause.cause._tag === 'SyncMessage.SyncError.InvalidParentEventNumber'
-                        ? {
-                            _tag: 'ServerAhead',
-                            minimumExpectedNum: cause.cause.expected,
-                            providedNum: cause.cause.received,
-                          }
-                        : { _tag: 'Unexpected', cause },
-                  }),
+            return yield* rpcClient.SyncWsRpc.Push({
+              storeId,
+              payload,
+              batch,
+              backendId: backendIdHelper.get(),
+            }).pipe(
+              Effect.mapError((cause) =>
+                cause._tag === 'InvalidPushError'
+                  ? cause
+                  : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
               ),
             )
           }).pipe(Effect.withSpan('push')),

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
+    "@biomejs/biome": "^2.2.2",
     "@effect/language-service": "^0.34.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
@@ -11,7 +11,7 @@
     "madge": "^8.0.0",
     "syncpack": "^13.0.4",
     "typescript": "^5.9.2",
-    "vite": "^7.0.6",
+    "vite": "^7.1.3",
     "vitest": "catalog:",
     "yaml": "^2.8.1"
   },

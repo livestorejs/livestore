@@ -1,6 +1,6 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
-import { shouldNeverHappen } from '@livestore/utils'
+import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
   Effect,
   identity,
@@ -52,40 +52,45 @@ export const makeDoRpcSync =
         callerContext: durableObjectContext,
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
-      const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(ProtocolLive))
+      const context = yield* Layer.build(ProtocolLive)
+
+      const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(context))
 
       // Nothing to do here
       const connect = Effect.void
 
-      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (args, options) =>
-        Effect.gen(function* () {
-          const live = options?.live ?? false
+      const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
-          return rpcClient.SyncDoRpc.Pull({
-            cursor: Option.getOrUndefined(args)?.cursor,
-            storeId,
-            rpcContext: live ? { callerContext: durableObjectContext } : undefined,
-          }).pipe(
-            live
-              ? Stream.concatWithLastElement((res) =>
-                  Effect.gen(function* () {
-                    if (res._tag === 'None')
-                      return shouldNeverHappen('There should at least be a no-more page info response')
-
-                    const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
-                      Effect.acquireRelease((mailbox) => mailbox.shutdown),
-                    )
-
-                    requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
-
-                    return Mailbox.toStream(mailbox)
-                  }).pipe(Stream.unwrapScoped),
-                )
-              : identity,
-          )
+      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
+        rpcClient.SyncDoRpc.Pull({
+          cursor: cursor.pipe(
+            Option.map((a) => ({
+              eventSequenceNumber: a.eventSequenceNumber,
+              backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+            })),
+          ),
+          storeId,
+          rpcContext: options?.live ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
-          Stream.unwrapScoped,
-          Stream.mapError((cause) => new InvalidPullError({ cause })),
+          options?.live
+            ? Stream.concatWithLastElement((res) =>
+                Effect.gen(function* () {
+                  if (res._tag === 'None')
+                    return shouldNeverHappen('There should at least be a no-more page info response')
+
+                  const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
+                    Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                  )
+
+                  requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
+
+                  return Mailbox.toStream(mailbox)
+                }).pipe(Stream.unwrapScoped),
+              )
+            : identity,
+          Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
+          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
           Stream.withSpan('rpc-sync-client:pull'),
         )
 
@@ -95,9 +100,13 @@ export const makeDoRpcSync =
             return
           }
 
-          yield* rpcClient.SyncDoRpc.Push({ batch, storeId })
+          yield* rpcClient.SyncDoRpc.Push({ batch, storeId, backendId: backendIdHelper.get() })
         }).pipe(
-          Effect.mapError((cause) => new InvalidPushError({ reason: { _tag: 'Unexpected', cause } })),
+          Effect.mapError((cause) =>
+            cause._tag === 'InvalidPushError'
+              ? cause
+              : InvalidPushError.make({ cause: new UnexpectedError({ cause }) }),
+          ),
           Effect.withSpan('rpc-sync-client:push'),
         )
 
@@ -123,7 +132,7 @@ export const makeDoRpcSync =
           pullLive: true,
         },
       })
-    })
+    }).pipe(Effect.withSpan('rpc-sync-client:makeDoRpcSync'))
 
 /**
  *

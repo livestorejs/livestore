@@ -265,8 +265,11 @@ export class ReactiveGraph<
       computeResult: (otelContext, debugRefreshReason) => {
         if (thunk.isDirty) {
           const neededCurrentRefresh = this.currentDebugRefresh === undefined
+          let localDebugRefresh: { refreshedAtoms: any[]; startMs: number } | undefined
           if (neededCurrentRefresh) {
-            this.currentDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
+            // Use local variable to prevent corruption from nested computations
+            localDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
+            this.currentDebugRefresh = localDebugRefresh
           }
 
           // Reset previous subcomputations as we're about to re-add them as part of the `doEffect` call below
@@ -298,15 +301,20 @@ export class ReactiveGraph<
             debugInfo: debugInfo ?? (unknownRefreshReason() as TDebugThunkInfo),
           } satisfies AtomDebugInfo<TDebugThunkInfo>
 
-          this.currentDebugRefresh!.refreshedAtoms.push(debugInfoForAtom)
+          // Use currentDebugRefresh if available (could be from parent or local)
+          const debugRefresh = localDebugRefresh ?? this.currentDebugRefresh
+          if (debugRefresh) {
+            debugRefresh.refreshedAtoms.push(debugInfoForAtom)
+          }
 
           thunk.isDirty = false
           thunk.previousResult = result
           thunk.recomputations++
 
-          if (neededCurrentRefresh) {
-            const refreshedAtoms = this.currentDebugRefresh!.refreshedAtoms
-            const durationMs = performance.now() - this.currentDebugRefresh!.startMs
+          if (neededCurrentRefresh && localDebugRefresh) {
+            // Use local reference which can't be corrupted by nested calls
+            const refreshedAtoms = localDebugRefresh.refreshedAtoms
+            const durationMs = performance.now() - localDebugRefresh.startMs
             this.currentDebugRefresh = undefined
 
             this.debugRefreshInfos.push({
@@ -473,14 +481,17 @@ export class ReactiveGraph<
   ) => {
     const effectsWrapper = this.context?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
     effectsWrapper(() => {
-      this.currentDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
+      // Capture debug state in local variable to prevent corruption from nested runEffects
+      const localDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
+      this.currentDebugRefresh = localDebugRefresh
 
       for (const effect of effectsToRefresh) {
         effect.doEffect(options?.otelContext, options.debugRefreshReason)
       }
 
-      const refreshedAtoms = this.currentDebugRefresh.refreshedAtoms
-      const durationMs = performance.now() - this.currentDebugRefresh.startMs
+      // Use local reference which can't be corrupted by nested calls
+      const refreshedAtoms = localDebugRefresh.refreshedAtoms
+      const durationMs = performance.now() - localDebugRefresh.startMs
       this.currentDebugRefresh = undefined
 
       const refreshDebugInfo: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo> = {

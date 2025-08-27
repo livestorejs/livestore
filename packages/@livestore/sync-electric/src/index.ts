@@ -280,41 +280,37 @@ export const makeSyncBackend =
 
       return SyncBackend.of({
         connect,
-        pull: (args, options) => {
+        pull: (cursor, options) => {
           let hasEmittedAtLeastOnce = false
 
-          return Stream.unfoldEffect(
-            args.pipe(
-              Option.map((_) => _.metadata),
-              Option.flatten,
-            ),
-            (metadataOption) =>
-              Effect.gen(function* () {
-                const result = yield* runPull(metadataOption, { live: options?.live ?? false })
-                if (Option.isNone(result)) return Option.none()
+          return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
+            Effect.gen(function* () {
+              const result = yield* runPull(metadataOption, { live: options?.live ?? false })
+              if (Option.isNone(result)) return Option.none()
 
-                const [batch, nextMetadataOption] = result.value
+              const [batch, nextMetadataOption] = result.value
 
-                // Continue pagination if we have data
-                if (batch.length > 0) {
-                  hasEmittedAtLeastOnce = true
-                  return Option.some([{ batch, hasMore: true }, nextMetadataOption])
-                }
+              // Continue pagination if we have data
+              if (batch.length > 0) {
+                hasEmittedAtLeastOnce = true
+                return Option.some([{ batch, hasMore: true }, nextMetadataOption])
+              }
 
-                // Make sure we emit at least once even if there's no data or we're live-pulling
-                if (hasEmittedAtLeastOnce === false || options?.live) {
-                  hasEmittedAtLeastOnce = true
-                  return Option.some([{ batch, hasMore: false }, nextMetadataOption])
-                }
+              // Make sure we emit at least once even if there's no data or we're live-pulling
+              if (hasEmittedAtLeastOnce === false || options?.live) {
+                hasEmittedAtLeastOnce = true
+                return Option.some([{ batch, hasMore: false }, nextMetadataOption])
+              }
 
-                // Stop on empty batch (when not live)
-                return Option.none()
-              }),
+              // Stop on empty batch (when not live)
+              return Option.none()
+            }),
           ).pipe(
             Stream.map(({ batch, hasMore }) => ({
               batch,
               pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
             })),
+            Stream.tapLogWithLabel('electric-provider:pull'),
             Stream.withSpan('electric-provider:pull'),
           )
         },
@@ -328,11 +324,11 @@ export const makeSyncBackend =
               Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
               Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
               Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ reason: { _tag: 'Unexpected', cause } })),
+              Effect.mapError((cause) => InvalidPushError.make({ cause: UnexpectedError.make({ cause }) })),
             )
 
             if (!resp.success) {
-              return yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', cause: new Error('Push failed') } })
+              return yield* InvalidPushError.make({ cause: new UnexpectedError({ cause: new Error('Push failed') }) })
             }
           }).pipe(Effect.withSpan('electric-provider:push')),
         ping,

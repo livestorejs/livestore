@@ -1,4 +1,13 @@
-import { Effect, Fiber, Layer, RpcClient, type RpcMessage, RpcSerialization, type Scope } from '@livestore/utils/effect'
+import {
+  Effect,
+  Fiber,
+  FiberMap,
+  Layer,
+  RpcClient,
+  type RpcMessage,
+  RpcSerialization,
+  type Scope,
+} from '@livestore/utils/effect'
 import type * as CfTypes from '../cf-types.ts'
 
 /**
@@ -41,10 +50,12 @@ const processReadableStream = (
 
         // Write each message
         for (const message of messages) {
+          console.log('writeResponse', message)
           yield* writeResponse(message)
         }
       }
     }).pipe(
+      Effect.withSpan('do-rpc-client:processReadableStream'),
       Effect.ensuring(
         Effect.promise(() => reader.cancel()).pipe(Effect.andThen(() => Effect.sync(() => reader.releaseLock()))),
       ),
@@ -78,15 +89,18 @@ const makeProtocolDurableObject = ({
     Effect.fnUntraced(function* (writeResponse) {
       const parser = RpcSerialization.msgPack.unsafeMake()
       // Not using an actual `FiberMap` here because it seems to shutdown to early
-      const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
+      // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
+      const fiberMap = yield* FiberMap.make<string, void, never>()
+
+      yield* Effect.addFinalizerLog('do-rpc-client:makeProtocolDurableObject:finalizer')
 
       const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void, never, never> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
-              const fiber = fiberMap.get(message.requestId)!
+              const fiber = yield* FiberMap.get(fiberMap, message.requestId)
               yield* Fiber.interrupt(fiber)
-            })
+            }).pipe(Effect.orDie)
           }
 
           return Effect.void
@@ -107,9 +121,13 @@ const makeProtocolDurableObject = ({
               serializedResponse as CfTypes.ReadableStream,
               parser,
               writeResponse,
-            ).pipe(Effect.fork)
+            ).pipe(
+              // Effect.tapCauseLogPretty,
+              Effect.fork,
+            )
 
-            fiberMap.set(message.id, fiber)
+            // fiberMap.set(message.id, fiber)
+            yield* FiberMap.set(fiberMap, message.id, fiber)
 
             yield* fiber
 
@@ -135,7 +153,7 @@ const makeProtocolDurableObject = ({
           for (const response of responseArray) {
             yield* writeResponse(response)
           }
-        }).pipe(Effect.orDie) // Ensure never error type
+        }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }
 
       return {

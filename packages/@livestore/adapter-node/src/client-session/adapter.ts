@@ -219,8 +219,7 @@ const makeAdapterImpl = ({
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-node:adapter'),
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Effect.provide(FetchHttpClient.layer),
+      Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
 
 const makeLocalLeaderThread = ({

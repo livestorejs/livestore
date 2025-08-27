@@ -96,6 +96,8 @@ export const syncStatusTable = table({
   name: SYNC_STATUS_TABLE,
   columns: {
     head: SqliteDsl.integer({ primaryKey: true }),
+    // Null means the sync backend is not yet connected and we haven't yet seen a backend ID
+    backendId: SqliteDsl.text({ nullable: true }),
   },
 })
 

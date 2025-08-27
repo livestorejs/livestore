@@ -189,6 +189,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
     const ctx = serverCtxMap.get(ws)
+    // console.log('webSocketClose', ctx, ws)
     if (ctx) {
       await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
