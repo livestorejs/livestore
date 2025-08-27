@@ -7,7 +7,7 @@
     "@livestore/livestore": "0.4.0-dev.3",
     "@livestore/peer-deps": "0.4.0-dev.3",
     "@livestore/solid": "0.4.0-dev.3",
-    "@livestore/wa-sqlite": "1.0.8-dev.4",
+    "@livestore/wa-sqlite": "0.4.0-dev.3",
     "solid-js": "1.9.8",
     "todomvc-app-css": "2.4.3",
     "uuid": "11.1.0"

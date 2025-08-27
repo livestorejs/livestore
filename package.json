@@ -48,6 +48,7 @@
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
+    "@livestore/wa-sqlite": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.6"
   },
@@ -63,7 +64,6 @@
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "prepare": "husky",
     "test": "CI=1 pnpm --parallel run test",
-    "test:perf": "pnpm --filter '@local/tests-perf' test",
     "update-lockfile": "CI=1 pnpm install --lockfile-only"
   }
 }

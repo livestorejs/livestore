@@ -9,8 +9,16 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgsUnstable, flake-utils, playwright-web-flake }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixpkgsUnstable,
+      flake-utils,
+      playwright-web-flake,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlay = final: prev: {
           inherit (playwright-web-flake.packages.${system}) playwright-driver;
@@ -23,31 +31,34 @@
           inherit system;
           overlays = [ overlay ];
         };
-        corepack = pkgs.runCommand "corepack-enable" {} ''
+        corepack = pkgs.runCommand "corepack-enable" { } ''
           mkdir -p $out/bin
           ${pkgsUnstable.nodejs_24}/bin/corepack enable --install-directory $out/bin
         '';
       in
       {
 
-        devShell = with pkgs; pkgs.mkShell {
+        devShell =
+          with pkgs;
+          pkgs.mkShell {
 
-          buildInputs = [
-            pkgsUnstable.nodejs_24
-            corepack
-            pkgsUnstable.bun
-            caddy
-            pkgsUnstable.deno
-            jq # Needed by some scripts
+            buildInputs = [
+              pkgsUnstable.nodejs_24
+              corepack
+              pkgsUnstable.bun
+              caddy
+              pkgsUnstable.deno
+              jq # Needed by some scripts
 
-            # needed for Expo
-            (lib.optionals stdenv.isDarwin [
-              cocoapods
-            ])
-          ];
+              # needed for Expo
+              (lib.optionals stdenv.isDarwin [
+                cocoapods
+              ])
+            ];
 
-          PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
-        };
+            PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
+          };
 
-      });
+      }
+    );
 }

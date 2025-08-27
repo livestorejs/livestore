@@ -77,6 +77,17 @@ const testUnitCommand = Cli.Command.make(
   }),
 )
 
+const testPerfCommand = Cli.Command.make(
+  'perf',
+  {},
+  Effect.fn(function* () {
+    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
+      cwd: `${cwd}/tests/perf`,
+      shell: true,
+    })
+  }),
+)
+
 // TODO when tests fail, print a command per failed test which allows running the test separately
 const testCommand = Cli.Command.make(
   'test',
@@ -87,8 +98,9 @@ const testCommand = Cli.Command.make(
       concurrency: isGithubAction ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
     })
+    yield* testPerfCommand.handler({})
   }),
-).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
+).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand, testPerfCommand]))
 
 const lintCommand = Cli.Command.make(
   'lint',
@@ -238,7 +250,7 @@ const tsCommand = Cli.Command.make(
   Effect.fn(function* ({ watch, clean }) {
     if (clean) {
       yield* cmd(
-        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
+        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -a -not -path "*/wa-sqlite/dist" -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
         { cwd, shell: true },
       )
     }

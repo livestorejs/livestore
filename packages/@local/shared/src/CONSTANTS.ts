@@ -5,8 +5,6 @@ export const EFFECT_VERSION = '3.17.6'
 export const REACT_VERSION = '19.0.0'
 export const MIN_NODE_VERSION = '23.0.0'
 
-export const LIVESTORE_WA_SQLITE_VERSION = '1.0.8-dev.4'
-
 export const DISCORD_INVITE_URL = 'https://discord.gg/RbMcjUAPd7'
 
 export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(
