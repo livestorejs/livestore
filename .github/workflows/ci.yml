@@ -134,7 +134,7 @@ jobs:
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
       - name: Run performance tests
-        run: pnpm test:perf
+        run: mono test perf
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net
@@ -156,7 +156,7 @@ jobs:
       - name: Build wa-sqlite
         run: nix run ./nix/wa-sqlite-build#default
       - name: Run wa-sqlite tests
-        run: pnpm test:wa-sqlite
+        run: mono test integration wa-sqlite
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net

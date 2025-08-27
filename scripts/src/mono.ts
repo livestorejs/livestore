@@ -77,6 +77,17 @@ const testUnitCommand = Cli.Command.make(
   }),
 )
 
+const testPerfCommand = Cli.Command.make(
+  'perf',
+  {},
+  Effect.fn(function* () {
+    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test', {
+      cwd: `${cwd}/tests/perf`,
+      shell: true,
+    })
+  }),
+)
+
 // TODO when tests fail, print a command per failed test which allows running the test separately
 const testCommand = Cli.Command.make(
   'test',
@@ -87,8 +98,9 @@ const testCommand = Cli.Command.make(
       concurrency: isGithubAction ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
     })
+    yield* testPerfCommand.handler({})
   }),
-).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand]))
+).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand, testPerfCommand]))
 
 const lintCommand = Cli.Command.make(
   'lint',

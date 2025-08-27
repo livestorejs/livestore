@@ -206,6 +206,19 @@ export const devtoolsTest: Cli.Command.Command<
   ),
 )
 
+export const waSqliteTest: Cli.Command.Command<
+  'wa-sqlite',
+  CommandExecutor.CommandExecutor,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
+  {}
+> = Cli.Command.make(
+  'wa-sqlite',
+  {},
+  Effect.fn(function* () {
+    yield* cmd('vitest run', { cwd: `${cwd}/../wa-sqlite` })
+  }),
+)
+
 export const runAll: Cli.Command.Command<
   'all',
   CommandExecutor.CommandExecutor,
@@ -229,13 +242,14 @@ export const runAll: Cli.Command.Command<
         nodeSyncTest.handler({}),
         todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
         devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
+        waSqliteTest.handler({}),
       ],
       { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
     )
   }, Effect.withSpan('integration-tests:run-all')),
 )
 
-export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll, setupDevtools] as const
+export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, waSqliteTest, runAll, setupDevtools] as const
 
 export const command: Cli.Command.Command<
   'integration',
