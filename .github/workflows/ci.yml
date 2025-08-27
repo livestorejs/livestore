@@ -163,7 +163,8 @@ jobs:
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
       - name: Build wa-sqlite
-        run: nix run ./nix/wa-sqlite-build#default
+        working-directory: packages/@livestore/wa-sqlite
+        run: nix run .#build
       - name: Run wa-sqlite tests
         run: mono test integration wa-sqlite
         env:
