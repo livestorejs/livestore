@@ -249,7 +249,15 @@ export const runAll: Cli.Command.Command<
   }, Effect.withSpan('integration-tests:run-all')),
 )
 
-export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, waSqliteTest, runAll, setupDevtools] as const
+export const commands = [
+  miscTest,
+  nodeSyncTest,
+  todomvcTest,
+  devtoolsTest,
+  waSqliteTest,
+  runAll,
+  setupDevtools,
+] as const
 
 export const command: Cli.Command.Command<
   'integration',
