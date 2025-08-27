@@ -81,7 +81,7 @@ const testPerfCommand = Cli.Command.make(
   'perf',
   {},
   Effect.fn(function* () {
-    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test', {
+    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
       cwd: `${cwd}/tests/perf`,
       shell: true,
     })
