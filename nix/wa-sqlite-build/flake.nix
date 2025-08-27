@@ -24,7 +24,7 @@
 
         buildScript = pkgs.writeShellScriptBin "build-wa-sqlite" ''
           set -euo pipefail
-          export PATH="${pkgsUnstable.emscripten}/bin:${pkgs.brotli}/bin:${pkgs.curl}/bin:$PATH"
+          export PATH="${pkgsUnstable.emscripten}/bin:${pkgs.brotli}/bin:${pkgs.curl}/bin:${pkgs.git}/bin:${pkgs.gzip}/bin:$PATH"
           export SQLITE_SRC="${sqliteSrc}"
           export SQLITE_VERSION="${sqliteVersion}"
           exec "${./.}/build-script.sh"
