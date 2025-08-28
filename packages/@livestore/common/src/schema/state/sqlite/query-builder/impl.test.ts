@@ -622,6 +622,70 @@ describe('query builder', () => {
         }
       `)
     })
+
+    it('should handle where().delete() - preserving where clauses', () => {
+      expect(dump(db.todos.where({ status: 'completed' }).delete())).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ?",
+          "schema": "number",
+        }
+      `)
+
+      // Multiple where clauses
+      expect(dump(db.todos.where({ status: 'completed' }).where({ deletedAt: null }).delete())).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ? AND deletedAt IS NULL",
+          "schema": "number",
+        }
+      `)
+    })
+
+    it('should handle where().update() - preserving where clauses', () => {
+      expect(dump(db.todos.where({ id: '123' }).update({ status: 'completed' }))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+          "schema": "number",
+        }
+      `)
+
+      // Multiple where clauses
+      expect(
+        dump(db.todos.where({ id: '123' }).where({ deletedAt: null }).update({ status: 'completed' })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ? AND deletedAt IS NULL",
+          "schema": "number",
+        }
+      `)
+    })
+
+    it('should have equivalent behavior for both delete patterns', () => {
+      const pattern1 = dump(db.todos.where({ status: 'completed', id: '123' }).delete())
+      const pattern2 = dump(db.todos.delete().where({ status: 'completed', id: '123' }))
+
+      expect(pattern1).toEqual(pattern2)
+    })
+
+    it('should have equivalent behavior for both update patterns', () => {
+      const pattern1 = dump(db.todos.where({ id: '123' }).update({ status: 'completed', text: 'Updated' }))
+      const pattern2 = dump(db.todos.update({ status: 'completed', text: 'Updated' }).where({ id: '123' }))
+
+      expect(pattern1).toEqual(pattern2)
+    })
   })
 })
 
