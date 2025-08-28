@@ -14,7 +14,7 @@ import { Cli } from '@livestore/utils/node'
 export const statusCommand = Cli.Command.make('status', {}, () =>
   Effect.gen(function* () {
     yield* Effect.log('📊 File Sync Status')
-    yield* Effect.log('=' * 20)
+    yield* Effect.log('====================')
 
     // TODO: Implement status display
     // 1. Query LiveStore for current sync state

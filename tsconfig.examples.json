@@ -3,6 +3,7 @@
   "compilerOptions": {},
   "include": [],
   "references": [
+    { "path": "./examples/file-sync" },
     { "path": "./examples/node-effect-cli" },
     { "path": "./examples/node-todomvc-sync-cf" },
     { "path": "./examples/expo-todomvc-sync-cf" },

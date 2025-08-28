@@ -34,7 +34,6 @@ const command = Cli.Command.make('file-sync').pipe(
 const cli = Cli.Command.run(command, {
   name: 'File Sync CLI',
   version: liveStoreVersion,
-  summary: 'Bidirectional file synchronization using LiveStore and Effect',
 })
 
 // Effect runtime layer
