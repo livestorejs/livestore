@@ -1,3 +1,0 @@
-[submodule "packages/@livestore/wa-sqlite"]
-	path = packages/@livestore/wa-sqlite
-	url = git@github.com:livestorejs/wa-sqlite.git
