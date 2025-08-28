@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { liveStoreVersion } from '@livestore/common'
-import { Effect, FetchHttpClient, Layer, Logger, LogLevel, Console } from '@livestore/utils/effect'
+import { Console, Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { command } from './cli.ts'
 
@@ -21,7 +21,4 @@ const layer = Layer.mergeAll(
 Effect.gen(function* () {
   yield* showExperimentalWarning
   return yield* cli(process.argv)
-}).pipe(
-  Effect.provide(layer),
-  PlatformNode.NodeRuntime.runMain
-)
+}).pipe(Effect.provide(layer), PlatformNode.NodeRuntime.runMain)
