@@ -184,17 +184,6 @@ async function generateLargeTestDatabase(): Promise<void> {
     throw error
   }
 }
-// This runs as a Vitest setup file
-;(async () => {
-  try {
-    await ensureDirectoryExists(FIXTURES_DIR)
-    await generateLargeTestDatabase()
-  } catch (error) {
-    console.error('Setup failed:', error)
-    process.exit(1)
-  }
-})()
-
 export default async function setupDatabase() {
   await ensureDirectoryExists(FIXTURES_DIR)
   await generateLargeTestDatabase()
