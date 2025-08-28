@@ -219,21 +219,27 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     update: (values) => {
       const filteredValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
 
+      // Preserve where clauses if coming from a SelectQuery
+      const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
+
       return makeQueryBuilder(tableDef, {
         _tag: 'UpdateQuery',
         tableDef,
         values: filteredValues,
-        where: [],
+        where: whereClause,
         returning: undefined,
         resultSchema: Schema.Void,
       }) as any
     },
 
     delete: () => {
+      // Preserve where clauses if coming from a SelectQuery
+      const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
+
       return makeQueryBuilder(tableDef, {
         _tag: 'DeleteQuery',
         tableDef,
-        where: [],
+        where: whereClause,
         returning: undefined,
         resultSchema: Schema.Void,
       }) as any
