@@ -1,0 +1,62 @@
+---
+title: MCP Integration
+description: Model Context Protocol integration for AI assistants like Claude.
+---
+
+LiveStore includes MCP (Model Context Protocol) integration that allows AI assistants like Claude to access LiveStore documentation, examples, and development tools.
+
+:::caution[Experimental]
+The MCP integration is experimental and under active development. Features may change.
+:::
+
+For installation and general CLI usage, see the [LiveStore CLI](/reference/cli) documentation.
+
+## What is MCP?
+
+MCP (Model Context Protocol) is a standard for providing AI assistants with access to external resources and tools. LiveStore's MCP server gives AI assistants access to:
+
+- LiveStore documentation and guides
+- Schema examples for common app types
+- Development tools and utilities
+
+## Usage
+
+Start the MCP server:
+
+```bash
+bunx @livestore/cli mcp
+```
+
+## Available Commands
+
+### `bunx @livestore/cli mcp coach`
+Starts an AI coaching assistant with access to LiveStore documentation and best practices.
+
+### `bunx @livestore/cli mcp tools`
+Provides development tools and utilities for working with LiveStore projects.
+
+## Adding to Claude
+
+To use with Claude Desktop, add the MCP server to your Claude configuration:
+
+```json
+{
+  "mcpServers": {
+    "livestore": {
+      "command": "bunx",
+      "args": ["@livestore/cli", "mcp"]
+    }
+  }
+}
+```
+
+## Available Resources
+
+The MCP server provides access to:
+
+- **Documentation**: Overview, features, getting started guides
+- **Architecture**: Technical design and principles  
+- **Schema Examples**: Pre-built schemas for todo, blog, e-commerce, and social apps
+- **Development Tools**: Project scaffolding and utilities
+
+This enables AI assistants to provide context-aware help with LiveStore development.
