@@ -8,9 +8,24 @@ import {
   RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { startWranglerDevServerPromise, Vitest } from '@livestore/utils-dev/node-vitest'
+import { beforeAll, expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
+
+let port: number
+
+beforeAll(async () => {
+  const { port: wranglerPort } = await startWranglerDevServerPromise({
+    cwd: `${import.meta.dirname}/test-fixtures`,
+  })
+  port = wranglerPort
+})
+
+const ProtocolLive = Layer.suspend(() =>
+  RpcClient.layerProtocolHttp({
+    url: `http://localhost:${port}/rpc`,
+  }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson])),
+)
 
 /**
  * Test Architecture - Effect RPC via HTTP
@@ -31,11 +46,6 @@ import { TestRpcs } from './test-fixtures/rpc-schema.ts'
  */
 
 Vitest.describe('Durable Object RPC', { timeout: 5000 }, () => {
-  const port = process.env.LIVESTORE_SYNC_PORT
-  const ProtocolLive = RpcClient.layerProtocolHttp({
-    url: `http://localhost:${port}/rpc`,
-  }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]))
-
   // Direct HTTP RPC client tests
   Vitest.scopedLive(
     'should call ping method',

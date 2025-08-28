@@ -50,7 +50,6 @@ const processReadableStream = (
 
         // Write each message
         for (const message of messages) {
-          console.log('writeResponse', message)
           yield* writeResponse(message)
         }
       }

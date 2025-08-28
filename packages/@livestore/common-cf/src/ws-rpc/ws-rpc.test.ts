@@ -1,17 +1,26 @@
 import { Chunk, Effect, Layer, Option, RpcClient, RpcSerialization, Socket, Stream } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { startWranglerDevServerPromise, Vitest } from '@livestore/utils-dev/node-vitest'
+import { beforeAll, expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
-Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
-  const port = process.env.LIVESTORE_WS_PORT
+let port: number
 
-  const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
+beforeAll(async () => {
+  const { port: wranglerPort } = await startWranglerDevServerPromise({
+    cwd: `${import.meta.dirname}/test-fixtures`,
+  })
+  port = wranglerPort
+})
+
+const ProtocolLive = Layer.suspend(() =>
+  RpcClient.layerProtocolSocket().pipe(
     Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
     Layer.provide(Socket.layerWebSocketConstructorGlobal),
     Layer.provide(RpcSerialization.layerJson),
-  )
+  ),
+)
 
+Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
   // Direct HTTP RPC client tests
   Vitest.scopedLive(
     'should call ping method',
@@ -143,14 +152,6 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
 })
 
 Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
-  const port = process.env.LIVESTORE_WS_PORT
-
-  const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
-    Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
-    Layer.provide(RpcSerialization.layerJson),
-  )
-
   Vitest.scopedLive(
     'should maintain RPC functionality after hibernation',
     Effect.fn(function* () {
