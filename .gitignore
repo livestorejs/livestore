@@ -1,0 +1,20 @@
+.DS_Store
+
+# https://yarnpkg.com/getting-started/qa/#which-files-should-be-gitignored
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+node_modules
+
+/cache
+/debug
+/deps
+/tmp
+
+# Nix build results
+result
