@@ -49,7 +49,7 @@
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@livestore/wa-sqlite": "workspace:*",
+    "@livestore/wa-sqlite": "0.4.0-dev.3",
     "@livestore/webmesh": "workspace:*",
     "esbuild": "0.25.6"
   },

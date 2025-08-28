@@ -16,7 +16,7 @@
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "workspace:*"
+    "@livestore/wa-sqlite": "0.4.0-dev.3"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.4",
