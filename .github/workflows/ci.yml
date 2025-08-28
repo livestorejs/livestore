@@ -20,8 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: mono lint
@@ -30,8 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: mono test unit
@@ -40,8 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -103,8 +97,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -152,7 +144,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -171,8 +162,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -196,8 +185,6 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Configure NPM authentication
@@ -211,8 +198,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: |
@@ -227,8 +212,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: mono docs build --api-docs
@@ -249,8 +232,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install dependencies
         # We're only using pnpm instead of the ./.github/actions/setup-env action to simulate a simple, user-facing setup.
         uses: pnpm/action-setup@v4
@@ -292,8 +273,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Check Nix flake inputs
         uses: DeterminateSystems/flake-checker-action@main
         with:
