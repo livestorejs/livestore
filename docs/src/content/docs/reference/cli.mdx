@@ -11,36 +11,44 @@ The LiveStore CLI is experimental and under active development. APIs and command
 
 ## Installation
 
+You can use the LiveStore CLI in several ways:
+
 ```bash
-npm install -g @livestore/cli
+# Recommended: Use bunx (no installation needed)
+bunx @livestore/cli --help
+
+# Alternative options:
+npm install -g @livestore/cli        # Global install
+npm install -D @livestore/cli        # Project install  
+npx @livestore/cli --help            # Use with npx
 ```
 
 ## Commands
 
-### `livestore new-project`
+### `bunx @livestore/cli new-project`
 Create a new LiveStore project from available examples.
 
 ```bash
 # Interactive selection
-livestore new-project
+bunx @livestore/cli new-project
 
 # Specify example and path
-livestore new-project --example web-todomvc my-project
+bunx @livestore/cli new-project --example web-todomvc my-project
 
 # Use specific branch
-livestore new-project --branch dev
+bunx @livestore/cli new-project --branch dev
 ```
 
-### `livestore mcp`
+### `bunx @livestore/cli mcp`
 MCP server tools for AI assistant integration. See [MCP Integration](/reference/mcp) for details.
 
 ```bash
 # Start MCP server
-livestore mcp
+bunx @livestore/cli mcp
 
 # Available subcommands
-livestore mcp coach    # AI coaching assistant
-livestore mcp tools    # Development tools server
+bunx @livestore/cli mcp coach    # AI coaching assistant
+bunx @livestore/cli mcp tools    # Development tools server
 ```
 
 ## Global Options

@@ -24,15 +24,15 @@ MCP (Model Context Protocol) is a standard for providing AI assistants with acce
 Start the MCP server:
 
 ```bash
-livestore mcp
+bunx @livestore/cli mcp
 ```
 
 ## Available Commands
 
-### `livestore mcp coach`
+### `bunx @livestore/cli mcp coach`
 Starts an AI coaching assistant with access to LiveStore documentation and best practices.
 
-### `livestore mcp tools`
+### `bunx @livestore/cli mcp tools`
 Provides development tools and utilities for working with LiveStore projects.
 
 ## Adding to Claude
@@ -43,8 +43,8 @@ To use with Claude Desktop, add the MCP server to your Claude configuration:
 {
   "mcpServers": {
     "livestore": {
-      "command": "livestore",
-      "args": ["mcp"]
+      "command": "bunx",
+      "args": ["@livestore/cli", "mcp"]
     }
   }
 }
