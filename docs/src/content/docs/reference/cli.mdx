@@ -1,0 +1,49 @@
+---
+title: LiveStore CLI
+description: Command-line interface for LiveStore project scaffolding and development tools.
+---
+
+The LiveStore CLI provides tools for creating new projects and integrating with AI assistants through MCP (Model Context Protocol).
+
+:::caution[Experimental]
+The LiveStore CLI is experimental and under active development. APIs and commands may change.
+:::
+
+## Installation
+
+```bash
+npm install -g @livestore/cli
+```
+
+## Commands
+
+### `livestore new-project`
+Create a new LiveStore project from available examples.
+
+```bash
+# Interactive selection
+livestore new-project
+
+# Specify example and path
+livestore new-project --example web-todomvc my-project
+
+# Use specific branch
+livestore new-project --branch dev
+```
+
+### `livestore mcp`
+MCP server tools for AI assistant integration. See [MCP Integration](/reference/mcp) for details.
+
+```bash
+# Start MCP server
+livestore mcp
+
+# Available subcommands
+livestore mcp coach    # AI coaching assistant
+livestore mcp tools    # Development tools server
+```
+
+## Global Options
+
+- `--verbose` - Enable verbose logging
+- `--help` - Show command help
