@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@livestore/wa-sqlite": "0.4.0-dev.3",
+    "@livestore/wa-sqlite": "workspace:*",
     "vitest": "catalog:"
   },
   "scripts": {
