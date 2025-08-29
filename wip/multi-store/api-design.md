@@ -4,31 +4,31 @@
 
 This document proposes the API design for supporting multiple LiveStore instances in React applications. The design prioritizes simplicity, type safety, and React best practices while enabling both simple and complex use cases.
 
-## Core API: `defineStoreContext`
+## Core API: `defineStore`
 
-The foundation of the multi-store API is the `defineStoreContext` function that creates a typed store context.
+The foundation of the multi-store API is the `defineStore` function that creates a Provider component and a custom hook for accessing the store.
 
-### Store Context Definition
+### Store Definition
 
 ```tsx
-import { defineStoreContext } from '@livestore/react'
+import { defineStore } from '@livestore/react'
 import { workspaceSchema } from './schemas'
 import { workspaceAdapter } from './adapters'
 
-// Create a store context with schema and optional adapter
-export const WorkspaceStoreContext = defineStoreContext({
+// defineStore returns a tuple: [Provider, useStore]
+export const [WorkspaceStoreProvider, useWorkspaceStore] = defineStore({
   name: 'workspace',
   schema: workspaceSchema,
   adapter: workspaceAdapter, // Optional: can be overridden in Provider
 })
 
-export const ProjectStoreContext = defineStoreContext({
+export const [ProjectStoreProvider, useProjectStore] = defineStore({
   name: 'project',
   schema: projectSchema,
   adapter: projectAdapter,
 })
 
-export const IssueStoreContext = defineStoreContext({
+export const [IssueStoreProvider, useIssueStore] = defineStore({
   name: 'issue',
   schema: issueSchema,
   adapter: issueAdapter,
@@ -38,18 +38,24 @@ export const IssueStoreContext = defineStoreContext({
 ### Return Type
 
 ```tsx
-interface StoreContextDefinition<TSchema extends LiveStoreSchema> {
-  // Provider component for this store
-  Provider: React.FC<StoreProviderProps<TSchema>>
-  
-  // For accessing specific instances by storeId
-  withStoreId: (storeId: string) => (Store<TSchema> & ReactAPI) | null
+type DefineStoreReturn<TSchema extends LiveStoreSchema> = [
+  // Provider component
+  React.FC<StoreProviderProps<TSchema>>,
+  // Hook for accessing the store
+  (options?: UseStoreOptions) => Store<TSchema> & ReactAPI
+]
+
+interface UseStoreOptions {
+  // For accessing a specific store instance
+  storeId?: string
+  // Other LiveStore options that can be overridden per-use
+  syncPayload?: Schema.JsonValue
 }
 ```
 
 ## Provider Component
 
-Each store context includes a Provider component that sets up the store instance.
+The Provider component returned by `defineStore` is a custom component (not a raw Context.Provider) that handles store initialization and lifecycle.
 
 ### Provider Props
 
@@ -64,11 +70,6 @@ interface StoreProviderProps<TSchema> {
   // Batch updates function (usually from react-dom)
   batchUpdates?: (fn: () => void) => void
   
-  // Render props for different states
-  renderLoading?: (status: BootStatus) => React.ReactNode
-  renderError?: (error: unknown) => React.ReactNode
-  renderShutdown?: (cause: ShutdownCause) => React.ReactNode
-  
   // Other LiveStore options
   disableDevtools?: boolean
   confirmUnsavedChanges?: boolean
@@ -79,33 +80,23 @@ interface StoreProviderProps<TSchema> {
 }
 ```
 
-### Key Behavior: Immediate Child Rendering
+### Key Behaviors
 
-Unlike the current LiveStoreProvider, the new Provider **always renders children immediately**, enabling concurrent store loading:
-
-```tsx
-// These stores load CONCURRENTLY
-<WorkspaceStoreContext.Provider>
-  <ProjectStoreContext.Provider>
-    <SettingsStoreContext.Provider>
-      {/* All three stores start loading in parallel */}
-      <App />
-    </SettingsStoreContext.Provider>
-  </ProjectStoreContext.Provider>
-</WorkspaceStoreContext.Provider>
-```
+1. **Immediate Child Rendering**: Children render immediately, enabling concurrent store loading
+2. **Suspense-Only Loading**: No render props - loading states handled via Suspense boundaries
+3. **Error Boundaries**: Errors are thrown to be caught by Error Boundaries
 
 ## Store Access API
 
-### Primary API: `React.use()`
+### Primary API: Custom Hooks
 
-The primary way to access stores is through `React.use()` (currently equivalent to `useContext`):
+The hooks returned by `defineStore` are the primary way to access stores:
 
 ```tsx
 function MyComponent() {
-  // Type-safe store access
-  const workspaceStore = React.use(WorkspaceStoreContext)
-  const projectStore = React.use(ProjectStoreContext)
+  // Access the nearest provider's store (most common case)
+  const workspaceStore = useWorkspaceStore()
+  const projectStore = useProjectStore()
   
   // Use store methods
   const tasks = projectStore.useQuery(tasksQuery)
@@ -118,19 +109,15 @@ function MyComponent() {
 }
 ```
 
-### Multi-Instance API: `withStoreId()`
+### Multi-Instance Access
 
 For the rare case of accessing multiple instances of the same store type:
 
 ```tsx
 function IssueComparison({ issueIds }: { issueIds: [string, string] }) {
-  // Access specific store instances by ID
-  const issue1 = IssueStoreContext.withStoreId(`issue-${issueIds[0]}`)
-  const issue2 = IssueStoreContext.withStoreId(`issue-${issueIds[1]}`)
-  
-  if (!issue1 || !issue2) {
-    return <div>Loading issues...</div>
-  }
+  // Access specific store instances by storeId
+  const issue1 = useIssueStore({ storeId: `issue-${issueIds[0]}` })
+  const issue2 = useIssueStore({ storeId: `issue-${issueIds[1]}` })
   
   const data1 = issue1.useQuery(issueQuery)
   const data2 = issue2.useQuery(issueQuery)
@@ -138,6 +125,12 @@ function IssueComparison({ issueIds }: { issueIds: [string, string] }) {
   return <ComparisonView left={data1} right={data2} />
 }
 ```
+
+Note: When using `storeId` option, the hook will:
+- Return the specific store instance if it exists
+- Throw a promise if the store is still loading (triggering Suspense)
+- Throw an error if the store failed to initialize
+- Return null if no provider with that storeId exists
 
 ## Store Instance API
 
@@ -162,26 +155,26 @@ interface StoreWithReactAPI<TSchema> extends Store<TSchema> {
 
 ## Suspense Integration
 
-Stores integrate with React Suspense for loading states:
+Stores integrate with React Suspense for loading states. The custom hooks internally use `React.use(Promise)` to trigger Suspense:
 
 ```tsx
 function App() {
   return (
-    <WorkspaceStoreContext.Provider>
-      <ProjectStoreContext.Provider>
+    <WorkspaceStoreProvider>
+      <ProjectStoreProvider>
         {/* Suspense boundary handles loading */}
         <Suspense fallback={<LoadingSpinner />}>
           <AppContent />
         </Suspense>
-      </ProjectStoreContext.Provider>
-    </WorkspaceStoreContext.Provider>
+      </ProjectStoreProvider>
+    </WorkspaceStoreProvider>
   )
 }
 
 function AppContent() {
-  // These throw promises if stores are still loading
-  const workspaceStore = React.use(WorkspaceStoreContext)
-  const projectStore = React.use(ProjectStoreContext)
+  // These hooks throw promises if stores are still loading
+  const workspaceStore = useWorkspaceStore()
+  const projectStore = useProjectStore()
   
   // Guaranteed to have loaded stores here
   const tasks = projectStore.useQuery(tasksQuery)
@@ -191,31 +184,56 @@ function AppContent() {
 
 ## Error Handling
 
-Errors are handled through React Error Boundaries:
+Errors are handled through React Error Boundaries. No render props are provided - all error handling is done via boundaries:
 
 ```tsx
 function App() {
   return (
     <ErrorBoundary fallback={<ErrorPage />}>
-      <WorkspaceStoreContext.Provider>
-        <ProjectStoreContext.Provider>
+      <WorkspaceStoreProvider>
+        <ProjectStoreProvider>
           <Suspense fallback={<Loading />}>
             <AppContent />
           </Suspense>
-        </ProjectStoreContext.Provider>
-      </WorkspaceStoreContext.Provider>
+        </ProjectStoreProvider>
+      </WorkspaceStoreProvider>
     </ErrorBoundary>
   )
 }
 ```
+
+## Implementation Considerations
+
+### Why Not Pure `React.use()`?
+
+While we initially considered using `React.use()` directly with Context objects, this approach has technical limitations:
+
+1. **`React.use()` limitations**: It can accept either a Context OR a Promise, but not both behaviors in one resource
+2. **Custom logic needed**: Store initialization, lifecycle management, and multi-instance support require custom logic
+3. **Better DX**: Custom hooks provide better error messages and TypeScript inference
+
+### Custom Provider Implementation
+
+The Provider component is not a raw `Context.Provider` but a custom component that:
+- Kicks off store loading on mount
+- Manages store lifecycle
+- Provides both default and instance-specific contexts
+- Integrates with Suspense via promises
+
+### Custom Hook Implementation
+
+The hooks use `React.use(Promise)` internally to:
+- Trigger Suspense when stores are loading
+- Throw errors for Error Boundaries
+- Provide type-safe store access
 
 ## Usage Examples
 
 ### Example 1: Simple Single Store
 
 ```tsx
-// Define store context
-export const AppStoreContext = defineStoreContext({
+// Define store
+export const [AppStoreProvider, useAppStore] = defineStore({
   name: 'app',
   schema: appSchema,
   adapter: appAdapter,
@@ -224,16 +242,16 @@ export const AppStoreContext = defineStoreContext({
 // Use in app
 function App() {
   return (
-    <AppStoreContext.Provider>
+    <AppStoreProvider>
       <Suspense fallback={<Loading />}>
         <MainContent />
       </Suspense>
-    </AppStoreContext.Provider>
+    </AppStoreProvider>
   )
 }
 
 function MainContent() {
-  const appStore = React.use(AppStoreContext)
+  const appStore = useAppStore()
   const todos = appStore.useQuery(todosQuery)
   return <TodoList todos={todos} />
 }
@@ -244,26 +262,26 @@ function MainContent() {
 ```tsx
 function App() {
   return (
-    <WorkspaceStoreContext.Provider storeId="workspace-123">
+    <WorkspaceStoreProvider storeId="workspace-123">
       <Suspense fallback={<WorkspaceLoading />}>
         <WorkspaceApp />
       </Suspense>
-    </WorkspaceStoreContext.Provider>
+    </WorkspaceStoreProvider>
   )
 }
 
 function WorkspaceApp() {
   // Access workspace to get project ID
-  const workspaceStore = React.use(WorkspaceStoreContext)
+  const workspaceStore = useWorkspaceStore()
   const currentProject = workspaceStore.useQuery(currentProjectQuery)
   
   // Set up project store with derived ID
   return (
-    <ProjectStoreContext.Provider storeId={`project-${currentProject.id}`}>
+    <ProjectStoreProvider storeId={`project-${currentProject.id}`}>
       <Suspense fallback={<ProjectLoading />}>
         <ProjectView />
       </Suspense>
-    </ProjectStoreContext.Provider>
+    </ProjectStoreProvider>
   )
 }
 ```
@@ -274,9 +292,9 @@ function WorkspaceApp() {
 function Dashboard() {
   return (
     // All stores load concurrently
-    <WorkspaceStoreContext.Provider>
-      <SettingsStoreContext.Provider>
-        <NotificationsStoreContext.Provider>
+    <WorkspaceStoreProvider>
+      <SettingsStoreProvider>
+        <NotificationsStoreProvider>
           {/* Each section can load independently */}
           <div className="dashboard">
             <Suspense fallback={<WorkspaceLoading />}>
@@ -291,9 +309,9 @@ function Dashboard() {
               <NotificationsSection />
             </Suspense>
           </div>
-        </NotificationsStoreContext.Provider>
-      </SettingsStoreContext.Provider>
-    </WorkspaceStoreContext.Provider>
+        </NotificationsStoreProvider>
+      </SettingsStoreProvider>
+    </WorkspaceStoreProvider>
   )
 }
 ```
@@ -304,27 +322,29 @@ function Dashboard() {
 function IssueBoard({ issueIds }: { issueIds: string[] }) {
   return (
     <>
-      {/* Set up multiple issue stores */}
+      {/* Set up multiple issue store providers */}
       {issueIds.map(id => (
-        <IssueStoreContext.Provider key={id} storeId={`issue-${id}`} />
+        <IssueStoreProvider key={id} storeId={`issue-${id}`} />
       ))}
       
-      {/* Access them by ID */}
-      <div className="issue-grid">
-        {issueIds.map(id => (
-          <IssueCard key={id} issueId={id} />
-        ))}
-      </div>
+      {/* Access them in child components */}
+      <Suspense fallback={<Loading />}>
+        <div className="issue-grid">
+          {issueIds.map(id => (
+            <IssueCard key={id} issueId={id} />
+          ))}
+        </div>
+      </Suspense>
     </>
   )
 }
 
 function IssueCard({ issueId }: { issueId: string }) {
   // Access specific instance
-  const issueStore = IssueStoreContext.withStoreId(`issue-${issueId}`)
+  const issueStore = useIssueStore({ storeId: `issue-${issueId}` })
   
   if (!issueStore) {
-    return <div>Loading issue...</div>
+    return <div>Issue not found</div>
   }
   
   const issue = issueStore.useQuery(issueQuery)
@@ -340,6 +360,8 @@ function IssueCard({ issueId }: { issueId: string }) {
   schema={schema} 
   adapter={adapter}
   batchUpdates={batchUpdates}
+  renderLoading={(status) => <Loading status={status} />}
+  renderError={(error) => <Error error={error} />}
 >
   <App />
 </LiveStoreProvider>
@@ -351,20 +373,32 @@ const todos = useQuery(todosQuery)
 
 ### After (Multi-Store)
 ```tsx
-const AppStoreContext = defineStoreContext({
+const [AppStoreProvider, useAppStore] = defineStore({
   name: 'app',
   schema: schema,
   adapter: adapter,
 })
 
-<AppStoreContext.Provider batchUpdates={batchUpdates}>
-  <App />
-</AppStoreContext.Provider>
+<ErrorBoundary fallback={<Error />}>
+  <AppStoreProvider batchUpdates={batchUpdates}>
+    <Suspense fallback={<Loading />}>
+      <App />
+    </Suspense>
+  </AppStoreProvider>
+</ErrorBoundary>
 
 // In component
-const appStore = React.use(AppStoreContext)
+const appStore = useAppStore()
 const todos = appStore.useQuery(todosQuery)
 ```
+
+### Migration Benefits
+
+1. **Familiar pattern**: Similar to current `useStore()` API
+2. **Better error handling**: Leverages React's built-in error boundaries
+3. **Better loading states**: Uses Suspense for more flexible loading UX
+4. **Type safety**: Full inference without manual type annotations
+5. **Multi-store ready**: Easy to add additional stores
 
 ## TypeScript Support
 
@@ -372,13 +406,13 @@ Full type inference is maintained throughout:
 
 ```tsx
 // Schema defines types
-const ProjectStoreContext = defineStoreContext({
+const [ProjectStoreProvider, useProjectStore] = defineStore({
   name: 'project',
   schema: projectSchema, // Schema<{ todos: Todo[], users: User[] }>
 })
 
 // Types flow through to usage
-const projectStore = React.use(ProjectStoreContext)
+const projectStore = useProjectStore()
 const todos = projectStore.useQuery(todosQuery) // Type: Todo[]
 projectStore.commit(events.todoCreated({ ... })) // Type-checked event
 ```

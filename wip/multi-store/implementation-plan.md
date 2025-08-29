@@ -6,23 +6,27 @@ This document outlines the implementation plan for adding multi-store support to
 
 ## Phase 1: Core Infrastructure
 
-### 1.1 Create `defineStoreContext` Function
+### 1.1 Create `defineStore` Function
 
-**Location**: `packages/@livestore/react/src/defineStoreContext.ts`
+**Location**: `packages/@livestore/react/src/defineStore.ts`
 
 **Tasks**:
-- [ ] Create type definitions for `StoreContextDefinition`
-- [ ] Implement context creation logic
-- [ ] Add registry context for multi-instance support
+- [ ] Create type definitions for the tuple return type
+- [ ] Implement Provider component factory
+- [ ] Implement custom hook factory
+- [ ] Add multi-instance registry support
 - [ ] Export public API
 
 **Key Implementation Details**:
 ```tsx
-export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
+export function defineStore<TSchema extends LiveStoreSchema>(config: {
   name: string
   schema: TSchema
   adapter?: Adapter
-}): StoreContextDefinition<TSchema>
+}): [
+  React.FC<StoreProviderProps<TSchema>>,
+  (options?: UseStoreOptions) => Store<TSchema> & ReactAPI
+]
 ```
 
 ### 1.2 Store State Management
@@ -33,7 +37,7 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Define `StoreState` type with stages (loading, running, error, shutdown)
 - [ ] Create state transition logic
 - [ ] Add promise management for Suspense
-- [ ] Implement error handling
+- [ ] Implement error handling for Error Boundaries
 
 **States to Support**:
 - `loading`: Store is being created
@@ -51,124 +55,156 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Add `useClientDocument` method to store instance
 - [ ] Ensure proper TypeScript typing
 
-## Phase 2: Provider Implementation
+## Phase 2: Custom Provider Component
 
-### 2.1 Store Provider Component
+### 2.1 Provider Component Implementation
 
-**Location**: `packages/@livestore/react/src/StoreProvider.tsx`
+**Location**: `packages/@livestore/react/src/components/StoreProvider.tsx`
 
 **Tasks**:
-- [ ] Implement Provider component that renders children immediately
-- [ ] Add store creation logic using existing `useCreateStore`
-- [ ] Implement registry registration for multi-instance
-- [ ] Add lifecycle management (cleanup on unmount)
+- [ ] Create custom Provider component (not Context.Provider)
+- [ ] Implement immediate child rendering
+- [ ] Add store initialization on mount
+- [ ] Implement lifecycle management
+- [ ] Remove all render props (renderLoading, renderError, etc.)
 
 **Key Behaviors**:
 - Children render immediately (don't wait for store)
 - Store loads in background
-- Updates context when ready
+- No render props - all loading/error handling via Suspense/Error Boundaries
+- Updates internal contexts when ready
 
-### 2.2 Suspense Integration
-
-**Tasks**:
-- [ ] Create promise for store loading
-- [ ] Implement promise throwing for `React.use`
-- [ ] Add Suspense detection logic
-- [ ] Test with React Suspense boundaries
-
-### 2.3 Error Boundary Integration
+### 2.2 Context Management
 
 **Tasks**:
-- [ ] Implement error propagation
-- [ ] Ensure errors are catchable by Error Boundaries
-- [ ] Add proper error messages and debugging info
+- [ ] Create default context for nearest store access
+- [ ] Create registry context for multi-instance support
+- [ ] Implement context provider composition
+- [ ] Handle context cleanup on unmount
 
-## Phase 3: Multi-Instance Support
+## Phase 3: Custom Hook Implementation
 
-### 3.1 Store Registry
+### 3.1 Primary Hook Creation
+
+**Location**: `packages/@livestore/react/src/hooks/useStore.ts`
+
+**Tasks**:
+- [ ] Create hook factory in `defineStore`
+- [ ] Implement default store access (no options)
+- [ ] Implement multi-instance access (with storeId option)
+- [ ] Add TypeScript overloads for different usage patterns
+
+**Hook Behavior**:
+```tsx
+// No options: return nearest store
+const store = useStore()
+
+// With storeId: return specific instance or null
+const store = useStore({ storeId: 'specific-id' })
+```
+
+### 3.2 Suspense Integration
+
+**Tasks**:
+- [ ] Use `React.use(Promise)` internally for Suspense
+- [ ] Create promises for loading stores
+- [ ] Implement promise caching
+- [ ] Handle promise rejection for errors
+
+### 3.3 Error Handling
+
+**Tasks**:
+- [ ] Throw errors for Error Boundary catching
+- [ ] Provide meaningful error messages
+- [ ] Handle missing store instances gracefully
+- [ ] Add development mode warnings
+
+## Phase 4: Multi-Instance Support
+
+### 4.1 Store Registry
 
 **Location**: `packages/@livestore/react/src/StoreRegistry.ts`
 
 **Tasks**:
-- [ ] Create registry context for tracking multiple instances
-- [ ] Implement `withStoreId` function
-- [ ] Add instance lookup logic
-- [ ] Handle missing instances gracefully
+- [ ] Create registry map for tracking instances
+- [ ] Implement store registration on mount
+- [ ] Implement store cleanup on unmount
+- [ ] Add instance lookup by storeId
 
-### 3.2 Instance Management
-
-**Tasks**:
-- [ ] Track stores by storeId in registry
-- [ ] Implement cleanup on unmount
-- [ ] Handle storeId changes
-- [ ] Prevent memory leaks
-
-## Phase 4: Migration Support
-
-### 4.1 Backwards Compatibility
+### 4.2 Instance Access Patterns
 
 **Tasks**:
-- [ ] Keep existing `LiveStoreProvider` working
-- [ ] Keep existing `useStore` hook working
-- [ ] Keep existing `useQuery` hook working
-- [ ] Add deprecation notices (if needed)
+- [ ] Implement storeId-based lookup in hooks
+- [ ] Handle concurrent access to multiple instances
+- [ ] Ensure proper TypeScript inference
+- [ ] Add runtime validation
 
-### 4.2 Migration Guide
+## Phase 5: Migration Support
+
+### 5.1 Documentation
 
 **Location**: `docs/src/content/docs/reference/multi-store/migration.md`
 
 **Tasks**:
-- [ ] Write migration examples
-- [ ] Document breaking changes (if any)
+- [ ] Write migration guide from current API
+- [ ] Document breaking changes
 - [ ] Provide code transformation examples
 - [ ] Add troubleshooting section
 
-## Phase 5: Testing
+### 5.2 Compatibility Considerations
 
-### 5.1 Unit Tests
+**Tasks**:
+- [ ] Ensure existing `LiveStoreProvider` continues to work
+- [ ] Document deprecation path (if any)
+- [ ] Provide codemods for common transformations (optional)
+
+## Phase 6: Testing
+
+### 6.1 Unit Tests
 
 **Location**: `packages/@livestore/react/src/__tests__/`
 
 **Test Coverage**:
-- [ ] `defineStoreContext` function
+- [ ] `defineStore` function
 - [ ] Provider component rendering
+- [ ] Hook behavior (default and multi-instance)
 - [ ] Suspense integration
-- [ ] Error handling
-- [ ] Multi-instance access
+- [ ] Error boundary integration
+- [ ] Multi-instance scenarios
 - [ ] Store lifecycle
 
-### 5.2 Integration Tests
+### 6.2 Integration Tests
 
 **Tasks**:
 - [ ] Test concurrent store loading
 - [ ] Test dependent stores
-- [ ] Test multi-instance scenarios
 - [ ] Test error scenarios
 - [ ] Test with React 18/19 features
+- [ ] Test TypeScript inference
 
-### 5.3 Example Applications
+### 6.3 Example Applications
 
 **Location**: `examples/`
 
 **Tasks**:
 - [ ] Create multi-store example app
-- [ ] Update existing examples (optional)
 - [ ] Add comparison view example
 - [ ] Add hierarchical stores example
+- [ ] Update existing examples (optional)
 
-## Phase 6: Documentation
+## Phase 7: Documentation
 
-### 6.1 API Documentation
+### 7.1 API Documentation
 
 **Location**: `docs/src/content/docs/reference/multi-store/`
 
 **Tasks**:
-- [ ] Document `defineStoreContext` API
+- [ ] Document `defineStore` API
 - [ ] Document Provider props
-- [ ] Document `withStoreId` usage
+- [ ] Document hook usage patterns
 - [ ] Add TypeScript examples
 
-### 6.2 Usage Guides
+### 7.2 Usage Guides
 
 **Tasks**:
 - [ ] Write "Getting Started with Multi-Store" guide
@@ -176,57 +212,56 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Add troubleshooting guide
 - [ ] Document best practices
 
-### 6.3 Code Examples
-
-**Tasks**:
-- [ ] Simple multi-store setup
-- [ ] Dependent stores example
-- [ ] Concurrent loading example
-- [ ] Multi-instance example
-
 ## Implementation Order
 
 1. **Week 1**: Core Infrastructure (Phase 1)
-   - `defineStoreContext` function
+   - `defineStore` function
    - State management
    - Store enhancement
 
-2. **Week 2**: Provider & Suspense (Phase 2)
-   - Provider implementation
-   - Suspense integration
+2. **Week 2**: Provider & Hook (Phase 2 & 3)
+   - Custom Provider implementation
+   - Custom hook with Suspense
    - Error handling
 
-3. **Week 3**: Multi-Instance & Testing (Phase 3 & 5)
+3. **Week 3**: Multi-Instance & Testing (Phase 4 & 6)
    - Registry implementation
    - Comprehensive testing
    - Bug fixes
 
-4. **Week 4**: Documentation & Polish (Phase 6)
+4. **Week 4**: Documentation & Polish (Phase 7)
    - Documentation
    - Examples
    - Migration guide
 
 ## Technical Considerations
 
+### React.use() Limitations
+
+- `React.use()` can accept Context OR Promise, not both
+- We need custom hooks that use `React.use(Promise)` internally
+- Provider must be custom component, not raw Context.Provider
+
 ### Performance
+
 - Ensure concurrent loading doesn't cause race conditions
-- Optimize re-renders when stores update
+- Optimize re-renders when stores update independently
 - Monitor memory usage with multiple stores
+- Cache promises for Suspense
 
 ### Type Safety
+
 - Maintain full type inference from schema to usage
 - Ensure generic types work correctly
 - Test with strict TypeScript settings
-
-### React Compatibility
-- Test with React 18 and 19
-- Ensure Suspense works correctly
-- Verify Error Boundary integration
+- Provide good error messages for type mismatches
 
 ### Browser Compatibility
+
 - Test in major browsers
 - Ensure Web Worker integration works
 - Verify SharedWorker support
+- Test with different React versions
 
 ## Success Metrics
 
@@ -235,7 +270,8 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Dependent stores work correctly
 - [ ] Multi-instance access works
 - [ ] Type safety is maintained
-- [ ] Existing code continues to work
+- [ ] Suspense integration works
+- [ ] Error boundaries catch store errors
 
 ### Performance Requirements
 - [ ] No regression in single-store performance
@@ -247,6 +283,7 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Error messages are helpful
 - [ ] Documentation is comprehensive
 - [ ] Migration path is clear
+- [ ] TypeScript inference works well
 
 ## Risks & Mitigations
 
@@ -262,12 +299,16 @@ export function defineStoreContext<TSchema extends LiveStoreSchema>(config: {
 ### Risk: Type Safety Issues
 **Mitigation**: Extensive TypeScript testing, strict mode
 
+### Risk: React Version Compatibility
+**Mitigation**: Test with React 18 and 19, provide fallbacks if needed
+
 ## Open Questions
 
 1. Should we provide a helper for composing multiple providers?
 2. How should we handle store shutdown in multi-store scenarios?
 3. Should we add telemetry for multi-store usage patterns?
 4. Do we need a debug mode for tracking store instances?
+5. Should the hook throw or return null for missing instances?
 
 ## Next Steps
 
