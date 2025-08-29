@@ -52,17 +52,21 @@ This document outlines the requirements for supporting multiple LiveStore instan
 - Clear separation between single and multi-store APIs
 
 ### Naming Conventions
-- Use `StoreContext` suffix (e.g., `WorkspaceStoreContext`)
-- Variable naming: `const workspaceStore = React.use(WorkspaceStoreContext)`
+- Store definitions return tuple: `[Provider, useStore]`
+- Variable naming: `const workspaceStore = useWorkspaceStore()`
+- Provider naming: `WorkspaceStoreProvider`
+- Hook naming: `useWorkspaceStore`
 
 ### Common Case Optimization
 - Optimize for single instance per store type (common case)
 - Multi-instance support available but not the primary API
 
 ### Modern React Patterns
-- Use `React.use()` as primary API (currently equivalent to `useContext`)
+- Custom hooks as primary API (similar to current `useStore()` pattern)
+- Hooks internally use `React.use(Promise)` for Suspense integration
 - Suspense for loading states
 - Error boundaries for error handling
+- No render props - all loading/error states handled by boundaries
 
 ## Use Cases to Support
 
