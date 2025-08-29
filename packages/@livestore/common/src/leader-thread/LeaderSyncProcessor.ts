@@ -20,9 +20,8 @@ import {
 import type * as otel from '@opentelemetry/api'
 import {
   type IntentionalShutdownCause,
-  type MaterializerHashMismatchError,
+  type MaterializeError,
   type SqliteDb,
-  type SqliteError,
   UnexpectedError,
 } from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
@@ -244,10 +243,9 @@ export const makeLeaderSyncProcessor = ({
           | UnexpectedError
           | IntentionalShutdownCause
           | IsOfflineError
-          | MaterializerHashMismatchError
           | InvalidPushError
           | InvalidPullError
-          | SqliteError
+          | MaterializeError
         >,
       ) =>
         Effect.gen(function* () {
@@ -283,7 +281,7 @@ export const makeLeaderSyncProcessor = ({
         },
       }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
-      const backendPushingFiberHandle = yield* FiberHandle.make()
+      const backendPushingFiberHandle = yield* FiberHandle.make<undefined, never>()
       const backendPushingEffect = backgroundBackendPushing({
         syncBackendPushQueue,
         otelSpan,
@@ -541,7 +539,7 @@ type MaterializeEventsBatch = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
-}) => Effect.Effect<void, SqliteError | MaterializerHashMismatchError, LeaderThreadCtx>
+}) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
@@ -701,7 +699,7 @@ const backgroundBackendPulling = ({
                 EventSequenceNumber.isEqual(event.seqNum, confirmedEvent.seqNum),
               ),
             )
-            yield* Eventlog.updateSyncMetadata(confirmedNewEvents)
+            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnexpectedError.mapToUnexpectedError)
           }
         }
 

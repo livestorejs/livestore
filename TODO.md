@@ -27,6 +27,7 @@
 - Other discovered bugs / things
   - [ ] Changing the client document schema doesn't seem to trigger a new livestore schema migration
   - [ ] iterating on the materializers should be considered a schema change and trigger a re-materialization
+  - [ ] Once client got into a bad state, it boots with `"During boot the backend head (51) should never be greater than the local head (50)"`. We should prevent it from this happening in the first place.
 - Sync provider tests
   - [ ] Write more sync provider tests
   - [ ] Tests for concurrent pulls / sequential pushes

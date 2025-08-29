@@ -15,7 +15,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, type MaterializerHashMismatchError, UnexpectedError } from '../adapter-types.ts'
+import { type ClientSession, type MaterializeError, UnexpectedError } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
@@ -62,7 +62,7 @@ export const makeClientSessionSyncProcessor = ({
         | { _tag: 'unset' }
       materializerHash: Option.Option<number>
     },
-    MaterializerHashMismatchError
+    MaterializeError
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
@@ -367,7 +367,7 @@ export const makeClientSessionSyncProcessor = ({
 export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
-  ) => Effect.Effect<{ writeTables: Set<string> }, MaterializerHashMismatchError>
+  ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
   /**
    * Only used for debugging / observability.

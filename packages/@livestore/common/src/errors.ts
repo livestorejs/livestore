@@ -53,3 +53,8 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
 }) {}
+
+export class MaterializeError extends Schema.TaggedError<MaterializeError>()('LiveStore.MaterializeError', {
+  cause: Schema.Union(MaterializerHashMismatchError, SqliteError),
+  note: Schema.optional(Schema.String),
+}) {}

@@ -9,6 +9,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
@@ -169,6 +170,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                 try {
                   this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
                 } catch (cause) {
+                  // TOOD refactor with `SqliteError`
                   throw UnexpectedError.make({
                     cause,
                     note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
@@ -195,7 +197,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-          }),
+          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
       ),
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
@@ -741,7 +743,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializerHashMismatchError>): Effect.Effect<void> => {
+  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializeError>): Effect.Effect<void> => {
     this.isShutdown = true
     return this.clientSession.shutdown(
       cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),

@@ -4,7 +4,7 @@ import { Effect, Queue } from '@livestore/utils/effect'
 import type { MigrationsReport } from '../defs.ts'
 import {
   type BootStatus,
-  type MaterializerHashMismatchError,
+  type MaterializeError,
   type MigrationHooks,
   migrateDb,
   rematerializeFromEventlog,
@@ -28,10 +28,7 @@ export const recreateDb = ({
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
-}): Effect.Effect<
-  { migrationsReport: MigrationsReport },
-  UnexpectedError | SqliteError | MaterializerHashMismatchError
-> =>
+}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnexpectedError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
     const migrationOptions = schema.state.sqlite.migrations
     let migrationsReport: MigrationsReport

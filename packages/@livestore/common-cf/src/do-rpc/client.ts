@@ -91,8 +91,6 @@ const makeProtocolDurableObject = ({
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-      yield* Effect.addFinalizerLog('do-rpc-client:makeProtocolDurableObject:finalizer')
-
       const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void, never, never> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {

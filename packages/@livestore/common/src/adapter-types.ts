@@ -10,7 +10,7 @@ import {
 
 import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
 import type * as Devtools from './devtools/mod.ts'
-import type { IntentionalShutdownCause, MaterializerHashMismatchError, SqliteError, UnexpectedError } from './errors.ts'
+import type { IntentionalShutdownCause, MaterializeError, UnexpectedError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
 import type { IsOfflineError, SyncError } from './sync/index.js'
@@ -29,7 +29,7 @@ export interface ClientSession {
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   shutdown: (
-    cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError | MaterializerHashMismatchError>,
+    cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError | MaterializeError>,
   ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
@@ -125,10 +125,7 @@ export interface AdapterArgs {
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (
-    exit: Exit.Exit<
-      IntentionalShutdownCause,
-      UnexpectedError | SyncError | MaterializerHashMismatchError | SqliteError | IsOfflineError
-    >,
+    exit: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError | MaterializeError | IsOfflineError>,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**
