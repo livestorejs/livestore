@@ -14,7 +14,9 @@ const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).
   Cli.Options.withDefault('headless'),
 )
 
-const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(Cli.Options.withDefault(false))
+export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(
+  Cli.Options.withDefault(false),
+)
 
 const viteDevServer = ({
   useWorkspacePort,
@@ -80,21 +82,6 @@ export const miscTest: Cli.Command.Command<
     Effect.withSpan('test:misc'),
     Effect.scoped,
   ),
-)
-
-export const nodeSyncTest: Cli.Command.Command<
-  'node-sync',
-  CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
-  {}
-> = Cli.Command.make(
-  'node-sync',
-  {},
-  Effect.fn(function* () {
-    yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
-      cwd,
-    })
-  }),
 )
 
 export const todomvcTest: Cli.Command.Command<
@@ -206,67 +193,16 @@ export const devtoolsTest: Cli.Command.Command<
   ),
 )
 
-export const waSqliteTest: Cli.Command.Command<
-  'wa-sqlite',
-  CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
-  {}
-> = Cli.Command.make(
-  'wa-sqlite',
-  {},
-  Effect.fn(function* () {
-    yield* cmd('vitest run', { cwd: `${cwd}/../wa-sqlite` })
-  }),
-)
-
-export const runAll: Cli.Command.Command<
-  'all',
-  CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
-  {
-    readonly concurrency: 'sequential' | 'parallel'
-    readonly localDevtoolsPreview: boolean
-  }
-> = Cli.Command.make(
-  'all',
-  {
-    concurrency: Cli.Options.choice('concurrency', ['sequential', 'parallel']).pipe(
-      Cli.Options.withDefault('parallel'),
-    ),
-    localDevtoolsPreview: localDevtoolsPreviewOption,
-  },
-  Effect.fn(function* ({ concurrency, localDevtoolsPreview }) {
-    yield* Effect.all(
-      [
-        miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        nodeSyncTest.handler({}),
-        todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        waSqliteTest.handler({}),
-      ],
-      { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
-    )
-  }, Effect.withSpan('integration-tests:run-all')),
-)
-
-export const commands = [
-  miscTest,
-  nodeSyncTest,
-  todomvcTest,
-  devtoolsTest,
-  waSqliteTest,
-  runAll,
-  setupDevtools,
-] as const
+export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as const
 
 export const command: Cli.Command.Command<
-  'integration',
+  'integration-misc',
   CommandExecutor.CommandExecutor,
   UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
   }
-> = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(commands))
+> = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
 
 if (import.meta.main) {
   const cli = Cli.Command.run(command, {
