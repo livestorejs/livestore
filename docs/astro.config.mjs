@@ -96,6 +96,8 @@ export default defineConfig({
                   'reference/devtools',
                   'reference/debugging',
                   'reference/opentelemetry',
+                  'reference/cli',
+                  'reference/mcp',
                   { label: 'State', autogenerate: { directory: 'reference/state' } },
                   {
                     label: 'Syncing',
