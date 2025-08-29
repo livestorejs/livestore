@@ -165,13 +165,6 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
 
       this.storeSubscription = unsubscribe
     }
-
-    // Make sure the DO stays alive
-    await this.state.storage.setAlarm(Date.now() + 1000)
-  }
-
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
-    this.subscribeToStore()
   }
 
   async syncUpdateRpc(payload: unknown) {
