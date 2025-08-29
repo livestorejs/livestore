@@ -6,9 +6,9 @@ This document outlines the implementation plan for adding multi-store support to
 
 ## Phase 1: Core Infrastructure
 
-### 1.1 Create `defineStore` Function
+### 1.1 Create `createStoreContext` Function
 
-**Location**: `packages/@livestore/react/src/defineStore.ts`
+**Location**: `packages/@livestore/react/src/createStoreContext.ts`
 
 **Tasks**:
 - [ ] Create type definitions for the tuple return type
@@ -19,7 +19,7 @@ This document outlines the implementation plan for adding multi-store support to
 
 **Key Implementation Details**:
 ```tsx
-export function defineStore<TSchema extends LiveStoreSchema>(config: {
+export function createStoreContext<TSchema extends LiveStoreSchema>(config: {
   name: string
   schema: TSchema
   adapter?: Adapter
@@ -89,7 +89,7 @@ export function defineStore<TSchema extends LiveStoreSchema>(config: {
 **Location**: `packages/@livestore/react/src/hooks/useStore.ts`
 
 **Tasks**:
-- [ ] Create hook factory in `defineStore`
+- [ ] Create hook factory in `createStoreContext`
 - [ ] Implement default store access (no options)
 - [ ] Implement multi-instance access (with storeId option)
 - [ ] Add TypeScript overloads for different usage patterns
@@ -165,7 +165,7 @@ const store = useStore({ storeId: 'specific-id' })
 **Location**: `packages/@livestore/react/src/__tests__/`
 
 **Test Coverage**:
-- [ ] `defineStore` function
+- [ ] `createStoreContext` function
 - [ ] Provider component rendering
 - [ ] Hook behavior (default and multi-instance)
 - [ ] Suspense integration
@@ -199,7 +199,7 @@ const store = useStore({ storeId: 'specific-id' })
 **Location**: `docs/src/content/docs/reference/multi-store/`
 
 **Tasks**:
-- [ ] Document `defineStore` API
+- [ ] Document `createStoreContext` API
 - [ ] Document Provider props
 - [ ] Document hook usage patterns
 - [ ] Add TypeScript examples
@@ -215,7 +215,7 @@ const store = useStore({ storeId: 'specific-id' })
 ## Implementation Order
 
 1. **Week 1**: Core Infrastructure (Phase 1)
-   - `defineStore` function
+   - `createStoreContext` function
    - State management
    - Store enhancement
 
