@@ -6,6 +6,6 @@ makeWorker({
   schema,
   // For now, let's disable sync until we figure out the correct CF sync approach
   sync: {
-    backend: makeWsSync({ url: 'ws://localhost:8787' }),
+    backend: makeWsSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL }),
   },
 })

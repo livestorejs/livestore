@@ -2,281 +2,66 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { queryDb, type SyncState } from '@livestore/livestore'
 import { LiveStoreProvider, useClientDocument, useStore } from '@livestore/react'
-import React, { useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
+import { useChat } from './hooks.ts'
 import { events, schema, tables } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
-
-// Define queries
-const messagesQuery = queryDb(tables.messages.where({}), { label: 'messages' })
-const reactionsQuery = queryDb(tables.reactions.where({}), {
-  label: 'reactions',
-})
-const usersQuery = queryDb(tables.users.where({}), { label: 'users' })
+// React already imported above
 
 // Main chat component that uses LiveStore hooks
-const ChatComponent = () => {
+export const ChatComponent = () => {
   const { store } = useStore()
-  const [currentMessage, setCurrentMessage] = useState('')
-  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
-  const [darkMode, setDarkMode] = useState(() => {
-    // Check localStorage and system preference
-    const saved = localStorage.getItem('darkMode')
-    if (saved !== null) return saved === 'true'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
-  const [uiState] = useClientDocument(tables.uiState)
-  const userContext = uiState.userContext!
+  const chatHook = useChat()
 
   React.useEffect(() => {
-    fetch(`http://localhost:8787/client-do?storeId=${store.storeId}`)
+    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/client-do?storeId=${store.storeId}`)
       .then((res) => res.json())
       .then((data) => {
         console.log('do state', data)
       })
   }, [store.storeId])
 
-  // Apply dark mode class to document
   React.useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    localStorage.setItem('darkMode', String(darkMode))
-  }, [darkMode])
-
-  // Close reaction picker when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = () => {
-      setShowReactionPicker(null)
-    }
-
-    if (showReactionPicker) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [showReactionPicker])
-
-  // Get messages, reactions, and users from the store using store.useQuery
-  const messages = store.useQuery(messagesQuery)
-  const reactions = store.useQuery(reactionsQuery)
-  const users = store.useQuery(usersQuery)
-
-  const sendMessage = () => {
-    if (!store || !currentMessage.trim()) return
-
-    store.commit(
-      events.messageCreated({
-        id: crypto.randomUUID(),
-        text: currentMessage.trim(),
-        userId: userContext.userId,
-        username: userContext.username,
-        timestamp: new Date(),
-        isBot: false,
-      }),
-    )
-
-    setCurrentMessage('')
-  }
-
-  const getReactionsForMessage = (messageId: string) => {
-    return reactions.filter((r) => r.messageId === messageId)
-  }
-
-  const addReaction = (messageId: string, emoji: string) => {
-    store.commit(
-      events.reactionAdded({
-        id: crypto.randomUUID(),
-        messageId,
-        emoji,
-        userId: userContext.userId,
-        username: userContext.username,
-      }),
-    )
-    setShowReactionPicker(null)
-  }
-
-  const toggleReactionPicker = (messageId: string) => {
-    setShowReactionPicker(showReactionPicker === messageId ? null : messageId)
-  }
-
-  const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '😡', '🎉', '🔥']
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode)
-  }
-
-  // Filter out the current user from the users list to avoid duplication
-  const otherUsers = users.filter((user) => user.userId !== userContext.userId)
+    document.title = `LiveChat - Room ${store.storeId}`
+  }, [store.storeId])
 
   return (
-    <div className="flex h-screen max-w-7xl mx-auto bg-white dark:bg-gray-900 transition-colors">
-      {/* User sidebar - hidden on mobile, shown on desktop */}
-      <div className="hidden md:flex md:w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 flex-col overflow-y-auto transition-colors">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
-          Chat Users ({otherUsers.length + 2})
-        </h3>
+    <div className="flex h-screen max-w-6xl lg:mx-0 mx-auto transition-colors bg-slate-900">
+      <UserSidebar otherUsers={chatHook.otherUsers} userContext={chatHook.userContext} />
 
-        {/* Current user */}
-        <div data-testid={`user-current-user`} className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm mb-2">
-          {userContext.username} (You)
-        </div>
+      <div className="flex-1 flex flex-col p-3 md:p-6 lg:p-8 max-w-4xl lg:mx-0 mx-auto w-full">
+        <ChatHeader userContext={chatHook.userContext} otherUsers={chatHook.otherUsers} roomName={store.storeId} />
 
-        {/* Other users */}
-        {otherUsers.map((user) => (
-          <div
-            key={user.userId}
-            data-testid={`user-${user.userId}`}
-            className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm mb-2 text-gray-900 dark:text-gray-100"
-          >
-            {user.username}
-          </div>
-        ))}
+        <MessagesContainer
+          messages={chatHook.messages}
+          messagesEndRef={chatHook.messagesEndRef}
+          userContext={chatHook.userContext}
+          getReactionsForMessage={chatHook.getReactionsForMessage}
+          getReadReceiptsForMessage={chatHook.getReadReceiptsForMessage}
+          removeReaction={chatHook.removeReaction}
+          showReactionPicker={chatHook.showReactionPicker}
+          toggleReactionPicker={chatHook.toggleReactionPicker}
+          addReaction={chatHook.addReaction}
+          setShowReactionPicker={chatHook.setShowReactionPicker}
+        />
 
-        {/* Bot */}
-        <div data-testid="user-bot" className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm mt-2">
-          ChatBot 🤖
-        </div>
-
-        <SyncStates />
-      </div>
-
-      {/* Main chat area */}
-      <div className="flex-1 flex flex-col p-4 md:p-6">
-        {/* Header with responsive title, dark mode toggle, and mobile user count */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
-            💬 LiveStore Chat
-            <span className="hidden md:inline"> - {uiState.userContext?.username}</span>
-          </h1>
-          <div className="flex items-center gap-4">
-            {/* Dark mode toggle */}
-            <button
-              type="button"
-              data-testid="dark-mode-toggle"
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            {/* Mobile user count */}
-            <div className="md:hidden text-sm text-gray-600 dark:text-gray-400">{otherUsers.length + 2} users</div>
-          </div>
-        </div>
-
-        {/* Messages container */}
-        <div className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg overflow-y-auto p-4 mb-4 bg-gray-50 dark:bg-gray-800 min-h-0 transition-colors">
-          {messages.map((message) => {
-            const messageReactions = getReactionsForMessage(message.id)
-
-            return (
-              <div
-                key={message.id}
-                data-testid={`message-${message.id}`}
-                className={`mb-3 p-3 rounded-lg border transition-colors ${
-                  message.isBot
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
-                }`}
-              >
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-2">
-                  <span className="font-medium">
-                    {message.username}
-                    {message.isBot && ' 🤖'}
-                  </span>
-                  <span className="text-gray-400 dark:text-gray-500">{message.timestamp.toLocaleTimeString()}</span>
-                </div>
-                <div className="text-gray-800 dark:text-gray-200 mb-2">{message.text}</div>
-
-                <div className="flex items-center gap-2 mt-2">
-                  {messageReactions.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      {messageReactions.map((reaction) => (
-                        <span
-                          key={reaction.id}
-                          data-testid={`reaction-${reaction.id}`}
-                          className="inline-block bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full text-xs"
-                        >
-                          {reaction.emoji}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      data-testid={`add-reaction-${message.id}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleReactionPicker(message.id)
-                      }}
-                      className="bg-transparent border border-gray-300 dark:border-gray-600 rounded-full px-2 py-1 text-xs cursor-pointer text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      ➕
-                    </button>
-
-                    {showReactionPicker === message.id && (
-                      <div
-                        data-testid={`reaction-picker-${message.id}`}
-                        className="absolute bottom-full left-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2 flex gap-1 shadow-lg z-10 mb-1"
-                      >
-                        {availableEmojis.map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            data-testid={`emoji-${emoji}`}
-                            onClick={() => addReaction(message.id, emoji)}
-                            className="bg-transparent border-none p-1 rounded cursor-pointer text-base hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Input area */}
-        <div className="flex gap-2 md:gap-3">
-          <input
-            data-testid="message-input"
-            type="text"
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+        <div className="mt-auto pt-2 border-t border-transparent">
+          <MessageInput
+            currentMessage={chatHook.currentMessage}
+            setCurrentMessage={chatHook.setCurrentMessage}
+            sendMessage={chatHook.sendMessage}
           />
-          <button
-            type="button"
-            data-testid="send-message"
-            onClick={sendMessage}
-            disabled={!currentMessage.trim()}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              currentMessage.trim()
-                ? 'bg-green-500 hover:bg-green-600 text-white cursor-pointer'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Send
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-// Main App component with LiveStore provider
-const App = () => {
+// App component with LiveStore provider - exported as ChatApp for main.tsx
+export const ChatApp = () => {
   const storeId = getStoreId()
   const adapter = makePersistedAdapter({
     storage: { type: 'opfs' },
@@ -299,7 +84,7 @@ const App = () => {
   )
 }
 
-export default App
+export default ChatApp
 
 const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [uiState, setUiState] = useClientDocument(tables.uiState)
@@ -308,10 +93,13 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   const joinChat = () => {
     if (!uiState.userContext?.username) return
+    const avatar = pickAvatar(uiState.userContext.avatarEmoji, uiState.userContext.avatarColor)
     store.commit(
       events.userJoined({
         userId: uiState.userContext.userId,
         username: uiState.userContext.username,
+        avatarEmoji: avatar.emoji,
+        avatarColor: avatar.color,
         timestamp: new Date(),
       }),
     )
@@ -320,16 +108,18 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
         username: uiState.userContext.username,
         userId: newUserId.current,
         hasJoined: true,
+        avatarEmoji: avatar.emoji,
+        avatarColor: avatar.color,
       },
     })
   }
 
   if (uiState.userContext === undefined || !uiState.userContext.hasJoined) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">💬 LiveStore Chat</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Enter your username to join the chat:</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
+          <p className="text-gray-400 mb-6 lg:mb-8 lg:text-lg">Enter your username to join the chat:</p>
           <div className="space-y-4">
             <input
               data-testid="username"
@@ -341,19 +131,40 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
                     username: e.target.value,
                     userId: newUserId.current,
                     hasJoined: false,
+                    avatarEmoji: uiState.userContext?.avatarEmoji,
+                    avatarColor: uiState.userContext?.avatarColor,
                   },
                 })
               }
               placeholder="Your username..."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
               onKeyDown={(e) => e.key === 'Enter' && joinChat()}
             />
+            <div className="flex items-center gap-3">
+              <AvatarPicker
+                value={{
+                  emoji: uiState.userContext?.avatarEmoji,
+                  color: uiState.userContext?.avatarColor,
+                }}
+                onChange={(val) =>
+                  setUiState({
+                    userContext: {
+                      username: uiState.userContext?.username ?? '',
+                      userId: newUserId.current,
+                      hasJoined: false,
+                      avatarEmoji: val.emoji,
+                      avatarColor: val.color,
+                    },
+                  })
+                }
+              />
+            </div>
             <button
               type="button"
               data-testid="join-chat"
               onClick={joinChat}
               disabled={!uiState.userContext?.username}
-              className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+              className={`w-full py-2 px-4 lg:py-3 lg:px-5 rounded-lg font-medium transition-colors text-base lg:text-lg ${
                 uiState.userContext?.username
                   ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -383,22 +194,79 @@ export const getStoreId = () => {
   window.location.search = searchParams.toString()
 }
 
-const SyncStates = () => {
-  const { store } = useStore()
-  const [syncStates, setSyncStates] = useState<{ session: SyncState.SyncState; leader: SyncState.SyncState } | null>(
-    null,
+const avatarOptions: { emoji: string; color: string }[] = [
+  { emoji: '🙂', color: '#60a5fa' }, // blue
+  { emoji: '😄', color: '#34d399' }, // green
+  { emoji: '😎', color: '#0ea5e9' }, // sky
+  { emoji: '🤠', color: '#f59e0b' }, // amber
+  { emoji: '🧑‍🚀', color: '#a78bfa' }, // violet
+  { emoji: '🧑‍💻', color: '#f472b6' }, // pink
+  { emoji: '🦊', color: '#f97316' }, // orange
+  { emoji: '🐼', color: '#64748b' }, // slate
+  { emoji: '🐧', color: '#06b6d4' }, // cyan
+  { emoji: '🐸', color: '#84cc16' }, // lime
+]
+
+const pickAvatar = (existingEmoji?: string, existingColor?: string) => {
+  if (existingEmoji !== undefined && existingColor !== undefined) return { emoji: existingEmoji, color: existingColor }
+  const idx = Math.floor(Math.random() * avatarOptions.length)
+  return avatarOptions[idx]
+}
+
+const AvatarPicker = ({
+  value,
+  onChange,
+}: {
+  value?: { emoji?: string; color?: string }
+  onChange: (v: { emoji: string; color: string }) => void
+}) => {
+  const [internalIndex, setInternalIndex] = React.useState<number>(() =>
+    Math.floor(Math.random() * avatarOptions.length),
   )
 
+  const isControlled = value?.emoji !== undefined && value?.color !== undefined
+
+  const controlledIndex = (() => {
+    if (isControlled) {
+      const idx = avatarOptions.findIndex((o) => o.emoji === value!.emoji && o.color === value!.color)
+      if (idx !== -1) return idx
+    }
+    return undefined
+  })()
+
+  const selectedIndex = controlledIndex ?? internalIndex
+
   React.useEffect(() => {
-    const interval = setInterval(() => {
-      store._dev.syncStates().then(setSyncStates)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [store])
+    if (!isControlled) {
+      const opt = avatarOptions[selectedIndex]
+      onChange({ emoji: opt.emoji, color: opt.color })
+    }
+  }, [selectedIndex, isControlled, onChange])
 
   return (
-    <div>
-      <pre className="text-xs font-mono text-white">{JSON.stringify(syncStates, null, 2)}</pre>
+    <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+      {avatarOptions.map((opt, idx) => (
+        <button
+          key={`${opt.emoji}-${opt.color}`}
+          type="button"
+          onClick={() => {
+            if (isControlled) {
+              onChange({ emoji: opt.emoji, color: opt.color })
+            } else {
+              setInternalIndex(idx)
+            }
+          }}
+          className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl border transition-all duration-150 ${
+            selectedIndex === idx
+              ? 'ring-2 md:ring-3 ring-blue-400 shadow-lg opacity-100 scale-105 border-transparent'
+              : 'opacity-70 hover:opacity-100 hover:scale-105 border-transparent'
+          }`}
+          style={{ backgroundColor: opt.color }}
+          aria-label={`Choose avatar ${opt.emoji}`}
+        >
+          <span>{opt.emoji}</span>
+        </button>
+      ))}
     </div>
   )
 }

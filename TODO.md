@@ -17,9 +17,16 @@
   - [ ] Support for LiveStore devtools
   - [ ] Bug: "Get stuck" when there's an error in the DO client pull stream https://share.cleanshot.com/QY8c4j7F
   - [ ] Get rid of (or minimize) adapter `polyfill.ts`
+  - [ ] Ungraceful error handling when DO/client gets into an inconsistent state (e.g. for a unique constraint violation in the materializer)
+      ```
+      [19:12:55.160 DoClient] LiveStore.UnexpectedError: { "cause": Error: This should never happen: During boot the backend head (9) should never be greater than the local head (8), "note": undefined, "payload": undefined } LiveStore.UnexpectedError: { "cause": Error: This should never happen: During boot the backend head (9) should never be greater than the local head (8), "note": undefined, "payload": undefined }
+      ```
   - [ ] Create CF worker only example (without DO)
   - [ ] Test with multiple stores in a single client DO
 - [ ] Lay foundation for S2 sync backend
+- Other discovered bugs / things
+  - [ ] Changing the client document schema doesn't seem to trigger a new livestore schema migration
+  - [ ] iterating on the materializers should be considered a schema change and trigger a re-materialization
 - Sync provider tests
   - [ ] Write more sync provider tests
   - [ ] Tests for concurrent pulls / sequential pushes

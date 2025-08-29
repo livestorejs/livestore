@@ -5,7 +5,7 @@ import '@livestore/adapter-cloudflare/polyfill'
 import { DurableObject } from 'cloudflare:workers'
 // import type { AlarmInvocationInfo, D1Database, DurableObjectState } from "@cloudflare/workers-types";
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid, queryDb, Schema, type Store, type Unsubscribe } from '@livestore/livestore'
+import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
@@ -125,35 +125,40 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
       // 	},
       // });
 
-      // Subscribe to messages for bot reactions
-      const messagesWithoutReactions = queryDb({
-        query: `
-          SELECT * FROM messages
-          WHERE id NOT IN (SELECT messageId FROM reactions)
-        `,
-        schema: tables.messages.rowSchema.pipe(Schema.Array),
-      })
+      // Get messages the bot has already processed from LiveStore
 
-      const unsubscribe = store.subscribe(messagesWithoutReactions, {
+      // Subscribe to all messages and only react to new ones we haven't processed
+      const allMessagesQuery = tables.messages.where({})
+      const unsubscribe = store.subscribe(allMessagesQuery, {
         onUpdate: (messages) => {
-          console.log('messages', messages)
-          // Bot reacts to user messages (not its own)
-          for (const message of messages) {
-            if (!message.isBot) {
-              console.log(`Bot: Reacting to message from ${message.username}`)
+          const processedMessageIds = new Set(
+            store.query(tables.botProcessedMessages.where({})).map((p) => p.messageId),
+          )
+          // Only process user messages we haven't seen before
+          const newUserMessages = messages.filter(
+            (message) => !message.isBot && message.userId !== 'bot' && !processedMessageIds.has(message.id),
+          )
 
-              // setTimeout(() => {
-              store.commit(
-                events.reactionAdded({
-                  id: crypto.randomUUID(),
-                  messageId: message.id,
-                  emoji: '👍',
-                  userId: 'bot',
-                  username: 'ChatBot',
-                }),
-              )
-              // }, 10);
-            }
+          for (const message of newUserMessages) {
+            console.log(`Bot: Reacting to new message ${message.id} from ${message.username}`)
+
+            store.commit(
+              events.reactionAdded({
+                id: `bot-reaction-${message.id}`,
+                messageId: message.id,
+                emoji: '🤖',
+                userId: 'bot',
+                username: 'ChatBot',
+              }),
+            )
+
+            // Mark as processed in LiveStore to prevent duplicates
+            store.commit(
+              events.botProcessedMessage({
+                messageId: message.id,
+                processedAt: new Date(),
+              }),
+            )
           }
         },
       })
@@ -200,7 +205,7 @@ export default {
 
     if (url.pathname === '/') {
       // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-      return new Response('LiveStore Chat App with CF DO Bot') as CfTypes.Response
+      return new Response('LiveChat App with CF DO Bot') as CfTypes.Response
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`

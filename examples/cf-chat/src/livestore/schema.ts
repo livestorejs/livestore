@@ -18,6 +18,8 @@ export const tables = {
     columns: {
       userId: State.SQLite.text({ primaryKey: true }),
       username: State.SQLite.text(),
+      avatarEmoji: State.SQLite.text({ default: '🙂' }),
+      avatarColor: State.SQLite.text({ default: '#60a5fa' }),
       timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
@@ -31,6 +33,23 @@ export const tables = {
       username: State.SQLite.text(),
     },
   }),
+  readReceipts: State.SQLite.table({
+    name: 'readReceipts',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      messageId: State.SQLite.text(),
+      userId: State.SQLite.text(),
+      username: State.SQLite.text(),
+      timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    },
+  }),
+  botProcessedMessages: State.SQLite.table({
+    name: 'botProcessedMessages',
+    columns: {
+      messageId: State.SQLite.text({ primaryKey: true }),
+      processedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    },
+  }),
   uiState: State.SQLite.clientDocument({
     name: 'uiState',
     schema: Schema.Struct({
@@ -38,11 +57,14 @@ export const tables = {
         username: Schema.String,
         userId: Schema.String,
         hasJoined: Schema.Boolean,
+        avatarEmoji: Schema.String.pipe(Schema.UndefinedOr),
+        avatarColor: Schema.String.pipe(Schema.UndefinedOr),
       }).pipe(Schema.UndefinedOr),
+      lastSeenMessageId: Schema.String.pipe(Schema.NullOr),
     }),
     default: {
       id: 'singleton',
-      value: { userContext: undefined },
+      value: { userContext: undefined, lastSeenMessageId: null },
     },
   }),
 }
@@ -65,6 +87,8 @@ export const events = {
     schema: Schema.Struct({
       userId: Schema.String,
       username: Schema.String,
+      avatarEmoji: Schema.String,
+      avatarColor: Schema.String,
       timestamp: Schema.Date,
     }),
   }),
@@ -78,15 +102,44 @@ export const events = {
       username: Schema.String,
     }),
   }),
+  reactionRemoved: Events.synced({
+    name: 'v1.ReactionRemoved',
+    schema: Schema.Struct({
+      id: Schema.String,
+    }),
+  }),
+  messageRead: Events.synced({
+    name: 'v1.MessageRead',
+    schema: Schema.Struct({
+      id: Schema.String,
+      messageId: Schema.String,
+      userId: Schema.String,
+      username: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
+  botProcessedMessage: Events.synced({
+    name: 'v1.BotProcessedMessage',
+    schema: Schema.Struct({
+      messageId: Schema.String,
+      processedAt: Schema.Date,
+    }),
+  }),
 }
 
 // Materializers map events to state changes
 const materializers = State.SQLite.materializers(events, {
   'v1.MessageCreated': ({ id, text, userId, username, timestamp, isBot }) =>
     tables.messages.insert({ id, text, userId, username, timestamp, isBot }),
-  'v1.UserJoined': ({ userId, username, timestamp }) => tables.users.insert({ userId, username, timestamp }),
+  'v1.UserJoined': ({ userId, username, avatarEmoji, avatarColor, timestamp }) =>
+    tables.users.insert({ userId, username, avatarEmoji, avatarColor, timestamp }),
   'v1.ReactionAdded': ({ id, messageId, emoji, userId, username }) =>
     tables.reactions.insert({ id, messageId, emoji, userId, username }),
+  'v1.ReactionRemoved': ({ id }) => tables.reactions.delete().where({ id }),
+  'v1.MessageRead': ({ id, messageId, userId, username, timestamp }) =>
+    tables.readReceipts.insert({ id, messageId, userId, username, timestamp }),
+  'v1.BotProcessedMessage': ({ messageId, processedAt }) =>
+    tables.botProcessedMessages.insert({ messageId, processedAt }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

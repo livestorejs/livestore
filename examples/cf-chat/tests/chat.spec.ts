@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('LiveStore Chat App', () => {
+test.describe('LiveChat App', () => {
   test('single user can join chat and send messages', async ({ page }) => {
     await page.goto('http://localhost:5175')
 
@@ -9,7 +9,7 @@ test.describe('LiveStore Chat App', () => {
     await page.click('[data-testid=join-chat]')
 
     // Wait for chat interface to appear
-    await expect(page.locator('h1')).toContainText('LiveStore Chat - Alice')
+    await expect(page.locator('h1')).toContainText('LiveChat')
 
     // Send a message
     await page.fill('[data-testid=message-input]', 'Hello world!')
@@ -33,7 +33,7 @@ test.describe('LiveStore Chat App', () => {
     await page1.click('[data-testid=join-chat]')
 
     // Wait for Alice to be in chat
-    await expect(page1.locator('h1')).toContainText('LiveStore Chat - Alice')
+    await expect(page1.locator('h1')).toContainText('LiveChat')
 
     // Bob joins
     await page2.goto('http://localhost:5175')
@@ -41,7 +41,7 @@ test.describe('LiveStore Chat App', () => {
     await page2.click('[data-testid=join-chat]')
 
     // Wait for Bob to be in chat
-    await expect(page2.locator('h1')).toContainText('LiveStore Chat - Bob')
+    await expect(page2.locator('h1')).toContainText('LiveChat')
 
     // Alice sends a message
     await page1.fill('[data-testid=message-input]', 'Hello from Alice!')
@@ -75,9 +75,9 @@ test.describe('LiveStore Chat App', () => {
       'Welcome to the chat',
     )
 
-    // Look for bot reactions (👍 emoji)
-    await expect(page1.locator('[data-testid^=reaction-]')).toContainText('👍')
-    await expect(page2.locator('[data-testid^=reaction-]')).toContainText('👍')
+    // Look for bot reactions (🤖 emoji)
+    await expect(page1.locator('[data-testid^=reaction-]')).toContainText('🤖')
+    await expect(page2.locator('[data-testid^=reaction-]')).toContainText('🤖')
 
     await context1.close()
     await context2.close()
@@ -101,7 +101,7 @@ test.describe('LiveStore Chat App', () => {
     await page.click('[data-testid=send-message]')
 
     // Wait for bot reaction
-    await expect(page.locator('[data-testid^=reaction-]')).toContainText('👍')
+    await expect(page.locator('[data-testid^=reaction-]')).toContainText('🤖')
   })
 
   test('users can add reactions using the reaction picker', async ({ page }) => {

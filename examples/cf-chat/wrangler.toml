@@ -12,12 +12,12 @@ class_name = "LiveStoreClientDO"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = [ "SyncBackendDO", "LiveStoreClientDO" ]
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "livestore-sync-cf-demo"
-database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+database_name = "cf-chat-demo"
+database_id = "3335b917-2c3f-4c3c-a04f-78d74d46c141"
 
-# [vars]
-# SYNC_BACKEND_URL = "http://localhost:8788"
+[observability]
+enabled = true
