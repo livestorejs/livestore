@@ -11,11 +11,13 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
+import { startWranglerDevServer } from '@livestore/utils-dev/node'
 import { SyncProviderImpl } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
 export const name = 'Cloudflare Durable Object RPC'
+
+export const prepare = Effect.void
 
 export const layer = Layer.scoped(
   SyncProviderImpl,

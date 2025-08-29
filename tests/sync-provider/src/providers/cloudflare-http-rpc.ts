@@ -1,10 +1,12 @@
 import path from 'node:path'
 import { makeHttpSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
-import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
+import { startWranglerDevServer } from '@livestore/utils-dev/node'
 import { SyncProviderImpl } from '../types.ts'
 
 export const name = 'Cloudflare HTTP RPC'
+
+export const prepare = Effect.void
 
 export const layer = Layer.scoped(
   SyncProviderImpl,

@@ -1,5 +1,6 @@
 import { Chunk, Effect, Layer, Option, RpcClient, RpcSerialization, Socket, Stream } from '@livestore/utils/effect'
-import { startWranglerDevServerPromise, Vitest } from '@livestore/utils-dev/node-vitest'
+import { startWranglerDevServerPromise } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { beforeAll, expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 

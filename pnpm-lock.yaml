@@ -1739,6 +1739,9 @@ importers:
       '@local/tests-integration':
         specifier: workspace:*
         version: link:../tests/integration
+      '@local/tests-sync-provider':
+        specifier: workspace:*
+        version: link:../tests/sync-provider
       '@types/bun':
         specifier: ^1.2.21
         version: 1.2.21(@types/react@19.1.11)

@@ -6,6 +6,7 @@ import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
+import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -179,6 +180,20 @@ export const waSqliteTest = Cli.Command.make(
   }),
 )
 
+// the sync provider tests are actually part of another tests package but for now we run them from here too
+// TODO clean this up at some point
+export const syncProviderTest = Cli.Command.make(
+  'sync-provider',
+  {},
+  Effect.fn(function* () {
+    yield* syncProviderTestsPrepare.prepareCi
+
+    yield* cmd(['vitest', 'run'], {
+      cwd: `${cwd}/tests/sync-provider`,
+    })
+  }),
+)
+
 export const nodeSyncTest = Cli.Command.make(
   'node-sync',
   {},
@@ -203,6 +218,7 @@ const testIntegrationAllCommand = Cli.Command.make(
         integrationTests.miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
+        syncProviderTest.handler({}),
         waSqliteTest.handler({}),
         nodeSyncTest.handler({}),
       ],
@@ -212,7 +228,13 @@ const testIntegrationAllCommand = Cli.Command.make(
 ).pipe(Cli.Command.withDescription('Run all integration tests'))
 
 export const testIntegrationCommand = Cli.Command.make('integration').pipe(
-  Cli.Command.withSubcommands([...integrationTests.commands, waSqliteTest, nodeSyncTest, testIntegrationAllCommand]),
+  Cli.Command.withSubcommands([
+    ...integrationTests.commands,
+    syncProviderTest,
+    waSqliteTest,
+    nodeSyncTest,
+    testIntegrationAllCommand,
+  ]),
 )
 
 // TODO when tests fail, print a command per failed test which allows running the test separately

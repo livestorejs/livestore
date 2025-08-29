@@ -310,7 +310,6 @@ export const makeSyncBackend =
               batch,
               pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
             })),
-            Stream.tapLogWithLabel('electric-provider:pull'),
             Stream.withSpan('electric-provider:pull'),
           )
         },

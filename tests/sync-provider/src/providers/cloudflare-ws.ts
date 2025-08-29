@@ -2,10 +2,12 @@ import path from 'node:path'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import { startWranglerDevServer } from '@livestore/utils-dev/node-vitest'
+import { startWranglerDevServer } from '@livestore/utils-dev/node'
 import { SyncProviderImpl } from '../types.ts'
 
 export const name = 'Cloudflare WebSocket'
+
+export const prepare = Effect.void
 
 export const layer = Layer.scoped(
   SyncProviderImpl,

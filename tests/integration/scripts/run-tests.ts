@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { type CmdError, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
@@ -137,7 +137,7 @@ export const setupDevtools: Cli.Command.Command<
 
     yield* downloadChromeExtension({
       targetDir,
-    }).pipe(Effect.provide(FetchHttpClient.layer), Effect.provide(PlatformNode.NodeContext.layer))
+    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
 
     yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
   }, UnexpectedError.mapToUnexpectedError),
@@ -212,8 +212,7 @@ if (import.meta.main) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(PlatformNode.NodeContext.layer),
-    Effect.provide(Logger.prettyWithThread('cli-run-tests')),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-run-tests'))),
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

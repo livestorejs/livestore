@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "exports": {
+    "./prepare-ci": "./src/prepare-ci.ts"
+  },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@livestore/adapter-cloudflare": "workspace:*",

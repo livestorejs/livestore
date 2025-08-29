@@ -3,8 +3,6 @@ import net from 'node:net'
 import path from 'node:path'
 import { Effect, UnknownError } from '@livestore/utils/effect'
 
-import { afterAll } from 'vitest'
-
 export type StartWranglerDevServerArgs = {
   wranglerConfigPath?: string
   cwd: string
@@ -121,9 +119,12 @@ export const startWranglerDevServerPromise = async ({
   process.on('SIGINT', killWranglerProcess)
   process.on('SIGTERM', killWranglerProcess)
 
-  afterAll(() => {
-    killWranglerProcess()
-  })
+  try {
+    const { afterAll } = await import('vitest')
+    afterAll(() => {
+      killWranglerProcess()
+    })
+  } catch {}
 
   const { port } = await setup()
 

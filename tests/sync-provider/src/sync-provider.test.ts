@@ -45,7 +45,8 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
     Stream.runFirstUnsafe,
   )
 
-Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 10000 }, ({ layer, name }) => {
+// TODO come up with a way to target specific providers individually
+Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<SyncProviderImpl | HttpClient.HttpClient, never>
   let testId: string
 

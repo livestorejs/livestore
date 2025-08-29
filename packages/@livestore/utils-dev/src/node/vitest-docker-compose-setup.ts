@@ -1,8 +1,7 @@
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { Effect, UnknownError } from '@livestore/utils/effect'
-
-import { afterAll } from 'vitest'
+import { cmd } from './cmd.ts'
 
 export const startDockerComposeServices = (args: StartDockerComposeServicesArgs) =>
   Effect.tryPromise({
@@ -25,6 +24,15 @@ type StartDockerComposeServicesArgs = {
   /** @default false */
   forwardLogs?: boolean
 }
+
+export const pullDockerComposeImages = ({
+  cwd,
+  composeFilePath,
+}: Pick<StartDockerComposeServicesArgs, 'composeFilePath' | 'cwd'>) =>
+  Effect.gen(function* () {
+    const resolvedComposeFilePath = path.resolve(composeFilePath ?? path.join(cwd, 'docker-compose.yml'))
+    yield* cmd(['docker', 'compose', '-f', resolvedComposeFilePath, 'pull'], { cwd })
+  }).pipe(Effect.withSpan('pullDockerComposeImages'))
 
 /**
  * Starts Docker Compose services for testing with automatic cleanup.
@@ -163,9 +171,12 @@ export const startDockerComposeServicesPromise = async ({
     stopDockerComposeServices()
   })
 
-  afterAll(async () => {
-    await stopDockerComposeServices()
-  })
+  // try {
+  //   const { afterAll } = await import('vitest')
+  //   afterAll(async () => {
+  //     await stopDockerComposeServices()
+  //   })
+  // } catch {}
 
   await setup()
 }

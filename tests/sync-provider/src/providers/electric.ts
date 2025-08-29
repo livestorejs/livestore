@@ -4,6 +4,7 @@ import type { LiveStoreEvent } from '@livestore/livestore'
 import { Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
 import {
+  type CommandExecutor,
   Effect,
   HttpClient,
   HttpRouter,
@@ -11,9 +12,10 @@ import {
   HttpServerRequest,
   HttpServerResponse,
   Layer,
+  type PlatformError,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { startDockerComposeServices } from '@livestore/utils-dev/node-vitest'
+import { type CmdError, pullDockerComposeImages, startDockerComposeServices } from '@livestore/utils-dev/node'
 import postgres from 'postgres'
 import { SyncProviderImpl } from '../types.ts'
 
@@ -21,6 +23,11 @@ import { SyncProviderImpl } from '../types.ts'
 const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
 
 export const name = 'ElectricSQL'
+
+export const prepare: Effect.Effect<void, PlatformError.PlatformError | CmdError, CommandExecutor.CommandExecutor> =
+  pullDockerComposeImages({
+    cwd: path.join(import.meta.dirname, 'electric'),
+  }).pipe(Effect.withSpan('electric-provider:prepare'))
 
 export const layer = Layer.scoped(
   SyncProviderImpl,
@@ -41,13 +48,18 @@ const startElectricApi = Effect.gen(function* () {
   const postgresPort = yield* getFreePort
 
   // Start Docker Compose services (postgres + electric)
+  const healthCheckUrl = `http://${dockerHostName}:${electricPort}/v1/health`
+  yield* Effect.logDebug('Health check URL:', healthCheckUrl)
+  yield* Effect.logDebug('Electric port:', electricPort)
+  yield* Effect.logDebug('Postgres port:', postgresPort)
+
   yield* startDockerComposeServices({
     cwd: path.join(import.meta.dirname, 'electric'),
     env: {
       ELECTRIC_PORT: electricPort.toString(),
       POSTGRES_PORT: postgresPort.toString(),
     },
-    healthCheck: { url: `http://${dockerHostName}:${electricPort}/v1/health` },
+    healthCheck: { url: healthCheckUrl },
     // forwardLogs: true,
   })
 
