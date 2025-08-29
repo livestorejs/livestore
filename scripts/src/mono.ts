@@ -44,6 +44,7 @@ const testUnitCommand = Cli.Command.make(
       const vitestPathsToRunInParallel = [
         `${cwd}/packages/@livestore/utils`,
         `${cwd}/packages/@livestore/common`,
+        `${cwd}/packages/@livestore/react`,
         `${cwd}/packages/@livestore/livestore`,
       ]
 
