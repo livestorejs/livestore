@@ -168,6 +168,8 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
   }
 
   async syncUpdateRpc(payload: unknown) {
+    // Make sure to wake up the store before processing the sync update
+    await this.subscribeToStore()
     await handleSyncUpdateRpc(payload)
   }
 }
