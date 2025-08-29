@@ -1,6 +1,7 @@
 import '../global.ts'
 
 export { AiError, AiLanguageModel, AiModel, AiTool, AiToolkit, McpSchema, McpServer } from '@effect/ai'
+export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,
   CommandExecutor,
@@ -8,6 +9,11 @@ export {
   FetchHttpClient,
   FileSystem,
   Headers,
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApp,
   HttpClient,
   HttpClientError,
   HttpClientRequest,
@@ -18,6 +24,7 @@ export {
   HttpServerRequest,
   HttpServerResponse,
   KeyValueStore,
+  MsgPack,
   Socket,
   Terminal,
   Transferable,
@@ -29,7 +36,8 @@ export {
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 export {
   Rpc,
-  RpcClient,
+  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
+  RpcClientError,
   RpcGroup,
   RpcMessage,
   RpcMiddleware,
@@ -107,14 +115,15 @@ export {
   Tracer,
   Types,
 } from 'effect'
-export { dual } from 'effect/Function'
+export type { NonEmptyArray } from 'effect/Array'
+export { constVoid, dual } from 'effect/Function'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
-
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
 export * as Logger from './Logger.ts'
 export * as OtelTracer from './OtelTracer.ts'
+export * as RpcClient from './RpcClient.ts'
 export * as Schema from './Schema/index.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'

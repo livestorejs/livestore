@@ -1,0 +1,36 @@
+name = "cloudflare-todomvc"
+main = "./src/worker.ts"
+compatibility_date = "2025-05-07"
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+]
+
+[build]
+# Enable source maps for better debugging
+command = ""
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "livestore-sync-cf-demo"
+database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+# database_id = "${LIVESTORE_CF_SYNC_DATABASE_ID}"
+
+[vars]
+# should be set via CF dashboard (as secret)
+# ADMIN_SECRET = "..."
+SYNC_BACKEND_URL = "http://localhost:8787"
+
+[triggers] # bootstrap ping every minute
+crons = ["*/1 * * * *"]

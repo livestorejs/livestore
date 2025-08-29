@@ -4,8 +4,7 @@ import type {
   IntentionalShutdownCause,
   InvalidPullError,
   IsOfflineError,
-  MaterializerHashMismatchError,
-  SqliteError,
+  MaterializeError,
   StoreInterrupted,
   SyncError,
   UnexpectedError,
@@ -32,23 +31,11 @@ export type LiveStoreContext =
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  | UnexpectedError
-  | SyncError
-  | StoreInterrupted
-  | MaterializerHashMismatchError
-  | InvalidPullError
-  | SqliteError
-  | IsOfflineError
+  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  | UnexpectedError
-  | SyncError
-  | StoreInterrupted
-  | MaterializerHashMismatchError
-  | InvalidPullError
-  | SqliteError
-  | IsOfflineError
+  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >()
 
 export type LiveStoreContextRunning = {

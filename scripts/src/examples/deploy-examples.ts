@@ -49,6 +49,7 @@ const buildAndDeployExample = ({
   }).pipe(
     Effect.withSpan(`deploy-example-${example}`, { attributes: { example, prod, alias } }),
     Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
+    Effect.annotateLogs({ example }),
   )
 
 export const command = Cli.Command.make(
@@ -66,6 +67,7 @@ export const command = Cli.Command.make(
         'node-effect-cli',
         'node-todomvc-sync-cf',
         'web-todomvc-sync-electric',
+        'cloudflare-todomvc',
       ])
       const examplesToDeploy = fs
         .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })

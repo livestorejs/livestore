@@ -262,7 +262,7 @@ const listenToDevtools = ({
 
               if (syncBackend !== undefined) {
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
-                yield* syncBackend.pull(Option.none()).pipe(
+                yield* syncBackend.pull(Option.none(), { live: true }).pipe(
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
                   Stream.tap(({ eventEncoded, metadata }) =>

@@ -14,6 +14,10 @@ export const GET: APIRoute = async ({ site }) => {
 
 > LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.
 
+## Notes
+
+- Most LiveStore APIs are synchronous and don't need \`await\`
+
 ## Docs
 
 ${docs

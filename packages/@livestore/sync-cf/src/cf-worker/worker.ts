@@ -1,17 +1,15 @@
-import type * as CfWorker from '@cloudflare/workers-types'
 import { UnexpectedError } from '@livestore/common'
 import type { Schema } from '@livestore/utils/effect'
-import { Effect, UrlParams } from '@livestore/utils/effect'
-
-import { SearchParamsSchema } from '../common/mod.ts'
-
-import type { Env } from './durable-object.ts'
+import { Effect } from '@livestore/utils/effect'
+import type { CfTypes, SearchParams } from '../common/mod.ts'
+import type { CfDeclare } from './mod.ts'
+import { DEFAULT_SYNC_DURABLE_OBJECT_NAME, type Env, getSyncRequestSearchParams } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
-declare class Response extends CfWorker.Response {}
+declare class Response extends CfDeclare.Response {}
 
 export namespace HelperTypes {
-  type AnyDON = CfWorker.DurableObjectNamespace<undefined>
+  type AnyDON = CfTypes.DurableObjectNamespace<undefined>
 
   type DOKeys<T> = {
     [K in keyof T]-?: T[K] extends AnyDON ? K : never
@@ -27,11 +25,11 @@ export namespace HelperTypes {
    *  type PlatformEnv = {
    *    DB: D1Database
    *    ADMIN_TOKEN: string
-   *    WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
+   *    SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
    * }
    *  export default makeWorker<PlatformEnv>({
-   *    durableObject: { name: "WEBSOCKET_SERVER" },
-   *    // ^ (property) name?: "WEBSOCKET_SERVER" | undefined
+   *    durableObject: { name: "SYNC_BACKEND_DO" },
+   *    // ^ (property) name?: "SYNC_BACKEND_DO" | undefined
    *  });
    */
   export type ExtractDurableObjectKeys<TEnv = Env> = DOKeys<NonBuiltins<TEnv>> extends never
@@ -40,12 +38,12 @@ export namespace HelperTypes {
 }
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
-export type CFWorker<TEnv extends Env = Env, _T extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined> = {
+export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined> = {
   fetch: <CFHostMetada = unknown>(
-    request: CfWorker.Request<CFHostMetada>,
+    request: CfTypes.Request<CFHostMetada>,
     env: TEnv,
-    ctx: CfWorker.ExecutionContext,
-  ) => Promise<CfWorker.Response>
+    ctx: CfTypes.ExecutionContext,
+  ) => Promise<CfTypes.Response>
 }
 
 export type MakeWorkerOptions<TEnv extends Env = Env> = {
@@ -61,7 +59,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
     /**
      * Needs to match the binding name from the wrangler config
      *
-     * @default 'WEBSOCKET_SERVER'
+     * @default 'SYNC_BACKEND_DO'
      */
     name?: HelperTypes.ExtractDurableObjectKeys<TEnv>
   }
@@ -69,7 +67,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
 
 export const makeWorker = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
 >(
   options: MakeWorkerOptions<TEnv> = {},
 ): CFWorker<TEnv, TDurableObjectRpc> => {
@@ -77,16 +75,7 @@ export const makeWorker = <
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
 
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      if (request.method === 'GET' && url.pathname === '/') {
-        return new Response('Info: WebSocket sync backend endpoint for @livestore/sync-cf.', {
-          status: 200,
-          headers: { 'Content-Type': 'text/plain' },
-        })
-      }
-
-      const corsHeaders: CfWorker.HeadersInit = options.enableCORS
+      const corsHeaders: CfTypes.HeadersInit = options.enableCORS
         ? {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -101,11 +90,28 @@ export const makeWorker = <
         })
       }
 
-      if (url.pathname.endsWith('/websocket')) {
-        return handleWebSocket<TEnv, TDurableObjectRpc>(request, env, _ctx, {
-          headers: corsHeaders,
-          validatePayload: options.validatePayload,
-          durableObject: options.durableObject,
+      const requestParamsResult = getSyncRequestSearchParams(request)
+
+      // Check if this is a sync request first, before showing info message
+      if (requestParamsResult._tag === 'Some') {
+        return handleSyncRequest<TEnv, TDurableObjectRpc>({
+          request,
+          searchParams: requestParamsResult.value,
+          env,
+          ctx: _ctx,
+          options: {
+            headers: corsHeaders,
+            validatePayload: options.validatePayload,
+            durableObject: options.durableObject,
+          },
+        })
+      }
+
+      // Only show info message for GET requests to / without sync parameters
+      if (request.method === 'GET' && url.pathname === '/') {
+        return new Response('Info: Sync backend endpoint for @livestore/sync-cf.', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
         })
       }
 
@@ -124,7 +130,7 @@ export const makeWorker = <
 }
 
 /**
- * Handles `/websocket` endpoint.
+ * Handles `/sync` endpoint.
  *
  * @example
  * ```ts
@@ -137,11 +143,19 @@ export const makeWorker = <
  *
  * export default {
  *   fetch: async (request, env, ctx) => {
- *     if (request.url.endsWith('/websocket')) {
- *       return handleWebSocket(request, env, ctx, { headers: {}, validatePayload })
+ *     const requestParamsResult = getSyncRequestSearchParams(request)
+ *
+ *     // Is LiveStore sync request
+ *     if (requestParamsResult._tag === 'Some') {
+ *       return handleSyncRequest({
+ *         request,
+ *         searchParams: requestParamsResult.value,
+ *         env,
+ *         ctx,
+ *         options: { headers: {}, validatePayload }
+ *       })
  *     }
  *
- *     return new Response('Invalid path', { status: 400 })
  *     return new Response('Invalid path', { status: 400 })
  *   }
  * }
@@ -149,34 +163,29 @@ export const makeWorker = <
  *
  * @throws {UnexpectedError} If the payload is invalid
  */
-export const handleWebSocket = <
+export const handleSyncRequest = <
   TEnv extends Env = Env,
-  TDurableObjectRpc extends CfWorker.Rpc.DurableObjectBranded | undefined = undefined,
+  TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
->(
-  request: CfWorker.Request<CFHostMetada>,
-  env: TEnv,
-  _ctx: CfWorker.ExecutionContext,
-  options: {
-    headers?: CfWorker.HeadersInit
+>({
+  request,
+  searchParams,
+  env,
+  options = {},
+}: {
+  request: CfTypes.Request<CFHostMetada>
+  searchParams: SearchParams
+  env: TEnv
+  /** Only there for type-level reasons */
+  ctx: CfTypes.ExecutionContext
+  options?: {
+    headers?: CfTypes.HeadersInit
     durableObject?: MakeWorkerOptions<TEnv>['durableObject']
     validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
-  } = {},
-): Promise<CfWorker.Response> =>
+  }
+}): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
-    const url = new URL(request.url)
-
-    const urlParams = UrlParams.fromInput(url.searchParams)
-    const paramsResult = yield* UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.either)
-
-    if (paramsResult._tag === 'Left') {
-      return new Response(`Invalid search params: ${paramsResult.left.toString()}`, {
-        status: 500,
-        headers: options?.headers,
-      })
-    }
-
-    const { storeId, payload } = paramsResult.right
+    const { storeId, payload, transport } = searchParams
 
     if (options.validatePayload !== undefined) {
       const result = yield* Effect.promise(async () => options.validatePayload!(payload, { storeId })).pipe(
@@ -190,7 +199,7 @@ export const handleWebSocket = <
       }
     }
 
-    const durableObjectName = options.durableObject?.name ?? 'WEBSOCKET_SERVER'
+    const durableObjectName = options.durableObject?.name ?? DEFAULT_SYNC_DURABLE_OBJECT_NAME
     if (!(durableObjectName in env)) {
       return new Response(
         `Failed dependency: Required Durable Object binding '${durableObjectName as string}' not available`,
@@ -203,19 +212,19 @@ export const handleWebSocket = <
 
     const durableObjectNamespace = env[
       durableObjectName as keyof TEnv
-    ] as CfWorker.DurableObjectNamespace<TDurableObjectRpc>
+    ] as CfTypes.DurableObjectNamespace<TDurableObjectRpc>
 
     const id = durableObjectNamespace.idFromName(storeId)
     const durableObject = durableObjectNamespace.get(id)
 
+    // Handle WebSocket upgrade request
     const upgradeHeader = request.headers.get('Upgrade')
-    if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    if (transport === 'ws' && (upgradeHeader === null || upgradeHeader !== 'websocket')) {
       return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
         headers: options?.headers,
       })
     }
 
-    // Cloudflare Durable Object type clashing with lib.dom Response type, which is why we need the casts here.
     return yield* Effect.promise(() => durableObject.fetch(request))
   }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)

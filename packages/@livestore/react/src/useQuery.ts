@@ -42,8 +42,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>
 } => {
   const store =
-    options?.store ??
-    // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
+    options?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useQuery`)
 

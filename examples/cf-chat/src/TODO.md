@@ -1,0 +1,6 @@
+- [x] read indicator per user
+- [x] user attribution for reaction
+- [x] user shouldn't be able to send the same reaction twice
+- [x] remove/undo support for reactions
+- [ ] "is typing" indicator
+- [ ] DM feature via separate store ids (TODO figure out secure exchange of store ids)

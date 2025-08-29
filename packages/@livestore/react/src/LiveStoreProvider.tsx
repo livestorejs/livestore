@@ -90,7 +90,7 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
   const reason =
     cause._tag === 'LiveStore.StoreInterrupted'
       ? `interrupted due to: ${cause.reason}`
-      : cause._tag === 'LiveStore.SyncError'
+      : cause._tag === 'InvalidPushError' || cause._tag === 'InvalidPullError'
         ? `sync error: ${cause.cause}`
         : cause.reason === 'devtools-import'
           ? 'devtools import'
@@ -124,7 +124,7 @@ export const LiveStoreProvider = ({
   confirmUnsavedChanges = true,
   syncPayload,
   debug,
-}: LiveStoreProviderProps & { children?: React.ReactNode }): React.ReactNode => {
+}: LiveStoreProviderProps & React.PropsWithChildren): React.ReactNode => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
@@ -356,7 +356,8 @@ const useCreateStore = ({
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', Cause.pretty(cause))),
         Effect.tap((intentionalShutdown) => shutdownContext(intentionalShutdown)),
-        Effect.catchTag('LiveStore.SyncError', (cause) => shutdownContext(cause)),
+        Effect.catchTag('InvalidPushError', (cause) => shutdownContext(cause)),
+        Effect.catchTag('InvalidPullError', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),

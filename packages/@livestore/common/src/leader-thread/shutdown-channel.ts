@@ -4,21 +4,19 @@ import { Schema } from '@livestore/utils/effect'
 import {
   IntentionalShutdownCause,
   InvalidPullError,
+  InvalidPushError,
   IsOfflineError,
-  MaterializerHashMismatchError,
-  SqliteError,
-  SyncError,
+  MaterializeError,
   UnexpectedError,
 } from '../index.ts'
 
 export class All extends Schema.Union(
   IntentionalShutdownCause,
   UnexpectedError,
-  SyncError,
-  MaterializerHashMismatchError,
   IsOfflineError,
+  InvalidPushError,
   InvalidPullError,
-  SqliteError,
+  MaterializeError,
 ) {}
 
 /**

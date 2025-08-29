@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/nursery: testing */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider, useQuery, useStore } from '@livestore/react'

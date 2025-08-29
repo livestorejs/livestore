@@ -3,12 +3,12 @@ main = "./src/cf-worker/index.ts"
 compatibility_date = "2024-05-12"
 
 [[durable_objects.bindings]]
-name = "WEBSOCKET_SERVER"
-class_name = "WebSocketServer"
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketServer"]
+new_sqlite_classes = ["SyncBackendDO"]
 
 [[d1_databases]]
 binding = "DB"

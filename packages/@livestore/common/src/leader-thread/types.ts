@@ -13,7 +13,7 @@ import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
 import type { MigrationsReport } from '../defs.ts'
-import type { MaterializerHashMismatchError, SqliteError } from '../errors.ts'
+import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
@@ -43,7 +43,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventSequenceNumber.EventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -98,7 +98,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     shutdownChannel: ShutdownChannel
     eventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
-    syncBackend: SyncBackend | undefined
+    syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {
@@ -125,12 +125,12 @@ export type MaterializeEvent = (
     sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
     hash: Option.Option<number>
   },
-  SqliteError | MaterializerHashMismatchError
+  MaterializeError
 >
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
-  update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
+  update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
 }
 
 export interface LeaderSyncProcessor {

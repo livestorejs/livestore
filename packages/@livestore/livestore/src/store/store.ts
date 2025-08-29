@@ -9,6 +9,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
@@ -169,6 +170,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                 try {
                   this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
                 } catch (cause) {
+                  // TOOD refactor with `SqliteError`
                   throw UnexpectedError.make({
                     cause,
                     note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
@@ -195,7 +197,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-          }),
+          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
       ),
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
@@ -753,7 +755,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializerHashMismatchError>): Effect.Effect<void> => {
+  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializeError>): Effect.Effect<void> => {
     this.isShutdown = true
     return this.clientSession.shutdown(
       cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
@@ -803,14 +805,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         .pipe(this.runEffectFork)
     },
 
-    syncStates: () => {
+    syncStates: () =>
       Effect.gen(this, function* () {
         const session = yield* this.syncProcessor.syncState
-        console.log('Session sync state:', session.toJSON())
         const leader = yield* this.clientSession.leaderThread.getSyncState
-        console.log('Leader sync state:', leader.toJSON())
-      }).pipe(this.runEffectFork)
-    },
+        return { session, leader }
+      }).pipe(this.runEffectPromise),
 
     version: liveStoreVersion,
 
@@ -831,6 +831,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.tapCauseLogPretty,
       Runtime.runFork(this.effectContext.runtime),
     )
+
+  private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this.effectContext.runtime))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,

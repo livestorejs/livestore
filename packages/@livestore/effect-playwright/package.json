@@ -13,11 +13,11 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.53.1",
+    "@playwright/test": "^1.55.0",
     "@types/node": "catalog:"
   },
   "peerDependencies": {
-    "@playwright/test": "^1.53.1"
+    "@playwright/test": "^1.55.0"
   },
   "scripts": {
     "test": "echo 'No tests'"

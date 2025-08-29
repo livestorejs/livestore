@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@biomejs/biome": "^2.1.3",
+    "@biomejs/biome": "^2.2.2",
     "@effect/language-service": "^0.36.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
@@ -32,6 +32,7 @@
     ]
   },
   "resolutions": {
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-expo": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
@@ -50,17 +51,15 @@
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "esbuild": "0.25.6"
+    "@livestore/webmesh": "workspace:*"
   },
   "resolutions#": {
-    "esbuild": "Needed for CF Wrangler / vinxi build",
     "@livestore/*": "Needed to force PNPM to install local packages"
   },
   "scripts": {
     "_build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json",
     "build": "pnpm run build:ts",
-    "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:clean": "bash -c \"find {examples,packages,tests,docs} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "prepare": "husky",

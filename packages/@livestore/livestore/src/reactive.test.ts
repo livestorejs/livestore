@@ -424,3 +424,103 @@ describe('error handling', () => {
     )
   })
 })
+
+// Bug: When an effect calls setRef during execution, it triggers nested runEffects calls.
+// The nested call would overwrite and clear the shared currentDebugRefresh state,
+// causing a TypeError when the outer runEffects tried to access currentDebugRefresh.refreshedAtoms.
+// Fix: Use local variables to capture debug state instead of relying on shared mutable state.
+describe('bug fix: currentDebugRefresh race condition', () => {
+  it('handles nested runEffects from effect calling setRef', () => {
+    const graph = new ReactiveGraph()
+    graph.context = {}
+
+    const a = graph.makeRef(1)
+    const b = graph.makeRef(2)
+
+    // Effect that calls setRef, triggering nested runEffects
+    graph
+      .makeEffect((get) => {
+        get(a)
+        graph.setRef(b, 3)
+      })
+      .doEffect()
+
+    // Effect observing b
+    graph.makeEffect((get) => get(b)).doEffect()
+
+    // Previously crashed with: Cannot read properties of undefined (reading 'refreshedAtoms')
+    // Now handles nested runEffects correctly
+    expect(() => graph.setRef(a, 2)).not.toThrow()
+  })
+
+  it('handles thunk calling setRef directly', () => {
+    const graph = new ReactiveGraph()
+    graph.context = {}
+
+    const a = graph.makeRef(1)
+    const b = graph.makeRef(2)
+
+    // Effect observing b so setRef(b) triggers runEffects
+    graph.makeEffect((get) => get(b)).doEffect()
+
+    // Thunk that calls setRef during its computation
+    const thunk = graph.makeThunk((get) => {
+      const val = get(a)
+      graph.setRef(b, val * 2) // This triggers nested runEffects
+      return val + get(b)
+    })
+
+    // With our fix, this handles nested currentDebugRefresh correctly
+    expect(() => thunk.computeResult()).not.toThrow()
+    expect(thunk.computeResult()).toBe(3) // 1 + 2 (b was already set to 2)
+  })
+
+  it('handles nested thunk computations', () => {
+    const graph = new ReactiveGraph()
+    graph.context = {}
+
+    const a = graph.makeRef(1)
+
+    // Outer thunk that creates and computes inner thunk
+    const outerThunk = graph.makeThunk((get) => {
+      const val = get(a)
+
+      // Create and compute inner thunk during outer computation
+      const innerThunk = graph.makeThunk((innerGet) => innerGet(a) * 2)
+
+      // Nested thunk computation - previously could corrupt currentDebugRefresh
+      return val + innerThunk.computeResult()
+    })
+
+    // With our fix, nested thunk computations work correctly
+    expect(() => outerThunk.computeResult()).not.toThrow()
+    expect(outerThunk.computeResult()).toBe(3) // 1 + (1 * 2)
+  })
+})
+
+// Bug: Nodes could have undefined or deleted super/sub properties in certain edge cases,
+// causing crashes with "Cannot read properties of undefined" errors.
+// Fix: Added validation checks in destroyNode to handle corrupted nodes gracefully.
+// Note: Full addEdge protection was removed, so some scenarios still crash with native errors.
+describe('bug fix: node corruption protection', () => {
+  it('handles node destruction during effect execution', () => {
+    const graph = new ReactiveGraph()
+    graph.context = {}
+
+    const a = graph.makeRef(1)
+    const thunk1 = graph.makeThunk((get) => get(a) * 2)
+    const thunk2 = graph.makeThunk((get) => get(thunk1))
+
+    let firstRun = true
+    const effect = graph.makeEffect((get) => {
+      if (firstRun) {
+        firstRun = false
+        graph.destroyNode(thunk1) // Destroy dependency mid-execution
+      }
+      get(thunk2)
+    })
+
+    // Should detect the destroyed node
+    expect(() => effect.doEffect()).toThrow('LiveStore Error: Attempted to compute destroyed')
+  })
+})

@@ -171,10 +171,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const checkTransferableEdges = (packet: typeof WebmeshSchema.DirectChannelPacket.Type) => {
       if (
         (packet._tag === 'DirectChannelRequest' &&
-          (edgeChannels.size === 0 ||
-            // Either if direct edge does not support transferables ...
-            edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) ||
-        // ... or if no forward-edges support transferables
+          (edgeChannels.size === 0 || // Either if direct edge does not support transferables ...
+            edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) || // ... or if no forward-edges support transferables
         ![...edgeChannels.values()].some((c) => c.channel.supportsTransferables === true)
       ) {
         return WebmeshSchema.DirectChannelResponseNoTransferables.make({

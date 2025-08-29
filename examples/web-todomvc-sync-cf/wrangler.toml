@@ -1,15 +1,17 @@
 name = "websocket-server"
 main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-05-08"
-# compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+]
 
 [[durable_objects.bindings]]
-name = "WEBSOCKET_SERVER"
-class_name = "WebSocketServer"
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketServer"]
+new_sqlite_classes = ["SyncBackendDO"]
 
 [[d1_databases]]
 binding = "DB"

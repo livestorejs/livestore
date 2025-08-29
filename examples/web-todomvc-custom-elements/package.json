@@ -17,7 +17,7 @@
     "@tailwindcss/vite": "^4.1.12",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.8",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "^5.0.1",
     "rollup-plugin-visualizer": "^6.0.3",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",

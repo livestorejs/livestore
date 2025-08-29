@@ -13,20 +13,20 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
-      "!**/dist/**",
-      "!**/.wrangler/**",
-      "!**/node_modules/**",
-      "!**/tmp/**",
-      "!**/.output/**",
-      "!**/.vercel/**",
-      "!**/.netlify/**",
-      "!**/.astro/**",
-      "!**/.nitro/**",
-      "!**/.tanstack/**",
-      "!**/.direnv/**",
-      "!**/packages/@livestore/wa-sqlite/**",
-      "!**/playwright-report/**",
-      "!**/test-results/**"
+      "!**/dist",
+      "!**/.wrangler",
+      "!**/node_modules",
+      "!**/tmp",
+      "!**/.output",
+      "!**/.vercel",
+      "!**/.netlify",
+      "!**/.astro",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.direnv",
+      "!**/packages/@livestore/wa-sqlite",
+      "!**/playwright-report",
+      "!**/test-results"
     ]
   },
   "formatter": {
@@ -95,6 +95,19 @@
           "correctness": {
             "noUnusedVariables": "off",
             "noUnusedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      // Disable noUnknownAtRules for CSS files that use Tailwind CSS
+      // Tailwind uses custom at-rules like @apply, @config, @theme, @custom-variant
+      // See: https://github.com/biomejs/biome/discussions/3195
+      "includes": ["**/*.css", "**/tailwind.css", "**/style.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
           }
         }
       }

@@ -9,8 +9,10 @@
     { "path": "./tests/package-common" },
     { "path": "./tests/perf" },
     { "path": "./tests/wa-sqlite" },
+    { "path": "./tests/sync-provider" },
     { "path": "./packages/@local/shared" },
     { "path": "./packages/@livestore/cli" },
+    { "path": "./packages/@livestore/adapter-cloudflare" },
     { "path": "./packages/@livestore/adapter-expo" },
     { "path": "./packages/@livestore/adapter-node" },
     { "path": "./packages/@livestore/adapter-web" },
@@ -27,7 +29,6 @@
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/utils" },
     { "path": "./packages/@livestore/utils-dev" },
-    { "path": "./packages/@livestore/wa-sqlite" },
     { "path": "./packages/@livestore/webmesh" }
   ]
 }

@@ -105,8 +105,7 @@ export const useClientDocument: {
   const tableName = table.sqliteDef.name
 
   const store =
-    storeArg?.store ??
-    // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
+    storeArg?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useClientDocument`)
 

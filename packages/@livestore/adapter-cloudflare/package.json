@@ -1,0 +1,43 @@
+{
+  "name": "@livestore/adapter-cloudflare",
+  "version": "0.4.0-dev.3",
+  "type": "module",
+  "sideEffects": [
+    "./src/polyfill.ts"
+  ],
+  "exports": {
+    ".": "./src/mod.ts",
+    "./polyfill": "./src/polyfill.ts"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "catalog:"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "sideEffects": [
+      "./dist/polyfill.js"
+    ],
+    "exports": {
+      ".": "./dist/mod.js",
+      "./polyfill": "./dist/polyfill.js"
+    }
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  }
+}

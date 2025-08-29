@@ -18,7 +18,9 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
   const dag = emptyHistoryDag()
 
-  dagNodes.forEach((node) => dag.addNode(EventSequenceNumber.toString(node.seqNum), node))
+  dagNodes.forEach((node) => {
+    dag.addNode(EventSequenceNumber.toString(node.seqNum), node)
+  })
 
   dagNodes.forEach((node) => {
     if (EventSequenceNumber.toString(node.parentSeqNum) !== EventSequenceNumber.toString(rootParentNum)) {

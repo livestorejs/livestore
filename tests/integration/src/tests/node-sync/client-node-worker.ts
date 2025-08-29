@@ -5,7 +5,7 @@ import path from 'node:path'
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
 import {
   Context,
@@ -51,7 +51,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
             }
           : { type: 'in-memory' as const }
 
-      const sync = { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) }
+      const sync = { backend: makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) }
 
       const adapter =
         adapterType === 'single-threaded'

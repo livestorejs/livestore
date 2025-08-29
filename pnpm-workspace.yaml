@@ -10,3 +10,5 @@ catalog:
   vitest: 3.2.4
   "@vitest/ui": 3.2.4
   "@types/node": 24.2.0
+  "@cloudflare/workers-types": 4.20250823.0
+  wrangler: ^4.32.0

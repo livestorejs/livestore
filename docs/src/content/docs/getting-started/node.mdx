@@ -17,7 +17,7 @@ import { tables, schema } from './livestore/schema.js'
 
 const adapter = makeAdapter({
   storage: { type: 'fs' },
-  // sync: { backend: makeCfSync({ url: '...' }) },
+  // sync: { backend: makeWsSync({ url: '...' }) },
 })
 
 const store = await createStorePromise({ adapter, schema })

@@ -5,6 +5,12 @@ sidebar:
   order: 1
 ---
 
+## Installation
+
+```bash
+npm install @livestore/adapter-web @livestore/wa-sqlite
+```
+
 ## Example
 
 ```ts

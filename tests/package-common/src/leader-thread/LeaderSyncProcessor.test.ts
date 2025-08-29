@@ -1,4 +1,10 @@
-import type { LeaderAheadError, SyncState, UnexpectedError } from '@livestore/common'
+import {
+  type LeaderAheadError,
+  type MockSyncBackend,
+  makeMockSyncBackend,
+  type SyncState,
+  type UnexpectedError,
+} from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
@@ -21,8 +27,6 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import type { MockSyncBackend } from '../mock-sync-backend.ts'
-import { makeMockSyncBackend } from '../mock-sync-backend.ts'
 import { events, schema, tables } from './fixture.ts'
 
 /*

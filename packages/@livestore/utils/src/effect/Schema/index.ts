@@ -8,7 +8,6 @@ import { shouldNeverHappen } from '../../mod.ts'
 
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
-export * from './msgpack.ts'
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719

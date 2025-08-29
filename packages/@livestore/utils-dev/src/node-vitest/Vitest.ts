@@ -43,7 +43,11 @@ export const withTestCtx =
     const layer = makeLayer?.(testContext)
 
     const otelLayer =
-      DEBUGGER_ACTIVE || forceOtel ? OtelLiveHttp({ serviceName: 'vitest-runner', skipLogUrl: false }) : OtelLiveDummy
+      DEBUGGER_ACTIVE || forceOtel
+        ? OtelLiveHttp({ rootSpanName: spanName, serviceName: 'vitest-runner', skipLogUrl: false })
+        : OtelLiveDummy
+
+    const combinedLayer = (layer ?? Layer.empty).pipe(Layer.provideMerge(otelLayer))
 
     return self.pipe(
       DEBUGGER_ACTIVE
@@ -53,10 +57,8 @@ export const withTestCtx =
             label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
           }),
       DEBUGGER_ACTIVE ? identity : Effect.timeout(timeout),
-      Effect.provide(otelLayer),
-      Effect.provide(layer ?? Layer.empty),
+      Effect.provide(combinedLayer),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(spanName),
       Effect.annotateLogs({ suffix }),
     ) as any
   }

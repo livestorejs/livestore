@@ -1,6 +1,6 @@
 import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
 
-export class WebSocketServer extends makeDurableObject({
+export class SyncBackendDO extends makeDurableObject({
   onPush: async (message, context) => {
     console.log('onPush', message.batch, 'storeId:', context.storeId, 'payload:', context.payload)
   },

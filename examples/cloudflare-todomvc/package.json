@@ -1,0 +1,24 @@
+{
+  "name": "livestore-example-web-todomvc-sync-cf",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20250823.0",
+    "@livestore/adapter-cloudflare": "0.4.0-dev.3",
+    "@livestore/livestore": "0.4.0-dev.3",
+    "@livestore/peer-deps": "0.4.0-dev.3",
+    "@livestore/sync-cf": "0.4.0-dev.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.33.0"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "build": "wrangler build",
+    "dev": "wrangler dev",
+    "wrangler:deploy": "wrangler deploy"
+  }
+}

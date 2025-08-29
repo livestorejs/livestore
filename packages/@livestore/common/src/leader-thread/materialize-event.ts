@@ -1,7 +1,7 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
+import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.ts'
@@ -11,6 +11,7 @@ import { execSql, execSqlPrepared } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
 import type { MaterializeEvent } from './types.ts'
 
+// TODO refactor `makeMaterializeEvent` to not return an Effect for the constructor as it's not needed
 export const makeMaterializeEvent = ({
   schema,
   dbState,
@@ -19,7 +20,7 @@ export const makeMaterializeEvent = ({
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent, MaterializerHashMismatchError> =>
+}): Effect.Effect<MaterializeEvent> =>
   Effect.gen(function* () {
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -49,7 +50,7 @@ export const makeMaterializeEvent = ({
           eventEncoded.meta.materializerHashSession._tag === 'Some' &&
           eventEncoded.meta.materializerHashSession.value !== materializerHash.value
         ) {
-          yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+          return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
         }
 
         // NOTE we might want to bring this back if we want to debug no-op events
@@ -123,6 +124,7 @@ export const makeMaterializeEvent = ({
           hash: materializerHash,
         }
       }).pipe(
+        Effect.mapError((cause) => MaterializeError.make({ cause })),
         Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {
           attributes: {
             eventName: eventEncoded.name,

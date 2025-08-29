@@ -2,14 +2,14 @@ import process from 'node:process'
 
 import { makeAdapter } from '@livestore/adapter-node'
 import { createStorePromise } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeWsSync } from '@livestore/sync-cf/client'
 
 import { events, schema, tables } from './livestore/schema.ts'
 
 const main = async () => {
   const adapter = makeAdapter({
     storage: { type: 'fs', baseDirectory: 'tmp' },
-    sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }), onSyncError: 'shutdown' },
+    sync: { backend: makeWsSync({ url: 'ws://localhost:8787' }), onSyncError: 'shutdown' },
   })
 
   const store = await createStorePromise({

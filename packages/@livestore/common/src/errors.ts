@@ -17,10 +17,6 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
     )
 }
 
-export class SyncError extends Schema.TaggedError<SyncError>()('LiveStore.SyncError', {
-  cause: Schema.Defect,
-}) {}
-
 export class MaterializerHashMismatchError extends Schema.TaggedError<MaterializerHashMismatchError>()(
   'LiveStore.MaterializerHashMismatchError',
   {
@@ -55,5 +51,10 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
   code: Schema.optional(Schema.Union(Schema.Number, Schema.String)),
   /** The original SQLite3 error */
   cause: Schema.Defect,
+  note: Schema.optional(Schema.String),
+}) {}
+
+export class MaterializeError extends Schema.TaggedError<MaterializeError>()('LiveStore.MaterializeError', {
+  cause: Schema.Union(MaterializerHashMismatchError, SqliteError),
   note: Schema.optional(Schema.String),
 }) {}
