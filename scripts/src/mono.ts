@@ -5,7 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
-import * as integrationTests from '@local/tests-integration/run-tests'
+import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
@@ -15,92 +15,6 @@ import { deployToNetlify } from './shared/netlify.ts'
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
-
-// GitHub actions log groups
-const runTestGroup =
-  (name: string) =>
-  <E, C>(effect: Effect.Effect<unknown, E, C>) =>
-    Effect.gen(function* () {
-      console.log(`::group::${name}`)
-      yield* effect
-      console.log(`::endgroup::`)
-    }).pipe(Effect.withSpan(`test-group(${name})`))
-
-// TODO: Consider replacing hardcoded package targeting with Vitest CLI flag passthrough
-// This would allow more flexible test targeting using standard Vitest options like:
-// - File patterns as positional arguments (e.g., mono test unit packages/@livestore/common)
-// - --testNamePattern/-t for filtering tests by name
-// - --exclude for excluding files
-// - Other standard Vitest CLI flags for more precise test control
-const testUnitCommand = Cli.Command.make(
-  'unit',
-  {},
-  Effect.fn(function* () {
-    // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
-    if (isGithubAction) {
-      process.env.CI = '1'
-
-      const vitestPathsToRunSequentially = [`${cwd}/packages/@livestore/webmesh`, `${cwd}/tests/package-common`]
-      const vitestPathsToRunInParallel = [
-        `${cwd}/packages/@livestore/utils`,
-        `${cwd}/packages/@livestore/common`,
-        `${cwd}/packages/@livestore/livestore`,
-      ]
-
-      // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
-      // Ignoring them for now but we should fix them eventually
-      for (const vitestPath of vitestPathsToRunSequentially) {
-        yield* runTestGroup(vitestPath)(cmd(`vitest run ${vitestPath}`, { cwd }).pipe(Effect.ignoreLogged))
-      }
-
-      // Run the rest of the tests in parallel
-      yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
-    } else {
-      const paths = [
-        `packages/@livestore/webmesh`,
-        `tests/package-common`,
-        `packages/@livestore/utils`,
-        `packages/@livestore/common`,
-        `packages/@livestore/livestore`,
-      ]
-
-      yield* Effect.forEach(
-        paths,
-        (vitestPath) =>
-          // TODO use this https://x.com/luxdav/status/1942532247833436656
-          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
-            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
-          ),
-        { concurrency: 'unbounded' },
-      )
-    }
-  }),
-)
-
-const testPerfCommand = Cli.Command.make(
-  'perf',
-  {},
-  Effect.fn(function* () {
-    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
-      cwd: `${cwd}/tests/perf`,
-      shell: true,
-    })
-  }),
-)
-
-// TODO when tests fail, print a command per failed test which allows running the test separately
-const testCommand = Cli.Command.make(
-  'test',
-  {},
-  Effect.fn(function* () {
-    yield* testUnitCommand.handler({})
-    yield* integrationTests.runAll.handler({
-      concurrency: isGithubAction ? 'sequential' : 'parallel',
-      localDevtoolsPreview: false,
-    })
-    yield* testPerfCommand.handler({})
-  }),
-).pipe(Cli.Command.withSubcommands([integrationTests.command, testUnitCommand, testPerfCommand]))
 
 const lintCommand = Cli.Command.make(
   'lint',
