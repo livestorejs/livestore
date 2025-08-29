@@ -14,6 +14,7 @@ export {
   ClientDocumentTableDefSymbol,
   type ClientDocumentTableOptions,
   clientDocument,
+  createOptimisticEventSchema,
   tableIsClientDocumentTable,
 } from './client-document-def.ts'
 export * from './column-annotations.ts'
