@@ -21,7 +21,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
+import { assertNever, isDevEnv, notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -482,7 +482,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
 
-      return Schema.decodeSync(schema)(rawRes)
+      const decodeResult = Schema.decodeEither(schema)(rawRes)
+      if (decodeResult._tag === 'Right') {
+        return decodeResult.right
+      } else {
+        return shouldNeverHappen(
+          `Failed to decode query result with for schema:`,
+          schema.toString(),
+          'raw result:',
+          rawRes,
+          'decode error:',
+          decodeResult.left,
+        )
+      }
     } else if (query._tag === 'def') {
       const query$ = query.make(this.reactivityGraph.context!)
       const result = this.query(query$.value, options)

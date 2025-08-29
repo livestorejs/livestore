@@ -110,7 +110,7 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 } => {
   const eventDef = schema.eventsDefsMap.get(eventName)
   if (eventDef === undefined) {
-    return shouldNeverHappen(`No mutation definition found for \`${eventName}\`.`)
+    return shouldNeverHappen(`No event definition found for \`${eventName}\`.`)
   }
   const materializer = schema.state.materializers.get(eventName)
   if (materializer === undefined) {

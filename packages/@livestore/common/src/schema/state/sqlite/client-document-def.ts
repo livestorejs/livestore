@@ -62,9 +62,16 @@ export const clientDocument = <
     },
   } satisfies ClientDocumentTableOptions<TType>
 
+  // Column needs optimistic schema to read historical data formats
+  const optimisticColumnSchema = createOptimisticEventSchema({
+    valueSchema,
+    defaultValue: options.default.value,
+    partialSet: false, // Column always stores full documents
+  })
+
   const columns = {
     id: SqliteDsl.text({ primaryKey: true }),
-    value: SqliteDsl.json({ schema: valueSchema }),
+    value: SqliteDsl.json({ schema: optimisticColumnSchema }),
   }
 
   const tableDef = table({ name, columns })
@@ -140,6 +147,105 @@ export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T
   }, {} as any)
 }
 
+/**
+ * Creates an optimistic schema that accepts historical event formats
+ * and transforms them to the current schema, preserving data and intent.
+ *
+ * Decision Matrix for Schema Changes:
+ *
+ * | Change Type         | Partial Set         | Full Set                        | Strategy                |
+ * |---------------------|---------------------|----------------------------------|-------------------------|
+ * | **Compatible Changes**                                                                                 |
+ * | Add optional field  | Preserve existing   | Preserve existing, new field undefined | Direct decode or merge   |
+ * | Add required field  | Preserve existing   | Preserve existing, new field from default | Merge with defaults      |
+ * | **Incompatible Changes**                                                                              |
+ * | Remove field        | Drop removed field  | Drop removed field, preserve others     | Filter & decode         |
+ * | Type change         | Use default for field | Use default for changed field         | Selective merge         |
+ * | Rename field        | Use default         | Use default (can't detect rename)       | Fall back to default    |
+ * | **Edge Cases**                                                                                       |
+ * | Empty event         | Return {}           | Return full default                     | Fallback handling       |
+ * | Invalid structure   | Return {}           | Return full default                     | Fallback handling       |
+ */
+export const createOptimisticEventSchema = ({
+  valueSchema,
+  defaultValue,
+  partialSet,
+}: {
+  valueSchema: Schema.Schema<any, any>
+  defaultValue: any
+  partialSet: boolean
+}) => {
+  const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
+
+  return Schema.transform(
+    Schema.Unknown, // Accept any historical event structure
+    targetSchema, // Output current schema
+    {
+      decode: (eventValue) => {
+        // Try direct decode first (for current schema events)
+        try {
+          return Schema.decodeUnknownSync(targetSchema)(eventValue)
+        } catch {
+          // Optimistic decoding for historical events
+
+          // Handle null/undefined/non-object cases
+          if (typeof eventValue !== 'object' || eventValue === null) {
+            console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
+            return partialSet ? {} : defaultValue
+          }
+
+          if (partialSet) {
+            // For partial sets: only preserve fields that exist in new schema
+            const partialResult: Record<string, unknown> = {}
+            let hasValidFields = false
+
+            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+              if (key in defaultValue) {
+                partialResult[key] = value
+                hasValidFields = true
+              }
+              // Drop fields that don't exist in new schema
+            }
+
+            if (hasValidFields) {
+              try {
+                return Schema.decodeUnknownSync(targetSchema)(partialResult)
+              } catch {
+                // Even filtered fields don't match schema
+                console.warn('Client document: Partial fields incompatible, returning empty partial')
+                return {}
+              }
+            }
+            return {}
+          } else {
+            // Full set: merge old data with new defaults
+            const merged: Record<string, unknown> = { ...defaultValue }
+
+            // Override defaults with valid fields from old event
+            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+              if (key in defaultValue) {
+                merged[key] = value
+              }
+              // Drop fields that don't exist in new schema
+            }
+
+            // Try to decode the merged value
+            try {
+              return Schema.decodeUnknownSync(valueSchema)(merged)
+            } catch {
+              // Merged value still doesn't match (e.g., type changes)
+              // Fall back to pure defaults
+              console.warn('Client document: Could not preserve event data, using defaults')
+              return defaultValue
+            }
+          }
+        }
+      },
+      encode: (value) => value, // Pass-through for encoding
+    },
+  )
+}
+
 export const deriveEventAndMaterializer = ({
   name,
   valueSchema,
@@ -155,7 +261,7 @@ export const deriveEventAndMaterializer = ({
     name: `${name}Set`,
     schema: Schema.Struct({
       id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
-      value: partialSet ? Schema.partial(valueSchema) : valueSchema,
+      value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
     }).annotations({ title: `${name}Set:Args` }),
     clientOnly: true,
     derived: true,
