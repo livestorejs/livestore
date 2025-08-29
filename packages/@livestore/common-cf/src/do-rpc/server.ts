@@ -91,12 +91,10 @@ export const toDurableObjectHandler =
 
         // Execute the handler
         const result = yield* Effect.gen(function* () {
-          const handlerResult = entry.handler(
-            request.payload,
-            Headers.fromInput({
-              'x-rpc-request-id': request.id.toString(),
-            }),
-          )
+          const handlerResult = entry.handler(request.payload, {
+            headers: Headers.fromInput({ 'x-rpc-request-id': request.id.toString() }),
+            clientId: 0,
+          })
 
           let value: any
           if (Effect.isEffect(handlerResult)) {
@@ -196,12 +194,10 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 ): Effect.Effect<CfTypes.ReadableStream, any, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
-    const handlerResult = entry.handler(
-      request.payload,
-      Headers.fromInput({
-        'x-rpc-request-id': request.id.toString(),
-      }),
-    )
+    const handlerResult = entry.handler(request.payload, {
+      headers: Headers.fromInput({ 'x-rpc-request-id': request.id.toString() }),
+      clientId: 0,
+    })
 
     let stream: Stream.Stream<any, any, never>
     if (Effect.isEffect(handlerResult)) {
