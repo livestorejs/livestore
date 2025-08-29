@@ -21,12 +21,10 @@ export default defineConfig({
     {
       command: 'pnpm wrangler dev --port 8788',
       port: 8788,
-      reuseExistingServer: true,
     },
     {
       command: 'pnpm vite dev --port 5175',
       port: 5175,
-      reuseExistingServer: true,
     },
   ],
 })
