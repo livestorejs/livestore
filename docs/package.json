@@ -33,7 +33,7 @@
     "starlight-sidebar-topics": "0.6.0",
     "starlight-typedoc": "0.21.3",
     "tailwindcss": "4.1.12",
-    "typedoc": "0.28.9",
+    "typedoc": "0.28.11",
     "typedoc-plugin-markdown": "4.8.0",
     "typescript": "5.9.2"
   },
