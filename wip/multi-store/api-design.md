@@ -4,31 +4,31 @@
 
 This document proposes the API design for supporting multiple LiveStore instances in React applications. The design prioritizes simplicity, type safety, and React best practices while enabling both simple and complex use cases.
 
-## Core API: `defineStore`
+## Core API: `createStoreContext`
 
-The foundation of the multi-store API is the `defineStore` function that creates a Provider component and a custom hook for accessing the store.
+The foundation of the multi-store API is the `createStoreContext` function that creates a Provider component and a custom hook for accessing the store.
 
 ### Store Definition
 
 ```tsx
-import { defineStore } from '@livestore/react'
+import { createStoreContext } from '@livestore/react'
 import { workspaceSchema } from './schemas'
 import { workspaceAdapter } from './adapters'
 
-// defineStore returns a tuple: [Provider, useStore]
-export const [WorkspaceStoreProvider, useWorkspaceStore] = defineStore({
+// createStoreContext returns a tuple: [Provider, useStore]
+export const [WorkspaceStoreProvider, useWorkspaceStore] = createStoreContext({
   name: 'workspace',
   schema: workspaceSchema,
   adapter: workspaceAdapter, // Optional: can be overridden in Provider
 })
 
-export const [ProjectStoreProvider, useProjectStore] = defineStore({
+export const [ProjectStoreProvider, useProjectStore] = createStoreContext({
   name: 'project',
   schema: projectSchema,
   adapter: projectAdapter,
 })
 
-export const [IssueStoreProvider, useIssueStore] = defineStore({
+export const [IssueStoreProvider, useIssueStore] = createStoreContext({
   name: 'issue',
   schema: issueSchema,
   adapter: issueAdapter,
@@ -55,7 +55,7 @@ interface UseStoreOptions {
 
 ## Provider Component
 
-The Provider component returned by `defineStore` is a custom component (not a raw Context.Provider) that handles store initialization and lifecycle.
+The Provider component returned by `createStoreContext` is a custom component (not a raw Context.Provider) that handles store initialization and lifecycle.
 
 ### Provider Props
 
@@ -90,7 +90,7 @@ interface StoreProviderProps<TSchema> {
 
 ### Primary API: Custom Hooks
 
-The hooks returned by `defineStore` are the primary way to access stores:
+The hooks returned by `createStoreContext` are the primary way to access stores:
 
 ```tsx
 function MyComponent() {
@@ -233,7 +233,7 @@ The hooks use `React.use(Promise)` internally to:
 
 ```tsx
 // Define store
-export const [AppStoreProvider, useAppStore] = defineStore({
+export const [AppStoreProvider, useAppStore] = createStoreContext({
   name: 'app',
   schema: appSchema,
   adapter: appAdapter,
@@ -373,7 +373,7 @@ const todos = useQuery(todosQuery)
 
 ### After (Multi-Store)
 ```tsx
-const [AppStoreProvider, useAppStore] = defineStore({
+const [AppStoreProvider, useAppStore] = createStoreContext({
   name: 'app',
   schema: schema,
   adapter: adapter,
@@ -406,7 +406,7 @@ Full type inference is maintained throughout:
 
 ```tsx
 // Schema defines types
-const [ProjectStoreProvider, useProjectStore] = defineStore({
+const [ProjectStoreProvider, useProjectStore] = createStoreContext({
   name: 'project',
   schema: projectSchema, // Schema<{ todos: Todo[], users: User[] }>
 })
