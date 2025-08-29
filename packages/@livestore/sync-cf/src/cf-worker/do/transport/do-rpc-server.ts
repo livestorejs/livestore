@@ -32,7 +32,7 @@ export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
       'SyncDoRpc.Ping': (_req) => {
         return Effect.succeed(SyncMessage.Pong.make({}))
       },
-      'SyncDoRpc.Pull': (req, headers) =>
+      'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen(this, function* () {
           const { rpcSubscriptions } = yield* DoCtx
 
