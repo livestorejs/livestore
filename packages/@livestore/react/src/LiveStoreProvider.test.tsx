@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y: test */
+/** biome-ignore-all lint/a11y: test files need a11y disabled */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'

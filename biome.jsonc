@@ -67,6 +67,8 @@
       "correctness": {
         "noUnusedImports": "warn",
         "useImportExtensions": "error",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error",
         "noUnusedLabels": {
           "level": "warn"
         },
