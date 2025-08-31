@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sqlite-wasm",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.4",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -23,7 +23,7 @@
     "@livestore/wa-sqlite": "workspace:*"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.4",
+    "@types/chrome": "catalog:",
     "@types/node": "catalog:",
     "@types/wicg-file-system-access": "^2023.10.6",
     "vitest": "catalog:",

@@ -4,13 +4,13 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.3",
-    "@livestore/livestore": "0.4.0-dev.3",
-    "@livestore/peer-deps": "0.4.0-dev.3",
-    "@livestore/wa-sqlite": "0.4.0-dev.3"
+    "@livestore/adapter-web": "0.4.0-dev.4",
+    "@livestore/livestore": "0.4.0-dev.4",
+    "@livestore/peer-deps": "0.4.0-dev.4",
+    "@livestore/wa-sqlite": "0.4.0-dev.4"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.3",
+    "@livestore/devtools-vite": "0.4.0-dev.4",
     "typescript": "^5.9.2",
     "vite": "^7.1.3"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-web",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.4",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -17,10 +17,10 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "1.9.0"
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.4",
+    "@types/chrome": "catalog:",
     "@types/wicg-file-system-access": "^2023.10.6",
     "vitest": "catalog:"
   },
