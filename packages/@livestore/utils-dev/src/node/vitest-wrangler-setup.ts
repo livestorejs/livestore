@@ -31,11 +31,17 @@ export const startWranglerDevServerPromise = async ({
   abortSignal,
   cwd,
   port: inputPort,
+  stdout = 'ignore',
+  stderr = 'ignore',
 }: {
   wranglerConfigPath?: string
   abortSignal?: AbortSignal
   cwd: string
   port?: number
+  /** @default 'ignore' */
+  stdout?: 'inherit' | 'ignore'
+  /** @default 'ignore' */
+  stderr?: 'inherit' | 'ignore'
 }) => {
   let wranglerProcess: ReturnType<typeof spawn> | undefined
 
@@ -78,15 +84,19 @@ export const startWranglerDevServerPromise = async ({
     wranglerProcess.stdout?.setEncoding('utf8')
     wranglerProcess.stderr?.setEncoding('utf8')
 
-    wranglerProcess.stdout?.on('data', (data: string) => {
-      // console.log(`[wrangler] ${data}`)
-      console.log(data)
-    })
+    if (stdout === 'inherit') {
+      wranglerProcess.stdout?.on('data', (data: string) => {
+        // console.log(`[wrangler] ${data}`)
+        console.log(data)
+      })
+    }
 
-    wranglerProcess.stderr?.on('data', (data: string) => {
-      // console.error(`[wrangler] ${data}`)
-      console.error(data)
-    })
+    if (stderr === 'inherit') {
+      wranglerProcess.stderr?.on('data', (data: string) => {
+        // console.error(`[wrangler] ${data}`)
+        console.error(data)
+      })
+    }
 
     await new Promise<void>((resolve) => {
       const onData = (data: string) => {
@@ -98,7 +108,9 @@ export const startWranglerDevServerPromise = async ({
       wranglerProcess?.stdout?.on('data', onData)
     })
 
-    console.log(`Wrangler dev server ready on port ${syncPort}`)
+    if (stdout === 'inherit') {
+      console.log(`Wrangler dev server ready on port ${syncPort}`)
+    }
 
     // Wait longer for the Cloudflare Workers runtime to fully initialize
     // console.log('Waiting for Cloudflare Workers runtime to fully initialize...')

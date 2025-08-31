@@ -22,7 +22,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   // InitialMessage: (req) => Layer.succeed(Name, req.name),
   InitialMessage: (req) =>
     Effect.gen(function* () {
-      yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
+      // yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
       return Layer.succeed(Name, req.name)
     }).pipe(Layer.unwrapScoped),
   // InitialMessage: (req) =>
@@ -47,6 +47,19 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
       }
     }).pipe(Effect.withSpan('GetSpan')),
   RunnerInterrupt: () => Effect.interrupt,
+  StartStubbornWorker: ({ blockDuration }) =>
+    Effect.gen(function* () {
+      // Start a blocking operation that won't respond to normal shutdown signals
+      const pid = process.pid
+      yield* Effect.fork(
+        Effect.gen(function* () {
+          // Block for the specified duration, ignoring shutdown attempts
+          yield* Effect.sleep(`${blockDuration} millis`)
+          yield* Effect.log('Stubborn worker finished blocking')
+        }).pipe(Effect.uninterruptible),
+      )
+      return { pid }
+    }),
 }).pipe(Layer.provide(ChildProcessRunner.layer))
 // }).pipe(Layer.provide(PlatformNode.NodeWorkerRunner.layer))
 

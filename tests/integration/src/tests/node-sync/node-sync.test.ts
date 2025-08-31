@@ -178,18 +178,18 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
-    const nodeChildProcess = ChildProcess.fork(
-      new URL('./client-node-worker.ts', import.meta.url),
-      // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
-      [clientId],
-    )
-
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
       initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params }),
     }).pipe(
-      Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
+      Effect.provide(ChildProcessWorker.layer(() =>
+        ChildProcess.fork(
+          new URL('./client-node-worker.ts', import.meta.url),
+          // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
+          [clientId],
+        )
+      )),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
     )
