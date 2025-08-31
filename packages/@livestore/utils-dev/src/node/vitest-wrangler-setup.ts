@@ -1,7 +1,10 @@
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import path from 'node:path'
+
 import { Effect, UnknownError } from '@livestore/utils/effect'
+
+import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
 export type StartWranglerDevServerArgs = {
   wranglerConfigPath?: string
@@ -17,8 +20,7 @@ export const startWranglerDevServer = (args: StartWranglerDevServerArgs) =>
 
 // TODO refactor implementation with Effect
 // TODO add test for this
-// TODO allow for config to be passed in via code instead of `wrangler.toml` file
-// TODO fix zombie workerd processes causing high CPU usage - see https://github.com/livestorejs/livestore/issues/568
+// TODO allow for config to be passed in via code instead of `wrangler.toml` file (would need to be placed in temporary file as wrangler only accept files as config)
 /**
  * Starts a Wrangler dev server for testing with automatic cleanup.
  *
@@ -45,6 +47,47 @@ export const startWranglerDevServerPromise = async ({
 }) => {
   let wranglerProcess: ReturnType<typeof spawn> | undefined
 
+  // Enhanced abort signal handling for immediate cleanup
+  const killWranglerProcess = async (immediate = false) => {
+    if (wranglerProcess?.pid) {
+      console.log('Killing wrangler process...')
+
+      try {
+        // Kill the entire process tree (wrangler + workerd children)
+        // Use shorter timeout for immediate cancellation scenarios
+        const result = await killProcessTree(wranglerProcess.pid, {
+          timeout: immediate ? 500 : 3000, // 500ms for abort, 3s for normal cleanup
+          signals: ['SIGTERM', 'SIGKILL'],
+          includeRoot: true,
+        })
+
+        if (result.failedPids.length > 0) {
+          console.warn(`Failed to kill some processes: ${result.failedPids.join(', ')}`)
+        } else {
+          console.log(`Successfully cleaned up wrangler and ${result.killedPids.length - 1} child processes`)
+        }
+      } catch (error) {
+        console.warn('Error during enhanced cleanup, falling back to basic kill:', error)
+        // Fallback to basic kill
+        wranglerProcess.kill('SIGKILL')
+      }
+
+      wranglerProcess = undefined
+    }
+  }
+
+  // Set up abort signal handler early for immediate response
+  if (abortSignal) {
+    abortSignal.addEventListener(
+      'abort',
+      () => {
+        console.log('Abort signal received, cleaning up wrangler process immediately...')
+        killWranglerProcess(true).catch(console.error) // Use immediate=true for fast cancellation
+      },
+      { once: true },
+    )
+  }
+
   const getFreePort = (): Promise<number> => {
     return new Promise((resolve, reject) => {
       const server = net.createServer()
@@ -63,6 +106,13 @@ export const startWranglerDevServerPromise = async ({
   }
 
   const setup = async () => {
+    // Clean up any orphaned workerd processes before starting
+    try {
+      await cleanupOrphanedProcesses(['wrangler', 'workerd'])
+    } catch (error) {
+      console.warn('Failed to clean up orphaned workerd processes:', error)
+    }
+
     const syncPort = inputPort ?? (await getFreePort())
 
     const resolvedWranglerConfigPath = path.resolve(wranglerConfigPath ?? path.join(cwd, 'wrangler.toml'))
@@ -83,6 +133,18 @@ export const startWranglerDevServerPromise = async ({
 
     wranglerProcess.stdout?.setEncoding('utf8')
     wranglerProcess.stderr?.setEncoding('utf8')
+
+    // Handle process exit/error events for cleanup
+    wranglerProcess.on('exit', (_code, signal) => {
+      if (signal) {
+        console.log(`Wrangler process exited with signal: ${signal}`)
+      }
+      wranglerProcess = undefined
+    })
+
+    wranglerProcess.on('error', (error) => {
+      console.warn('Wrangler process error:', error.message)
+    })
 
     if (stdout === 'inherit') {
       wranglerProcess.stdout?.on('data', (data: string) => {
@@ -119,22 +181,28 @@ export const startWranglerDevServerPromise = async ({
     return { port: syncPort }
   }
 
-  const killWranglerProcess = () => {
-    if (wranglerProcess) {
-      console.log('Killing wrangler process...')
-      wranglerProcess.kill('SIGTERM')
-      wranglerProcess = undefined
+  // Wrap async cleanup for process events
+  const syncKillWrangler = () => {
+    // For synchronous event handlers, we can't wait for async cleanup
+    // but we can at least try the basic kill
+    if (wranglerProcess?.pid) {
+      try {
+        wranglerProcess.kill('SIGKILL')
+        wranglerProcess = undefined
+      } catch {
+        // Process might already be dead
+      }
     }
   }
 
-  process.on('exit', killWranglerProcess)
-  process.on('SIGINT', killWranglerProcess)
-  process.on('SIGTERM', killWranglerProcess)
+  process.on('exit', syncKillWrangler)
+  process.on('SIGINT', syncKillWrangler)
+  process.on('SIGTERM', syncKillWrangler)
 
   try {
     const { afterAll } = await import('vitest')
-    afterAll(() => {
-      killWranglerProcess()
+    afterAll(async () => {
+      await killWranglerProcess()
     })
   } catch {}
 
