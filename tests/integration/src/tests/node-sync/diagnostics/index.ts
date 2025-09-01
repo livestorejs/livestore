@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as process from 'node:process'
-import { Command, Effect, Schema } from '@livestore/utils/effect'
+import { Command, type CommandExecutor, Effect, Schema } from '@livestore/utils/effect'
 
 /**
  * System resource snapshot
@@ -299,7 +299,7 @@ export const generateMarkdownSummary = (report: DiagnosticReport): string => {
 /**
  * Create a minimal test timing harness
  */
-export const createTimingHarness = <A, E, R>(operation: string, testEffect: Effect.Effect<A, E, R>) =>
+export const createTimingHarness = <A, E, R>(operation: string, testEffect: Effect.Effect<A, E, R>): Effect.Effect<{ report: DiagnosticReport; result: unknown; success: boolean }, E, R | CommandExecutor.CommandExecutor> =>
   Effect.gen(function* () {
     const runId = `${operation}-${Date.now()}`
     const startSnapshot = yield* collectSystemSnapshot()

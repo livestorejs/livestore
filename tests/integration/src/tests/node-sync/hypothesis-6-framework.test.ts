@@ -52,7 +52,7 @@ Vitest.describe('Hypothesis 6: Test Framework Overhead', { timeout }, () => {
       const { measurement: schemaParsing } = yield* measureTiming(
         'schema-parsing-perf',
         Effect.gen(function* () {
-          const { Schema } = require('@livestore/utils/effect')
+          const Schema = yield* Effect.promise(() => import('@livestore/utils/effect').then((m) => m.Schema))
 
           const TestSchema = Schema.Struct({
             id: Schema.String,
