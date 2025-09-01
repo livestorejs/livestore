@@ -26,7 +26,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
       Effect.gen(function* () {
         const dockerCompose = yield* DockerComposeService
 
-        // Test that pull operation works (should succeed for hello-world image)  
+        // Test that pull operation works (should succeed for hello-world image)
         yield* dockerCompose.pull
       }).pipe(withBasicTest()(test)),
     )
