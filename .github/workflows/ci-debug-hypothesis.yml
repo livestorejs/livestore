@@ -1,5 +1,4 @@
 name: "Debug: CI Performance Investigation"
-run-name: "Hypothesis Testing: ${{ matrix.hypothesis }} (${{ github.sha }})"
 
 # Only run on our debug branch
 on:
