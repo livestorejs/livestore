@@ -136,10 +136,7 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
         'bunx-wrangler-resolve',
         Effect.gen(function* () {
           // Just resolve the command, don't run it
-          return yield* Command.make('bunx', '--help').pipe(
-            Command.string,
-            Effect.timeout(Duration.seconds(30)),
-          )
+          return yield* Command.make('bunx', '--help').pipe(Command.string, Effect.timeout(Duration.seconds(30)))
         }).pipe(Effect.provide(PlatformNode.NodeContext.layer)),
       )
 

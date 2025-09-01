@@ -99,7 +99,13 @@ export const createHypothesisTest = (
       }
 
       return enhancedReport
-    }).pipe(withDiagnosticCtx(hypothesisName)(test)),
+    }).pipe(Effect.provide(Layer.mergeAll(
+      makeFileLogger('runner', { testContext: test as any }),
+      WranglerDevServerService.Default({
+        cwd: `${import.meta.dirname}/fixtures`,
+        showLogs: true,
+      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+    ))),
   )
 
 /**
@@ -109,69 +115,65 @@ export const environmentChecks = {
   /**
    * Verify we're running in the expected environment
    */
-  verifyEnvironment: Effect.fn('verifyEnvironment')(
-    function* () {
-      const snapshot = yield* collectSystemSnapshot()
+  verifyEnvironment: Effect.fn('verifyEnvironment')(function* () {
+    const snapshot = yield* collectSystemSnapshot()
 
-      yield* Effect.log('🔍 Environment Verification', {
-        isCI: snapshot.env.isCI,
-        platform: snapshot.env.platform,
-        nodeVersion: snapshot.env.nodeVersion,
-        availableMemory: `${Math.round(snapshot.memory.available / 1024 / 1024)}MB`,
-        cpuCores: snapshot.cpu.coreCount,
-      })
+    yield* Effect.log('🔍 Environment Verification', {
+      isCI: snapshot.env.isCI,
+      platform: snapshot.env.platform,
+      nodeVersion: snapshot.env.nodeVersion,
+      availableMemory: `${Math.round(snapshot.memory.available / 1024 / 1024)}MB`,
+      cpuCores: snapshot.cpu.coreCount,
+    })
 
-      // Check for common CI issues
-      if (snapshot.env.isCI) {
-        if (snapshot.memory.available < 1024 * 1024 * 1024) {
-          // Less than 1GB
-          yield* Effect.logWarning('⚠️ Low memory available in CI')
-        }
-
-        if (snapshot.cpu.loadAverage[0] > snapshot.cpu.coreCount * 2) {
-          yield* Effect.logWarning('⚠️ High CPU load detected')
-        }
+    // Check for common CI issues
+    if (snapshot.env.isCI) {
+      if (snapshot.memory.available < 1024 * 1024 * 1024) {
+        // Less than 1GB
+        yield* Effect.logWarning('⚠️ Low memory available in CI')
       }
 
-      return snapshot
-    },
-  ),
+      if (snapshot.cpu.loadAverage[0] > snapshot.cpu.coreCount * 2) {
+        yield* Effect.logWarning('⚠️ High CPU load detected')
+      }
+    }
+
+    return snapshot
+  }),
 
   /**
    * Check for orphaned processes
    */
-  checkOrphanedProcesses: Effect.fn('checkOrphanedProcesses')(
-    function* () {
-      const wranglerProcs = yield* Effect.try({
-        try: () => {
-          const { execSync } = require('node:child_process')
-          return execSync('pgrep -f wrangler || true', { encoding: 'utf8' }).trim()
-        },
-        catch: () => '',
+  checkOrphanedProcesses: Effect.fn('checkOrphanedProcesses')(function* () {
+    const wranglerProcs = yield* Effect.try({
+      try: () => {
+        const { execSync } = require('node:child_process')
+        return execSync('pgrep -f wrangler || true', { encoding: 'utf8' }).trim()
+      },
+      catch: () => '',
+    })
+
+    const workerdProcs = yield* Effect.try({
+      try: () => {
+        const { execSync } = require('node:child_process')
+        return execSync('pgrep -f workerd || true', { encoding: 'utf8' }).trim()
+      },
+      catch: () => '',
+    })
+
+    const orphanCount = [wranglerProcs, workerdProcs].filter((p) => p.length > 0).length
+
+    if (orphanCount > 0) {
+      yield* Effect.logWarning(`🧟 Found ${orphanCount} orphaned processes:`, {
+        wrangler: wranglerProcs || 'none',
+        workerd: workerdProcs || 'none',
       })
+    } else {
+      yield* Effect.log('✅ No orphaned processes detected')
+    }
 
-      const workerdProcs = yield* Effect.try({
-        try: () => {
-          const { execSync } = require('node:child_process')
-          return execSync('pgrep -f workerd || true', { encoding: 'utf8' }).trim()
-        },
-        catch: () => '',
-      })
-
-      const orphanCount = [wranglerProcs, workerdProcs].filter((p) => p.length > 0).length
-
-      if (orphanCount > 0) {
-        yield* Effect.logWarning(`🧟 Found ${orphanCount} orphaned processes:`, {
-          wrangler: wranglerProcs || 'none',
-          workerd: workerdProcs || 'none',
-        })
-      } else {
-        yield* Effect.log('✅ No orphaned processes detected')
-      }
-
-      return { wranglerProcs, workerdProcs, orphanCount }
-    },
-  ),
+    return { wranglerProcs, workerdProcs, orphanCount }
+  }),
 }
 
 // Re-export diagnostic utilities
