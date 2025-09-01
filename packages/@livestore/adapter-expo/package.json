@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-expo",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.5",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -10,7 +10,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "1.9.0"
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
     "expo-application": "^6.1.5",

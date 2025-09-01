@@ -1,6 +1,6 @@
 {
   "name": "@livestore/wa-sqlite",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.5",
   "type": "module",
   "exports": {
     ".": {
@@ -33,7 +33,7 @@
     "jasmine-core": "^4.5.0",
     "monaco-editor": "^0.34.1",
     "typedoc": "^0.28.11",
-    "typescript": "^5.9.2",
+    "typescript": "catalog:",
     "web-test-runner-jasmine": "^0.0.6"
   },
   "files": [

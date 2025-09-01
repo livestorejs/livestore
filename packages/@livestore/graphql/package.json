@@ -1,6 +1,6 @@
 {
   "name": "@livestore/graphql",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.5",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -10,10 +10,10 @@
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "1.9.0"
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
-    "graphql": "^16.11.0"
+    "graphql": "catalog:"
   },
   "files": [
     "package.json",
@@ -22,7 +22,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "graphql": "^16.11.0"
+    "graphql": "catalog:"
   },
   "publishConfig": {
     "access": "public",

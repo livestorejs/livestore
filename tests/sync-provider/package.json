@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
+    "@types/node": "catalog:",
     "vitest": "catalog:"
   },
   "scripts": {

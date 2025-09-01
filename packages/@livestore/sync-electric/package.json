@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sync-electric",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.5",
   "type": "module",
   "sideEffects": false,
   "exports": {

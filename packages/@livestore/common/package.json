@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common",
-  "version": "0.4.0-dev.3",
+  "version": "0.4.0-dev.5",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -14,7 +14,7 @@
   "dependencies": {
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/api": "catalog:",
     "graphology": "0.26.0-alpha1",
     "graphology-dag": "0.4.1",
     "graphology-types": "0.24.8"

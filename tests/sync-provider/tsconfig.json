@@ -5,7 +5,7 @@
     "rootDir": "./src",
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "@types/node"]
   },
   "include": ["./src"],
   "references": [
