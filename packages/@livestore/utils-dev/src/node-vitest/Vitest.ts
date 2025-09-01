@@ -77,6 +77,8 @@ export const withTestCtx =
 /**
  * Equivalent to Vitest.prop but provides extra prop context to the test function
  *
+ * TODO: allow for upper timelimit instead of / additional to `numRuns`
+ *
  * TODO: Upstream to Effect
  */
 export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
