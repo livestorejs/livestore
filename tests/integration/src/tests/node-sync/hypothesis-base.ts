@@ -1,4 +1,4 @@
-import '../thread-polyfill.ts'
+import './thread-polyfill.ts'
 
 import { IS_CI } from '@livestore/utils'
 import { Duration, Effect, Layer } from '@livestore/utils/effect'
@@ -48,11 +48,10 @@ export const createHypothesisTest = (
   Vitest.scopedLive(description, (test) =>
     Effect.gen(function* () {
       yield* Effect.log(`🔬 Starting ${hypothesisName}`)
-      yield* logSystemInfo()
 
       const runId = `${hypothesisName}-${Date.now()}`
 
-      // Run the test with timing harness
+      // Run the test with timing harness (which will call logSystemInfo after layers are provided)
       const { report, success } = yield* createTimingHarness(hypothesisName, testImplementation)
 
       // Add environment-specific conclusions
@@ -99,13 +98,17 @@ export const createHypothesisTest = (
       }
 
       return enhancedReport
-    }).pipe(Effect.provide(Layer.mergeAll(
-      makeFileLogger('runner', { testContext: test as any }),
-      WranglerDevServerService.Default({
-        cwd: `${import.meta.dirname}/fixtures`,
-        showLogs: true,
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
-    ))),
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(
+          makeFileLogger('runner', { testContext: test as any }),
+          WranglerDevServerService.Default({
+            cwd: `${import.meta.dirname}/fixtures`,
+            showLogs: true,
+          }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        ),
+      ),
+    ),
   )
 
 /**

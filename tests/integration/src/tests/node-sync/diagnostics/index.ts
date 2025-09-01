@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as process from 'node:process'
-import { Command, type CommandExecutor, Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 /**
  * System resource snapshot
@@ -80,23 +80,32 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(function
   const totalMem = os.totalmem()
   const freeMem = os.freemem()
 
-  // Count processes
-  const psOutput = yield* Command.make('ps', 'aux').pipe(
-    Command.string,
-    Effect.map((output) => output.split('\n').length - 1),
-    Effect.catchAll(() => Effect.succeed(-1)),
+  // Count processes using direct Node.js APIs to avoid dependency issues
+  const psOutput = yield* Effect.try({
+    try: () => {
+      const { execSync } = require('node:child_process')
+      return execSync('ps aux | wc -l', { encoding: 'utf8' }).trim()
+    },
+    catch: () => -1,
+  }).pipe(
+    Effect.map((output) => (typeof output === 'string' ? Number.parseInt(output, 10) - 1 : -1)),
   )
 
-  const nodeProcesses = yield* Command.make('pgrep', '-c', 'node').pipe(
-    Command.string,
-    Effect.map((output) => Number.parseInt(output.trim(), 10)),
-    Effect.catchAll(() => Effect.succeed(-1)),
+  const nodeProcesses = yield* Effect.try({
+    try: () => {
+      const { execSync } = require('node:child_process')
+      return execSync('pgrep -c node || echo 0', { encoding: 'utf8' }).trim()
+    },
+    catch: () => '0',
+  }).pipe(
+    Effect.map((output) => Number.parseInt(output, 10)),
   )
 
-  // Get disk info if possible
-  const diskInfo = yield* Command.make('df', '-h', '.').pipe(
-    Command.string,
-    Effect.map((output) => {
+  // Get disk info if possible using direct Node.js API
+  const diskInfo = yield* Effect.try({
+    try: () => {
+      const { execSync } = require('node:child_process')
+      const output = execSync('df -h .', { encoding: 'utf8' })
       const lines = output.split('\n')
       if (lines.length > 1) {
         const parts = lines[1]?.split(/\s+/) ?? []
@@ -106,9 +115,9 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(function
         }
       }
       return undefined
-    }),
-    Effect.catchAll(() => Effect.succeed(undefined)),
-  )
+    },
+    catch: () => undefined,
+  })
 
   return {
     timestamp: new Date(),
@@ -299,12 +308,22 @@ export const generateMarkdownSummary = (report: DiagnosticReport): string => {
 /**
  * Create a minimal test timing harness
  */
-export const createTimingHarness = <A, E, R>(operation: string, testEffect: Effect.Effect<A, E, R>): Effect.Effect<{ report: DiagnosticReport; result: unknown; success: boolean }, E, R | CommandExecutor.CommandExecutor> =>
+export const createTimingHarness = <A, E, R>(
+  operation: string,
+  testEffect: Effect.Effect<A, E, R>,
+): Effect.Effect<
+  { report: DiagnosticReport; result: unknown; success: boolean },
+  E,
+  R
+> =>
   Effect.gen(function* () {
     const runId = `${operation}-${Date.now()}`
     const startSnapshot = yield* collectSystemSnapshot()
     const allTimings: TimingMeasurement[] = []
     const allSnapshots: SystemSnapshot[] = [startSnapshot]
+    
+    // Log system info now that we have services available
+    yield* logSystemInfo()
 
     let finalResult: unknown
     let success = false
