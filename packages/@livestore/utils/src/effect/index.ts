@@ -66,6 +66,7 @@ export {
   Equal,
   ExecutionStrategy,
   Exit,
+  FastCheck,
   Fiber,
   FiberHandle,
   FiberId,

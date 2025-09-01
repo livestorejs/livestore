@@ -89,13 +89,19 @@ export const makeAdapter = ({
  */
 export const makeWorkerAdapter = ({
   workerUrl,
+  workerExtraArgs,
   ...options
 }: NodeAdapterOptions & {
   /**
    * Example: `new URL('./livestore.worker.ts', import.meta.url)`
    */
   workerUrl: URL
-}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl } })
+  /**
+   * Extra arguments to pass to the worker which can be accessed in the worker
+   * via `getWorkerArgs()`
+   */
+  workerExtraArgs?: Schema.JsonValue
+}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl, workerExtraArgs } })
 
 const makeAdapterImpl = ({
   storage,
@@ -114,6 +120,7 @@ const makeAdapterImpl = ({
     | {
         _tag: 'multi-threaded'
         workerUrl: URL
+        workerExtraArgs: Schema.JsonValue | undefined
       }
 }): Adapter =>
   ((adapterArgs) =>
@@ -185,6 +192,7 @@ const makeAdapterImpl = ({
               clientId,
               sessionId,
               workerUrl: leaderThreadInput.workerUrl,
+              workerExtraArgs: leaderThreadInput.workerExtraArgs,
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
@@ -296,6 +304,7 @@ const makeWorkerLeaderThread = ({
   clientId,
   sessionId,
   workerUrl,
+  workerExtraArgs,
   storage,
   devtools,
   bootStatusQueue,
@@ -307,6 +316,7 @@ const makeWorkerLeaderThread = ({
   clientId: string
   sessionId: string
   workerUrl: URL
+  workerExtraArgs: Schema.JsonValue | undefined
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
@@ -318,7 +328,7 @@ const makeWorkerLeaderThread = ({
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
       execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId })],
+      argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs })],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 

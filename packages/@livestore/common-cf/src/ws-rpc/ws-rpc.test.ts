@@ -1,58 +1,59 @@
 import { Chunk, Effect, Layer, Option, RpcClient, RpcSerialization, Socket, Stream } from '@livestore/utils/effect'
-import { startWranglerDevServerPromise } from '@livestore/utils-dev/node'
+import { PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { beforeAll, expect } from 'vitest'
+import { expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
-let port: number
+const testTimeout = 60_000
 
-beforeAll(async () => {
-  const { port: wranglerPort } = await startWranglerDevServerPromise({
-    cwd: `${import.meta.dirname}/test-fixtures`,
-  })
-  port = wranglerPort
+const withWranglerTest = Vitest.makeWithTestCtx({
+  timeout: testTimeout,
+  makeLayer: () =>
+    WranglerDevServerService.Default({
+      cwd: `${import.meta.dirname}/test-fixtures`,
+    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
 })
 
 const ProtocolLive = Layer.suspend(() =>
-  RpcClient.layerProtocolSocket().pipe(
-    Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}`)),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
-    Layer.provide(RpcSerialization.layerJson),
-  ),
+  Effect.gen(function* () {
+    const server = yield* WranglerDevServerService
+    return RpcClient.layerProtocolSocket().pipe(
+      Layer.provide(Socket.layerWebSocket(`ws://localhost:${server.port}`)),
+      Layer.provide(Socket.layerWebSocketConstructorGlobal),
+      Layer.provide(RpcSerialization.layerJson),
+    )
+  }).pipe(Layer.unwrapEffect),
 )
 
-Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
+Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => {
   // Direct HTTP RPC client tests
-  Vitest.scopedLive(
-    'should call ping method',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should call ping method', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Ping({ message: 'Hello HTTP RPC' })
       expect(result).toEqual({ response: 'Pong: Hello HTTP RPC' })
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should call echo method',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should call echo method', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Echo({ text: 'Echo' })
       expect(result).toEqual({ echo: 'Echo: Echo' })
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should call add method',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should call add method', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Add({ a: 15, b: 25 })
       expect(result).toEqual({ result: 40 })
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle RPC fail method',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle RPC fail method', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
@@ -66,12 +67,11 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
           }
         }"
       `)
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle defect method',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle defect method', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
@@ -85,12 +85,11 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
           }
         }"
       `)
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle streaming RPC via HTTP',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle streaming RPC via HTTP', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.Stream({}).pipe(
         Stream.take(4),
@@ -98,12 +97,11 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
       )
       const chunks = yield* Stream.runCollect(stream)
       expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle streaming RPC with error via HTTP',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle streaming RPC with error via HTTP', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamError({ count: 5, errorAfter: 4 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
@@ -118,12 +116,11 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
           }
         }"
       `)
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle streaming RPC with defect via HTTP',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle streaming RPC with defect via HTTP', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamDefect({ count: 4, defectAfter: 1 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
@@ -138,24 +135,22 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: 5000 }, () => {
           }
         }"
       `)
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle stream interruption via HTTP',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle stream interruption via HTTP', (test) =>
+    Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
       const chunks = yield* Stream.runCollect(stream)
       expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 })
 
 Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
-  Vitest.scopedLive(
-    'should maintain RPC functionality after hibernation',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should maintain RPC functionality after hibernation', (test) =>
+    Effect.gen(function* () {
       console.log('🧪 Testing RPC server persistence across hibernation...')
 
       // Step 1: Create client and test initial functionality
@@ -214,12 +209,11 @@ Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
       console.log('✅ Streaming after hibernation successful')
 
       console.log('🎉 All RPC operations successful after hibernation!')
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive(
-    'should handle rapid operations after hibernation',
-    Effect.fn(function* () {
+  Vitest.scopedLive('should handle rapid operations after hibernation', (test) =>
+    Effect.gen(function* () {
       console.log('🧪 Testing rapid operations after hibernation...')
 
       console.log('Step 1: Establishing initial connection...')
@@ -266,6 +260,6 @@ Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
         results.map((r) => r.operation),
       )
       console.log('🎉 Rapid operations work correctly after hibernation!')
-    }, Effect.provide(ProtocolLive)),
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 })

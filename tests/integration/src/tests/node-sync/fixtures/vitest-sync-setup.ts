@@ -1,4 +1,19 @@
-import { startWranglerDevServerPromise } from '@livestore/utils-dev/node'
+// import { Effect, Layer } from '@livestore/utils/effect'
+// import { PlatformNode } from '@livestore/utils/node'
+// import { WranglerDevServerService } from '@livestore/utils-dev/node'
 
-const { port } = await startWranglerDevServerPromise({ cwd: import.meta.dirname })
-process.env.LIVESTORE_SYNC_PORT = port.toString()
+// const setupEffect = Effect.gen(function* () {
+//   const server = yield* WranglerDevServerService
+//   process.env.LIVESTORE_SYNC_PORT = server.port.toString()
+//   return server.port
+// })
+
+// await Effect.runPromise(
+//   setupEffect.pipe(
+//     Effect.provide(
+//       WranglerDevServerService.Default({ cwd: import.meta.dirname }).pipe(
+//         Layer.provide(PlatformNode.NodeContext.layer),
+//       ),
+//     ),
+//   ),
+// )

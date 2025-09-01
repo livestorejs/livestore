@@ -3,9 +3,10 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Effect, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessWorker } from '@livestore/utils/node'
+import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
@@ -13,13 +14,19 @@ import * as WorkerSchema from './worker-schema.ts'
 
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
-const testTimeout = IS_CI ? 600_000 : 900_000
+const testTimeout = Duration.toMillis(IS_CI ? Duration.minutes(10) : Duration.minutes(15))
 
 const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
     timeout: testTimeout,
-    makeLayer: (testContext) => makeFileLogger('runner', { testContext }),
+    makeLayer: (testContext) =>
+      Layer.mergeAll(
+        makeFileLogger('runner', { testContext }),
+        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures` }).pipe(
+          Layer.provide(PlatformNode.NodeContext.layer),
+        ),
+      ),
   })
 
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
@@ -58,7 +65,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
 
-  Vitest.scopedLive.prop(
+  // TODO investigate why stoping this test in VSC Vitest UI often doesn't stop the test runs
+  // https://share.cleanshot.com/8gDKh62c
+  Vitest.asProp(
+    Vitest.scopedLive,
     'node-sync prop tests',
     Vitest.DEBUGGER_ACTIVE
       ? {
@@ -91,8 +101,19 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     (
       { storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams },
       test,
+      { numRuns, runIndex },
     ) =>
       Effect.gen(function* () {
+        console.log(`Run ${runIndex + 1}/${numRuns}`, {
+          storageType,
+          adapterType,
+          todoCountA,
+          todoCountB,
+          commitBatchSize,
+          leaderPushBatchSize,
+          simulationParams,
+        })
+
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
         yield* Effect.log('concurrent push', {
@@ -146,7 +167,6 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         yield* Effect.raceFirst(exec, onShutdown)
       }).pipe(
-        Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withTestCtx({
           suffix: stringifyObject({
             adapterType,
@@ -157,6 +177,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
             simulationParams,
           }),
         })(test),
+        // Logging without context (to make sure log is always displayed)
+        Effect.logDuration(`${test.task.suite?.name}:${test.task.name} (Run ${runIndex + 1}/${numRuns})`),
       ),
     Vitest.DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
@@ -178,18 +200,22 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
-    const nodeChildProcess = ChildProcess.fork(
-      new URL('./client-node-worker.ts', import.meta.url),
-      // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
-      [clientId],
-    )
-
+    const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params }),
+      initialMessage: () =>
+        WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
     }).pipe(
-      Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
+      Effect.provide(
+        ChildProcessWorker.layer(() =>
+          ChildProcess.fork(
+            new URL('./client-node-worker.ts', import.meta.url),
+            // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
+            [clientId],
+          ),
+        ),
+      ),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
     )

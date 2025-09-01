@@ -35,6 +35,12 @@ export class RunnerInterrupt extends Schema.TaggedRequest<RunnerInterrupt>()('Ru
   payload: {},
 }) {}
 
+export class StartStubbornWorker extends Schema.TaggedRequest<StartStubbornWorker>()('StartStubbornWorker', {
+  failure: Schema.Never,
+  success: Schema.Struct({ pid: Schema.Number }),
+  payload: { blockDuration: Schema.Number },
+}) {}
+
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
   failure: Schema.Never,
   success: Schema.Void,
@@ -61,5 +67,12 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()('GetSpan', {
   payload: {},
 }) {}
 
-export const WorkerMessage = Schema.Union(GetUserById, GetPersonById, InitialMessage, GetSpan, RunnerInterrupt)
+export const WorkerMessage = Schema.Union(
+  GetUserById,
+  GetPersonById,
+  InitialMessage,
+  GetSpan,
+  RunnerInterrupt,
+  StartStubbornWorker,
+)
 export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>

@@ -9,6 +9,7 @@ import {
   KeyValueStore,
   Layer,
   Logger,
+  LogLevel,
   ManagedRuntime,
   Option,
   Stream,
@@ -56,7 +57,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
-        Layer.provideMerge(Logger.prettyWithThread('test-runner')),
+        Layer.provide(Logger.prettyWithThread('test-runner')),
+        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
         Layer.orDie,
       ),
     )
