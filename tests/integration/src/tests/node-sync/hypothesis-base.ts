@@ -10,7 +10,6 @@ import {
   createTimingHarness,
   type DiagnosticReport,
   generateMarkdownSummary,
-  logSystemInfo,
   measureTiming,
   writeDiagnosticReport,
 } from './diagnostics/index.ts'

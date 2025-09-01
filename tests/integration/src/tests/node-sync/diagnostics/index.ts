@@ -81,29 +81,29 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(function
   const freeMem = os.freemem()
 
   // Count processes using direct Node.js APIs to avoid dependency issues
-  const psOutput = yield* Effect.try({
-    try: () => {
+  const psOutput = yield* Effect.sync(() => {
+    try {
       const { execSync } = require('node:child_process')
-      return execSync('ps aux | wc -l', { encoding: 'utf8' }).trim()
-    },
-    catch: () => -1,
-  }).pipe(
-    Effect.map((output) => (typeof output === 'string' ? Number.parseInt(output, 10) - 1 : -1)),
-  )
+      const output = execSync('ps aux | wc -l', { encoding: 'utf8' }).trim()
+      return typeof output === 'string' ? Number.parseInt(output, 10) - 1 : -1
+    } catch {
+      return -1
+    }
+  })
 
-  const nodeProcesses = yield* Effect.try({
-    try: () => {
+  const nodeProcesses = yield* Effect.sync(() => {
+    try {
       const { execSync } = require('node:child_process')
-      return execSync('pgrep -c node || echo 0', { encoding: 'utf8' }).trim()
-    },
-    catch: () => '0',
-  }).pipe(
-    Effect.map((output) => Number.parseInt(output, 10)),
-  )
+      const output = execSync('pgrep -c node || echo 0', { encoding: 'utf8' }).trim()
+      return Number.parseInt(output, 10)
+    } catch {
+      return 0
+    }
+  })
 
   // Get disk info if possible using direct Node.js API
-  const diskInfo = yield* Effect.try({
-    try: () => {
+  const diskInfo = yield* Effect.sync(() => {
+    try {
       const { execSync } = require('node:child_process')
       const output = execSync('df -h .', { encoding: 'utf8' })
       const lines = output.split('\n')
@@ -115,8 +115,9 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(function
         }
       }
       return undefined
-    },
-    catch: () => undefined,
+    } catch {
+      return undefined
+    }
   })
 
   return {
@@ -311,17 +312,13 @@ export const generateMarkdownSummary = (report: DiagnosticReport): string => {
 export const createTimingHarness = <A, E, R>(
   operation: string,
   testEffect: Effect.Effect<A, E, R>,
-): Effect.Effect<
-  { report: DiagnosticReport; result: unknown; success: boolean },
-  E,
-  R
-> =>
+): Effect.Effect<{ report: DiagnosticReport; result: unknown; success: boolean }, E, R> =>
   Effect.gen(function* () {
     const runId = `${operation}-${Date.now()}`
     const startSnapshot = yield* collectSystemSnapshot()
     const allTimings: TimingMeasurement[] = []
     const allSnapshots: SystemSnapshot[] = [startSnapshot]
-    
+
     // Log system info now that we have services available
     yield* logSystemInfo()
 

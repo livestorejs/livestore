@@ -103,7 +103,7 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
               resume(Effect.succeed(child.pid || -1))
             })
 
-            child.on('error', (error) => {
+            child.on('error', (_error) => {
               resume(Effect.succeed(-1)) // Return -1 on error instead of failing
             })
           }),
