@@ -24,7 +24,7 @@ Vitest.describe('Hypothesis 6: Test Framework Overhead', { timeout }, () => {
     'H6.1-FrameworkInit',
     'Measure test framework initialization overhead',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
+      yield* environmentChecks.verifyEnvironment()
 
       const initTime = Date.now() - frameworkStartTime
       yield* Effect.log(`🚀 Framework initialization took: ${initTime}ms`)

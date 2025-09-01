@@ -11,6 +11,7 @@ import {
   type DiagnosticReport,
   generateMarkdownSummary,
   logSystemInfo,
+  measureTiming,
   writeDiagnosticReport,
 } from './diagnostics/index.ts'
 import { makeFileLogger } from './fixtures/file-logger.ts'
@@ -47,7 +48,7 @@ export const createHypothesisTest = (
   Vitest.scopedLive(description, (test) =>
     Effect.gen(function* () {
       yield* Effect.log(`🔬 Starting ${hypothesisName}`)
-      yield* logSystemInfo
+      yield* logSystemInfo()
 
       const runId = `${hypothesisName}-${Date.now()}`
 
@@ -76,7 +77,7 @@ export const createHypothesisTest = (
 
       // Write detailed report
       const reportPath = `tests/integration/tmp/reports/${runId}-report.json`
-      yield* writeDiagnosticReport(enhancedReport, reportPath)
+      yield* writeDiagnosticReport(enhancedReport, reportPath)()
 
       // Write markdown summary
       const markdownPath = `tests/integration/tmp/reports/${runId}-summary.md`
@@ -109,8 +110,8 @@ export const environmentChecks = {
    * Verify we're running in the expected environment
    */
   verifyEnvironment: Effect.fn('verifyEnvironment')(
-    Effect.gen(function* () {
-      const snapshot = yield* collectSystemSnapshot
+    function* () {
+      const snapshot = yield* collectSystemSnapshot()
 
       yield* Effect.log('🔍 Environment Verification', {
         isCI: snapshot.env.isCI,
@@ -133,14 +134,14 @@ export const environmentChecks = {
       }
 
       return snapshot
-    }),
+    },
   ),
 
   /**
    * Check for orphaned processes
    */
   checkOrphanedProcesses: Effect.fn('checkOrphanedProcesses')(
-    Effect.gen(function* () {
+    function* () {
       const wranglerProcs = yield* Effect.try({
         try: () => {
           const { execSync } = require('node:child_process')
@@ -169,6 +170,9 @@ export const environmentChecks = {
       }
 
       return { wranglerProcs, workerdProcs, orphanCount }
-    }),
+    },
   ),
 }
+
+// Re-export diagnostic utilities
+export { collectSystemSnapshot, measureTiming }

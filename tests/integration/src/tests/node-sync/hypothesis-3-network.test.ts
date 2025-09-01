@@ -23,7 +23,7 @@ Vitest.describe('Hypothesis 3: Network & Port Issues', { timeout }, () => {
     'H3.1-PortAllocation',
     'Measure port allocation speed and conflicts',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
+      yield* environmentChecks.verifyEnvironment()
 
       yield* Effect.log('🔌 Testing port allocation performance...')
 
@@ -77,8 +77,8 @@ Vitest.describe('Hypothesis 3: Network & Port Issues', { timeout }, () => {
       for (const test of tests) {
         const { measurement } = yield* measureTiming(
           test.name,
-          Command.make(...test.command).pipe(
-            Command.stdout('string'),
+          Command.make(test.command[0] ?? 'true', ...test.command.slice(1)).pipe(
+            Command.string,
             Effect.timeout(Duration.seconds(10)),
             Effect.catchAll((error) => Effect.succeed(`FAILED: ${error}`)),
           ),
@@ -119,7 +119,7 @@ Vitest.describe('Hypothesis 3: Network & Port Issues', { timeout }, () => {
           // Start a simple HTTP server to test port binding
           const { createServer } = yield* Effect.promise(() => import('node:http'))
 
-          return yield* Effect.async<number>((resume) => {
+          return yield* Effect.async<number, Error>((resume) => {
             const server = createServer((_req, res) => {
               res.writeHead(200, { 'Content-Type': 'text/plain' })
               res.end('OK')
@@ -182,14 +182,14 @@ Vitest.describe('Hypothesis 3: Network & Port Issues', { timeout }, () => {
 
             // Test actual HTTP connectivity
             const testUrl = `${server.url}/health`
-            const { HttpClient } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
 
             // Give server a moment to be fully ready
             yield* Effect.sleep(Duration.seconds(1))
 
-            // Test HTTP request (might fail, that's OK)
-            const response = yield* HttpClient.request.get(testUrl).pipe(
-              Effect.timeout(Duration.seconds(5)),
+            // Test HTTP request using curl (simpler than HttpClient)
+            const response = yield* Command.make('curl', '-s', '--max-time', '5', testUrl).pipe(
+              Command.string,
+              Effect.timeout(Duration.seconds(10)),
               Effect.catchAll(() => Effect.succeed('connection-test-failed')),
             )
 

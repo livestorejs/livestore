@@ -48,7 +48,7 @@ export const TimingMeasurement = Schema.Struct({
   durationMs: Schema.Number,
   success: Schema.Boolean,
   error: Schema.optional(Schema.String),
-  metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
+  metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
 })
 
 export type TimingMeasurement = typeof TimingMeasurement.Type
@@ -76,40 +76,43 @@ export type DiagnosticReport = typeof DiagnosticReport.Type
  * Collect current system resource snapshot
  */
 export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(
-  Effect.gen(function* () {
+  function* () {
     const _memInfo = process.memoryUsage()
     const totalMem = os.totalmem()
     const freeMem = os.freemem()
 
     // Count processes
-    const psOutput = yield* Command.make('ps', 'aux').pipe(
-      Command.stdout('string'),
-      Effect.map((output) => output.split('\n').length - 1),
-      Effect.catchAll(() => Effect.succeed(-1)),
-    )
+    const psOutput = yield* Command.make('ps', 'aux')
+      .pipe(
+        Command.string,
+        Effect.map((output) => output.split('\n').length - 1),
+        Effect.catchAll(() => Effect.succeed(-1)),
+      )
 
-    const nodeProcesses = yield* Command.make('pgrep', '-c', 'node').pipe(
-      Command.stdout('string'),
-      Effect.map((output) => Number.parseInt(output.trim(), 10)),
-      Effect.catchAll(() => Effect.succeed(-1)),
-    )
+    const nodeProcesses = yield* Command.make('pgrep', '-c', 'node')
+      .pipe(
+        Command.string,
+        Effect.map((output) => Number.parseInt(output.trim(), 10)),
+        Effect.catchAll(() => Effect.succeed(-1)),
+      )
 
     // Get disk info if possible
-    const diskInfo = yield* Command.make('df', '-h', '.').pipe(
-      Command.stdout('string'),
-      Effect.map((output) => {
-        const lines = output.split('\n')
-        if (lines.length > 1) {
-          const parts = lines[1].split(/\s+/)
-          return {
-            total: Number.parseFloat(parts[1]) || -1,
-            free: Number.parseFloat(parts[3]) || -1,
+    const diskInfo = yield* Command.make('df', '-h', '.')
+      .pipe(
+        Command.string,
+        Effect.map((output) => {
+          const lines = output.split('\n')
+          if (lines.length > 1) {
+            const parts = lines[1]?.split(/\s+/) ?? []
+            return {
+              total: Number.parseFloat(parts[1] ?? '0') || -1,
+              free: Number.parseFloat(parts[3] ?? '0') || -1,
+            }
           }
-        }
-        return undefined
-      }),
-      Effect.catchAll(() => Effect.succeed(undefined)),
-    )
+          return undefined
+        }),
+        Effect.catchAll(() => Effect.succeed(undefined)),
+      )
 
     return {
       timestamp: new Date(),
@@ -120,7 +123,7 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(
         available: freeMem,
       },
       cpu: {
-        loadAverage: os.loadavg(),
+        loadAverage: os.loadavg().slice(0, 3) as unknown as readonly [number, number, number],
         coreCount: os.cpus().length,
       },
       processes: {
@@ -135,7 +138,7 @@ export const collectSystemSnapshot = Effect.fn('collectSystemSnapshot')(
         arch: os.arch(),
       },
     } satisfies SystemSnapshot
-  }),
+  },
 )
 
 /**
@@ -146,49 +149,47 @@ export const measureTiming = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   metadata?: Record<string, unknown>,
 ) =>
-  Effect.fn(`measureTiming(${operation})`)(
-    Effect.gen(function* () {
-      const startTime = new Date()
-      const start = Date.now()
+  Effect.gen(function* () {
+    const startTime = new Date()
+    const start = Date.now()
 
-      const result = yield* effect.pipe(Effect.exit)
+    const result = yield* effect.pipe(Effect.exit)
 
-      const endTime = new Date()
-      const durationMs = Date.now() - start
+    const endTime = new Date()
+    const durationMs = Date.now() - start
 
-      const measurement: TimingMeasurement = {
-        operation,
-        startTime,
-        endTime,
-        durationMs,
-        success: result._tag === 'Success',
-        error: result._tag === 'Failure' ? String(result.cause) : undefined,
-        metadata,
-      }
+    const measurement: TimingMeasurement = {
+      operation,
+      startTime,
+      endTime,
+      durationMs,
+      success: result._tag === 'Success',
+      error: result._tag === 'Failure' ? String(result.cause) : undefined,
+      metadata,
+    }
 
-      yield* Effect.log(`⏱️  ${operation}: ${durationMs}ms (${result._tag})`)
+    yield* Effect.log(`⏱️  ${operation}: ${durationMs}ms (${result._tag})`)
 
-      // Return both the measurement and the original result
-      return { measurement, result }
-    }),
-  )
+    // Return both the measurement and the original result
+    return { measurement, result }
+  })
 
 /**
  * Log system information for debugging
  */
 export const logSystemInfo = Effect.fn('logSystemInfo')(
-  Effect.gen(function* () {
-    const snapshot = yield* collectSystemSnapshot
+  function* () {
+    const snapshot = yield* collectSystemSnapshot()
 
     yield* Effect.log('🖥️  System Info', {
       memory: `${Math.round(snapshot.memory.used / 1024 / 1024)}MB / ${Math.round(snapshot.memory.total / 1024 / 1024)}MB`,
-      cpu: `${snapshot.cpu.coreCount} cores, load: [${snapshot.cpu.loadAverage.map((l) => l.toFixed(2)).join(', ')}]`,
+      cpu: `${snapshot.cpu.coreCount} cores, load: [${snapshot.cpu.loadAverage.map((l: number) => l.toFixed(2)).join(', ')}]`,
       processes: `${snapshot.processes.total} total, ${snapshot.processes.nodeProcesses} node`,
       env: `${snapshot.env.platform}-${snapshot.env.arch}, Node ${snapshot.env.nodeVersion}, CI: ${snapshot.env.isCI}`,
     })
 
     return snapshot
-  }),
+  },
 )
 
 /**
@@ -196,7 +197,7 @@ export const logSystemInfo = Effect.fn('logSystemInfo')(
  */
 export const writeDiagnosticReport = (report: DiagnosticReport, filePath: string) =>
   Effect.fn('writeDiagnosticReport')(
-    Effect.gen(function* () {
+    function* () {
       const reportJson = JSON.stringify(report, null, 2)
 
       // Ensure directory exists
@@ -213,7 +214,7 @@ export const writeDiagnosticReport = (report: DiagnosticReport, filePath: string
       })
 
       yield* Effect.log(`📊 Diagnostic report written to: ${filePath}`)
-    }),
+    },
   )
 
 /**
@@ -269,7 +270,7 @@ export const generateMarkdownSummary = (report: DiagnosticReport): string => {
 
     systemSnapshots.forEach((snapshot, i) => {
       const relativeTime =
-        i === 0 ? '0s' : `${Math.round((snapshot.timestamp.getTime() - firstSnapshot.timestamp.getTime()) / 1000)}s`
+        i === 0 ? '0s' : `${Math.round((snapshot.timestamp.getTime() - firstSnapshot!.timestamp.getTime()) / 1000)}s`
       const memUsed = Math.round(snapshot.memory.used / 1024 / 1024)
       const loadAvg = snapshot.cpu.loadAverage[0].toFixed(2)
       md += `| ${relativeTime} | ${memUsed}MB | ${loadAvg} | ${snapshot.processes.total} |\n`
@@ -310,7 +311,7 @@ export const generateMarkdownSummary = (report: DiagnosticReport): string => {
 export const createTimingHarness = <A, E, R>(operation: string, testEffect: Effect.Effect<A, E, R>) =>
   Effect.gen(function* () {
     const runId = `${operation}-${Date.now()}`
-    const startSnapshot = yield* collectSystemSnapshot
+    const startSnapshot = yield* collectSystemSnapshot()
     const allTimings: TimingMeasurement[] = []
     const allSnapshots: SystemSnapshot[] = [startSnapshot]
 
@@ -328,7 +329,7 @@ export const createTimingHarness = <A, E, R>(operation: string, testEffect: Effe
       yield* Effect.logError(`Operation failed: ${result.cause}`)
     }
 
-    const endSnapshot = yield* collectSystemSnapshot
+    const endSnapshot = yield* collectSystemSnapshot()
     allSnapshots.push(endSnapshot)
 
     const report: DiagnosticReport = {

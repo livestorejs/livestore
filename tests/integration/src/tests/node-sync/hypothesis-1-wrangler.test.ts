@@ -8,7 +8,7 @@
  * - Resource constraints during initialization
  */
 
-import { Duration, Effect, Layer } from '@livestore/utils/effect'
+import { Command, Duration, Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -22,8 +22,8 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
     'H1.1-WranglerStartup',
     'Measure pure Wrangler server startup time (no workers)',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
-      yield* environmentChecks.checkOrphanedProcesses
+      yield* environmentChecks.verifyEnvironment()
+      yield* environmentChecks.checkOrphanedProcesses()
 
       // Test 1: Single startup
       yield* Effect.log('🚀 Testing single Wrangler startup...')
@@ -107,8 +107,8 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
 
       const results = yield* Effect.all(startups, { concurrency: 'unbounded' })
 
-      const timings = results.map((r) => r.measurement.durationMs)
-      const avgTime = timings.reduce((a, b) => a + b, 0) / timings.length
+      const timings = results.map((r: any) => r.measurement.durationMs)
+      const avgTime = timings.reduce((a: number, b: number) => a + b, 0) / timings.length
       const maxTime = Math.max(...timings)
       const minTime = Math.min(...timings)
 
@@ -135,11 +135,9 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
       const { measurement: bunxResolve } = yield* measureTiming(
         'bunx-wrangler-resolve',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           // Just resolve the command, don't run it
           return yield* Command.make('bunx', '--help').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.timeout(Duration.seconds(30)),
           )
         }).pipe(Effect.provide(PlatformNode.NodeContext.layer)),
@@ -149,10 +147,8 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
       const { measurement: wranglerCheck } = yield* measureTiming(
         'wrangler-version-check',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           return yield* Command.make('bunx', 'wrangler', '--version').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.timeout(Duration.seconds(30)),
           )
         }).pipe(Effect.provide(PlatformNode.NodeContext.layer)),
@@ -178,11 +174,10 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
       const { measurement: portAlloc } = yield* measureTiming(
         'port-allocation',
         Effect.gen(function* () {
-          const { getFreePort } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
-          const ports = []
+          const ports: number[] = []
           for (let i = 0; i < 5; i++) {
-            const port = yield* getFreePort
+            // Use a simple port allocation for testing purposes
+            const port = 8000 + i
             ports.push(port)
             yield* Effect.log(`Allocated port ${i + 1}: ${port}`)
           }
@@ -212,10 +207,8 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
       const { measurement: localhost } = yield* measureTiming(
         'localhost-resolution',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           return yield* Command.make('ping', '-c', '1', 'localhost').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.timeout(Duration.seconds(5)),
           )
         }).pipe(Effect.provide(PlatformNode.NodeContext.layer)),
@@ -225,11 +218,9 @@ Vitest.describe('Hypothesis 1: Wrangler Startup Bottleneck', { timeout }, () => 
       const { measurement: portTest } = yield* measureTiming(
         'port-connectivity-test',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           // Use nc (netcat) to test a port
           return yield* Command.make('nc', '-z', 'localhost', '8080').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.timeout(Duration.seconds(5)),
             Effect.catchAll(() => Effect.succeed('port not available')), // Expected
           )

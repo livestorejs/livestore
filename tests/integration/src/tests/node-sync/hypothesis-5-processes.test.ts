@@ -25,8 +25,8 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
     'H5.1-ProcessTreeAnalysis',
     'Analyze current process tree and detect orphaned processes',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
-      yield* environmentChecks.checkOrphanedProcesses
+      yield* environmentChecks.verifyEnvironment()
+      yield* environmentChecks.checkOrphanedProcesses()
 
       yield* Effect.log('🌳 Analyzing process tree...')
 
@@ -34,32 +34,30 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
       const { measurement } = yield* measureTiming(
         'process-tree-analysis',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           // Get process tree
           const pstree = yield* Command.make('pstree', '-p').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.catchAll(() =>
               // Fallback for systems without pstree
-              Command.make('ps', 'auxf').pipe(Command.stdout('string')),
+              Command.make('ps', 'auxf').pipe(Command.string),
             ),
           )
 
           // Count specific process types
           const nodeProcs = yield* Command.make('pgrep', '-c', '-f', 'node').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.map((output) => Number.parseInt(output.trim(), 10) || 0),
             Effect.catchAll(() => Effect.succeed(0)),
           )
 
           const wranglerProcs = yield* Command.make('pgrep', '-c', '-f', 'wrangler').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.map((output) => Number.parseInt(output.trim(), 10) || 0),
             Effect.catchAll(() => Effect.succeed(0)),
           )
 
           const workerdProcs = yield* Command.make('pgrep', '-c', '-f', 'workerd').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.map((output) => Number.parseInt(output.trim(), 10) || 0),
             Effect.catchAll(() => Effect.succeed(0)),
           )
@@ -196,7 +194,7 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
       yield* Effect.log('🧹 Testing process cleanup performance...')
 
       // Start some processes we can clean up
-      const testProcesses = []
+      const testProcesses: any[] = []
 
       // Create test processes
       for (let i = 0; i < 3; i++) {
@@ -294,7 +292,7 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
               for (let i = 0; i < 10; i++) {
                 yield* Command.make('pgrep', '-f', 'node')
                   .pipe(
-                    Command.stdout('string'),
+                    Command.string,
                     Effect.catchAll(() => Effect.succeed('')),
                   )
                   .pipe(Effect.provide(PlatformNode.NodeContext.layer))
@@ -307,7 +305,7 @@ Vitest.describe('Hypothesis 5: Process Management Overhead', { timeout }, () => 
               for (let i = 0; i < 5; i++) {
                 yield* Command.make('ps', 'aux')
                   .pipe(
-                    Command.stdout('string'),
+                    Command.string,
                     Effect.map((output) => output.split('\n').length),
                   )
                   .pipe(Effect.provide(PlatformNode.NodeContext.layer))

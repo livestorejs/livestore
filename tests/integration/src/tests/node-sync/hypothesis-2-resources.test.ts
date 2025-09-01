@@ -49,26 +49,26 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
     'H2.1-BaselineResources',
     'Measure baseline resource usage without any workers',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
+      yield* environmentChecks.verifyEnvironment()
 
       const snapshots = []
 
       // Take initial snapshot
-      snapshots.push(yield* collectSystemSnapshot)
+      snapshots.push(yield* collectSystemSnapshot())
 
       // Wait and take another snapshot to see baseline drift
       yield* Effect.sleep(Duration.seconds(5))
-      snapshots.push(yield* collectSystemSnapshot)
+      snapshots.push(yield* collectSystemSnapshot())
 
       // Calculate resource drift
       const initial = snapshots[0]
       const final = snapshots[1]
-      const memoryDrift = final.memory.used - initial.memory.used
+      const memoryDrift = (final?.memory.used ?? 0) - (initial?.memory.used ?? 0)
 
       yield* Effect.log('📊 Baseline Resource Analysis', {
         memoryDrift: `${Math.round(memoryDrift / 1024 / 1024)}MB`,
-        loadAvgChange: final.cpu.loadAverage[0] - initial.cpu.loadAverage[0],
-        processChange: final.processes.total - initial.processes.total,
+        loadAvgChange: (final?.cpu.loadAverage[0] ?? 0) - (initial?.cpu.loadAverage[0] ?? 0),
+        processChange: (final?.processes.total ?? 0) - (initial?.processes.total ?? 0),
         stability: Math.abs(memoryDrift) < 50 * 1024 * 1024 ? 'STABLE' : 'UNSTABLE',
       })
 
@@ -83,7 +83,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
     Effect.gen(function* () {
       yield* Effect.log('👤 Testing single worker resource usage...')
 
-      const beforeSnapshot = yield* collectSystemSnapshot
+      const beforeSnapshot = yield* collectSystemSnapshot()
 
       const { measurement } = yield* measureTiming(
         'single-worker-lifecycle',
@@ -114,7 +114,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
         ),
       )
 
-      const afterSnapshot = yield* collectSystemSnapshot
+      const afterSnapshot = yield* collectSystemSnapshot()
 
       const memoryIncrease = afterSnapshot.memory.used - beforeSnapshot.memory.used
       const processIncrease = afterSnapshot.processes.total - beforeSnapshot.processes.total
@@ -143,7 +143,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
       for (const workerCount of workerCounts) {
         yield* Effect.log(`Testing with ${workerCount} workers...`)
 
-        const beforeSnapshot = yield* collectSystemSnapshot
+        const beforeSnapshot = yield* collectSystemSnapshot()
 
         const { measurement } = yield* measureTiming(
           `${workerCount}-workers`,
@@ -179,7 +179,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
           ),
         )
 
-        const afterSnapshot = yield* collectSystemSnapshot
+        const afterSnapshot = yield* collectSystemSnapshot()
 
         const memoryIncrease = afterSnapshot.memory.used - beforeSnapshot.memory.used
         const result = {
@@ -204,8 +204,8 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
       }
 
       // Analyze scaling efficiency
-      const scaling = results[1].duration / results[0].duration
-      const memoryScaling = results[1].memoryIncrease / results[0].memoryIncrease
+      const scaling = (results[1]?.duration ?? 0) / (results[0]?.duration ?? 1)
+      const memoryScaling = (results[1]?.memoryIncrease ?? 0) / (results[0]?.memoryIncrease ?? 1)
 
       yield* Effect.log('📊 Scaling Analysis', {
         timeScaling: `${scaling.toFixed(2)}x (2x workers = ${scaling.toFixed(2)}x time)`,
@@ -226,7 +226,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
       yield* Effect.log('🧠 Testing under memory pressure...')
 
       // Check available memory
-      const initialSnapshot = yield* collectSystemSnapshot
+      const initialSnapshot = yield* collectSystemSnapshot()
       const availableMB = Math.round(initialSnapshot.memory.available / 1024 / 1024)
 
       if (availableMB < 500) {
@@ -263,7 +263,7 @@ Vitest.describe('Hypothesis 2: Resource Contention', { timeout }, () => {
         ),
       )
 
-      const finalSnapshot = yield* collectSystemSnapshot
+      const finalSnapshot = yield* collectSystemSnapshot()
 
       yield* Effect.log('📊 Memory Pressure Analysis', {
         pressureApplied: `${pressureSize}MB`,

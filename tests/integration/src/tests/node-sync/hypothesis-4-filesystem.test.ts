@@ -12,7 +12,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { Duration, Effect } from '@livestore/utils/effect'
+import { Command, Duration, Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { createHypothesisTest, environmentChecks, measureTiming } from './hypothesis-base.ts'
@@ -25,7 +25,7 @@ Vitest.describe('Hypothesis 4: File System Performance', { timeout }, () => {
     'H4.1-BasicFileIO',
     'Benchmark basic file system operations',
     Effect.gen(function* () {
-      yield* environmentChecks.verifyEnvironment
+      yield* environmentChecks.verifyEnvironment()
 
       yield* Effect.log('💾 Testing basic file I/O performance...')
 
@@ -246,18 +246,16 @@ Vitest.describe('Hypothesis 4: File System Performance', { timeout }, () => {
       const { measurement: fsInfo } = yield* measureTiming(
         'filesystem-analysis',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           // Get mount information
           const mountInfo = yield* Command.make('df', '-T', '.').pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.catchAll(() => Effect.succeed('mount info unavailable')),
           )
 
           // Get file system performance info
           const tmpDir = os.tmpdir()
           const statInfo = yield* Command.make('stat', '-f', tmpDir).pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.catchAll(() => Effect.succeed('stat info unavailable')),
           )
 
@@ -467,10 +465,8 @@ compatibility_date = "2023-12-01"
       const { measurement: diskCheck } = yield* measureTiming(
         'disk-space-check',
         Effect.gen(function* () {
-          const { Command } = yield* Effect.serviceConstants(PlatformNode.NodeContext)
-
           const output = yield* Command.make('df', '-h', os.tmpdir()).pipe(
-            Command.stdout('string'),
+            Command.string,
             Effect.catchAll(() => Effect.succeed('disk info unavailable')),
           )
 
@@ -485,7 +481,7 @@ compatibility_date = "2023-12-01"
       if (typeof diskInfo === 'string' && diskInfo.includes('%')) {
         const lines = diskInfo.split('\n')
         if (lines.length > 1) {
-          const parts = lines[1].split(/\s+/)
+          const parts = lines[1]?.split(/\s+/) ?? []
           availableSpace = parts[3] || 'unknown'
         }
       }
