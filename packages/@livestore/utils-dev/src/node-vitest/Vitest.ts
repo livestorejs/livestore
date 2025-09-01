@@ -1,7 +1,18 @@
 import * as inspector from 'node:inspector'
 import type * as Vitest from '@effect/vitest'
 import { IS_CI } from '@livestore/utils'
-import { type Cause, Duration, Effect, identity, Layer, type OtelTracer, type Scope } from '@livestore/utils/effect'
+import {
+  type Cause,
+  Duration,
+  Effect,
+  type FastCheck as FC,
+  identity,
+  Layer,
+  type OtelTracer,
+  Predicate,
+  type Schema,
+  type Scope,
+} from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 import { OtelLiveHttp } from '../node/mod.ts'
 
@@ -62,3 +73,49 @@ export const withTestCtx =
       Effect.annotateLogs({ suffix }),
     ) as any
   }
+
+/**
+ * Equivalent to Vitest.prop but provides extra prop context to the test function
+ *
+ * TODO: Upstream to Effect
+ */
+export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
+  api: Vitest.Vitest.Tester<R>,
+  name: string,
+  arbitraries: Arbs,
+  test: Vitest.Vitest.TestFunction<
+    A,
+    E,
+    R,
+    [
+      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
+      Vitest.TestContext,
+      {
+        numRuns: number
+        /** 0-based index */
+        runIndex: number
+      },
+    ]
+  >,
+  propOptions:
+    | number
+    | (Vitest.TestOptions & {
+        fastCheck?: FC.Parameters<{
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+        }>
+      }),
+) => {
+  const numRuns = Predicate.isObject(propOptions) ? (propOptions.fastCheck?.numRuns ?? 100) : 100
+  let runIndex = 0
+  return api.prop(
+    name,
+    arbitraries,
+    (properties, ctx) => {
+      if (ctx.signal.aborted) {
+        return ctx.skip('Test aborted')
+      }
+      return test(properties, ctx, { numRuns, runIndex: runIndex++ })
+    },
+    propOptions,
+  )
+}

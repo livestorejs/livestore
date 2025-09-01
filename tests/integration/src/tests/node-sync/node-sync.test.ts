@@ -3,7 +3,7 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
@@ -14,7 +14,7 @@ import * as WorkerSchema from './worker-schema.ts'
 
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
-const testTimeout = IS_CI ? 600_000 : 900_000
+const testTimeout = Duration.toMillis(IS_CI ? Duration.minutes(10) : Duration.minutes(15))
 
 const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
@@ -65,7 +65,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
 
-  Vitest.scopedLive.prop(
+  // TODO investigate why stoping this test in VSC Vitest UI often doesn't stop the test runs
+  // https://share.cleanshot.com/8gDKh62c
+  Vitest.asProp(
+    Vitest.scopedLive,
     'node-sync prop tests',
     Vitest.DEBUGGER_ACTIVE
       ? {
@@ -98,8 +101,19 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     (
       { storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams },
       test,
+      { numRuns, runIndex },
     ) =>
       Effect.gen(function* () {
+        console.log(`Run ${runIndex + 1}/${numRuns}`, {
+          storageType,
+          adapterType,
+          todoCountA,
+          todoCountB,
+          commitBatchSize,
+          leaderPushBatchSize,
+          simulationParams,
+        })
+
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
         yield* Effect.log('concurrent push', {
@@ -153,7 +167,6 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         yield* Effect.raceFirst(exec, onShutdown)
       }).pipe(
-        Effect.logDuration(`${test.task.suite?.name}:${test.task.name}`),
         withTestCtx({
           suffix: stringifyObject({
             adapterType,
@@ -164,6 +177,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
             simulationParams,
           }),
         })(test),
+        // Logging without context (to make sure log is always displayed)
+        Effect.logDuration(`${test.task.suite?.name}:${test.task.name} (Run ${runIndex + 1}/${numRuns})`),
       ),
     Vitest.DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }

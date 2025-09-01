@@ -1,6 +1,18 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import type { Context, Duration, Stream } from 'effect'
-import { Cause, Deferred, Effect, Fiber, FiberRef, HashSet, Logger, pipe, Scope } from 'effect'
+import {
+  Cause,
+  type Context,
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  FiberRef,
+  HashSet,
+  Logger,
+  pipe,
+  Scope,
+  type Stream,
+} from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
@@ -166,7 +178,7 @@ export const logDuration =
       const start = Date.now()
       const res = yield* eff
       const end = Date.now()
-      yield* Effect.log(`${label}: ${end - start}ms`)
+      yield* Effect.log(`${label}: ${Duration.format(end - start)}`)
       return res
     })
 
