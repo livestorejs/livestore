@@ -15,9 +15,14 @@ export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export * from './cmd.ts'
 export * as FileLogger from './FileLogger.ts'
-export * from './process-tree-manager.ts'
 export * from './vitest-docker-compose-setup.ts'
-export * from './vitest-wrangler-setup.ts'
+export * from './WranglerDevServer/process-tree-manager.ts'
+export {
+  type StartWranglerDevServerArgs,
+  type WranglerDevServer,
+  WranglerDevServerError,
+  WranglerDevServerService,
+} from './WranglerDevServer/WranglerDevServer.ts'
 
 export const OtelLiveHttp = ({
   serviceName,

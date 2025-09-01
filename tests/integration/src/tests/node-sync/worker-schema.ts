@@ -19,6 +19,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('Init
     clientId: Schema.String,
     adapterType: AdapterType,
     storageType: StorageType,
+    syncUrl: Schema.String,
     params: Params.pipe(Schema.optional),
   },
   success: Schema.Void,

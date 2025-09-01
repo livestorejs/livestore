@@ -35,7 +35,7 @@ class WorkerContext extends Context.Tag('WorkerContext')<
 >() {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType, storageType, params }) =>
+  InitialMessage: ({ storeId, clientId, adapterType, storageType, params, syncUrl }) =>
     Effect.gen(function* () {
       const storage =
         storageType === 'fs'
@@ -51,7 +51,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
             }
           : { type: 'in-memory' as const }
 
-      const sync = { backend: makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) }
+      const sync = { backend: makeWsSync({ url: syncUrl }) }
 
       const adapter =
         adapterType === 'single-threaded'
@@ -60,6 +60,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
               workerUrl: new URL('./livestore.worker.ts', import.meta.url),
               storage: { type: 'in-memory' },
               clientId,
+              workerExtraArgs: { syncUrl },
             })
 
       const shutdownDeferred = yield* makeShutdownDeferred

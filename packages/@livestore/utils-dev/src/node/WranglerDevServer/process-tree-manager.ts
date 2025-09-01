@@ -153,13 +153,13 @@ export const findOrphanedProcesses = async (namePattern: string): Promise<number
 
 /**
  * Defensive cleanup for orphaned processes matching given patterns.
- * 
+ *
  * This function provides fallback cleanup for edge cases where normal process
  * termination mechanisms fail (e.g., hard crashes, SIGKILL before cleanup runs,
  * or limitations in synchronous exit handlers). While proper process tree cleanup
  * should prevent orphans in most cases, this serves as a safety net for scenarios
  * where child processes become orphaned despite cleanup efforts.
- * 
+ *
  * @param processPatterns - Array of process name patterns to search for (e.g., ['wrangler', 'workerd'])
  * @returns Object with arrays of successfully cleaned and failed PIDs
  */
@@ -187,9 +187,7 @@ export const cleanupOrphanedProcesses = async (
     .map(([pattern, count]) => `${count} ${pattern}`)
     .join(', ')
 
-  console.log(
-    `Found ${allOrphanedPids.length} orphaned processes (${patternSummary}): ${allOrphanedPids.join(', ')}`,
-  )
+  console.log(`Found ${allOrphanedPids.length} orphaned processes (${patternSummary}): ${allOrphanedPids.join(', ')}`)
 
   for (const pid of allOrphanedPids) {
     try {

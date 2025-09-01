@@ -1,26 +1,32 @@
 import path from 'node:path'
+import { UnexpectedError } from '@livestore/common'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
-import { getFreePort } from '@livestore/utils/node'
-import { startWranglerDevServer } from '@livestore/utils-dev/node'
-import { SyncProviderImpl } from '../types.ts'
+import { PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/node'
+import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 export const name = 'Cloudflare WebSocket'
 
 export const prepare = Effect.void
 
-export const layer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
-    const port = yield* getFreePort
-    const startServer = startWranglerDevServer({ port, cwd: path.join(import.meta.dirname, 'cloudflare') })
-    const { kill } = yield* startServer
+    const server = yield* WranglerDevServerService
 
     return {
-      makeProvider: makeWsSync({ url: `http://localhost:${port}` }),
-      turnBackendOffline: Effect.sync(() => kill()),
-      turnBackendOnline: startServer.pipe(Effect.orDie),
+      makeProvider: makeWsSync({ url: server.url }),
+      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
       push: () => Effect.log('TODO implement push'),
     }
   }),
+).pipe(
+  Layer.provide(
+    WranglerDevServerService.Default({
+      cwd: path.join(import.meta.dirname, 'cloudflare'),
+    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+  ),
+  UnexpectedError.mapToUnexpectedErrorLayer,
 )

@@ -8,6 +8,7 @@ import { makeFileLogger } from './fixtures/file-logger.ts'
 import { schema } from './schema.ts'
 
 const argv = getWorkerArgs()
+const syncUrl = (argv.extraArgs as { syncUrl: string }).syncUrl
 
 const layer = Layer.mergeAll(
   IS_CI
@@ -17,8 +18,6 @@ const layer = Layer.mergeAll(
 )
 
 makeWorkerEffect({
-  sync: {
-    backend: makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
-  },
+  sync: { backend: makeWsSync({ url: syncUrl }) },
   schema,
 }).pipe(Effect.provide(layer), PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }))

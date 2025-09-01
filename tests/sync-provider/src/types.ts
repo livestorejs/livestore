@@ -1,6 +1,6 @@
-import type { SyncBackend } from '@livestore/common'
+import type { SyncBackend, UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
-import { Context, type Effect } from '@livestore/utils/effect'
+import { Context, type Effect, type HttpClient, type Layer } from '@livestore/utils/effect'
 
 export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
   SyncProviderImpl,
@@ -12,3 +12,5 @@ export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
     push: (events: LiveStoreEvent.AnyEncodedGlobal[]) => Effect.Effect<void>
   }
 >() {}
+
+export type SyncProviderLayer = Layer.Layer<SyncProviderImpl, UnexpectedError, HttpClient.HttpClient>

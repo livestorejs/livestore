@@ -3,9 +3,10 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Effect, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessWorker } from '@livestore/utils/node'
+import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
@@ -19,7 +20,13 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
     timeout: testTimeout,
-    makeLayer: (testContext) => makeFileLogger('runner', { testContext }),
+    makeLayer: (testContext) =>
+      Layer.mergeAll(
+        makeFileLogger('runner', { testContext }),
+        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures` }).pipe(
+          Layer.provide(PlatformNode.NodeContext.layer),
+        ),
+      ),
   })
 
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
@@ -178,10 +185,12 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
+    const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params }),
+      initialMessage: () =>
+        WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
     }).pipe(
       Effect.provide(
         ChildProcessWorker.layer(() =>

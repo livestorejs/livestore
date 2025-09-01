@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.Defect,
@@ -9,6 +9,15 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
     effect.pipe(
       Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
       Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+    )
+
+  static mapToUnexpectedErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
+    layer.pipe(
+      Layer.catchAllCause((cause) =>
+        Cause.isFailType(cause) && Schema.is(UnexpectedError)(cause.error)
+          ? Layer.fail(cause.error)
+          : Layer.fail(new UnexpectedError({ cause: cause })),
+      ),
     )
 
   static mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>

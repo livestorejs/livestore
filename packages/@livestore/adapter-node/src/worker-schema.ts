@@ -7,6 +7,7 @@ export const WorkerArgv = Schema.parseJson(
     clientId: Schema.String,
     storeId: Schema.String,
     sessionId: Schema.String,
+    extraArgs: Schema.UndefinedOr(Schema.JsonValue),
   }),
 )
 

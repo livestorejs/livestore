@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { SyncBackend } from '@livestore/common'
+import { SyncBackend, UnexpectedError } from '@livestore/common'
 import { omit } from '@livestore/utils'
 import {
   Effect,
@@ -11,26 +11,34 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { startWranglerDevServer } from '@livestore/utils-dev/node'
-import { SyncProviderImpl } from '../types.ts'
+import { PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/node'
+import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
 export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
 
-export const layer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
-    const { port } = yield* startWranglerDevServer({ cwd: path.join(import.meta.dirname, 'cloudflare') })
+    const server = yield* WranglerDevServerService
 
     return {
-      makeProvider: makeProxyDoRpcSync({ port }),
+      makeProvider: makeProxyDoRpcSync({ port: server.port }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
       push: () => Effect.log('TODO implement push'),
     }
   }),
+).pipe(
+  Layer.provide(
+    WranglerDevServerService.Default({
+      cwd: path.join(import.meta.dirname, 'cloudflare'),
+    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+  ),
+  UnexpectedError.mapToUnexpectedErrorLayer,
 )
 
 /**

@@ -118,6 +118,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
             ) {
               return
             }
+            // yield* Effect.logError('Error in socket', cause)
             return yield* writeResponse({
               _tag: 'ClientProtocolError',
               error: new RpcClientError.RpcClientError({

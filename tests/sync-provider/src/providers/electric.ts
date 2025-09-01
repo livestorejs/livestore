@@ -1,5 +1,6 @@
 import http from 'node:http'
 import path from 'node:path'
+import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
@@ -17,7 +18,7 @@ import {
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 import { type CmdError, pullDockerComposeImages, startDockerComposeServices } from '@livestore/utils-dev/node'
 import postgres from 'postgres'
-import { SyncProviderImpl } from '../types.ts'
+import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 // Also support scenarios where Docker is not running locally but via a Docker remote context (@schickling needs this)
 const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
@@ -29,7 +30,7 @@ export const prepare: Effect.Effect<void, PlatformError.PlatformError | CmdError
     cwd: path.join(import.meta.dirname, 'electric'),
   }).pipe(Effect.withSpan('electric-provider:prepare'))
 
-export const layer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
     const { endpointPort } = yield* startElectricApi
@@ -41,7 +42,7 @@ export const layer = Layer.scoped(
       push: () => Effect.log('TODO implement push'),
     }
   }),
-)
+).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
 
 const startElectricApi = Effect.gen(function* () {
   const electricPort = yield* getFreePort

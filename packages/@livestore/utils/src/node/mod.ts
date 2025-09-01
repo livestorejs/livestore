@@ -37,8 +37,8 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<num
   })
 
   // Error handling in case the server encounters an error
-  server.on('error', (err) => {
-    server.close(() => cb(Effect.fail(new UnknownError({ cause: err }))))
+  server.on('error', (cause) => {
+    server.close(() => cb(Effect.fail(new UnknownError({ cause, payload: 'Failed to get a free port' }))))
   })
 })
 
