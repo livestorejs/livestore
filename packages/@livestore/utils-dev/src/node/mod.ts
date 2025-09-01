@@ -14,8 +14,16 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export * from './cmd.ts'
+export {
+  type DockerComposeArgs,
+  DockerComposeError,
+  type DockerComposeOperations,
+  DockerComposeService,
+  type LogsOptions,
+  type StartOptions,
+  startDockerComposeServicesScoped,
+} from './DockerComposeService/DockerComposeService.ts'
 export * as FileLogger from './FileLogger.ts'
-export * from './vitest-docker-compose-setup.ts'
 export * from './WranglerDevServer/process-tree-manager.ts'
 export {
   type StartWranglerDevServerArgs,

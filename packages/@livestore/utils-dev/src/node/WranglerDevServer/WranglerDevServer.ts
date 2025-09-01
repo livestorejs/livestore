@@ -2,7 +2,7 @@ import * as path from 'node:path'
 
 import { Command, Effect, Exit, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import { cleanupOrphanedProcesses, killProcessTree as killProcessTreeFn } from './process-tree-manager.ts'
+import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
 /**
  * Error type for WranglerDevServer operations
@@ -48,15 +48,14 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const showLogs = args.showLogs ?? false
 
       // Clean up any orphaned processes before starting (defensive cleanup)
-      yield* Effect.tryPromise({
-        try: () => cleanupOrphanedProcesses(['wrangler', 'workerd']),
-        catch: (error) =>
-          new WranglerDevServerError({
-            cause: error,
-            message: 'Failed to clean up orphaned processes',
-            port: -1,
-          }),
-      }).pipe(Effect.ignore) // Don't fail startup if cleanup fails
+      yield* cleanupOrphanedProcesses(['wrangler', 'workerd']).pipe(
+        Effect.tap((result) =>
+          showLogs && (result.cleaned.length > 0 || result.failed.length > 0)
+            ? Effect.logInfo(`Cleanup result: ${result.cleaned.length} cleaned, ${result.failed.length} failed`)
+            : Effect.void,
+        ),
+        Effect.ignore, // Don't fail startup if cleanup fails
+      )
 
       // Allocate port
       const port =
@@ -126,7 +125,11 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
           if (isRunning) {
             // Use our enhanced process tree cleanup
-            yield* killProcessTree(processId, isInterrupted).pipe(
+            yield* killProcessTree(processId, {
+              timeout: isInterrupted ? 500 : 3000, // Fast cleanup on interruption
+              signals: ['SIGTERM', 'SIGKILL'],
+              includeRoot: true,
+            }).pipe(
               Effect.tap((result) =>
                 showLogs
                   ? Effect.logDebug(
@@ -134,6 +137,15 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
                     )
                   : Effect.void,
               ),
+              Effect.mapError(
+                (error) =>
+                  new WranglerDevServerError({
+                    cause: error,
+                    message: `Failed to kill process tree for PID ${processId}`,
+                    port: 0,
+                  }),
+              ),
+              Effect.ignore, // Don't fail the finalizer if cleanup has issues
             )
 
             // Also kill the command process handle
@@ -192,22 +204,3 @@ const waitForReady = ({
         }),
     ),
   )
-
-/**
- * Kills a process tree using our enhanced process tree manager
- */
-const killProcessTree = (pid: number, immediate = false) =>
-  Effect.tryPromise({
-    try: () =>
-      killProcessTreeFn(pid, {
-        timeout: immediate ? 500 : 3000, // Fast cleanup on interruption
-        signals: ['SIGTERM', 'SIGKILL'],
-        includeRoot: true,
-      }),
-    catch: (error) =>
-      new WranglerDevServerError({
-        cause: error,
-        message: `Failed to kill process tree for PID ${pid}`,
-        port: 0,
-      }),
-  })

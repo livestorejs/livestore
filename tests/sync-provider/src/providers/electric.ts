@@ -16,7 +16,7 @@ import {
   type PlatformError,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { type CmdError, pullDockerComposeImages, startDockerComposeServices } from '@livestore/utils-dev/node'
+import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
 import postgres from 'postgres'
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
@@ -25,10 +25,16 @@ const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
 
 export const name = 'ElectricSQL'
 
-export const prepare: Effect.Effect<void, PlatformError.PlatformError | CmdError, CommandExecutor.CommandExecutor> =
-  pullDockerComposeImages({
-    cwd: path.join(import.meta.dirname, 'electric'),
-  }).pipe(Effect.withSpan('electric-provider:prepare'))
+const DockerComposeLive = DockerComposeService.Default({ cwd: path.join(import.meta.dirname, 'electric') })
+
+export const prepare: Effect.Effect<
+  void,
+  PlatformError.PlatformError | DockerComposeError,
+  CommandExecutor.CommandExecutor
+> = Effect.gen(function* () {
+  const dockerCompose = yield* DockerComposeService
+  yield* dockerCompose.pull
+}).pipe(Effect.provide(DockerComposeLive), Effect.withSpan('electric-provider:prepare'))
 
 export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
@@ -42,7 +48,11 @@ export const layer: SyncProviderLayer = Layer.scoped(
       push: () => Effect.log('TODO implement push'),
     }
   }),
-).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
+).pipe(
+  Layer.provide(DockerComposeLive),
+  Layer.provide(PlatformNode.NodeContext.layer),
+  UnexpectedError.mapToUnexpectedErrorLayer,
+)
 
 const startElectricApi = Effect.gen(function* () {
   const electricPort = yield* getFreePort
@@ -54,13 +64,13 @@ const startElectricApi = Effect.gen(function* () {
   yield* Effect.logDebug('Electric port:', electricPort)
   yield* Effect.logDebug('Postgres port:', postgresPort)
 
-  yield* startDockerComposeServices({
-    cwd: path.join(import.meta.dirname, 'electric'),
+  const dockerCompose = yield* DockerComposeService
+  yield* dockerCompose.start({
+    healthCheck: { url: healthCheckUrl },
     env: {
       ELECTRIC_PORT: electricPort.toString(),
       POSTGRES_PORT: postgresPort.toString(),
     },
-    healthCheck: { url: healthCheckUrl },
     // forwardLogs: true,
   })
 

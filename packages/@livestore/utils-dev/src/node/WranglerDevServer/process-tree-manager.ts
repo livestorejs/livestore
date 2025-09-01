@@ -1,155 +1,204 @@
-import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
+import { Command, type CommandExecutor, Effect, Schema, type Scope, Stream } from '@livestore/utils/effect'
 
-const execAsync = promisify(exec)
+export class ProcessTreeError extends Schema.TaggedError<ProcessTreeError>()('ProcessTreeError', {
+  cause: Schema.Unknown,
+  message: Schema.String,
+  pid: Schema.Number,
+}) {}
 
 /**
  * Finds all child processes of a given parent PID
  */
-export const findChildProcesses = async (parentPid: number): Promise<number[]> => {
-  try {
-    // Use ps to find all child processes
-    const { stdout } = await execAsync(`ps -o pid,ppid -ax | grep -E "^\\s*[0-9]+\\s+${parentPid}\\s*$"`)
+export const findChildProcesses = (
+  parentPid: number,
+): Effect.Effect<number[], never, CommandExecutor.CommandExecutor | Scope.Scope> =>
+  Effect.gen(function* () {
+    const result = yield* Command.make('ps', '-o', 'pid,ppid', '-ax').pipe(
+      Command.start,
+      Effect.flatMap((command) =>
+        command.stdout.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runCollect,
+          Effect.map((chunks) => Array.from(chunks).join('')),
+        ),
+      ),
+      Effect.catchAll(() => Effect.succeed('')), // Return empty string if command fails
+    )
 
-    const childPids = stdout
-      .trim()
-      .split('\n')
+    if (!result) return []
+
+    const lines = result.split('\n')
+    const pattern = new RegExp(`^\\s*([0-9]+)\\s+${parentPid}\\s*$`)
+
+    const childPids = lines
       .map((line) => {
-        const match = line.trim().match(/^\s*(\d+)\s+\d+\s*$/)
+        const match = line.trim().match(pattern)
         return match ? Number.parseInt(match[1]!, 10) : null
       })
       .filter((pid): pid is number => pid !== null)
 
     return childPids
-  } catch {
-    // If command fails, return empty array
-    return []
-  }
-}
+  })
 
 /**
  * Recursively finds all descendants of a process
  */
-export const findProcessTree = async (rootPid: number): Promise<number[]> => {
-  const allPids = new Set<number>([rootPid])
-  const toProcess = [rootPid]
+export const findProcessTree = (
+  rootPid: number,
+): Effect.Effect<number[], never, CommandExecutor.CommandExecutor | Scope.Scope> =>
+  Effect.gen(function* () {
+    const allPids = new Set<number>([rootPid])
+    const toProcess = [rootPid]
 
-  while (toProcess.length > 0) {
-    const currentPid = toProcess.pop()!
-    const children = await findChildProcesses(currentPid)
+    while (toProcess.length > 0) {
+      const currentPid = toProcess.pop()!
+      const children = yield* findChildProcesses(currentPid)
 
-    for (const childPid of children) {
-      if (!allPids.has(childPid)) {
-        allPids.add(childPid)
-        toProcess.push(childPid)
+      for (const childPid of children) {
+        if (!allPids.has(childPid)) {
+          allPids.add(childPid)
+          toProcess.push(childPid)
+        }
       }
     }
-  }
 
-  return Array.from(allPids)
-}
+    return Array.from(allPids)
+  })
 
 /**
  * Checks if a process is running
  */
-export const isProcessRunning = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
-}
+export const isProcessRunning = (pid: number): Effect.Effect<boolean, never, never> =>
+  Effect.sync(() => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  })
 
 /**
  * Kills a process tree with escalating signals
  */
-export const killProcessTree = async (
+export const killProcessTree = (
   rootPid: number,
   options: {
     timeout?: number
     signals?: NodeJS.Signals[]
     includeRoot?: boolean
   } = {},
-): Promise<{ killedPids: number[]; failedPids: number[] }> => {
-  const { timeout = 5000, signals = ['SIGTERM', 'SIGKILL'], includeRoot = true } = options
+): Effect.Effect<
+  { killedPids: number[]; failedPids: number[] },
+  never,
+  CommandExecutor.CommandExecutor | Scope.Scope
+> =>
+  Effect.gen(function* () {
+    const { timeout = 5000, signals = ['SIGTERM', 'SIGKILL'], includeRoot = true } = options
 
-  // Find all processes in the tree
-  const allPids = await findProcessTree(rootPid)
-  const pidsToKill = includeRoot ? allPids : allPids.filter((pid) => pid !== rootPid)
+    // Find all processes in the tree
+    const allPids = yield* findProcessTree(rootPid)
+    const pidsToKill = includeRoot ? allPids : allPids.filter((pid) => pid !== rootPid)
 
-  if (pidsToKill.length === 0) {
-    return { killedPids: [], failedPids: [] }
-  }
+    if (pidsToKill.length === 0) {
+      return { killedPids: [], failedPids: [] }
+    }
 
-  const killedPids: number[] = []
-  const failedPids: number[] = []
+    const killedPids: number[] = []
+    const failedPids: number[] = []
 
-  // Try each signal with timeout
-  for (const signal of signals) {
-    const remainingPids = pidsToKill.filter((pid) => !killedPids.includes(pid) && isProcessRunning(pid))
+    // Try each signal with timeout
+    for (const signal of signals) {
+      // Check which processes are still running and not yet killed
+      const stillRunningChecks = yield* Effect.all(
+        pidsToKill
+          .filter((pid) => !killedPids.includes(pid))
+          .map((pid) => isProcessRunning(pid).pipe(Effect.map((running) => ({ pid, running })))),
+      )
+      const remainingPids = stillRunningChecks.filter(({ running }) => running).map(({ pid }) => pid)
 
-    if (remainingPids.length === 0) break
+      if (remainingPids.length === 0) break
 
-    // Send signal to all remaining processes
-    for (const pid of remainingPids) {
-      try {
-        process.kill(pid, signal)
-      } catch {
-        // Process might already be dead, continue
+      // Send signal to all remaining processes
+      for (const pid of remainingPids) {
+        yield* Effect.sync(() => {
+          try {
+            process.kill(pid, signal)
+          } catch {
+            // Process might already be dead, continue
+          }
+        })
+      }
+
+      // Wait for processes to terminate with polling
+      const waitStart = Date.now()
+      while (Date.now() - waitStart < timeout) {
+        const runningChecks = yield* Effect.all(
+          remainingPids.map((pid) => isProcessRunning(pid).pipe(Effect.map((running) => ({ pid, running })))),
+        )
+        const stillRunning = runningChecks.filter(({ running }) => running).map(({ pid }) => pid)
+
+        if (stillRunning.length === 0) {
+          // All processes terminated
+          killedPids.push(...remainingPids)
+          break
+        }
+
+        // Short sleep before checking again
+        yield* Effect.sleep('100 millis')
       }
     }
 
-    // Wait for processes to terminate
-    const waitStart = Date.now()
-    while (Date.now() - waitStart < timeout) {
-      const stillRunning = remainingPids.filter((pid) => isProcessRunning(pid))
+    // Check final status
+    const finalChecks = yield* Effect.all(
+      pidsToKill.map((pid) => isProcessRunning(pid).pipe(Effect.map((running) => ({ pid, running })))),
+    )
 
-      if (stillRunning.length === 0) {
-        // All processes terminated
-        killedPids.push(...remainingPids)
-        break
+    for (const { pid, running } of finalChecks) {
+      if (!killedPids.includes(pid) && running) {
+        failedPids.push(pid)
       }
-
-      // Short sleep before checking again
-      await new Promise((resolve) => setTimeout(resolve, 100))
     }
-  }
 
-  // Check final status
-  for (const pid of pidsToKill) {
-    if (!killedPids.includes(pid) && isProcessRunning(pid)) {
-      failedPids.push(pid)
-    }
-  }
-
-  return { killedPids, failedPids }
-}
+    return { killedPids, failedPids }
+  })
 
 /**
  * Finds orphaned processes by name pattern
  */
-export const findOrphanedProcesses = async (namePattern: string): Promise<number[]> => {
-  try {
+export const findOrphanedProcesses = (
+  namePattern: string,
+): Effect.Effect<number[], never, CommandExecutor.CommandExecutor | Scope.Scope> =>
+  Effect.gen(function* () {
     // Find processes that match the pattern and have init (PID 1) as parent
-    const { stdout } = await execAsync(
-      `ps -eo pid,ppid,comm | grep -E "${namePattern}" | grep -E "^\\s*[0-9]+\\s+1\\s+"`,
+    const result = yield* Command.make('ps', '-eo', 'pid,ppid,comm').pipe(
+      Command.start,
+      Effect.flatMap((command) =>
+        command.stdout.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runCollect,
+          Effect.map((chunks) => Array.from(chunks).join('')),
+        ),
+      ),
+      Effect.catchAll(() => Effect.succeed('')), // Return empty string if command fails
     )
 
-    const orphanedPids = stdout
-      .trim()
-      .split('\n')
+    if (!result) return []
+
+    const lines = result.split('\n')
+    const patternRegex = new RegExp(namePattern)
+    const parentRegex = /^\s*(\d+)\s+1\s+/
+
+    const orphanedPids = lines
+      .filter((line) => patternRegex.test(line))
       .map((line) => {
-        const match = line.trim().match(/^\s*(\d+)\s+1\s+/)
+        const match = line.trim().match(parentRegex)
         return match ? Number.parseInt(match[1]!, 10) : null
       })
       .filter((pid): pid is number => pid !== null)
 
     return orphanedPids
-  } catch {
-    return []
-  }
-}
+  })
 
 /**
  * Defensive cleanup for orphaned processes matching given patterns.
@@ -163,52 +212,52 @@ export const findOrphanedProcesses = async (namePattern: string): Promise<number
  * @param processPatterns - Array of process name patterns to search for (e.g., ['wrangler', 'workerd'])
  * @returns Object with arrays of successfully cleaned and failed PIDs
  */
-export const cleanupOrphanedProcesses = async (
+export const cleanupOrphanedProcesses = (
   processPatterns: string[],
-): Promise<{ cleaned: number[]; failed: number[] }> => {
-  const cleaned: number[] = []
-  const failed: number[] = []
+): Effect.Effect<{ cleaned: number[]; failed: number[] }, never, CommandExecutor.CommandExecutor | Scope.Scope> =>
+  Effect.gen(function* () {
+    const cleaned: number[] = []
+    const failed: number[] = []
 
-  // Find all orphaned processes matching the patterns
-  const allOrphanedPids: number[] = []
-  const patternCounts: Record<string, number> = {}
+    // Find all orphaned processes matching the patterns
+    const allOrphanedPids: number[] = []
+    const patternCounts: Record<string, number> = {}
 
-  for (const pattern of processPatterns) {
-    const orphaned = await findOrphanedProcesses(pattern)
-    allOrphanedPids.push(...orphaned)
-    patternCounts[pattern] = orphaned.length
-  }
+    for (const pattern of processPatterns) {
+      const orphaned = yield* findOrphanedProcesses(pattern)
+      allOrphanedPids.push(...orphaned)
+      patternCounts[pattern] = orphaned.length
+    }
 
-  if (allOrphanedPids.length === 0) {
-    return { cleaned, failed }
-  }
+    if (allOrphanedPids.length === 0) {
+      return { cleaned, failed }
+    }
 
-  const patternSummary = Object.entries(patternCounts)
-    .map(([pattern, count]) => `${count} ${pattern}`)
-    .join(', ')
+    const patternSummary = Object.entries(patternCounts)
+      .map(([pattern, count]) => `${count} ${pattern}`)
+      .join(', ')
 
-  console.log(`Found ${allOrphanedPids.length} orphaned processes (${patternSummary}): ${allOrphanedPids.join(', ')}`)
+    yield* Effect.logInfo(
+      `Found ${allOrphanedPids.length} orphaned processes (${patternSummary}): ${allOrphanedPids.join(', ')}`,
+    )
 
-  for (const pid of allOrphanedPids) {
-    try {
-      const result = await killProcessTree(pid, {
+    for (const pid of allOrphanedPids) {
+      const result = yield* killProcessTree(pid, {
         timeout: 2000,
         signals: ['SIGTERM', 'SIGKILL'],
         includeRoot: true,
-      })
+      }).pipe(Effect.orElse(() => Effect.succeed({ killedPids: [], failedPids: [pid] })))
 
       if (result.failedPids.length === 0) {
         cleaned.push(...result.killedPids)
-        console.log(`Cleaned up orphaned process tree starting with ${pid} (${result.killedPids.length} processes)`)
+        yield* Effect.logInfo(
+          `Cleaned up orphaned process tree starting with ${pid} (${result.killedPids.length} processes)`,
+        )
       } else {
         failed.push(pid, ...result.failedPids)
-        console.warn(`Failed to clean up some processes in tree ${pid}: ${result.failedPids.join(', ')}`)
+        yield* Effect.logWarning(`Failed to clean up some processes in tree ${pid}: ${result.failedPids.join(', ')}`)
       }
-    } catch (error) {
-      failed.push(pid)
-      console.warn(`Error cleaning up process tree ${pid}:`, error)
     }
-  }
 
-  return { cleaned, failed }
-}
+    return { cleaned, failed }
+  })
