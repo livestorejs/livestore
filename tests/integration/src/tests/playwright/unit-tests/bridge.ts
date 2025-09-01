@@ -19,3 +19,13 @@ export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStor
     defect: Schema.Defect,
   }),
 }) {}
+
+export class ResultMultipleMigrations extends Schema.TaggedStruct('Bridge.ResultMultipleMigrations', {
+  exit: Schema.Exit({
+    success: Schema.Struct({
+      migrationsCount: Schema.Number,
+    }),
+    failure: UnexpectedError,
+    defect: Schema.Defect,
+  }),
+}) {}

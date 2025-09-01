@@ -2,9 +2,9 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
-
+import { ResultBootStatus } from './bridge.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { Bridge, schema } from './shared.ts'
+import { schema } from './schema.ts'
 
 export const test = () =>
   Effect.gen(function* () {
@@ -37,7 +37,7 @@ export const test = () =>
     Effect.tapCauseLogPretty,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeSync(Bridge.ResultBootStatus)(Bridge.ResultBootStatus.make({ exit })))
+      window.postMessage(Schema.encodeSync(ResultBootStatus)(ResultBootStatus.make({ exit })))
     }),
     Effect.scoped,
     Effect.runPromise,

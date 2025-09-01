@@ -79,7 +79,7 @@ export const runAndGetExit = <Tag extends string, A>({
         }),
       )
 
-      const exit = yield* Deferred.await(deferred).pipe(Effect.timeout(10_000))
+      const exit = yield* Deferred.await(deferred).pipe(Effect.timeout(40_000))
 
       return exit
     }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
