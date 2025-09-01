@@ -1,0 +1,238 @@
+name: "Debug: CI Performance Investigation"
+run-name: "Hypothesis Testing: ${{ matrix.hypothesis }} (${{ github.sha }})"
+
+# Only run on our debug branch
+on:
+  push:
+    branches: 
+      - debug/ci-node-sync-perf-investigation
+  pull_request:
+    branches: 
+      - debug/ci-node-sync-perf-investigation
+
+env:
+  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  # Individual hypothesis testing - run each hypothesis in isolation
+  hypothesis-testing:
+    name: "Test ${{ matrix.hypothesis }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Continue testing all hypotheses even if one fails
+      matrix:
+        hypothesis: 
+          - "H1-Wrangler"
+          - "H2-Resources" 
+          - "H3-Network"
+          - "H4-FileSystem"
+          - "H5-Processes"
+          - "H6-Framework"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        
+      - name: System information
+        run: |
+          echo "::group::System Information"
+          echo "OS: $(uname -a)"
+          echo "CPU: $(nproc) cores"
+          echo "Memory: $(free -h)"
+          echo "Disk: $(df -h /)"
+          echo "Network: $(ip addr show | grep inet || ifconfig | grep inet || echo 'Network info unavailable')"
+          echo "Processes: $(ps aux | wc -l) total"
+          echo "Node processes: $(pgrep -c node || echo 0)"
+          echo "Wrangler processes: $(pgrep -c -f wrangler || echo 0)"
+          echo "::endgroup::"
+          
+      - name: Pre-test environment check
+        run: |
+          echo "::group::Pre-test Environment"
+          echo "Working directory: $(pwd)"
+          echo "Available ports check:"
+          for port in 8787 8788 8789; do
+            if nc -z localhost $port 2>/dev/null; then
+              echo "Port $port: OCCUPIED"
+            else  
+              echo "Port $port: Available"
+            fi
+          done
+          echo "Temp directory: $TMPDIR"
+          echo "Temp space: $(df -h $TMPDIR || echo 'N/A')"
+          echo "::endgroup::"
+          
+      - name: Run hypothesis test
+        run: |
+          echo "::group::Running ${{ matrix.hypothesis }} Test"
+          
+          # Set extended timeout for debugging
+          export CI=1
+          
+          # Map hypothesis to test file
+          case "${{ matrix.hypothesis }}" in
+            "H1-Wrangler")
+              TEST_FILE="hypothesis-1-wrangler.test.ts"
+              ;;
+            "H2-Resources")
+              TEST_FILE="hypothesis-2-resources.test.ts"
+              ;;
+            "H3-Network")
+              TEST_FILE="hypothesis-3-network.test.ts"
+              ;;
+            "H4-FileSystem")
+              TEST_FILE="hypothesis-4-filesystem.test.ts"
+              ;;
+            "H5-Processes")
+              TEST_FILE="hypothesis-5-processes.test.ts"
+              ;;
+            "H6-Framework")
+              TEST_FILE="hypothesis-6-framework.test.ts"
+              ;;
+          esac
+          
+          echo "Testing hypothesis: ${{ matrix.hypothesis }}"
+          echo "Test file: $TEST_FILE"
+          echo "Start time: $(date)"
+          
+          # Run the specific hypothesis test with verbose output
+          cd tests/integration
+          direnv exec ../.. vitest run "src/tests/node-sync/$TEST_FILE" --reporter=verbose --no-coverage
+          
+          echo "End time: $(date)"
+          echo "::endgroup::"
+          
+      - name: Collect diagnostic reports
+        if: always()
+        run: |
+          echo "::group::Diagnostic Reports"
+          
+          # List all generated reports
+          if [ -d "tests/integration/tmp/reports" ]; then
+            echo "Generated reports:"
+            ls -la tests/integration/tmp/reports/
+            
+            # Display each report summary
+            for report in tests/integration/tmp/reports/*-summary.md; do
+              if [ -f "$report" ]; then
+                echo "::group::$(basename "$report")"
+                cat "$report"
+                echo "::endgroup::"
+              fi
+            done
+          else
+            echo "No diagnostic reports found"
+          fi
+          
+          echo "::endgroup::"
+          
+      - name: System state after test
+        if: always()
+        run: |
+          echo "::group::Post-test System State"
+          echo "Memory after test: $(free -h)"
+          echo "Processes after test: $(ps aux | wc -l)"
+          echo "Node processes: $(pgrep -c node || echo 0)"
+          echo "Wrangler processes: $(pgrep -c -f wrangler || echo 0)"
+          echo "Workerd processes: $(pgrep -c -f workerd || echo 0)"
+          
+          # Check for orphaned processes
+          if pgrep -f wrangler > /dev/null; then
+            echo "⚠️ Orphaned wrangler processes detected:"
+            pgrep -f wrangler | xargs ps -p
+          fi
+          
+          if pgrep -f workerd > /dev/null; then
+            echo "⚠️ Orphaned workerd processes detected:"
+            pgrep -f workerd | xargs ps -p  
+          fi
+          echo "::endgroup::"
+          
+      - name: Upload diagnostic artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "${{ matrix.hypothesis }}-diagnostics"
+          path: |
+            tests/integration/tmp/reports/
+            tests/integration/tmp/logs/
+          retention-days: 7
+          
+  # Comparative analysis job that runs after all hypotheses
+  analysis:
+    name: "Performance Analysis Summary"
+    runs-on: ubuntu-latest
+    needs: hypothesis-testing
+    if: always() # Run even if some hypotheses failed
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all diagnostic artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./hypothesis-results/
+          
+      - name: Generate analysis summary
+        run: |
+          echo "::group::Hypothesis Testing Summary"
+          
+          echo "# CI Performance Investigation Results" > analysis-summary.md
+          echo "" >> analysis-summary.md
+          echo "**Investigation Date:** $(date)" >> analysis-summary.md
+          echo "**Branch:** ${{ github.ref_name }}" >> analysis-summary.md
+          echo "**Commit:** ${{ github.sha }}" >> analysis-summary.md
+          echo "" >> analysis-summary.md
+          
+          # Process each hypothesis result
+          for hypothesis_dir in ./hypothesis-results/*/; do
+            if [ -d "$hypothesis_dir" ]; then
+              hypothesis_name=$(basename "$hypothesis_dir" | sed 's/-diagnostics$//')
+              echo "## $hypothesis_name Results" >> analysis-summary.md
+              echo "" >> analysis-summary.md
+              
+              # Find and include summary if available
+              summary_file=$(find "$hypothesis_dir" -name "*-summary.md" | head -1)
+              if [ -f "$summary_file" ]; then
+                echo "### Summary" >> analysis-summary.md
+                cat "$summary_file" >> analysis-summary.md
+                echo "" >> analysis-summary.md
+              else
+                echo "❌ No summary report found for $hypothesis_name" >> analysis-summary.md
+                echo "" >> analysis-summary.md
+              fi
+              
+              # List available artifacts
+              echo "### Artifacts" >> analysis-summary.md
+              find "$hypothesis_dir" -type f | while read file; do
+                echo "- $(basename "$file")" >> analysis-summary.md
+              done
+              echo "" >> analysis-summary.md
+            fi
+          done
+          
+          echo "## Next Steps" >> analysis-summary.md
+          echo "" >> analysis-summary.md
+          echo "1. Review individual hypothesis results above" >> analysis-summary.md
+          echo "2. Identify primary bottleneck(s)" >> analysis-summary.md
+          echo "3. Implement targeted fixes" >> analysis-summary.md
+          echo "4. Re-test in CI to validate improvements" >> analysis-summary.md
+          echo "" >> analysis-summary.md
+          
+          # Display the summary
+          cat analysis-summary.md
+          
+          echo "::endgroup::"
+          
+      - name: Upload consolidated analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: "performance-investigation-summary"
+          path: |
+            analysis-summary.md
+            hypothesis-results/
+          retention-days: 30
