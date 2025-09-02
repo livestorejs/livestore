@@ -61,7 +61,7 @@ body:
         - "@livestore/adapter-web"
         - "@livestore/adapter-node"
         - "@livestore/adapter-cloudflare"
-        - "@livestore/graphql"
+        - "@livestore/adapter-expo"
         - "@livestore/sync-cf"
         - "New package"
         - "Documentation"
