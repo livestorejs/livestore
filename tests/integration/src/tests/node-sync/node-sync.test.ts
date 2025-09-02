@@ -9,7 +9,15 @@ import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+import { logActiveWorkers, logProcessState, setupProcessMonitoring } from './debug-helpers.ts'
 import * as WorkerSchema from './worker-schema.ts'
+
+// Set up process monitoring early in CI
+if (IS_CI) {
+  console.log('[DEBUG] Setting up process monitoring for CI environment')
+  setupProcessMonitoring()
+  logProcessState('Test file initialization')
+}
 
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
@@ -30,11 +38,20 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   })
 
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
+  if (IS_CI) {
+    console.log('[DEBUG] node-sync test suite starting')
+    logProcessState('Test suite start')
+  }
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.StorageType, WorkerSchema.AdapterType],
     ([storageType, adapterType], test) =>
       Effect.gen(function* () {
+        console.log('\n[TEST TRANSITION] Starting simple test (4 todos)')
+        if (IS_CI) {
+          logProcessState('Before simple test')
+        }
+
         const storeId = nanoid(10)
         const todoCount = 4
 
@@ -64,6 +81,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         yield* Effect.log(`Test completed: ${result.length} todos synced`)
         expect(result.length).toEqual(todoCount)
+
+        console.log('[TEST TRANSITION] Simple test completed')
+        if (IS_CI) {
+          console.log(`[TEST TRANSITION] Active worker PIDs: ${activeWorkerPids.size}`)
+          logProcessState('After simple test')
+        }
       }).pipe(withTestCtx()(test)),
     { fastCheck: { numRuns: 4 } },
   )
@@ -252,6 +275,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 })
 
+// Add cleanup tracking
+let workerCount = 0
+const activeWorkerPids = new Set<number>()
+
 const makeWorker = ({
   clientId,
   storeId,
@@ -266,6 +293,13 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
+    const workerId = ++workerCount
+    console.log(`[WORKER] Creating worker #${workerId} for ${clientId}`)
+    if (IS_CI) {
+      console.log(`[WORKER] Active workers before: ${activeWorkerPids.size}`)
+      logActiveWorkers()
+    }
+
     const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
@@ -274,13 +308,30 @@ const makeWorker = ({
         WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
     }).pipe(
       Effect.provide(
-        ChildProcessWorker.layer(() =>
-          ChildProcess.fork(
+        ChildProcessWorker.layer(() => {
+          const childProcess = ChildProcess.fork(
             new URL('./client-node-worker.ts', import.meta.url),
             // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
             [clientId],
-          ),
-        ),
+          )
+
+          // Track the child process
+          if (childProcess.pid) {
+            activeWorkerPids.add(childProcess.pid)
+            console.log(`[WORKER] Child process created: PID=${childProcess.pid} for ${clientId}`)
+
+            childProcess.on('exit', (code) => {
+              console.log(`[WORKER] Child process exited: PID=${childProcess.pid}, code=${code}, client=${clientId}`)
+              activeWorkerPids.delete(childProcess.pid!)
+            })
+
+            childProcess.on('error', (err) => {
+              console.error(`[WORKER] Child process error: PID=${childProcess.pid}, client=${clientId}`, err)
+            })
+          }
+
+          return childProcess
+        }),
       ),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
