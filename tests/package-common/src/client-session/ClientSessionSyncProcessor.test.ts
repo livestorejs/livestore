@@ -13,6 +13,7 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
 import { Context, Effect, FetchHttpClient, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -371,14 +372,14 @@ const TestContextLive = Layer.scoped(
       const adapter = makeAdapter({
         storage: { type: 'in-memory' },
         sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
-        testing: args?.testing,
+        ...omitUndefineds({ testing: args?.testing }),
       })
       return createStore({
         schema: schema as LiveStoreSchema,
         adapter,
         storeId: nanoid(),
         shutdownDeferred,
-        boot: args?.boot,
+        ...omitUndefineds({ boot: args?.boot }),
       })
     }
 

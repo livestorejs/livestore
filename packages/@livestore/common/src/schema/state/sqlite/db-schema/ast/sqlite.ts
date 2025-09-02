@@ -1,3 +1,4 @@
+import { omitUndefineds } from '@livestore/utils'
 import { type Option, Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { hashCode } from '../hash.ts'
@@ -45,9 +46,7 @@ export const index = (
 ): Index => ({
   _tag: 'index',
   columns,
-  name,
-  unique,
-  primaryKey,
+  ...omitUndefineds({ name, unique, primaryKey }),
 })
 
 export type ForeignKey = {

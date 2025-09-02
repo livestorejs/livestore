@@ -1,3 +1,4 @@
+import { omitUndefineds } from '@livestore/utils'
 import { identity } from '@livestore/utils/effect'
 import type { Attributes } from '@opentelemetry/api'
 import type { InMemorySpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base'
@@ -106,7 +107,7 @@ export const toTraceFile = (spans: ReadableSpan[]) => {
             spans: spans.map((span) => ({
               traceId: span.spanContext().traceId,
               spanId: span.spanContext().spanId,
-              ...(span.parentSpanContext?.spanId ? { parentSpanId: span.parentSpanContext.spanId } : {}),
+              ...omitUndefineds({ parentSpanId: span.parentSpanContext?.spanId }),
               // traceState: span.spanContext().traceState ?? '',
               name: span.name,
               kind: 'SPAN_KIND_INTERNAL',

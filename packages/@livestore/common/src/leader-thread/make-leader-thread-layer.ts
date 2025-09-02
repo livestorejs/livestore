@@ -1,4 +1,4 @@
-import { shouldNeverHappen } from '@livestore/utils'
+import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, KeyValueStore, Layer, PlatformError, Queue, SubscriptionRef } from '@livestore/utils/effect'
 import {
@@ -143,11 +143,13 @@ export const makeLeaderThreadLayer = ({
       onError: syncOptions?.onSyncError ?? 'ignore',
       livePull: syncOptions?.livePull ?? true,
       params: {
-        localPushBatchSize: params?.localPushBatchSize,
-        backendPushBatchSize: params?.backendPushBatchSize,
+        ...omitUndefineds({
+          localPushBatchSize: params?.localPushBatchSize,
+          backendPushBatchSize: params?.backendPushBatchSize,
+        }),
       },
       testing: {
-        delays: testing?.syncProcessor?.delays,
+        ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
       },
     })
 

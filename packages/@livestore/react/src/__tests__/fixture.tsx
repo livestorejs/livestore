@@ -3,6 +3,7 @@ import { provideOtel, type UnexpectedError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { LiveStoreSchema, SqliteDsl, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
+import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
@@ -86,7 +87,7 @@ export const events = {
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
-  todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
+  todoUpdated: ({ id, text, completed }) => todos.update({ ...omitUndefineds({ completed, text }) }).where({ id }),
 })
 
 export const tables = { todos, app, userInfo, AppRouterSchema, kv }
@@ -163,4 +164,4 @@ export const makeTodoMvcReact: ({
     const renderCount = makeRenderCount()
 
     return { wrapper, store: storeWithReactApi, renderCount }
-  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))
+  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer })))

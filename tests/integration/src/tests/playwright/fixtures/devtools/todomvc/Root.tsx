@@ -3,6 +3,7 @@ import 'todomvc-app-css/index.css'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
+import { omitUndefineds } from '@livestore/utils'
 import type React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
@@ -23,7 +24,7 @@ const AppBody: React.FC = () => (
 
 const searchParams = new URLSearchParams(window.location.search)
 const resetPersistence = import.meta.env.DEV && searchParams.get('reset') !== null
-const sessionId = searchParams.get('sessionId') ?? undefined
+const sessionId = searchParams.get('sessionId')
 
 if (resetPersistence) {
   searchParams.delete('reset')
@@ -35,7 +36,7 @@ const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   resetPersistence,
-  sessionId,
+  ...omitUndefineds({ sessionId: sessionId !== null ? sessionId : undefined }),
 })
 
 const otelTracer = makeTracer('todomvc-main')

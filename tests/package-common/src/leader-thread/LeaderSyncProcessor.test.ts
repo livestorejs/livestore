@@ -10,6 +10,7 @@ import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -254,9 +255,9 @@ const LeaderThreadCtxLive = ({
       devtoolsOptions: { enabled: false },
       shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
       testing: {
-        syncProcessor,
+        ...omitUndefineds({ syncProcessor }),
       },
-      params,
+      ...omitUndefineds({ params }),
     }).pipe(Layer.provide(FetchHttpClient.layer))
 
     const testContextLayer = Effect.gen(function* () {
