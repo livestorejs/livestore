@@ -47,20 +47,36 @@ body:
     validations:
       required: true
 
-  - type: dropdown
+  - type: checkboxes
     id: package
     attributes:
       label: Which package(s) are affected?
-      multiple: true
+      description: Select all that apply
       options:
-        - "@livestore/livestore"
-        - "@livestore/react"
-        - "@livestore/adapter-web"
-        - "@livestore/adapter-node"
-        - "@livestore/adapter-cloudflare"
-        - "@livestore/adapter-expo"
-        - "@livestore/sync-cf"
-        - "Other (specify in description)"
+        - label: "**Core**"
+        - label: "@livestore/livestore"
+        - label: "@livestore/common"
+        - label: "@livestore/react"
+        - label: "@livestore/solid"
+        - label: "**Adapters**"
+        - label: "@livestore/adapter-cloudflare"
+        - label: "@livestore/adapter-expo"
+        - label: "@livestore/adapter-node"
+        - label: "@livestore/adapter-web"
+        - label: "**Sync Providers**"
+        - label: "@livestore/sync-cf"
+        - label: "@livestore/sync-electric"
+        - label: "**Other Packages**"
+        - label: "@livestore/cli"
+        - label: "@livestore/common-cf"
+        - label: "@livestore/devtools-expo"
+        - label: "@livestore/devtools-web-common"
+        - label: "@livestore/graphql"
+        - label: "@livestore/sqlite-wasm"
+        - label: "@livestore/utils"
+        - label: "@livestore/wa-sqlite"
+        - label: "@livestore/webmesh"
+        - label: "Other (specify in description)"
 
   - type: textarea
     id: environment
