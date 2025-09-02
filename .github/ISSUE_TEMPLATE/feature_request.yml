@@ -50,38 +50,12 @@ body:
         - Are there existing workarounds?
         - What are the trade-offs of different approaches?
 
-  - type: checkboxes
+  - type: input
     id: package
     attributes:
       label: Which package(s) would this affect?
-      description: Select all that apply
-      options:
-        - label: "**Core**"
-        - label: "@livestore/livestore"
-        - label: "@livestore/common"
-        - label: "@livestore/react"
-        - label: "@livestore/solid"
-        - label: "**Adapters**"
-        - label: "@livestore/adapter-cloudflare"
-        - label: "@livestore/adapter-expo"
-        - label: "@livestore/adapter-node"
-        - label: "@livestore/adapter-web"
-        - label: "**Sync Providers**"
-        - label: "@livestore/sync-cf"
-        - label: "@livestore/sync-electric"
-        - label: "**Other Packages**"
-        - label: "@livestore/cli"
-        - label: "@livestore/common-cf"
-        - label: "@livestore/devtools-expo"
-        - label: "@livestore/devtools-web-common"
-        - label: "@livestore/graphql"
-        - label: "@livestore/sqlite-wasm"
-        - label: "@livestore/utils"
-        - label: "@livestore/wa-sqlite"
-        - label: "@livestore/webmesh"
-        - label: "New package"
-        - label: "Documentation"
-        - label: "Other (specify in description)"
+      description: List the affected packages, or specify "New package" or "Documentation"
+      placeholder: e.g., @livestore/react, @livestore/adapter-web, or "New package"
 
   - type: dropdown
     id: priority
