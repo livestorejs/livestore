@@ -53,13 +53,13 @@ body:
       label: Which package(s) are affected?
       multiple: true
       options:
-        - "@livestore/core"
+        - "@livestore/livestore"
         - "@livestore/react"
+        - "@livestore/adapter-web"
+        - "@livestore/adapter-node"
+        - "@livestore/adapter-cloudflare"
         - "@livestore/graphql"
-        - "@livestore/sqlite"
-        - "@livestore/postgres"
-        - "@livestore/mysql"
-        - "@livestore/cloudflare"
+        - "@livestore/sync-cf"
         - "Other (specify in description)"
 
   - type: textarea

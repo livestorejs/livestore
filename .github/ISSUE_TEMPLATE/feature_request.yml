@@ -56,13 +56,13 @@ body:
       label: Which package(s) would this affect?
       multiple: true
       options:
-        - "@livestore/core"
+        - "@livestore/livestore"
         - "@livestore/react"
+        - "@livestore/adapter-web"
+        - "@livestore/adapter-node"
+        - "@livestore/adapter-cloudflare"
         - "@livestore/graphql"
-        - "@livestore/sqlite"
-        - "@livestore/postgres"
-        - "@livestore/mysql"
-        - "@livestore/cloudflare"
+        - "@livestore/sync-cf"
         - "New package"
         - "Documentation"
         - "Other (specify in description)"
