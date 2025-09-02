@@ -179,7 +179,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(error._tag).toEqual('LiveStore.SyncError')
+      expect(error._tag).toEqual('LiveStore.UnexpectedError')
       expect(error.cause).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
