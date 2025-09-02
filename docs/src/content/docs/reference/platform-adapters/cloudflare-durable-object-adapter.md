@@ -112,7 +112,7 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
     return new Response(JSON.stringify(data))
   }
 
-  async getStore() {
+  private async getStore() {
     if (this.cachedStore !== undefined) {
       return this.cachedStore
     }
@@ -155,8 +155,10 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
     this.subscribeToStore()
   }
 
-  // Required for RPC callbacks
+  // Required for sync backend RPC callbacks
   async syncUpdateRpc(payload: unknown) {
+    // Make sure to wake up the store before processing the sync update
+    await this.getStore()
     await handleSyncUpdateRpc(payload)
   }
 }
@@ -214,6 +216,31 @@ Creates a LiveStore instance within a Durable Object.
 - `syncBackendDurableObject` - Sync backend DO stub
 - `livePull` - Enable real-time updates (default: `false`)
 
+### `syncUpdateRpc(payload)`
+
+**Required method for Client Durable Objects**
+
+This method must be implemented on your Client Durable Object to handle sync update notifications from the sync backend:
+
+```ts
+async syncUpdateRpc(payload: unknown) {
+  await handleSyncUpdateRpc(payload)
+}
+```
+
+**Parameters:**
+- `payload` - Sync update notification payload from the sync backend
+
+**Purpose:**
+- Enables real-time sync updates when using `livePull: true`
+- Called by the sync backend Durable Object when new events are available
+- Must delegate to `handleSyncUpdateRpc` from `@livestore/sync-cf/client`
+
+**Implementation Notes:**
+- This is part of the RPC interface between sync backend and client DOs
+- The method signature must match exactly for the RPC system to work
+- Always use the provided `handleSyncUpdateRpc` function - don't implement custom logic
+
 For sync backend-related APIs like `makeDurableObject`, `handleSyncRequest`, and `getSyncRequestSearchParams`, see the [Cloudflare sync provider documentation](/reference/syncing/sync-provider/cloudflare/).
 
 ## Advanced Features
@@ -245,22 +272,96 @@ const subscription = store.subscribe(tables.yourTable, {
 subscription()
 ```
 
-### Persistent State with Alarms
+### Durable Object Lifecycle Management
 
-Keep your Durable Object alive and maintain subscriptions:
+#### Hibernation-Aware Design
+
+Design your Durable Objects to handle hibernation gracefully:
+
+```ts
+export class LiveStoreClientDO extends DurableObject {
+  private cachedStore: Store<typeof schema> | undefined
+  
+  async initializeIfNeeded() {
+    if (this.cachedStore) return
+    
+    // Re-establish store and subscriptions after hibernation
+    this.cachedStore = await this.getStore()
+    await this.subscribeToStore()
+  }
+  
+  async fetch(request: Request): Promise<Response> {
+    await this.initializeIfNeeded()
+    // ... handle request
+  }
+}
+```
+
+#### Alarm-Based Keep-Alive (Optional)
+
+:::caution[CPU Billing Impact]
+Using alarms to keep DOs alive prevents hibernation and increases CPU billing. Only use this pattern if you need guaranteed real-time responsiveness and understand the cost implications.
+:::
+
+If you need to maintain active subscriptions between requests, you can use alarms as a last resort:
 
 ```ts
 async subscribeToStore() {
-  // Set up subscriptions
-  // ...
-  
-  // Schedule next alarm to keep DO alive
-  await this.state.storage.setAlarm(Date.now() + 1000)
+  if (this.storeSubscription === undefined) {
+    const store = await this.getStore()
+    
+    this.storeSubscription = store.subscribe(tables.messages, {
+      onUpdate: (messages) => {
+        // Process real-time updates
+        this.broadcastToClients(messages)
+      },
+    })
+  }
+
+  // Only schedule alarm if absolutely necessary for your use case
+  // Consider longer intervals (5+ minutes) to minimize CPU costs
+  const nextAlarm = Date.now() + (5 * 60 * 1000) // 5 minutes
+  await this.state.storage.setAlarm(nextAlarm)
 }
 
-alarm(_alarmInfo?: AlarmInvocationInfo) {
-  // Re-establish subscriptions
+alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+  // Re-initialize after potential hibernation
+  this.cachedStore = undefined
   this.subscribeToStore()
+}
+```
+
+**Alternative approaches to consider:**
+- Let DOs hibernate naturally and re-initialize on demand
+- Use WebSockets or EventSource for real-time updates to client browsers
+- Implement request-driven sync instead of continuous subscriptions
+
+#### Error Handling and Recovery
+
+Implement robust error handling for DO operations:
+
+```ts
+async fetch(request: Request): Promise<Response> {
+  try {
+    await this.initializeIfNeeded()
+    
+    const store = await this.getStore()
+    const data = store.query(tables.yourTable)
+    
+    return new Response(JSON.stringify(data), {
+      headers: { 'Content-Type': 'application/json' }
+    })
+    
+  } catch (error) {
+    console.error('DO operation failed:', error)
+    
+    // Reset state on critical errors
+    if (error.message.includes('database')) {
+      this.cachedStore = undefined
+    }
+    
+    return new Response('Internal Server Error', { status: 500 })
+  }
 }
 ```
 

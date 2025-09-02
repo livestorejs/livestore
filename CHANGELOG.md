@@ -254,6 +254,7 @@ Open issues:
 - Consider mechanism to reject events on sync (#404)
 - [Devtools] Clicking on session doesn't work (#474)
 - [node client] store.commit inside store.subscribe will create race condition & crash (#577)
+- Improved multi-store support (#585)
 - Fix: Rolling back empty materializers currently fails
 
 ## 0.3.0

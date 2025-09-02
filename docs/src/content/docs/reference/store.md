@@ -47,8 +47,14 @@ store.commit(events.todoCreated({ id: '1', text: 'Buy milk' }))
 
 ### Shutting down a store
 
+LiveStore provides two APIs for shutting down a store:
+
 ```ts
-await store.shutdown()
+// Effect API (for Effect-based applications)
+yield* store.shutdown()
+
+// Promise API
+await store.shutdownPromise()
 ```
 
 ## Multiple Stores
