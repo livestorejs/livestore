@@ -1,0 +1,8 @@
+# ACT configuration for node-sync testing
+-W .github/workflows/act-node-sync.yml
+-j test-integration-node-sync
+--container-options "--cpus=1 --memory=2g"
+-P ubuntu-latest=catthehacker/ubuntu:full-latest
+--env CI=true
+--env GITHUB_ACTIONS=true
+--env IS_CI=true

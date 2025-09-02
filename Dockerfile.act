@@ -1,0 +1,36 @@
+FROM ubuntu:22.04
+
+# Install basic dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    xz-utils \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Nix
+RUN sh <(curl -L https://nixos.org/nix/install) --daemon --yes
+
+# Configure Nix
+RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf && \
+    echo "sandbox = false" >> /etc/nix/nix.conf
+
+# Set up environment
+ENV PATH="/nix/var/nix/profiles/default/bin:${PATH}"
+ENV NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+
+# Create a non-root user (act runs as root by default)
+RUN useradd -m -s /bin/bash runner && \
+    echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Switch to runner user
+USER runner
+WORKDIR /home/runner
+
+# Pre-install commonly used Nix packages to speed up the workflow
+RUN /nix/var/nix/profiles/default/bin/nix-env -iA \
+    nixpkgs.direnv \
+    nixpkgs.nodejs \
+    nixpkgs.pnpm
+
+CMD ["/bin/bash"]

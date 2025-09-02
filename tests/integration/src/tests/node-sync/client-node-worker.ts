@@ -22,7 +22,6 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { makeFileLogger } from './fixtures/file-logger.ts'
 import { events, schema, tables } from './schema.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
@@ -66,7 +65,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       const shutdownDeferred = yield* makeShutdownDeferred
 
       yield* Effect.log(`Initializing store for ${clientId}`, { storeId, adapterType, storageType })
-      
+
       const store = yield* createStore({
         adapter,
         schema,
@@ -78,7 +77,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
           simulation: params?.simulation ? { clientSessionSyncProcessor: params.simulation } : undefined,
         },
       })
-      
+
       yield* Effect.log(`Store initialized for ${clientId}`)
       // @ts-expect-error for debugging
       globalThis.store = store
@@ -96,27 +95,37 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
       const otelSpan = yield* OtelTracer.currentOtelSpan
-      
+
       yield* Effect.log(`Starting to create ${count} todos with batch size ${commitBatchSize}`)
-      
+
       const eventBatches = pipe(
         ReadonlyArray.range(0, count - 1),
         ReadonlyArray.map((i) => events.todoCreated({ id: nanoid(), title: `todo ${i} (${clientId})` })),
         ReadonlyArray.chunksOf(commitBatchSize),
       )
-      
+
       yield* Effect.log(`Created ${eventBatches.length} batches for ${count} todos`)
-      
+
       const spanLinks = [{ context: otelSpan.spanContext() }]
+      const startTime = Date.now()
       for (const [index, batch] of eventBatches.entries()) {
-        if ((index + 1) % 10 === 0 || index === 0) {
+        const batchStart = Date.now()
+        if ((index + 1) % 10 === 0 || index === 0 || eventBatches.length <= 5) {
           yield* Effect.log(`Committing batch ${index + 1}/${eventBatches.length} (${batch.length} todos)`)
         }
         store.commit({ spanLinks }, ...batch)
+        const batchTime = Date.now() - batchStart
+        if (batchTime > 100) {
+          yield* Effect.log(`Batch ${index + 1} took ${batchTime}ms`)
+        }
       }
-      
-      yield* Effect.log(`Completed creating ${count} todos`)
-    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count, commitBatchSize } }), Effect.orDie),
+      const totalTime = Date.now() - startTime
+
+      yield* Effect.log(`Completed creating ${count} todos in ${totalTime}ms`)
+    }).pipe(
+      Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count, commitBatchSize } }),
+      Effect.orDie,
+    ),
   StreamTodos: () =>
     Effect.gen(function* () {
       const { store } = yield* WorkerContext

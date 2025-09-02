@@ -9,7 +9,6 @@ import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
@@ -20,15 +19,13 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
     timeout: testTimeout,
-    makeLayer: (testContext) =>
+    makeLayer: (_testContext) =>
       Layer.mergeAll(
         // makeFileLogger('runner', { testContext }), // Disabled for debugging - logs go to stdout
-        WranglerDevServerService.Default({ 
+        WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
-          showLogs: IS_CI // Show Wrangler logs in CI for debugging
-        }).pipe(
-          Layer.provide(PlatformNode.NodeContext.layer),
-        ),
+          showLogs: IS_CI, // Show Wrangler logs in CI for debugging
+        }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
       ),
   })
 
@@ -44,7 +41,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         yield* Effect.log(`Starting test: create ${todoCount} todos on client-a and sync to client-b`, {
           storeId,
           adapterType,
-          storageType
+          storageType,
         })
 
         const [clientA, clientB] = yield* Effect.all(
@@ -145,11 +142,16 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         })
         const params = { leaderPushBatchSize, simulation: simulationParams }
 
-        // Add progress indicator
+        // Add progress indicator that updates every 30 seconds
         const progressIndicator = Effect.repeat(
-          Effect.log(`Test still running... elapsed: ${Math.round((Date.now() - testStartTime) / 1000)}s`),
-          Schedule.fixed('30 seconds')
+          Effect.sync(() => {
+            const elapsed = Math.round((Date.now() - testStartTime) / 1000)
+            console.log(`[Progress] Test still running... elapsed: ${elapsed}s`)
+          }),
+          Schedule.fixed('30 seconds'),
         ).pipe(Effect.fork)
+
+        yield* progressIndicator
 
         yield* Effect.log('Initializing workers...')
         const [clientA, clientB] = yield* Effect.all(
@@ -163,16 +165,16 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         // TODO also alternate the order and delay of todo creation as part of prop testing
         yield* Effect.log(`Starting todo creation: client-a=${todoCountA}, client-b=${todoCountB}`)
-        
+
         const createA = clientA
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, commitBatchSize }))
           .pipe(
             Effect.tap(() => Effect.log(`Client-a finished creating ${todoCountA} todos`)),
             Effect.timeout('2 minutes'),
-            Effect.catchTag('TimeoutException', () => 
-              Effect.die(`Client-a timed out creating ${todoCountA} todos with batch size ${commitBatchSize}`)
+            Effect.catchTag('TimeoutException', () =>
+              Effect.die(`Client-a timed out creating ${todoCountA} todos with batch size ${commitBatchSize}`),
             ),
-            Effect.fork
+            Effect.fork,
           )
 
         const createB = clientB
@@ -180,24 +182,25 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           .pipe(
             Effect.tap(() => Effect.log(`Client-b finished creating ${todoCountB} todos`)),
             Effect.timeout('2 minutes'),
-            Effect.catchTag('TimeoutException', () => 
-              Effect.die(`Client-b timed out creating ${todoCountB} todos with batch size ${commitBatchSize}`)
+            Effect.catchTag('TimeoutException', () =>
+              Effect.die(`Client-b timed out creating ${todoCountB} todos with batch size ${commitBatchSize}`),
             ),
-            Effect.fork
+            Effect.fork,
           )
-        
+
         yield* createA
         yield* createB
 
         yield* Effect.log(`Waiting for sync: expecting ${totalCount} todos on both clients`)
-        
+        const syncStartTime = Date.now()
+
         const exec = Effect.all(
           [
             clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
-              Stream.tap((todos) => 
-                todos.length > 0 && todos.length % 50 === 0 
+              Stream.tap((todos) =>
+                todos.length > 0 && todos.length % 50 === 0
                   ? Effect.log(`Client-a progress: ${todos.length}/${totalCount} todos`)
-                  : Effect.void
+                  : Effect.void,
               ),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
@@ -205,10 +208,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
               Effect.tap(() => Effect.log(`Client-a received all ${totalCount} todos`)),
             ),
             clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
-              Stream.tap((todos) => 
-                todos.length > 0 && todos.length % 50 === 0 
+              Stream.tap((todos) =>
+                todos.length > 0 && todos.length % 50 === 0
                   ? Effect.log(`Client-b progress: ${todos.length}/${totalCount} todos`)
-                  : Effect.void
+                  : Effect.void,
               ),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
@@ -225,7 +228,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         yield* Effect.raceFirst(exec, onShutdown)
-        yield* Effect.log(`Test completed successfully in ${Math.round((Date.now() - testStartTime) / 1000)}s`)
+        const syncTime = Math.round((Date.now() - syncStartTime) / 1000)
+        yield* Effect.log(
+          `Sync completed in ${syncTime}s, total test time: ${Math.round((Date.now() - testStartTime) / 1000)}s`,
+        )
       }).pipe(
         withTestCtx({
           suffix: stringifyObject({
