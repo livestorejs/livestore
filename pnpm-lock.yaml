@@ -39,6 +39,9 @@ catalogs:
     '@vitest/ui':
       specifier: 3.2.4
       version: 3.2.4
+    better-sqlite3:
+      specifier: ^12.2.0
+      version: 12.2.0
     effect:
       specifier: 3.17.9
       version: 3.17.9
@@ -139,16 +142,16 @@ importers:
         version: 0.9.4(prettier@3.6.2)(typescript@5.9.2)
       '@astrojs/netlify':
         specifier: 6.5.9
-        version: 6.5.9(@types/node@24.3.0)(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
+        version: 6.5.9(@types/node@24.3.0)(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       '@astrojs/react':
         specifier: 4.3.0
         version: 4.3.0(@types/node@24.3.0)(@types/react-dom@19.1.8(@types/react@19.1.11))(@types/react@19.1.11)(jiti@2.5.1)(lightningcss@1.30.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       '@astrojs/starlight':
         specifier: 0.35.2
-        version: 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+        version: 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       '@astrojs/starlight-tailwind':
         specifier: 4.0.1
-        version: 4.0.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(tailwindcss@4.1.12)
+        version: 4.0.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(tailwindcss@4.1.12)
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../packages/@livestore/adapter-web
@@ -178,13 +181,13 @@ importers:
         version: 19.1.11
       astro:
         specifier: 5.13.4
-        version: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+        version: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
       astro-expressive-code:
         specifier: 0.41.3
-        version: 0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+        version: 0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       astro-og-canvas:
         specifier: 0.7.0
-        version: 0.7.0(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+        version: 0.7.0(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       canvaskit-wasm:
         specifier: 0.40.0
         version: 0.40.0
@@ -208,16 +211,16 @@ importers:
         version: 0.34.3
       starlight-auto-sidebar:
         specifier: 0.1.2
-        version: 0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
+        version: 0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
       starlight-links-validator:
         specifier: 0.17.1
-        version: 0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
+        version: 0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
       starlight-sidebar-topics:
         specifier: 0.6.0
-        version: 0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
+        version: 0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))
       starlight-typedoc:
         specifier: 0.21.3
-        version: 0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.2)))(typedoc@0.28.11(typescript@5.9.2))
+        version: 0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.2)))(typedoc@0.28.11(typescript@5.9.2))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.12
@@ -1059,7 +1062,7 @@ importers:
         version: 0.2.1(react@19.0.0)
       '@tanstack/react-start':
         specifier: 1.130.15
-        version: 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
+        version: 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(better-sqlite3@12.2.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -1863,6 +1866,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.1.8(@types/react@19.1.11)
+      better-sqlite3:
+        specifier: 'catalog:'
+        version: 12.2.0
       react:
         specifier: 'catalog:'
         version: 19.0.0
@@ -3502,7 +3508,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.24.21':
     resolution: {integrity: sha512-DT6K9vgFHqqWL/19mU1ofRcPoO1pn4qmgi76GtuiNU4tbBe/02mRHwFsQw7qRfFAT28If5e/wiwVozgSuZVL8g==}
@@ -7271,6 +7277,10 @@ packages:
     resolution: {integrity: sha512-aVNobHnJqLiUelTaHat9DZ1qM2w0C0Eym4LPI/3JxOnSokGVdsl1T1kN7TFvsEAD8G47A6VKQ0TVHqbBnYMJlQ==}
     engines: {node: '>=12.0.0'}
 
+  better-sqlite3@12.2.0:
+    resolution: {integrity: sha512-eGbYq2CT+tos1fBwLQ/tkBt9J5M3JEHjku4hbvQUePCckkvVf14xWj+1m7dGoK81M/fOjFT7yM9UMeKT/+vFLQ==}
+    engines: {node: 20.x || 22.x || 23.x || 24.x}
+
   big-integer@1.6.52:
     resolution: {integrity: sha512-QxD8cf2eVqJOOz63z6JIN9BzvVs/dlySa5HGSBH5xtR8dPteIRQnBxxKqkNTiT6jbDTF6jAfrd4oMcND9RGbQg==}
     engines: {node: '>=0.6'}
@@ -7503,6 +7513,9 @@ packages:
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
+
+  chownr@1.1.4:
+    resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
   chownr@2.0.0:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
@@ -8137,6 +8150,10 @@ packages:
     resolution: {integrity: sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ==}
     engines: {node: '>=0.10'}
 
+  decompress-response@6.0.0:
+    resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
+    engines: {node: '>=10'}
+
   deep-eql@5.0.2:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
     engines: {node: '>=6'}
@@ -8622,6 +8639,10 @@ packages:
     resolution: {integrity: sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw==}
     engines: {node: '>=6'}
 
+  expand-template@2.0.3:
+    resolution: {integrity: sha512-XYfuKMvj4O35f/pOXLObndIRvyQ+/+6AhODh+OKWj9S9498pHHn/IMszH+gt0fBCRWMNfk1ZSp5x3AifmnI2vg==}
+    engines: {node: '>=6'}
+
   expect-type@1.2.1:
     resolution: {integrity: sha512-/kP8CAwxzLVEeFrMm4kMmy4CCDlpipyA7MYLVrdJIkV0fYF0UaigQHRsxHiuY/GEea+bh4KSv3TIlgr+2UL6bw==}
     engines: {node: '>=12.0.0'}
@@ -9005,6 +9026,9 @@ packages:
     resolution: {integrity: sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==}
     engines: {node: '>= 0.8'}
 
+  fs-constants@1.0.0:
+    resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
+
   fs-extra@10.1.0:
     resolution: {integrity: sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==}
     engines: {node: '>=12'}
@@ -9113,6 +9137,9 @@ packages:
   giget@2.0.0:
     resolution: {integrity: sha512-L5bGsVkxJbJgdnwyuheIunkGatUF/zssUoxxjACCseZYAVbaqdh9Tsmmlkl8vYan09H7sbvKt4pS8GqKLBrEzA==}
     hasBin: true
+
+  github-from-package@0.0.0:
+    resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
   github-slugger@2.0.0:
     resolution: {integrity: sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw==}
@@ -10686,6 +10713,10 @@ packages:
     resolution: {integrity: sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==}
     engines: {node: '>=18'}
 
+  mimic-response@3.1.0:
+    resolution: {integrity: sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==}
+    engines: {node: '>=10'}
+
   mini-svg-data-uri@1.4.4:
     resolution: {integrity: sha512-r9deDe9p5FJUPZAk3A59wGH7Ii9YrjjWw0jmw/liSbHl2CHiyXj6FcDXDu2K3TjVAXqiJdaw3xxwlZZr9E6nHg==}
     hasBin: true
@@ -10739,6 +10770,9 @@ packages:
 
   mitt@3.0.1:
     resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
+
+  mkdirp-classic@0.5.3:
+    resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
 
   mkdirp@0.5.6:
     resolution: {integrity: sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==}
@@ -10830,6 +10864,9 @@ packages:
     engines: {node: ^18 || >=20}
     hasBin: true
 
+  napi-build-utils@2.0.0:
+    resolution: {integrity: sha512-GEbrYkbfF7MoNaoh2iGG84Mnf/WZfB0GdGEsM8wz7Expx/LlWf5U8t9nvJKXSp3qr5IsEbK04cBGhol/KwOsWA==}
+
   natural-orderby@2.0.3:
     resolution: {integrity: sha512-p7KTHxU0CUrcOXe62Zfrb5Z13nLvPhSWR/so3kFulUQU0sgUll2Z0LwpsLN351eOOD+hRGu/F1g+6xDfPeD++Q==}
 
@@ -10878,6 +10915,10 @@ packages:
 
   no-case@3.0.4:
     resolution: {integrity: sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==}
+
+  node-abi@3.75.0:
+    resolution: {integrity: sha512-OhYaY5sDsIka7H7AtijtI9jwGYLyl29eQn/W623DiN/MIv5sUqc4g7BIDThX+gb7di9f6xK02nkp8sdfFWZLTg==}
+    engines: {node: '>=10'}
 
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
@@ -11397,6 +11438,11 @@ packages:
   postgres@3.4.7:
     resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
     engines: {node: '>=12'}
+
+  prebuild-install@7.1.3:
+    resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
+    engines: {node: '>=10'}
+    hasBin: true
 
   precinct@12.2.0:
     resolution: {integrity: sha512-NFBMuwIfaJ4SocE9YXPU/n4AcNSoFMVFjP72nvl3cx69j/ke61/hPOWFREVxLkFhhEGnA8ZuVfTqJBa+PK3b5w==}
@@ -12354,6 +12400,12 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
+  simple-concat@1.0.1:
+    resolution: {integrity: sha512-cSFtAPtRhljv69IK0hTVZQ+OfE9nePi/rtJmw5UjHeVyVroEqJXP1sFztKUy1qU+xvz3u/sfYJLa947b7nAN2Q==}
+
+  simple-get@4.0.1:
+    resolution: {integrity: sha512-brv7p5WgH0jmQJr1ZDDfKDOSeWWg+OVypG99A/5vYGPqJ6pxiaHLy8nxtFjBA7oMa01ebA9gfh1uMCFqOuXxvA==}
+
   simple-plist@1.3.1:
     resolution: {integrity: sha512-iMSw5i0XseMnrhtIzRb7XpQEXepa9xhWxGUojHBL43SIpQuDQkh3Wpy67ZbDzZVr6EKxvwVChnVpdl8hEVLDiw==}
 
@@ -12712,8 +12764,15 @@ packages:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
     engines: {node: '>=6'}
 
+  tar-fs@2.1.3:
+    resolution: {integrity: sha512-090nwYJDmlhwFwEW3QQl+vaNnxsO2yVsd45eTKRBzSzu+hlb1w2K9inVq5b0ngXuLVqQ4ApvsUHHnu/zQNkWAg==}
+
   tar-fs@3.1.0:
     resolution: {integrity: sha512-5Mty5y/sOF1YWj1J6GiBodjlDc05CUR8PKXrsnFAiSG0xA+GHeWLovaZPYUDXkH/1iKRf2+M5+OrRgzC7O9b7w==}
+
+  tar-stream@2.2.0:
+    resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
+    engines: {node: '>=6'}
 
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
@@ -14061,12 +14120,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@4.2.6(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))':
+  '@astrojs/mdx@4.2.6(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.1
       '@mdx-js/mdx': 3.1.0(acorn@8.15.0)
       acorn: 8.15.0
-      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
       es-module-lexer: 1.7.0
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -14080,15 +14139,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/netlify@6.5.9(@types/node@24.3.0)(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)':
+  '@astrojs/netlify@6.5.9(@types/node@24.3.0)(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)':
     dependencies:
       '@astrojs/internal-helpers': 0.7.2
       '@astrojs/underscore-redirects': 1.0.0
       '@netlify/blobs': 10.0.8
       '@netlify/functions': 4.2.1(rollup@4.49.0)
-      '@netlify/vite-plugin': 2.5.4(db0@0.3.2)(ioredis@5.6.1)(rollup@4.49.0)(vite@6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
+      '@netlify/vite-plugin': 2.5.4(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(rollup@4.49.0)(vite@6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       '@vercel/nft': 0.29.4(rollup@4.49.0)
-      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
       esbuild: 0.25.6
       tinyglobby: 0.2.14
       vite: 6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
@@ -14162,22 +14221,22 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 3.24.4
 
-  '@astrojs/starlight-tailwind@4.0.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(tailwindcss@4.1.12)':
+  '@astrojs/starlight-tailwind@4.0.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(tailwindcss@4.1.12)':
     dependencies:
-      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       tailwindcss: 4.1.12
 
-  '@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))':
+  '@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.5
-      '@astrojs/mdx': 4.2.6(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/mdx': 4.2.6(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       '@astrojs/sitemap': 3.3.1
       '@pagefind/default-ui': 1.3.0
       '@types/hast': 3.0.4
       '@types/js-yaml': 4.0.9
       '@types/mdast': 4.0.4
-      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
-      astro-expressive-code: 0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+      astro-expressive-code: 0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       bcp-47: 2.1.0
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.4
@@ -16489,7 +16548,7 @@ snapshots:
       uuid: 11.1.0
       write-file-atomic: 5.0.1
 
-  '@netlify/dev@4.5.4(db0@0.3.2)(ioredis@5.6.1)(rollup@4.49.0)':
+  '@netlify/dev@4.5.4(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(rollup@4.49.0)':
     dependencies:
       '@netlify/blobs': 10.0.8
       '@netlify/config': 23.2.0
@@ -16497,7 +16556,7 @@ snapshots:
       '@netlify/edge-functions': 2.17.0
       '@netlify/functions': 4.2.1(rollup@4.49.0)
       '@netlify/headers': 2.0.8
-      '@netlify/images': 1.2.5(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)
+      '@netlify/images': 1.2.5(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)
       '@netlify/redirects': 3.0.9
       '@netlify/runtime': 4.0.12
       '@netlify/static': 3.0.8
@@ -16610,9 +16669,9 @@ snapshots:
     dependencies:
       '@netlify/headers-parser': 9.0.1
 
-  '@netlify/images@1.2.5(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)':
+  '@netlify/images@1.2.5(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)':
     dependencies:
-      ipx: 3.1.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)
+      ipx: 3.1.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -16672,9 +16731,9 @@ snapshots:
 
   '@netlify/types@2.0.2': {}
 
-  '@netlify/vite-plugin@2.5.4(db0@0.3.2)(ioredis@5.6.1)(rollup@4.49.0)(vite@6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin@2.5.4(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(rollup@4.49.0)(vite@6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/dev': 4.5.4(db0@0.3.2)(ioredis@5.6.1)(rollup@4.49.0)
+      '@netlify/dev': 4.5.4(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(rollup@4.49.0)
       '@netlify/dev-utils': 4.1.1
       vite: 6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
     transitivePeerDependencies:
@@ -19046,9 +19105,9 @@ snapshots:
       tiny-invariant: 1.3.3
       tiny-warning: 1.0.3
 
-  '@tanstack/react-start-plugin@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
+  '@tanstack/react-start-plugin@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(better-sqlite3@12.2.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
     dependencies:
-      '@tanstack/start-plugin-core': 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
+      '@tanstack/start-plugin-core': 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(better-sqlite3@12.2.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       '@vitejs/plugin-react': 5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       pathe: 2.0.3
       vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
@@ -19097,10 +19156,10 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@tanstack/react-start@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
+  '@tanstack/react-start@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(better-sqlite3@12.2.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
     dependencies:
       '@tanstack/react-start-client': 1.130.12(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@tanstack/react-start-plugin': 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
+      '@tanstack/react-start-plugin': 1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(better-sqlite3@12.2.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       '@tanstack/react-start-server': 1.130.12(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/start-server-functions-client': 1.130.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
       '@tanstack/start-server-functions-server': 1.130.12(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
@@ -19338,7 +19397,7 @@ snapshots:
       tiny-invariant: 1.3.3
       tiny-warning: 1.0.3
 
-  '@tanstack/start-plugin-core@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
+  '@tanstack/start-plugin-core@1.130.15(@netlify/blobs@10.0.8)(@tanstack/react-router@1.131.28(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(better-sqlite3@12.2.0)(vite-plugin-solid@2.11.8(solid-js@1.9.9)(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)))(vite@7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))':
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/core': 7.28.3
@@ -19354,7 +19413,7 @@ snapshots:
       babel-dead-code-elimination: 1.0.10
       cheerio: 1.1.0
       h3: 1.13.0
-      nitropack: 2.11.13(@netlify/blobs@10.0.8)
+      nitropack: 2.11.13(@netlify/blobs@10.0.8)(better-sqlite3@12.2.0)
       pathe: 2.0.3
       ufo: 1.6.1
       vite: 7.1.3(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
@@ -20803,19 +20862,19 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)):
+  astro-expressive-code@0.41.3(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)):
     dependencies:
-      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
       rehype-expressive-code: 0.41.3
 
-  astro-og-canvas@0.7.0(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)):
+  astro-og-canvas@0.7.0(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)):
     dependencies:
-      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
+      astro: 5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)
       canvaskit-wasm: 0.39.1
       deterministic-object-hash: 2.0.2
       entities: 4.5.0
 
-  astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1):
+  astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1):
     dependencies:
       '@astrojs/compiler': 2.12.2
       '@astrojs/internal-helpers': 0.7.2
@@ -20869,7 +20928,7 @@ snapshots:
       ultrahtml: 1.6.0
       unifont: 0.5.0
       unist-util-visit: 5.0.0
-      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)
+      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)
       vfile: 6.0.3
       vite: 6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
       vitefu: 1.1.1(vite@6.3.5(@types/node@24.3.0)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1))
@@ -21172,6 +21231,11 @@ snapshots:
     dependencies:
       open: 8.4.2
 
+  better-sqlite3@12.2.0:
+    dependencies:
+      bindings: 1.5.0
+      prebuild-install: 7.1.3
+
   big-integer@1.6.52: {}
 
   binary-extensions@2.3.0: {}
@@ -21441,6 +21505,8 @@ snapshots:
   chokidar@4.0.3:
     dependencies:
       readdirp: 4.1.2
+
+  chownr@1.1.4: {}
 
   chownr@2.0.0: {}
 
@@ -22035,7 +22101,9 @@ snapshots:
 
   dayjs@1.11.13: {}
 
-  db0@0.3.2: {}
+  db0@0.3.2(better-sqlite3@12.2.0):
+    optionalDependencies:
+      better-sqlite3: 12.2.0
 
   debounce@1.2.1: {}
 
@@ -22064,6 +22132,10 @@ snapshots:
       character-entities: 2.0.2
 
   decode-uri-component@0.2.2: {}
+
+  decompress-response@6.0.0:
+    dependencies:
+      mimic-response: 3.1.0
 
   deep-eql@5.0.2: {}
 
@@ -22670,6 +22742,8 @@ snapshots:
 
   exit-hook@2.2.1: {}
 
+  expand-template@2.0.3: {}
+
   expect-type@1.2.1: {}
 
   expo-application@6.1.5(expo@53.0.22(@babel/core@7.28.3)(@expo/metro-runtime@5.0.4(react-native@0.79.6(@babel/core@7.28.3)(@types/react@19.1.11)(react@19.0.0)))(graphql@16.11.0)(react-native@0.79.6(@babel/core@7.28.3)(@types/react@19.1.11)(react@19.0.0))(react@19.0.0)):
@@ -23130,6 +23204,8 @@ snapshots:
 
   fresh@2.0.0: {}
 
+  fs-constants@1.0.0: {}
+
   fs-extra@10.1.0:
     dependencies:
       graceful-fs: 4.2.11
@@ -23241,6 +23317,8 @@ snapshots:
       node-fetch-native: 1.6.6
       nypm: 0.6.0
       pathe: 2.0.3
+
+  github-from-package@0.0.0: {}
 
   github-slugger@2.0.0: {}
 
@@ -23821,7 +23899,7 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
-  ipx@3.1.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1):
+  ipx@3.1.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1):
     dependencies:
       '@fastify/accept-negotiator': 2.0.1
       citty: 0.1.6
@@ -23837,7 +23915,7 @@ snapshots:
       sharp: 0.34.3
       svgo: 4.0.0
       ufo: 1.6.1
-      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)
+      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)
       xss: 1.0.15
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -25394,6 +25472,8 @@ snapshots:
 
   mimic-function@5.0.1: {}
 
+  mimic-response@3.1.0: {}
+
   mini-svg-data-uri@1.4.4: {}
 
   miniflare@4.20250823.0:
@@ -25455,6 +25535,8 @@ snapshots:
       minipass: 7.1.2
 
   mitt@3.0.1: {}
+
+  mkdirp-classic@0.5.3: {}
 
   mkdirp@0.5.6:
     dependencies:
@@ -25545,6 +25627,8 @@ snapshots:
 
   nanoid@5.1.5: {}
 
+  napi-build-utils@2.0.0: {}
+
   natural-orderby@2.0.3: {}
 
   ncp@2.0.0:
@@ -25571,7 +25655,7 @@ snapshots:
 
   netmask@2.0.2: {}
 
-  nitropack@2.11.13(@netlify/blobs@10.0.8):
+  nitropack@2.11.13(@netlify/blobs@10.0.8)(better-sqlite3@12.2.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.0
       '@netlify/functions': 3.1.10(rollup@4.49.0)
@@ -25593,7 +25677,7 @@ snapshots:
       cookie-es: 2.0.0
       croner: 9.1.0
       crossws: 0.3.5
-      db0: 0.3.2
+      db0: 0.3.2(better-sqlite3@12.2.0)
       defu: 6.1.4
       destr: 2.0.5
       dot-prop: 9.0.0
@@ -25639,7 +25723,7 @@ snapshots:
       unenv: 2.0.0-rc.19
       unimport: 5.1.0
       unplugin-utils: 0.2.4
-      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1)
+      unstorage: 1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)
       untyped: 2.0.0
       unwasm: 0.3.9
       youch: 4.1.0-beta.8
@@ -25679,6 +25763,10 @@ snapshots:
     dependencies:
       lower-case: 2.0.2
       tslib: 2.8.1
+
+  node-abi@3.75.0:
+    dependencies:
+      semver: 7.7.2
 
   node-addon-api@7.1.1: {}
 
@@ -26209,6 +26297,21 @@ snapshots:
       source-map-js: 1.2.1
 
   postgres@3.4.7: {}
+
+  prebuild-install@7.1.3:
+    dependencies:
+      detect-libc: 2.0.4
+      expand-template: 2.0.3
+      github-from-package: 0.0.0
+      minimist: 1.2.8
+      mkdirp-classic: 0.5.3
+      napi-build-utils: 2.0.0
+      node-abi: 3.75.0
+      pump: 3.0.2
+      rc: 1.2.8
+      simple-get: 4.0.1
+      tar-fs: 2.1.3
+      tunnel-agent: 0.6.0
 
   precinct@12.2.0:
     dependencies:
@@ -27615,6 +27718,14 @@ snapshots:
 
   signal-exit@4.1.0: {}
 
+  simple-concat@1.0.1: {}
+
+  simple-get@4.0.1:
+    dependencies:
+      decompress-response: 6.0.0
+      once: 1.4.0
+      simple-concat: 1.0.1
+
   simple-plist@1.3.1:
     dependencies:
       bplist-creator: 0.1.0
@@ -27759,14 +27870,14 @@ snapshots:
 
   standard-as-callback@2.1.0: {}
 
-  starlight-auto-sidebar@0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
+  starlight-auto-sidebar@0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
     dependencies:
-      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       github-slugger: 2.0.0
 
-  starlight-links-validator@0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
+  starlight-links-validator@0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
     dependencies:
-      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       '@types/picomatch': 3.0.2
       github-slugger: 2.0.0
       hast-util-from-html: 2.0.3
@@ -27780,14 +27891,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  starlight-sidebar-topics@0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
+  starlight-sidebar-topics@0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))):
     dependencies:
-      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       picomatch: 4.0.3
 
-  starlight-typedoc@0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.2)))(typedoc@0.28.11(typescript@5.9.2)):
+  starlight-typedoc@0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.2)))(typedoc@0.28.11(typescript@5.9.2)):
     dependencies:
-      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2)(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
+      '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.0.8)(@types/node@24.3.0)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1)(jiti@2.5.1)(lightningcss@1.30.1)(rollup@4.49.0)(terser@5.39.0)(tsx@4.19.3)(typescript@5.9.2)(yaml@2.8.1))
       github-slugger: 2.0.0
       typedoc: 0.28.11(typescript@5.9.2)
       typedoc-plugin-markdown: 4.8.1(typedoc@0.28.11(typescript@5.9.2))
@@ -27994,6 +28105,13 @@ snapshots:
 
   tapable@2.2.1: {}
 
+  tar-fs@2.1.3:
+    dependencies:
+      chownr: 1.1.4
+      mkdirp-classic: 0.5.3
+      pump: 3.0.2
+      tar-stream: 2.2.0
+
   tar-fs@3.1.0:
     dependencies:
       pump: 3.0.2
@@ -28003,6 +28121,14 @@ snapshots:
       bare-path: 3.0.0
     transitivePeerDependencies:
       - bare-buffer
+
+  tar-stream@2.2.0:
+    dependencies:
+      bl: 4.1.0
+      end-of-stream: 1.4.4
+      fs-constants: 1.0.0
+      inherits: 2.0.4
+      readable-stream: 3.6.2
 
   tar-stream@3.1.7:
     dependencies:
@@ -28436,7 +28562,7 @@ snapshots:
       picomatch: 4.0.3
       webpack-virtual-modules: 0.6.2
 
-  unstorage@1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2)(ioredis@5.6.1):
+  unstorage@1.16.1(@netlify/blobs@10.0.8)(db0@0.3.2(better-sqlite3@12.2.0))(ioredis@5.6.1):
     dependencies:
       anymatch: 3.1.3
       chokidar: 4.0.3
@@ -28448,7 +28574,7 @@ snapshots:
       ufo: 1.6.1
     optionalDependencies:
       '@netlify/blobs': 10.0.8
-      db0: 0.3.2
+      db0: 0.3.2(better-sqlite3@12.2.0)
       ioredis: 5.6.1
 
   untildify@4.0.0: {}
