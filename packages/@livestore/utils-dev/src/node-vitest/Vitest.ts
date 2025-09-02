@@ -75,7 +75,82 @@ export const withTestCtx =
   }
 
 /**
- * Equivalent to Vitest.prop but provides extra prop context to the test function
+ * Shared properties for all enhanced test context phases
+ */
+export interface EnhancedTestContextBase {
+  numRuns: number
+  /** 0-based index */
+  runIndex: number
+  /** Total number of executions including initial runs and shrinking attempts */
+  totalExecutions: number
+}
+
+/**
+ * Enhanced context for property-based tests that includes shrinking phase information
+ */
+export type EnhancedTestContext =
+  | (EnhancedTestContextBase & {
+      _tag: 'initial'
+    })
+  | (EnhancedTestContextBase & {
+      _tag: 'shrinking'
+      /** Number of shrinking attempts */
+      shrinkAttempt: number
+    })
+
+/**
+ * Normalizes propOptions to ensure @effect/vitest receives correct fastCheck structure
+ */
+const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
+  propOptions:
+    | number
+    | (Vitest.TestOptions & {
+        fastCheck?: FC.Parameters<{
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+        }>
+      }),
+): Vitest.TestOptions & {
+  fastCheck?: FC.Parameters<{
+    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+  }>
+} => {
+  // If it's a number, treat as timeout and add our default fastCheck
+  if (!Predicate.isObject(propOptions)) {
+    return {
+      timeout: propOptions,
+      fastCheck: { numRuns: 100 },
+    }
+  }
+
+  // If no fastCheck property, add it with our default numRuns
+  if (!propOptions.fastCheck) {
+    return {
+      ...propOptions,
+      fastCheck: { numRuns: 100 },
+    }
+  }
+
+  // If fastCheck exists but no numRuns, add our default
+  if (propOptions.fastCheck && !propOptions.fastCheck.numRuns) {
+    return {
+      ...propOptions,
+      fastCheck: {
+        ...propOptions.fastCheck,
+        numRuns: 100,
+      },
+    }
+  }
+
+  // If everything is properly structured, pass through
+  return propOptions
+}
+
+/**
+ * Equivalent to Vitest.prop but provides enhanced context including shrinking progress visibility
+ *
+ * This function enhances the standard property-based testing by providing clear information about
+ * whether FastCheck is in the initial testing phase or the shrinking phase, solving the confusion
+ * where tests show "Run 26/6" when FastCheck's shrinking algorithm is active.
  *
  * TODO: allow for upper timelimit instead of / additional to `numRuns`
  *
@@ -92,11 +167,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     [
       { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
       Vitest.TestContext,
-      {
-        numRuns: number
-        /** 0-based index */
-        runIndex: number
-      },
+      EnhancedTestContext,
     ]
   >,
   propOptions:
@@ -107,8 +178,12 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
         }>
       }),
 ) => {
-  const numRuns = Predicate.isObject(propOptions) ? (propOptions.fastCheck?.numRuns ?? 100) : 100
+  const normalizedPropOptions = normalizePropOptions(propOptions)
+  const numRuns = normalizedPropOptions.fastCheck?.numRuns ?? 100
   let runIndex = 0
+  let shrinkAttempts = 0
+  let totalExecutions = 0
+
   return api.prop(
     name,
     arbitraries,
@@ -116,8 +191,31 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
       if (ctx.signal.aborted) {
         return ctx.skip('Test aborted')
       }
-      return test(properties, ctx, { numRuns, runIndex: runIndex++ })
+
+      totalExecutions++
+      const isInShrinkingPhase = runIndex >= numRuns
+
+      if (isInShrinkingPhase) {
+        shrinkAttempts++
+      }
+
+      const enhancedContext: EnhancedTestContext = isInShrinkingPhase
+        ? {
+            _tag: 'shrinking',
+            numRuns,
+            runIndex: runIndex++,
+            shrinkAttempt: shrinkAttempts,
+            totalExecutions,
+          }
+        : {
+            _tag: 'initial',
+            numRuns,
+            runIndex: runIndex++,
+            totalExecutions,
+          }
+
+      return test(properties, ctx, enhancedContext)
     },
-    propOptions,
+    normalizedPropOptions,
   )
 }
