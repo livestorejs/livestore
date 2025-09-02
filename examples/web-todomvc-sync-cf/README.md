@@ -5,6 +5,6 @@
 ## Running locally
 
 ```bash
-bun
+bun install
 bun dev
 ```
