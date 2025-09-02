@@ -15,7 +15,7 @@
  * @see {@link https://developers.cloudflare.com/durable-objects/best-practices/websockets/ Cloudflare WebSocket Best Practices}
  */
 
-import { notYetImplemented } from '@livestore/utils'
+import { notYetImplemented, omitUndefineds } from '@livestore/utils'
 import {
   constVoid,
   Effect,
@@ -147,7 +147,7 @@ export const setupDurableObjectWebSocketRpc = ({
       const ProtocolLive = layerRpcServerWebsocket({
         ws,
         incomingQueue,
-        onMessage,
+        ...omitUndefineds({ onMessage }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))

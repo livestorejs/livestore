@@ -1,5 +1,6 @@
 import type { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
 
@@ -25,12 +26,9 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
       const store = yield* createStore({
         schema,
         storeId,
-        context,
-        boot,
         adapter,
-        disableDevtools,
-        onBootStatus,
         batchUpdates,
+        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus }),
       })
 
       globalThis.__debugLiveStore ??= {}

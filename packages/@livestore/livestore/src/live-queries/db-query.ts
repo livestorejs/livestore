@@ -9,7 +9,7 @@ import {
   SessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
-import { deepEqual, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
@@ -124,9 +124,8 @@ export const queryDb: {
         reactivityGraph: ctx.reactivityGraph.deref()!,
         queryInput,
         label,
-        map: options?.map,
-        otelContext,
         def,
+        ...omitUndefineds({ map: options?.map, otelContext }),
       })
     }),
     label,
@@ -429,7 +428,11 @@ Result:`,
             return result
           },
         ),
-      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.result' }, equal: resultsEqual },
+      {
+        label: `${label}:results`,
+        meta: { liveStoreThunkType: 'db.result' },
+        ...omitUndefineds({ equal: resultsEqual }),
+      },
     )
 
     this.results$ = results$

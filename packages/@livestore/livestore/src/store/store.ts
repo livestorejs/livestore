@@ -21,7 +21,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -213,8 +213,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       },
       span: syncSpan,
       params: {
-        leaderPushBatchSize: params.leaderPushBatchSize,
-        simulation: params.simulation?.clientSessionSyncProcessor,
+        ...omitUndefineds({
+          leaderPushBatchSize: params.leaderPushBatchSize,
+        }),
+        ...(params.simulation?.clientSessionSyncProcessor !== undefined
+          ? { simulation: params.simulation.clientSessionSyncProcessor }
+          : {}),
       },
       confirmUnsavedChanges,
     })
@@ -416,8 +420,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           Effect.sync(() =>
             this.subscribe(query$, {
               onUpdate: (result) => emit.single(result),
-              otelContext,
-              label: options?.label,
+              ...omitUndefineds({ otelContext, label: options?.label }),
             }),
           ),
           (unsub) => Effect.sync(() => unsub()),
@@ -452,7 +455,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
       const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
-        otelContext: options?.otelContext,
+        ...omitUndefineds({ otelContext: options?.otelContext }),
       }) as any
       if (query.schema) {
         return Schema.decodeSync(query.schema)(res)
@@ -478,7 +481,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
 
       const rawRes = this.sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
-        otelContext: options?.otelContext,
+        ...omitUndefineds({ otelContext: options?.otelContext }),
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
 
@@ -504,7 +507,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const signal$ = query.make(this.reactivityGraph.context!)
       return signal$.value.get()
     } else {
-      return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
+      return query.run({
+        ...omitUndefineds({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason }),
+      })
     }
   }
 

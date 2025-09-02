@@ -1,3 +1,4 @@
+import { omitUndefineds } from '@livestore/utils'
 import {
   Command,
   type CommandExecutor,
@@ -243,7 +244,7 @@ export const startDockerComposeServicesScoped = (
 
     // Start the services
     yield* dockerCompose.start({
-      healthCheck: args.healthCheck,
+      ...omitUndefineds({ healthCheck: args.healthCheck ? args.healthCheck : undefined }),
     })
 
     // Add cleanup finalizer to the current scope

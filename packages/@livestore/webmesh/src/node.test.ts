@@ -1,4 +1,4 @@
-import { IS_CI } from '@livestore/utils'
+import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -25,12 +25,12 @@ const connectNodesViaMessageChannel = (nodeA: MeshNode, nodeB: MeshNode, options
     yield* nodeA.addEdge({
       target: nodeB.nodeName,
       edgeChannel: meshChannelAToB,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
     yield* nodeB.addEdge({
       target: nodeA.nodeName,
       edgeChannel: meshChannelBToA,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
   }).pipe(Effect.withSpan(`connectNodesViaMessageChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
@@ -50,12 +50,12 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, optio
     yield* nodeA.addEdge({
       target: nodeB.nodeName,
       edgeChannel: broadcastWebChannelA,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
     yield* nodeB.addEdge({
       target: nodeA.nodeName,
       edgeChannel: broadcastWebChannelB,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
   }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
@@ -188,7 +188,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               nodeX,
               nodeY,
               channelType,
-              delays: { x: delayX, y: delayY, connect: connectDelay },
+              delays: {
+                ...omitUndefineds({
+                  x: delayX,
+                  y: delayY,
+                  connect: connectDelay,
+                }),
+              },
             })
 
             yield* Effect.promise(() => nodeX.debug.requestTopology(100))
