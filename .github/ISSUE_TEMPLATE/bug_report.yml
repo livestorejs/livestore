@@ -1,0 +1,123 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in LiveStore
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out this form as completely as possible.
+        
+        **Before you start:** Please search [existing issues](https://github.com/livestorejs/livestore/issues) to see if your bug has already been reported.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe what happened and what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction
+      description: |
+        **This is required.** Please provide a minimal reproduction of the issue.
+        - Create a minimal example that reproduces the bug
+        - Use StackBlitz, CodeSandbox, or a GitHub repository
+        - Remove all code not related to the issue
+      placeholder: |
+        Please provide:
+        - Link to StackBlitz/CodeSandbox/GitHub repo
+        - Or paste minimal code example here
+        
+        Example:
+        https://stackblitz.com/edit/...
+    validations:
+      required: true
+
+  - type: input
+    id: livestore-version
+    attributes:
+      label: LiveStore Version
+      description: What version of LiveStore are you using?
+      placeholder: e.g., 0.4.0-dev.5
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package(s) are affected?
+      multiple: true
+      options:
+        - "@livestore/core"
+        - "@livestore/react"
+        - "@livestore/graphql"
+        - "@livestore/sqlite"
+        - "@livestore/postgres"
+        - "@livestore/mysql"
+        - "@livestore/cloudflare"
+        - "Other (specify in description)"
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Please provide details about your environment
+      value: |
+        - OS: 
+        - Node.js version: 
+        - Package manager: 
+        - Runtime: (browser/Node.js/Cloudflare Workers/other)
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs/Screenshots
+      description: |
+        If applicable, add error logs, stack traces, or screenshots to help explain the problem.
+        
+        **Tip:** You can attach images by clicking this area to highlight it and then dragging files in.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (workarounds tried, related issues, etc.)
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this bug hasn't been reported before
+          required: true
+        - label: I have provided a minimal reproduction that demonstrates the issue
+          required: true
+        - label: I have included all the requested information above
+          required: true
