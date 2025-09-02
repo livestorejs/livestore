@@ -65,6 +65,8 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
 
       const shutdownDeferred = yield* makeShutdownDeferred
 
+      yield* Effect.log(`Initializing store for ${clientId}`, { storeId, adapterType, storageType })
+      
       const store = yield* createStore({
         adapter,
         schema,
@@ -76,6 +78,8 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
           simulation: params?.simulation ? { clientSessionSyncProcessor: params.simulation } : undefined,
         },
       })
+      
+      yield* Effect.log(`Store initialized for ${clientId}`)
       // @ts-expect-error for debugging
       globalThis.store = store
 
@@ -92,16 +96,27 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
       const otelSpan = yield* OtelTracer.currentOtelSpan
+      
+      yield* Effect.log(`Starting to create ${count} todos with batch size ${commitBatchSize}`)
+      
       const eventBatches = pipe(
         ReadonlyArray.range(0, count - 1),
         ReadonlyArray.map((i) => events.todoCreated({ id: nanoid(), title: `todo ${i} (${clientId})` })),
         ReadonlyArray.chunksOf(commitBatchSize),
       )
+      
+      yield* Effect.log(`Created ${eventBatches.length} batches for ${count} todos`)
+      
       const spanLinks = [{ context: otelSpan.spanContext() }]
-      for (const batch of eventBatches) {
+      for (const [index, batch] of eventBatches.entries()) {
+        if ((index + 1) % 10 === 0 || index === 0) {
+          yield* Effect.log(`Committing batch ${index + 1}/${eventBatches.length} (${batch.length} todos)`)
+        }
         store.commit({ spanLinks }, ...batch)
       }
-    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),
+      
+      yield* Effect.log(`Completed creating ${count} todos`)
+    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count, commitBatchSize } }), Effect.orDie),
   StreamTodos: () =>
     Effect.gen(function* () {
       const { store } = yield* WorkerContext
@@ -130,7 +145,7 @@ runner.pipe(
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
-  Effect.provide(makeFileLogger(`worker-${clientId}`)),
+  // Effect.provide(makeFileLogger(`worker-${clientId}`)), // Disabled for debugging - logs go to stdout
   Logger.withMinimumLogLevel(LogLevel.Debug),
   PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
 )

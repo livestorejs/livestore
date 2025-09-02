@@ -14,7 +14,7 @@ const layer = Layer.mergeAll(
   IS_CI
     ? OtelLiveDummy
     : OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true }),
-  makeFileLogger(`livestore-worker-${argv.clientId}`),
+  // makeFileLogger(`livestore-worker-${argv.clientId}`), // Disabled for debugging - logs go to stdout
 )
 
 makeWorkerEffect({

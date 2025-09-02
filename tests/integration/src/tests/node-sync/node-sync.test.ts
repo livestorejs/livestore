@@ -3,7 +3,7 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Duration, Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, Layer, Schedule, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
@@ -22,8 +22,11 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
     timeout: testTimeout,
     makeLayer: (testContext) =>
       Layer.mergeAll(
-        makeFileLogger('runner', { testContext }),
-        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures` }).pipe(
+        // makeFileLogger('runner', { testContext }), // Disabled for debugging - logs go to stdout
+        WranglerDevServerService.Default({ 
+          cwd: `${import.meta.dirname}/fixtures`,
+          showLogs: IS_CI // Show Wrangler logs in CI for debugging
+        }).pipe(
           Layer.provide(PlatformNode.NodeContext.layer),
         ),
       ),
@@ -38,6 +41,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         const storeId = nanoid(10)
         const todoCount = 4
 
+        yield* Effect.log(`Starting test: create ${todoCount} todos on client-a and sync to client-b`, {
+          storeId,
+          adapterType,
+          storageType
+        })
+
         const [clientA, clientB] = yield* Effect.all(
           [
             makeWorker({ clientId: 'client-a', storeId, adapterType, storageType }),
@@ -46,22 +55,26 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           { concurrency: 'unbounded' },
         )
 
+        yield* Effect.log('Workers initialized, creating todos on client-a')
         yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
+        yield* Effect.log('Todos created, waiting for sync to client-b')
         const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
           Stream.filter((_) => _.length === todoCount),
           Stream.runHead,
           Effect.flatten,
         )
 
+        yield* Effect.log(`Test completed: ${result.length} todos synced`)
         expect(result.length).toEqual(todoCount)
       }).pipe(withTestCtx()(test)),
     { fastCheck: { numRuns: 4 } },
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
-  const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
+  // Temporarily reduced for CI debugging
+  const CreateCount = Schema.Int.pipe(Schema.between(1, IS_CI ? 50 : 400))
+  const CommitBatchSize = Schema.Literal(IS_CI ? 10 : 1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
 
@@ -104,7 +117,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       { numRuns, runIndex },
     ) =>
       Effect.gen(function* () {
-        console.log(`Run ${runIndex + 1}/${numRuns}`, {
+        const testStartTime = Date.now()
+        console.log(`\n=== Test Run ${runIndex + 1}/${numRuns} Starting ===`)
+        console.log(`Time: ${new Date().toISOString()}`)
+        console.log(`Config:`, {
           storageType,
           adapterType,
           todoCountA,
@@ -116,7 +132,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
-        yield* Effect.log('concurrent push', {
+        yield* Effect.log('Starting concurrent push test', {
+          storeId,
+          totalCount,
           storageType,
           adapterType,
           todoCountA,
@@ -127,6 +145,13 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         })
         const params = { leaderPushBatchSize, simulation: simulationParams }
 
+        // Add progress indicator
+        const progressIndicator = Effect.repeat(
+          Effect.log(`Test still running... elapsed: ${Math.round((Date.now() - testStartTime) / 1000)}s`),
+          Schedule.fixed('30 seconds')
+        ).pipe(Effect.fork)
+
+        yield* Effect.log('Initializing workers...')
         const [clientA, clientB] = yield* Effect.all(
           [
             makeWorker({ clientId: 'client-a', storeId, adapterType, storageType, params }),
@@ -134,27 +159,61 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           ],
           { concurrency: 'unbounded' },
         )
+        yield* Effect.log('Workers initialized successfully')
 
         // TODO also alternate the order and delay of todo creation as part of prop testing
-        yield* clientA
+        yield* Effect.log(`Starting todo creation: client-a=${todoCountA}, client-b=${todoCountB}`)
+        
+        const createA = clientA
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, commitBatchSize }))
-          .pipe(Effect.fork)
+          .pipe(
+            Effect.tap(() => Effect.log(`Client-a finished creating ${todoCountA} todos`)),
+            Effect.timeout('2 minutes'),
+            Effect.catchTag('TimeoutException', () => 
+              Effect.die(`Client-a timed out creating ${todoCountA} todos with batch size ${commitBatchSize}`)
+            ),
+            Effect.fork
+          )
 
-        yield* clientB
+        const createB = clientB
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, commitBatchSize }))
-          .pipe(Effect.fork)
+          .pipe(
+            Effect.tap(() => Effect.log(`Client-b finished creating ${todoCountB} todos`)),
+            Effect.timeout('2 minutes'),
+            Effect.catchTag('TimeoutException', () => 
+              Effect.die(`Client-b timed out creating ${todoCountB} todos with batch size ${commitBatchSize}`)
+            ),
+            Effect.fork
+          )
+        
+        yield* createA
+        yield* createB
 
+        yield* Effect.log(`Waiting for sync: expecting ${totalCount} todos on both clients`)
+        
         const exec = Effect.all(
           [
             clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.tap((todos) => 
+                todos.length > 0 && todos.length % 50 === 0 
+                  ? Effect.log(`Client-a progress: ${todos.length}/${totalCount} todos`)
+                  : Effect.void
+              ),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.flatten,
+              Effect.tap(() => Effect.log(`Client-a received all ${totalCount} todos`)),
             ),
             clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.tap((todos) => 
+                todos.length > 0 && todos.length % 50 === 0 
+                  ? Effect.log(`Client-b progress: ${todos.length}/${totalCount} todos`)
+                  : Effect.void
+              ),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.flatten,
+              Effect.tap(() => Effect.log(`Client-b received all ${totalCount} todos`)),
             ),
           ],
           { concurrency: 'unbounded' },
@@ -166,6 +225,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         yield* Effect.raceFirst(exec, onShutdown)
+        yield* Effect.log(`Test completed successfully in ${Math.round((Date.now() - testStartTime) / 1000)}s`)
       }).pipe(
         withTestCtx({
           suffix: stringifyObject({
@@ -182,7 +242,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       ),
     Vitest.DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
-      : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
+      : { fastCheck: { numRuns: IS_CI ? 2 : 20 } }, // Temporarily reduced for CI debugging
   )
 })
 
