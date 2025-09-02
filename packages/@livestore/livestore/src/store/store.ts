@@ -507,7 +507,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const signal$ = query.make(this.reactivityGraph.context!)
       return signal$.value.get()
     } else {
-      return query.run({ ...omitUndefineds({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason }) })
+      return query.run({
+        ...omitUndefineds({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason }),
+      })
     }
   }
 

@@ -10,6 +10,7 @@ import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -23,7 +24,6 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
-import { omitUndefineds } from '@livestore/utils'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'

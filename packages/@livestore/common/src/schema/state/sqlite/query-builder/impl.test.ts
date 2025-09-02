@@ -409,9 +409,7 @@ describe('query builder', () => {
     })
 
     it('should handle INSERT queries with undefined values', () => {
-      expect(
-        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -478,9 +476,7 @@ describe('query builder', () => {
     })
 
     it('should handle UPDATE queries with undefined values', () => {
-      expect(
-        dump(db.todos.update({ text: 'some text' }).where({ id: '123' })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.update({ text: 'some text' }).where({ id: '123' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "some text",

@@ -1,3 +1,4 @@
+import { omitUndefineds } from '@livestore/utils'
 import {
   Command,
   type CommandExecutor,
@@ -9,7 +10,6 @@ import {
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
-import { omitUndefineds } from '@livestore/utils'
 
 export class DockerComposeError extends Schema.TaggedError<DockerComposeError>()('DockerComposeError', {
   cause: Schema.Defect,

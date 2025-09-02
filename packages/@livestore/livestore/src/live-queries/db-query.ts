@@ -428,7 +428,11 @@ Result:`,
             return result
           },
         ),
-      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.result' }, ...omitUndefineds({ equal: resultsEqual }) },
+      {
+        label: `${label}:results`,
+        meta: { liveStoreThunkType: 'db.result' },
+        ...omitUndefineds({ equal: resultsEqual }),
+      },
     )
 
     this.results$ = results$

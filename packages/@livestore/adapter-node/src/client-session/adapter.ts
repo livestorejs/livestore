@@ -17,6 +17,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import {
   Cause,
   Effect,
@@ -32,7 +33,6 @@ import {
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
-import { omitUndefineds } from '@livestore/utils'
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
