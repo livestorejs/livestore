@@ -3,7 +3,7 @@ import { Effect, Exit } from '@livestore/utils/effect'
 import { expect, test } from '@playwright/test'
 
 import { runAndGetExit, runTest } from './shared-test.ts'
-import { Bridge } from './unit-tests/shared.ts'
+import * as Bridge from './unit-tests/bridge.ts'
 
 const modulePrefix = '../unit-tests'
 
@@ -44,6 +44,27 @@ test(
       })
 
       expect(exit).toStrictEqual(Exit.fail(UnexpectedError.make({ cause: new Error('Boom!') })))
+    }),
+  ),
+)
+
+test(
+  'schema-migration',
+  runTest(
+    Effect.gen(function* () {
+      const exit = yield* runAndGetExit({
+        importPath: `${modulePrefix}/schema-migration/index.ts`,
+        exportName: 'testMultipleMigrations',
+        schema: Bridge.ResultMultipleMigrations,
+      })
+
+      // Verify that after 22 migrations, we can still complete the process without running out of file handles
+      // See packages/@livestore/sqlite-wasm/src/browser/opfs/AccessHandlePoolVFS.ts for default file handle pool size
+      expect(exit).toStrictEqual(
+        Exit.succeed({
+          migrationsCount: 22,
+        }),
+      )
     }),
   ),
 )

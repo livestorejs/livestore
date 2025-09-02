@@ -28,6 +28,20 @@ import {
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 
+// Extract from `livestore-shared-worker-${storeId}`
+const storeId = self.name.replace('livestore-shared-worker-', '')
+
+// We acquire a lock that is held as long as this shared worker is alive.
+// This way, when the shared worker is terminated (e.g. by the browser when the page is closed),
+// the lock is released and any thread waiting for the lock can be notified.
+const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
+navigator.locks.request(
+  LIVESTORE_SHARED_WORKER_TERMINATION_LOCK,
+  { steal: true },
+  // We use a never-resolving promise to hold the lock
+  async () => new Promise(() => {}),
+)
+
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
@@ -241,9 +255,6 @@ const makeWorkerRunner = Effect.gen(function* () {
 }).pipe(Layer.unwrapScoped)
 
 export const makeWorker = () => {
-  // Extract from `livestore-shared-worker-${storeId}`
-  const storeId = self.name.replace('livestore-shared-worker-', '')
-
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     // WorkerRunner.launch,

@@ -26,7 +26,7 @@ import {
 import type * as otel from '@opentelemetry/api'
 
 import * as OpfsUtils from '../../opfs-utils.ts'
-import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
+import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 
@@ -130,6 +130,15 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], {
           concurrency: 2,
         })
+
+        // Clean up old state database files after successful database creation
+        // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
+        if (dbState.metadata._tag === 'opfs') {
+          yield* cleanupOldStateDbFiles({
+            vfs: dbState.metadata.vfs,
+            currentSchema: schema,
+          })
+        }
 
         const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
         const shutdownChannel = yield* makeShutdownChannel(storeId)

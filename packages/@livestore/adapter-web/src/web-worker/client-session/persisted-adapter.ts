@@ -21,6 +21,7 @@ import {
   Effect,
   Exit,
   Fiber,
+  Layer,
   ParseResult,
   Queue,
   Schema,
@@ -100,6 +101,21 @@ export type WebAdapterOptions = {
      * @default false
      */
     disableFastPath?: boolean
+    /**
+     * Controls whether to wait for the shared worker to be terminated when LiveStore gets shut down.
+     * This prevents a race condition where a new LiveStore instance connects to a shutting-down shared
+     * worker from a previous instance.
+     *
+     * @default false
+     *
+     * @remarks
+     *
+     * In multi-tab scenarios, we don't want to await shared worker termination because the shared worker
+     * won't actually shut down when one tab closes - it stays alive to serve other tabs. Awaiting
+     * termination would cause unnecessary blocking since the termination will never happen until all
+     * tabs are closed.
+     */
+    awaitSharedWorkerTermination?: boolean
   }
 }
 
@@ -133,6 +149,7 @@ export const makePersistedAdapter =
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
+      const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
 
       const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
 
@@ -175,6 +192,13 @@ export const makePersistedAdapter =
 
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
+      if (options.experimental?.awaitSharedWorkerTermination) {
+        // Relying on the lock being available is currently the only mechanism we're aware of
+        // to know whether the shared worker has terminated.
+        yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
+      }
+
+      const sharedWorkerContext = yield* Layer.build(BrowserWorker.layer(() => sharedWebWorker))
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorkerRequest.Type>({
         size: 1,
         concurrency: 100,
@@ -194,7 +218,7 @@ export const makePersistedAdapter =
             },
           }),
       }).pipe(
-        Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
+        Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
