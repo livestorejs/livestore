@@ -103,10 +103,8 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
         "{
-          "_id": "Exit",
           "_tag": "Failure",
           "cause": {
-            "_id": "Cause",
             "_tag": "Fail",
             "failure": "Stream error after 4: got 9"
           }
@@ -122,10 +120,8 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
         "{
-          "_id": "Exit",
           "_tag": "Failure",
           "cause": {
-            "_id": "Cause",
             "_tag": "Die",
             "defect": "Stream defect after 1: got 4"
           }
