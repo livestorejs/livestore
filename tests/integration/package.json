@@ -31,6 +31,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "better-sqlite3": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "todomvc-app-css": "^2.4.3",

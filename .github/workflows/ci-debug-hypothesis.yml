@@ -30,6 +30,7 @@ jobs:
           - "H4-FileSystem"
           - "H5-Processes"
           - "H6-Framework"
+          - "ROOT-CAUSE-VALIDATION"
     
     steps:
       - name: Checkout code
@@ -93,6 +94,9 @@ jobs:
               ;;
             "H6-Framework")
               TEST_FILE="hypothesis-6-framework.test.ts"
+              ;;
+            "ROOT-CAUSE-VALIDATION")
+              TEST_FILE="root-cause-validation.test.ts"
               ;;
           esac
           

@@ -38,6 +38,7 @@ catalog:
   
   # Common utilities
   graphql: 16.11.0
+  "better-sqlite3": ^12.2.0
   
   # Cloudflare tools
   wrangler: ^4.32.0
