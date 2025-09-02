@@ -2,8 +2,10 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { Effect, Logger, LogLevel, Queue, Schedule, Schema } from '@livestore/utils/effect'
-import { ResultMultipleMigrations } from './bridge.ts'
-import { schema } from './schema.ts'
+import { ResultMultipleMigrations } from '../bridge.ts'
+import LiveStoreWorker from '../livestore.worker.ts?worker'
+import { schema } from '../schema.ts'
+import LiveStoreWorkerAlt from './livestore-alt.worker.ts?worker'
 import { schema as schemaAlt } from './schema-alt.ts'
 
 export const testMultipleMigrations = () =>
@@ -12,17 +14,15 @@ export const testMultipleMigrations = () =>
     // If cleanup isn't working, we'd hit OPFS capacity limits and get errors
     let migrationsCount = 0
 
-    // Alternate between two schemas to force migrations
+    // Alternate between two schemas to trigger migrations
     const schemaAndWorkerPathPairs = Array.from({ length: 11 }, () => [
-      { schema: schema, workerPath: './livestore.worker.ts' },
-      { schema: schemaAlt, workerPath: './livestore-alt.worker.ts' },
+      { schema: schema, worker: LiveStoreWorker },
+      { schema: schemaAlt, worker: LiveStoreWorkerAlt },
     ]).flat()
 
-    for (const [index, { schema, workerPath }] of schemaAndWorkerPathPairs.entries()) {
+    for (const [index, { schema, worker }] of schemaAndWorkerPathPairs.entries()) {
       yield* Effect.gen(function* () {
         const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-
-        const worker = () => new Worker(new URL(workerPath, import.meta.url), { type: 'module' })
 
         yield* makePersistedAdapter({
           storage: { type: 'opfs' },

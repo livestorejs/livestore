@@ -53,7 +53,7 @@ test(
   runTest(
     Effect.gen(function* () {
       const exit = yield* runAndGetExit({
-        importPath: `${modulePrefix}/schema-migration.ts`,
+        importPath: `${modulePrefix}/schema-migration/index.ts`,
         exportName: 'testMultipleMigrations',
         schema: Bridge.ResultMultipleMigrations,
       })
