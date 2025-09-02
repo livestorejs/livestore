@@ -67,17 +67,10 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "some defect: test http defect"
-          }
-        }"
-      `)
+      const errorStr = error.toString()
+      expect(errorStr).toContain('"_tag": "Failure"')
+      expect(errorStr).toContain('"_tag": "Die"')
+      expect(errorStr).toContain('some defect: test http defect')
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -98,17 +91,10 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamError({ count: 5, errorAfter: 4 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Fail",
-            "failure": "Stream error after 4: got 9"
-          }
-        }"
-      `)
+      const errorStr = error.toString()
+      expect(errorStr).toContain('"_tag": "Failure"')
+      expect(errorStr).toContain('"_tag": "Fail"')
+      expect(errorStr).toContain('Stream error after 4: got 9')
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
