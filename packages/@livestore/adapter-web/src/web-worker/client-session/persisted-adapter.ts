@@ -193,6 +193,8 @@ export const makePersistedAdapter =
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
       if (options.experimental?.awaitSharedWorkerTermination) {
+        // Relying on the lock being available is currently the only mechanism we're aware of
+        // to know whether the shared worker has terminated.
         yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
       }
 
