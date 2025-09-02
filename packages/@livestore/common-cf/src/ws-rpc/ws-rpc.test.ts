@@ -58,10 +58,12 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
         "{
+          "_id": "Exit",
           "_tag": "Failure",
           "cause": {
-            "_tag": "Fail",
-            "failure": "RPC failure: test http failure"
+            "_id": "Cause",
+            "_tag": "Die",
+            "defect": "RPC failure: test http failure"
           }
         }"
       `)
