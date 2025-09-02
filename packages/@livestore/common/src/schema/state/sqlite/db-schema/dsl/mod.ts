@@ -1,4 +1,5 @@
 import type { Nullable } from '@livestore/utils'
+import { omitUndefineds } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
@@ -46,7 +47,7 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
     indexes: indexesToAst(indexes ?? []),
   }
 
-  return { name, columns, indexes, ast }
+  return { name, columns, ...omitUndefineds({ indexes }), ast }
 }
 
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out

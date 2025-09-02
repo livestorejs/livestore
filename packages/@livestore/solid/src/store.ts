@@ -8,7 +8,7 @@ import type {
   LiveStoreContext as StoreContext_,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
-import { LS_DEV } from '@livestore/utils'
+import { LS_DEV, omitUndefineds } from '@livestore/utils'
 import { Cause, Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 
@@ -110,10 +110,8 @@ const setupStore = async ({
         const store = yield* createStore({
           schema,
           storeId,
-          boot,
           adapter,
-          batchUpdates,
-          disableDevtools,
+          ...omitUndefineds({ boot, batchUpdates, disableDevtools }),
           onBootStatus: (status) => {
             if (storeValue.value.stage === 'running' || storeValue.value.stage === 'error') return
             setContextValue(status)

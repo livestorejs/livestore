@@ -23,6 +23,7 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -254,9 +255,9 @@ const LeaderThreadCtxLive = ({
       devtoolsOptions: { enabled: false },
       shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
       testing: {
-        syncProcessor,
+        ...omitUndefineds({ syncProcessor }),
       },
-      params,
+      ...omitUndefineds({ params }),
     }).pipe(Layer.provide(FetchHttpClient.layer))
 
     const testContextLayer = Effect.gen(function* () {

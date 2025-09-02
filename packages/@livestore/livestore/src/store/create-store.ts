@@ -14,7 +14,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { isDevEnv, LS_DEV } from '@livestore/utils'
+import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
 import {
   Context,
   Deferred,
@@ -159,7 +159,7 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
     }),
-    provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
+    provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
     Effect.provide(Logger.prettyWithThread('window')),
@@ -288,7 +288,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
-          simulation: params?.simulation,
+          ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
 

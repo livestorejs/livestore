@@ -1,5 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
+import { omitUndefineds } from '@livestore/utils'
 import { createStore, Events, makeSchema, State } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -71,4 +72,4 @@ export const makeTodoMvc = ({
     })
 
     return store
-  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer: otelTracer }))
+  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer: otelTracer })))

@@ -9,6 +9,7 @@ import {
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
 
 export class DockerComposeError extends Schema.TaggedError<DockerComposeError>()('DockerComposeError', {
   cause: Schema.Defect,
@@ -243,7 +244,7 @@ export const startDockerComposeServicesScoped = (
 
     // Start the services
     yield* dockerCompose.start({
-      healthCheck: args.healthCheck,
+      ...omitUndefineds({ healthCheck: args.healthCheck ? args.healthCheck : undefined }),
     })
 
     // Add cleanup finalizer to the current scope

@@ -32,6 +32,7 @@ import {
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
@@ -180,11 +181,13 @@ const makeAdapterImpl = ({
               clientId,
               schema,
               makeSqliteDb,
-              syncOptions: leaderThreadInput.sync,
-              syncPayload,
               devtools: devtoolsOptions,
               storage,
-              testing,
+              ...omitUndefineds({
+                syncOptions: leaderThreadInput.sync,
+                syncPayload,
+                testing,
+              }),
             }).pipe(UnexpectedError.mapToUnexpectedError)
           : yield* makeWorkerLeaderThread({
               shutdown,
@@ -264,7 +267,7 @@ const makeLocalLeaderThread = ({
         syncPayload,
         devtools,
         makeSqliteDb,
-        testing: testing?.overrides,
+        ...omitUndefineds({ testing: testing?.overrides }),
       }).pipe(Layer.unwrapScoped),
     )
 
@@ -289,7 +292,7 @@ const makeLocalLeaderThread = ({
           getSyncState: syncProcessor.syncState,
           sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
         },
-        { overrides: testing?.overrides?.clientSession?.leaderThreadProxy },
+        { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
       )
 
       const initialSnapshot = dbState.export()
@@ -443,7 +446,7 @@ const makeWorkerLeaderThread = ({
           ),
       },
       {
-        overrides: testing?.overrides?.clientSession?.leaderThreadProxy,
+        ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }),
       },
     )
 

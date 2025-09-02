@@ -1,4 +1,5 @@
 import { Effect } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
 import { Cli } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 /**
@@ -25,7 +26,7 @@ export const copyTodomvcSrc = Cli.Command.make(
 
       const copy = (subPath: string) =>
         cmd(['rsync', '-av', `${SRC_EXAMPLE_DIR}/src/${subPath}`, `${targetExampleDir}/src/${subPath}`], {
-          cwd: process.env.WORKSPACE_ROOT,
+          ...omitUndefineds({ cwd: process.env.WORKSPACE_ROOT }),
         })
 
       yield* copy('livestore/')

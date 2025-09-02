@@ -1,4 +1,5 @@
 import { type Effect, Predicate, Schema } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
 
 import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.ts'
 
@@ -31,7 +32,9 @@ export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
   'span.label':
     packet.id + (Predicate.hasProperty(packet, 'reqId') && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
-  ...(packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? { packet } : {}),
+  ...omitUndefineds({
+    packet: packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? packet : undefined,
+  }),
 })
 
 export const ListenForChannelResult = Schema.Struct({

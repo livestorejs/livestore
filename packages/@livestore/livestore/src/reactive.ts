@@ -22,7 +22,7 @@
 // - At every thunk we check value equality with the previous value and cutoff propagation if possible.
 
 import { BoundArray } from '@livestore/common'
-import { deepEqual, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 // import { getDurationMsFromSpan } from './otel.ts'
@@ -45,9 +45,9 @@ export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   computeResult: () => T
   sub: Set<Atom<any, TContext, TDebugRefreshReason>> // always empty
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
-  label?: string
+  label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any
+  meta?: any | undefined
   equal: (a: T, b: T) => boolean
   refreshes: number
 }
@@ -61,9 +61,9 @@ export type Thunk<TResult, TContext, TDebugRefreshReason extends DebugRefreshRea
   previousResult: TResult | NOT_REFRESHED_YET
   sub: Set<Atom<any, TContext, TDebugRefreshReason>>
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
-  label?: string
+  label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any
+  meta?: any | undefined
   equal: (a: TResult, b: TResult) => boolean
   recomputations: number
 
@@ -80,7 +80,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   isDestroyed: boolean
   doEffect: (otelContext?: otel.Context | undefined, debugRefreshReason?: TDebugRefreshReason | undefined) => void
   sub: Set<Atom<any, TODO, TODO>>
-  label?: string
+  label?: string | undefined
   invocations: number
 }
 
@@ -103,10 +103,10 @@ export type DebugRefreshReasonBase =
   /** Usually in response to some `commit` calls with `skipRefresh: true` */
   | {
       _tag: 'runDeferredEffects'
-      originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase>
-      manualRefreshReason?: DebugRefreshReasonBase
+      originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase> | undefined
+      manualRefreshReason?: DebugRefreshReasonBase | undefined
     }
-  | { _tag: 'makeThunk'; label?: string }
+  | { _tag: 'makeThunk'; label?: string | undefined }
   | { _tag: 'unknown' }
 
 export type DebugRefreshReason<T extends string = string> = DebugRefreshReasonBase | { _tag: T }
@@ -135,7 +135,7 @@ const unknownRefreshReason = () => {
   return { _tag: 'unknown' as const }
 }
 
-export type EncodedOption<A> = { _tag: 'Some'; value?: A } | { _tag: 'None' }
+export type EncodedOption<A> = { _tag: 'Some'; value?: A | undefined } | { _tag: 'None' }
 const encodedOptionSome = <A>(value: A): EncodedOption<A> => ({ _tag: 'Some', value })
 const encodedOptionNone = <A>(): EncodedOption<A> => ({ _tag: 'None' })
 
@@ -192,7 +192,7 @@ export const __resetIds = () => {
 export class ReactiveGraph<
   TDebugRefreshReason extends DebugRefreshReason,
   TDebugThunkInfo extends DebugThunkInfo,
-  TContext extends { effectsWrapper?: (runEffects: () => void) => void } = {},
+  TContext extends { effectsWrapper?: ((runEffects: () => void) => void) | undefined } = {},
 > {
   id = uniqueGraphId()
 
@@ -229,8 +229,7 @@ export class ReactiveGraph<
       computeResult: () => ref.previousResult,
       sub: new Set(),
       super: new Set(),
-      label: options?.label,
-      meta: options?.meta,
+      ...omitUndefineds({ label: options?.label, meta: options?.meta }),
       equal: options?.equal ?? deepEqual,
       refreshes: 0,
     }
@@ -336,8 +335,7 @@ export class ReactiveGraph<
       sub: new Set(),
       super: new Set(),
       recomputations: 0,
-      label: options?.label,
-      meta: options?.meta,
+      ...omitUndefineds({ label: options?.label, meta: options?.meta }),
       equal: options?.equal ?? deepEqual,
       __getResult: getResult,
     }
@@ -413,7 +411,7 @@ export class ReactiveGraph<
         doEffect(getAtom as GetAtom, otelContext, debugRefreshReason)
       },
       sub: new Set(),
-      label: options?.label,
+      ...omitUndefineds({ label: options?.label }),
       invocations: 0,
     }
 
@@ -467,7 +465,7 @@ export class ReactiveGraph<
     } else {
       this.runEffects(effectsToRefresh, {
         debugRefreshReason: options?.debugRefreshReason ?? (unknownRefreshReason() as TDebugRefreshReason),
-        otelContext: options?.otelContext,
+        ...omitUndefineds({ otelContext: options?.otelContext }),
       })
     }
   }
@@ -518,9 +516,9 @@ export class ReactiveGraph<
         debugRefreshReason: {
           _tag: 'runDeferredEffects',
           originalRefreshReasons: Array.from(debugRefreshReasons) as ReadonlyArray<DebugRefreshReasonBase>,
-          manualRefreshReason: options?.debugRefreshReason,
-        } as TDebugRefreshReason,
-        otelContext: options?.otelContext,
+          ...omitUndefineds({ manualRefreshReason: options?.debugRefreshReason }),
+        } as unknown as TDebugRefreshReason,
+        ...omitUndefineds({ otelContext: options?.otelContext }),
       })
     }
   }
@@ -650,8 +648,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     return {
       _tag: atom._tag,
       id: atom.id,
-      label: atom.label,
-      meta: atom.meta,
+      ...omitUndefineds({ label: atom.label, meta: atom.meta }),
       isDirty: atom.isDirty,
       sub,
       super: super_,
@@ -664,8 +661,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
   return {
     _tag: 'thunk',
     id: atom.id,
-    label: atom.label,
-    meta: atom.meta,
+    ...omitUndefineds({ label: atom.label, meta: atom.meta }),
     isDirty: atom.isDirty,
     sub,
     super: super_,
@@ -685,7 +681,7 @@ const serializeEffect = (effect: Effect<any>): SerializedEffect => {
   return {
     _tag: effect._tag,
     id: effect.id,
-    label: effect.label,
+    ...omitUndefineds({ label: effect.label }),
     sub,
     invocations: effect.invocations,
     isDestroyed: effect.isDestroyed,

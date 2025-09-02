@@ -2,7 +2,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
-import { shouldNeverHappen } from '@livestore/utils'
+import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -61,7 +61,7 @@ export const queryGraphQL = <
         document,
         genVariableValues,
         label,
-        map,
+        ...omitUndefineds({ map }),
         reactivityGraph: ctx.reactivityGraph.deref()!,
         def,
       })

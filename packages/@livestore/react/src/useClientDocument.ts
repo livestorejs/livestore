@@ -3,7 +3,7 @@ import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
-import { shouldNeverHappen } from '@livestore/utils'
+import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
@@ -124,7 +124,7 @@ export const useClientDocument: {
 
   const queryRef = useQueryRef(queryDef, {
     otelSpanName: `LiveStore:useClientDocument:${tableName}:${idStr}`,
-    store: storeArg?.store,
+    ...omitUndefineds({ store: storeArg?.store }),
   })
 
   const setState = React.useMemo<StateSetters<TTableDef>>(

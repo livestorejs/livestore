@@ -9,7 +9,7 @@ import type {
   LiveStoreContext as StoreContext_,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
-import { errorToString, IS_REACT_NATIVE, LS_DEV } from '@livestore/utils'
+import { errorToString, IS_REACT_NATIVE, LS_DEV, omitUndefineds } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Cause,
@@ -128,15 +128,17 @@ export const LiveStoreProvider = ({
   const storeCtx = useCreateStore({
     storeId,
     schema,
-    otelOptions,
-    boot,
     adapter,
     batchUpdates,
-    disableDevtools,
-    signal,
     confirmUnsavedChanges,
-    syncPayload,
-    debug,
+    ...omitUndefineds({
+      otelOptions,
+      boot,
+      disableDevtools,
+      signal,
+      syncPayload,
+      debug,
+    }),
   })
 
   if (storeCtx.stage === 'error') {
@@ -330,21 +332,23 @@ const useCreateStore = ({
         const store = yield* createStore({
           schema,
           storeId,
-          boot,
           adapter,
-          batchUpdates,
-          disableDevtools,
           shutdownDeferred,
-          context,
-          params,
-          confirmUnsavedChanges,
-          syncPayload,
+          ...omitUndefineds({
+            boot,
+            batchUpdates,
+            disableDevtools,
+            context,
+            params,
+            confirmUnsavedChanges,
+            syncPayload,
+          }),
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
             // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
             setContextValue(status)
           },
-          debug: { instanceId: debugInstanceId },
+          debug: { ...omitUndefineds({ instanceId: debugInstanceId }) },
         }).pipe(Effect.tapErrorCause((cause) => Deferred.failCause(shutdownDeferred, cause)))
 
         setContextValue({ stage: 'running', store })
@@ -367,7 +371,7 @@ const useCreateStore = ({
       Effect.scoped,
       Effect.withSpan('@livestore/react:useCreateStore'),
       LS_DEV ? TaskTracing.withAsyncTaggingTracing((name: string) => (console as any).createTask(name)) : identity,
-      provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
+      provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.prettyWithThread('window')),
