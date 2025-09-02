@@ -277,7 +277,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(error._tag).toEqual('LiveStore.MaterializeError')
+      expect(error._tag).toEqual('LiveStore.MaterializerHashMismatchError')
     }).pipe(withTestCtx(test)),
   )
 
@@ -333,7 +333,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       // Wait for the shutdown to be triggered by the client-side hash mismatch detection
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(error._tag).toEqual('LiveStore.MaterializeError')
+      expect(error._tag).toEqual('LiveStore.MaterializerHashMismatchError')
     }).pipe(withTestCtx(test)),
   )
 
