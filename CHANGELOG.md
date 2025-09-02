@@ -110,6 +110,7 @@ Pure materializers are essential for:
 - Pass event with clientId to materializers (#574)
 - Store operations throw `StoreAlreadyShutdownError` when called after shutdown
 - QueryBuilder support in store.subscribe() (#371, thanks @rgbkrk)
+- Enable exactOptionalPropertyTypes with comprehensive type fixes (#600)
 
 ### Breaking Changes
 
@@ -190,6 +191,7 @@ This change affects projects that directly depend on wa-sqlite. Most users rely 
 - Fix Symbol values in QueryCache key generation
 - Fix TypeScript build issues and examples restructuring
 - Fix in-memory SQLite database connection handling in Expo adapter
+- Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
@@ -207,6 +209,7 @@ This change affects projects that directly depend on wa-sqlite. Most users rely 
 - Automated dependency management with Renovate
 - Pre-commit hooks via Husky (#522)
 - Comprehensive dependency update script (#516)
+- Add GitHub issue templates to improve issue quality (#602)
 
 #### wa-sqlite Integration
 
@@ -248,7 +251,6 @@ Open issues:
 - Expose connectedness / onlineness (#394)
 - Events fail to sync when many events are committed (#362)
 - Improve handling of unknown livestore events (#353)
-- LiveStore exceeds file capacity of AccessHandlePoolVFS (#256)
 - Crash in materializer while syncing new events advances `backendHead` and causes later boot failure (#409)
 - store.shutdown() doesn't wait for pending writes to complete, causing data loss (#416)
 - Consider mechanism to reject events on sync (#404)
