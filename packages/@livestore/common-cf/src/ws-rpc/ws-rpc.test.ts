@@ -58,10 +58,8 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
         "{
-          "_id": "Exit",
           "_tag": "Failure",
           "cause": {
-            "_id": "Cause",
             "_tag": "Fail",
             "failure": "RPC failure: test http failure"
           }
@@ -76,10 +74,8 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
         "{
-          "_id": "Exit",
           "_tag": "Failure",
           "cause": {
-            "_id": "Cause",
             "_tag": "Die",
             "defect": "some defect: test http defect"
           }
