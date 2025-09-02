@@ -246,10 +246,10 @@ jobs:
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
       - name: Copy example app
-        # We use `github.ref_name` instead of `github.sha` because, when a workflow is triggered by a pull request,
-        # `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
+        # We use the PR head SHA (or push SHA) to ensure tiged can fetch the exact commit.
+        # In PR context, github.ref_name would be "123/merge" which isn't a valid git reference.
         # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
-        run: pnpm dlx tiged github:${{ github.repository }}/${{ env.APP_PATH }}#${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
+        run: bunx tiged github:${{ github.repository }}/${{ env.APP_PATH }}#${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Increase pnpm fetch retries
         # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
         # We increase the fetch retries to mitigate this issue.
