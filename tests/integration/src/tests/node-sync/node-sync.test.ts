@@ -15,6 +15,9 @@ import * as WorkerSchema from './worker-schema.ts'
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = Duration.toMillis(IS_CI ? Duration.minutes(10) : Duration.minutes(15))
+const FASTCHECK_NUMRUNS = process.env.NODE_SYNC_FC_NUMRUNS
+  ? Number.parseInt(process.env.NODE_SYNC_FC_NUMRUNS, 10)
+  : undefined
 
 const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
@@ -56,7 +59,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
 
         expect(result.length).toEqual(todoCount)
       }).pipe(withTestCtx()(test)),
-    { fastCheck: { numRuns: 4 } },
+    { fastCheck: { numRuns: FASTCHECK_NUMRUNS ?? 4 } },
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
@@ -182,7 +185,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
       ),
     Vitest.DEBUGGER_ACTIVE
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
-      : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
+      : { fastCheck: { numRuns: FASTCHECK_NUMRUNS ?? (IS_CI ? 6 : 20) } },
   )
 })
 
