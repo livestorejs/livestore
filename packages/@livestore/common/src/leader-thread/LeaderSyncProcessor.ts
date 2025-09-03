@@ -297,6 +297,7 @@ export const makeLeaderSyncProcessor = ({
         backendPushBatchSize,
       }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
+      yield* Effect.logInfo('pushing-fiber-run', { phase: 'initial' })
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
@@ -304,6 +305,7 @@ export const makeLeaderSyncProcessor = ({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
+            yield* Effect.logInfo('pushing-fiber-clear', { reason: 'upstream-change' })
             yield* FiberHandle.clear(backendPushingFiberHandle)
 
             // Reset the sync backend push queue
@@ -311,6 +313,7 @@ export const makeLeaderSyncProcessor = ({
             yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
 
             // Restart pushing fiber
+            yield* Effect.logInfo('pushing-fiber-run', { phase: 'restart' })
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
@@ -421,6 +424,7 @@ const backgroundApplyLocalPushes = ({
       yield* localPushesLatch.await
 
       // Prevent backend pull processing until this local push is finished
+      yield* Effect.logInfo('latch:pull close', {})
       yield* pullLatch.close
 
       const syncState = yield* syncStateSref
@@ -439,6 +443,7 @@ const backgroundApplyLocalPushes = ({
       if (newEvents.length === 0) {
         // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
         // Allow the backend pulling to start
+        yield* Effect.logInfo('latch:pull open', { cause: 'drop-old-gen' })
         yield* pullLatch.open
         continue
       }
@@ -506,6 +511,7 @@ const backgroundApplyLocalPushes = ({
           )
 
           // Allow the backend pulling to start
+          yield* Effect.logInfo('latch:pull open', { cause: 'reject' })
           yield* pullLatch.open
 
           // In this case we're skipping state update and down/upstream processing
@@ -543,6 +549,7 @@ const backgroundApplyLocalPushes = ({
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
 
       // Allow the backend pulling to start
+      yield* Effect.logInfo('latch:pull open', { cause: 'advance-processed' })
       yield* pullLatch.open
     }
   })
@@ -642,6 +649,7 @@ const backgroundBackendPulling = ({
         }
 
         // Prevent more local pushes from being processed until this pull is finished
+        yield* Effect.logInfo('latch:localPushes close', {})
         yield* localPushesLatch.close
 
         // Wait for pending local pushes to finish
@@ -691,6 +699,7 @@ const backgroundBackendPulling = ({
             const { eventDef } = getEventDef(schema, event.name)
             return eventDef.options.clientOnly === false
           })
+          yield* Effect.logInfo('restart-pushing', { reason: 'rebase', pendingCount: globalRebasedPendingEvents.length })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
@@ -759,6 +768,7 @@ const backgroundBackendPulling = ({
 
         // Allow local pushes to be processed again
         if (pageInfo._tag === 'NoMore') {
+          yield* Effect.logInfo('latch:localPushes open', { when: 'pageInfo=NoMore' })
           yield* localPushesLatch.open
         }
       })
