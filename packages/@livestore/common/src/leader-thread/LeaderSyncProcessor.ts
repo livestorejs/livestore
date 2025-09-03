@@ -822,6 +822,7 @@ const backgroundBackendPushing = ({
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
       const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
+      yield* Effect.logInfo('backend-push-batch', { batchSize: queueItems.length })
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
