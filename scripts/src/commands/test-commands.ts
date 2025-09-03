@@ -201,6 +201,18 @@ export const nodeSyncTest = Cli.Command.make(
     const branch = process.env.GITHUB_REF_NAME || process.env.GITHUB_HEAD_REF || process.env.GITHUB_BRANCH_NAME
     const enableResumeOnAdvance = typeof branch === 'string' && /ci-node-sync-hypo\/h001-resume-on-advance/i.test(branch)
 
+    // Minimal environment summary (H003/H005) without workflow edits
+    yield* Effect.all(
+      [
+        cmd('node -v', { cwd }).pipe(Effect.ignoreLogged),
+        cmd('bun --version', { cwd }).pipe(Effect.ignoreLogged),
+        cmd('pnpm -v', { cwd }).pipe(Effect.ignoreLogged),
+        cmd('ulimit -n', { cwd, shell: true }).pipe(Effect.ignoreLogged),
+        cmd('nproc', { cwd }).pipe(Effect.ignoreLogged),
+      ],
+      { concurrency: 'unbounded' },
+    )
+
     yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
       cwd: `${cwd}/tests/integration`,
       env: {
