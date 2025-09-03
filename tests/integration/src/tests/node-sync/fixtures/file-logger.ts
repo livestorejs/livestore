@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
+import { getFreePort } from '@livestore/utils/node'
 import {
   Effect,
   FetchHttpClient,
@@ -60,7 +61,7 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
 
       process.env.TEST_RUN_ID = testRunId
 
-      const serverPort = Math.floor(Math.random() * 10_000) + 50_000
+      const serverPort = Effect.runSync(getFreePort)
       process.env.LOGGER_SERVER_PORT = String(serverPort)
 
       return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
