@@ -5,7 +5,9 @@ import { getFreePort } from '@livestore/utils/node'
 import { afterAll, beforeAll } from 'vitest'
 
 // Enable experimental push-resume during upstream advance on CI debug branches
-const branchName = typeof process !== 'undefined' ? process.env.GITHUB_REF_NAME : undefined
+const refName = typeof process !== 'undefined' ? process.env.GITHUB_REF_NAME : undefined
+const headRef = typeof process !== 'undefined' ? process.env.GITHUB_HEAD_REF : undefined
+const branchName = headRef || refName
 if (branchName?.startsWith('ci-node-sync-debug')) {
   if (typeof process !== 'undefined' && process.env && process.env.LS_RESUME_PUSH_ON_ADVANCE === undefined) {
     process.env.LS_RESUME_PUSH_ON_ADVANCE = '1'
