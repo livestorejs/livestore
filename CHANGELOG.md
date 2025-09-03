@@ -112,6 +112,10 @@ Pure materializers are essential for:
 - QueryBuilder support in store.subscribe() (#371, thanks @rgbkrk)
 - Enable exactOptionalPropertyTypes with comprehensive type fixes (#600)
 
+### New Examples
+
+- **CF Chat**: Real-time chat application showcasing LiveStore's Cloudflare Durable Objects adapter with WebSocket synchronization, reactive message handling, and bot interactions. Demonstrates both client-side React components and server-side Durable Object integration.
+
 ### Breaking Changes
 
 #### `store.shutdown` API
