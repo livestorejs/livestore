@@ -13,10 +13,16 @@ sidebar:
   - An adapter can instantiate a client session for a given platform (e.g. web, Expo)
 - Client
   - A logical group of client sessions
+  - Identified by a `clientId` - a randomly generated 6-char nanoid
+  - Each client has at least one client session
+  - Sessions within a client share local data
   - Client session
+    - An instance within a client
+    - Identified by a `sessionId`
+    - In web: sessionId can persist across tab reloads
+    - Multiple sessions can exist within a single client (e.g., multiple browser tabs)
     - Store
     - Reactivity graph
-    - Responsible for leader election
 - [Devtools](/reference/devtools)
 - [Events](/reference/events)
   - Event definition
@@ -68,4 +74,11 @@ LiveStore is designed to be pluggable in various ways:
 - Platform adapters
 - Sync providers
 - Framework integrations
+
+## Important Notes on Identity
+
+- LiveStore does not have built-in concepts of "users" or "devices"
+- User identity must be modeled within your application domain through events and application logic
+- The `clientId` identifies a client instance, not a user
+- Multiple clients can represent the same user (e.g., different browsers or devices)
 

@@ -87,3 +87,28 @@ The above example uses [`jose`](https://www.npmjs.com/package/jose), a popular J
 The `validatePayload` function receives the `authToken`, checks if the payload exists, and verifies that it's valid and hasn't expired. If all checks pass, sync continues as normal. If any check fails, the server rejects the sync.
 
 The client app still works as expected, but saves data locally. If the user re-authenticates or refreshes the token later, LiveStore syncs any local changes made while the user was unauthenticated.
+
+## Client Identity vs User Identity
+
+LiveStore's `clientId` identifies a client instance, while user identity is an application-level concern that must be modeled through your application's events and logic.
+
+### Key Points
+- `clientId`: Automatically managed by LiveStore, identifies a client instance
+- User identity: Managed by your application through events and syncPayload
+
+### Using syncPayload for Authentication
+
+The `syncPayload` is primarily intended for authentication purposes:
+
+```tsx
+<LiveStoreProvider
+  schema={schema}
+  storeId={storeId}
+  syncPayload={{
+    authToken: user.jwt, // Authentication credentials
+    // Additional auth-related data as needed
+  }}
+>
+```
+
+User identification and semantic data (like user IDs) should typically be handled through your event payloads and application state rather than relying solely on the sync payload.
