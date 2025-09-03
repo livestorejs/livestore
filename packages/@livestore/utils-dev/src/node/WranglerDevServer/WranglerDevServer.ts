@@ -83,17 +83,18 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
 
       // Start wrangler process using Effect Command
-      const process = yield* Command.make(
-        'bunx',
-        'wrangler',
-        'dev',
-        '--port',
-        port.toString(),
-        '--inspector-port',
-        inspectorPort.toString(),
-        '--config',
-        configPath,
-      ).pipe(
+      // In CI, disable the inspector to avoid port conflicts
+      const commandArgs: string[] = ['bunx', 'wrangler', 'dev', '--port', port.toString()]
+
+      // Only add inspector port if not in CI to avoid conflicts
+      // Use global process from Node.js
+      if (!global.process.env.CI) {
+        commandArgs.push('--inspector-port', inspectorPort.toString())
+      }
+
+      commandArgs.push('--config', configPath)
+
+      const process = yield* Command.make(...commandArgs as [string, ...string[]]).pipe(
         Command.workingDirectory(args.cwd),
         Command.stdout('pipe'),
         Command.stderr('pipe'),
