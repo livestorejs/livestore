@@ -94,7 +94,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       commandArgs.push('--config', configPath)
 
-      const process = yield* Command.make(...commandArgs as [string, ...string[]]).pipe(
+      const process = yield* Command.make(...(commandArgs as [string, ...string[]])).pipe(
         Command.workingDirectory(args.cwd),
         Command.stdout('pipe'),
         Command.stderr('pipe'),

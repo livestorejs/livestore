@@ -37,8 +37,10 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
       ),
   })
 
-// Tests can now run concurrently since we fixed the Wrangler inspector port conflicts
-Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
+// Run tests sequentially in CI to avoid resource contention
+// The Wrangler fix alone wasn't sufficient - concurrent execution still causes timeouts
+const describe = IS_CI ? Vitest.describe : Vitest.describe.concurrent
+describe('node-sync', { timeout: testTimeout }, () => {
   if (IS_CI) {
     console.log('[DEBUG] node-sync test suite starting')
     logProcessState('Test suite start')
