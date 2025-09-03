@@ -37,6 +37,9 @@ export default defineConfig({
   output: 'static',
   server: { port },
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
+  image: {
+    domains: ["gitbucket.schickling.dev"],
+  },
   integrations: [
     react(),
     starlight({
@@ -189,10 +192,10 @@ export default defineConfig({
             icon: 'rocket',
             items: [
               'examples', // 'examples/index.mdx'
-              {
-                label: 'Web',
-                autogenerate: { directory: 'examples/web-*' },
-              },
+              'examples/web-adapter',
+              'examples/node-adapter',
+              'examples/expo-adapter',
+              'examples/cloudflare-adapter',
             ],
           },
         ]),
