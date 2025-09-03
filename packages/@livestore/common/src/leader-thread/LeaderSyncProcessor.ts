@@ -467,17 +467,17 @@ const backgroundApplyLocalPushes = ({
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
+          // TODO: how to test this?
+          const nextRebaseGeneration = currentRebaseGeneration + 1
+
+          const providedNum = newEvents.at(0)!.seqNum
+
           // Structured diagnostics for CI logs
           yield* Effect.logInfo('local-push-reject', {
             batchSize: newEvents.length,
             expectedMinimumNum: EventSequenceNumber.toString(mergeResult.expectedMinimumId),
             providedNum: EventSequenceNumber.toString(providedNum),
           })
-
-          // TODO: how to test this?
-          const nextRebaseGeneration = currentRebaseGeneration + 1
-
-          const providedNum = newEvents.at(0)!.seqNum
           // All subsequent pushes with same generation should be rejected as well
           // We're also handling the case where the localPushQueue already contains events
           // from the next generation which we preserve in the queue
