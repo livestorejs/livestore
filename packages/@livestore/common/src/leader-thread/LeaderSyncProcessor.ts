@@ -41,6 +41,14 @@ import { rollback } from './materialize-event.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
+/**
+ * Experimental flag (H001): resume backend pushing when we observe upstream-advance (not only on rebase).
+ * Opt-in via env variable only to reduce footguns.
+ */
+const RESUME_PUSH_ON_ADVANCE_ENABLED: boolean = (() => {
+  return typeof process !== 'undefined' && !!process.env?.LS_RESUME_PUSH_ON_ADVANCE
+})()
+
 type LocalPushQueueItem = [
   event: LiveStoreEvent.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
@@ -459,6 +467,13 @@ const backgroundApplyLocalPushes = ({
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
+          // Structured diagnostics for CI logs
+          yield* Effect.logInfo('local-push-reject', {
+            batchSize: newEvents.length,
+            expectedMinimumNum: EventSequenceNumber.toString(mergeResult.expectedMinimumId),
+            providedNum: EventSequenceNumber.toString(providedNum),
+          })
+
           // TODO: how to test this?
           const nextRebaseGeneration = currentRebaseGeneration + 1
 
@@ -615,6 +630,9 @@ const backgroundBackendPulling = ({
 
     if (syncBackend === undefined) return
 
+    // Diagnostic counter to correlate pull merges in CI logs
+    let mergeCounter = 0
+
     const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], pageInfo: SyncBackend.PullResPageInfo) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
@@ -655,11 +673,18 @@ const backgroundBackendPulling = ({
         Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
+          mergeCounter++
           otelSpan?.addEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
             rollbackCount: mergeResult.rollbackEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+          })
+          yield* Effect.logInfo('pull-rebase', {
+            mergeCounter,
+            newEventsCount: newEvents.length,
+            rollbackCount: mergeResult.rollbackEvents.length,
+            pendingCount: mergeResult.newSyncState.pending.length,
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
@@ -681,15 +706,35 @@ const backgroundBackendPulling = ({
             leaderHead: mergeResult.newSyncState.localHead,
           })
         } else {
+          mergeCounter++
           otelSpan?.addEvent(`pull:advance`, {
             newEventsCount: newEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+          })
+          yield* Effect.logInfo('pull-advance', {
+            mergeCounter,
+            newEventsCount: newEvents.length,
+            confirmedCount: mergeResult.confirmedEvents.length,
+            pendingCount: mergeResult.newSyncState.pending.length,
           })
 
           yield* connectedClientSessionPullQueues.offer({
             payload: SyncState.payloadFromMergeResult(mergeResult),
             leaderHead: mergeResult.newSyncState.localHead,
           })
+
+          // H001 experiment: optionally resume backend pushing on upstream-advance
+          if (RESUME_PUSH_ON_ADVANCE_ENABLED) {
+            const globalPending = mergeResult.newSyncState.pending.filter((event) => {
+              const { eventDef } = getEventDef(schema, event.name)
+              return eventDef.options.clientOnly === false
+            })
+            yield* restartBackendPushing(globalPending)
+            yield* Effect.logInfo('resume-push-on-advance', {
+              enabled: true,
+              pendingCount: globalPending.length,
+            })
+          }
 
           if (mergeResult.confirmedEvents.length > 0) {
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
@@ -805,6 +850,25 @@ const backgroundBackendPushing = ({
           yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
         }
         otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
+        // Structured diagnostics for CI logs (H001 baseline)
+        if (pushResult.left._tag === 'InvalidPushError' && pushResult.left.cause._tag === 'ServerAheadError') {
+          yield* Effect.logInfo('backend-push-error', {
+            type: 'ServerAheadError',
+            minimumExpectedNum: EventSequenceNumber.toString(
+              EventSequenceNumber.fromGlobal(pushResult.left.cause.minimumExpectedNum),
+            ),
+            providedNum: EventSequenceNumber.toString(
+              EventSequenceNumber.fromGlobal(pushResult.left.cause.providedNum),
+            ),
+            batchSize: queueItems.length,
+          })
+        } else {
+          yield* Effect.logInfo('backend-push-error', {
+            type: pushResult.left._tag,
+            cause: (pushResult.left as any).cause?._tag ?? 'unknown',
+            batchSize: queueItems.length,
+          })
+        }
         // wait for interrupt caused by background pulling which will then restart pushing
         return yield* Effect.never
       }
