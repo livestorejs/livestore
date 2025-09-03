@@ -1,4 +1,4 @@
-import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { casesHandled, isNotUndefined, LS_DEV, LS_RESUME_PUSH_ON_ADVANCE, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
@@ -735,6 +735,15 @@ const backgroundBackendPulling = ({
             mergeCounter,
           })
           mergePayloads.set(mergeCounter, SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }))
+
+          // Experimental: resume backend pushing on upstream-advance as well (not only on rebase)
+          if (LS_RESUME_PUSH_ON_ADVANCE) {
+            const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
+              const { eventDef } = getEventDef(schema, event.name)
+              return eventDef.options.clientOnly === false
+            })
+            yield* restartBackendPushing(globalPendingEvents)
+          }
 
           if (mergeResult.confirmedEvents.length > 0) {
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use

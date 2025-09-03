@@ -25,3 +25,9 @@ export const IS_CI = envTruish(env('CI'))
 export const IS_BUN = typeof Bun !== 'undefined'
 
 export const IS_REACT_NATIVE = typeof navigator !== 'undefined' && navigator.product === 'ReactNative'
+
+/**
+ * Experimental: resume backend pushing on upstream-advance, not only on rebase.
+ * Gate via env to validate hypothesis in CI before adopting permanently.
+ */
+export const LS_RESUME_PUSH_ON_ADVANCE = envTruish(env('LS_RESUME_PUSH_ON_ADVANCE')) || envTruish(env('VITE_LS_RESUME_PUSH_ON_ADVANCE'))
