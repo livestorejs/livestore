@@ -837,10 +837,27 @@ const backgroundBackendPushing = ({
       const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
 
       if (pushResult._tag === 'Left') {
-        if (LS_DEV) {
-          yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
+        // Extra diagnostics for CI-only flakiness: surface ServerAheadError details
+        const err: any = pushResult.left as any
+        const reason = err?.reason
+        if (reason && reason._tag === 'ServerAhead') {
+          const diag = {
+            minimumExpectedNum: reason.minimumExpectedNum,
+            providedNum: reason.providedNum,
+            batchSize: queueItems.length,
+          }
+          otelSpan?.addEvent('backend-push-server-ahead', {
+            minimumExpectedNum: String(diag.minimumExpectedNum),
+            providedNum: String(diag.providedNum),
+            batchSize: String(diag.batchSize),
+          })
+          yield* Effect.logDebug('backend-push ServerAheadError', diag)
+        } else {
+          if (LS_DEV) {
+            yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
+          }
+          otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
         }
-        otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
         // wait for interrupt caused by background pulling which will then restart pushing
         return yield* Effect.never
       }

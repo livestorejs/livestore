@@ -18,6 +18,16 @@ const propTestTimeout = IS_CI ? 300_000 : 120_000
 
 const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
+// Debug/CI overrides for fast iteration
+const envInt = (name: string): number | undefined => {
+  const v = process.env[name]
+  if (!v) return undefined
+  const n = Number(v)
+  return Number.isFinite(n) ? n : undefined
+}
+const isDebugBranch = Boolean(process.env.GITHUB_REF_NAME?.startsWith('ci-node-sync-debug'))
+const NODE_SYNC_DEBUG = process.env.NODE_SYNC_DEBUG === '1' || isDebugBranch
+
 Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
@@ -55,7 +65,18 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
 
   Vitest.scopedLive.prop(
     'node-sync prop tests',
-    DEBUGGER_ACTIVE
+    NODE_SYNC_DEBUG
+      ? [
+          Schema.Literal(process.env.NODE_SYNC_STORAGE_TYPE === 'fs' ? 'fs' : 'in-memory'),
+          Schema.Literal(
+            process.env.NODE_SYNC_ADAPTER_TYPE === 'single-threaded' ? 'single-threaded' : 'worker',
+          ),
+          Schema.Literal(envInt('NODE_SYNC_TODO_A') ?? 3),
+          Schema.Literal(envInt('NODE_SYNC_TODO_B') ?? 391),
+          Schema.Literal(envInt('NODE_SYNC_COMMIT_BATCH_SIZE') ?? 1),
+          Schema.Literal(envInt('NODE_SYNC_LEADER_PUSH_BATCH_SIZE') ?? 2),
+        ]
+      : DEBUGGER_ACTIVE
       ? [
           Schema.Literal('fs'),
           Schema.Literal('single-threaded'),
@@ -124,9 +145,11 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
           suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
         }),
       ),
-    DEBUGGER_ACTIVE
-      ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
-      : { fastCheck: { numRuns: 6 }, timeout: propTestTimeout },
+    NODE_SYNC_DEBUG
+      ? { fastCheck: { numRuns: envInt('NODE_SYNC_NUM_RUNS') ?? 1 }, timeout: propTestTimeout * 10 }
+      : DEBUGGER_ACTIVE
+        ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
+        : { fastCheck: { numRuns: 6 }, timeout: propTestTimeout },
   )
 })
 

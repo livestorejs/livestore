@@ -197,7 +197,15 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   requestId,
                 })
 
-                yield* Effect.logError(err)
+                // Extra diagnostics for CI-only flakiness
+                yield* Effect.logError(err).pipe(
+                  Effect.annotateLogs({
+                    minimumExpectedNum: String(currentHead),
+                    providedNum: String(firstEvent.parentSeqNum),
+                    batchFirstEventSeq: String(firstEvent.seqNum),
+                    batchSize: String(decodedMessage.batch.length),
+                  }),
+                )
 
                 yield* respond(err)
                 yield* this.pushSemaphore.release(1)
