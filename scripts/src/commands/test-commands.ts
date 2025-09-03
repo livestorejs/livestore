@@ -198,8 +198,14 @@ export const nodeSyncTest = Cli.Command.make(
   'node-sync',
   {},
   Effect.fn(function* () {
+    const branch = process.env.GITHUB_REF_NAME || process.env.GITHUB_HEAD_REF || process.env.GITHUB_BRANCH_NAME
+    const enableResumeOnAdvance = typeof branch === 'string' && /ci-node-sync-hypo\/h001-resume-on-advance/i.test(branch)
+
     yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
       cwd: `${cwd}/tests/integration`,
+      env: {
+        ...(enableResumeOnAdvance ? { LS_RESUME_PUSH_ON_ADVANCE: '1' } : {}),
+      },
     })
   }),
 )
