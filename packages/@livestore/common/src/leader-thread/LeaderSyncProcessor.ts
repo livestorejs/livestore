@@ -826,6 +826,20 @@ const backgroundBackendPushing = ({
           // server ahead errors are gracefully handled
           pushResult.left.cause._tag !== 'ServerAheadError'
         ) {
+          // Treat certain UnexpectedError cases as transient (e.g., SQLITE_BUSY / "database is locked")
+          {
+            const tag = String((pushResult.left.cause as any)._tag ?? '')
+            if (tag.includes('UnexpectedError')) {
+              const raw = String((pushResult.left.cause as any).cause ?? pushResult.left.cause)
+              const isDbBusy = raw.includes('SQLITE_BUSY') || raw.includes('database is locked') || raw.includes('D1_ERROR')
+              if (isDbBusy) {
+                yield* Effect.logInfo('backend-push-error-transient-busy', { raw })
+                onPark?.()
+                // Wait for downstream (pull) to interrupt and restart pushing
+                return yield* Effect.never
+              }
+            }
+          }
           return yield* pushResult.left
         }
 
