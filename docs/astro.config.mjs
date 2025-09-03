@@ -38,7 +38,7 @@ export default defineConfig({
   server: { port },
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   image: {
-    domains: ["gitbucket.schickling.dev"],
+    domains: ['gitbucket.schickling.dev'],
   },
   integrations: [
     react(),
