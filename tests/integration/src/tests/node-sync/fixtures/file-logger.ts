@@ -61,18 +61,21 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
 
       process.env.TEST_RUN_ID = testRunId
 
-      // Allocate port within RpcLogger effect to avoid runSync on async effect
-      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId))
+      // Allocate port in Effect and set env before creating the RPC client layer
+      return Layer.unwrapScoped(
+        Effect.gen(function* () {
+          const serverPort = yield* getFreePort
+          process.env.LOGGER_SERVER_PORT = String(serverPort)
+          return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+        }),
+      )
     } else {
       return makeRpcClient(threadName)
     }
   })
 
-export const RpcLogger = (testRunId: string) =>
+export const RpcLogger = (testRunId: string, serverPort: number) =>
   Effect.gen(function* () {
-    // Allocate a free port to avoid collisions; do it in Effect context
-    const serverPort = yield* getFreePort
-    process.env.LOGGER_SERVER_PORT = String(serverPort)
     const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
     const logFilePath = path.join(workspaceRoot, 'tests', 'integration', 'tmp', 'logs', `${testRunId}.log`)
 
