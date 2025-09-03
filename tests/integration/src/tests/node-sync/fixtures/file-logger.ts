@@ -61,10 +61,14 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
 
       process.env.TEST_RUN_ID = testRunId
 
-      const serverPort = Effect.runSync(getFreePort)
-      process.env.LOGGER_SERVER_PORT = String(serverPort)
-
-      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+      // Allocate port in Effect and set env before creating the RPC client layer
+      return Layer.unwrapScoped(
+        Effect.gen(function* () {
+          const serverPort = yield* getFreePort
+          process.env.LOGGER_SERVER_PORT = String(serverPort)
+          return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+        }),
+      )
     } else {
       return makeRpcClient(threadName)
     }
