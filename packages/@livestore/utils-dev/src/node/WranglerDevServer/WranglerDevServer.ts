@@ -1,6 +1,6 @@
 import * as path from 'node:path'
 
-import { Command, Effect, Exit, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Command, Duration, Effect, Exit, type PlatformError, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
@@ -48,36 +48,84 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
   scoped: (args: StartWranglerDevServerArgs) =>
     Effect.gen(function* () {
       const showLogs = args.showLogs ?? false
+      const instanceId = Math.random().toString(36).substring(7)
+      
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Starting new instance`, {
+        cwd: args.cwd,
+        requestedPort: args.port,
+        showLogs,
+      })
 
       // Clean up any orphaned processes before starting (defensive cleanup)
       yield* cleanupOrphanedProcesses(['wrangler', 'workerd']).pipe(
-        Effect.tap((result) =>
-          showLogs && (result.cleaned.length > 0 || result.failed.length > 0)
-            ? Effect.logInfo(`Cleanup result: ${result.cleaned.length} cleaned, ${result.failed.length} failed`)
-            : Effect.void,
-        ),
+        Effect.tap((result) => {
+          const effects = []
+          if (result.cleaned.length > 0 || result.failed.length > 0) {
+            effects.push(
+              Effect.logWarning(
+                `[WranglerDevServer-${instanceId}] Found orphaned processes - this may indicate improper cleanup`,
+                { cleaned: result.cleaned.length, failed: result.failed.length }
+              )
+            )
+          }
+          if (showLogs) {
+            effects.push(
+              Effect.logInfo(`Cleanup result: ${result.cleaned.length} cleaned, ${result.failed.length} failed`)
+            )
+          }
+          return effects.length > 0 ? Effect.all(effects, { discard: true }) : Effect.void
+        }),
         Effect.ignore, // Don't fail startup if cleanup fails
       )
 
-      // Allocate port
-      const port =
-        args.port ??
-        (yield* getFreePort.pipe(
-          Effect.mapError(
-            (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
-          ),
-        ))
+      // Allocate port with retry logic
+      let portAllocationAttempts = 0
+      const maxPortAttempts = 5
+      const retrySchedule = Schedule.recurs(maxPortAttempts - 1).pipe(
+        Schedule.intersect(Schedule.spaced(Duration.millis(100)))
+      )
+      const port = args.port ?? (yield* getFreePort.pipe(
+        Effect.tap((p) => {
+          portAllocationAttempts++
+          if (portAllocationAttempts > 1) {
+            return Effect.logWarning(
+              `[WranglerDevServer-${instanceId}] Port allocation attempt ${portAllocationAttempts}/${maxPortAttempts}, got port ${p}`
+            )
+          }
+          return Effect.void
+        }),
+        Effect.mapError(
+          (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
+        ),
+        Effect.retry(retrySchedule)
+      ))
 
-      // Allocate inspector port if not provided
-      const inspectorPort =
-        args.inspectorPort ??
-        (yield* getFreePort.pipe(
-          Effect.mapError(
-            (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free inspector port', port: -1 }),
-          ),
-        ))
+      // Allocate inspector port if not provided  
+      let inspectorPortAttempts = 0
+      const inspectorPort = args.inspectorPort ?? (yield* getFreePort.pipe(
+        Effect.tap((p) => {
+          inspectorPortAttempts++
+          if (inspectorPortAttempts > 1) {
+            return Effect.logWarning(
+              `[WranglerDevServer-${instanceId}] Inspector port allocation attempt ${inspectorPortAttempts}/${maxPortAttempts}, got port ${p}`
+            )
+          }
+          return Effect.void
+        }),
+        Effect.mapError(
+          (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free inspector port', port: -1 }),
+        ),
+        Effect.retry(retrySchedule)
+      ))
 
-      yield* Effect.annotateCurrentSpan({ port, inspectorPort })
+      yield* Effect.annotateCurrentSpan({ port, inspectorPort, instanceId })
+      
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Allocated ports`, { 
+        port, 
+        inspectorPort,
+        portAttempts: portAllocationAttempts,
+        inspectorPortAttempts
+      })
 
       // Resolve config path
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
@@ -90,9 +138,17 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       // Use global process from Node.js
       if (!global.process.env.CI) {
         commandArgs.push('--inspector-port', inspectorPort.toString())
+        yield* Effect.log(`[WranglerDevServer-${instanceId}] Inspector enabled on port ${inspectorPort}`)
+      } else {
+        yield* Effect.log(`[WranglerDevServer-${instanceId}] Inspector disabled in CI environment`)
       }
 
       commandArgs.push('--config', configPath)
+
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Starting wrangler process`, {
+        command: commandArgs.join(' '),
+        cwd: args.cwd
+      })
 
       const process = yield* Command.make(...(commandArgs as [string, ...string[]])).pipe(
         Command.workingDirectory(args.cwd),
@@ -110,16 +166,22 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         Effect.withSpan('WranglerDevServerService:startProcess'),
       )
 
+      const processId = process.pid
+      
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Process created`, {
+        processId,
+        port,
+        inspectorPort
+      })
+
       if (showLogs) {
         yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
-          Stream.tapLogWithLabel('wrangler:stderr'),
+          Stream.tapLogWithLabel(`[WranglerDevServer-${instanceId}] stderr`),
           Stream.runDrain,
           Effect.forkScoped,
         )
       }
-
-      const processId = process.pid
 
       // We need to keep the `stdout` stream open, as we drain it in the waitForReady function
       // Otherwise we'll get a EPIPE error
@@ -129,10 +191,17 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       yield* Effect.addFinalizer((exit) =>
         Effect.gen(function* () {
           const isInterrupted = Exit.isInterrupted(exit)
+          
+          yield* Effect.log(`[WranglerDevServer-${instanceId}] Finalizer called`, {
+            processId,
+            port,
+            isInterrupted,
+            exitType: Exit.isFailure(exit) ? 'failure' : 'success'
+          })
+          
           if (showLogs) {
             yield* Effect.logDebug(`Cleaning up wrangler process ${processId}, interrupted: ${isInterrupted}`)
           }
-          // yield* Effect.logDebug(`Cleaning up wrangler process ${processId}, interrupted: ${isInterrupted}`)
 
           // Check if process is still running
           const isRunning = yield* process.isRunning
@@ -174,8 +243,15 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       )
 
       // Wait for server to be ready
-      yield* waitForReady({ stdout, showLogs })
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Waiting for server to be ready`)
+      yield* waitForReady({ stdout, showLogs, instanceId })
 
+      yield* Effect.log(`[WranglerDevServer-${instanceId}] Server ready`, {
+        port,
+        url: `http://localhost:${port}`,
+        processId
+      })
+      
       if (showLogs) {
         yield* Effect.logDebug(`Wrangler dev server ready on port ${port}`)
       }
@@ -198,14 +274,21 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 const waitForReady = ({
   stdout,
   showLogs,
+  instanceId = 'unknown',
 }: {
   stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError, never>
   showLogs: boolean
+  instanceId?: string
 }): Effect.Effect<void, WranglerDevServerError, never> =>
   stdout.pipe(
     Stream.decodeText('utf8'),
     Stream.splitLines,
-    Stream.tap((line) => (showLogs ? Effect.logDebug(`[wrangler] ${line}`) : Effect.void)),
+    Stream.tap((line) => {
+      if (line.includes('Ready on')) {
+        return Effect.log(`[WranglerDevServer-${instanceId}] Found ready signal: ${line}`)
+      }
+      return showLogs ? Effect.logDebug(`[WranglerDevServer-${instanceId}] ${line}`) : Effect.void
+    }),
     Stream.takeUntil((line) => line.includes('Ready on')),
     Stream.runDrain,
     Effect.timeout('30 seconds'),
@@ -213,7 +296,7 @@ const waitForReady = ({
       (error) =>
         new WranglerDevServerError({
           cause: error,
-          message: 'Wrangler server failed to start within timeout',
+          message: `[WranglerDevServer-${instanceId}] Server failed to start within timeout`,
           port: 0,
         }),
     ),

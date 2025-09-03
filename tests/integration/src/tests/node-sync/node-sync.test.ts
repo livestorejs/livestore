@@ -27,14 +27,21 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
     timeout: testTimeout,
-    makeLayer: (_testContext) =>
-      Layer.mergeAll(
+    makeLayer: (_testContext) => {
+      console.log(`[TEST CONTEXT] Creating layer for test with suffix: ${suffix || 'none'}`)
+      return Layer.mergeAll(
         // makeFileLogger('runner', { testContext }), // Disabled for debugging - logs go to stdout
         WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
           showLogs: IS_CI, // Show Wrangler logs in CI for debugging
-        }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
-      ),
+        }).pipe(
+          Layer.provide(PlatformNode.NodeContext.layer),
+          Layer.tap(() => Effect.sync(() => {
+            console.log(`[TEST CONTEXT] WranglerDevServerService layer created for suffix: ${suffix || 'none'}`)
+          }))
+        ),
+      )
+    },
   })
 
 // Run tests sequentially in CI to avoid resource contention
@@ -43,16 +50,20 @@ const describe = IS_CI ? Vitest.describe : Vitest.describe.concurrent
 describe('node-sync', { timeout: testTimeout }, () => {
   if (IS_CI) {
     console.log('[DEBUG] node-sync test suite starting')
+    console.log('[DEBUG] Test execution mode:', IS_CI ? 'SEQUENTIAL' : 'CONCURRENT')
     logProcessState('Test suite start')
   }
+  
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.StorageType, WorkerSchema.AdapterType],
     ([storageType, adapterType], test) =>
       Effect.gen(function* () {
-        console.log('\n[TEST TRANSITION] Starting simple test (4 todos)')
+        const testId = Math.random().toString(36).substring(7)
+        console.log(`\n[TEST-${testId}] Starting simple test (4 todos)`)
+        console.log(`[TEST-${testId}] Parameters: storageType=${storageType}, adapterType=${adapterType}`)
         if (IS_CI) {
-          logProcessState('Before simple test')
+          logProcessState(`Before simple test ${testId}`)
         }
 
         const storeId = nanoid(10)
@@ -85,10 +96,10 @@ describe('node-sync', { timeout: testTimeout }, () => {
         yield* Effect.log(`Test completed: ${result.length} todos synced`)
         expect(result.length).toEqual(todoCount)
 
-        console.log('[TEST TRANSITION] Simple test completed')
+        console.log(`[TEST-${testId}] Simple test completed successfully`)
         if (IS_CI) {
-          console.log(`[TEST TRANSITION] Active worker PIDs: ${activeWorkerPids.size}`)
-          logProcessState('After simple test')
+          console.log(`[TEST-${testId}] Active worker PIDs: ${activeWorkerPids.size}`)
+          logProcessState(`After simple test ${testId}`)
         }
       }).pipe(withTestCtx()(test)),
     { fastCheck: { numRuns: 4 } },
@@ -141,9 +152,10 @@ describe('node-sync', { timeout: testTimeout }, () => {
     ) =>
       Effect.gen(function* () {
         const testStartTime = Date.now()
-        console.log(`\n=== Test Run ${runIndex + 1}/${numRuns} Starting ===`)
-        console.log(`Time: ${new Date().toISOString()}`)
-        console.log(`Config:`, {
+        const propTestId = Math.random().toString(36).substring(7)
+        console.log(`\n=== [PROP-TEST-${propTestId}] Run ${runIndex + 1}/${numRuns} Starting ===`)
+        console.log(`[PROP-TEST-${propTestId}] Time: ${new Date().toISOString()}`)
+        console.log(`[PROP-TEST-${propTestId}] Config:`, {
           storageType,
           adapterType,
           todoCountA,
@@ -152,6 +164,10 @@ describe('node-sync', { timeout: testTimeout }, () => {
           leaderPushBatchSize,
           simulationParams,
         })
+        
+        if (IS_CI) {
+          logProcessState(`Before prop test ${propTestId}`)
+        }
 
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
@@ -256,8 +272,13 @@ describe('node-sync', { timeout: testTimeout }, () => {
         yield* Effect.raceFirst(exec, onShutdown)
         const syncTime = Math.round((Date.now() - syncStartTime) / 1000)
         yield* Effect.log(
-          `Sync completed in ${syncTime}s, total test time: ${Math.round((Date.now() - testStartTime) / 1000)}s`,
+          `[PROP-TEST-${propTestId}] Sync completed in ${syncTime}s, total test time: ${Math.round((Date.now() - testStartTime) / 1000)}s`,
         )
+        
+        if (IS_CI) {
+          console.log(`[PROP-TEST-${propTestId}] Test completed successfully`)
+          logProcessState(`After prop test ${propTestId}`)
+        }
       }).pipe(
         withTestCtx({
           suffix: stringifyObject({
@@ -297,13 +318,23 @@ const makeWorker = ({
 }) =>
   Effect.gen(function* () {
     const workerId = ++workerCount
-    console.log(`[WORKER] Creating worker #${workerId} for ${clientId}`)
+    const workerInstanceId = `${workerId}-${Math.random().toString(36).substring(7)}`
+    console.log(`[WORKER-${workerInstanceId}] Creating worker for ${clientId}`)
+    console.log(`[WORKER-${workerInstanceId}] Config: storeId=${storeId}, adapter=${adapterType}, storage=${storageType}`)
+    
     if (IS_CI) {
-      console.log(`[WORKER] Active workers before: ${activeWorkerPids.size}`)
+      console.log(`[WORKER-${workerInstanceId}] Global worker count: ${workerCount}`)
+      console.log(`[WORKER-${workerInstanceId}] Active worker PIDs before creation: ${activeWorkerPids.size}`)
+      if (activeWorkerPids.size > 0) {
+        console.log(`[WORKER-${workerInstanceId}] WARNING: ${activeWorkerPids.size} workers still active from previous tests`)
+      }
       logActiveWorkers()
     }
 
+    console.log(`[WORKER-${workerInstanceId}] Accessing WranglerDevServerService`)
     const server = yield* WranglerDevServerService
+    console.log(`[WORKER-${workerInstanceId}] Got WranglerDevServer: port=${server.port}, url=${server.url}, pid=${server.processId}`)
+    
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
@@ -321,16 +352,20 @@ const makeWorker = ({
           // Track the child process
           if (childProcess.pid) {
             activeWorkerPids.add(childProcess.pid)
-            console.log(`[WORKER] Child process created: PID=${childProcess.pid} for ${clientId}`)
+            console.log(`[WORKER-${workerInstanceId}] Child process created: PID=${childProcess.pid} for ${clientId}`)
+            console.log(`[WORKER-${workerInstanceId}] Total active PIDs now: ${activeWorkerPids.size}`)
 
             childProcess.on('exit', (code) => {
-              console.log(`[WORKER] Child process exited: PID=${childProcess.pid}, code=${code}, client=${clientId}`)
+              console.log(`[WORKER-${workerInstanceId}] Child process exited: PID=${childProcess.pid}, code=${code}, client=${clientId}`)
               activeWorkerPids.delete(childProcess.pid!)
+              console.log(`[WORKER-${workerInstanceId}] Active PIDs after exit: ${activeWorkerPids.size}`)
             })
 
             childProcess.on('error', (err) => {
-              console.error(`[WORKER] Child process error: PID=${childProcess.pid}, client=${clientId}`, err)
+              console.error(`[WORKER-${workerInstanceId}] Child process error: PID=${childProcess.pid}, client=${clientId}`, err)
             })
+          } else {
+            console.warn(`[WORKER-${workerInstanceId}] WARNING: Child process created without PID for ${clientId}`)
           }
 
           return childProcess
@@ -340,5 +375,6 @@ const makeWorker = ({
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
     )
 
+    console.log(`[WORKER-${workerInstanceId}] Worker successfully created for ${clientId}`)
     return worker
   })
