@@ -187,9 +187,20 @@ export const setupDurableObjectWebSocketRpc = ({
     await onMessage(message)
   }
 
-  const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
+  const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, code, reason, wasClean) => {
     const ctx = serverCtxMap.get(ws)
-    // console.log('webSocketClose', ctx, ws)
+    // Basic diagnostics; avoid sending invalid codes (H002)
+    try {
+      if (code === 1006) {
+        // 1006 is reserved/invalid to send; we just log and proceed with cleanup
+        await Effect.logDebug('webSocketClose: received invalid close code 1006; normalizing by ignoring').pipe(
+          Effect.runPromise,
+        )
+      } else {
+        await Effect.logDebug('webSocketClose', { code, reason, wasClean }).pipe(Effect.runPromise)
+      }
+    } catch {}
+
     if (ctx) {
       await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
