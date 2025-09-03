@@ -123,6 +123,9 @@ export const makeLeaderSyncProcessor = ({
     const localPushBatchSize = params.localPushBatchSize ?? 1
     const backendPushBatchSize = params.backendPushBatchSize ?? 2
 
+    // Tracks whether pushing fiber parked due to ServerAhead (awaiting restart)
+    let pushParked = false
+
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
@@ -295,6 +298,9 @@ export const makeLeaderSyncProcessor = ({
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
+        onPark: () => {
+          pushParked = true
+        },
       }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
       yield* Effect.logInfo('pushing-fiber-run', { phase: 'initial' })
@@ -699,6 +705,7 @@ const backgroundBackendPulling = ({
             const { eventDef } = getEventDef(schema, event.name)
             return eventDef.options.clientOnly === false
           })
+          pushParked = false
           yield* Effect.logInfo('restart-pushing', { reason: 'rebase', pendingCount: globalRebasedPendingEvents.length })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -733,11 +740,12 @@ const backgroundBackendPulling = ({
           })
 
           // H001 experiment: optionally resume backend pushing on upstream-advance
-          if (RESUME_PUSH_ON_ADVANCE_ENABLED) {
+          if (RESUME_PUSH_ON_ADVANCE_ENABLED && pushParked) {
             const globalPending = mergeResult.newSyncState.pending.filter((event) => {
               const { eventDef } = getEventDef(schema, event.name)
               return eventDef.options.clientOnly === false
             })
+            pushParked = false
             yield* restartBackendPushing(globalPending)
             yield* Effect.logInfo('resume-push-on-advance', {
               enabled: true,
@@ -818,11 +826,13 @@ const backgroundBackendPushing = ({
   otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
+  onPark,
 }: {
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
   backendPushBatchSize: number
+  onPark?: () => void
 }) =>
   Effect.gen(function* () {
     const { syncBackend } = yield* LeaderThreadCtx
@@ -880,7 +890,8 @@ const backgroundBackendPushing = ({
             batchSize: queueItems.length,
           })
         }
-        // wait for interrupt caused by background pulling which will then restart pushing
+        // Mark parked state and wait for interrupt caused by background pulling which will then restart pushing
+        onPark?.()
         return yield* Effect.never
       }
     }
