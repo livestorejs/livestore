@@ -37,7 +37,9 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
       ),
   })
 
-Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
+// Run tests sequentially in CI to avoid port conflicts and resource contention
+const describe = IS_CI ? Vitest.describe : Vitest.describe.concurrent
+describe('node-sync', { timeout: testTimeout }, () => {
   if (IS_CI) {
     console.log('[DEBUG] node-sync test suite starting')
     logProcessState('Test suite start')

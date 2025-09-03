@@ -29,6 +29,8 @@ export interface StartWranglerDevServerArgs {
   wranglerConfigPath?: string
   cwd: string
   port?: number
+  /** Inspector/debugger port for workerd. If not specified, uses a random free port */
+  inspectorPort?: number
   /** @default false */
   showLogs?: boolean
 }
@@ -66,7 +68,16 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
           ),
         ))
 
-      yield* Effect.annotateCurrentSpan({ port })
+      // Allocate inspector port if not provided
+      const inspectorPort =
+        args.inspectorPort ??
+        (yield* getFreePort.pipe(
+          Effect.mapError(
+            (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free inspector port', port: -1 }),
+          ),
+        ))
+
+      yield* Effect.annotateCurrentSpan({ port, inspectorPort })
 
       // Resolve config path
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
@@ -78,6 +89,8 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         'dev',
         '--port',
         port.toString(),
+        '--inspector-port',
+        inspectorPort.toString(),
         '--config',
         configPath,
       ).pipe(
