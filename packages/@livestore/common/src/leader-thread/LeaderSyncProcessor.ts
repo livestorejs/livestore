@@ -116,7 +116,7 @@ export const makeLeaderSyncProcessor = ({
     const backendPushBatchSize = params.backendPushBatchSize ?? 2
 
     // Track whether the pushing fiber parked due to a handled ServerAhead error
-    let pushParked = false
+    const pushParkedRef = { current: false }
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
@@ -291,7 +291,7 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
         onPark: () => {
-          pushParked = true
+          pushParkedRef.current = true
         },
       }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
@@ -321,6 +321,10 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         connectedClientSessionPullQueues,
         advancePushHead,
+        isPushParked: () => pushParkedRef.current,
+        clearPushParked: () => {
+          pushParkedRef.current = false
+        },
       }).pipe(
         Effect.retry({
           // We want to retry pulling if we've lost connection to the sync backend
@@ -600,6 +604,8 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext,
   connectedClientSessionPullQueues,
   advancePushHead,
+  isPushParked,
+  clearPushParked,
 }: {
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
@@ -615,6 +621,8 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   connectedClientSessionPullQueues: PullQueueSet
   advancePushHead: (eventNum: EventSequenceNumber.EventSequenceNumber) => void
+  isPushParked: () => boolean
+  clearPushParked: () => void
 }) =>
   Effect.gen(function* () {
     const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
@@ -673,7 +681,7 @@ const backgroundBackendPulling = ({
             return eventDef.options.clientOnly === false
           })
           // rebase implies we should restart pushing regardless of parked state
-          pushParked = false
+          clearPushParked()
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
@@ -700,12 +708,12 @@ const backgroundBackendPulling = ({
           })
 
           // H001 fix: if pushing fiber is parked from a prior ServerAhead, resume on advance too
-          if (pushParked) {
+          if (isPushParked()) {
             const globalPending = mergeResult.newSyncState.pending.filter((event) => {
               const { eventDef } = getEventDef(schema, event.name)
               return eventDef.options.clientOnly === false
             })
-            pushParked = false
+            clearPushParked()
             yield* restartBackendPushing(globalPending)
           }
 
