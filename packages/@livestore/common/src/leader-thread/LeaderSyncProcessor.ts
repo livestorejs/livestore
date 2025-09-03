@@ -115,6 +115,9 @@ export const makeLeaderSyncProcessor = ({
     const localPushBatchSize = params.localPushBatchSize ?? 1
     const backendPushBatchSize = params.backendPushBatchSize ?? 2
 
+    // Track whether the pushing fiber parked due to a handled ServerAhead error
+    let pushParked = false
+
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
@@ -287,6 +290,9 @@ export const makeLeaderSyncProcessor = ({
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
+        onPark: () => {
+          pushParked = true
+        },
       }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -666,6 +672,8 @@ const backgroundBackendPulling = ({
             const { eventDef } = getEventDef(schema, event.name)
             return eventDef.options.clientOnly === false
           })
+          // rebase implies we should restart pushing regardless of parked state
+          pushParked = false
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
@@ -690,6 +698,16 @@ const backgroundBackendPulling = ({
             payload: SyncState.payloadFromMergeResult(mergeResult),
             leaderHead: mergeResult.newSyncState.localHead,
           })
+
+          // H001 fix: if pushing fiber is parked from a prior ServerAhead, resume on advance too
+          if (pushParked) {
+            const globalPending = mergeResult.newSyncState.pending.filter((event) => {
+              const { eventDef } = getEventDef(schema, event.name)
+              return eventDef.options.clientOnly === false
+            })
+            pushParked = false
+            yield* restartBackendPushing(globalPending)
+          }
 
           if (mergeResult.confirmedEvents.length > 0) {
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
@@ -763,11 +781,13 @@ const backgroundBackendPushing = ({
   otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
+  onPark,
 }: {
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
   backendPushBatchSize: number
+  onPark?: () => void
 }) =>
   Effect.gen(function* () {
     const { syncBackend } = yield* LeaderThreadCtx
@@ -805,7 +825,8 @@ const backgroundBackendPushing = ({
           yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
         }
         otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
-        // wait for interrupt caused by background pulling which will then restart pushing
+        // Mark as parked and wait for interrupt caused by background pulling which will then restart pushing
+        onPark?.()
         return yield* Effect.never
       }
     }
