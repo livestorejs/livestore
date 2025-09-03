@@ -17,7 +17,7 @@
     "@types/node": "catalog:"
   },
   "peerDependencies": {
-    "@playwright/test": "catalog:"
+    "@playwright/test": "^1.55.0"
   },
   "scripts": {
     "test": "echo 'No tests'"

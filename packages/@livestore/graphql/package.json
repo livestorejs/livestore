@@ -22,7 +22,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "graphql": "catalog:"
+    "graphql": "^16.11.0"
   },
   "publishConfig": {
     "access": "public",

@@ -63,7 +63,9 @@ const config = {
     {
       label: 'catalog protocol for catalog dependencies',
       dependencies: getPnpmCatalogDependencies(),
-      dependencyTypes: ['!local'],
+      // Exclude peer deps - they need explicit versions with ranges (e.g. ^19.0.0)
+      // so published packages work with compatible versions, not just exact matches
+      dependencyTypes: ['!local', '!peer'],
       // Except for examples
       packages: ['!livestore-example-**'],
       pinVersion: 'catalog:',

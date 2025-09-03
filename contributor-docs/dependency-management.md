@@ -40,6 +40,11 @@ After updating dependencies, check if version constants in `packages/@local/shar
 
 ## PNPM Catalog Management
 
+The catalog is used for:
+- ✅ Regular dependencies
+- ✅ Dev dependencies  
+- ❌ Peer dependencies (use explicit versions)
+
 ### Adding to Catalog
 Add dependencies to the catalog (`pnpm-workspace.yaml`) when used in **3 or more packages** (excluding examples):
 
@@ -47,6 +52,37 @@ Add dependencies to the catalog (`pnpm-workspace.yaml`) when used in **3 or more
 # Check for repeated dependencies (excluding examples)
 grep -r '"package-name"' packages/*/package.json docs/package.json tests/*/package.json | wc -l
 ```
+
+## Peer Dependencies Policy
+
+Peer dependencies must use **explicit version ranges** instead of catalog references. This ensures:
+- Published packages have the correct version ranges
+- Users can install packages without version conflicts
+- Clear visibility of compatibility requirements
+
+### Guidelines
+- Use `^` (caret) for peer dependencies to allow minor updates
+- Keep peer dependencies in sync with catalog versions manually
+- When updating catalog versions, also update corresponding peer dependencies
+
+### Example
+```json
+// ❌ Don't use catalog for peer deps
+"peerDependencies": {
+  "react": "catalog:"
+}
+
+// ✅ Use explicit version with range
+"peerDependencies": {
+  "react": "^19.0.0"
+}
+```
+
+### Enforcement
+Syncpack is configured to:
+- NOT enforce catalog protocol for peer dependencies
+- Enforce `^` range for all peer dependencies
+- Keep peer dependency versions consistent across packages
 
 ## Expected Warnings
 
