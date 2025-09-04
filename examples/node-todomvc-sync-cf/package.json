@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.4.0-dev.5",
-    "@livestore/livestore": "0.4.0-dev.5",
-    "@livestore/sync-cf": "0.4.0-dev.5"
+    "@livestore/adapter-node": "0.4.0-dev.6",
+    "@livestore/livestore": "0.4.0-dev.6",
+    "@livestore/sync-cf": "0.4.0-dev.6"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

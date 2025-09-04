@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.4.0-dev.5",
+  "version": "0.4.0-dev.6",
   "type": "module",
   "sideEffects": [
     "./src/node-vitest/global.ts",

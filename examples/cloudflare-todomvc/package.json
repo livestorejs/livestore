@@ -5,10 +5,10 @@
   "private": true,
   "dependencies": {
     "@cloudflare/workers-types": "4.20250823.0",
-    "@livestore/adapter-cloudflare": "0.4.0-dev.5",
-    "@livestore/livestore": "0.4.0-dev.5",
-    "@livestore/peer-deps": "0.4.0-dev.5",
-    "@livestore/sync-cf": "0.4.0-dev.5"
+    "@livestore/adapter-cloudflare": "0.4.0-dev.6",
+    "@livestore/livestore": "0.4.0-dev.6",
+    "@livestore/peer-deps": "0.4.0-dev.6",
+    "@livestore/sync-cf": "0.4.0-dev.6"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"
