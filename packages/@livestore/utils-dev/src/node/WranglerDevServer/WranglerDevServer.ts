@@ -1,6 +1,16 @@
 import * as path from 'node:path'
 
-import { Command, Effect, Exit, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Command,
+  Effect,
+  Exit,
+  FetchHttpClient,
+  HttpClient,
+  type PlatformError,
+  Schedule,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
@@ -162,13 +172,18 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       // Wait for server to be ready
       yield* waitForReady({ stdout, showLogs })
 
+      const url = `http://localhost:${port}`
+
+      // Verify the server is actually accepting HTTP connections
+      yield* verifyHttpConnectivity({ url, showLogs }).pipe(Effect.provide(FetchHttpClient.layer))
+
       if (showLogs) {
-        yield* Effect.logDebug(`Wrangler dev server ready on port ${port}`)
+        yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
       }
 
       return {
         port,
-        url: `http://localhost:${port}`,
+        url,
         processId,
       } satisfies WranglerDevServer
     }).pipe(
@@ -204,3 +219,41 @@ const waitForReady = ({
         }),
     ),
   )
+
+/**
+ * Verifies the server is actually accepting HTTP connections by making a test request
+ */
+const verifyHttpConnectivity = ({
+  url,
+  showLogs,
+}: {
+  url: string
+  showLogs: boolean
+}): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    if (showLogs) {
+      yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
+    }
+
+    // Try to connect with retries using exponential backoff
+    yield* client.get(url).pipe(
+      Effect.retry(
+        Schedule.exponential('50 millis', 2).pipe(
+          Schedule.jittered,
+          Schedule.compose(Schedule.recurs(20)), // Max 20 attempts (~10 seconds with exponential backoff)
+        ),
+      ),
+      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+      Effect.mapError(
+        (error) =>
+          new WranglerDevServerError({
+            cause: error,
+            message: `Failed to establish HTTP connection to Wrangler server at ${url}`,
+            port: 0,
+          }),
+      ),
+      Effect.asVoid,
+    )
+  })
