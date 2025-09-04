@@ -1,5 +1,9 @@
 # Project-Specific Instructions for Claude
 
+## Setup
+
+This repository uses [`direnv`](https://direnv.net) for automatic environment setup. Run `direnv allow` once, then direnv automatically runs the setup script which installs dependencies and builds TypeScript.
+
 ## Tooling
 
 - When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)
