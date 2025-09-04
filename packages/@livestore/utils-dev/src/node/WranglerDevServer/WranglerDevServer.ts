@@ -1,6 +1,16 @@
 import * as path from 'node:path'
-
-import { Command, Effect, Exit, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { IS_CI } from '@livestore/utils'
+import {
+  Command,
+  Duration,
+  Effect,
+  Exit,
+  HttpClient,
+  type PlatformError,
+  Schedule,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
@@ -31,6 +41,7 @@ export interface StartWranglerDevServerArgs {
   port?: number
   /** @default false */
   showLogs?: boolean
+  connectTimeout?: Duration.DurationInput
 }
 
 /**
@@ -154,6 +165,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             yield* Effect.logDebug(`Process ${processId} already terminated`)
           }
         }).pipe(
+          Effect.withSpan('WranglerDevServerService:cleanupProcess'),
           Effect.timeout('5 seconds'), // Don't let cleanup hang forever
           Effect.ignoreLogged,
         ),
@@ -162,13 +174,19 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       // Wait for server to be ready
       yield* waitForReady({ stdout, showLogs })
 
+      const url = `http://localhost:${port}`
+
+      // Use longer timeout in CI environments to account for slower startup times
+      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
+
       if (showLogs) {
-        yield* Effect.logDebug(`Wrangler dev server ready on port ${port}`)
+        yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
       }
 
       return {
         port,
-        url: `http://localhost:${port}`,
+        url,
         processId,
       } satisfies WranglerDevServer
     }).pipe(
@@ -204,3 +222,45 @@ const waitForReady = ({
         }),
     ),
   )
+
+/**
+ * Verifies the server is actually accepting HTTP connections by making a test request
+ */
+const verifyHttpConnectivity = ({
+  url,
+  showLogs,
+  connectTimeout,
+}: {
+  url: string
+  showLogs: boolean
+  connectTimeout: Duration.DurationInput
+}): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    if (showLogs) {
+      yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
+    }
+
+    // Try to connect with retries using exponential backoff
+    yield* client.get(url).pipe(
+      Effect.retryOrElse(
+        Schedule.exponential('50 millis', 2).pipe(
+          Schedule.jittered,
+          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
+          Schedule.compose(Schedule.count),
+        ),
+        (error, attemptCount) =>
+          Effect.fail(
+            new WranglerDevServerError({
+              cause: error,
+              message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
+              port: 0,
+            }),
+          ),
+      ),
+      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+      Effect.asVoid,
+      Effect.withSpan('verifyHttpConnectivity'),
+    )
+  })

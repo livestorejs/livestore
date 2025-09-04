@@ -20,12 +20,17 @@ export * from '@effect/vitest'
 
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
-export const makeWithTestCtx =
-  <R1 = never, E1 = never>(ctxParams: WithTestCtxParams<R1, E1>) =>
-  (testContext: Vitest.TestContext) =>
+export const makeWithTestCtx: <R1, E1>(
+  ctxParams: WithTestCtxParams<R1, E1>,
+) => (
+  testContext: Vitest.TestContext,
+) => <A, E>(
+  self: Effect.Effect<A, E, Scope.Scope | NoInfer<R1> | OtelTracer.OtelTracer>,
+) => Effect.Effect<A, E1 | Cause.TimeoutException | E, Scope.Scope> =
+  (ctxParams) => (testContext: Vitest.TestContext) =>
     withTestCtx(testContext, ctxParams)
 
-export type WithTestCtxParams<R1 = never, E1 = never> = {
+export type WithTestCtxParams<R1, E1> = {
   suffix?: string
   makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<R1, E1, Scope.Scope>
   timeout?: Duration.DurationInput

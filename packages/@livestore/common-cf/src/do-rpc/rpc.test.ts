@@ -21,7 +21,7 @@ const withWranglerTest = Vitest.makeWithTestCtx({
   makeLayer: () =>
     WranglerDevServerService.Default({
       cwd: `${import.meta.dirname}/test-fixtures`,
-    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+    }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
 })
 
 const ProtocolLive = Layer.suspend(() =>
