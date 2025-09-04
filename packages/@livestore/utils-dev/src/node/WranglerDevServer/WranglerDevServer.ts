@@ -243,24 +243,23 @@ const verifyHttpConnectivity = ({
     }
 
     // Try to connect with retries using exponential backoff
-    // Use a shorter timeout total (5 seconds) to avoid test timeouts
     yield* client.get(url).pipe(
-      Effect.retry(
+      Effect.retryOrElse(
         Schedule.exponential('50 millis', 2).pipe(
           Schedule.jittered,
-          Schedule.compose(Schedule.elapsed),
-          Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)),
+          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
+          Schedule.compose(Schedule.count),
         ),
+        (error, attemptCount) =>
+          Effect.fail(
+            new WranglerDevServerError({
+              cause: error,
+              message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
+              port: 0,
+            }),
+          ),
       ),
       Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
-      Effect.mapError(
-        (error) =>
-          new WranglerDevServerError({
-            cause: error,
-            message: `Failed to establish HTTP connection to Wrangler server at ${url}`,
-            port: 0,
-          }),
-      ),
       Effect.asVoid,
       Effect.withSpan('verifyHttpConnectivity'),
     )
