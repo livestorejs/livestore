@@ -1,5 +1,5 @@
 import * as path from 'node:path'
-
+import { IS_CI } from '@livestore/utils'
 import {
   Command,
   Duration,
@@ -176,7 +176,9 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       const url = `http://localhost:${port}`
 
-      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? Duration.seconds(5) })
+      // Use longer timeout in CI environments to account for slower startup times
+      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
 
       if (showLogs) {
         yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
