@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise } from '@livestore/livestore'
+import { createStorePromise, liveStoreVersion } from '@livestore/livestore'
 import { events, schema, tables } from './livestore/schema.js'
 
 // Or use makePersistedAdapter for OPFS storage
@@ -9,6 +9,25 @@ const adapter = makeInMemoryAdapter({
 })
 
 const store = await createStorePromise({ adapter, schema, storeId: 'store-1' })
+
+// Add version badge
+console.log(`LiveStore v${liveStoreVersion}`)
+const versionBadge = document.createElement('div')
+versionBadge.textContent = `v${liveStoreVersion}`
+versionBadge.style.cssText = `
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: white;
+  z-index: 1000;
+  user-select: none;
+`
+document.body.appendChild(versionBadge)
 
 store.commit(events.todoCreated({ id: '1', text: 'Buy milk' }))
 store.commit(events.todoCreated({ id: '2', text: 'Buy bread' }))

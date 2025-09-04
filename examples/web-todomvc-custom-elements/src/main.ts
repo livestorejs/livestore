@@ -3,7 +3,7 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, queryDb } from '@livestore/livestore'
+import { createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { events, schema, type Todo, tables } from './schema.ts'
@@ -20,6 +20,25 @@ const adapter = makePersistedAdapter({
 })
 
 const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements' })
+
+// Add version badge
+console.log(`LiveStore v${liveStoreVersion}`)
+const versionBadge = document.createElement('div')
+versionBadge.textContent = `v${liveStoreVersion}`
+versionBadge.style.cssText = `
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: white;
+  z-index: 1000;
+  user-select: none;
+`
+document.body.appendChild(versionBadge)
 
 const appState$ = queryDb(tables.uiState.get())
 const todos$ = queryDb(tables.todos.where({ deletedAt: null }))

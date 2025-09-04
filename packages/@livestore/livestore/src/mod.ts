@@ -4,6 +4,7 @@ export {
   type BootStatus,
   type DebugInfo,
   IntentionalShutdownCause,
+  liveStoreVersion,
   type MutableDebugInfo,
   type PreparedBindValues,
   prepareBindValues,

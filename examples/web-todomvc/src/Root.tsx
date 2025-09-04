@@ -8,6 +8,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
+import { VersionBadge } from './components/VersionBadge.js'
 import { schema } from './livestore/schema.js'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
@@ -45,5 +46,6 @@ export const App: React.FC = () => (
       <FPSMeter height={40} />
     </div>
     <AppBody />
+    <VersionBadge />
   </LiveStoreProvider>
 )
