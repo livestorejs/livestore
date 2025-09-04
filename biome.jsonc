@@ -15,6 +15,7 @@
       "!packages/@livestore/wa-sqlite",
       "examples/**",
       "docs/**",
+      "!docs/**/.astro",
       "tests/**",
       "scripts/**",
       "contributor-docs/**",
