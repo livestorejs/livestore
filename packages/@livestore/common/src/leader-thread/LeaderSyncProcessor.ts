@@ -831,7 +831,8 @@ const backgroundBackendPushing = ({
             const tag = String((pushResult.left.cause as any)._tag ?? '')
             if (tag.includes('UnexpectedError')) {
               const raw = String((pushResult.left.cause as any).cause ?? pushResult.left.cause)
-              const isDbBusy = raw.includes('SQLITE_BUSY') || raw.includes('database is locked') || raw.includes('D1_ERROR')
+              const isDbBusy =
+                raw.includes('SQLITE_BUSY') || raw.includes('database is locked') || raw.includes('D1_ERROR')
               if (isDbBusy) {
                 yield* Effect.logInfo('backend-push-error-transient-busy', { raw })
                 onPark?.()

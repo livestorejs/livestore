@@ -198,8 +198,16 @@ export const nodeSyncTest = Cli.Command.make(
   'node-sync',
   {},
   Effect.fn(function* () {
+    const branch = process.env.GITHUB_REF_NAME || process.env.GITHUB_HEAD_REF || process.env.GITHUB_BRANCH_NAME
+    const isHypothesisBranch = typeof branch === 'string' && /ci-node-sync-hypo\//i.test(branch)
+
     yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
       cwd: `${cwd}/tests/integration`,
+      env: {
+        ...(isHypothesisBranch ? { NODE_SYNC_FC_NUMRUNS: '3' } : {}),
+        ...(isHypothesisBranch ? { NODE_SYNC_MAX_CREATE_COUNT: '150' } : {}),
+        ...(branch === 'ci-node-sync-hypo/h001-resume-on-advance' ? { LS_RESUME_PUSH_ON_ADVANCE: '1' } : {}),
+      },
     })
   }),
 )

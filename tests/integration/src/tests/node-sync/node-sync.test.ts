@@ -60,7 +60,10 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
+  const MAX_CREATE_COUNT = process.env.NODE_SYNC_MAX_CREATE_COUNT
+    ? Number.parseInt(process.env.NODE_SYNC_MAX_CREATE_COUNT, 10)
+    : 400
+  const CreateCount = Schema.Int.pipe(Schema.between(1, Math.max(1, MAX_CREATE_COUNT)))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
   const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
   // TODO introduce random delays in async operations as part of prop testing
