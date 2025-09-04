@@ -1,1 +1,9 @@
 direnv exec . mono lint --fix
+
+# Check if docs files have changed
+if git diff --cached --name-only | grep -q "^docs/"; then
+  echo "📝 Docs changed, regenerating Astro types..."
+  cd docs && direnv exec .. pnpm astro sync
+  # Stage any changes to the type files
+  git add .astro/types.d.ts .astro/content.d.ts 2>/dev/null || true
+fi

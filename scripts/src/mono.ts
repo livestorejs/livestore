@@ -148,9 +148,6 @@ const tsCommand = Cli.Command.make(
       )
     }
 
-    // Sync/generate Astro types before TS build
-    yield* cmd('pnpm astro sync', { cwd: `${process.env.WORKSPACE_ROOT}/docs` })
-
     if (watch) {
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
     } else {
