@@ -2,9 +2,9 @@ import * as path from 'node:path'
 
 import {
   Command,
+  Duration,
   Effect,
   Exit,
-  FetchHttpClient,
   HttpClient,
   type PlatformError,
   Schedule,
@@ -41,6 +41,7 @@ export interface StartWranglerDevServerArgs {
   port?: number
   /** @default false */
   showLogs?: boolean
+  connectTimeout?: Duration.DurationInput
 }
 
 /**
@@ -164,6 +165,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             yield* Effect.logDebug(`Process ${processId} already terminated`)
           }
         }).pipe(
+          Effect.withSpan('WranglerDevServerService:cleanupProcess'),
           Effect.timeout('5 seconds'), // Don't let cleanup hang forever
           Effect.ignoreLogged,
         ),
@@ -174,15 +176,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       const url = `http://localhost:${port}`
 
-      // Verify the server is actually accepting HTTP connections
-      // Skip connectivity check if we're using /dev/null as config (test scenario)
-      const shouldVerifyConnectivity = args.wranglerConfigPath !== '/dev/null'
-      
-      if (shouldVerifyConnectivity) {
-        yield* verifyHttpConnectivity({ url, showLogs }).pipe(Effect.provide(FetchHttpClient.layer))
-      } else if (showLogs) {
-        yield* Effect.logDebug(`Skipping HTTP connectivity check for test configuration`)
-      }
+      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? Duration.seconds(5) })
 
       if (showLogs) {
         yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
@@ -233,9 +227,11 @@ const waitForReady = ({
 const verifyHttpConnectivity = ({
   url,
   showLogs,
+  connectTimeout,
 }: {
   url: string
   showLogs: boolean
+  connectTimeout: Duration.DurationInput
 }): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
@@ -250,10 +246,10 @@ const verifyHttpConnectivity = ({
       Effect.retry(
         Schedule.exponential('50 millis', 2).pipe(
           Schedule.jittered,
-          Schedule.compose(Schedule.recurs(10)), // Max 10 attempts (~5 seconds with exponential backoff)
+          Schedule.compose(Schedule.elapsed),
+          Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)),
         ),
       ),
-      Effect.timeout('5 seconds'), // Overall timeout to prevent hanging
       Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
       Effect.mapError(
         (error) =>
@@ -264,5 +260,6 @@ const verifyHttpConnectivity = ({
           }),
       ),
       Effect.asVoid,
+      Effect.withSpan('verifyHttpConnectivity'),
     )
   })

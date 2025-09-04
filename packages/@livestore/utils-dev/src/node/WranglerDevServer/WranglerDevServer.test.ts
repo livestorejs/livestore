@@ -1,4 +1,4 @@
-import { Effect, Exit, Fiber, Layer, Scope } from '@livestore/utils/effect'
+import { Effect, Exit, FetchHttpClient, Fiber, Layer, Scope } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -19,7 +19,7 @@ const WranglerDevServerTest = (args: Partial<StartWranglerDevServerArgs> = {}) =
   WranglerDevServerService.Default({
     cwd: `${import.meta.dirname}/fixtures`,
     ...args,
-  })
+  }).pipe(Layer.provide(FetchHttpClient.layer))
 
 Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
   Vitest.describe('Basic Operations', () => {
@@ -140,23 +140,21 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
       })
 
-    Vitest.scopedLive('should handle missing wrangler.toml', (test) =>
+    Vitest.scopedLive('should handle missing wrangler.toml but should timeout', (test) =>
       Effect.gen(function* () {
-        // Since Wrangler can work without a config file, let's test with a truly invalid scenario
-        const result = yield* WranglerDevServerService.pipe(Effect.either)
+        const error = yield* WranglerDevServerService.pipe(
+          Effect.provide(
+            WranglerDevServerTest({
+              cwd: '/tmp',
+              wranglerConfigPath: '/dev/null',
+              connectTimeout: '500 millis',
+            }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+          ),
+          Effect.flip,
+        )
 
-        // Note: Wrangler might still succeed even with /dev/null, so this test
-        // verifies our implementation handles the case properly, whether it succeeds or fails
-        expect(['Left', 'Right']).toContain(result._tag)
-
-        if (result._tag === 'Left') {
-          // If it fails, it should be a wrapped error
-          expect(result.left).toBeInstanceOf(WranglerDevServerError)
-        } else {
-          // If it succeeds, the server should be properly configured
-          expect(result.right.port).toBeGreaterThan(0)
-        }
-      }).pipe(withErrorTest({ cwd: '/tmp', wranglerConfigPath: '/dev/null' })(test)),
+        expect(error).toBeInstanceOf(WranglerDevServerError)
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('should handle invalid working directory', (test) =>
