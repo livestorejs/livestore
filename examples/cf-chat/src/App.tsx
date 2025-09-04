@@ -5,6 +5,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { LiveStoreProvider, useClientDocument, useStore } from '@livestore/react'
 import React, { useRef } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { VersionBadge } from './components/VersionBadge.tsx'
 import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
 import { events, schema, tables } from './livestore/schema.ts'
@@ -80,6 +81,7 @@ export const ChatApp = () => {
       <UserNameWrapper>
         <ChatComponent />
       </UserNameWrapper>
+      <VersionBadge />
     </LiveStoreProvider>
   )
 }

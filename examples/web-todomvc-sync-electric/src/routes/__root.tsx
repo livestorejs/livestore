@@ -8,6 +8,7 @@ import type * as React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
+import { VersionBadge } from '@/components/VersionBadge.tsx'
 import { schema } from '@/livestore/schema.ts'
 import { getStoreId } from '@/util/store-id.ts'
 
@@ -33,6 +34,7 @@ const RootComponent = () => {
           syncPayload={{ authToken: 'insecure-token-change-me' }}
         >
           <Outlet />
+          <VersionBadge />
         </LiveStoreProvider>
       </ErrorBoundary>
     </RootDocument>

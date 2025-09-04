@@ -5,6 +5,7 @@ import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
+import { VersionBadge } from '@/components/VersionBadge'
 import { schema } from '@/lib/livestore/schema'
 import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
@@ -57,6 +58,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
           {children}
         </NewIssueModalContext.Provider>
       </MenuContext.Provider>
+      <VersionBadge />
     </LiveStoreProvider>
   )
 }
