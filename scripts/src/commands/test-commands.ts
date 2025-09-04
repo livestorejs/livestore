@@ -206,6 +206,7 @@ export const nodeSyncTest = Cli.Command.make(
       env: {
         ...(isHypothesisBranch ? { NODE_SYNC_FC_NUMRUNS: '3' } : {}),
         ...(isHypothesisBranch ? { NODE_SYNC_MAX_CREATE_COUNT: '150' } : {}),
+        ...(isHypothesisBranch ? { NODE_SYNC_MAX_LEADER_PUSH_BATCH_SIZE: '10' } : {}),
         ...(branch === 'ci-node-sync-hypo/h001-resume-on-advance' ? { LS_RESUME_PUSH_ON_ADVANCE: '1' } : {}),
       },
     })

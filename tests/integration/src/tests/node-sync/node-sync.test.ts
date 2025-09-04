@@ -65,7 +65,16 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
     : 400
   const CreateCount = Schema.Int.pipe(Schema.between(1, Math.max(1, MAX_CREATE_COUNT)))
   const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
-  const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
+  // Allow capping leader push batch size via env in CI to reduce flake duration
+  const MAX_LEADER_PUSH_BATCH_SIZE = process.env.NODE_SYNC_MAX_LEADER_PUSH_BATCH_SIZE
+    ? Number.parseInt(process.env.NODE_SYNC_MAX_LEADER_PUSH_BATCH_SIZE, 10)
+    : 100
+  const allowedLeaderBatchSizes = [1, 2, 10, 100].filter((n) => n <= Math.max(1, MAX_LEADER_PUSH_BATCH_SIZE)) as
+    | [1]
+    | [1, 2]
+    | [1, 2, 10]
+    | [1, 2, 10, 100]
+  const LEADER_PUSH_BATCH_SIZE = Schema.Literal(...allowedLeaderBatchSizes)
   // TODO introduce random delays in async operations as part of prop testing
 
   // TODO investigate why stoping this test in VSC Vitest UI often doesn't stop the test runs
