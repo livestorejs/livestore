@@ -1,16 +1,16 @@
 import { makeSchema, State } from '@livestore/livestore'
 
 // Import both aggregates
-import { labelTables, labelEvents, labelMaterializers } from './label-schema.ts'
-import { threadTables, threadEvents, threadMaterializers } from './thread-schema.ts'
+import { labelEvents, labelMaterializers, labelTables } from './label-schema.ts'
+import { threadEvents, threadMaterializers, threadTables } from './thread-schema.ts'
 
 /**
  * Combined Email Client Schema
- * 
+ *
  * This combines two separate aggregates following DDD principles:
  * 1. Label Management Aggregate - handles system labels and counts
  * 2. Thread Aggregate - handles email threads, messages, and thread-label associations
- * 
+ *
  * The aggregates communicate through cross-aggregate events:
  * - When ThreadLabelApplied/Removed events occur, they trigger LabelMessageCountUpdated events
  */
@@ -19,7 +19,7 @@ import { threadTables, threadEvents, threadMaterializers } from './thread-schema
 export const tables = {
   // Label Management Aggregate tables
   ...labelTables,
-  
+
   // Thread Aggregate tables
   ...threadTables,
 }
@@ -28,7 +28,7 @@ export const tables = {
 export const events = {
   // Label Management Aggregate events
   ...labelEvents,
-  
+
   // Thread Aggregate events
   ...threadEvents,
 }
@@ -40,9 +40,9 @@ const combinedMaterializers = {
 }
 
 // Create the LiveStore state
-const state = State.SQLite.makeState({ 
-  tables, 
-  materializers: combinedMaterializers 
+const state = State.SQLite.makeState({
+  tables,
+  materializers: combinedMaterializers,
 })
 
 export const schema = makeSchema({ events, state })

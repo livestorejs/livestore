@@ -1,11 +1,11 @@
-import { Events, Schema, State, SessionIdSymbol } from '@livestore/livestore'
+import { Events, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 /**
  * Thread Aggregate
- * 
+ *
  * Purpose: Core unit for email threads (collections of related messages)
  * Event Log: Variable size (10-100KB per thread)
- * 
+ *
  * This aggregate handles:
  * - Email threads and their metadata
  * - Individual messages within threads
@@ -62,14 +62,14 @@ export const threadTables = {
       composeDraft: Schema.String,
       isComposing: Schema.Boolean,
     }),
-    default: { 
-      id: SessionIdSymbol, 
-      value: { 
-        selectedThreadId: null, 
+    default: {
+      id: SessionIdSymbol,
+      value: {
+        selectedThreadId: null,
         selectedLabelId: 'inbox',
-        composeDraft: '', 
-        isComposing: false 
-      } 
+        composeDraft: '',
+        isComposing: false,
+      },
     },
   }),
 }
@@ -159,76 +159,83 @@ export const threadEvents = {
 // Materializers for Thread Aggregate
 export const threadMaterializers = State.SQLite.materializers(threadEvents, {
   'v1.ThreadCreated': ({ id, subject, participants, createdAt }) =>
-    threadTables.threads.insert({ 
-      id, 
-      subject, 
-      participants: JSON.stringify(participants), 
+    threadTables.threads.insert({
+      id,
+      subject,
+      participants: JSON.stringify(participants),
       lastActivity: createdAt,
       messageCount: 0,
       unreadCount: 0,
-      createdAt 
+      createdAt,
     }),
 
   'v1.MessageReceived': ({ id, threadId, content, sender, senderName, timestamp }) => [
-    threadTables.messages.insert({ 
-      id, 
-      threadId, 
-      content, 
-      sender, 
-      senderName, 
-      timestamp, 
-      isRead: false, 
-      isDraft: false, 
-      messageType: 'received' 
+    threadTables.messages.insert({
+      id,
+      threadId,
+      content,
+      sender,
+      senderName,
+      timestamp,
+      isRead: false,
+      isDraft: false,
+      messageType: 'received',
     }),
     // Note: For prototype, we'll handle counting in application logic
-    threadTables.threads.update({ 
-      lastActivity: timestamp
-    }).where({ id: threadId }),
+    threadTables.threads
+      .update({
+        lastActivity: timestamp,
+      })
+      .where({ id: threadId }),
   ],
 
   'v1.MessageSent': ({ id, threadId, content, sender, senderName, timestamp }) => [
-    threadTables.messages.insert({ 
-      id, 
-      threadId, 
-      content, 
-      sender, 
-      senderName, 
-      timestamp, 
+    threadTables.messages.insert({
+      id,
+      threadId,
+      content,
+      sender,
+      senderName,
+      timestamp,
       isRead: true, // Sent messages are always "read"
-      isDraft: false, 
-      messageType: 'sent' 
+      isDraft: false,
+      messageType: 'sent',
     }),
-    threadTables.threads.update({ 
-      lastActivity: timestamp
-    }).where({ id: threadId }),
+    threadTables.threads
+      .update({
+        lastActivity: timestamp,
+      })
+      .where({ id: threadId }),
   ],
 
   'v1.DraftCreated': ({ id, threadId, content, sender, timestamp }) => [
-    threadTables.messages.insert({ 
-      id, 
-      threadId, 
-      content, 
-      sender, 
-      senderName: null, 
-      timestamp, 
-      isRead: false, 
-      isDraft: true, 
-      messageType: 'draft' 
+    threadTables.messages.insert({
+      id,
+      threadId,
+      content,
+      sender,
+      senderName: null,
+      timestamp,
+      isRead: false,
+      isDraft: true,
+      messageType: 'draft',
     }),
-    threadTables.threads.update({ 
-      lastActivity: timestamp
-    }).where({ id: threadId }),
+    threadTables.threads
+      .update({
+        lastActivity: timestamp,
+      })
+      .where({ id: threadId }),
   ],
 
   'v1.MessageRead': ({ messageId, isRead }) => [
-    threadTables.messages.update({ isRead }).where({ id: messageId }),
+    threadTables.messages
+      .update({ isRead })
+      .where({ id: messageId }),
     // Note: For prototype, we'll handle unread counting in application logic
   ],
 
   'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) =>
     threadTables.threadLabels.insert({ threadId, labelId, appliedAt }),
 
-  'v1.ThreadLabelRemoved': ({ threadId, labelId }) =>
-    threadTables.threadLabels.delete().where({ threadId, labelId }),
+  'v1.ThreadLabelRemoved': ({ threadId, labelId }) => threadTables.threadLabels.delete().where({ threadId, labelId }),
 })

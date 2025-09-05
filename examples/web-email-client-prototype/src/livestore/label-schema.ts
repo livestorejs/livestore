@@ -2,10 +2,10 @@ import { Events, Schema, State } from '@livestore/livestore'
 
 /**
  * Label Management Aggregate
- * 
+ *
  * Purpose: Manages system labels (INBOX, SENT, ARCHIVE, TRASH) and label message counts
  * Event Log: Small (~1MB), always cached on client
- * 
+ *
  * This aggregate handles:
  * - System label definitions and metadata
  * - Label message counts (updated by cross-aggregate events)
@@ -45,7 +45,7 @@ export const labelEvents = {
 
   // Cross-aggregate event: triggered when thread labels are applied/removed
   labelMessageCountUpdated: Events.synced({
-    name: 'v1.LabelMessageCountUpdated', 
+    name: 'v1.LabelMessageCountUpdated',
     schema: Schema.Struct({
       labelId: Schema.String,
       delta: Schema.Number, // +1 when applied, -1 when removed
