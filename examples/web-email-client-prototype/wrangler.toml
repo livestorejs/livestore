@@ -17,7 +17,7 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 [[d1_databases]]
 binding = "DB"
 database_name = "email-client-prototype-demo"
-database_id = "email-client-prototype-db-id"
+database_id = "199c832c-755e-4d4b-ac86-3026b11607e0"
 
 [observability]
 enabled = true

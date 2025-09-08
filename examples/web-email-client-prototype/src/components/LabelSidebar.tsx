@@ -30,6 +30,7 @@ export const LabelSidebar: React.FC = () => {
           return (
             <button
               key={label.id}
+              type="button"
               onClick={() => selectLabel(label.id)}
               className={`
                 w-full text-left px-3 py-2 rounded-md text-sm font-medium
@@ -57,25 +58,6 @@ export const LabelSidebar: React.FC = () => {
           )
         })}
       </nav>
-
-      {/* Prototype Info */}
-      <div className="mt-8 p-3 bg-gray-50 rounded-lg">
-        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Prototype Status</h4>
-        <div className="space-y-2 text-xs text-gray-600">
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-green-400 rounded-full mr-2" />
-            Cross-aggregate events active
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-blue-400 rounded-full mr-2" />
-            Event sourcing enabled
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-purple-400 rounded-full mr-2" />
-            Offline-first architecture
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

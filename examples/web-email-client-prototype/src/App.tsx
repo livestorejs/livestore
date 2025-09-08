@@ -20,14 +20,6 @@ import LiveStoreWorker from './livestore.worker.ts?worker'
  * - Offline-first design
  */
 
-const EmailClientComponent: React.FC = () => {
-  return (
-    <div className="h-screen bg-gray-100">
-      <EmailLayout />
-    </div>
-  )
-}
-
 // Check for reset parameter to clear persistence
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
@@ -64,7 +56,9 @@ export const App: React.FC = () => (
     )}
     batchUpdates={batchUpdates}
   >
-    <EmailClientComponent />
+    <div className="h-screen bg-gray-100">
+      <EmailLayout />
+    </div>
     <VersionBadge />
   </LiveStoreProvider>
 )

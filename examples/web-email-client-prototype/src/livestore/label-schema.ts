@@ -22,7 +22,7 @@ export const labelTables = {
       type: State.SQLite.text(), // 'system' | 'user' (user labels out of scope for prototype)
       color: State.SQLite.text(),
       messageCount: State.SQLite.integer({ default: 0 }),
-      order: State.SQLite.integer({ default: 0 }), // Display order in UI
+      displayOrder: State.SQLite.integer({ default: 0 }), // Display order in UI
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
@@ -38,7 +38,7 @@ export const labelEvents = {
       name: Schema.String,
       type: Schema.Literal('system', 'user'),
       color: Schema.String,
-      order: Schema.Number,
+      displayOrder: Schema.Number,
       createdAt: Schema.Date,
     }),
   }),
@@ -56,8 +56,8 @@ export const labelEvents = {
 
 // Materializers for Label Management Aggregate
 export const labelMaterializers = State.SQLite.materializers(labelEvents, {
-  'v1.LabelCreated': ({ id, name, type, color, order, createdAt }) =>
-    labelTables.labels.insert({ id, name, type, color, order, messageCount: 0, createdAt }),
+  'v1.LabelCreated': ({ id, name, type, color, displayOrder, createdAt }) =>
+    labelTables.labels.insert({ id, name, type, color, displayOrder, messageCount: 0, createdAt }),
 
   'v1.LabelMessageCountUpdated': ({ labelId, delta }) => {
     // Note: For the prototype, we'll handle counting in application logic

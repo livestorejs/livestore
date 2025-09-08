@@ -38,6 +38,7 @@ export const ThreadActions: React.FC = () => {
       <div className="relative">
         <button
           onClick={() => setShowLabelMenu(!showLabelMenu)}
+          type="button"
           className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
         >
           <span className="mr-1">🏷️</span>
@@ -48,7 +49,12 @@ export const ThreadActions: React.FC = () => {
         {showLabelMenu && (
           <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-10" onClick={() => setShowLabelMenu(false)} />
+            <button
+              type="button"
+              className="fixed inset-0 z-10 bg-transparent border-none cursor-default"
+              onClick={() => setShowLabelMenu(false)}
+              onKeyDown={(e) => e.key === 'Escape' && setShowLabelMenu(false)}
+            />
 
             {/* Menu */}
             <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
@@ -64,6 +70,7 @@ export const ThreadActions: React.FC = () => {
                     <button
                       key={label.id}
                       onClick={() => handleLabelToggle(label.id)}
+                      type="button"
                       className={`
                         w-full text-left px-2 py-1 rounded text-sm
                         flex items-center justify-between
@@ -99,6 +106,7 @@ export const ThreadActions: React.FC = () => {
       <div className="flex items-center space-x-1">
         <button
           onClick={() => handleLabelToggle('archive')}
+          type="button"
           className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           title="Archive thread"
         >
@@ -107,6 +115,7 @@ export const ThreadActions: React.FC = () => {
 
         <button
           onClick={() => handleLabelToggle('trash')}
+          type="button"
           className="p-1 text-gray-400 hover:text-red-600 transition-colors"
           title="Move to trash"
         >
