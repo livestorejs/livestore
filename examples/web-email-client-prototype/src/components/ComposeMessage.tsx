@@ -67,6 +67,7 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
           </div>
           <button
             onClick={handleCancel}
+            type="button"
             className="text-gray-400 hover:text-gray-600 transition-colors"
             title="Cancel compose"
           >
@@ -108,11 +109,16 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
           </div>
 
           <div className="flex items-center space-x-3">
-            <button onClick={handleCancel} className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+            <button
+              onClick={handleCancel}
+              type="button"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
               Cancel
             </button>
             <button
               onClick={handleSend}
+              type="button"
               disabled={!uiState.composeDraft.trim()}
               className={`
                 px-4 py-2 rounded-md font-medium transition-colors

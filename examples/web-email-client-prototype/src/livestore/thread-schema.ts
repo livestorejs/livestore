@@ -58,7 +58,7 @@ export const threadTables = {
     name: 'uiState',
     schema: Schema.Struct({
       selectedThreadId: Schema.String.pipe(Schema.NullOr),
-      selectedLabelId: Schema.String, // 'inbox', 'sent', etc.
+      selectedLabelId: Schema.String.pipe(Schema.NullOr), // 'inbox', 'sent', etc.
       composeDraft: Schema.String,
       isComposing: Schema.Boolean,
     }),
@@ -66,7 +66,7 @@ export const threadTables = {
       id: SessionIdSymbol,
       value: {
         selectedThreadId: null,
-        selectedLabelId: 'inbox',
+        selectedLabelId: null,
         composeDraft: '',
         isComposing: false,
       },

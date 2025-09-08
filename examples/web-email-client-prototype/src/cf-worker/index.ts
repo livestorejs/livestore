@@ -10,6 +10,7 @@ import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { events, schema, tables } from '../livestore/schema.ts'
+import { seedEmailClientData } from '../livestore/seed.ts'
 
 type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
@@ -20,8 +21,11 @@ type Env = {
 }
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  onPush: async (message, { storeId, payload }) => {
-    console.log(`Email sync for store (${storeId})`, message.batch)
+  onPush: async (message, { storeId }) => {
+    console.log(
+      `📤 Email sync push for store (${storeId}) - ${message.batch.length} events:`,
+      message.batch.map((e) => e.name).join(', '),
+    )
 
     // Log cross-aggregate events for debugging
     const crossAggregateEvents = message.batch.filter(
@@ -33,7 +37,7 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
 
     if (crossAggregateEvents.length > 0) {
       console.log(
-        `Cross-aggregate events:`,
+        `🔄 Cross-aggregate events:`,
         crossAggregateEvents.map((e) => e.name),
       )
     }
@@ -116,7 +120,41 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
 
     this.cachedStore = store
 
+    // Check if the store needs seeding (server-side seeding)
+    await this.ensureStoreSeeded(store)
+
     return store
+  }
+
+  private async ensureStoreSeeded(store: Store<typeof schema>) {
+    // Check if seeding has already been done by looking for system labels
+    const existingLabelCount = store.query(tables.labels.count())
+
+    if (existingLabelCount > 0) {
+      console.log('📧 Email store already seeded with', existingLabelCount, 'labels')
+      return
+    }
+
+    console.log('🌱 Seeding email client data server-side...')
+    try {
+      seedEmailClientData(store)
+
+      // Wait for all commits to be processed by LiveStore
+      // This ensures all events are available for sync to client
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Verify seeding completed by checking for expected data
+      const labels = store.query(tables.labels.where({}))
+      const threads = store.query(tables.threads.where({}))
+      const messages = store.query(tables.messages.where({}))
+
+      console.log(
+        `✅ Server-side seeding verified: ${labels.length} labels, ${threads.length} threads, ${messages.length} messages`,
+      )
+    } catch (error) {
+      console.error('❌ Server-side seeding failed:', error)
+      throw error
+    }
   }
 
   async subscribeToStore() {
