@@ -2,7 +2,6 @@ import { queryDb } from '@livestore/livestore'
 import { useClientDocument, useStore } from '@livestore/react'
 import React from 'react'
 import { events, tables } from '../livestore/schema.ts'
-import { seedEmailClientData } from '../livestore/seed.ts'
 
 /**
  * Email Store Hook
@@ -30,25 +29,16 @@ export const useEmailStore = () => {
   const labels = store.useQuery(labelsQuery)
   const threadLabels = store.useQuery(threadLabelsQuery)
 
-  // Seed data on first load if no data exists
+  // Debug logging for initial data state (seeding now happens server-side)
   React.useEffect(() => {
-    if (store && threads.length === 0 && labels.length === 0) {
-      // Add a small delay to ensure store is fully initialized
-      const timer = setTimeout(() => {
-        try {
-          // Double-check that store is still available and we still need seeding
-          if (store && threads.length === 0 && labels.length === 0) {
-            console.log('🌱 Seeding email client data...')
-            seedEmailClientData(store)
-          }
-        } catch (error) {
-          console.warn('Failed to seed email client data:', error)
-        }
-      }, 500) // Increased delay to give more time for store initialization
-
-      return () => clearTimeout(timer)
-    }
-  }, [store, threads.length, labels.length])
+    console.log('📊 Client-side data loaded:', {
+      storeExists: !!store,
+      threadsLength: threads.length,
+      labelsLength: labels.length,
+      threadLabelsLength: threadLabels.length,
+      messagesLength: messages.length,
+    })
+  }, [store, threads.length, labels.length, threadLabels.length, messages.length])
 
   // Email Actions
   const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
@@ -170,7 +160,25 @@ export const useEmailStore = () => {
   }
 
   // Get system labels in order
-  const systemLabels = labels.filter((l) => l.type === 'system').sort((a, b) => a.order - b.order)
+  const systemLabels = labels.filter((l) => l.type === 'system').sort((a, b) => a.displayOrder - b.displayOrder)
+
+  // Debug logging for data state
+  React.useEffect(() => {
+    console.log('📋 Current data state:', {
+      allLabels: labels.map((l) => ({ id: l.id, name: l.name, type: l.type, displayOrder: l.displayOrder })),
+      systemLabels: systemLabels.map((l) => ({ id: l.id, name: l.name, displayOrder: l.displayOrder })),
+      threads: threads.map((t) => ({ id: t.id, subject: t.subject })),
+      messages: messages.map((m) => ({ id: m.id, threadId: m.threadId, sender: m.sender })),
+      threadLabels: threadLabels.map((tl) => ({ threadId: tl.threadId, labelId: tl.labelId })),
+      counts: {
+        labels: labels.length,
+        systemLabels: systemLabels.length,
+        threads: threads.length,
+        messages: messages.length,
+        threadLabels: threadLabels.length,
+      },
+    })
+  }, [labels, systemLabels, threads, messages, threadLabels])
 
   return {
     // State

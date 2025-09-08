@@ -28,7 +28,7 @@ interface MessageItemProps {
   isLast: boolean
 }
 
-export const MessageItem: React.FC<MessageItemProps> = ({ message, isFirst, isLast }) => {
+export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const { toggleMessageRead } = useEmailStore()
 
   const handleToggleRead = () => {
@@ -102,6 +102,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isFirst, isLa
         {/* Actions */}
         <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
+            type="button"
             onClick={handleToggleRead}
             className={`
               text-xs px-2 py-1 rounded-full border transition-colors

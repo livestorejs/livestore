@@ -1,6 +1,8 @@
-import type React from 'react'
+import { useStore } from '@livestore/react'
+import React from 'react'
 import { useEmailStore } from '../hooks/useEmailStore.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
+import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 /**
@@ -13,10 +15,23 @@ import { ThreadView } from './ThreadView.tsx'
  */
 
 export const EmailLayout: React.FC = () => {
+  const { store } = useStore()
   const { getCurrentThread, getCurrentLabel } = useEmailStore()
 
   const currentThread = getCurrentThread()
   const currentLabel = getCurrentLabel()
+
+  // Initialize Durable Object connection
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/client-do?storeId=${store.storeId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('Durable Object state initialized:', data)
+      })
+      .catch((error) => {
+        console.error('Failed to initialize Durable Object:', error)
+      })
+  }, [store.storeId])
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -37,24 +52,18 @@ export const EmailLayout: React.FC = () => {
             <div>
               <h2 className="text-lg font-medium text-gray-900">{currentLabel?.name || 'Email'}</h2>
               <p className="text-sm text-gray-500">
-                {currentThread
-                  ? `Thread: ${currentThread.subject}`
-                  : `${currentLabel?.messageCount || 0} conversations`}
+                {currentThread ? `Thread: ${currentThread.subject}` : `${currentLabel?.messageCount || 0} threads`}
               </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center text-xs text-gray-500">
-                <div className="w-2 h-2 bg-green-400 rounded-full mr-1" />
-                Real-time sync active
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Thread View */}
+        {/* Main Content */}
         <div className="flex-1 overflow-hidden">
           {currentThread ? (
             <ThreadView />
+          ) : currentLabel ? (
+            <ThreadList />
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -70,7 +79,6 @@ export const EmailLayout: React.FC = () => {
                     <li>• Two separate aggregates (Labels & Threads)</li>
                     <li>• Cross-aggregate event flow</li>
                     <li>• Real-time sync via Durable Objects</li>
-                    <li>• Offline-first with event sourcing</li>
                   </ul>
                 </div>
               </div>
