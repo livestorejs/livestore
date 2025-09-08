@@ -3,7 +3,7 @@
 import '@livestore/adapter-cloudflare/polyfill'
 
 import { DurableObject } from 'cloudflare:workers'
-// import type { AlarmInvocationInfo, D1Database, DurableObjectState } from "@cloudflare/workers-types";
+import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
@@ -20,8 +20,23 @@ type Env = {
 }
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  onPush: async (message, { storeId }) => {
-    console.log(`onPush for store (${storeId})`, message.batch)
+  onPush: async (message, { storeId, payload }) => {
+    console.log(`Email sync for store (${storeId})`, message.batch)
+
+    // Log cross-aggregate events for debugging
+    const crossAggregateEvents = message.batch.filter(
+      (event) =>
+        event.name === 'v1.ThreadLabelApplied' ||
+        event.name === 'v1.ThreadLabelRemoved' ||
+        event.name === 'v1.LabelMessageCountUpdated',
+    )
+
+    if (crossAggregateEvents.length > 0) {
+      console.log(
+        `Cross-aggregate events:`,
+        crossAggregateEvents.map((e) => e.name),
+      )
+    }
   },
 }) {}
 
@@ -46,12 +61,14 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
 
       const store = await this.getStore()
 
-      // Kick off subscription to store for bot functionality
+      // Kick off cross-aggregate event subscriptions for email functionality
       await this.subscribeToStore()
 
+      // Query email-specific data instead of chat data
+      const threads = store.query(tables.threads)
       const messages = store.query(tables.messages)
-      const users = store.query(tables.users)
-      const reactions = store.query(tables.reactions)
+      const labels = store.query(tables.labels)
+      const threadLabels = store.query(tables.threadLabels)
       const syncState = await store._dev.syncStates()
 
       const url = new URL(request.url)
@@ -65,7 +82,7 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
         })
       }
 
-      return new Response(JSON.stringify({ messages, users, reactions, syncState }, null, 2), {
+      return new Response(JSON.stringify({ threads, messages, labels, threadLabels, syncState }, null, 2), {
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
@@ -107,64 +124,62 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
-      // this.storeSubscription = store.subscribe(events.userJoined, {
-      // 	onUpdate: (event) => {
-      // 		console.log(`Bot: User ${event.username} joined!`);
+      console.log(`📧 Setting up cross-aggregate event subscriptions for email client...`)
 
-      // 		// Welcome message from bot
-      // 		store.commit(
-      // 			events.messageCreated({
-      // 				id: crypto.randomUUID(),
-      // 				text: `Welcome to the chat, ${event.username}! 👋`,
-      // 				userId: "bot",
-      // 				username: "ChatBot",
-      // 				timestamp: new Date(),
-      // 				isBot: true,
-      // 			}),
-      // 		);
-      // 	},
-      // });
+      // Subscribe to ThreadLabel events to implement cross-aggregate reactions
+      // This demonstrates the core architecture requirement: when thread labels change,
+      // the label message counts need to be updated automatically
+      const threadLabelsQuery = tables.threadLabels.where({})
+      const unsubscribe = store.subscribe(threadLabelsQuery, {
+        onUpdate: (threadLabels) => {
+          console.log(`🏷️ Thread labels updated, checking for cross-aggregate updates needed`)
 
-      // Get messages the bot has already processed from LiveStore
+          // Get current label counts to track changes
+          const labels = store.query(tables.labels.where({}))
 
-      // Subscribe to all messages and only react to new ones we haven't processed
-      const allMessagesQuery = tables.messages.where({})
-      const unsubscribe = store.subscribe(allMessagesQuery, {
-        onUpdate: (messages) => {
-          const processedMessageIds = new Set(
-            store.query(tables.botProcessedMessages.where({})).map((p) => p.messageId),
-          )
-          // Only process user messages we haven't seen before
-          const newUserMessages = messages.filter(
-            (message) => !message.isBot && message.userId !== 'bot' && !processedMessageIds.has(message.id),
-          )
+          // Create a map to track expected counts per label
+          const expectedCounts = new Map<string, number>()
 
-          for (const message of newUserMessages) {
-            console.log(`Bot: Reacting to new message ${message.id} from ${message.username}`)
+          // Count how many threads each label should have
+          for (const threadLabel of threadLabels) {
+            const current = expectedCounts.get(threadLabel.labelId) || 0
+            expectedCounts.set(threadLabel.labelId, current + 1)
+          }
 
-            store.commit(
-              events.reactionAdded({
-                id: `bot-reaction-${message.id}`,
-                messageId: message.id,
-                emoji: '🤖',
-                userId: 'bot',
-                username: 'ChatBot',
-              }),
-            )
+          // Check if any label counts need updating
+          for (const label of labels) {
+            const expectedCount = expectedCounts.get(label.id) || 0
 
-            // Mark as processed in LiveStore to prevent duplicates
-            store.commit(
-              events.botProcessedMessage({
-                messageId: message.id,
-                processedAt: new Date(),
-              }),
-            )
+            if (label.messageCount !== expectedCount) {
+              console.log(`📊 Updating count for label ${label.name}: ${label.messageCount} → ${expectedCount}`)
+
+              // Commit cross-aggregate event to update label count
+              // Note: In a production system, you'd want more sophisticated
+              // deduplication to avoid redundant updates
+              store.commit(
+                events.labelMessageCountUpdated({
+                  labelId: label.id,
+                  delta: expectedCount - label.messageCount,
+                  updatedAt: new Date(),
+                }),
+              )
+            }
           }
         },
       })
 
       this.storeSubscription = unsubscribe
+
+      console.log(`✅ Cross-aggregate event subscriptions active`)
     }
+
+    // Keep the Durable Object alive with periodic alarms
+    await this.state.storage.setAlarm(Date.now() + 30000) // 30 seconds
+  }
+
+  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+    // Re-initialize subscriptions after potential hibernation
+    this.subscribeToStore()
   }
 
   async syncUpdateRpc(payload: unknown) {
@@ -200,7 +215,7 @@ export default {
 
     if (url.pathname === '/') {
       // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-      return new Response('LiveChat App with CF DO Bot') as CfTypes.Response
+      return new Response('LiveStore Email Client Prototype with Cross-Aggregate Events') as CfTypes.Response
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
