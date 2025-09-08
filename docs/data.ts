@@ -20,5 +20,6 @@ export const IS_MAIN_BRANCH = getBranchName() === 'main'
 
 export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {
   const hashSuffix = `#${getBranchName()}`
+  // The quotes around the github URI are necessary for certain shells (e.g. zsh) to parse correctly
   return `${approach} tiged "github:livestorejs/livestore/examples/${example}${hashSuffix}" livestore-app`
 }
