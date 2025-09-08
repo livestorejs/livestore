@@ -33,8 +33,20 @@ export const useEmailStore = () => {
   // Seed data on first load if no data exists
   React.useEffect(() => {
     if (store && threads.length === 0 && labels.length === 0) {
-      console.log('🌱 Seeding email client data...')
-      seedEmailClientData(store)
+      // Add a small delay to ensure store is fully initialized
+      const timer = setTimeout(() => {
+        try {
+          // Double-check that store is still available and we still need seeding
+          if (store && threads.length === 0 && labels.length === 0) {
+            console.log('🌱 Seeding email client data...')
+            seedEmailClientData(store)
+          }
+        } catch (error) {
+          console.warn('Failed to seed email client data:', error)
+        }
+      }, 500) // Increased delay to give more time for store initialization
+
+      return () => clearTimeout(timer)
     }
   }, [store, threads.length, labels.length])
 
@@ -42,60 +54,76 @@ export const useEmailStore = () => {
   const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
     if (!store || !content.trim()) return
 
-    store.commit(
-      events.messageSent({
-        id: crypto.randomUUID(),
-        threadId,
-        content: content.trim(),
-        sender,
-        senderName: 'Current User',
-        timestamp: new Date(),
-      }),
-    )
+    try {
+      store.commit(
+        events.messageSent({
+          id: crypto.randomUUID(),
+          threadId,
+          content: content.trim(),
+          sender,
+          senderName: 'Current User',
+          timestamp: new Date(),
+        }),
+      )
 
-    // Clear compose draft
-    setUiState({ composeDraft: '', isComposing: false })
+      // Clear compose draft
+      setUiState({ composeDraft: '', isComposing: false })
+    } catch (error) {
+      console.warn('Failed to send message:', error)
+    }
   }
 
   const toggleMessageRead = (messageId: string, isRead: boolean) => {
     if (!store) return
 
-    store.commit(
-      events.messageRead({
-        messageId,
-        isRead,
-        timestamp: new Date(),
-      }),
-    )
+    try {
+      store.commit(
+        events.messageRead({
+          messageId,
+          isRead,
+          timestamp: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.warn('Failed to toggle message read status:', error)
+    }
   }
 
   const applyLabelToThread = (threadId: string, labelId: string) => {
     if (!store) return
 
-    // Check if label is already applied
-    const existingAssociation = threadLabels.find((tl) => tl.threadId === threadId && tl.labelId === labelId)
+    try {
+      // Check if label is already applied
+      const existingAssociation = threadLabels.find((tl) => tl.threadId === threadId && tl.labelId === labelId)
 
-    if (!existingAssociation) {
-      store.commit(
-        events.threadLabelApplied({
-          threadId,
-          labelId,
-          appliedAt: new Date(),
-        }),
-      )
+      if (!existingAssociation) {
+        store.commit(
+          events.threadLabelApplied({
+            threadId,
+            labelId,
+            appliedAt: new Date(),
+          }),
+        )
+      }
+    } catch (error) {
+      console.warn('Failed to apply label to thread:', error)
     }
   }
 
   const removeLabelFromThread = (threadId: string, labelId: string) => {
     if (!store) return
 
-    store.commit(
-      events.threadLabelRemoved({
-        threadId,
-        labelId,
-        removedAt: new Date(),
-      }),
-    )
+    try {
+      store.commit(
+        events.threadLabelRemoved({
+          threadId,
+          labelId,
+          removedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.warn('Failed to remove label from thread:', error)
+    }
   }
 
   // UI Actions

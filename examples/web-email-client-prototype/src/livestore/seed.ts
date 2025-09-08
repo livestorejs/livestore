@@ -12,6 +12,7 @@ import { events } from './schema.ts'
  */
 
 export const seedEmailClientData = (store: Store<typeof schema>) => {
+  try {
   const now = new Date()
 
   // 1. Create system labels (Label Management Aggregate)
@@ -161,4 +162,8 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
   console.log('  - 1 email thread with 4 messages')
   console.log('  - Cross-aggregate label associations')
   console.log('  - Mixed read/unread message states')
+  } catch (error) {
+    console.error('Failed to seed email client data:', error)
+    throw error
+  }
 }
