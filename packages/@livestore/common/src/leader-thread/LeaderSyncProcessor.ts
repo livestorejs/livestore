@@ -686,6 +686,13 @@ const backgroundBackendPulling = ({
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
+          // Ensure push fiber is active after advance by restarting with current pending (non-client) events
+          const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
+            const { eventDef } = getEventDef(schema, event.name)
+            return eventDef.options.clientOnly === false
+          })
+          yield* restartBackendPushing(globalPendingEvents)
+
           yield* connectedClientSessionPullQueues.offer({
             payload: SyncState.payloadFromMergeResult(mergeResult),
             leaderHead: mergeResult.newSyncState.localHead,
@@ -789,23 +796,46 @@ const backgroundBackendPushing = ({
         batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
       })
 
-      // TODO handle push errors (should only happen during concurrent pull+push)
-      const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
-
-      if (pushResult._tag === 'Left') {
-        if (
-          pushResult.left._tag === 'InvalidPushError' &&
-          // server ahead errors are gracefully handled
-          pushResult.left.cause._tag !== 'ServerAheadError'
-        ) {
-          return yield* pushResult.left
+      // Push with retry/backoff on errors to avoid stalling the fiber
+      // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
+      let retryCount = 0
+      while (true) {
+        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+        if (pushResult._tag === 'Right') {
+          // reset retry counter on success and proceed to next batch
+          if (retryCount > 0) {
+            otelSpan?.addEvent('backend-push-retry-success', {
+              retries: retryCount,
+              batchSize: queueItems.length,
+            })
+          }
+          retryCount = 0
+          break
         }
 
+        // For invalid pushes that are not due to the server being ahead, retry with backoff
+        if (pushResult.left._tag === 'InvalidPushError' && pushResult.left.cause._tag !== 'ServerAheadError') {
+          const delayMs = Math.min(1000 * 2 ** retryCount, 30_000)
+          if (LS_DEV) {
+            yield* Effect.logDebug('handled backend-push-error (retrying)', {
+              error: pushResult.left.toString(),
+              retryCount,
+              delayMs,
+            })
+          }
+          otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString(), retryCount })
+          yield* Effect.sleep(delayMs)
+          retryCount = Math.min(retryCount + 1, 5)
+          continue
+        }
+
+        // For server-ahead or other cases: wait for interrupt caused by pulling which will restart pushing
         if (LS_DEV) {
-          yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
+          yield* Effect.logDebug('handled backend-push-error (waiting for pull interrupt)', {
+            error: pushResult.left.toString(),
+          })
         }
         otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
-        // wait for interrupt caused by background pulling which will then restart pushing
         return yield* Effect.never
       }
     }

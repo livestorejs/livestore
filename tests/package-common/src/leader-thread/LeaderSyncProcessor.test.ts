@@ -1,3 +1,4 @@
+import type { SyncOptions } from '@livestore/common'
 import {
   type LeaderAheadError,
   type MockSyncBackend,
@@ -44,9 +45,14 @@ TODO:
 - make connected state settable
 */
 
-const withTestCtx = (args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> = {}) =>
+const withTestCtx = (
+  args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> & {
+    syncOptions?: Partial<SyncOptions>
+  } = {},
+) =>
   Vitest.makeWithTestCtx({
     makeLayer: () => Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer),
+    forceOtel: true,
   })
 
 Vitest.describe.concurrent('LeaderSyncProcessor', () => {
@@ -211,6 +217,36 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   //   2) pulling from backend -> causes rebase (rebase generation 1)
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
+
+  // Regression test for push fiber stalling when livePull=false and backend push errors occur
+  Vitest.scopedLive('recovers from backend push errors without live pull', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      // Make next few pushes fail at the mock backend level
+      yield* testContext.mockSyncBackend.failNextPushes(2)
+
+      // Push a few local events; initial push attempts will fail
+      yield* testContext.localPush(
+        events.todoCreated({ id: 'p1', text: 'a' }),
+        events.todoCreated({ id: 'p2', text: 'b' }),
+        events.todoCreated({ id: 'p3', text: 'c' }),
+        events.todoCreated({ id: 'p4', text: 'd' }),
+      )
+
+      // Expect all 4 to eventually be pushed to the backend (with timeout to catch stalls)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(4), Stream.runDrain, Effect.timeout(7000))
+
+      // Verify they have been materialized locally as well
+      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      expect(result.length).toEqual(4)
+    }).pipe(
+      withTestCtx({ params: { backendPushBatchSize: 2 }, syncOptions: { livePull: false, onSyncError: 'ignore' } })(
+        test,
+      ),
+    ),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -230,9 +266,12 @@ class TestContext extends Context.Tag('TestContext')<
 const LeaderThreadCtxLive = ({
   syncProcessor,
   params,
+  syncOptions,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
+  /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
+  syncOptions?: Partial<SyncOptions>
 }) =>
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend
@@ -249,7 +288,14 @@ const LeaderThreadCtxLive = ({
       clientId: 'test',
       syncPayload: undefined,
       makeSqliteDb,
-      syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
+      syncOptions: {
+        backend: syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend),
+        ...omitUndefineds({
+          livePull: syncOptions?.livePull,
+          onSyncError: syncOptions?.onSyncError,
+          initialSyncOptions: syncOptions?.initialSyncOptions,
+        }),
+      },
       dbState: yield* makeSqliteDb({ _tag: 'in-memory' }),
       dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
