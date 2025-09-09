@@ -26,21 +26,6 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
       `📤 Email sync push for store (${storeId}) - ${message.batch.length} events:`,
       message.batch.map((e) => e.name).join(', '),
     )
-
-    // Log cross-aggregate events for debugging
-    const crossAggregateEvents = message.batch.filter(
-      (event) =>
-        event.name === 'v1.ThreadLabelApplied' ||
-        event.name === 'v1.ThreadLabelRemoved' ||
-        event.name === 'v1.LabelMessageCountUpdated',
-    )
-
-    if (crossAggregateEvents.length > 0) {
-      console.log(
-        `🔄 Cross-aggregate events:`,
-        crossAggregateEvents.map((e) => e.name),
-      )
-    }
   },
 }) {}
 
