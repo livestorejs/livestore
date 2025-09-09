@@ -797,6 +797,11 @@ const backgroundBackendPushing = ({
       })
 
       // Push with retry/backoff on errors to avoid stalling the fiber
+      // Timing notes:
+      // - Exponential backoff starting at 1s and doubling each attempt (1s, 2s, 4s, 8s, 16s)
+      // - Capped at 30s maximum delay and at 5 increments
+      // - Backoff resets to 0 after a successful push
+      // - No jitter is used to keep traces deterministic; can be added later if needed
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
       let retryCount = 0
       while (true) {
@@ -814,19 +819,25 @@ const backgroundBackendPushing = ({
         }
 
         // For invalid pushes that are not due to the server being ahead, retry with backoff
-        if (pushResult.left._tag === 'InvalidPushError' && pushResult.left.cause._tag !== 'ServerAheadError') {
-          const delayMs = Math.min(1000 * 2 ** retryCount, 30_000)
-          if (LS_DEV) {
-            yield* Effect.logDebug('handled backend-push-error (retrying)', {
-              error: pushResult.left.toString(),
-              retryCount,
-              delayMs,
-            })
+        if (pushResult.left._tag === 'InvalidPushError') {
+          // Backend identity mismatch is not recoverable here; escalate as before
+          if (pushResult.left.cause._tag === 'BackendIdMismatchError') {
+            return yield* pushResult.left
           }
-          otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString(), retryCount })
-          yield* Effect.sleep(delayMs)
-          retryCount = Math.min(retryCount + 1, 5)
-          continue
+          if (pushResult.left.cause._tag !== 'ServerAheadError') {
+            const delayMs = Math.min(1000 * 2 ** retryCount, 30_000)
+            if (LS_DEV) {
+              yield* Effect.logDebug('handled backend-push-error (retrying)', {
+                error: pushResult.left.toString(),
+                retryCount,
+                delayMs,
+              })
+            }
+            otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString(), retryCount })
+            yield* Effect.sleep(delayMs)
+            retryCount = Math.min(retryCount + 1, 5)
+            continue
+          }
         }
 
         // For server-ahead or other cases: wait for interrupt caused by pulling which will restart pushing

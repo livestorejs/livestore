@@ -46,15 +46,15 @@ export const makeMockSyncBackend = (
       ((batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => Effect.Effect<never, InvalidPushError>) | undefined
     >(undefined)
 
-  const makeSyncBackend = Effect.gen(function* () {
-    const nonLiveChunkSize = Math.max(1, options?.nonLiveChunkSize ?? 100)
+    const makeSyncBackend = Effect.gen(function* () {
+      const nonLiveChunkSize = Math.max(1, options?.nonLiveChunkSize ?? 100)
 
-    // TODO consider making offline state actively error pull/push.
-    // Currently, offline only reflects in `isConnected`, while operations still succeed,
-    // mirroring how some real providers behave during transient disconnects.
-    return SyncBackend.of<Schema.JsonValue>({
-      isConnected: syncIsConnectedRef,
-      connect: SubscriptionRef.set(syncIsConnectedRef, true),
+      // TODO consider making offline state actively error pull/push.
+      // Currently, offline only reflects in `isConnected`, while operations still succeed,
+      // mirroring how some real providers behave during transient disconnects.
+      return SyncBackend.of<Schema.JsonValue>({
+        isConnected: syncIsConnectedRef,
+        connect: SubscriptionRef.set(syncIsConnectedRef, true),
         ping: Effect.void,
         pull: (cursor, options) =>
           (options?.live
