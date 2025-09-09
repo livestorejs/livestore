@@ -16,10 +16,11 @@ import { ThreadView } from './ThreadView.tsx'
 
 export const EmailLayout: React.FC = () => {
   const { store } = useStore()
-  const { getCurrentThread, getCurrentLabel } = useEmailStore()
+  const { getCurrentThread, getCurrentLabel, getThreadsForLabel } = useEmailStore()
 
   const currentThread = getCurrentThread()
   const currentLabel = getCurrentLabel()
+  const threadsInLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
 
   // Initialize Durable Object connection
   React.useEffect(() => {
@@ -38,7 +39,7 @@ export const EmailLayout: React.FC = () => {
       {/* Left Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">📧 Email Client Prototype</h1>
+          <h1 className="text-xl font-semibold text-gray-900">📧 Email Client</h1>
           <p className="text-sm text-gray-500 mt-1">LiveStore Multi-Aggregate Demo</p>
         </div>
         <LabelSidebar />
@@ -52,7 +53,7 @@ export const EmailLayout: React.FC = () => {
             <div>
               <h2 className="text-lg font-medium text-gray-900">{currentLabel?.name || 'Email'}</h2>
               <p className="text-sm text-gray-500">
-                {currentThread ? `Thread: ${currentThread.subject}` : `${currentLabel?.messageCount || 0} threads`}
+                {currentThread ? `Thread: ${currentThread.subject}` : `${threadsInLabel.length} threads`}
               </p>
             </div>
           </div>

@@ -21,8 +21,7 @@ interface MessageItemProps {
     senderName: string | null
     timestamp: Date
     isRead: boolean
-    isDraft: boolean
-    messageType: string
+    messageType: 'received' | 'sent' | 'draft'
   }
   isFirst: boolean
   isLast: boolean
@@ -131,7 +130,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         </div>
 
         {/* Draft indicator */}
-        {message.isDraft && (
+        {message.messageType === 'draft' && (
           <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
             <span className="font-medium">Draft:</span> This message hasn't been sent yet.
           </div>

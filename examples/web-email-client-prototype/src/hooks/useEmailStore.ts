@@ -47,7 +47,7 @@ export const useEmailStore = () => {
       // Clear compose draft
       setUiState({ composeDraft: '', isComposing: false })
     } catch (error) {
-      console.warn('Failed to send message:', error)
+      console.error('Failed to send message:', error)
     }
   }
 
@@ -63,44 +63,7 @@ export const useEmailStore = () => {
         }),
       )
     } catch (error) {
-      console.warn('Failed to toggle message read status:', error)
-    }
-  }
-
-  const applyLabelToThread = (threadId: string, labelId: string) => {
-    if (!store) return
-
-    try {
-      // Check if label is already applied
-      const existingAssociation = threadLabels.find((tl) => tl.threadId === threadId && tl.labelId === labelId)
-
-      if (!existingAssociation) {
-        store.commit(
-          events.threadLabelApplied({
-            threadId,
-            labelId,
-            appliedAt: new Date(),
-          }),
-        )
-      }
-    } catch (error) {
-      console.warn('Failed to apply label to thread:', error)
-    }
-  }
-
-  const removeLabelFromThread = (threadId: string, labelId: string) => {
-    if (!store) return
-
-    try {
-      store.commit(
-        events.threadLabelRemoved({
-          threadId,
-          labelId,
-          removedAt: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.warn('Failed to remove label from thread:', error)
+      console.error('Failed to toggle message read status:', error)
     }
   }
 
@@ -114,7 +77,13 @@ export const useEmailStore = () => {
     }
 
     try {
-      applyLabelToThread(threadId, trashLabel.id)
+      store.commit(
+        events.threadLabelApplied({
+          threadId,
+          labelId: trashLabel.id,
+          appliedAt: new Date(),
+        }),
+      )
     } catch (error) {
       console.error('Failed to trash thread:', error)
     }
@@ -123,14 +92,20 @@ export const useEmailStore = () => {
   const archiveThread = (threadId: string) => {
     if (!store) return
 
-    const inboxLabel = labels.find((l) => l.name === 'INBOX')
-    if (!inboxLabel) {
-      console.error('Inbox label not found')
+    const archiveLabel = labels.find((l) => l.name === 'ARCHIVE')
+    if (!archiveLabel) {
+      console.error('Archive label not found')
       return
     }
 
     try {
-      removeLabelFromThread(threadId, inboxLabel.id)
+      store.commit(
+        events.threadLabelApplied({
+          threadId,
+          labelId: archiveLabel.id,
+          appliedAt: new Date(),
+        }),
+      )
     } catch (error) {
       console.error('Failed to archive thread:', error)
     }
@@ -179,6 +154,16 @@ export const useEmailStore = () => {
     return labels.find((l) => l.id === uiState.selectedLabelId) || null
   }
 
+  // Compute thread message count dynamically
+  const getThreadMessageCount = (threadId: string) => {
+    return messages.filter((m) => m.threadId === threadId).length
+  }
+
+  // Compute thread unread count dynamically
+  const getThreadUnreadCount = (threadId: string) => {
+    return messages.filter((m) => m.threadId === threadId && !m.isRead).length
+  }
+
   return {
     // State
     uiState,
@@ -192,8 +177,6 @@ export const useEmailStore = () => {
     // Actions
     sendMessage,
     toggleMessageRead,
-    applyLabelToThread,
-    removeLabelFromThread,
     trashThread,
     archiveThread,
 
@@ -209,5 +192,7 @@ export const useEmailStore = () => {
     getThreadsForLabel,
     getCurrentThread,
     getCurrentLabel,
+    getThreadMessageCount,
+    getThreadUnreadCount,
   }
 }
