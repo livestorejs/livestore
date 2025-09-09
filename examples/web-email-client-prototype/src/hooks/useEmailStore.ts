@@ -1,6 +1,5 @@
 import { queryDb } from '@livestore/livestore'
 import { useClientDocument, useStore } from '@livestore/react'
-import React from 'react'
 import { events, tables } from '../livestore/schema.ts'
 
 /**
@@ -28,17 +27,6 @@ export const useEmailStore = () => {
   const messages = store.useQuery(messagesQuery)
   const labels = store.useQuery(labelsQuery)
   const threadLabels = store.useQuery(threadLabelsQuery)
-
-  // Debug logging for initial data state (seeding now happens server-side)
-  React.useEffect(() => {
-    console.log('📊 Client-side data loaded:', {
-      storeExists: !!store,
-      threadsLength: threads.length,
-      labelsLength: labels.length,
-      threadLabelsLength: threadLabels.length,
-      messagesLength: messages.length,
-    })
-  }, [store, threads.length, labels.length, threadLabels.length, messages.length])
 
   // Email Actions
   const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
@@ -116,6 +104,38 @@ export const useEmailStore = () => {
     }
   }
 
+  const trashThread = (threadId: string) => {
+    if (!store) return
+
+    const trashLabel = labels.find((l) => l.name === 'TRASH')
+    if (!trashLabel) {
+      console.error('Trash label not found')
+      return
+    }
+
+    try {
+      applyLabelToThread(threadId, trashLabel.id)
+    } catch (error) {
+      console.error('Failed to trash thread:', error)
+    }
+  }
+
+  const archiveThread = (threadId: string) => {
+    if (!store) return
+
+    const inboxLabel = labels.find((l) => l.name === 'INBOX')
+    if (!inboxLabel) {
+      console.error('Inbox label not found')
+      return
+    }
+
+    try {
+      removeLabelFromThread(threadId, inboxLabel.id)
+    } catch (error) {
+      console.error('Failed to archive thread:', error)
+    }
+  }
+
   // UI Actions
   const selectThread = (threadId: string | null) => {
     setUiState({ selectedThreadId: threadId })
@@ -159,27 +179,6 @@ export const useEmailStore = () => {
     return labels.find((l) => l.id === uiState.selectedLabelId) || null
   }
 
-  // Get system labels in order
-  const systemLabels = labels.filter((l) => l.type === 'system').sort((a, b) => a.displayOrder - b.displayOrder)
-
-  // Debug logging for data state
-  React.useEffect(() => {
-    console.log('📋 Current data state:', {
-      allLabels: labels.map((l) => ({ id: l.id, name: l.name, type: l.type, displayOrder: l.displayOrder })),
-      systemLabels: systemLabels.map((l) => ({ id: l.id, name: l.name, displayOrder: l.displayOrder })),
-      threads: threads.map((t) => ({ id: t.id, subject: t.subject })),
-      messages: messages.map((m) => ({ id: m.id, threadId: m.threadId, sender: m.sender })),
-      threadLabels: threadLabels.map((tl) => ({ threadId: tl.threadId, labelId: tl.labelId })),
-      counts: {
-        labels: labels.length,
-        systemLabels: systemLabels.length,
-        threads: threads.length,
-        messages: messages.length,
-        threadLabels: threadLabels.length,
-      },
-    })
-  }, [labels, systemLabels, threads, messages, threadLabels])
-
   return {
     // State
     uiState,
@@ -189,13 +188,14 @@ export const useEmailStore = () => {
     messages,
     labels,
     threadLabels,
-    systemLabels,
 
     // Actions
     sendMessage,
     toggleMessageRead,
     applyLabelToThread,
     removeLabelFromThread,
+    trashThread,
+    archiveThread,
 
     // UI Actions
     selectThread,
