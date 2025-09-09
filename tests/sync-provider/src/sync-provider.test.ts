@@ -21,9 +21,11 @@ import * as CloudflareDoRpcProvider from './providers/cloudflare-do-rpc.ts'
 import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
 import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
 import * as ElectricProvider from './providers/electric.ts'
+import * as MockProvider from './providers/mock.ts'
 import { SyncProviderImpl } from './types.ts'
 
 const providerLayers = [
+  MockProvider,
   CloudflareHttpProvider,
   CloudflareDoRpcProvider,
   CloudflareWsProvider,

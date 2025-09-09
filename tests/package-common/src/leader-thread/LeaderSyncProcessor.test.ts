@@ -274,7 +274,7 @@ const LeaderThreadCtxLive = ({
   syncOptions?: Partial<SyncOptions>
 }) =>
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend
+    const mockSyncBackend = yield* makeMockSyncBackend()
 
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),

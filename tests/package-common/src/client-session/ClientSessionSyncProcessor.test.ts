@@ -365,7 +365,7 @@ class TestContext extends Context.Tag('TestContext')<
 const TestContextLive = Layer.scoped(
   TestContext,
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend
+    const mockSyncBackend = yield* makeMockSyncBackend()
     const shutdownDeferred = yield* makeShutdownDeferred
 
     const makeStore: typeof TestContext.Service.makeStore = (args) => {
