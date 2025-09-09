@@ -76,14 +76,38 @@ export const useEmailStore = () => {
       return
     }
 
+    // Get current system label
+    const currentSystemLabel = getCurrentSystemLabel(threadId)
+
     try {
-      store.commit(
-        events.threadLabelApplied({
-          threadId,
-          labelId: trashLabel.id,
-          appliedAt: new Date(),
-        }),
-      )
+      const eventsToCommit = []
+
+      // Remove current system label if exists and it's not already TRASH
+      if (currentSystemLabel && currentSystemLabel.id !== trashLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelRemoved({
+            threadId,
+            labelId: currentSystemLabel.id,
+            removedAt: new Date(),
+          }),
+        )
+      }
+
+      // Add trash label (only if not already applied)
+      if (!currentSystemLabel || currentSystemLabel.id !== trashLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelApplied({
+            threadId,
+            labelId: trashLabel.id,
+            appliedAt: new Date(),
+          }),
+        )
+      }
+
+      // Atomic commit (only if there are events to commit)
+      if (eventsToCommit.length > 0) {
+        store.commit(...eventsToCommit)
+      }
     } catch (error) {
       console.error('Failed to trash thread:', error)
     }
@@ -98,16 +122,86 @@ export const useEmailStore = () => {
       return
     }
 
+    // Get current system label
+    const currentSystemLabel = getCurrentSystemLabel(threadId)
+
     try {
-      store.commit(
-        events.threadLabelApplied({
-          threadId,
-          labelId: archiveLabel.id,
-          appliedAt: new Date(),
-        }),
-      )
+      const eventsToCommit = []
+
+      // Remove current system label if exists and it's not already ARCHIVE
+      if (currentSystemLabel && currentSystemLabel.id !== archiveLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelRemoved({
+            threadId,
+            labelId: currentSystemLabel.id,
+            removedAt: new Date(),
+          }),
+        )
+      }
+
+      // Add archive label (only if not already applied)
+      if (!currentSystemLabel || currentSystemLabel.id !== archiveLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelApplied({
+            threadId,
+            labelId: archiveLabel.id,
+            appliedAt: new Date(),
+          }),
+        )
+      }
+
+      // Atomic commit (only if there are events to commit)
+      if (eventsToCommit.length > 0) {
+        store.commit(...eventsToCommit)
+      }
     } catch (error) {
       console.error('Failed to archive thread:', error)
+    }
+  }
+
+  const moveToInbox = (threadId: string) => {
+    if (!store) return
+
+    const inboxLabel = labels.find((l) => l.name === 'INBOX')
+    if (!inboxLabel) {
+      console.error('Inbox label not found')
+      return
+    }
+
+    // Get current system label
+    const currentSystemLabel = getCurrentSystemLabel(threadId)
+
+    try {
+      const eventsToCommit = []
+
+      // Remove current system label if exists and it's not already INBOX
+      if (currentSystemLabel && currentSystemLabel.id !== inboxLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelRemoved({
+            threadId,
+            labelId: currentSystemLabel.id,
+            removedAt: new Date(),
+          }),
+        )
+      }
+
+      // Add inbox label (only if not already applied)
+      if (!currentSystemLabel || currentSystemLabel.id !== inboxLabel.id) {
+        eventsToCommit.push(
+          events.threadLabelApplied({
+            threadId,
+            labelId: inboxLabel.id,
+            appliedAt: new Date(),
+          }),
+        )
+      }
+
+      // Atomic commit (only if there are events to commit)
+      if (eventsToCommit.length > 0) {
+        store.commit(...eventsToCommit)
+      }
+    } catch (error) {
+      console.error('Failed to move thread to inbox:', error)
     }
   }
 
@@ -154,6 +248,13 @@ export const useEmailStore = () => {
     return labels.find((l) => l.id === uiState.selectedLabelId) || null
   }
 
+  // Get current system label for a thread (should be only one)
+  const getCurrentSystemLabel = (threadId: string) => {
+    const threadLabels = getLabelsForThread(threadId)
+    const systemLabels = threadLabels.filter((l) => l.type === 'system')
+    return systemLabels[0] || null // Return first system label found
+  }
+
   // Compute thread message count dynamically
   const getThreadMessageCount = (threadId: string) => {
     return messages.filter((m) => m.threadId === threadId).length
@@ -179,6 +280,7 @@ export const useEmailStore = () => {
     toggleMessageRead,
     trashThread,
     archiveThread,
+    moveToInbox,
 
     // UI Actions
     selectThread,
@@ -192,6 +294,7 @@ export const useEmailStore = () => {
     getThreadsForLabel,
     getCurrentThread,
     getCurrentLabel,
+    getCurrentSystemLabel,
     getThreadMessageCount,
     getThreadUnreadCount,
   }
