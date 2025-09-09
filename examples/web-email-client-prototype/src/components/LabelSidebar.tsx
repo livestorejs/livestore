@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { toSentenceCase } from '../utils.ts'
 
 /**
  * LabelSidebar - System labels navigation
@@ -11,20 +12,19 @@ import { useEmailStore } from '../hooks/useEmailStore.ts'
  */
 
 const labelIcons: Record<string, string> = {
-  inbox: '📥',
-  sent: '📤',
-  archive: '📦',
-  trash: '🗑️',
+  INBOX: '📥',
+  SENT: '➡️',
+  ARCHIVE: '🗄️',
+  TRASH: '🗑️',
 }
 
 export const LabelSidebar: React.FC = () => {
-  const { systemLabels, uiState, selectLabel, getThreadsForLabel } = useEmailStore()
+  const { labels, uiState, selectLabel } = useEmailStore()
 
   return (
     <div className="p-4">
       <nav className="space-y-1">
-        {systemLabels.map((label) => {
-          const threadsForLabel = getThreadsForLabel(label.id)
+        {labels.map((label) => {
           const isActive = uiState.selectedLabelId === label.id
 
           return (
@@ -39,19 +39,19 @@ export const LabelSidebar: React.FC = () => {
               `}
             >
               <div className="flex items-center">
-                <span className="mr-3 text-lg">{labelIcons[label.id] || '🏷️'}</span>
-                <span className="font-medium">{label.name}</span>
+                <span className="mr-3 text-lg">{labelIcons[label.name] || '🏷️'}</span>
+                <span className="font-medium">{toSentenceCase(label.name)}</span>
               </div>
 
-              {/* Message/Thread Count */}
-              {threadsForLabel.length > 0 && (
+              {/* Message Count */}
+              {label.messageCount > 0 && (
                 <span
                   className={`
                     text-xs px-2 py-1 rounded-full font-medium
                     ${isActive ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-600'}
                   `}
                 >
-                  {threadsForLabel.length}
+                  {label.messageCount}
                 </span>
               )}
             </button>
