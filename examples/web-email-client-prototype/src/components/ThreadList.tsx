@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useEmailStore } from '../hooks/useEmailStore.ts'
-import { toSentenceCase } from '../utils.ts';
+import { toSentenceCase } from '../utils.ts'
 
 /**
  * ThreadList - Display list of threads for selected label
@@ -35,9 +35,9 @@ export const ThreadList: React.FC = () => {
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
           <div className="text-4xl mb-2">📭</div>
-          <p>No threads in <span
-            className="font-medium text-gray-600"
-          >{toSentenceCase(currentLabel.name)}</span></p>
+          <p>
+            No threads in <span className="font-medium text-gray-600">{toSentenceCase(currentLabel.name)}</span>
+          </p>
           <p className="text-sm mt-1 text-gray-400">Threads will appear here when they have this label</p>
         </div>
       </div>
