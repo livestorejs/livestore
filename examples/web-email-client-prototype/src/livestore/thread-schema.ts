@@ -23,8 +23,6 @@ export const threadTables = {
       subject: State.SQLite.text(),
       participants: State.SQLite.text(), // JSON array of email addresses
       lastActivity: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-      messageCount: State.SQLite.integer({ default: 0 }),
-      unreadCount: State.SQLite.integer({ default: 0 }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
@@ -39,8 +37,9 @@ export const threadTables = {
       senderName: State.SQLite.text({ nullable: true }), // Display name
       timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       isRead: State.SQLite.boolean({ default: false }),
-      isDraft: State.SQLite.boolean({ default: false }),
-      messageType: State.SQLite.text(), // 'received' | 'sent' | 'draft'
+      messageType: State.SQLite.text({
+        schema: Schema.Literal('received', 'sent', 'draft'),
+      }),
     },
   }),
 
@@ -164,8 +163,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       subject,
       participants: JSON.stringify(participants),
       lastActivity: createdAt,
-      messageCount: 0,
-      unreadCount: 0,
       createdAt,
     }),
 
@@ -178,10 +175,9 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       senderName,
       timestamp,
       isRead: false,
-      isDraft: false,
       messageType: 'received',
     }),
-    // Note: For prototype, we'll handle counting in application logic
+    // Update thread activity timestamp
     threadTables.threads
       .update({
         lastActivity: timestamp,
@@ -198,7 +194,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       senderName,
       timestamp,
       isRead: true, // Sent messages are always "read"
-      isDraft: false,
       messageType: 'sent',
     }),
     threadTables.threads
@@ -217,7 +212,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       senderName: null,
       timestamp,
       isRead: false,
-      isDraft: true,
       messageType: 'draft',
     }),
     threadTables.threads
@@ -231,7 +225,7 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
     threadTables.messages
       .update({ isRead })
       .where({ id: messageId }),
-    // Note: For prototype, we'll handle unread counting in application logic
+    // Message read status updated
   ],
 
   'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) =>
