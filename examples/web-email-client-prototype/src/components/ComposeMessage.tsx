@@ -90,6 +90,7 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
               w-full border border-gray-300 rounded-md px-3 py-2 
               focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
               resize-none transition-all duration-200
+              text-gray-900 placeholder-gray-400
               ${isExpanded ? 'h-32' : 'h-20'}
             `}
           />
