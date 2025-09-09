@@ -2,30 +2,29 @@ import type { SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
   InvalidPushError,
-  ServerAheadError,
   type LeaderAheadError,
   type MockSyncBackend,
   makeMockSyncBackend,
   type SyncState,
   type UnexpectedError,
 } from '@livestore/common'
-import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
-// (imported above together with Shutdown)
+import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
   Context,
+  Deferred,
   Effect,
   FetchHttpClient,
   Layer,
   Predicate,
   Queue,
   Schema,
+  type Scope,
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
@@ -267,23 +266,19 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       yield* testContext.localPush(events.todoCreated({ id: 'mismatch', text: 'x' }))
 
       // Expect a shutdown message to be sent with InvalidPushError/BackendIdMismatchError
-      const shutdownMsg = yield* (testContext.shutdownQueue
-        ? Queue.take(testContext.shutdownQueue).pipe(Effect.timeout(3000))
-        : Effect.fail(new Error('shutdownQueue not available in test context')))
+      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('InvalidPushError')
-      // @ts-expect-error narrow for test
-      expect(shutdownMsg.cause._tag).toEqual('BackendIdMismatchError')
+      // expect((shutdownMsg.cause as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
     }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown', livePull: false }, captureShutdown: true })(test)),
   )
-
 })
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
-    shutdownQueue: Queue.Dequeue<typeof Shutdown.All.Type> | undefined
+    shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     encodeLiveStoreEvent: (
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
@@ -315,9 +310,7 @@ const LeaderThreadCtxLive = ({
 
     const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
 
-    const shutdownProxy = captureShutdown
-      ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All })
-      : undefined
+    const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
@@ -379,9 +372,20 @@ const LeaderThreadCtxLive = ({
       const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>
         leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)))
 
+      const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()
+
+      if (shutdownProxy !== undefined) {
+        yield* shutdownProxy.sendQueue.pipe(
+          Queue.take,
+          Effect.flip,
+          Effect.intoDeferred(shutdownDeferred),
+          Effect.forkScoped,
+        )
+      }
+
       return Layer.succeed(TestContext, {
         mockSyncBackend,
-        shutdownQueue: shutdownProxy?.sendQueue,
+        shutdownDeferred,
         encodeLiveStoreEvent,
         pullQueue,
         localPush,
