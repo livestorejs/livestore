@@ -1,4 +1,4 @@
-import type { Store } from '@livestore/livestore'
+import { nanoid, type Store } from '@livestore/livestore'
 import type { schema } from './schema.ts'
 import { events } from './schema.ts'
 
@@ -23,17 +23,19 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     // 1. Create system labels (Label Management Aggregate)
     console.log('🏷️ Preparing system labels...')
 
+    const inboxLabelId = nanoid()
+
     const systemLabels = [
-      { id: 'inbox', name: 'INBOX', color: '#1f2937', displayOrder: 1 },
-      { id: 'sent', name: 'SENT', color: '#059669', displayOrder: 2 },
-      { id: 'archive', name: 'ARCHIVE', color: '#7c3aed', displayOrder: 3 },
-      { id: 'trash', name: 'TRASH', color: '#dc2626', displayOrder: 4 },
+      { id: inboxLabelId, name: 'INBOX', color: '#1f2937', displayOrder: 1 },
+      { name: 'SENT', color: '#059669', displayOrder: 2 },
+      { name: 'ARCHIVE', color: '#7c3aed', displayOrder: 3 },
+      { name: 'TRASH', color: '#dc2626', displayOrder: 4 },
     ]
 
     for (const label of systemLabels) {
       allEvents.push(
         events.labelCreated({
-          id: label.id,
+          id: label.id || nanoid(),
           name: label.name,
           type: 'system' as const,
           color: label.color,
@@ -46,15 +48,14 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     // 2. Create a sample email thread (Thread Aggregate)
     console.log('📧 Preparing sample email thread...')
 
-    const threadId = 'thread-prototype-demo'
-    const participants = ['alice@livestore.dev', 'bob@livestore.dev']
+    const threadId = nanoid()
 
     // Create the thread
     allEvents.push(
       events.threadCreated({
         id: threadId,
         subject: 'LiveStore Email Client Prototype Discussion',
-        participants,
+        participants: ['alice@livestore.dev', 'bob@livestore.dev'],
         createdAt: new Date(now.getTime() - 3600000 * 2), // 2 hours ago
       }),
     )
@@ -62,7 +63,7 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     // Create messages in the thread
     const messages = [
       {
-        id: 'msg-1',
+        id: nanoid(),
         content:
           "Hi Bob! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple aggregates. What do you think?",
         sender: 'alice@livestore.dev',
@@ -71,7 +72,7 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
         type: 'received' as const,
       },
       {
-        id: 'msg-2',
+        id: nanoid(),
         content:
           'That sounds amazing, Alice! I love how LiveStore handles real-time sync between aggregates. Can you show me the cross-aggregate event flow?',
         sender: 'bob@livestore.dev',
@@ -80,16 +81,16 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
         type: 'sent' as const,
       },
       {
-        id: 'msg-3',
+        id: nanoid(),
         content:
           "Sure! When you apply a label to a thread, the Thread aggregate emits ThreadLabelApplied events. The Label aggregate reacts to these events and updates message counts. It's a great example of eventual consistency!",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
-        timestamp: new Date(now.getTime() - 3600000 * 1), // 1 hour ago
+        timestamp: new Date(now.getTime() - 3600000), // 1 hour ago
         type: 'received' as const,
       },
       {
-        id: 'msg-4',
+        id: nanoid(),
         content:
           'This is so cool! I can see how this would scale with the 1GB client limit by selectively loading thread event logs. The offline-first approach is perfect for email.',
         sender: 'bob@livestore.dev',
@@ -115,7 +116,7 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
       } else if (message.type === 'sent') {
         allEvents.push(
           events.messageSent({
-            id: message.id,
+            id: nanoid(),
             threadId,
             content: message.content,
             sender: message.sender,
@@ -130,20 +131,12 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     console.log('🏷️ Preparing thread label associations...')
 
     // Apply INBOX label to the thread
+    // This should trigger a cross-aggregate event ("v1.LabelMessageCountUpdated") to update INBOX message count
     allEvents.push(
       events.threadLabelApplied({
         threadId,
-        labelId: 'inbox',
+        labelId: inboxLabelId,
         appliedAt: now,
-      }),
-    )
-
-    // This should trigger a cross-aggregate event to update INBOX message count
-    allEvents.push(
-      events.labelMessageCountUpdated({
-        labelId: 'inbox',
-        delta: 1,
-        updatedAt: now,
       }),
     )
 
@@ -151,7 +144,7 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     console.log('👁️ Preparing message read status...')
 
     // Mark first 3 messages as read (leaving the most recent unread)
-    for (const messageId of ['msg-1', 'msg-2', 'msg-3']) {
+    for (const messageId of messages.slice(0, 3).map((m) => m.id)) {
       allEvents.push(
         events.messageRead({
           messageId,
@@ -162,7 +155,6 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     }
 
     console.log(`📦 Committing ${allEvents.length} events in single batch...`)
-    console.log(allEvents)
 
     // Commit all events atomically - this ensures proper sync timing
     store.commit(...allEvents)
