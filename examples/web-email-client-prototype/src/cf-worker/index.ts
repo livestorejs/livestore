@@ -157,8 +157,30 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
         onUpdate: (threadLabels) => {
           console.log(`🏷️ Thread labels updated, checking for cross-aggregate updates needed`)
 
-          // Get current label counts to track changes
+          // Get current labels to identify system labels
           const labels = store.query(tables.labels.where({}))
+          const systemLabels = labels.filter((l) => l.type === 'system')
+          const systemLabelIds = new Set(systemLabels.map((l) => l.id))
+
+          // BUSINESS RULE: Enforce "one system label per thread"
+          const threadSystemLabels = new Map<string, string[]>()
+          for (const threadLabel of threadLabels) {
+            if (systemLabelIds.has(threadLabel.labelId)) {
+              const existing = threadSystemLabels.get(threadLabel.threadId) || []
+              existing.push(threadLabel.labelId)
+              threadSystemLabels.set(threadLabel.threadId, existing)
+            }
+          }
+
+          // Log violations (server-side detection only, no correction)
+          for (const [threadId, systemLabelIds] of threadSystemLabels.entries()) {
+            if (systemLabelIds.length > 1) {
+              const labelNames = systemLabelIds.map((id) => labels.find((l) => l.id === id)?.name || id)
+              console.warn(
+                `⚠️ BUSINESS RULE VIOLATION: Thread ${threadId} has multiple system labels: ${labelNames.join(', ')}`,
+              )
+            }
+          }
 
           // Create a map to track expected counts per label
           const expectedCounts = new Map<string, number>()
