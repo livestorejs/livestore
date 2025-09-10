@@ -174,12 +174,13 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         ),
       )
 
-      // Wait for server to be ready
-      yield* waitForReady({ stdout, showLogs })
+      // Wait for server to be ready and capture ready url if wrangler reports it
+      const readyUrl = yield* waitForReady({ stdout, showLogs })
 
       // After ready, keep draining stdout in background to prevent buffer fill / EPIPE
       yield* stdout.pipe(Stream.runDrain, Effect.forkScoped)
-      const url = `http://localhost:${port}`
+
+      const url = readyUrl ?? `http://localhost:${port}`
 
       // Use longer timeout in CI environments to account for slower startup times
       const defaultTimeout = Duration.seconds(IS_CI ? 30 : 10)
@@ -189,11 +190,14 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
       }
 
-      return {
-        port,
-        url,
-        processId,
-      } satisfies WranglerDevServer
+      // Derive effective port from the URL if possible
+      let effectivePort = port
+      try {
+        const u = new URL(url)
+        if (u.port) effectivePort = Number(u.port)
+      } catch {}
+
+      return { port: effectivePort, url, processId } satisfies WranglerDevServer
     }).pipe(
       Effect.withSpan('WranglerDevServerService', {
         attributes: { port: args.port ?? 'auto', cwd: args.cwd },
@@ -210,13 +214,19 @@ const waitForReady = ({
 }: {
   stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError, never>
   showLogs: boolean
-}): Effect.Effect<void, WranglerDevServerError, never> =>
+}): Effect.Effect<string | null, WranglerDevServerError, never> =>
   stdout.pipe(
     Stream.decodeText('utf8'),
     Stream.splitLines,
     Stream.tap((line) => (showLogs ? Effect.logDebug(`[wrangler] ${line}`) : Effect.void)),
-    Stream.takeUntil((line) => line.includes('Ready on')),
-    Stream.runDrain,
+    // Extract URL when present
+    Stream.map((line) => {
+      const m = line.match(/Ready on\s+(https?:\/\/[^\s]+)/)
+      return m ? m[1]! : null
+    }),
+    Stream.filter((maybe) => maybe !== null),
+    Stream.runHead,
+    Effect.map((opt) => opt ?? null),
     Effect.timeout('30 seconds'),
     Effect.mapError(
       (error) =>
