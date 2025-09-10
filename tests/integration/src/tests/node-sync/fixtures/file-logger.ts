@@ -98,10 +98,26 @@ export const RpcLogger = (testRunId: string, serverPort: number) =>
     }).pipe(Layer.provide(RpcSerialization.layerNdjson))
 
     // Use the provided port
+    // Add basic server lifecycle diagnostics
+    const serverFactory = () => {
+      const server = createServer()
+      server.on('listening', () =>
+        console.log(`[diag][file-logger] HTTP server listening on ${serverPort} (${testRunId})`),
+      )
+      server.on('close', () => console.log(`[diag][file-logger] HTTP server closed (${testRunId})`))
+      server.on('error', (err) => console.log(`[diag][file-logger] HTTP server error`, err))
+      return server
+    }
+
+    // Log when the logger layer scope is torn down
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => console.log(`[diag][file-logger] finalizer for ${testRunId}`)),
+    )
+
     return HttpRouter.Default.serve().pipe(
       Layer.provide(RpcLayer),
       Layer.provide(HttpProtocol),
-      Layer.provide(PlatformNode.NodeHttpServer.layer(() => createServer(), { port: serverPort })),
+      Layer.provide(PlatformNode.NodeHttpServer.layer(serverFactory, { port: serverPort })),
     )
   }).pipe(Layer.unwrapScoped, Layer.orDie)
 

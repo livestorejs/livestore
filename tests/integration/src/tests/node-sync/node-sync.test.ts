@@ -23,7 +23,8 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
     makeLayer: (testContext) =>
       Layer.mergeAll(
         makeFileLogger('runner', { testContext }),
-        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures` }).pipe(
+        // Enable Wrangler logs in CI to capture server lifecycle and errors
+        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures`, showLogs: IS_CI }).pipe(
           Layer.provide(PlatformNode.NodeContext.layer),
           Layer.provide(FetchHttpClient.layer),
         ),
@@ -31,6 +32,24 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   })
 
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
+  // Diagnostics: capture teardown phases and active handles/requests
+  Vitest.afterEach(() => {
+    const activeHandles = (process as any)['_getActiveHandles']?.() ?? []
+    const activeRequests = (process as any)['_getActiveRequests']?.() ?? []
+    const handleTypes = activeHandles.map((h: any) => h?.constructor?.name ?? typeof h)
+    console.log('[diag][afterEach] begin teardown')
+    console.log('[diag][afterEach] active handles count:', activeHandles.length, handleTypes)
+    console.log('[diag][afterEach] active requests count:', activeRequests.length)
+  })
+
+  Vitest.afterAll(() => {
+    const activeHandles = (process as any)['_getActiveHandles']?.() ?? []
+    const activeRequests = (process as any)['_getActiveRequests']?.() ?? []
+    const handleTypes = activeHandles.map((h: any) => h?.constructor?.name ?? typeof h)
+    console.log('[diag][afterAll] suite teardown')
+    console.log('[diag][afterAll] active handles count:', activeHandles.length, handleTypes)
+    console.log('[diag][afterAll] active requests count:', activeRequests.length)
+  })
   Vitest.scopedLive.prop(
     'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.StorageType, WorkerSchema.AdapterType],
@@ -50,6 +69,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
         const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+          Stream.tap((arr) => Effect.log(`[diag] [smoke] clientB todos len=${arr.length}`)),
           Stream.filter((_) => _.length === todoCount),
           Stream.runHead,
           Effect.flatten,
@@ -148,11 +168,13 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         const exec = Effect.all(
           [
             clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.tap((arr) => Effect.log(`[diag] clientA todos len=${arr.length}`)),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.flatten,
             ),
             clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.tap((arr) => Effect.log(`[diag] clientB todos len=${arr.length}`)),
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.flatten,
@@ -162,8 +184,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         const onShutdown = Effect.raceFirst(
-          clientA.executeEffect(WorkerSchema.OnShutdown.make()),
-          clientB.executeEffect(WorkerSchema.OnShutdown.make()),
+          clientA
+            .executeEffect(WorkerSchema.OnShutdown.make())
+            .pipe(Effect.tap(() => Effect.log('[diag] clientA OnShutdown signalled'))),
+          clientB
+            .executeEffect(WorkerSchema.OnShutdown.make())
+            .pipe(Effect.tap(() => Effect.log('[diag] clientB OnShutdown signalled'))),
         )
 
         yield* Effect.raceFirst(exec, onShutdown)
@@ -202,6 +228,7 @@ const makeWorker = ({
 }) =>
   Effect.gen(function* () {
     const server = yield* WranglerDevServerService
+    let childProc: ChildProcess.ChildProcess | undefined
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
@@ -209,16 +236,24 @@ const makeWorker = ({
         WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
     }).pipe(
       Effect.provide(
-        ChildProcessWorker.layer(() =>
-          ChildProcess.fork(
-            new URL('./client-node-worker.ts', import.meta.url),
-            // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
-            [clientId],
-          ),
-        ),
+        ChildProcessWorker.layer(() => {
+          const cp = ChildProcess.fork(new URL('./client-node-worker.ts', import.meta.url), [clientId])
+          childProc = cp
+          return cp
+        }),
       ),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
+      Effect.tap(() =>
+        Effect.log(
+          `[diag] started child worker for ${clientId} pid=${childProc?.pid} syncUrl=${server.url}`,
+        ),
+      ),
+      Effect.tap(() =>
+        Effect.addFinalizer(() =>
+          Effect.log(`[diag] finalizer: closing child worker for ${clientId} pid=${childProc?.pid}`),
+        ),
+      ),
     )
 
     return worker

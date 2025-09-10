@@ -181,7 +181,15 @@ export const setupDurableObjectWebSocketRpc = ({
     )
 
   const webSocketMessage: CfTypes.DurableObject['webSocketMessage'] = async (ws, message) => {
-    // console.log('webSocketMessage', message, serverCtxMap.has(ws))
+    // Lightweight diagnostics for message handling lifecycle
+    try {
+      // Avoid logging full payloads to keep logs readable
+      console.log('[ws-rpc-server] webSocketMessage received', {
+        hasCtx: serverCtxMap.has(ws),
+        type: typeof message,
+        size: typeof message === 'string' ? message.length : (message as any)?.byteLength ?? 0,
+      })
+    } catch {}
     const { onMessage } = await launchServer(ws)
 
     await onMessage(message)
@@ -189,7 +197,9 @@ export const setupDurableObjectWebSocketRpc = ({
 
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
     const ctx = serverCtxMap.get(ws)
-    // console.log('webSocketClose', ctx, ws)
+    try {
+      console.log('[ws-rpc-server] webSocketClose', { hadCtx: Boolean(ctx) })
+    } catch {}
     if (ctx) {
       await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
