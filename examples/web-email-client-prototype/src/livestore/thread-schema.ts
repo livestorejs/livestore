@@ -10,7 +10,6 @@ import { Events, Schema, SessionIdSymbol, State } from '@livestore/livestore'
  * - Email threads and their metadata
  * - Individual messages within threads
  * - Thread-label associations (many-to-many relationship)
- * - Message read/unread status
  * - Cross-aggregate event emission for label count updates
  */
 
@@ -36,7 +35,6 @@ export const threadTables = {
       sender: State.SQLite.text(), // Email address
       senderName: State.SQLite.text({ nullable: true }), // Display name
       timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-      isRead: State.SQLite.boolean({ default: false }),
       messageType: State.SQLite.text({
         schema: Schema.Literal('received', 'sent', 'draft'),
       }),
@@ -122,16 +120,6 @@ export const threadEvents = {
     }),
   }),
 
-  // Message status events
-  messageRead: Events.synced({
-    name: 'v1.MessageRead',
-    schema: Schema.Struct({
-      messageId: Schema.String,
-      isRead: Schema.Boolean,
-      timestamp: Schema.Date,
-    }),
-  }),
-
   // Label association events (these trigger cross-aggregate updates)
   threadLabelApplied: Events.synced({
     name: 'v1.ThreadLabelApplied',
@@ -174,7 +162,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       sender,
       senderName,
       timestamp,
-      isRead: false,
       messageType: 'received',
     }),
     // Update thread activity timestamp
@@ -193,7 +180,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       sender,
       senderName,
       timestamp,
-      isRead: true, // Sent messages are always "read"
       messageType: 'sent',
     }),
     threadTables.threads
@@ -211,7 +197,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
       sender,
       senderName: null,
       timestamp,
-      isRead: false,
       messageType: 'draft',
     }),
     threadTables.threads
@@ -219,13 +204,6 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
         lastActivity: timestamp,
       })
       .where({ id: threadId }),
-  ],
-
-  'v1.MessageRead': ({ messageId, isRead }) => [
-    threadTables.messages
-      .update({ isRead })
-      .where({ id: messageId }),
-    // Message read status updated
   ],
 
   'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) =>
