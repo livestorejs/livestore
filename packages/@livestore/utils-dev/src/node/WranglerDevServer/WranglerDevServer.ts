@@ -1,6 +1,16 @@
 import * as path from 'node:path'
-
-import { Command, Effect, Exit, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { IS_CI } from '@livestore/utils'
+import {
+  Command,
+  Duration,
+  Effect,
+  Exit,
+  HttpClient,
+  type PlatformError,
+  Schedule,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import { cleanupOrphanedProcesses, killProcessTree } from './process-tree-manager.ts'
 
@@ -31,6 +41,7 @@ export interface StartWranglerDevServerArgs {
   port?: number
   /** @default false */
   showLogs?: boolean
+  connectTimeout?: Duration.DurationInput
 }
 
 /**
@@ -72,7 +83,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
 
       // Start wrangler process using Effect Command
-      const wranglerProcess = yield* Command.make(
+      const process = yield* Command.make(
         'bunx',
         'wrangler',
         'dev',
@@ -98,21 +109,21 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       // Always drain stderr to avoid backpressure; optionally log
       if (showLogs) {
-        yield* wranglerProcess.stderr.pipe(
+        yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.tapLogWithLabel('wrangler:stderr'),
           Stream.runDrain,
           Effect.forkScoped,
         )
       } else {
-        yield* wranglerProcess.stderr.pipe(Stream.runDrain, Effect.forkScoped)
+        yield* process.stderr.pipe(Stream.runDrain, Effect.forkScoped)
       }
 
-      const processId = wranglerProcess.pid
+      const processId = process.pid
 
       // We need to keep the `stdout` stream open, as we drain it in the waitForReady function
       // Otherwise we'll get a EPIPE error
-      const stdout = yield* Stream.broadcastDynamic(wranglerProcess.stdout, 100)
+      const stdout = yield* Stream.broadcastDynamic(process.stdout, 100)
 
       // Register cleanup finalizer with intelligent timeout handling
       yield* Effect.addFinalizer((exit) =>
@@ -124,7 +135,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
           // yield* Effect.logDebug(`Cleaning up wrangler process ${processId}, interrupted: ${isInterrupted}`)
 
           // Check if process is still running
-          const isRunning = yield* wranglerProcess.isRunning
+          const isRunning = yield* process.isRunning
 
           if (isRunning) {
             // Use our enhanced process tree cleanup
@@ -152,11 +163,12 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             )
 
             // Also kill the command process handle
-            yield* wranglerProcess.kill()
+            yield* process.kill()
           } else if (showLogs) {
             yield* Effect.logDebug(`Process ${processId} already terminated`)
           }
         }).pipe(
+          Effect.withSpan('WranglerDevServerService:cleanupProcess'),
           Effect.timeout('5 seconds'), // Don't let cleanup hang forever
           Effect.ignoreLogged,
         ),
@@ -168,13 +180,19 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       // After ready, keep draining stdout in background to prevent buffer fill / EPIPE
       yield* stdout.pipe(Stream.runDrain, Effect.forkScoped)
 
+      const url = `http://localhost:${port}`
+
+      // Use longer timeout in CI environments to account for slower startup times
+      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
+
       if (showLogs) {
-        yield* Effect.logDebug(`Wrangler dev server ready on port ${port}`)
+        yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
       }
 
       return {
         port,
-        url: `http://localhost:${port}`,
+        url,
         processId,
       } satisfies WranglerDevServer
     }).pipe(
@@ -210,3 +228,46 @@ const waitForReady = ({
         }),
     ),
   )
+
+/**
+ * Verifies the server is actually accepting HTTP connections by making a test request
+ */
+const verifyHttpConnectivity = ({
+  url,
+  showLogs,
+  connectTimeout,
+}: {
+  url: string
+  showLogs: boolean
+  connectTimeout: Duration.DurationInput
+}): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    if (showLogs) {
+      yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
+    }
+
+    // Try to connect with retries using exponential backoff
+    yield* client.get(url).pipe(
+      Effect.retryOrElse(
+        Schedule.exponential('50 millis', 2).pipe(
+          Schedule.jittered,
+          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
+          Schedule.compose(Schedule.count),
+        ),
+        (error, attemptCount) =>
+          Effect.fail(
+            new WranglerDevServerError({
+              cause: error,
+              message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
+              port: 0,
+            }),
+          ),
+      ),
+      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+      Effect.asVoid,
+      Effect.withSpan('verifyHttpConnectivity'),
+    )
+  })
+
