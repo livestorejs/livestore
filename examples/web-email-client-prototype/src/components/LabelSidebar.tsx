@@ -1,6 +1,5 @@
 import type React from 'react'
 import { useEmailStore } from '../hooks/useEmailStore.ts'
-import { toSentenceCase } from '../utils.ts'
 
 /**
  * LabelSidebar - System labels navigation
@@ -40,7 +39,7 @@ export const LabelSidebar: React.FC = () => {
             >
               <div className="flex items-center">
                 <span className="mr-3 text-lg">{labelIcons[label.name] || '🏷️'}</span>
-                <span className="font-medium">{toSentenceCase(label.name)}</span>
+                <span className="font-medium capitalize">{label.name}</span>
               </div>
 
               {/* Message Count */}
