@@ -24,13 +24,6 @@ export {
   startDockerComposeServicesScoped,
 } from './DockerComposeService/DockerComposeService.ts'
 export * as FileLogger from './FileLogger.ts'
-export * from './WranglerDevServer/process-tree-manager.ts'
-export {
-  type StartWranglerDevServerArgs,
-  type WranglerDevServer,
-  WranglerDevServerError,
-  WranglerDevServerService,
-} from './WranglerDevServer/WranglerDevServer.ts'
 
 export const OtelLiveHttp = ({
   serviceName,

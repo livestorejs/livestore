@@ -12,8 +12,7 @@
   "dependencies": {
     "@effect/ai-openai": "0.29.0",
     "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/utils-dev": "workspace:*"
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -12,8 +12,8 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 

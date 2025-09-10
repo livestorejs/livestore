@@ -144,6 +144,7 @@ export const makePush =
         }),
       ),
       Effect.mapError((cause) => InvalidPushError.make({ cause })),
+      Effect.withSpan('sync-cf:do:push', { attributes: { storeId, batchSize: pushRequest.batch.length } }),
     )
 
 /**
