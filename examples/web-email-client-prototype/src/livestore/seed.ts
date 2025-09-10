@@ -20,8 +20,8 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     // Collect all events to commit in a single batch (recommended LiveStore pattern)
     const allEvents = []
 
-    // 1. Create system labels (Label Management Aggregate)
-    console.log('🏷️ Preparing system labels...')
+    // 1. Create labels (Label Management Aggregate)
+    console.log('🏷️ Preparing labels...')
 
     const inboxLabelId = nanoid()
 
@@ -38,6 +38,25 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
           id: label.id || nanoid(),
           name: label.name,
           type: 'system' as const,
+          color: label.color,
+          displayOrder: label.displayOrder,
+          createdAt: now,
+        }),
+      )
+    }
+
+    // Add user labels
+    const userLabels = [
+      { name: 'Travel', color: '#0ea5e9', displayOrder: 5 }, // Sky blue
+      { name: 'Receipts', color: '#84cc16', displayOrder: 6 }, // Lime green
+    ]
+
+    for (const label of userLabels) {
+      allEvents.push(
+        events.labelCreated({
+          id: nanoid(),
+          name: label.name,
+          type: 'user' as const,
           color: label.color,
           displayOrder: label.displayOrder,
           createdAt: now,
@@ -162,6 +181,7 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
     console.log('✅ Email client seed data created successfully!')
     console.log('📊 Summary:')
     console.log('  - 4 system labels (INBOX, SENT, ARCHIVE, TRASH)')
+    console.log('  - 2 user labels (Travel, Receipts)')
     console.log('  - 1 email thread with 4 messages')
     console.log('  - Cross-aggregate label associations')
     console.log('  - Mixed read/unread message states')
