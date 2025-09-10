@@ -260,6 +260,9 @@ const verifyHttpConnectivity = ({
 
     // Try to connect with retries using exponential backoff
     yield* client.get(url).pipe(
+      Effect.tapError((err) =>
+        showLogs ? Effect.logDebug(`HTTP connectivity attempt failed for ${url}`, err as any) : Effect.void,
+      ),
       Effect.retryOrElse(
         Schedule.exponential('50 millis', 2).pipe(
           Schedule.jittered,
