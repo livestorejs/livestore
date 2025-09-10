@@ -1,4 +1,7 @@
+import type { SyncOptions } from '@livestore/common'
 import {
+  BackendIdMismatchError,
+  InvalidPushError,
   type LeaderAheadError,
   type MockSyncBackend,
   makeMockSyncBackend,
@@ -6,21 +9,22 @@ import {
   type UnexpectedError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
-import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
   Context,
+  Deferred,
   Effect,
   FetchHttpClient,
   Layer,
   Predicate,
   Queue,
   Schema,
+  type Scope,
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
@@ -44,9 +48,15 @@ TODO:
 - make connected state settable
 */
 
-const withTestCtx = (args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> = {}) =>
+const withTestCtx = (
+  args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> & {
+    syncOptions?: Partial<SyncOptions>
+    captureShutdown?: boolean
+  } = {},
+) =>
   Vitest.makeWithTestCtx({
     makeLayer: () => Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer),
+    forceOtel: true,
   })
 
 Vitest.describe.concurrent('LeaderSyncProcessor', () => {
@@ -211,12 +221,64 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   //   2) pulling from backend -> causes rebase (rebase generation 1)
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
+
+  // Regression test for push fiber stalling when livePull=false and backend push errors occur
+  Vitest.scopedLive('recovers from backend push errors without live pull', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      // Make next few pushes fail at the mock backend level
+      yield* testContext.mockSyncBackend.failNextPushes(2)
+
+      // Push a few local events; initial push attempts will fail
+      yield* testContext.localPush(
+        events.todoCreated({ id: 'p1', text: 'a' }),
+        events.todoCreated({ id: 'p2', text: 'b' }),
+        events.todoCreated({ id: 'p3', text: 'c' }),
+        events.todoCreated({ id: 'p4', text: 'd' }),
+      )
+
+      // Expect all 4 to eventually be pushed to the backend (with timeout to catch stalls)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(4), Stream.runDrain, Effect.timeout(7000))
+
+      // Verify they have been materialized locally as well
+      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      expect(result.length).toEqual(4)
+    }).pipe(
+      withTestCtx({ params: { backendPushBatchSize: 2 }, syncOptions: { livePull: false, onSyncError: 'ignore' } })(
+        test,
+      ),
+    ),
+  )
+
+  // Should escalate and shutdown on BackendIdMismatchError when onSyncError='shutdown'
+  Vitest.scopedLive('shutdowns on BackendIdMismatchError push', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      // Fail the next push due to backend id mismatch
+      yield* testContext.mockSyncBackend.failNextPushes(1, () =>
+        Effect.fail(new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'a', received: 'b' }) })),
+      )
+
+      // Trigger a local push
+      yield* testContext.localPush(events.todoCreated({ id: 'mismatch', text: 'x' }))
+
+      // Expect a shutdown message to be sent with InvalidPushError/BackendIdMismatchError
+      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+
+      expect(shutdownMsg._tag).toEqual('InvalidPushError')
+      // expect((shutdownMsg.cause as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown', livePull: false }, captureShutdown: true })(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
+    shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     encodeLiveStoreEvent: (
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
@@ -230,12 +292,17 @@ class TestContext extends Context.Tag('TestContext')<
 const LeaderThreadCtxLive = ({
   syncProcessor,
   params,
+  syncOptions,
+  captureShutdown,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
+  /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
+  syncOptions?: Partial<SyncOptions>
+  captureShutdown?: boolean
 }) =>
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend
+    const mockSyncBackend = yield* makeMockSyncBackend()
 
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
@@ -243,17 +310,26 @@ const LeaderThreadCtxLive = ({
 
     const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
 
+    const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
+
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
       storeId: 'test',
       clientId: 'test',
       syncPayload: undefined,
       makeSqliteDb,
-      syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
+      syncOptions: {
+        backend: syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend),
+        ...omitUndefineds({
+          livePull: syncOptions?.livePull,
+          onSyncError: syncOptions?.onSyncError,
+          initialSyncOptions: syncOptions?.initialSyncOptions,
+        }),
+      },
       dbState: yield* makeSqliteDb({ _tag: 'in-memory' }),
       dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
-      shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
+      shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
       testing: {
         ...omitUndefineds({ syncProcessor }),
       },
@@ -296,8 +372,20 @@ const LeaderThreadCtxLive = ({
       const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>
         leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)))
 
+      const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()
+
+      if (shutdownProxy !== undefined) {
+        yield* shutdownProxy.sendQueue.pipe(
+          Queue.take,
+          Effect.flip,
+          Effect.intoDeferred(shutdownDeferred),
+          Effect.forkScoped,
+        )
+      }
+
       return Layer.succeed(TestContext, {
         mockSyncBackend,
+        shutdownDeferred,
         encodeLiveStoreEvent,
         pullQueue,
         localPush,

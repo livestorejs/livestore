@@ -1,11 +1,13 @@
+import { error } from 'node:console'
 import * as path from 'node:path'
-import { IS_CI } from '@livestore/utils'
+import { IS_CI, shouldNeverHappen } from '@livestore/utils'
 import {
   Command,
   Duration,
   Effect,
   Exit,
   HttpClient,
+  Option,
   type PlatformError,
   Schedule,
   Schema,
@@ -38,9 +40,11 @@ export interface WranglerDevServer {
 export interface StartWranglerDevServerArgs {
   wranglerConfigPath?: string
   cwd: string
-  port?: number
+  /** The port to try first. The dev server may bind a different port if unavailable. */
+  preferredPort?: number
   /** @default false */
   showLogs?: boolean
+  inspectorPort?: number
   connectTimeout?: Duration.DurationInput
 }
 
@@ -68,19 +72,21 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         Effect.ignore, // Don't fail startup if cleanup fails
       )
 
-      // Allocate port
-      const port =
-        args.port ??
+      // Allocate preferred port (Wrangler may bind a different one if unavailable)
+      const preferredPort =
+        args.preferredPort ??
         (yield* getFreePort.pipe(
           Effect.mapError(
             (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
           ),
         ))
 
-      yield* Effect.annotateCurrentSpan({ port })
+      yield* Effect.annotateCurrentSpan({ preferredPort })
 
       // Resolve config path
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
+
+      const inspectorPort = args.inspectorPort ?? (yield* getFreePort)
 
       // Start wrangler process using Effect Command
       const process = yield* Command.make(
@@ -88,7 +94,9 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         'wrangler',
         'dev',
         '--port',
-        port.toString(),
+        preferredPort.toString(),
+        '--inspector-port',
+        inspectorPort.toString(),
         '--config',
         configPath,
       ).pipe(
@@ -101,7 +109,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             new WranglerDevServerError({
               cause: error,
               message: `Failed to start wrangler process in directory: ${args.cwd}`,
-              port,
+              port: preferredPort,
             }),
         ),
         Effect.withSpan('WranglerDevServerService:startProcess'),
@@ -171,27 +179,32 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         ),
       )
 
-      // Wait for server to be ready
-      yield* waitForReady({ stdout, showLogs })
+      // Wait for server to be ready and parse the actual bound host:port from stdout
+      const readyInfo = yield* waitForReady({ stdout, showLogs })
 
-      const url = `http://localhost:${port}`
+      const actualPort = readyInfo.port
+      const actualHost = readyInfo.host
+      const url = `http://${actualHost}:${actualPort}`
 
       // Use longer timeout in CI environments to account for slower startup times
-      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      const defaultTimeout = Duration.seconds(IS_CI ? 30 : 5)
+
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
 
       if (showLogs) {
-        yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
+        yield* Effect.logDebug(
+          `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
+        )
       }
 
       return {
-        port,
+        port: actualPort,
         url,
         processId,
       } satisfies WranglerDevServer
     }).pipe(
       Effect.withSpan('WranglerDevServerService', {
-        attributes: { port: args.port ?? 'auto', cwd: args.cwd },
+        attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },
       }),
     ),
 }) {}
@@ -205,22 +218,45 @@ const waitForReady = ({
 }: {
   stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError, never>
   showLogs: boolean
-}): Effect.Effect<void, WranglerDevServerError, never> =>
+}): Effect.Effect<{ host: string; port: number }, WranglerDevServerError, never> =>
   stdout.pipe(
     Stream.decodeText('utf8'),
     Stream.splitLines,
     Stream.tap((line) => (showLogs ? Effect.logDebug(`[wrangler] ${line}`) : Effect.void)),
-    Stream.takeUntil((line) => line.includes('Ready on')),
-    Stream.runDrain,
-    Effect.timeout('30 seconds'),
-    Effect.mapError(
-      (error) =>
+    // Find the first readiness line and try to parse the port from it
+    Stream.filterMap<string, { host: string; port: number }>((line) => {
+      if (line.includes('Ready on')) {
+        // Expect: "Ready on http://<host>:<port>"
+        const m = line.match(/https?:\/\/([^:\s]+):(\d+)/i)
+        if (!m) return shouldNeverHappen('Could not parse host:port from Wrangler "Ready on" line', line)
+        const host = m[1]! as string
+        const port = Number.parseInt(m[2]!, 10)
+        if (!Number.isFinite(port)) return shouldNeverHappen('Parsed non-finite port from Wrangler output', line)
+        return Option.some({ host, port } as const)
+      } else {
+        return Option.none()
+      }
+    }),
+    Stream.take(1),
+    Stream.runHead,
+    Effect.flatten,
+    Effect.orElse(
+      () =>
+        new WranglerDevServerError({
+          cause: 'WranglerReadyLineMissing',
+          message: 'Wrangler server did not emit a "Ready on" line',
+          port: 0,
+        }),
+    ),
+    Effect.timeoutFail({
+      duration: '30 seconds',
+      onTimeout: () =>
         new WranglerDevServerError({
           cause: error,
           message: 'Wrangler server failed to start within timeout',
           port: 0,
         }),
-    ),
+    }),
   )
 
 /**

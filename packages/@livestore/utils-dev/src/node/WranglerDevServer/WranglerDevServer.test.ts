@@ -1,5 +1,5 @@
 import { Effect, Exit, FetchHttpClient, Fiber, Layer, Scope } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { getFreePort, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import {
@@ -41,12 +41,14 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     )
 
     Vitest.scopedLive('should use specified port when provided', (test) =>
-      Effect.gen(function* () {
-        const server = yield* WranglerDevServerService
+      Effect.andThen(getFreePort, (port) =>
+        Effect.gen(function* () {
+          const server = yield* WranglerDevServerService
 
-        expect(server.port).toBe(54443)
-        expect(server.url).toBe(`http://localhost:54443`)
-      }).pipe(withBasicTest({ port: 54443 })(test)),
+          expect(server.port).toBe(port)
+          expect(server.url).toBe(`http://localhost:${port}`)
+        }).pipe(withBasicTest({ preferredPort: port })(test)),
+      ),
     )
   })
 
@@ -255,12 +257,14 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     )
 
     Vitest.scopedLive('should work with custom port via service', (test) =>
-      Effect.gen(function* () {
-        const server = yield* WranglerDevServerService
+      Effect.andThen(getFreePort, (port) =>
+        Effect.gen(function* () {
+          const server = yield* WranglerDevServerService
 
-        expect(server.port).toBe(54444)
-        expect(server.url).toBe('http://localhost:54444')
-      }).pipe(withServiceTest({ port: 54444 })(test)),
+          expect(server.port).toBe(port)
+          expect(server.url).toBe(`http://localhost:${port}`)
+        }).pipe(withServiceTest({ preferredPort: port })(test)),
+      ),
     )
   })
 })

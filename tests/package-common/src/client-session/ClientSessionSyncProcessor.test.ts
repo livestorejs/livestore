@@ -15,7 +15,18 @@ import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Context,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Logger,
+  LogLevel,
+  Option,
+  Queue,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -29,7 +40,13 @@ const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
 const encode = Schema.encodeSync(eventSchema)
 
 const withTestCtx = Vitest.makeWithTestCtx({
-  makeLayer: () => Layer.mergeAll(TestContextLive, PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer),
+  makeLayer: () =>
+    Layer.mergeAll(
+      TestContextLive,
+      PlatformNode.NodeFileSystem.layer,
+      FetchHttpClient.layer,
+      Logger.minimumLogLevel(LogLevel.Debug),
+    ),
 })
 
 // TODO use property tests for simulation params
@@ -223,7 +240,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
               sessionId: 'client-session1',
             }),
             dbEventlog,
-            0, // unused mutation def schema hash
+            Schema.hash(events.todoCreated.schema),
             'client',
             'client-session1',
           )
@@ -255,13 +272,19 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         shutdownDeferred,
       })
 
+      // Wait for the sync backend to receive the pushed event
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+      // Wait for the client session to have reached e2
+      yield* store.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === 2),
+        Stream.runDrain,
+      )
 
       const res = store.query(tables.todos.orderBy('text', 'asc'))
 
       expect(res).toMatchObject([
-        { id: 'client_0', text: 't1', completed: false },
-        { id: 'backend_0', text: 't2', completed: false },
+        { id: 'client_0', text: 't1', completed: false, deletedAt: null },
+        { id: 'backend_0', text: 't2', completed: false, deletedAt: null },
       ])
     }).pipe(withTestCtx(test)),
   )
@@ -365,7 +388,7 @@ class TestContext extends Context.Tag('TestContext')<
 const TestContextLive = Layer.scoped(
   TestContext,
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend
+    const mockSyncBackend = yield* makeMockSyncBackend()
     const shutdownDeferred = yield* makeShutdownDeferred
 
     const makeStore: typeof TestContext.Service.makeStore = (args) => {

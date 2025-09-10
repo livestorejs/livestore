@@ -149,7 +149,7 @@ export const insertIntoEventlog = (
 
       if (parentEventExists === false) {
         shouldNeverHappen(
-          `Parent mutation ${eventEncoded.parentSeqNum.global},${eventEncoded.parentSeqNum.client} does not exist`,
+          `Parent event ${eventEncoded.parentSeqNum.global},${eventEncoded.parentSeqNum.client} does not exist in eventlog`,
         )
       }
     }

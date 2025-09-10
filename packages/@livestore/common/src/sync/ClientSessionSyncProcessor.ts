@@ -94,7 +94,7 @@ export const makeClientSessionSyncProcessor = ({
     }),
   }
 
-  /** Only used for debugging / observability, it's not relied upon for correctness of the sync processor. */
+  /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
     getEventDef(schema, eventEncoded.name).eventDef.options.clientOnly
@@ -240,7 +240,6 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           syncStateRef.current = mergeResult.newSyncState
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
 
           if (mergeResult._tag === 'rebase') {
             span.addEvent('merge:pull:rebase', {
@@ -298,7 +297,11 @@ export const makeClientSessionSyncProcessor = ({
             debugInfo.advanceCount++
           }
 
-          if (mergeResult.newEvents.length === 0) return
+          if (mergeResult.newEvents.length === 0) {
+            // If there are no new events, we need to update the sync state as well
+            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            return
+          }
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
@@ -321,6 +324,9 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           refreshTables(writeTables)
+
+          // We're only triggering the sync state update after all events have been materialized
+          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
