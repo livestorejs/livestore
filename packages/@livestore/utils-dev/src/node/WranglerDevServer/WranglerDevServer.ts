@@ -182,7 +182,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const url = `http://localhost:${port}`
 
       // Use longer timeout in CI environments to account for slower startup times
-      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      const defaultTimeout = Duration.seconds(IS_CI ? 30 : 10)
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
 
       if (showLogs) {
