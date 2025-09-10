@@ -26,10 +26,10 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
     makeLayer: (testContext) =>
       Layer.mergeAll(
         makeFileLogger('runner', { testContext }),
-        WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures`, connectTimeout: Duration.seconds(45) }).pipe(
-          Layer.provide(PlatformNode.NodeContext.layer),
-          Layer.provide(FetchHttpClient.layer),
-        ),
+        WranglerDevServerService.Default({
+          cwd: `${import.meta.dirname}/fixtures`,
+          connectTimeout: Duration.seconds(45),
+        }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
       ),
   })
 
