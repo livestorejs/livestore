@@ -25,38 +25,21 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
 
     const inboxLabelId = nanoid()
 
-    const systemLabels = [
-      { id: inboxLabelId, name: 'INBOX', color: '#1f2937', displayOrder: 1 },
-      { name: 'SENT', color: '#059669', displayOrder: 2 },
-      { name: 'ARCHIVE', color: '#7c3aed', displayOrder: 3 },
-      { name: 'TRASH', color: '#dc2626', displayOrder: 4 },
+    const labels: { id?: string; name: string; type: 'system' | 'user'; color: string; displayOrder: number }[] = [
+      { id: inboxLabelId, name: 'INBOX', type: 'system', color: '#1f2937', displayOrder: 1 },
+      { name: 'SENT', type: 'system', color: '#059669', displayOrder: 2 },
+      { name: 'ARCHIVE', type: 'system', color: '#7c3aed', displayOrder: 3 },
+      { name: 'TRASH', type: 'system', color: '#dc2626', displayOrder: 4 },
+      { name: 'Travel', type: 'user', color: '#0ea5e9', displayOrder: 5 },
+      { name: 'Receipts', type: 'user', color: '#84cc16', displayOrder: 6 },
     ]
 
-    for (const label of systemLabels) {
+    for (const label of labels) {
       allEvents.push(
         events.labelCreated({
           id: label.id || nanoid(),
           name: label.name,
-          type: 'system' as const,
-          color: label.color,
-          displayOrder: label.displayOrder,
-          createdAt: now,
-        }),
-      )
-    }
-
-    // Add user labels
-    const userLabels = [
-      { name: 'Travel', color: '#0ea5e9', displayOrder: 5 }, // Sky blue
-      { name: 'Receipts', color: '#84cc16', displayOrder: 6 }, // Lime green
-    ]
-
-    for (const label of userLabels) {
-      allEvents.push(
-        events.labelCreated({
-          id: nanoid(),
-          name: label.name,
-          type: 'user' as const,
+          type: label.type,
           color: label.color,
           displayOrder: label.displayOrder,
           createdAt: now,
