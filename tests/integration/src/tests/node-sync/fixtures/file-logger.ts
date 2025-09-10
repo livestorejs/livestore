@@ -17,7 +17,7 @@ import {
   RpcServer,
   Schema,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { PlatformNode, getFreePort } from '@livestore/utils/node'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
@@ -56,19 +56,23 @@ class LoggerRpcs extends RpcGroup.make(
 
 export const makeFileLogger = (threadName: string, exposeTestContext?: { testContext: Vitest.TestContext }) =>
   Layer.suspend(() => {
-    if (exposeTestContext !== undefined) {
-      const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
-      const testRunId = sluggify(spanName)
-
-      process.env.TEST_RUN_ID = testRunId
-
-      const serverPort = Math.floor(Math.random() * 10_000) + 50_000
-      process.env.LOGGER_SERVER_PORT = String(serverPort)
-
-      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
-    } else {
+    if (exposeTestContext === undefined) {
       return makeRpcClient(threadName)
     }
+
+    const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
+    const testRunId = sluggify(spanName)
+
+    process.env.TEST_RUN_ID = testRunId
+
+    // Allocate a free port to avoid EADDRINUSE collisions in CI/local
+    return Layer.unwrapScoped(
+      Effect.gen(function* () {
+        const serverPort = yield* getFreePort
+        process.env.LOGGER_SERVER_PORT = String(serverPort)
+        return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+      }),
+    )
   })
 
 export const RpcLogger = (testRunId: string, serverPort: number) =>
