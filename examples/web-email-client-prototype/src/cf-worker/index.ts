@@ -204,7 +204,7 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
               store.commit(
                 events.labelMessageCountUpdated({
                   labelId: label.id,
-                  delta: expectedCount - label.messageCount,
+                  newCount: expectedCount,
                   updatedAt: new Date(),
                 }),
               )
