@@ -3,6 +3,8 @@ import {
   Effect,
   FetchHttpClient,
   Layer,
+  Logger,
+  LogLevel,
   Option,
   RpcClient,
   RpcSerialization,
@@ -21,7 +23,13 @@ const withWranglerTest = Vitest.makeWithTestCtx({
   makeLayer: () =>
     WranglerDevServerService.Default({
       cwd: `${import.meta.dirname}/test-fixtures`,
-    }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
+      // TODO remove showLogs again after debugging CI
+      showLogs: true,
+    }).pipe(
+      Layer.provide(
+        Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+      ),
+    ),
 })
 
 const ProtocolLive = Layer.suspend(() =>

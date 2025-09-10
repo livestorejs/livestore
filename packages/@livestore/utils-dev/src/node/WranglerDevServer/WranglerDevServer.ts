@@ -44,6 +44,7 @@ export interface StartWranglerDevServerArgs {
   preferredPort?: number
   /** @default false */
   showLogs?: boolean
+  inspectorPort?: number
   connectTimeout?: Duration.DurationInput
 }
 
@@ -85,6 +86,8 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       // Resolve config path
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
 
+      const inspectorPort = args.inspectorPort ?? (yield* getFreePort)
+
       // Start wrangler process using Effect Command
       const process = yield* Command.make(
         'bunx',
@@ -92,6 +95,8 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         'dev',
         '--port',
         preferredPort.toString(),
+        '--inspector-port',
+        inspectorPort.toString(),
         '--config',
         configPath,
       ).pipe(

@@ -3,7 +3,17 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Duration, Effect, FetchHttpClient, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
+import {
+  Duration,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Logger,
+  LogLevel,
+  Schema,
+  Stream,
+  Worker,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
@@ -29,8 +39,17 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
           connectTimeout: Duration.seconds(45),
+          // TODO remove showLogs again after debugging CI
           showLogs: true,
-        }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
+        }).pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              PlatformNode.NodeContext.layer,
+              FetchHttpClient.layer,
+              Logger.minimumLogLevel(LogLevel.Debug),
+            ),
+          ),
+        ),
       ),
   })
 
