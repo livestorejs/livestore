@@ -24,3 +24,7 @@ Use the `mono` CLI for common workflows:
 ## Testing
 
 - When working on specific Vitest tests, use the `vitest` CLI directly instead of `mono test` and make sure to target the specific test file and test name: e.g. `vitest run packages/@livestore/common/src/index.test.ts --testNamePattern "should be able to get the number of users"`.
+
+## TypeScript
+
+- Avoid `as any`, force-casting etc as much as possible.

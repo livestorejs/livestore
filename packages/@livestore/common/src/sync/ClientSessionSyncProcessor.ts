@@ -297,7 +297,11 @@ export const makeClientSessionSyncProcessor = ({
             debugInfo.advanceCount++
           }
 
-          if (mergeResult.newEvents.length === 0) return
+          if (mergeResult.newEvents.length === 0) {
+            // If there are no new events, we need to update the sync state as well
+            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            return
+          }
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {

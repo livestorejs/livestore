@@ -4,6 +4,7 @@ import {
   BucketQueue,
   Cause,
   Deferred,
+  Duration,
   Effect,
   Exit,
   FiberHandle,
@@ -13,6 +14,7 @@ import {
   pipe,
   Queue,
   ReadonlyArray,
+  Schedule,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -281,7 +283,7 @@ export const makeLeaderSyncProcessor = ({
         },
       }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
-      const backendPushingFiberHandle = yield* FiberHandle.make<undefined, never>()
+      const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
         syncBackendPushQueue,
         otelSpan,
@@ -796,59 +798,52 @@ const backgroundBackendPushing = ({
         batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
       })
 
-      // Push with retry/backoff on errors to avoid stalling the fiber
-      // Timing notes:
-      // - Exponential backoff starting at 1s and doubling each attempt (1s, 2s, 4s, 8s, 16s)
-      // - Capped at 30s maximum delay and at 5 increments
-      // - Backoff resets to 0 after a successful push
-      // - No jitter is used to keep traces deterministic; can be added later if needed
+      // Push with declarative retry/backoff using Effect schedules
+      // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
+      // - Delay clamped at 30s (continues retrying at 30s)
+      // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-      let retryCount = 0
-      while (true) {
+
+      // Only retry for transient UnexpectedError cases
+      const isRetryable = (err: InvalidPushError | IsOfflineError) =>
+        err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnexpectedError'
+
+      // Input: InvalidPushError | IsOfflineError, Output: Duration
+      const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
+        Schedule.exponential(Duration.seconds(1)).pipe(
+          Schedule.andThenEither(Schedule.spaced(Duration.seconds(30))), // clamp at 30 second intervals
+          Schedule.compose(Schedule.elapsed),
+          Schedule.whileInput(isRetryable),
+        )
+
+      yield* Effect.gen(function* () {
+        const iteration = yield* Schedule.CurrentIterationMetadata
+
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
-        if (pushResult._tag === 'Right') {
-          // reset retry counter on success and proceed to next batch
-          if (retryCount > 0) {
-            otelSpan?.addEvent('backend-push-retry-success', {
-              retries: retryCount,
-              batchSize: queueItems.length,
-            })
-          }
-          retryCount = 0
-          break
+
+        const retries = iteration.recurrence
+        if (retries > 0 && pushResult._tag === 'Right') {
+          otelSpan?.addEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }
 
-        // For invalid pushes that are not due to the server being ahead, retry with backoff
-        if (pushResult.left._tag === 'InvalidPushError') {
-          // Backend identity mismatch is not recoverable here; escalate as before
-          if (pushResult.left.cause._tag === 'BackendIdMismatchError') {
-            return yield* pushResult.left
-          }
-          if (pushResult.left.cause._tag !== 'ServerAheadError') {
-            const delayMs = Math.min(1000 * 2 ** retryCount, 30_000)
-            if (LS_DEV) {
-              yield* Effect.logDebug('handled backend-push-error (retrying)', {
-                error: pushResult.left.toString(),
-                retryCount,
-                delayMs,
-              })
-            }
-            otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString(), retryCount })
-            yield* Effect.sleep(delayMs)
-            retryCount = Math.min(retryCount + 1, 5)
-            continue
-          }
-        }
-
-        // For server-ahead or other cases: wait for interrupt caused by pulling which will restart pushing
-        if (LS_DEV) {
-          yield* Effect.logDebug('handled backend-push-error (waiting for pull interrupt)', {
+        if (pushResult._tag === 'Left') {
+          otelSpan?.addEvent('backend-push-error', {
             error: pushResult.left.toString(),
+            retries,
+            batchSize: queueItems.length,
           })
+          const error = pushResult.left
+          if (
+            error._tag === 'IsOfflineError' ||
+            (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError')
+          ) {
+            yield* Effect.logDebug('handled backend-push-error (waiting for pull interrupt)', { error })
+            return yield* Effect.never
+          }
+
+          return yield* error
         }
-        otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
-        return yield* Effect.never
-      }
+      }).pipe(Effect.retry(retrySchedule))
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pushing'))
 
