@@ -1,11 +1,13 @@
+import { error } from 'node:console'
 import * as path from 'node:path'
-import { IS_CI } from '@livestore/utils'
+import { IS_CI, shouldNeverHappen } from '@livestore/utils'
 import {
   Command,
   Duration,
   Effect,
   Exit,
   HttpClient,
+  Option,
   type PlatformError,
   Schedule,
   Schema,
@@ -172,14 +174,15 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         ),
       )
 
-      // Wait for server to be ready and attempt to detect the actual bound port from stdout
-      const detectedPort = yield* waitForReady({ stdout, showLogs })
+      // Wait for server to be ready and parse the actual bound host:port from stdout
+      const readyInfo = yield* waitForReady({ stdout, showLogs })
 
-      const actualPort = detectedPort ?? preferredPort
-      const url = `http://localhost:${actualPort}`
+      const actualPort = readyInfo.port
+      const actualHost = readyInfo.host
+      const url = `http://${actualHost}:${actualPort}`
 
       // Use longer timeout in CI environments to account for slower startup times
-      const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+      const defaultTimeout = Duration.seconds(IS_CI ? 30 : 5)
 
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
 
@@ -210,33 +213,45 @@ const waitForReady = ({
 }: {
   stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError, never>
   showLogs: boolean
-}): Effect.Effect<number | undefined, WranglerDevServerError, never> =>
+}): Effect.Effect<{ host: string; port: number }, WranglerDevServerError, never> =>
   stdout.pipe(
     Stream.decodeText('utf8'),
     Stream.splitLines,
     Stream.tap((line) => (showLogs ? Effect.logDebug(`[wrangler] ${line}`) : Effect.void)),
     // Find the first readiness line and try to parse the port from it
-    Stream.filter((line) => line.includes('Ready on')),
+    Stream.filterMap<string, { host: string; port: number }>((line) => {
+      if (line.includes('Ready on')) {
+        // Expect: "Ready on http://<host>:<port>"
+        const m = line.match(/https?:\/\/([^:\s]+):(\d+)/i)
+        if (!m) return shouldNeverHappen('Could not parse host:port from Wrangler "Ready on" line', line)
+        const host = m[1]! as string
+        const port = Number.parseInt(m[2]!, 10)
+        if (!Number.isFinite(port)) return shouldNeverHappen('Parsed non-finite port from Wrangler output', line)
+        return Option.some({ host, port } as const)
+      } else {
+        return Option.none()
+      }
+    }),
     Stream.take(1),
     Stream.runHead,
-    Effect.map((opt) => {
-      if (opt._tag === 'Some') {
-        const line = opt.value
-        const match = line.match(/:(\d+)/)
-        const parsed = match ? Number.parseInt(match[1]!, 10) : undefined
-        return Number.isFinite(parsed as number) ? parsed : undefined
-      }
-      return undefined
-    }),
-    Effect.timeout('30 seconds'),
-    Effect.mapError(
-      (error) =>
+    Effect.flatten,
+    Effect.orElse(
+      () =>
+        new WranglerDevServerError({
+          cause: 'WranglerReadyLineMissing',
+          message: 'Wrangler server did not emit a "Ready on" line',
+          port: 0,
+        }),
+    ),
+    Effect.timeoutFail({
+      duration: '30 seconds',
+      onTimeout: () =>
         new WranglerDevServerError({
           cause: error,
           message: 'Wrangler server failed to start within timeout',
           port: 0,
         }),
-    ),
+    }),
   )
 
 /**
