@@ -123,9 +123,7 @@ export const RpcLogger = (testRunId: string, serverPort: number) =>
     }
 
     // Log when the logger layer scope is torn down
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => console.log(`[diag][file-logger] finalizer for ${testRunId}`)),
-    )
+    yield* Effect.addFinalizer(() => Effect.sync(() => console.log(`[diag][file-logger] finalizer for ${testRunId}`)))
 
     return HttpRouter.Default.serve().pipe(
       Layer.provide(RpcLayer),
@@ -153,9 +151,7 @@ export const makeRpcClient = (threadName: string) => {
         url: `${baseUrl}/rpc`,
         // Avoid HTTP keep-alive unless explicitly disabled via env toggle
         transformClient: HttpClient.mapRequest((request) =>
-          disableKeepAlive
-            ? request.pipe(HttpClientRequest.setHeader('connection', 'close'))
-            : request,
+          disableKeepAlive ? request.pipe(HttpClientRequest.setHeader('connection', 'close')) : request,
         ),
       }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
 

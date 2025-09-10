@@ -34,8 +34,8 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
 Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   // Diagnostics: capture teardown phases and active handles/requests
   Vitest.afterEach(() => {
-    const activeHandles = (process as any)['_getActiveHandles']?.() ?? []
-    const activeRequests = (process as any)['_getActiveRequests']?.() ?? []
+    const activeHandles = (process as any)._getActiveHandles?.() ?? []
+    const activeRequests = (process as any)._getActiveRequests?.() ?? []
     const handleTypes = activeHandles.map((h: any) => h?.constructor?.name ?? typeof h)
     console.log('[diag][afterEach] begin teardown')
     console.log('[diag][afterEach] active handles count:', activeHandles.length, handleTypes)
@@ -43,8 +43,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   })
 
   Vitest.afterAll(() => {
-    const activeHandles = (process as any)['_getActiveHandles']?.() ?? []
-    const activeRequests = (process as any)['_getActiveRequests']?.() ?? []
+    const activeHandles = (process as any)._getActiveHandles?.() ?? []
+    const activeRequests = (process as any)._getActiveRequests?.() ?? []
     const handleTypes = activeHandles.map((h: any) => h?.constructor?.name ?? typeof h)
     console.log('[diag][afterAll] suite teardown')
     console.log('[diag][afterAll] active handles count:', activeHandles.length, handleTypes)
@@ -245,9 +245,7 @@ const makeWorker = ({
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
       Effect.tap(() =>
-        Effect.log(
-          `[diag] started child worker for ${clientId} pid=${childProc?.pid} syncUrl=${server.url}`,
-        ),
+        Effect.log(`[diag] started child worker for ${clientId} pid=${childProc?.pid} syncUrl=${server.url}`),
       ),
       Effect.tap(() =>
         Effect.addFinalizer(() =>

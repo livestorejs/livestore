@@ -187,7 +187,7 @@ export const setupDurableObjectWebSocketRpc = ({
       console.log('[ws-rpc-server] webSocketMessage received', {
         hasCtx: serverCtxMap.has(ws),
         type: typeof message,
-        size: typeof message === 'string' ? message.length : (message as any)?.byteLength ?? 0,
+        size: typeof message === 'string' ? message.length : ((message as any)?.byteLength ?? 0),
       })
     } catch {}
     const { onMessage } = await launchServer(ws)
