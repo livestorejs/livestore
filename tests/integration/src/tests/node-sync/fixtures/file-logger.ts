@@ -101,11 +101,24 @@ export const RpcLogger = (testRunId: string, serverPort: number) =>
     // Add basic server lifecycle diagnostics
     const serverFactory = () => {
       const server = createServer()
+      // Track sockets to diagnose keep-alive / lingering connections
+      const sockets = new Set<import('node:net').Socket>()
+      server.on('connection', (socket) => {
+        sockets.add(socket)
+        socket.on('close', () => sockets.delete(socket))
+      })
       server.on('listening', () =>
         console.log(`[diag][file-logger] HTTP server listening on ${serverPort} (${testRunId})`),
       )
       server.on('close', () => console.log(`[diag][file-logger] HTTP server closed (${testRunId})`))
       server.on('error', (err) => console.log(`[diag][file-logger] HTTP server error`, err))
+      // Periodic report (low frequency) in case of long runs
+      const interval = setInterval(() => {
+        if (sockets.size > 0) {
+          console.log(`[diag][file-logger] open sockets=${sockets.size} (${testRunId})`)
+        }
+      }, 5000)
+      server.on('close', () => clearInterval(interval))
       return server
     }
 
@@ -134,13 +147,15 @@ export const makeRpcClient = (threadName: string) => {
       const serverPort = process.env.LOGGER_SERVER_PORT ?? shouldNeverHappen('LOGGER_SERVER_PORT is not set')
       const baseUrl = `http://localhost:${serverPort}`
 
+      const disableKeepAlive = (process.env.LOGGER_DISABLE_KEEP_ALIVE ?? '1') !== '0'
+
       const ProtocolLive = RpcClient.layerProtocolHttp({
         url: `${baseUrl}/rpc`,
-        // Avoid HTTP keep-alive to prevent lingering idle sockets in tests
-        // This ensures the logger server can shut down cleanly without waiting
-        // for client idle connections to time out.
+        // Avoid HTTP keep-alive unless explicitly disabled via env toggle
         transformClient: HttpClient.mapRequest((request) =>
-          request.pipe(HttpClientRequest.setHeader('connection', 'close')),
+          disableKeepAlive
+            ? request.pipe(HttpClientRequest.setHeader('connection', 'close'))
+            : request,
         ),
       }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
 
