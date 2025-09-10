@@ -38,7 +38,8 @@ export interface WranglerDevServer {
 export interface StartWranglerDevServerArgs {
   wranglerConfigPath?: string
   cwd: string
-  port?: number
+  /** The port to try first. The dev server may bind a different port if unavailable. */
+  preferredPort?: number
   /** @default false */
   showLogs?: boolean
   connectTimeout?: Duration.DurationInput
@@ -68,16 +69,16 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         Effect.ignore, // Don't fail startup if cleanup fails
       )
 
-      // Allocate port
-      const port =
-        args.port ??
+      // Allocate preferred port (Wrangler may bind a different one if unavailable)
+      const preferredPort =
+        args.preferredPort ??
         (yield* getFreePort.pipe(
           Effect.mapError(
             (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
           ),
         ))
 
-      yield* Effect.annotateCurrentSpan({ port })
+      yield* Effect.annotateCurrentSpan({ preferredPort })
 
       // Resolve config path
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
@@ -88,7 +89,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         'wrangler',
         'dev',
         '--port',
-        port.toString(),
+        preferredPort.toString(),
         '--config',
         configPath,
       ).pipe(
@@ -101,7 +102,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             new WranglerDevServerError({
               cause: error,
               message: `Failed to start wrangler process in directory: ${args.cwd}`,
-              port,
+              port: preferredPort,
             }),
         ),
         Effect.withSpan('WranglerDevServerService:startProcess'),
@@ -171,27 +172,31 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         ),
       )
 
-      // Wait for server to be ready
-      yield* waitForReady({ stdout, showLogs })
+      // Wait for server to be ready and attempt to detect the actual bound port from stdout
+      const detectedPort = yield* waitForReady({ stdout, showLogs })
 
-      const url = `http://localhost:${port}`
+      const actualPort = detectedPort ?? preferredPort
+      const url = `http://localhost:${actualPort}`
 
       // Use longer timeout in CI environments to account for slower startup times
       const defaultTimeout = Duration.seconds(IS_CI ? 15 : 5)
+
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
 
       if (showLogs) {
-        yield* Effect.logDebug(`Wrangler dev server ready and accepting connections on port ${port}`)
+        yield* Effect.logDebug(
+          `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
+        )
       }
 
       return {
-        port,
+        port: actualPort,
         url,
         processId,
       } satisfies WranglerDevServer
     }).pipe(
       Effect.withSpan('WranglerDevServerService', {
-        attributes: { port: args.port ?? 'auto', cwd: args.cwd },
+        attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },
       }),
     ),
 }) {}
@@ -205,13 +210,24 @@ const waitForReady = ({
 }: {
   stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError, never>
   showLogs: boolean
-}): Effect.Effect<void, WranglerDevServerError, never> =>
+}): Effect.Effect<number | undefined, WranglerDevServerError, never> =>
   stdout.pipe(
     Stream.decodeText('utf8'),
     Stream.splitLines,
     Stream.tap((line) => (showLogs ? Effect.logDebug(`[wrangler] ${line}`) : Effect.void)),
-    Stream.takeUntil((line) => line.includes('Ready on')),
-    Stream.runDrain,
+    // Find the first readiness line and try to parse the port from it
+    Stream.filter((line) => line.includes('Ready on')),
+    Stream.take(1),
+    Stream.runHead,
+    Effect.map((opt) => {
+      if (opt._tag === 'Some') {
+        const line = opt.value
+        const match = line.match(/:(\d+)/)
+        const parsed = match ? Number.parseInt(match[1]!, 10) : undefined
+        return Number.isFinite(parsed as number) ? parsed : undefined
+      }
+      return undefined
+    }),
     Effect.timeout('30 seconds'),
     Effect.mapError(
       (error) =>

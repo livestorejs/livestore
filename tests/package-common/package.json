@@ -13,8 +13,5 @@
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
     "vitest": "catalog:"
-  },
-  "scripts": {
-    "test": "vitest"
   }
 }

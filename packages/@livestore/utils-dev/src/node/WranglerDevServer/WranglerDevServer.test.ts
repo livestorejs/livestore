@@ -41,12 +41,14 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     )
 
     Vitest.scopedLive('should use specified port when provided', (test) =>
-      Effect.gen(function* () {
-        const server = yield* WranglerDevServerService
+      Effect.andThen(getFreePort, (port) =>
+        Effect.gen(function* () {
+          const server = yield* WranglerDevServerService
 
-        expect(server.port).toBe(54443)
-        expect(server.url).toBe(`http://localhost:54443`)
-      }).pipe(withBasicTest({ port: 54443 })(test)),
+          expect(server.port).toBe(port)
+          expect(server.url).toBe(`http://localhost:${port}`)
+        }).pipe(withBasicTest({ preferredPort: port })(test)),
+      ),
     )
   })
 
@@ -261,7 +263,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
 
           expect(server.port).toBe(port)
           expect(server.url).toBe(`http://localhost:${port}`)
-        }).pipe(withServiceTest({ port })(test)),
+        }).pipe(withServiceTest({ preferredPort: port })(test)),
       ),
     )
   })
