@@ -6,6 +6,7 @@ import {
   Effect,
   Exit,
   HttpClient,
+  Option,
   type PlatformError,
   Schedule,
   Schema,
@@ -226,7 +227,7 @@ const waitForReady = ({
     }),
     Stream.filter((maybe) => maybe !== null),
     Stream.runHead,
-    Effect.map((opt) => opt ?? null),
+    Effect.map((opt) => Option.getOrNull(opt)),
     Effect.timeout('30 seconds'),
     Effect.mapError(
       (error) =>
