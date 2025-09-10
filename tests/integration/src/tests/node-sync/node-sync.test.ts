@@ -16,6 +16,9 @@ import * as WorkerSchema from './worker-schema.ts'
 // A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = Duration.toMillis(IS_CI ? Duration.minutes(10) : Duration.minutes(15))
 
+// We might need to also run the tests in a CPU-limited environment as it might change the concurrency characteristics of the tests
+// bash -c 'taskset -c 0 env CI=1 DEBUGGER_ACTIVE=0 NODE_SYNC_DEBUG=1 direnv exec . vitest run tests/integration/src/tests/node-sync/node-sync.test.ts --reporter verbose'
+
 const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
