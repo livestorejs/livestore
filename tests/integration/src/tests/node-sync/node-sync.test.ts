@@ -29,6 +29,7 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
           connectTimeout: Duration.seconds(45),
+          showLogs: true,
         }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
       ),
   })
