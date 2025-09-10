@@ -77,7 +77,7 @@ export const useEmailStore = () => {
     }
 
     // Get current system label
-    const currentSystemLabel = getCurrentSystemLabel(threadId)
+    const currentSystemLabel = getSystemLabelForThread(threadId)
 
     try {
       const eventsToCommit = []
@@ -123,7 +123,7 @@ export const useEmailStore = () => {
     }
 
     // Get current system label
-    const currentSystemLabel = getCurrentSystemLabel(threadId)
+    const currentSystemLabel = getSystemLabelForThread(threadId)
 
     try {
       const eventsToCommit = []
@@ -169,7 +169,7 @@ export const useEmailStore = () => {
     }
 
     // Get current system label
-    const currentSystemLabel = getCurrentSystemLabel(threadId)
+    const currentSystemLabel = getSystemLabelForThread(threadId)
 
     try {
       const eventsToCommit = []
@@ -205,6 +205,72 @@ export const useEmailStore = () => {
     }
   }
 
+  const applyUserLabelToThread = (threadId: string, labelId: string) => {
+    if (!store) return
+
+    const targetLabel = labels.find((l) => l.id === labelId)
+    if (!targetLabel) {
+      console.error('Target label not found')
+      return
+    }
+
+    if (targetLabel.type !== 'user') {
+      console.error('Can only apply user labels with this function')
+      return
+    }
+
+    // Check if label is already applied
+    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
+    if (isLabelApplied) {
+      return // Already applied, nothing to do
+    }
+
+    try {
+      store.commit(
+        events.threadLabelApplied({
+          threadId,
+          labelId: targetLabel.id,
+          appliedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error(`Failed to apply user label ${targetLabel.name} to thread:`, error)
+    }
+  }
+
+  const removeUserLabelFromThread = (threadId: string, labelId: string) => {
+    if (!store) return
+
+    const targetLabel = labels.find((l) => l.id === labelId)
+    if (!targetLabel) {
+      console.error('Target label not found')
+      return
+    }
+
+    if (targetLabel.type !== 'user') {
+      console.error('Can only remove user labels with this function')
+      return
+    }
+
+    // Check if label is actually applied
+    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
+    if (!isLabelApplied) {
+      return // Not applied, nothing to do
+    }
+
+    try {
+      store.commit(
+        events.threadLabelRemoved({
+          threadId,
+          labelId: targetLabel.id,
+          removedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
+    }
+  }
+
   // UI Actions
   const selectThread = (threadId: string | null) => {
     setUiState({ selectedThreadId: threadId })
@@ -233,6 +299,18 @@ export const useEmailStore = () => {
     return labels.filter((l) => labelIds.includes(l.id))
   }
 
+  const getUserLabelsForThread = (threadId: string) => {
+    const allLabels = getLabelsForThread(threadId)
+    return allLabels.filter((l) => l.type === 'user')
+  }
+
+  // Get current system label for a thread (should be only one)
+  const getSystemLabelForThread = (threadId: string) => {
+    const threadLabels = getLabelsForThread(threadId)
+    const systemLabels = threadLabels.filter((l) => l.type === 'system')
+    return systemLabels[0] || null // Return first system label found
+  }
+
   const getThreadsForLabel = (labelId: string) => {
     const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
 
@@ -246,13 +324,6 @@ export const useEmailStore = () => {
 
   const getCurrentLabel = () => {
     return labels.find((l) => l.id === uiState.selectedLabelId) || null
-  }
-
-  // Get current system label for a thread (should be only one)
-  const getCurrentSystemLabel = (threadId: string) => {
-    const threadLabels = getLabelsForThread(threadId)
-    const systemLabels = threadLabels.filter((l) => l.type === 'system')
-    return systemLabels[0] || null // Return first system label found
   }
 
   // Compute thread message count dynamically
@@ -281,6 +352,8 @@ export const useEmailStore = () => {
     trashThread,
     archiveThread,
     moveToInbox,
+    applyUserLabelToThread,
+    removeUserLabelFromThread,
 
     // UI Actions
     selectThread,
@@ -291,10 +364,10 @@ export const useEmailStore = () => {
     // Helpers
     getMessagesForThread,
     getLabelsForThread,
+    getUserLabelsForThread,
     getThreadsForLabel,
     getCurrentThread,
     getCurrentLabel,
-    getCurrentSystemLabel,
     getThreadMessageCount,
     getThreadUnreadCount,
   }

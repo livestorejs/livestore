@@ -1,11 +1,13 @@
 import type React from 'react'
 import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { UserLabelPicker } from './UserLabelPicker.tsx'
 
 /**
  * ThreadActions - Thread-level action buttons
  *
  * Provides:
  * - Archive/Trash actions
+ * - User label management
  */
 
 export const ThreadActions: React.FC = () => {
@@ -36,6 +38,8 @@ export const ThreadActions: React.FC = () => {
         >
           🗑️
         </button>
+
+        <UserLabelPicker threadId={currentThread.id} />
       </div>
     </div>
   )
