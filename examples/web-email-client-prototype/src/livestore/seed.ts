@@ -142,20 +142,6 @@ export const seedEmailClientData = (store: Store<typeof schema>) => {
       }),
     )
 
-    // 4. Mark some messages as read
-    console.log('👁️ Preparing message read status...')
-
-    // Mark first 3 messages as read (leaving the most recent unread)
-    for (const messageId of messages.slice(0, 3).map((m) => m.id)) {
-      allEvents.push(
-        events.messageRead({
-          messageId,
-          isRead: true,
-          timestamp: new Date(now.getTime() - 900000), // 15 minutes ago
-        }),
-      )
-    }
-
     console.log(`📦 Committing ${allEvents.length} events in single batch...`)
 
     // Commit all events atomically - this ensures proper sync timing
