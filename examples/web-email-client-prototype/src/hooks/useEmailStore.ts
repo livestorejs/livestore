@@ -51,22 +51,6 @@ export const useEmailStore = () => {
     }
   }
 
-  const toggleMessageRead = (messageId: string, isRead: boolean) => {
-    if (!store) return
-
-    try {
-      store.commit(
-        events.messageRead({
-          messageId,
-          isRead,
-          timestamp: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.error('Failed to toggle message read status:', error)
-    }
-  }
-
   const trashThread = (threadId: string) => {
     if (!store) return
 
@@ -331,11 +315,6 @@ export const useEmailStore = () => {
     return messages.filter((m) => m.threadId === threadId).length
   }
 
-  // Compute thread unread count dynamically
-  const getThreadUnreadCount = (threadId: string) => {
-    return messages.filter((m) => m.threadId === threadId && !m.isRead).length
-  }
-
   return {
     // State
     uiState,
@@ -348,7 +327,6 @@ export const useEmailStore = () => {
 
     // Actions
     sendMessage,
-    toggleMessageRead,
     trashThread,
     archiveThread,
     moveToInbox,
@@ -369,6 +347,5 @@ export const useEmailStore = () => {
     getCurrentThread,
     getCurrentLabel,
     getThreadMessageCount,
-    getThreadUnreadCount,
   }
 }
