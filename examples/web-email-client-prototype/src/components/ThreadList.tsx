@@ -35,7 +35,8 @@ export const ThreadList: React.FC = () => {
         <div className="text-center text-gray-500">
           <div className="text-4xl mb-2">📭</div>
           <p>
-            No threads in <span className="font-medium text-gray-600 capitalize">{currentLabel.name}</span>
+            No threads in{' '}
+            <span className="font-medium text-gray-600 capitalize">{currentLabel.name.toLocaleLowerCase()}</span>
           </p>
           <p className="text-sm mt-1 text-gray-400">Threads will appear here when they have this label</p>
         </div>

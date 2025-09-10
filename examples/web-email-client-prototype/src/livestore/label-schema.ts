@@ -59,10 +59,10 @@ export const labelMaterializers = State.SQLite.materializers(labelEvents, {
   'v1.LabelCreated': ({ id, name, type, color, displayOrder, createdAt }) =>
     labelTables.labels.insert({ id, name, type, color, displayOrder, messageCount: 0, createdAt }),
 
-  'v1.LabelMessageCountUpdated': ({ labelId, delta }) => {
-    // Note: For the prototype, we'll handle counting in application logic
-    // In a real implementation, this would use proper SQL expressions
-    // Use raw SQL to apply the delta to the current count
-    return labelTables.labels.update({ messageCount: State.SQLite.sql`messageCount + ${delta}` }).where({ id: labelId })
+  'v1.LabelMessageCountUpdated': ({ labelId, delta }, ctx) => {
+    const previousMessageCount = ctx.query(labelTables.labels.select('messageCount').where({ id: labelId }).first())
+    if (!previousMessageCount) console.warn(`Label with ID ${labelId} not found for message count update`)
+    const newMessageCount = (previousMessageCount || 0) + delta
+    return labelTables.labels.update({ messageCount: newMessageCount }).where({ id: labelId })
   },
 })
