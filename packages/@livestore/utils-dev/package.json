@@ -8,18 +8,21 @@
   ],
   "exports": {
     "./node": "./src/node/mod.ts",
-    "./node-vitest": "./src/node-vitest/mod.ts"
+    "./node-vitest": "./src/node-vitest/mod.ts",
+    "./wrangler": "./src/wrangler/mod.ts"
   },
   "dependencies": {
     "@effect/opentelemetry": "catalog:",
     "@effect/vitest": "0.25.1",
+    "@iarna/toml": "2.2.5",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
     "@opentelemetry/sdk-metrics": "2.0.1",
     "@opentelemetry/sdk-trace-base": "2.0.1",
-    "@opentelemetry/sdk-trace-node": "2.0.1"
+    "@opentelemetry/sdk-trace-node": "2.0.1",
+    "wrangler": "catalog:"
   },
   "devDependencies": {},
   "files": [
@@ -33,7 +36,8 @@
     "access": "public",
     "exports": {
       "./node": "./dist/node/mod.js",
-      "./node-vitest": "./dist/node-vitest/mod.js"
+      "./node-vitest": "./dist/node-vitest/mod.js",
+      "./wrangler": "./dist/wrangler/mod.js"
     }
   },
   "scripts": {

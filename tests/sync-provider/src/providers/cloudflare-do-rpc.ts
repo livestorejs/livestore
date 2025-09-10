@@ -12,7 +12,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
