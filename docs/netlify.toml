@@ -1,0 +1,9 @@
+# Netlify configuration for docs deployment
+# This file configures Netlify's Image CDN to allow remote image transformations
+# from the hosted asset service used for example screenshots
+
+[images]
+# Allow image transformations from gitbucket.schickling.dev
+# This is needed for example screenshots to display properly in production
+# The domain is double-escaped as required by Netlify's regex configuration
+remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]

@@ -179,7 +179,6 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       // After ready, keep draining stdout in background to prevent buffer fill / EPIPE
       yield* stdout.pipe(Stream.runDrain, Effect.forkScoped)
-
       const url = `http://localhost:${port}`
 
       // Use longer timeout in CI environments to account for slower startup times
@@ -270,4 +269,3 @@ const verifyHttpConnectivity = ({
       Effect.withSpan('verifyHttpConnectivity'),
     )
   })
-

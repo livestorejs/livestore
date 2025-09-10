@@ -1,9 +1,10 @@
 {
   "name": "@livestore/utils",
-  "version": "0.4.0-dev.5",
+  "version": "0.4.0-dev.7",
   "type": "module",
   "sideEffects": [
-    "./src/global.ts"
+    "./src/global.ts",
+    "./dist/global.js"
   ],
   "exports": {
     ".": "./src/mod.ts",
@@ -59,7 +60,7 @@
     "@effect/cli": "^0.69.2",
     "@effect/cluster": "^0.48.2",
     "@effect/experimental": "^0.54.6",
-    "@effect/opentelemetry": "catalog:",
+    "@effect/opentelemetry": "^0.56.4",
     "@effect/platform": "^0.90.6",
     "@effect/platform-browser": "^0.70.0",
     "@effect/platform-bun": "^0.79.0",
@@ -69,15 +70,12 @@
     "@effect/rpc": "^0.69.1",
     "@effect/sql": "^0.44.2",
     "@effect/typeclass": "^0.36.0",
-    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.1",
-    "effect": "catalog:"
+    "effect": "^3.17.9"
   },
   "publishConfig": {
     "access": "public",
-    "sideEffects": [
-      "./dist/global.js"
-    ],
     "exports": {
       ".": {
         "types": "./dist/mod.d.ts",

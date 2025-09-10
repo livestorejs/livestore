@@ -205,4 +205,16 @@ To make this app more production-ready, we might want to do the following:
 - Introduce a proper user invite process
 - Introduce access levels (e.g. read-only, read-write)
 - Introduce end-to-end encryption
-- If each todo item has a lot of data (e.g. think of a GitHub/Linear issue with lots of details), it might make sense to split up each todo item into its own store.
+
+### Individual todo stores for complex data
+
+If each todo item has a lot of data (e.g. think of a GitHub/Linear issue with lots of details), it might make sense to split up each todo item into its own store.
+
+This would create **3 store types** instead of 2:
+- **User stores** (one per user) - unchanged  
+- **Workspace stores** (one per workspace) - only basic todo metadata
+- **Todo stores** (one per todo item) - rich todo data
+
+Your app would then have **N + M + K stores** total (N workspaces + M users + K todo items).
+
+This pattern improves performance by only loading detailed todo data when specifically viewing that item, and prevents large todos from slowing down workspace syncing.

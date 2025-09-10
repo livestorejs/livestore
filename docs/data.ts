@@ -4,6 +4,7 @@ import { liveStoreVersion } from '@livestore/common'
 import { isNonEmptyString } from '@livestore/utils'
 
 export const officeHours = [
+  'https://www.youtube.com/embed/X2Ia7vc-190', // 4
   'https://www.youtube.com/embed/_VDSqi3k-gE', // 3
   'https://www.youtube.com/embed/MenhU6n0r5c', // 2
   'https://www.youtube.com/embed/2GYKgI1GU8k', // 1
@@ -20,5 +21,6 @@ export const IS_MAIN_BRANCH = getBranchName() === 'main'
 
 export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {
   const hashSuffix = `#${getBranchName()}`
-  return `${approach} tiged github:livestorejs/livestore/examples/${example}${hashSuffix} livestore-app`
+  // The quotes around the github URI are necessary for certain shells (e.g. zsh) to parse correctly
+  return `${approach} tiged "github:livestorejs/livestore/examples/${example}${hashSuffix}" livestore-app`
 }

@@ -3,7 +3,7 @@ import './thread-polyfill.ts'
 import * as ChildProcess from 'node:child_process'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
-import { Duration, Effect, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
+import { Duration, Effect, FetchHttpClient, Layer, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
@@ -25,6 +25,7 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         makeFileLogger('runner', { testContext }),
         WranglerDevServerService.Default({ cwd: `${import.meta.dirname}/fixtures` }).pipe(
           Layer.provide(PlatformNode.NodeContext.layer),
+          Layer.provide(FetchHttpClient.layer),
         ),
       ),
   })

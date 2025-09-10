@@ -10,23 +10,33 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false,
     "includes": [
-      "**",
-      "!**/dist",
-      "!**/.wrangler",
-      "!**/node_modules",
-      "!**/tmp",
-      "!**/.output",
-      "!**/.vercel",
-      "!**/.netlify",
-      "!**/.astro",
-      "!**/.nitro",
-      "!**/.tanstack",
-      "!**/.direnv",
-      "!**/packages/@livestore/wa-sqlite",
-      "!**/playwright-report",
-      "!**/test-results"
+      "packages/**",
+      "!packages/@livestore/wa-sqlite",
+      "examples/**",
+      "docs/**",
+      "!docs/**/.astro",
+      "tests/**",
+      "scripts/**",
+      "contributor-docs/**",
+      "*.{json,jsonc,js,ts,md}"
+    ],
+    "ignoreUnknown": true,
+    "experimentalScannerIgnores": [
+      "node_modules",
+      "dist",
+      ".wrangler",
+      ".vercel",
+      ".netlify",
+      ".astro",
+      ".nitro",
+      ".tanstack",
+      ".direnv",
+      "playwright-report",
+      "test-results",
+      "nix",
+      "wip",
+      "patches"
     ]
   },
   "formatter": {

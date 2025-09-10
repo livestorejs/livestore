@@ -17,6 +17,7 @@
     { "path": "./packages/@livestore/adapter-node" },
     { "path": "./packages/@livestore/adapter-web" },
     { "path": "./packages/@livestore/common" },
+    { "path": "./packages/@livestore/common-cf" },
     { "path": "./packages/@livestore/devtools-expo" },
     { "path": "./packages/@livestore/devtools-web-common" },
     { "path": "./packages/@livestore/effect-playwright" },

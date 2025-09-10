@@ -1,9 +1,10 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.4.0-dev.5",
+  "version": "0.4.0-dev.7",
   "type": "module",
   "sideEffects": [
-    "./src/node-vitest/global.ts"
+    "./src/node-vitest/global.ts",
+    "./dist/node-vitest/global.js"
   ],
   "exports": {
     "./node": "./src/node/mod.ts",
@@ -30,9 +31,6 @@
   "peerDependencies": {},
   "publishConfig": {
     "access": "public",
-    "sideEffects": [
-      "./dist/node-vitest/global.js"
-    ],
     "exports": {
       "./node": "./dist/node/mod.js",
       "./node-vitest": "./dist/node-vitest/mod.js"

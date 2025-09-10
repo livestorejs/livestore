@@ -33,3 +33,11 @@ No, LiveStore is designed to be self-hosted or be used with a 3rd party sync bac
 Not currently. LiveStore is built around the idea of event-sourcing which separates reads and writes. This means LiveStore isn't syncing your database directly but only the events that are used to materialize the database making sure it's kept in sync across clients.
 
 However, we might provide support for this in the future depending on demand.
+
+### What's the difference between clientId, sessionId, and userId?
+
+- **sessionId**: Identifies a single LiveStore instance within a client (e.g., a browser tab). Sessions can persist (e.g., across tab reloads in web).
+- **clientId**: A randomly generated identifier managed by LiveStore that identifies a client instance. Each client has its own unique clientId and can have one or multiple sessions.
+- **userId**: Not a LiveStore concept. User identity must be handled at the application level through your events and application logic.
+
+A single user might have multiple clients (e.g., using different browsers or devices), each with its own clientId. User identification should be modeled within your application domain.

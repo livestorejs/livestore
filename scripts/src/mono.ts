@@ -5,38 +5,17 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
+import { debugCommand } from './commands/debug.ts'
+import { lintCommand } from './commands/lint.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
-import { hasParentGitRepo } from './shared/misc.ts'
 import { deployToNetlify } from './shared/netlify.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
-
-const lintCommand = Cli.Command.make(
-  'lint',
-  { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
-  Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix --unsafe' : ''
-    yield* cmd(`biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, { shell: true })
-    if (fix) {
-      yield* cmd('syncpack fix-mismatches', { cwd })
-      yield* cmd('syncpack format', { cwd })
-
-      if ((yield* hasParentGitRepo) === false) {
-        yield* cmd('pnpm install --fix-lockfile', { cwd })
-      }
-    }
-
-    yield* cmd('syncpack lint', { cwd })
-
-    // Shell needed for wildcards
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { cwd, shell: true })
-  }),
-)
 
 const docsBuildCommand = Cli.Command.make(
   'build',
@@ -169,9 +148,6 @@ const tsCommand = Cli.Command.make(
       )
     }
 
-    // Sync/generate Astro types before TS build
-    yield* cmd('pnpm astro sync', { cwd: `${process.env.WORKSPACE_ROOT}/docs` })
-
     if (watch) {
       yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
     } else {
@@ -266,6 +242,7 @@ const command = Cli.Command.make('mono').pipe(
     docsCommand,
     releaseCommand,
     updateDepsCommand,
+    debugCommand,
   ]),
 )
 

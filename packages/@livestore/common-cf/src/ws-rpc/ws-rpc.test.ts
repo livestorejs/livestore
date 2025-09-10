@@ -1,4 +1,14 @@
-import { Chunk, Effect, Layer, Option, RpcClient, RpcSerialization, Socket, Stream } from '@livestore/utils/effect'
+import {
+  Chunk,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Option,
+  RpcClient,
+  RpcSerialization,
+  Socket,
+  Stream,
+} from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -12,7 +22,7 @@ const withWranglerTest = Vitest.makeWithTestCtx({
   makeLayer: () =>
     WranglerDevServerService.Default({
       cwd: `${import.meta.dirname}/test-fixtures`,
-    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+    }).pipe(Layer.provide(PlatformNode.NodeContext.layer), Layer.provide(FetchHttpClient.layer)),
 })
 
 const ProtocolLive = Layer.suspend(() =>
