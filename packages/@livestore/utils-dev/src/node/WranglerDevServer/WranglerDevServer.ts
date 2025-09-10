@@ -72,7 +72,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
 
       // Start wrangler process using Effect Command
-      const process = yield* Command.make(
+      const wranglerProcess = yield* Command.make(
         'bunx',
         'wrangler',
         'dev',
@@ -96,20 +96,23 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         Effect.withSpan('WranglerDevServerService:startProcess'),
       )
 
+      // Always drain stderr to avoid backpressure; optionally log
       if (showLogs) {
-        yield* process.stderr.pipe(
+        yield* wranglerProcess.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.tapLogWithLabel('wrangler:stderr'),
           Stream.runDrain,
           Effect.forkScoped,
         )
+      } else {
+        yield* wranglerProcess.stderr.pipe(Stream.runDrain, Effect.forkScoped)
       }
 
-      const processId = process.pid
+      const processId = wranglerProcess.pid
 
       // We need to keep the `stdout` stream open, as we drain it in the waitForReady function
       // Otherwise we'll get a EPIPE error
-      const stdout = yield* Stream.broadcastDynamic(process.stdout, 100)
+      const stdout = yield* Stream.broadcastDynamic(wranglerProcess.stdout, 100)
 
       // Register cleanup finalizer with intelligent timeout handling
       yield* Effect.addFinalizer((exit) =>
@@ -121,7 +124,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
           // yield* Effect.logDebug(`Cleaning up wrangler process ${processId}, interrupted: ${isInterrupted}`)
 
           // Check if process is still running
-          const isRunning = yield* process.isRunning
+          const isRunning = yield* wranglerProcess.isRunning
 
           if (isRunning) {
             // Use our enhanced process tree cleanup
@@ -149,7 +152,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             )
 
             // Also kill the command process handle
-            yield* process.kill()
+            yield* wranglerProcess.kill()
           } else if (showLogs) {
             yield* Effect.logDebug(`Process ${processId} already terminated`)
           }
@@ -161,6 +164,9 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       // Wait for server to be ready
       yield* waitForReady({ stdout, showLogs })
+
+      // After ready, keep draining stdout in background to prevent buffer fill / EPIPE
+      yield* stdout.pipe(Stream.runDrain, Effect.forkScoped)
 
       if (showLogs) {
         yield* Effect.logDebug(`Wrangler dev server ready on port ${port}`)

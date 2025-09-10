@@ -5,6 +5,8 @@ import { shouldNeverHappen, sluggify } from '@livestore/utils'
 import {
   Effect,
   FetchHttpClient,
+  HttpClient,
+  HttpClientRequest,
   HttpRouter,
   Layer,
   Logger,
@@ -118,6 +120,12 @@ export const makeRpcClient = (threadName: string) => {
 
       const ProtocolLive = RpcClient.layerProtocolHttp({
         url: `${baseUrl}/rpc`,
+        // Avoid HTTP keep-alive to prevent lingering idle sockets in tests
+        // This ensures the logger server can shut down cleanly without waiting
+        // for client idle connections to time out.
+        transformClient: HttpClient.mapRequest((request) =>
+          request.pipe(HttpClientRequest.setHeader('connection', 'close')),
+        ),
       }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
 
       const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
