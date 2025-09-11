@@ -223,6 +223,17 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
+    // Warning: we need to build the layer here eagerly to tie it to the scope
+    const childProcessWorkerContext = yield* Layer.build(
+      ChildProcessWorker.layer(() =>
+        ChildProcess.fork(
+          new URL('./client-node-worker.ts', import.meta.url),
+          // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
+          [clientId],
+        ),
+      ),
+    )
+
     const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
@@ -230,15 +241,7 @@ const makeWorker = ({
       initialMessage: () =>
         WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
     }).pipe(
-      Effect.provide(
-        ChildProcessWorker.layer(() =>
-          ChildProcess.fork(
-            new URL('./client-node-worker.ts', import.meta.url),
-            // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
-            [clientId],
-          ),
-        ),
-      ),
+      Effect.provide(childProcessWorkerContext),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
     )

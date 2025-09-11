@@ -15,6 +15,15 @@ import * as Scope from 'effect/Scope'
 
 // Parent death monitoring setup
 let parentDeathDetectionEnabled = false
+let parentDeathTimer: NodeJS.Timeout | null = null
+
+const stopParentDeathMonitoring = () => {
+  parentDeathDetectionEnabled = false
+  if (parentDeathTimer) {
+    clearTimeout(parentDeathTimer)
+    parentDeathTimer = null
+  }
+}
 
 const setupParentDeathMonitoring = (parentPid: number) => {
   if (parentDeathDetectionEnabled) return
@@ -25,12 +34,13 @@ const setupParentDeathMonitoring = (parentPid: number) => {
 
   // Check if parent is still alive every 2 seconds (more conservative)
   const checkParentAlive = () => {
+    if (!parentDeathDetectionEnabled) return
     try {
       // Send signal 0 to check if process exists (doesn't actually send signal)
       process.kill(parentPid, 0)
       // If we reach here, parent is still alive, reset failure counter and check again later
       consecutiveFailures = 0
-      setTimeout(checkParentAlive, 2000)
+      parentDeathTimer = setTimeout(checkParentAlive, 2000)
     } catch {
       consecutiveFailures++
       console.warn(`[Worker ${process.pid}] Parent check failed (${consecutiveFailures}/${maxFailures})`)
@@ -41,13 +51,13 @@ const setupParentDeathMonitoring = (parentPid: number) => {
         process.exit(0)
       } else {
         // Try again sooner on failure
-        setTimeout(checkParentAlive, 1000)
+        parentDeathTimer = setTimeout(checkParentAlive, 1000)
       }
     }
   }
 
   // Start monitoring after a longer initial delay to let things settle
-  setTimeout(checkParentAlive, 5000)
+  parentDeathTimer = setTimeout(checkParentAlive, 5000)
 }
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
@@ -101,6 +111,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
                 FiberSet.unsafeAdd(fiberSet, fiber)
               }
             } else {
+              // Graceful shutdown requested by parent: stop monitoring and close port
+              stopParentDeathMonitoring()
               Deferred.unsafeDone(closeLatch, Exit.void)
               port.close()
             }
