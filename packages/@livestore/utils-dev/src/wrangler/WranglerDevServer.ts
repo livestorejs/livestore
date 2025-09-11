@@ -87,15 +87,19 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         }),
       )
 
-      yield* Effect.addFinalizer((exit) =>
-        Effect.tryPromise(async () => {
-          if (exit._tag === 'Failure') {
-            console.error('Closing wrangler dev server on failure', exit.cause)
-          }
-          await devServer.stop()
-          // TODO investigate whether we need to wait until exit (see workers-sdk repo/talk to Cloudflare team)
-          // await devServer.waitUntilExit()
-        }).pipe(
+      yield* Effect.addFinalizer(
+        Effect.fn(
+          function* (exit) {
+            if (exit._tag === 'Failure') {
+              yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
+            }
+
+            yield* Effect.tryPromise(async () => {
+              await devServer.stop()
+              // TODO investigate whether we need to wait until exit (see workers-sdk repo/talk to Cloudflare team)
+              // await devServer.waitUntilExit()
+            })
+          },
           Effect.timeout('5 seconds'),
           Effect.orDie,
           Effect.tapCauseLogPretty,

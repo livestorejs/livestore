@@ -101,11 +101,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           commitBatchSize: Schema.Literal(1),
           leaderPushBatchSize: Schema.Literal(2),
           simulationParams: Schema.Struct({
+            // Keep values within allowed 0..15 range to avoid parse errors
             pull: Schema.Struct({
               '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
               '2_before_leader_push_queue_clear': Schema.Literal(10),
               '3_before_rebase_rollback': Schema.Literal(0),
-              '4_before_leader_push_queue_offer': Schema.Literal(20),
+              '4_before_leader_push_queue_offer': Schema.Literal(15),
               '5_before_leader_push_fiber_run': Schema.Literal(0),
             }),
           }),

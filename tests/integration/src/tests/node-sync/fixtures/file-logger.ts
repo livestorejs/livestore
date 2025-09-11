@@ -63,7 +63,7 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
           const serverPort = yield* getFreePort
           process.env.TEST_RUN_ID = testRunId
           process.env.LOGGER_SERVER_PORT = String(serverPort)
-          return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+          return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId, serverPort }))
         }),
       )
     } else {
@@ -71,7 +71,7 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
     }
   })
 
-export const RpcLogger = (testRunId: string, serverPort: number) =>
+export const RpcLogger = ({ testRunId, serverPort }: { testRunId: string; serverPort: number }) =>
   Effect.gen(function* () {
     const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
     const logFilePath = path.join(workspaceRoot, 'tests', 'integration', 'tmp', 'logs', `${testRunId}.log`)
