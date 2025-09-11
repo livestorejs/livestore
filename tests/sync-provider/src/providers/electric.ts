@@ -39,13 +39,22 @@ export const prepare: Effect.Effect<
 export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
-    const { endpointPort } = yield* startElectricApi
+    const { endpointPort, postgresPort } = yield* startElectricApi
 
     return {
       makeProvider: ElectricSync.makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
       push: () => Effect.log('TODO implement push'),
+      getDbForTesting: (storeId: string) => {
+        const db = makeDb({ storeId, postgresPort })
+        return {
+          migrate: db.migrate,
+          disconnect: db.disconnect,
+          sql: db.sql,
+          tableName: db.tableName,
+        }
+      },
     }
   }),
 ).pipe(
@@ -87,7 +96,7 @@ const startElectricApi = Effect.gen(function* () {
     Effect.forkScoped,
   )
 
-  return { endpointPort }
+  return { endpointPort, postgresPort }
 }).pipe(Effect.withSpan('electric-provider:startElectricApi'))
 
 const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; postgresPort: number }) => {
@@ -201,5 +210,5 @@ const makeDb = ({ storeId, postgresPort }: { storeId: string; postgresPort: numb
 
   const disconnect = Effect.tryPromise(() => sql.end()).pipe(Effect.withSpan('electric-provider:disconnect'))
 
-  return { migrate, createEvents, disconnect }
+  return { migrate, createEvents, disconnect, sql, tableName }
 }

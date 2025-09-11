@@ -10,6 +10,13 @@ export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
     turnBackendOffline: Effect.Effect<void>
     turnBackendOnline: Effect.Effect<void>
     push: (events: LiveStoreEvent.AnyEncodedGlobal[]) => Effect.Effect<void>
+    // Provider-specific testing utilities (optional)
+    getDbForTesting?: (storeId: string) => {
+      migrate: Effect.Effect<void, unknown>
+      disconnect: Effect.Effect<void, unknown>
+      sql: any
+      tableName: string
+    }
   }
 >() {}
 
