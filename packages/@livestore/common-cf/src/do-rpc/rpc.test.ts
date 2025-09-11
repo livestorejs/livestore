@@ -23,8 +23,6 @@ const withWranglerTest = Vitest.makeWithTestCtx({
   makeLayer: () =>
     WranglerDevServerService.Default({
       cwd: `${import.meta.dirname}/test-fixtures`,
-      // TODO remove showLogs again after debugging CI
-      showLogs: true,
     }).pipe(
       Layer.provide(
         Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),

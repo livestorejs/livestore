@@ -39,8 +39,6 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
           connectTimeout: Duration.seconds(45),
-          // TODO remove showLogs again after debugging CI
-          showLogs: true,
         }).pipe(
           Layer.provide(
             Layer.mergeAll(

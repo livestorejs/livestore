@@ -80,7 +80,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
           port: preferredPort,
           inspectorPort: args.inspectorPort ?? 0,
           persistTo: path.join(args.cwd, '.wrangler/state'),
-          logLevel: showLogs ? 'debug' : 'none',
+          logLevel: showLogs ? 'info' : 'none',
           experimental: {
             disableExperimentalWarning: true,
           },
