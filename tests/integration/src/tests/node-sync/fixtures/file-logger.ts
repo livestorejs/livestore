@@ -15,7 +15,7 @@ import {
   RpcServer,
   Schema,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { PlatformNode, getFreePort } from '@livestore/utils/node'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
@@ -58,12 +58,16 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
       const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
       const testRunId = sluggify(spanName)
 
-      process.env.TEST_RUN_ID = testRunId
+      return Layer.unwrapScoped(
+        Effect.gen(function* () {
+          const port = yield* getFreePort
 
-      const serverPort = Math.floor(Math.random() * 10_000) + 50_000
-      process.env.LOGGER_SERVER_PORT = String(serverPort)
+          process.env.TEST_RUN_ID = testRunId
+          process.env.LOGGER_SERVER_PORT = String(port)
 
-      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+          return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, port))
+        }),
+      )
     } else {
       return makeRpcClient(threadName)
     }

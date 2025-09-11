@@ -186,7 +186,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 })
 
-  const makeWorker = ({
+const makeWorker = ({
   clientId,
   storeId,
   adapterType,
@@ -198,7 +198,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   adapterType: typeof WorkerSchema.AdapterType.Type
   storageType: typeof WorkerSchema.StorageType.Type
   params?: WorkerSchema.Params
-  }) =>
+}) =>
   Effect.gen(function* () {
     const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
