@@ -100,6 +100,14 @@ const startElectricApi = Effect.gen(function* () {
     // forwardLogs: true,
   })
 
+  // Ensure resources are cleaned up on scope exit (containers and networks)
+  yield* Effect.addFinalizer(() =>
+    dockerCompose.down({ env: { COMPOSE_PROJECT_NAME: projectName }, volumes: true }).pipe(
+      Effect.catchAll(() => Effect.void),
+      Effect.orDie,
+    ),
+  )
+
   // Get a free port for our HTTP API server
   const endpointPort = yield* getFreePort
 
