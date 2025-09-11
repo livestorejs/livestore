@@ -70,6 +70,17 @@ const config = {
       packages: ['!livestore-example-**'],
       pinVersion: 'catalog:',
     },
+    {
+      label: 'ignore peer dependencies from version normalization',
+      // Peer dependencies shouldn't influence version normalization of regular dependencies.
+      // For example, if a package has peerDependencies: { "react": "^19.0.0" }, this shouldn't
+      // force all other React dependencies to use ^19.0.0 format. Peer deps are still
+      // subject to semver range enforcement (they must use ^ ranges), but they don't
+      // participate in the "Default Version Group" normalization process.
+      dependencyTypes: ['peer'],
+      packages: ['**'],
+      isIgnored: true,
+    },
   ],
   semverGroups: [
     {

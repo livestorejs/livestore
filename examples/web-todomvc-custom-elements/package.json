@@ -8,7 +8,7 @@
     "@livestore/livestore": "0.4.0-dev.7",
     "@livestore/peer-deps": "0.4.0-dev.7",
     "@livestore/wa-sqlite": "0.4.0-dev.7",
-    "react": "^19.0.0",
+    "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3"
   },
