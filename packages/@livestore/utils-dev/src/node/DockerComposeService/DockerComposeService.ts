@@ -13,7 +13,7 @@ import {
 
 export class DockerComposeError extends Schema.TaggedError<DockerComposeError>()('DockerComposeError', {
   cause: Schema.Defect,
-  message: Schema.String,
+  note: Schema.String,
 }) {}
 
 export interface DockerComposeArgs {
@@ -67,7 +67,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               : Effect.fail(
                   new DockerComposeError({
                     cause: new Error(`Docker compose pull failed with exit code ${exitCode}`),
-                    message: `Docker compose pull failed with exit code ${exitCode}`,
+                    note: `Docker compose pull failed with exit code ${exitCode}`,
                   }),
                 ),
           ),
@@ -94,7 +94,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               Effect.fail(
                 new DockerComposeError({
                   cause,
-                  message: `Failed to start Docker Compose services in ${cwd}`,
+                  note: `Failed to start Docker Compose services in ${cwd}`,
                 }),
               ),
             ),
@@ -109,7 +109,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
                 : Effect.fail(
                     new DockerComposeError({
                       cause: new Error(`Docker compose exited with code ${exitCode}`),
-                      message: `Docker Compose failed to start with exit code ${exitCode}`,
+                      note: `Docker Compose failed to start with exit code ${exitCode}`,
                     }),
                   ),
             ),
@@ -140,7 +140,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               : Effect.fail(
                   new DockerComposeError({
                     cause: new Error(`Docker compose stop exited with code ${exitCode}`),
-                    message: `Failed to stop Docker Compose services`,
+                    note: `Failed to stop Docker Compose services`,
                   }),
                 ),
           ),
@@ -167,7 +167,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               Effect.fail(
                 new DockerComposeError({
                   cause,
-                  message: `Failed to read Docker Compose logs in ${cwd}`,
+                  note: `Failed to read Docker Compose logs in ${cwd}`,
                 }),
               ),
             ),
@@ -181,7 +181,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               (cause) =>
                 new DockerComposeError({
                   cause,
-                  message: `Error reading Docker Compose logs in ${cwd}`,
+                  note: `Error reading Docker Compose logs in ${cwd}`,
                 }),
             ),
           )
@@ -219,7 +219,7 @@ const performHealthCheck = ({
         Effect.fail(
           new DockerComposeError({
             cause: new Error('Health check timeout'),
-            message: `Health check failed for ${url} after ${Duration.toMillis(timeout)}ms`,
+            note: `Health check failed for ${url} after ${Duration.toMillis(timeout)}ms`,
           }),
         ),
       ),
