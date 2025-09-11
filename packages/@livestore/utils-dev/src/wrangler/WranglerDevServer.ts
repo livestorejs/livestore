@@ -1,7 +1,7 @@
 import * as path from 'node:path'
 import * as Toml from '@iarna/toml'
 import { IS_CI } from '@livestore/utils'
-import { Duration, Effect, FileSystem, HttpClient, Schedule, Schema } from '@livestore/utils/effect'
+import { Cause, Duration, Effect, FileSystem, HttpClient, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import * as wrangler from 'wrangler'
 
@@ -90,7 +90,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       yield* Effect.addFinalizer(
         Effect.fn(
           function* (exit) {
-            if (exit._tag === 'Failure') {
+            if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
               yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
             }
 
