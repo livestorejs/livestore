@@ -2,7 +2,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
-import { Schema } from '@livestore/livestore'
+import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
 import {
   type CommandExecutor,
@@ -78,17 +78,22 @@ export const layer: SyncProviderLayer = Layer.scoped(
 const startElectricApi = Effect.gen(function* () {
   const electricPort = yield* getFreePort
   const postgresPort = yield* getFreePort
+  // Use a unique Docker Compose project name per test runtime to avoid collisions
+  const projectName = process.env.COMPOSE_PROJECT_NAME ?? `ls_electric_${nanoid().toLowerCase()}`
 
   // Start Docker Compose services (postgres + electric)
   const healthCheckUrl = `http://${dockerHostName}:${electricPort}/v1/health`
   yield* Effect.logDebug('Health check URL:', healthCheckUrl)
   yield* Effect.logDebug('Electric port:', electricPort)
   yield* Effect.logDebug('Postgres port:', postgresPort)
+  yield* Effect.logDebug('Compose project name:', projectName)
 
   const dockerCompose = yield* DockerComposeService
   yield* dockerCompose.start({
     healthCheck: { url: healthCheckUrl },
     env: {
+      // Ensure each test runtime uses its own isolated compose project
+      COMPOSE_PROJECT_NAME: projectName,
       ELECTRIC_PORT: electricPort.toString(),
       POSTGRES_PORT: postgresPort.toString(),
     },
