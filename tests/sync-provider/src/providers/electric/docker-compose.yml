@@ -1,5 +1,4 @@
 # https://electric-sql.com/docs/guides/installation#using-docker
-name: "livestore-electric-sync-provider-test"
 
 services:
   postgres:

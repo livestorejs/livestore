@@ -13,7 +13,7 @@ import {
 
 export class DockerComposeError extends Schema.TaggedError<DockerComposeError>()('DockerComposeError', {
   cause: Schema.Defect,
-  message: Schema.String,
+  note: Schema.String,
 }) {}
 
 export interface DockerComposeArgs {
@@ -43,6 +43,11 @@ export interface DockerComposeOperations {
     options?: StartOptions,
   ) => Effect.Effect<void, DockerComposeError | PlatformError.PlatformError, Scope.Scope>
   readonly stop: Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
+  readonly down: (options?: {
+    readonly env?: Record<string, string>
+    readonly volumes?: boolean
+    readonly removeOrphans?: boolean
+  }) => Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
   readonly logs: (
     options?: LogsOptions,
   ) => Stream.Stream<string, DockerComposeError | PlatformError.PlatformError, Scope.Scope>
@@ -67,7 +72,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               : Effect.fail(
                   new DockerComposeError({
                     cause: new Error(`Docker compose pull failed with exit code ${exitCode}`),
-                    message: `Docker compose pull failed with exit code ${exitCode}`,
+                    note: `Docker compose pull failed with exit code ${exitCode}`,
                   }),
                 ),
           ),
@@ -89,12 +94,14 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           const command = yield* Command.make(baseArgs[0]!, ...baseArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
             Command.env(options.env ?? {}),
+            Command.stderr('inherit'),
+            Command.stdout('inherit'),
             Command.start,
             Effect.catchAll((cause) =>
               Effect.fail(
                 new DockerComposeError({
                   cause,
-                  message: `Failed to start Docker Compose services in ${cwd}`,
+                  note: `Failed to start Docker Compose services in ${cwd}`,
                 }),
               ),
             ),
@@ -103,13 +110,13 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
 
           // Wait for command completion
           yield* command.exitCode.pipe(
-            Effect.flatMap((exitCode: number) =>
+            Effect.flatMap((exitCode) =>
               exitCode === 0
                 ? Effect.void
                 : Effect.fail(
                     new DockerComposeError({
                       cause: new Error(`Docker compose exited with code ${exitCode}`),
-                      message: `Docker Compose failed to start with exit code ${exitCode}`,
+                      note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${JSON.stringify(options.env)}`,
                     }),
                   ),
             ),
@@ -140,7 +147,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               : Effect.fail(
                   new DockerComposeError({
                     cause: new Error(`Docker compose stop exited with code ${exitCode}`),
-                    message: `Failed to stop Docker Compose services`,
+                    note: `Failed to stop Docker Compose services`,
                   }),
                 ),
           ),
@@ -167,7 +174,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               Effect.fail(
                 new DockerComposeError({
                   cause,
-                  message: `Failed to read Docker Compose logs in ${cwd}`,
+                  note: `Failed to read Docker Compose logs in ${cwd}`,
                 }),
               ),
             ),
@@ -181,13 +188,46 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
               (cause) =>
                 new DockerComposeError({
                   cause,
-                  message: `Error reading Docker Compose logs in ${cwd}`,
+                  note: `Error reading Docker Compose logs in ${cwd}`,
                 }),
             ),
           )
         }).pipe(Stream.unwrapScoped)
 
-      return { pull, start, stop, logs }
+      const down = (options?: {
+        readonly env?: Record<string, string>
+        readonly volumes?: boolean
+        readonly removeOrphans?: boolean
+      }) =>
+        Effect.gen(function* () {
+          yield* Effect.log(`Tearing down Docker Compose services in ${cwd}`)
+
+          const baseArgs = ['docker', 'compose', 'down']
+          if (options?.volumes) baseArgs.push('-v')
+          if (options?.removeOrphans) baseArgs.push('--remove-orphans')
+          if (serviceName) baseArgs.push(serviceName)
+
+          yield* Command.make(baseArgs[0]!, ...baseArgs.slice(1)).pipe(
+            Command.workingDirectory(cwd),
+            Command.env(options?.env ?? {}),
+            Command.exitCode,
+            Effect.flatMap((exitCode: number) =>
+              exitCode === 0
+                ? Effect.void
+                : Effect.fail(
+                    new DockerComposeError({
+                      cause: new Error(`Docker compose down exited with code ${exitCode}`),
+                      note: `Failed to tear down Docker Compose services`,
+                    }),
+                  ),
+            ),
+            Effect.provide(commandExecutorContext),
+          )
+
+          yield* Effect.log(`Docker Compose services torn down successfully`)
+        }).pipe(Effect.withSpan('downDockerCompose'))
+
+      return { pull, start, stop, down, logs }
     }),
 }) {}
 
@@ -219,7 +259,7 @@ const performHealthCheck = ({
         Effect.fail(
           new DockerComposeError({
             cause: new Error('Health check timeout'),
-            message: `Health check failed for ${url} after ${Duration.toMillis(timeout)}ms`,
+            note: `Health check failed for ${url} after ${Duration.toMillis(timeout)}ms`,
           }),
         ),
       ),

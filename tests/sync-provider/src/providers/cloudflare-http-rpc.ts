@@ -25,7 +25,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
       }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-      push: () => Effect.log('TODO implement push'),
+      providerSpecific: {},
     }
   }),
 ).pipe(

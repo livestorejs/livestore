@@ -14,6 +14,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
+  ReadonlyArray,
   Schedule,
   Schema,
   Stream,
@@ -21,6 +22,11 @@ import {
 } from '@livestore/utils/effect'
 
 import * as ApiSchema from './api-schema.ts'
+
+export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>()('InvalidOperationError', {
+  operation: Schema.Union(Schema.Literal('delete'), Schema.Literal('update')),
+  message: Schema.String,
+}) {}
 
 export * as ApiSchema from './api-schema.ts'
 export * from './make-electric-url.ts'
@@ -72,27 +78,36 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
-}).pipe(
-  Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
-    decode: (_) => _,
-    encode: (_) => _,
-  }),
-)
+})
+  .pipe(
+    Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
+      decode: (_) => _,
+      encode: (_) => _,
+    }),
+  )
+  .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
-const ResponseItem = Schema.Struct({
+const ResponseItemInsert = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(LiveStoreEventGlobalFromStringRecord),
-  headers: Schema.Union(
-    Schema.Struct({
-      operation: Schema.Union(Schema.Literal('insert'), Schema.Literal('update'), Schema.Literal('delete')),
-      relation: Schema.Array(Schema.String),
-    }),
-    Schema.Struct({
-      control: Schema.String,
-    }),
-  ),
-})
+  value: LiveStoreEventGlobalFromStringRecord,
+  headers: Schema.Struct({ operation: Schema.Literal('insert'), relation: Schema.Array(Schema.String) }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemInsert' })
+
+const ResponseItemInvalid = Schema.Struct({
+  /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
+  key: Schema.optional(Schema.String),
+  value: Schema.Any,
+  headers: Schema.Struct({ operation: Schema.Literal('update', 'delete'), relation: Schema.Array(Schema.String) }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemInvalid' })
+
+const ResponseItemControl = Schema.Struct({
+  key: Schema.optional(Schema.String),
+  value: Schema.optional(Schema.Any),
+  headers: Schema.Struct({ control: Schema.String }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemControl' })
+
+const ResponseItem = Schema.Union(ResponseItemInsert, ResponseItemInvalid, ResponseItemControl)
 
 const ResponseHeaders = Schema.Struct({
   'electric-handle': Schema.String,
@@ -100,8 +115,6 @@ const ResponseHeaders = Schema.Struct({
   /** e.g. 26799576_0 */
   'electric-offset': Schema.String,
 })
-
-export const syncBackend = {} as any
 
 export const syncBackendOptions = <TOptions extends SyncBackendOptions>(options: TOptions) => options
 
@@ -146,11 +159,7 @@ export const SyncMetadata = Schema.Struct({
   handle: Schema.String,
 })
 
-type SyncMetadata = {
-  offset: string
-  // TODO move this into some kind of "global" sync metadata as it's the same for each event
-  handle: string
-}
+export type SyncMetadata = typeof SyncMetadata.Type
 
 export const makeSyncBackend =
   ({ endpoint, ...options }: SyncBackendOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
@@ -228,16 +237,27 @@ export const makeSyncBackend =
             return Option.some([[], Option.some(nextHandle)] as const)
           }
 
-          const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
+          const allItems = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
             onExcessProperty: 'preserve',
           })(resp)
 
-          const items = body
-            .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
-            .map((item) => ({
-              metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-              eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
-            }))
+          // Check for delete/update operations and throw descriptive error
+          const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
+            Schema.is(ResponseItemInvalid)(item) ? Option.some(item.headers.operation) : Option.none(),
+          )
+
+          if (invalidOperations.length > 0) {
+            const operation = invalidOperations[0]!
+            return yield* new InvalidOperationError({
+              operation,
+              message: `ElectricSQL '${operation}' event received. This results from directly mutating the event log. Append a series of events that produce the desired state instead of mutating the event log.`,
+            })
+          }
+
+          const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
+            metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
+            eventEncoded: item.value as LiveStoreEvent.AnyEncodedGlobal,
+          }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
 
