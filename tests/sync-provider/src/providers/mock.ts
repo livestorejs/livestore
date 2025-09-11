@@ -29,7 +29,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
         }),
       turnBackendOffline: withMock((mock) => mock.disconnect),
       turnBackendOnline: withMock((mock) => mock.connect),
-      push: (events) => withMock((mock) => mock.advance(...events)),
+      providerSpecific: {},
     }
   }),
 ).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
