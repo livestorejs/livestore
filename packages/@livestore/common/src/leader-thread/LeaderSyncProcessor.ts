@@ -649,7 +649,27 @@ const backgroundBackendPulling = ({
 
     const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
-        if (newEvents.length === 0) return
+        if (newEvents.length === 0) {
+          // If the backend returned an empty batch, ensure the backend pushing fiber
+          // is running when we still have pending (non-client) events to push.
+          const currentSyncState = yield* syncStateSref
+          if (currentSyncState === undefined) return shouldNeverHappen('Not initialized')
+
+          const globalPendingEvents = currentSyncState.pending.filter((event) => {
+            const { eventDef } = getEventDef(schema, event.name)
+            return eventDef.options.clientOnly === false
+          })
+
+          if (globalPendingEvents.length > 0) {
+            yield* restartBackendPushing(globalPendingEvents)
+          }
+
+          // Since we closed the localPushesLatch at the top of pull processing,
+          // re-open it when there's nothing to process.
+          yield* localPushesLatch.open
+
+          return
+        }
 
         if (devtoolsLatch !== undefined) {
           yield* devtoolsLatch.await
