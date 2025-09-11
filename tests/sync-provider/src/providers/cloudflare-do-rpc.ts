@@ -29,6 +29,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
       makeProvider: makeProxyDoRpcSync({ port: server.port }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+      providerSpecific: {},
     }
   }),
 ).pipe(

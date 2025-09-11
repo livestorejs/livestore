@@ -8,13 +8,7 @@ export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
     makeProvider: SyncBackend.SyncBackendConstructor<any>
     turnBackendOffline: Effect.Effect<void>
     turnBackendOnline: Effect.Effect<void>
-    // Provider-specific testing utilities (optional)
-    getDbForTesting?: (storeId: string) => {
-      migrate: Effect.Effect<void, unknown>
-      disconnect: Effect.Effect<void, unknown>
-      sql: any
-      tableName: string
-    }
+    providerSpecific: any
   }
 >() {}
 

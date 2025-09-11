@@ -36,6 +36,16 @@ export const prepare: Effect.Effect<
   yield* dockerCompose.pull
 }).pipe(Effect.provide(DockerComposeLive), Effect.withSpan('electric-provider:prepare'))
 
+export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
+  provider.providerSpecific as {
+    getDbForTesting: (storeId: string) => {
+      migrate: Effect.Effect<void, unknown>
+      disconnect: Effect.Effect<void, unknown>
+      sql: any
+      tableName: string
+    }
+  }
+
 export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
@@ -46,14 +56,16 @@ export const layer: SyncProviderLayer = Layer.scoped(
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
       push: () => Effect.log('TODO implement push'),
-      getDbForTesting: (storeId: string) => {
-        const db = makeDb({ storeId, postgresPort })
-        return {
-          migrate: db.migrate,
-          disconnect: db.disconnect,
-          sql: db.sql,
-          tableName: db.tableName,
-        }
+      providerSpecific: {
+        getDbForTesting: (storeId: string) => {
+          const db = makeDb({ storeId, postgresPort })
+          return {
+            migrate: db.migrate,
+            disconnect: db.disconnect,
+            sql: db.sql,
+            tableName: db.tableName,
+          }
+        },
       },
     }
   }),
