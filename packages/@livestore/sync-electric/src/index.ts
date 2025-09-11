@@ -98,11 +98,12 @@ const ResponseItemInvalid = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
   value: Schema.Any,
-  headers: Schema.Struct({ operation: Schema.Literal('update', 'delete'), relation: Schema.Array(Schema.String) }),
+  headers: Schema.Struct({ operation: Schema.Union(Schema.Literal('update'), Schema.Literal('delete')), relation: Schema.Array(Schema.String) }),
 }).annotations({ title: '@livestore/sync-electric:ResponseItemInvalid' })
 
 const ResponseItemControl = Schema.Struct({
   key: Schema.optional(Schema.String),
+  value: Schema.optional(Schema.Any),
   headers: Schema.Struct({ control: Schema.String }),
 }).annotations({ title: '@livestore/sync-electric:ResponseItemControl' })
 
