@@ -104,7 +104,10 @@ export const makeLeaderSyncProcessor = ({
      */
     backendPushBatchSize?: number
   }
-  /** * Whether the sync backend should reactively pull new events from the sync backend */
+  /**
+   * Whether the sync backend should reactively pull new events from the sync backend
+   * When `false`, the sync processor will only do an initial pull
+   */
   livePull: boolean
   testing: {
     delays?: {
@@ -765,6 +768,9 @@ const backgroundBackendPulling = ({
       Stream.runDrain,
       Effect.interruptible,
     )
+
+    // Should only ever happen when livePull is false
+    yield* Effect.logDebug('backend-pulling finished', { livePull })
   }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'))
 
 const backgroundBackendPushing = ({
@@ -837,7 +843,8 @@ const backgroundBackendPushing = ({
             error._tag === 'IsOfflineError' ||
             (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError')
           ) {
-            yield* Effect.logDebug('handled backend-push-error (waiting for pull interrupt)', { error })
+            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
+            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
             return yield* Effect.never
           }
 

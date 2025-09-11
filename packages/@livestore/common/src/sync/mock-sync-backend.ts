@@ -41,6 +41,7 @@ export const makeMockSyncBackend = (
 
     const semaphore = yield* Effect.makeSemaphore(1)
 
+    // TODO improve the API and implementation of simulating errors
     const failCounterRef = yield* SubscriptionRef.make(0)
     const failEffectRef = yield* SubscriptionRef.make<
       ((batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => Effect.Effect<never, InvalidPushError>) | undefined

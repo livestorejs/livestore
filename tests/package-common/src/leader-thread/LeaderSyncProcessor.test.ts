@@ -5,6 +5,7 @@ import {
   type LeaderAheadError,
   type MockSyncBackend,
   makeMockSyncBackend,
+  ServerAheadError,
   type SyncState,
   type UnexpectedError,
 } from '@livestore/common'
@@ -21,6 +22,8 @@ import {
   Effect,
   FetchHttpClient,
   Layer,
+  Logger,
+  LogLevel,
   Predicate,
   Queue,
   Schema,
@@ -50,12 +53,16 @@ TODO:
 
 const withTestCtx = (
   args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> & {
+    /** Warning: Setting `livePull` to `false` will lead to some less explored scenarios (e.g. only pulls once on boot) */
     syncOptions?: Partial<SyncOptions>
     captureShutdown?: boolean
   } = {},
 ) =>
   Vitest.makeWithTestCtx({
-    makeLayer: () => Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer),
+    makeLayer: () =>
+      Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
+        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+      ),
     forceOtel: true,
   })
 
@@ -215,6 +222,44 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
+
+  Vitest.scopedLive('simulate ServerAheadError push error', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      // Cause the next push to fail with ServerAheadError so the pushing fiber parks (Effect.never)
+      yield* testContext.mockSyncBackend.failNextPushes(
+        1,
+        () =>
+          new InvalidPushError({
+            cause: new ServerAheadError({
+              minimumExpectedNum: EventSequenceNumber.globalEventSequenceNumber(2),
+              providedNum: EventSequenceNumber.globalEventSequenceNumber(1),
+            }),
+          }),
+      )
+
+      // Enqueue one local event which will attempt a push and hit the simulated error
+      yield* testContext.localPush(events.todoCreated({ id: 'stall', text: 'stall' }))
+
+      // Waiting a bit to make sure we've already attempted to push to the backend
+      // TODO replace this sleep with a an API that allows us to wait until the push was processed by the sync backend
+      yield* Effect.sleep(50)
+
+      // Sync protocol requires that the sync backend emits a new pull chunk alongside the ServerAheadError
+      yield* testContext.mockSyncBackend.advance(
+        testContext
+          .encodeLiveStoreEvent({
+            ...events.todoCreated({ id: '1', text: 't1' }),
+            seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+            parentSeqNum: EventSequenceNumber.ROOT,
+          })
+          .toGlobal(),
+      )
+
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+    }).pipe(withTestCtx()(test)),
+  )
   // - test for filtering out local push queue items with an older rebase generation
   //   this can happen in a scenario like this
   //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)
@@ -283,6 +328,7 @@ class TestContext extends Context.Tag('TestContext')<
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
+    /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     localPush: (
       ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>

@@ -150,6 +150,7 @@ export interface LeaderSyncProcessor {
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
+       * `true` doesn't mean the events have been pushed to the sync backend.
        * @default false
        */
       waitForProcessing?: boolean
