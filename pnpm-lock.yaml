@@ -1653,7 +1653,7 @@ importers:
         specifier: ^0.25.1
         version: 0.25.1(effect@3.17.9)(vitest@3.2.4)
       '@effect/workflow':
-        specifier: 0.9.2
+        specifier: ^0.9.2
         version: 0.9.2(@effect/platform@0.90.6(effect@3.17.9))(@effect/rpc@0.69.1(@effect/platform@0.90.6(effect@3.17.9))(effect@3.17.9))(effect@3.17.9)
       '@opentelemetry/api':
         specifier: 'catalog:'
