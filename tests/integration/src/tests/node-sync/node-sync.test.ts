@@ -186,7 +186,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 })
 
-const makeWorker = ({
+  const makeWorker = ({
   clientId,
   storeId,
   adapterType,
@@ -198,7 +198,7 @@ const makeWorker = ({
   adapterType: typeof WorkerSchema.AdapterType.Type
   storageType: typeof WorkerSchema.StorageType.Type
   params?: WorkerSchema.Params
-}) =>
+  }) =>
   Effect.gen(function* () {
     const server = yield* WranglerDevServerService
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
@@ -218,6 +218,9 @@ const makeWorker = ({
       ),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
+      // Ensure the worker pool and its child process are tied to the test scope
+      // so they are reliably cleaned up at the end of the test.
+      Effect.scoped,
     )
 
     return worker
