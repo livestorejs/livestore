@@ -42,33 +42,6 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<num
   })
 })
 
-/** Creates a new http server with a free port */
-export const makeHttpServer: Effect.Effect<http.Server, UnknownError> = Effect.async<http.Server, UnknownError>(
-  (cb, signal) => {
-    const server = http.createServer()
-
-    signal.addEventListener('abort', () => {
-      server.close()
-    })
-
-    // Listen on port 0 to get an available port
-    server.listen(0, () => {
-      const address = server.address()
-
-      if (address && typeof address === 'object') {
-        server.close(() => cb(Effect.succeed(server)))
-      } else {
-        server.close(() => cb(Effect.fail(new UnknownError({ cause: 'Failed to make http server' }))))
-      }
-    })
-
-    // Error handling in case the server encounters an error
-    server.on('error', (cause) => {
-      server.close(() => cb(Effect.fail(new UnknownError({ cause, payload: 'Failed to make http server' }))))
-    })
-  },
-)
-
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 

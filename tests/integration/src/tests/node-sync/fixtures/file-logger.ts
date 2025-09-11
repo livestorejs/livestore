@@ -1,11 +1,12 @@
 import * as fs from 'node:fs/promises'
-import { createServer } from 'node:http'
+import * as http from 'node:http'
 import path from 'node:path'
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
 import {
   Effect,
   FetchHttpClient,
   HttpRouter,
+  HttpServer,
   Layer,
   Logger,
   Rpc,
@@ -15,7 +16,7 @@ import {
   RpcServer,
   Schema,
 } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { PlatformNode } from '@livestore/utils/node'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
@@ -52,7 +53,10 @@ class LoggerRpcs extends RpcGroup.make(
   }),
 ) {}
 
-export const makeFileLogger = (threadName: string, exposeTestContext?: { testContext: Vitest.TestContext }) =>
+export const makeFileLogger = (
+  threadName: string,
+  exposeTestContext?: { testContext: Vitest.TestContext },
+): Layer.Layer<never> =>
   Layer.suspend(() => {
     if (exposeTestContext !== undefined) {
       const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
@@ -60,18 +64,25 @@ export const makeFileLogger = (threadName: string, exposeTestContext?: { testCon
 
       return Layer.unwrapEffect(
         Effect.gen(function* () {
-          const serverPort = yield* getFreePort
+          yield* HttpServer.addressWith((address) =>
+            Effect.sync(() => {
+              if (address._tag === 'TcpAddress') {
+                process.env.LOGGER_SERVER_PORT = String(address.port)
+              } else {
+                shouldNeverHappen('Expected a TcpAddress', { address })
+              }
+            }),
+          )
           process.env.TEST_RUN_ID = testRunId
-          process.env.LOGGER_SERVER_PORT = String(serverPort)
-          return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId, serverPort }))
+          return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId }))
         }),
-      )
+      ).pipe(Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: 0 })), Layer.orDie)
     } else {
       return makeRpcClient(threadName)
     }
   })
 
-export const RpcLogger = ({ testRunId, serverPort }: { testRunId: string; serverPort: number }) =>
+export const RpcLogger = ({ testRunId }: { testRunId: string }) =>
   Effect.gen(function* () {
     const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
     const logFilePath = path.join(workspaceRoot, 'tests', 'integration', 'tmp', 'logs', `${testRunId}.log`)
@@ -97,12 +108,7 @@ export const RpcLogger = ({ testRunId, serverPort }: { testRunId: string; server
       path: '/rpc',
     }).pipe(Layer.provide(RpcSerialization.layerNdjson))
 
-    // Use the provided port
-    return HttpRouter.Default.serve().pipe(
-      Layer.provide(RpcLayer),
-      Layer.provide(HttpProtocol),
-      Layer.provide(PlatformNode.NodeHttpServer.layer(() => createServer(), { port: serverPort })),
-    )
+    return HttpRouter.Default.serve().pipe(Layer.provide(RpcLayer), Layer.provide(HttpProtocol))
   }).pipe(Layer.unwrapScoped, Layer.orDie)
 
 export const makeRpcClient = (threadName: string) => {
