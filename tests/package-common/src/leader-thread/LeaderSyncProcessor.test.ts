@@ -1,6 +1,7 @@
 import '@livestore/utils-dev/node-vitest-polyfill'
 
 import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
+import { InvalidPushError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
@@ -207,12 +208,27 @@ Vitest.describe('LeaderSyncProcessor', () => {
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
+  Vitest.scopedLive('restarts backend pushing on empty pull after push error', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      // Cause the next push to fail so the pushing fiber parks (Effect.never)
+      yield* testContext.mockSyncBackend.failNextPushes(1)
+
+      // Enqueue one local event which will attempt a push and hit the simulated error
+      yield* testContext.localPush(events.todoCreated({ id: 'stall', text: 'stall' }))
+
+      // With the fix, the initial empty pull emission will trigger a restart, and the subsequent push should succeed
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+    }).pipe(withCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
+    // shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     encodeLiveStoreEvent: (
       event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => LiveStoreEvent.EncodedWithMeta
