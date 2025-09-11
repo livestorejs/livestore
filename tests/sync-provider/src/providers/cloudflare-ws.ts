@@ -3,7 +3,7 @@ import { UnexpectedError } from '@livestore/common'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 export const name = 'Cloudflare WebSocket'

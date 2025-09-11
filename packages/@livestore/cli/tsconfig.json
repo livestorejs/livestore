@@ -6,5 +6,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../common" }, { "path": "../utils" }, { "path": "../utils-dev" }]
+  "references": [{ "path": "../common" }, { "path": "../utils" }]
 }

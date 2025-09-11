@@ -11,8 +11,8 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { expect } from 'vitest'
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
@@ -23,8 +23,6 @@ const withWranglerTest = Vitest.makeWithTestCtx({
   makeLayer: () =>
     WranglerDevServerService.Default({
       cwd: `${import.meta.dirname}/test-fixtures`,
-      // TODO remove showLogs again after debugging CI
-      showLogs: true,
     }).pipe(
       Layer.provide(
         Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),

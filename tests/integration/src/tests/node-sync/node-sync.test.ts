@@ -16,8 +16,8 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { expect } from 'vitest'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
@@ -39,8 +39,6 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         WranglerDevServerService.Default({
           cwd: `${import.meta.dirname}/fixtures`,
           connectTimeout: Duration.seconds(45),
-          // TODO remove showLogs again after debugging CI
-          showLogs: true,
         }).pipe(
           Layer.provide(
             Layer.mergeAll(
@@ -103,11 +101,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           commitBatchSize: Schema.Literal(1),
           leaderPushBatchSize: Schema.Literal(2),
           simulationParams: Schema.Struct({
+            // Keep values within allowed 0..15 range to avoid parse errors
             pull: Schema.Struct({
               '1_before_leader_push_fiber_interrupt': Schema.Literal(0),
               '2_before_leader_push_queue_clear': Schema.Literal(10),
               '3_before_rebase_rollback': Schema.Literal(0),
-              '4_before_leader_push_queue_offer': Schema.Literal(20),
+              '4_before_leader_push_queue_offer': Schema.Literal(15),
               '5_before_leader_push_fiber_run': Schema.Literal(0),
             }),
           }),

@@ -1245,9 +1245,6 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-      '@livestore/utils-dev':
-        specifier: workspace:*
-        version: link:../utils-dev
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1691,6 +1688,9 @@ importers:
       '@effect/vitest':
         specifier: 0.25.1
         version: 0.25.1(effect@3.17.9)(vitest@3.2.4)
+      '@iarna/toml':
+        specifier: 2.2.5
+        version: 2.2.5
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1712,6 +1712,9 @@ importers:
       '@opentelemetry/sdk-trace-node':
         specifier: 2.0.1
         version: 2.0.1(@opentelemetry/api@1.9.0)
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.33.0(@cloudflare/workers-types@4.20250823.0)
 
   packages/@livestore/wa-sqlite:
     dependenciesMeta:
