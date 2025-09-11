@@ -97,12 +97,14 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
 
       yield* db.disconnect
 
-      // Now when we try to pull, ElectricSQL should detect the delete and we should get our error
+      // Now when we try to pull, ElectricSQL should detect the delete and we should get our error.
+      // Use live pulling and drain until the stream fails to avoid a race with CDC delivering the invalid op.
       const pullResult = yield* syncBackend
-        .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)))
+        .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(
-          Stream.runFirstUnsafe,
-          Effect.flip, // Convert to get the error
+          // Drain items until the stream fails with InvalidPullError, then flip to capture the error as success
+          Stream.runForEach(() => Effect.void),
+          Effect.flip,
         )
 
       expect(pullResult._tag).toBe('InvalidPullError')
@@ -145,10 +147,10 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
 
       yield* db.disconnect
 
-      // Test that we get the update error
+      // Test that we get the update error (use live + drain to wait deterministically for the failure)
       const pullResult = yield* syncBackend
-        .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)))
-        .pipe(Stream.runFirstUnsafe, Effect.flip)
+        .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
+        .pipe(Stream.runForEach(() => Effect.void), Effect.flip)
 
       expect(pullResult._tag).toBe('InvalidPullError')
       const cause = pullResult.cause as any
