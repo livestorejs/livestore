@@ -183,12 +183,16 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           { concurrency: 'unbounded' },
         )
 
-        const onShutdown = Effect.raceFirst(
+        const onShutdownFail = Effect.raceFirst(
           clientA.executeEffect(WorkerSchema.OnShutdown.make()),
           clientB.executeEffect(WorkerSchema.OnShutdown.make()),
+        ).pipe(
+          Effect.flatMap(() =>
+            Effect.fail(new Error('Worker shut down before sync completed')),
+          ),
         )
 
-        yield* Effect.raceFirst(exec, onShutdown)
+        yield* Effect.raceFirst(exec, onShutdownFail)
       }).pipe(
         withTestCtx({
           suffix: stringifyObject({
