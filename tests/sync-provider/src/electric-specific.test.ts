@@ -103,7 +103,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(
           // Drain items until the stream fails with InvalidPullError, then flip to capture the error as success
-          Stream.runForEach(() => Effect.void),
+          Stream.runDrain,
           Effect.flip,
         )
 
@@ -150,7 +150,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       // Test that we get the update error (use live + drain to wait deterministically for the failure)
       const pullResult = yield* syncBackend
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
-        .pipe(Stream.runForEach(() => Effect.void), Effect.flip)
+        .pipe(Stream.runDrain, Effect.flip)
 
       expect(pullResult._tag).toBe('InvalidPullError')
       const cause = pullResult.cause as any
