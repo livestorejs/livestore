@@ -43,13 +43,11 @@ export interface DockerComposeOperations {
     options?: StartOptions,
   ) => Effect.Effect<void, DockerComposeError | PlatformError.PlatformError, Scope.Scope>
   readonly stop: Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
-  readonly down: (
-    options?: {
-      readonly env?: Record<string, string>
-      readonly volumes?: boolean
-      readonly removeOrphans?: boolean
-    },
-  ) => Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
+  readonly down: (options?: {
+    readonly env?: Record<string, string>
+    readonly volumes?: boolean
+    readonly removeOrphans?: boolean
+  }) => Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
   readonly logs: (
     options?: LogsOptions,
   ) => Stream.Stream<string, DockerComposeError | PlatformError.PlatformError, Scope.Scope>
