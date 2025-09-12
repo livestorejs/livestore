@@ -12,6 +12,7 @@ import {
   type Scope,
   Stream,
   Subscribable,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
@@ -201,12 +202,16 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     const leaderPushingFiberHandle = yield* FiberHandle.make()
+    const pushProgressRef = yield* SubscriptionRef.make(0)
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
       yield* clientSession.leaderThread.events.push(batch).pipe(
+        // Successful push increments progress
+        Effect.tap(() => SubscriptionRef.update(pushProgressRef, (n) => n + 1)),
         Effect.catchTag('LeaderAheadError', () => {
           debugInfo.rejectCount++
+          // Clear queue on ahead error to resync with leader state
           return BucketQueue.clear(leaderPushQueue)
         }),
       )
@@ -254,8 +259,7 @@ export const makeClientSessionSyncProcessor = ({
 
             if (SIMULATION_ENABLED) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
-
+            // NOTE: Do not cancel the background pusher mid-flight. Instead, replace the queue contents.
             if (SIMULATION_ENABLED) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
@@ -285,7 +289,12 @@ export const makeClientSessionSyncProcessor = ({
 
             if (SIMULATION_ENABLED) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            // Give the pusher a brief opportunity to make progress before handling further payloads
+            const before = yield* SubscriptionRef.get(pushProgressRef)
+            yield* Effect.raceFirst(
+              SubscriptionRef.waitUntil(pushProgressRef, (n) => n > before),
+              Effect.sleep('150 millis'),
+            )
           } else {
             span.addEvent('merge:pull:advance', {
               payloadTag: payload._tag,
