@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro'
 import Mixedbread from '@mixedbread/sdk'
+import type { APIRoute } from 'astro'
 
 export const prerender = false
 

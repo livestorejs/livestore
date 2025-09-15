@@ -14,8 +14,8 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
+import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.ts'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
-import {starlightMixedbread} from './src/plugins/starlight/mixedbread/plugin'
 
 const port = 5252
 
@@ -66,8 +66,8 @@ export default defineConfig({
         // starlightAutoSidebar(),
 
         starlightMixedbread({
-          apiKey: process.env.MXBAI_API_KEY || "",
-          vectorStoreId: process.env.VECTOR_STORE_ID || "",
+          apiKey: process.env.MXBAI_API_KEY || '',
+          vectorStoreId: process.env.VECTOR_STORE_ID || '',
           maxResults: 8,
         }),
 
@@ -258,7 +258,6 @@ export default defineConfig({
                 tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
                 output: 'api/sync-electric',
               }),
-             
             ]
           : []),
       ],

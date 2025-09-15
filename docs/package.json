@@ -16,7 +16,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@local/shared": "workspace:*",
-    "@mixedbread/sdk": "^0.28.1",
+    "@mixedbread/sdk": "0.28.1",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "astro": "5.13.4",

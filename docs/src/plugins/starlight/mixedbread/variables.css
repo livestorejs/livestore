@@ -2,8 +2,8 @@
   /* Modal */
   --mixedbread-modal-background: var(--sl-color-black);
   --mixedbread-modal-border: var(--sl-color-gray-5);
-  --mixedbread-modal-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --mixedbread-modal-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --mixedbread-backdrop-background: rgba(0, 0, 0, 0.5);
 
   /* Search box */

@@ -1,7 +1,7 @@
-import type { StarlightPlugin } from '@astrojs/starlight/types'
-import type { AstroUserConfig, ViteUserConfig } from 'astro'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { StarlightPlugin } from '@astrojs/starlight/types'
+import type { AstroUserConfig, ViteUserConfig } from 'astro'
 import { z } from 'astro/zod'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
