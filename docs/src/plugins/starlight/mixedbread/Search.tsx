@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import MixedbreadLogo from './mixedbread-logo.svg?url'
 import { ResultContent } from './ResultContent.tsx'
 import { useDebounce } from './use-debounce.ts'
@@ -40,7 +41,6 @@ export function Search() {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showClearButton, setShowClearButton] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -52,6 +52,7 @@ export function Search() {
   const isMac = isMacOS()
 
   const trimmedQuery = searchQuery.trim()
+  const showClearButton = trimmedQuery.length > 0
   const [debouncedQuery, setDebouncedQuery] = useDebounce(trimmedQuery)
 
   const groupResults = useCallback((results: SearchResult[]): GroupedResult[] => {
@@ -175,7 +176,6 @@ export function Search() {
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value)
     setSelectedIndex(-1)
-    setShowClearButton(!!value.trim())
   }, [])
 
   // Effect to trigger search when debounced query changes
@@ -185,6 +185,7 @@ export function Search() {
 
   const openModal = useCallback(() => {
     setIsModalOpen(true)
+    document.body.style.overflow = 'hidden'
 
     setTimeout(() => {
       searchInputRef.current?.focus()
@@ -197,7 +198,6 @@ export function Search() {
     setDebouncedQuery('')
     setGroupedResults([])
     setSelectedIndex(-1)
-    setShowClearButton(false)
     setError(null)
 
     searchInputRef.current?.focus()
@@ -205,6 +205,7 @@ export function Search() {
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false)
+    document.body.style.overflow = 'auto'
     resetStates()
 
     setTimeout(() => {
@@ -320,9 +321,8 @@ export function Search() {
   }
 
   const handleModalClick = (e: React.MouseEvent) => {
-    if (e.target === modalRef.current) {
-      closeModal()
-    }
+    if (e.target !== modalRef.current) return
+    closeModal()
   }
 
   return (
@@ -361,88 +361,99 @@ export function Search() {
         </kbd>
       </button>
 
-      {isModalOpen && (
-        <div
-          ref={modalRef}
-          className={`mixedbread-modal ${isModalOpen ? 'is-open' : ''}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Search"
-          onClick={handleModalClick}
-          onKeyDown={handleModalKeyDown}
-        >
-          <div className="mixedbread-modal-container" role="document">
-            <div className="mixedbread-searchbox">
-              <input
-                ref={searchInputRef}
-                type="search"
-                placeholder="Search documentation..."
-                aria-label="Search documentation"
-                aria-describedby="search-instructions"
-                aria-controls="search-results"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck="false"
-                value={searchQuery}
-                onChange={(e) => handleSearchInput(e.target.value)}
-              />
-              <button
-                className={`mixedbread-clear ${showClearButton ? 'show' : ''}`}
-                aria-label="Clear search"
-                type="button"
-                tabIndex={showClearButton ? 0 : -1}
-                onClick={resetStates}
+      {isModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={modalRef}
+            className={`mixedbread-modal ${isModalOpen ? 'is-open' : ''}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search"
+            onClick={handleModalClick}
+            onKeyDown={handleModalKeyDown}
+          >
+            <div className="mixedbread-modal-container" role="document">
+              <div className="mixedbread-searchbox">
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Search documentation..."
+                  aria-label="Search documentation"
+                  aria-describedby="search-instructions"
+                  aria-controls="search-results"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                />
+
+                <button
+                  className={`mixedbread-clear ${showClearButton ? 'show' : ''}`}
+                  aria-label="Clear search"
+                  type="button"
+                  tabIndex={showClearButton ? 0 : -1}
+                  onClick={resetStates}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                  <span className="sr-only">Clear</span>
+                </button>
+
+                <button className="mixedbread-close" aria-label="Close search" type="button" onClick={closeModal}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                  <span className="sr-only">Close</span>
+                </button>
+              </div>
+
+              <section
+                ref={resultsRef}
+                id="search-results"
+                className="mixedbread-results"
+                aria-label="Search results"
+                aria-live="polite"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                </svg>
-                <span className="sr-only">Clear</span>
-              </button>
-            </div>
+                <ResultContent
+                  searchQuery={debouncedQuery}
+                  isLoading={isLoading}
+                  error={error}
+                  groupedResults={groupedResults}
+                  closeModal={closeModal}
+                />
+              </section>
 
-            <section
-              ref={resultsRef}
-              id="search-results"
-              className="mixedbread-results"
-              aria-label="Search results"
-              aria-live="polite"
-            >
-              <ResultContent
-                searchQuery={debouncedQuery}
-                isLoading={isLoading}
-                error={error}
-                groupedResults={groupedResults}
-                closeModal={closeModal}
-              />
-            </section>
-
-            <div className="mixedbread-footer">
-              <span id="search-instructions" className="sr-only">
-                Type to search. Use arrow keys to navigate results. Press Enter to select. Press Escape to close.
-              </span>
-              <div className="mixedbread-powered-by">
-                <img src={MixedbreadLogo} className="mixedbread-powered-by__logo" aria-hidden="true" alt="" />
-                <span>
-                  Search powered by{' '}
-                  <a href="https://mixedbread.com" target="_blank" rel="noopener noreferrer">
-                    Mixedbread
-                  </a>
+              <div className="mixedbread-footer">
+                <span id="search-instructions" className="sr-only">
+                  Type to search. Use arrow keys to navigate results. Press Enter to select. Press Escape to close.
                 </span>
-              </div>
-              <div className="mixedbread-shortcuts" aria-hidden="true">
-                <kbd className="mixedbread-key">↑</kbd>
-                <kbd className="mixedbread-key">↓</kbd>
-                <span>to navigate</span>
-                <kbd className="mixedbread-key">↵</kbd>
-                <span>to select</span>
-                <kbd className="mixedbread-key">esc</kbd>
-                <span>to close</span>
+                <div className="mixedbread-powered-by">
+                  <img src={MixedbreadLogo} className="mixedbread-powered-by__logo" aria-hidden="true" alt="" />
+                  <span>
+                    Search powered by{' '}
+                    <a href="https://mixedbread.com" target="_blank" rel="noopener noreferrer">
+                      Mixedbread
+                    </a>
+                  </span>
+                </div>
+                <div className="mixedbread-shortcuts" aria-hidden="true">
+                  <kbd className="mixedbread-key">↑</kbd>
+                  <kbd className="mixedbread-key">↓</kbd>
+                  <span>to navigate</span>
+                  <kbd className="mixedbread-key">↵</kbd>
+                  <span>to select</span>
+                  <kbd className="mixedbread-key">esc</kbd>
+                  <span>to close</span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
