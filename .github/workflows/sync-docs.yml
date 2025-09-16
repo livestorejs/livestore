@@ -1,0 +1,31 @@
+name: Sync docs to Mixedbread Vector Store
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/src/content/**/*.md
+      - docs/src/content/**/*.mdx
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+
+      - name: Sync vector store
+        shell: bash
+        working-directory: ./docs
+        env:
+          MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
+          MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
+        run: pnpm exec mxbai vs sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast

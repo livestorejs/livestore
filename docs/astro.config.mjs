@@ -66,8 +66,8 @@ export default defineConfig({
         // starlightAutoSidebar(),
 
         starlightMixedbread({
-          apiKey: process.env.MXBAI_API_KEY || '',
-          vectorStoreId: process.env.VECTOR_STORE_ID || '',
+          apiKey: process.env.MXBAI_API_KEY ?? '',
+          vectorStoreId: process.env.VECTOR_STORE_ID ?? '',
           maxResults: 8,
         }),
 

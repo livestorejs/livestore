@@ -37,7 +37,3 @@
   --mixedbread-error-color: #ef4444;
   --mixedbread-accent-color: var(--sl-color-accent);
 }
-
-.mixedbread-footer a {
-  color: var(--sl-color-accent-high);
-}

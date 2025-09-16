@@ -95,8 +95,8 @@ export const starlightMixedbread = (userConfig: MixedbreadUserConfig): Starlight
         if (config.components?.Search) {
           logger.warn('It looks like you already have a `Search` component override in your Starlight configuration.')
           logger.warn('To render `@astrojs/starlight-mixedbread`, remove the override for the `Search` component.\n')
+          logger.warn("Note: this plugin also sets `pagefind: false` to disable Starlight's built-in Pagefind search.")
         } else {
-          // Otherwise, add the Search component override to the user"s configuration.
           updateConfig({
             pagefind: false,
             components: {
@@ -106,8 +106,7 @@ export const starlightMixedbread = (userConfig: MixedbreadUserConfig): Starlight
           })
         }
 
-        // Add an Astro integration that injects a Vite plugin to expose
-        // the Mixedbread config via a virtual module.
+        // Add an Astro integration that injects a Vite plugin to expose the Mixedbread config via a virtual module.
         addIntegration({
           name: 'starlight-mixedbread',
           hooks: {
