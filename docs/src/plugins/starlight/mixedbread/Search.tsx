@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import MixedbreadLogo from './mixedbread-logo.svg?url'
 import { ResultContent } from './ResultContent.tsx'
 import { useDebounce } from './use-debounce.ts'
+import { useDedupeSearch } from './use-dedupe-search.ts'
 
 export interface SearchResult {
   id: string
@@ -17,14 +18,8 @@ export interface GroupedResult {
   headings: SearchResult[]
 }
 
-interface ActiveRequest {
-  controller: AbortController
-  timestamp: number
-}
-
 const CONSTANTS = {
   BASE_SEARCH_DELAY: 300,
-  MAX_REQUEST_TIMEOUT: 30000,
   MODAL_ANIMATION_DELAY: 150,
   ABORT_DELAY: 100,
   ANNOUNCEMENT_TIMEOUT: 1000,
@@ -45,8 +40,6 @@ export function Search() {
   const modalRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
-  const activeRequests = useRef<Map<string, ActiveRequest>>(new Map())
-  const lastSearchTerm = useRef('')
   const focusableLinksRef = useRef<HTMLAnchorElement[]>([])
 
   const isMac = isMacOS()
@@ -74,104 +67,20 @@ export function Search() {
     return grouped
   }, [])
 
-  const clearActiveRequests = useCallback(() => {
-    activeRequests.current.forEach((req) => {
-      req.controller.abort()
-    })
-    activeRequests.current.clear()
-    lastSearchTerm.current = ''
-  }, [])
-
-  const abortRequestsExcept = useCallback((keepQuery: string) => {
-    activeRequests.current.forEach((req, query) => {
-      if (query !== keepQuery) {
-        req.controller.abort()
-        activeRequests.current.delete(query)
-      }
-    })
-  }, [])
-
-  const executeSearch = useCallback(
-    async (query: string) => {
-      try {
-        const abortController = new AbortController()
-        const requestInfo: ActiveRequest = {
-          controller: abortController,
-          timestamp: Date.now(),
-        }
-
-        activeRequests.current.set(query, requestInfo)
-        setIsLoading(true)
-        setError(null)
-
-        const timeoutId = setTimeout(() => {
-          if (activeRequests.current.has(query)) {
-            abortController.abort()
-            activeRequests.current.delete(query)
-            setError('Search request timed out. Please try again.')
-          }
-        }, CONSTANTS.MAX_REQUEST_TIMEOUT)
-
-        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`, {
-          signal: abortController.signal,
-        })
-
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const results = await response.json()
-
-        if (results.error) {
-          throw new Error(results.error)
-        }
-
-        if (activeRequests.current.has(query) && query === lastSearchTerm.current) {
-          const grouped = groupResults(results)
-          setGroupedResults(grouped)
-          setSelectedIndex(-1)
-        }
-
-        setIsLoading(false)
-        activeRequests.current.delete(query)
-      } catch (err) {
-        activeRequests.current.delete(query)
-
-        if (err instanceof Error && err.name !== 'AbortError') {
-          if (query === lastSearchTerm.current) {
-            setError('Search failed. Please try again.')
-          }
-        }
-        setIsLoading(false)
-      }
+  const handleSearchStateChange = useCallback(
+    (state: { results: SearchResult[]; isLoading: boolean; error: string | null }) => {
+      const grouped = groupResults(state.results)
+      setGroupedResults(grouped)
+      setIsLoading(state.isLoading)
+      setError(state.error)
+      setSelectedIndex(-1)
     },
     [groupResults],
   )
 
-  const handleSearchWithDeduplication = useCallback(
-    async (query: string) => {
-      if (!query) {
-        clearActiveRequests()
-        setGroupedResults([])
-        return
-      }
-
-      const existingRequest = activeRequests.current.get(query)
-      if (existingRequest && Date.now() - existingRequest.timestamp < 1000) {
-        return
-      }
-
-      if (lastSearchTerm.current && query !== lastSearchTerm.current) {
-        abortRequestsExcept(query)
-      }
-
-      lastSearchTerm.current = query
-      await executeSearch(query)
-    },
-    [clearActiveRequests, abortRequestsExcept, executeSearch],
-  )
+  const { searchWithDeduplication, clearActiveRequests } = useDedupeSearch({
+    onStateChange: handleSearchStateChange,
+  })
 
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value)
@@ -180,8 +89,8 @@ export function Search() {
 
   // Effect to trigger search when debounced query changes
   useEffect(() => {
-    handleSearchWithDeduplication(debouncedQuery)
-  }, [debouncedQuery, handleSearchWithDeduplication])
+    searchWithDeduplication(debouncedQuery)
+  }, [debouncedQuery, searchWithDeduplication])
 
   const openModal = useCallback(() => {
     setIsModalOpen(true)
