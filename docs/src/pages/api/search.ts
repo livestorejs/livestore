@@ -1,5 +1,7 @@
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
+import Slugger from 'github-slugger'
+import removeMd from 'remove-markdown'
 
 export const prerender = false
 
@@ -7,11 +9,21 @@ const mxbai = new Mixedbread({
   apiKey: import.meta.env.MXBAI_API_KEY,
 })
 
+const slugger = new Slugger()
+
 interface SearchMetadata {
   title?: string
   description?: string
   path?: string
   file_path?: string
+}
+
+export interface SearchResult {
+  id: string
+  type: 'page' | 'heading'
+  title: string
+  description: string
+  url: string
 }
 
 function filePathToHref(filePath: string): string {
@@ -21,7 +33,29 @@ function filePathToHref(filePath: string): string {
   let href = match[1]
   href = href.replace(/\.(md|mdx)$/, '')
   href = href.replace(/\/index$/, '')
-  return `/${href || ''}`
+  return `/${href}`
+}
+
+function extractHeadingTitle(text: string): string {
+  const trimmedText = text.trim()
+
+  if (!trimmedText.startsWith('#')) {
+    return ''
+  }
+
+  const lines = trimmedText.split('\n')
+  const firstLine = lines[0]?.trim()
+
+  if (firstLine) {
+    // Use remove-markdown to convert to plain text
+    const plainText = removeMd(firstLine, {
+      useImgAltText: false,
+    })
+
+    return plainText
+  }
+
+  return ''
 }
 
 export const GET: APIRoute = async ({ url }) => {
@@ -51,20 +85,41 @@ export const GET: APIRoute = async ({ url }) => {
       },
     })
 
-    const results = response.data.map((item, index) => {
+    const seenFiles = new Set<string>()
+    const results: SearchResult[] = []
+
+    response.data.forEach((item, index) => {
       const metadata = {
         ...(item.metadata ?? {}),
         ...(item.generated_metadata ?? {}),
       } as SearchMetadata
 
-      return {
-        id: `${item.file_id}-${index}`,
-        title: metadata?.title || 'Untitled',
-        description: metadata?.description || '',
-        content: (item as unknown as { text: string }).text || '',
-        path: metadata?.file_path || '',
-        href: filePathToHref(metadata?.file_path || ''),
-        score: item.score || 0,
+      const url = filePathToHref(metadata?.file_path || '')
+      const title = metadata?.title || 'Untitled'
+      const description = metadata?.description || ''
+
+      if (!seenFiles.has(url)) {
+        seenFiles.add(url)
+        results.push({
+          id: `${item.file_id}-${index}-page`,
+          type: 'page',
+          title,
+          description,
+          url,
+        })
+      }
+
+      const headingTitle = item.type === 'text' ? extractHeadingTitle(item.text) : undefined
+
+      if (headingTitle && item.type === 'text') {
+        slugger.reset()
+        results.push({
+          id: `${item.file_id}-${index}-heading`,
+          type: 'heading',
+          title: headingTitle,
+          description: removeMd(item.text.substring(0, 200)).replace(headingTitle, '').trim(),
+          url: `${url}#${slugger.slug(headingTitle)}`,
+        })
       }
     })
 

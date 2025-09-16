@@ -194,6 +194,9 @@ importers:
       expressive-code-twoslash:
         specifier: 0.5.3
         version: 0.5.3(@expressive-code/core@0.41.3)(expressive-code@0.41.3)(typescript@5.9.2)
+      github-slugger:
+        specifier: 2.0.0
+        version: 2.0.0
       react:
         specifier: 'catalog:'
         version: 19.0.0
@@ -206,6 +209,9 @@ importers:
       remark-custom-header-id:
         specifier: 1.0.0
         version: 1.0.0
+      remove-markdown:
+        specifier: 0.6.2
+        version: 0.6.2
       sharp:
         specifier: 0.34.3
         version: 0.34.3
@@ -12051,6 +12057,9 @@ packages:
 
   remark-stringify@11.0.0:
     resolution: {integrity: sha512-1OSmLd3awB/t8qdoEOMazZkNsfVTeY4fTsgzcQFdXNq8ToTN4ZGwrMnlda4K6smTFKD+GRV6O48i6Z4iKgPPpw==}
+
+  remove-markdown@0.6.2:
+    resolution: {integrity: sha512-EijDXJZbzpGbQBd852ViUzcqgpMujthM+SAEHiWCMcZonRbZ+xViWKLJA/vrwbDwYdxrs1aFDjpBhcGrZoJRGA==}
 
   remove-trailing-separator@1.1.0:
     resolution: {integrity: sha512-/hS+Y0u3aOfIETiaiirUFwDBDzmXPvO+jAfKTitUngIPzdKc6Z0LoFjM/CK5PL4C+eKwHohlHAb6H0VFfmmUsw==}
@@ -27282,6 +27291,8 @@ snapshots:
       '@types/mdast': 4.0.4
       mdast-util-to-markdown: 2.1.2
       unified: 11.0.5
+
+  remove-markdown@0.6.2: {}
 
   remove-trailing-separator@1.1.0: {}
 

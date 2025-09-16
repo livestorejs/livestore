@@ -20,11 +20,723 @@ import './variables.css'
       </svg>
       <span class="mixedbread-button-placeholder">Search</span>
     </span>
-    <span class="mixedbread-button-keys"></span>
+    <kbd class="mixedbread-button-kbd">
+      <kbd>⌘</kbd>
+      <kbd>K</kbd>
+    </kbd>
   </button>
 </sl-mixedbread-search>
 
+<script>
+  interface SearchResult {
+    id: string
+    type: 'page' | 'heading'
+    title: string
+    description: string
+    url: string
+  }
+
+  interface GroupedResult {
+    page: SearchResult
+    headings: SearchResult[]
+  }
+
+  import MixedbreadLogoSvg from "./MixedbreadLogo.svg?raw"
+
+  class StarlightMixedbreadSearch extends HTMLElement {
+    private modal: HTMLElement | null = null
+    private searchInput: HTMLInputElement | null = null
+    private results: HTMLElement | null = null
+    private clearButton: HTMLButtonElement | null = null
+    private selectedIndex = -1
+    private currentResults: SearchResult[] = []
+    private groupedResults: GroupedResult[] = []
+    private activeRequests: Map<string, { controller: AbortController; timestamp: number }> = new Map()
+    private lastSearchTerm: string = ""
+    private typingTimer: number | null = null
+    private isKeyboardNavigating = false
+    private readonly baseSearchDelay = 300
+    private readonly maxRequestTimeout = 30000
+
+    constructor() {
+      super()
+      this.init()
+    }
+
+    private init() {
+      this.createModal()
+      this.bindEvents()
+      // Update keyboard shortcuts after DOM is ready
+      setTimeout(() => {
+        if (StarlightMixedbreadSearch.detectPlatform()) {
+          document.body.classList.add("mac")
+          this.updateKeyboardShortcuts(true)
+        } else {
+          this.updateKeyboardShortcuts(false)
+        }
+      }, 0)
+    }
+
+    private updateKeyboardShortcuts(isMac: boolean) {
+      const kbdContainer = this.querySelector(".mixedbread-button-kbd")
+      if (kbdContainer) {
+        if (isMac) {
+          kbdContainer.innerHTML = "<kbd>⌘</kbd><kbd>K</kbd>"
+        } else {
+          kbdContainer.innerHTML = "<kbd>Ctrl</kbd><kbd>K</kbd>"
+        }
+      }
+    }
+
+    private static createAnnouncement(message: string, container: Element | null): void {
+      const announcement = document.createElement("div")
+      announcement.className = "sr-only"
+      announcement.setAttribute("role", "status")
+      announcement.setAttribute("aria-live", "polite")
+      announcement.textContent = message
+      container?.appendChild(announcement)
+      setTimeout(() => announcement.remove(), 1000)
+    }
+
+    private static detectPlatform(): boolean {
+      // Check multiple ways to detect Mac
+      // @ts-expect-error
+      const platform = navigator.platform || navigator.userAgentData?.platform || ""
+      const userAgent = navigator.userAgent || ""
+
+      return (
+        platform.toLowerCase().includes("mac") ||
+        userAgent.toLowerCase().includes("mac") ||
+        userAgent.toLowerCase().includes("darwin")
+      )
+    }
+
+    private static escapeHtml(text: string): string {
+      const div = document.createElement("div")
+      div.textContent = text
+      return div.innerHTML
+    }
+
+    private createModal() {
+      this.modal = document.createElement("div")
+      this.modal.className = "mixedbread-modal"
+      this.modal.setAttribute("role", "dialog")
+      this.modal.setAttribute("aria-modal", "true")
+      this.modal.setAttribute("aria-label", "Search")
+
+      this.modal.innerHTML = `
+        <div class="mixedbread-modal-container" role="document">
+          <div class="mixedbread-searchbox">
+            <input 
+              type="search" 
+              placeholder="Search documentation..."
+              aria-label="Search documentation"
+              aria-describedby="search-instructions"
+              aria-expanded="false"
+              aria-controls="search-results"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+            <button class="mixedbread-clear" aria-label="Clear search" type="button" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+              <span class="sr-only">Clear</span>
+            </button>
+          </div>
+          <div id="search-results" class="mixedbread-results" role="region" aria-label="Search results" aria-live="polite"></div>
+          <div class="mixedbread-footer">
+            <span id="search-instructions" class="sr-only">
+              Type to search. Use arrow keys to navigate results. Press Enter to select. Press Escape to close.
+            </span>
+            <div class="mixedbread-powered-by">
+              <svg class="mixedbread-powered-by__logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                ${MixedbreadLogoSvg}
+              </svg>
+              <span>
+                Search powered by <a href="https://mixedbread.com" target="_blank">Mixedbread</a>
+              </span>
+            </div>
+            <div class="mixedbread-shortcuts" aria-hidden="true">
+              <span class="mixedbread-key">↑</span>
+              <span class="mixedbread-key">↓</span>
+              <span>to navigate</span>
+              <span class="mixedbread-key">↵</span>
+              <span>to select</span>
+              <span class="mixedbread-key">esc</span>
+              <span>to close</span>
+            </div>
+          </div>
+        </div>
+      `
+
+      document.body.appendChild(this.modal)
+      this.searchInput = this.modal.querySelector("input")
+      this.results = this.modal.querySelector(".mixedbread-results")
+      this.clearButton = this.modal.querySelector(".mixedbread-clear") as HTMLButtonElement
+    }
+
+    private bindEvents() {
+      const button = this.querySelector("button")
+      button?.addEventListener("click", () => this.openModal())
+
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+          e.preventDefault()
+          this.openModal()
+        }
+        // Global escape handler when modal is open
+        if (e.key === "Escape" && this.modal?.classList.contains("is-open")) {
+          e.preventDefault()
+          this.closeModal()
+        }
+      })
+
+      if (this.modal) {
+        // Click outside to close
+        this.modal.addEventListener("click", (e) => {
+          // Close modal if clicking on the backdrop (modal itself, not the container)
+          if (e.target === this.modal) {
+            this.closeModal()
+          }
+          // Also close when clicking result links
+          if (e.target instanceof HTMLAnchorElement) {
+            this.closeModal()
+          }
+        })
+
+        this.modal.addEventListener("keydown", (e) => {
+          switch (e.key) {
+            case "Escape":
+              e.preventDefault()
+              this.closeModal()
+              break
+            case "ArrowDown":
+            case "ArrowUp":
+              e.preventDefault()
+              if (!this.isKeyboardNavigating) {
+                this.isKeyboardNavigating = true
+              }
+              this.navigateResults(e.key === "ArrowDown" ? 1 : -1)
+              break
+            case "Enter":
+              e.preventDefault()
+              this.selectResult()
+              break
+          }
+        })
+
+        // Reset keyboard navigation on mouse movement
+        this.modal.addEventListener("mousemove", () => {
+          if (this.isKeyboardNavigating) {
+            this.isKeyboardNavigating = false
+            this.results?.classList.remove("keyboard-nav")
+          }
+        })
+      }
+
+      if (this.searchInput) {
+        // Handle search input
+        this.searchInput.addEventListener("input", (e) => {
+          const query = (e.target as HTMLInputElement).value.trim()
+
+          // Clear existing typing timer
+          if (this.typingTimer) {
+            clearTimeout(this.typingTimer)
+          }
+
+          // Detect if this is continuation of same search
+          const isContinuation = query.startsWith(this.lastSearchTerm) || this.lastSearchTerm.startsWith(query)
+
+          // Use adaptive delay
+          const delay = isContinuation ? this.baseSearchDelay : this.baseSearchDelay / 2
+
+          this.resetNavigationState()
+          this.updateClearButton(query)
+
+          // Set new typing timer with adaptive delay
+          this.typingTimer = window.setTimeout(() => {
+            this.handleSearchWithDeduplication(query)
+          }, delay)
+        })
+
+        // Handle Tab key
+        this.searchInput.addEventListener("keydown", (e) => {
+          if (e.key === "Tab") {
+            if (e.shiftKey) {
+              e.preventDefault()
+              this.closeModal()
+            } else {
+              // Tab forward - go to clear button if visible, otherwise to first result
+              const clearButtonVisible = this.clearButton?.classList.contains("show")
+              if (!clearButtonVisible) {
+                const focusableLinks = this.getAllFocusableLinks()
+                if (focusableLinks.length > 0) {
+                  e.preventDefault()
+                  this.selectedIndex = 0
+                  focusableLinks[0]?.focus()
+                }
+              }
+              // If clear button is visible, let default tab behavior work
+            }
+          }
+        })
+      }
+
+      if (this.clearButton) {
+        // Clear button click
+        this.clearButton.addEventListener("click", () => {
+          this.clearSearch()
+          this.searchInput?.focus()
+        })
+
+        // Clear button keyboard navigation
+        this.clearButton.addEventListener("keydown", (e) => {
+          if (e.key === "Tab") {
+            e.preventDefault()
+            if (e.shiftKey) {
+              this.searchInput?.focus()
+            } else {
+              const focusableLinks = this.getAllFocusableLinks()
+              if (focusableLinks.length > 0) {
+                this.selectedIndex = 0
+                focusableLinks[0]?.focus()
+              } else {
+                this.closeModal()
+              }
+            }
+          }
+        })
+      }
+    }
+
+    private openModal() {
+      if (!this.modal) return
+
+      document.body.classList.add("mixedbread-modal-open")
+      this.modal.classList.add("is-open")
+
+      // Focus input after modal animation with more robust timing
+      setTimeout(() => {
+        const input = this.modal?.querySelector("input") as HTMLInputElement
+        if (input) {
+          input.focus()
+          // Ensure cursor is at end of any existing text
+          input.setSelectionRange(input.value.length, input.value.length)
+        }
+        this.showEmptyState()
+      }, 150) // Wait for CSS transition to complete
+    }
+
+    private closeModal() {
+      if (!this.modal) return
+
+      document.body.classList.remove("mixedbread-modal-open")
+      this.modal.classList.remove("is-open")
+      this.clearSearch()
+
+      // Only abort requests if user explicitly closes modal (not on navigation)
+      // Allow completed searches to finish for better caching
+      setTimeout(() => {
+        if (!this.modal?.classList.contains("is-open")) {
+          this.clearActiveRequests()
+        }
+      }, 100)
+    }
+
+    private clearSearch() {
+      if (this.searchInput) {
+        this.searchInput.value = ""
+      }
+      if (this.typingTimer) {
+        clearTimeout(this.typingTimer)
+        this.typingTimer = null
+      }
+      this.resetAllState()
+      this.updateClearButton("")
+      this.showEmptyState()
+    }
+
+    private resetNavigationState() {
+      this.isKeyboardNavigating = false
+      this.selectedIndex = -1
+      this.results?.classList.remove("keyboard-nav")
+
+      // Remove focus indicators from all links
+      const focusableLinks = this.getAllFocusableLinks()
+      focusableLinks.forEach((link) => {
+        link.classList.remove("keyboard-focused")
+      })
+    }
+
+    private resetAllState() {
+      this.currentResults = []
+      this.groupedResults = []
+      this.resetNavigationState()
+    }
+
+    private async handleSearchWithDeduplication(query: string) {
+      // Early return for empty queries
+      if (!query) {
+        this.clearActiveRequests()
+        this.currentResults = []
+        this.groupedResults = []
+        this.searchInput?.setAttribute("aria-expanded", "false")
+        this.renderResults()
+        return
+      }
+
+      // Check if identical request is already in progress
+      const existingRequest = this.activeRequests.get(query)
+      if (existingRequest && Date.now() - existingRequest.timestamp < 1000) {
+        return // Skip duplicate request within 1 second
+      }
+
+      // Only abort requests for different search terms
+      if (this.lastSearchTerm && query !== this.lastSearchTerm) {
+        this.abortRequestsExcept(query)
+      }
+
+      this.lastSearchTerm = query
+      await this.executeSearch(query)
+    }
+
+    private async executeSearch(query: string) {
+      try {
+        // Create new abort controller for this specific query
+        const abortController = new AbortController()
+        const requestInfo = {
+          controller: abortController,
+          timestamp: Date.now()
+        }
+
+        this.activeRequests.set(query, requestInfo)
+        this.showLoading()
+
+        // Set up timeout that doesn't race with the request
+        const timeoutId = setTimeout(() => {
+          if (this.activeRequests.has(query)) {
+            abortController.abort()
+            this.activeRequests.delete(query)
+            this.showError("Search request timed out. Please try again.")
+          }
+        }, this.maxRequestTimeout)
+
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`, {
+          signal: abortController.signal
+        })
+
+        // Clear timeout on successful response
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const results = await response.json()
+
+        if (results.error) {
+          throw new Error(results.error)
+        }
+
+        // Only update results if this request is still active and relevant
+        if (this.activeRequests.has(query) && query === this.lastSearchTerm) {
+          this.currentResults = results
+          this.groupedResults = this.groupResults(results)
+          this.selectedIndex = -1
+          this.searchInput?.setAttribute("aria-expanded", results.length > 0 ? "true" : "false")
+          this.renderResults()
+        }
+
+        // Clean up successful request
+        this.activeRequests.delete(query)
+      } catch (error: unknown) {
+        // Clean up failed request
+        this.activeRequests.delete(query)
+
+        if (error instanceof Error && error.name !== "AbortError") {
+          console.error("Search error:", error)
+
+          // Only show error if this was the most recent search
+          if (query === this.lastSearchTerm) {
+            let errorMessage = "Search failed. Please try again."
+
+            if (error.message.includes("fetch")) {
+              errorMessage = "Unable to connect to search service. Please check your connection."
+            } else if (error.message.includes("timeout")) {
+              errorMessage = "Search request timed out. Please try again."
+            } else if (error.message.includes("500")) {
+              errorMessage = "Search service is temporarily unavailable."
+            }
+
+            this.showError(errorMessage)
+          }
+        }
+      }
+    }
+
+    private groupResults(results: SearchResult[]): GroupedResult[] {
+      const grouped: GroupedResult[] = []
+      let currentGroup: GroupedResult | null = null
+
+      for (const result of results) {
+        if (result.type === 'page') {
+          // Start a new group
+          currentGroup = {
+            page: result,
+            headings: []
+          }
+          grouped.push(currentGroup)
+        } else if (result.type === 'heading' && currentGroup) {
+          // Add heading to current group
+          currentGroup.headings.push(result)
+        }
+      }
+
+      return grouped
+    }
+
+    private abortRequestsExcept(keepQuery: string) {
+      for (const [query, requestInfo] of this.activeRequests.entries()) {
+        if (query !== keepQuery) {
+          requestInfo.controller.abort()
+          this.activeRequests.delete(query)
+        }
+      }
+    }
+
+    private clearActiveRequests() {
+      for (const requestInfo of this.activeRequests.values()) {
+        requestInfo.controller.abort()
+      }
+      this.activeRequests.clear()
+      this.lastSearchTerm = ""
+    }
+
+    private showLoading() {
+      if (this.results) {
+        this.results.innerHTML = `
+          <div class="mixedbread-loading" role="status">
+            <div>Searching...</div>
+            <span class="sr-only">Loading search results</span>
+          </div>
+        `
+      }
+    }
+
+    private showError(message = "Search failed. Please try again.") {
+      if (this.results) {
+        this.results.innerHTML = `
+          <div class="mixedbread-error" role="alert">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+            </svg>
+            <div>${StarlightMixedbreadSearch.escapeHtml(message)}</div>
+          </div>
+        `
+        this.searchInput?.setAttribute("aria-expanded", "false")
+      }
+    }
+
+    private showEmptyState() {
+      if (this.results) {
+        this.results.innerHTML = `
+          <div class="mixedbread-empty">
+            <div class="mixedbread-empty-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div class="mixedbread-empty-text">
+              Enter a query to search the documentation
+            </div>
+          </div>
+        `
+      }
+    }
+
+    private renderHeading(heading: SearchResult): string {
+      const title = StarlightMixedbreadSearch.escapeHtml(heading.title)
+      const snippet = StarlightMixedbreadSearch.escapeHtml(heading.description ?? "")
+      const href = StarlightMixedbreadSearch.escapeHtml(heading.url)
+      return `
+        <a class="mixedbread__result-link mixedbread__result-nested" href="${href}">
+          <span class="mixedbread__result-title">${title}</span>
+          <span class="mixedbread__result-description">${snippet}</span>
+        </a>
+      `
+    }
+
+    private renderGroupedResult(group: GroupedResult): string {
+      const title = StarlightMixedbreadSearch.escapeHtml(group.page.title)
+      const description = StarlightMixedbreadSearch.escapeHtml(group.page.description ?? "")
+      const href = group.page.url.endsWith("/") ? group.page.url : `${group.page.url}/`
+      const escapedHref = StarlightMixedbreadSearch.escapeHtml(href)
+      const nestedResults = group.headings.map(h => this.renderHeading(h)).join("\n")
+      
+      return `
+        <li class="mixedbread__result">
+          <div class="mixedbread__result-inner">
+            <a class="mixedbread__result-link mixedbread__result-page" href="${escapedHref}">
+              <span class="mixedbread__result-title">${title}</span>
+              <span class="mixedbread__result-description">${description}</span>
+            </a>
+            ${nestedResults}
+          </div>
+        </li>
+      `
+    }
+
+    private renderResults() {
+      if (!this.results) return
+
+      if (this.groupedResults.length === 0 && this.searchInput?.value) {
+        this.results.innerHTML = `
+          <div class="mixedbread-no-results" role="status">
+            No results found for "${StarlightMixedbreadSearch.escapeHtml(this.searchInput.value)}"
+          </div>
+        `
+        return
+      }
+
+      if (this.groupedResults.length === 0) {
+        this.showEmptyState()
+        return
+      }
+
+      const resultsText =
+        this.groupedResults.length === 1 ? "1 result found" : `${this.groupedResults.length} results found`
+
+      this.results.innerHTML = `
+        <div class="sr-only" role="status">${resultsText}</div>
+        <ol class="mixedbread__results">
+          ${this.groupedResults.map(group => this.renderGroupedResult(group)).join("")}
+        </ol>
+      `
+
+      // Maintain keyboard navigation class if active
+      if (this.isKeyboardNavigating) {
+        this.results.classList.add("keyboard-nav")
+      }
+
+      // Add click event listeners to all result links to close modal
+      const focusableLinks = this.getAllFocusableLinks()
+      focusableLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+          this.closeModal()
+        })
+      })
+    }
+
+    private getAllFocusableLinks(): HTMLElement[] {
+      if (!this.results) return []
+      return Array.from(this.results.querySelectorAll(".mixedbread__result-link")) as HTMLElement[]
+    }
+
+    private navigateResults(direction: number) {
+      const focusableLinks = this.getAllFocusableLinks()
+      if (focusableLinks.length === 0) return
+
+      const previousIndex = this.selectedIndex
+
+      // Calculate new index without wrapping
+      if (direction > 0) {
+        // Moving down
+        if (this.selectedIndex === -1) {
+          this.selectedIndex = 0
+        } else if (this.selectedIndex < focusableLinks.length - 1) {
+          this.selectedIndex = this.selectedIndex + 1
+        }
+      } else {
+        // Moving up
+        if (this.selectedIndex === -1) {
+          this.selectedIndex = 0
+        } else if (this.selectedIndex > 0) {
+          this.selectedIndex = this.selectedIndex - 1
+        }
+      }
+
+      if (previousIndex !== this.selectedIndex) {
+        // Remove focus from all links
+        focusableLinks.forEach((link) => {
+          link.classList.remove("keyboard-focused")
+          link.blur()
+        })
+
+        // Focus and highlight the selected link
+        if (this.selectedIndex >= 0) {
+          const selectedLink = focusableLinks[this.selectedIndex]
+          if (selectedLink) {
+            selectedLink.classList.add("keyboard-focused")
+            selectedLink.focus()
+            selectedLink.scrollIntoView({ block: "nearest", behavior: "smooth" })
+
+            // Announce selection to screen readers
+            const linkText = selectedLink.textContent || selectedLink.getAttribute("aria-label") || ""
+            const message = `${this.selectedIndex + 1} of ${focusableLinks.length}: ${linkText}`
+            StarlightMixedbreadSearch.createAnnouncement(message, this.results)
+          }
+        }
+      }
+    }
+
+    private selectResult() {
+      const focusableLinks = this.getAllFocusableLinks()
+
+      // Check if there's a currently focused link (from Tab navigation)
+      const focusedElement = document.activeElement as HTMLAnchorElement
+      if (focusedElement && focusedElement.classList.contains("mixedbread__result-link")) {
+        const href = focusedElement.getAttribute("href")
+        if (href) {
+          window.location.href = href
+          this.closeModal()
+          return
+        }
+      }
+
+      // Fallback to keyboard navigation selection
+      const selectedLink = focusableLinks[this.selectedIndex]
+      if (selectedLink && this.selectedIndex >= 0) {
+        const href = selectedLink.getAttribute("href")
+        if (href) {
+          window.location.href = href
+          this.closeModal()
+        } else {
+          // Fallback to click if no href
+          selectedLink.click()
+          this.closeModal()
+        }
+      }
+    }
+
+    private updateClearButton(query: string) {
+      if (this.clearButton) {
+        if (query) {
+          this.clearButton.classList.add("show")
+          this.clearButton.removeAttribute("tabindex")
+        } else {
+          this.clearButton.classList.remove("show")
+          this.clearButton.setAttribute("tabindex", "-1")
+        }
+      }
+    }
+  }
+
+  customElements.define("sl-mixedbread-search", StarlightMixedbreadSearch)
+</script>
+
 <style is:global>
+  :root {
+    --mixedbread-border-color: var(--sl-color-gray-5);
+    --mixedbread-bg-primary: var(--sl-color-black);
+    --mixedbread-text-primary: var(--sl-color-white);
+    --mixedbread-text-muted: var(--sl-color-gray-3);
+    --mixedbread-border-radius: 0.375rem;
+    --mixedbread-transition: all 0.15s ease;
+  }
+
   .mixedbread-search-button {
     display: flex;
     align-items: center;
@@ -48,8 +760,20 @@ import './variables.css'
   }
 
   .mixedbread-button-placeholder,
-  .mixedbread-button-keys {
+  .mixedbread-button-kbd {
     display: none;
+  }
+
+  .mixedbread-button-kbd kbd {
+    display: inline-block;
+    padding: 0.125em 0.375em;
+    font-size: 0.875em;
+    line-height: 1;
+    color: var(--sl-color-gray-1);
+    background: var(--sl-color-gray-6);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   @media (min-width: 50rem) {
@@ -58,44 +782,34 @@ import './variables.css'
     }
 
     .mixedbread-search-button {
-      border: 1px solid var(--sl-color-gray-5);
-      border-radius: 0.375rem;
+      border: 1px solid var(--mixedbread-border-color);
+      border-radius: var(--mixedbread-border-radius);
       padding-inline-start: 0.75rem;
-      padding-inline-end: 1rem;
-      background-color: var(--sl-color-black);
+      padding-inline-end: 0.5rem;
+      background-color: var(--mixedbread-bg-primary);
       color: var(--sl-color-gray-2);
       font-size: var(--sl-text-sm);
       width: 100%;
       max-width: 22rem;
-      transition: all 0.15s ease;
+      transition: var(--mixedbread-transition);
     }
 
     .mixedbread-search-button:hover {
       border-color: var(--sl-color-gray-2);
-      color: var(--sl-color-white);
+      color: var(--mixedbread-text-primary);
       box-shadow: 0 0 0 1px var(--sl-color-gray-2);
     }
 
     .mixedbread-button-placeholder,
-    .mixedbread-button-keys {
+    .mixedbread-button-kbd {
       display: flex;
       align-items: center;
     }
 
-    .mixedbread-button-keys {
+    .mixedbread-button-kbd {
+      display: flex;
+      gap: 0.25em;
       margin-inline-start: auto;
-      gap: 0.25rem;
-      opacity: 0.7;
-    }
-
-    .mixedbread-button-keys::before {
-      content: "⌘K";
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    body:not(.mac) .mixedbread-button-keys::before {
-      content: "Ctrl K";
     }
   }
 
@@ -129,8 +843,8 @@ import './variables.css'
   }
 
   .mixedbread-modal-container {
-    background: var(--sl-color-black);
-    border: 1px solid var(--sl-color-gray-5);
+    background: var(--mixedbread-bg-primary);
+    border: 1px solid var(--mixedbread-border-color);
     border-radius: 0.5rem;
     box-shadow:
       0 20px 25px -5px rgba(0, 0, 0, 0.1),
@@ -152,7 +866,7 @@ import './variables.css'
 
   .mixedbread-searchbox {
     padding: 0;
-    border-bottom: 1px solid var(--sl-color-gray-5);
+    border-bottom: 1px solid var(--mixedbread-border-color);
     position: relative;
   }
 
@@ -172,7 +886,7 @@ import './variables.css'
 
   .mixedbread-searchbox input {
     width: 100%;
-    padding: 14px 48px;
+    padding: 14px 96px 14px 48px;
     border: none;
     background: transparent;
     font-size: 16px;
@@ -239,23 +953,19 @@ import './variables.css'
   }
 
   .mixedbread-results {
+    background: var(--sl-color-gray-6);
     flex: 1;
     overflow-y: auto;
     padding: 16px;
     overscroll-behavior: contain;
   }
 
-  /* Screen reader only text */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
+  .mixedbread-results > * + * {
+    margin-top: 16px;
+  }
+
+  .mixedbread-results > .mixedbread__results:first-of-type {
+    margin-top: 0;
   }
 
   .mixedbread-results::-webkit-scrollbar {
@@ -275,66 +985,165 @@ import './variables.css'
     background: var(--sl-color-gray-4);
   }
 
-  .mixedbread-hit {
-    padding: 12px 16px;
-    border-radius: 0.375rem;
-    margin-bottom: 8px;
-    cursor: pointer;
-    background: transparent;
+  .mixedbread__results {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .mixedbread__result {
+    display: flex;
+    align-items: flex-start;
+    border: 0;
+    padding: 0;
+    list-style-type: none;
+    margin-bottom: 12px;
+  }
+
+  .mixedbread__result:last-child {
+    margin-bottom: 0;
+  }
+
+  .mixedbread__result-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1;
+    gap: 1px;
+  }
+
+  .mixedbread__result-inner > :first-child {
+    border-radius: 4px 4px 0 0;
+  }
+
+  .mixedbread__result-inner > :last-child {
+    border-radius: 0 0 4px 4px;
+  }
+
+  .mixedbread__result-inner > :only-child {
+    border-radius: 4px;
+  }
+
+  .mixedbread__result-link {
+    position: relative;
+    display: block;
+    padding: 10px 16px 10px 48px;
+    background-color: var(--sl-color-black);
+    border-radius: 6px;
     color: var(--sl-color-white);
     text-decoration: none;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+    outline: none;
+    border: 1px solid transparent;
+  }
+
+  .mixedbread__result-link:hover {
+    border-color: var(--sl-color-accent-high);
+  }
+
+  .mixedbread__result-link:focus,
+  .mixedbread__result-link:focus-visible,
+  .mixedbread__result-link.keyboard-focused {
+    border-color: var(--sl-color-accent-high);
+    background: color-mix(in srgb, var(--sl-color-accent) 5%, transparent);
+    outline: none;
+  }
+
+  .mixedbread-results.keyboard-nav .mixedbread__result-link:hover {
+    background: var(--sl-color-black);
+    border-color: transparent;
+  }
+
+  .mixedbread__result-page::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 12px;
+    width: 24px;
+    background: var(--sl-color-gray-3);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
+      center no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
+      center no-repeat;
+  }
+
+  .mixedbread__result-title {
     display: block;
-    transition: all 0.1s ease;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .mixedbread-hit:last-child {
-    margin-bottom: 0px;
-  }
-
-  .mixedbread-hit:hover:not(.keyboard-nav .mixedbread-hit),
-  .mixedbread-hit.selected {
-    background: var(--sl-color-gray-6);
-    border-color: var(--sl-color-gray-5);
-  }
-
-  .mixedbread-hit-title {
+    margin: 0 0 4px 0;
+    color: inherit;
     font-weight: 600;
-    margin-bottom: 4px;
-    font-size: 14px;
+  }
+
+  .mixedbread__result-description {
+    display: block;
+    margin: 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875em;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    font-weight: 400;
+  }
+
+  .mixedbread__result-page {
     line-height: 1.4;
   }
 
-  .mixedbread-hit-content {
-    color: var(--sl-color-gray-2);
-    font-size: 13px;
-    line-height: 1.5;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+  .mixedbread__result-nested {
+    position: relative;
+    padding-inline-start: 48px;
+    padding-inline-end: 16px;
+    padding-block: 8px;
+  }
+
+  .mixedbread__result-nested::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 8px;
+    width: 32px;
+    background: var(--sl-color-gray-4);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
+      0% 0% / 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
+      0% 0% / 100% no-repeat;
+  }
+
+  .mixedbread__result-nested:last-of-type::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
+  }
+
+  .mixedbread__result-nested > .mixedbread__result-title {
+    font-size: 0.9em;
   }
 
   .mixedbread-footer {
     padding: 14px 16px;
-    background: var(--sl-color-gray-7);
-    border-top: 1px solid var(--sl-color-gray-5);
+    border-top: 1px solid var(--mixedbread-border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    color: var(--sl-color-gray-3);
+    color: var(--mixedbread-text-muted);
   }
 
   .mixedbread-powered-by {
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 12px;
   }
 
   .mixedbread-powered-by__logo {
     height: 20px;
     width: 20px;
+  }
+
+  .mixedbread-powered-by a {
+    color: var(--sl-color-accent-high);
+    text-decoration: underline;
   }
 
   .mixedbread-shortcuts {
@@ -381,12 +1190,6 @@ import './variables.css'
     line-height: 1.6;
   }
 
-  .mixedbread-empty-hint {
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--sl-color-gray-4);
-  }
-
   .mixedbread-loading::before {
     content: "";
     display: inline-block;
@@ -407,6 +1210,16 @@ import './variables.css'
 
   .mixedbread-error {
     color: #ef4444;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mixedbread-error svg {
+    width: 24px;
+    height: 24px;
+    opacity: 0.7;
   }
 
   @media (max-width: 640px) {
@@ -425,472 +1238,32 @@ import './variables.css'
     .mixedbread-searchbox input {
       font-size: 16px; /* Prevents zoom on iOS */
     }
+
+    .mixedbread-footer {
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mixedbread-powered-by {
+      order: 2;
+    }
+
+    .mixedbread-shortcuts {
+      order: 1;
+    }
+  }
+
+  /* Screen reader only text */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
 </style>
-
-<script>
-  interface SearchResult {
-    id: string
-    title: string
-    content: string
-    description: string
-    href: string
-    score: number
-  }
-
-  class StarlightMixedbreadSearch extends HTMLElement {
-    private modal: HTMLElement | null = null
-    private searchInput: HTMLInputElement | null = null
-    private results: HTMLElement | null = null
-    private clearButton: HTMLButtonElement | null = null
-    private selectedIndex = -1
-    private hoveredIndex = -1
-    private currentResults: SearchResult[] = []
-    private searchTimeout: number | null = null
-    private abortController: AbortController | null = null
-    private isKeyboardNavigating = false
-
-    constructor() {
-      super()
-      this.init()
-    }
-
-    private init() {
-      this.createModal()
-      this.bindEvents()
-    }
-
-    private createModal() {
-      this.modal = document.createElement("div")
-      this.modal.className = "mixedbread-modal"
-      this.modal.setAttribute("role", "dialog")
-      this.modal.setAttribute("aria-modal", "true")
-      this.modal.setAttribute("aria-label", "Search")
-
-      this.modal.innerHTML = `
-        <div class="mixedbread-modal-container" role="document">
-          <div class="mixedbread-searchbox">
-            <input 
-              type="search" 
-              placeholder="Search documentation..." 
-              aria-label="Search documentation"
-              aria-describedby="search-instructions"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              maxlength="64"
-            />
-            <button class="mixedbread-clear" aria-label="Clear search" type="button" tabindex="-1">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-              <span class="sr-only">Clear</span>
-            </button>
-          </div>
-          <div class="mixedbread-results" role="listbox" aria-label="Search results" aria-live="polite"></div>
-          <div class="mixedbread-footer">
-            <span id="search-instructions" class="sr-only">
-              Type to search. Use arrow keys to navigate results. Press Enter to select. Press Escape to close.
-            </span>
-            <div class="mixedbread-powered-by">
-              <img class="mixedbread-powered-by__logo" src="/src/assets/MixedbreadLogo.svg" alt="Mixedbread" />
-              <span>
-                Search powered by
-                <a href="https://mixedbread.ai" target="_blank" rel="noopener noreferrer">Mixedbread</a>
-              </span>
-            </div>
-            <div class="mixedbread-shortcuts" aria-label="Keyboard shortcuts">
-              <span class="mixedbread-key" aria-label="Up arrow">↑</span>
-              <span class="mixedbread-key" aria-label="Down arrow">↓</span>
-              <span>to navigate</span>
-              <span class="mixedbread-key" aria-label="Enter key">↵</span>
-              <span>to select</span>
-              <span class="mixedbread-key" aria-label="Escape key">esc</span>
-              <span>to close</span>
-            </div>
-          </div>
-        </div>
-      `
-
-      document.body.appendChild(this.modal)
-      this.searchInput = this.modal.querySelector("input")
-      this.results = this.modal.querySelector(".mixedbread-results")
-      this.clearButton = this.modal.querySelector(
-        ".mixedbread-clear"
-      ) as HTMLButtonElement
-    }
-
-    private bindEvents() {
-      const button = this.querySelector("button")
-      button?.addEventListener("click", () => this.openModal())
-
-      document.addEventListener("keydown", e => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-          e.preventDefault()
-          this.openModal()
-        }
-      })
-
-      if (navigator.platform.includes("Mac")) {
-        document.body.classList.add("mac")
-      }
-
-      if (this.modal) {
-        // Click outside to close
-        this.modal.addEventListener("click", e => {
-          if (e.target === this.modal) {
-            this.closeModal()
-          }
-        })
-
-        this.modal.addEventListener("keydown", e => {
-          switch (e.key) {
-            case "Escape":
-              e.preventDefault()
-              this.closeModal()
-              break
-            case "ArrowDown":
-            case "ArrowUp":
-              e.preventDefault()
-              if (!this.isKeyboardNavigating) {
-                this.isKeyboardNavigating = true
-                if (this.selectedIndex === -1 && this.hoveredIndex >= 0) {
-                  this.selectedIndex = this.hoveredIndex
-                }
-              }
-              this.navigateResults(e.key === "ArrowDown" ? 1 : -1)
-              break
-            case "Enter":
-              e.preventDefault()
-              this.selectResult()
-              break
-          }
-        })
-
-        // Reset keyboard navigation on mouse movement
-        this.modal.addEventListener("mousemove", () => {
-          if (this.isKeyboardNavigating) {
-            this.isKeyboardNavigating = false
-            this.results?.classList.remove("keyboard-nav")
-          }
-        })
-      }
-
-      if (this.searchInput) {
-        // Handle search input
-        this.searchInput.addEventListener("input", e => {
-          const query = (e.target as HTMLInputElement).value
-          this.resetNavigationState()
-          this.handleSearch(query)
-          this.updateClearButton(query)
-        })
-
-        // Handle Tab key
-        this.searchInput.addEventListener("keydown", e => {
-          if (e.key === "Tab" && e.shiftKey) {
-            e.preventDefault()
-            this.closeModal()
-          }
-        })
-      }
-
-      if (this.clearButton) {
-        // Clear button click
-        this.clearButton.addEventListener("click", () => {
-          this.clearSearch()
-          this.searchInput?.focus()
-        })
-
-        // Clear button keyboard navigation
-        this.clearButton.addEventListener("keydown", e => {
-          if (e.key === "Tab") {
-            e.preventDefault()
-            if (e.shiftKey) {
-              this.searchInput?.focus()
-            } else if (this.currentResults.length > 0) {
-              this.selectedIndex = 0
-              this.renderResults()
-              const firstResult = this.results?.querySelector(
-                '[data-index="0"]'
-              ) as HTMLElement
-              firstResult?.focus()
-            } else {
-              this.closeModal()
-            }
-          }
-        })
-      }
-    }
-
-    private openModal() {
-      if (!this.modal) return
-
-      document.body.classList.add("mixedbread-modal-open")
-      this.modal.classList.add("is-open")
-
-      // Focus input after modal animation
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          this.searchInput?.focus()
-          this.showEmptyState()
-        })
-      })
-    }
-
-    private closeModal() {
-      if (!this.modal) return
-
-      document.body.classList.remove("mixedbread-modal-open")
-      this.modal.classList.remove("is-open")
-      this.clearSearch()
-      this.abortController?.abort()
-    }
-
-    private clearSearch() {
-      if (this.searchInput) {
-        this.searchInput.value = ""
-      }
-      this.resetAllState()
-      this.updateClearButton("")
-      this.showEmptyState()
-    }
-
-    private resetNavigationState() {
-      this.isKeyboardNavigating = false
-      this.hoveredIndex = -1
-      this.selectedIndex = -1
-      this.results?.classList.remove("keyboard-nav")
-    }
-
-    private resetAllState() {
-      this.currentResults = []
-      this.resetNavigationState()
-    }
-
-    private async handleSearch(query: string) {
-      this.abortController?.abort()
-
-      if (this.searchTimeout) {
-        clearTimeout(this.searchTimeout)
-      }
-
-      if (!query.trim()) {
-        this.currentResults = []
-        this.renderResults()
-        return
-      }
-
-      this.searchTimeout = window.setTimeout(async () => {
-        this.showLoading()
-
-        try {
-          this.abortController = new AbortController()
-
-          const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`, {
-            signal: this.abortController.signal,
-          })
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-
-          const results = await response.json()
-
-          if (results.error) {
-            throw new Error(results.error)
-          }
-
-          this.currentResults = results
-          this.selectedIndex = -1
-          this.renderResults()
-        } catch (error: any) {
-          if (error.name !== "AbortError") {
-            console.error("Search error:", error)
-            this.showError()
-          }
-        }
-      }, 200)
-    }
-
-    private showLoading() {
-      if (this.results) {
-        this.results.innerHTML = `
-          <div class="mixedbread-loading" role="status">
-            <div>Searching...</div>
-            <span class="sr-only">Loading search results</span>
-          </div>
-        `
-      }
-    }
-
-    private showError() {
-      if (this.results) {
-        this.results.innerHTML = `
-          <div class="mixedbread-error" role="alert">
-            Search failed. Please try again.
-          </div>
-        `
-      }
-    }
-
-    private showEmptyState() {
-      if (this.results) {
-        this.results.innerHTML = `
-          <div class="mixedbread-empty">
-            <div class="mixedbread-empty-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <div class="mixedbread-empty-text">
-              Enter a query to search the documentation
-            </div>
-
-          </div>
-        `
-      }
-    }
-
-    private renderResults() {
-      if (!this.results) return
-
-      if (this.currentResults.length === 0 && this.searchInput?.value) {
-        this.results.innerHTML = `
-          <div class="mixedbread-no-results" role="status">
-            No results found for "${this.escapeHtml(this.searchInput.value)}"
-          </div>
-        `
-        return
-      }
-
-      if (this.currentResults.length === 0) {
-        this.showEmptyState()
-        return
-      }
-
-      const resultsText =
-        this.currentResults.length === 1
-          ? "1 result found"
-          : `${this.currentResults.length} results found`
-
-      this.results.innerHTML = `
-        <div class="sr-only" role="status">${resultsText}</div>
-        ${this.currentResults
-          .map((result, index) => {
-            const isSelected = index === this.selectedIndex
-            return `
-              <a 
-                href="${result.href}" 
-                class="mixedbread-hit ${isSelected ? "selected" : ""}" 
-                data-index="${index}"
-                role="option"
-                aria-selected="${isSelected}"
-                aria-label="${this.escapeHtml(result.title)}. ${this.escapeHtml(result.description || result.content)}"
-              >
-                <div class="mixedbread-hit-title">${this.escapeHtml(result.title)}</div>
-                <div class="mixedbread-hit-content">${this.escapeHtml(result.description || "")}</div>
-              </a>
-            `
-          })
-          .join("")}
-      `
-
-      // Maintain keyboard navigation class if active
-      if (this.isKeyboardNavigating) {
-        this.results.classList.add("keyboard-nav")
-      }
-
-      // Add event listeners to results
-      this.results.querySelectorAll(".mixedbread-hit").forEach(hit => {
-        hit.addEventListener("click", () => this.closeModal())
-
-        hit.addEventListener("mouseenter", e => {
-          if (!this.isKeyboardNavigating) {
-            const target = e.currentTarget as HTMLElement
-            this.hoveredIndex = parseInt(target.getAttribute("data-index") || "-1")
-            this.selectedIndex = -1
-          }
-        })
-
-        hit.addEventListener("mouseleave", () => {
-          if (!this.isKeyboardNavigating) {
-            this.hoveredIndex = -1
-          }
-        })
-      })
-    }
-
-    private navigateResults(direction: number) {
-      if (this.currentResults.length === 0) return
-
-      const previousIndex = this.selectedIndex
-
-      // Calculate new index without wrapping
-      if (direction > 0) {
-        // Moving down
-        if (this.selectedIndex === -1) {
-          this.selectedIndex = 0
-        } else if (this.selectedIndex < this.currentResults.length - 1) {
-          this.selectedIndex = this.selectedIndex + 1
-        }
-      } else {
-        // Moving up
-        if (this.selectedIndex === -1) {
-          this.selectedIndex = 0
-        } else if (this.selectedIndex > 0) {
-          this.selectedIndex = this.selectedIndex - 1
-        }
-      }
-
-      if (previousIndex !== this.selectedIndex) {
-        this.hoveredIndex = -1
-        this.renderResults()
-
-        if (this.selectedIndex >= 0) {
-          const selectedElement = this.results?.querySelector(
-            `[data-index="${this.selectedIndex}"]`
-          ) as HTMLElement
-          selectedElement?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-
-          // Announce selection to screen readers
-          const announcement = document.createElement("div")
-          announcement.className = "sr-only"
-          announcement.setAttribute("role", "status")
-          announcement.setAttribute("aria-live", "polite")
-          announcement.textContent = `${this.selectedIndex + 1} of ${this.currentResults.length}. ${selectedElement?.getAttribute("aria-label")}`
-          this.results?.appendChild(announcement)
-          setTimeout(() => announcement.remove(), 1000)
-        }
-      }
-    }
-
-    private selectResult() {
-      if (this.selectedIndex >= 0 && this.currentResults[this.selectedIndex]) {
-        const result = this.currentResults[this.selectedIndex]
-        window.location.href = result.href
-        this.closeModal()
-      }
-    }
-
-    private updateClearButton(query: string) {
-      if (this.clearButton) {
-        if (query) {
-          this.clearButton.classList.add("show")
-          this.clearButton.removeAttribute("tabindex")
-        } else {
-          this.clearButton.classList.remove("show")
-          this.clearButton.setAttribute("tabindex", "-1")
-        }
-      }
-    }
-
-    private escapeHtml(text: string): string {
-      const div = document.createElement("div")
-      div.textContent = text
-      return div.innerHTML
-    }
-  }
-
-  customElements.define("sl-mixedbread-search", StarlightMixedbreadSearch)
-</script>
