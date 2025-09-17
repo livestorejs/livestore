@@ -1,8 +1,8 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
-import { liveStoreStorageFormatVersion } from '@livestore/common'
-import { Effect, Logger, LogLevel, Queue, Schedule, Schema } from '@livestore/utils/effect'
+import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { Effect, Logger, LogLevel, Opfs, Queue, Schedule, Schema } from '@livestore/utils/effect'
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { schema } from '../schema.ts'
@@ -63,46 +63,43 @@ export const testMultipleMigrations = () =>
 
     return {
       migrationsCount,
-      archivedStateDbFiles: yield* Effect.promise(() => collectArchiveSnapshot()),
+      archivedStateDbFiles: yield* collectArchiveSnapshot,
     }
   }).pipe(
     Effect.tapCauseLogPretty,
+    UnexpectedError.mapToUnexpectedError,
     Effect.exit,
     Effect.tapSync((exit) => {
       window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
     Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.provide(Opfs.Opfs.Default),
     Effect.provide(Logger.pretty),
     Effect.scoped,
     Effect.runPromise,
   )
 
-const collectArchiveSnapshot = async () => {
+const collectArchiveSnapshot = Effect.gen(function* () {
+  const opfs = yield* Opfs.Opfs
   const segments = [`livestore-${storeId}@${liveStoreStorageFormatVersion}`, 'archive']
-  if (segments.length === 0) return []
 
-  const root = await navigator.storage.getDirectory()
-  let handle: FileSystemDirectoryHandle = root
-
+  let handle = yield* opfs.getRootDirectoryHandle
   for (const segment of segments) {
-    try {
-      handle = await handle.getDirectoryHandle(segment)
-    } catch (error) {
-      if ((error as DOMException).name === 'NotFoundError') {
-        return []
-      }
-      throw error
-    }
+    handle = yield* opfs.getDirectoryHandle(handle, segment)
   }
 
+  const entries = yield* opfs.listEntries(handle)
   const files: { name: string; size: number; lastModified: number }[] = []
 
-  for await (const entry of handle.values()) {
+  for (const entry of entries) {
     if (entry.kind !== 'file') continue
-    const fileHandle = await handle.getFileHandle(entry.name)
-    const file = await fileHandle.getFile()
+    const fileHandle = entry.handle
+    const file = yield* opfs.getFile(fileHandle)
     files.push({ name: entry.name, size: file.size, lastModified: file.lastModified })
   }
 
   return files
-}
+}).pipe(
+  Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed([])),
+  UnexpectedError.mapToUnexpectedError,
+)
