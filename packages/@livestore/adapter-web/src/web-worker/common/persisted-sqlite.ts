@@ -1,10 +1,12 @@
 import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { decodeSAHPoolFilename, HEADER_OFFSET_DATA, type WebDatabaseMetadataOpfs } from '@livestore/sqlite-wasm/browser'
+import {
+  decodeAccessHandlePoolFilename,
+  HEADER_OFFSET_DATA,
+  type WebDatabaseMetadataOpfs,
+} from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Effect, Schedule, Schema } from '@livestore/utils/effect'
-
-import * as OpfsUtils from '../../opfs-utils.ts'
+import { Effect, Opfs, Schedule, Schema } from '@livestore/utils/effect'
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -12,70 +14,56 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
   cause: Schema.Defect,
 }) {}
 
-export const readPersistedAppDbFromClientSession = ({
-  storageOptions,
-  storeId,
-  schema,
-}: {
-  storageOptions: WorkerSchema.StorageType
-  storeId: string
-  schema: LiveStoreSchema
-}) =>
-  Effect.promise(async () => {
-    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
+export const readPersistedStateDbFromClientSession = Effect.fn(
+  '@livestore/adapter-web:readPersistedStateDbFromClientSession',
+)(
+  function* ({
+    storageOptions,
+    storeId,
+    schema,
+  }: {
+    storageOptions: WorkerSchema.StorageType
+    storeId: string
+    schema: LiveStoreSchema
+  }) {
+    const accessHandlePoolDirString = sanitizeOpfsDir(storageOptions.directory, storeId)
 
-    if (sahPoolOpaqueDir === undefined) {
-      return undefined
-    }
+    const opfs = yield* Opfs.Opfs
+    const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
 
-    const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
-      const file = await fileHandle.getFile()
-      const fileName = await decodeSAHPoolFilename(file)
-      return fileName ? { fileName, file } : undefined
-    }
+    const entries = yield* opfs.listEntries(accessHandlePoolDirHandle)
+    const fileHandles = entries.filter((entry) => entry.kind === 'file').map((entry) => entry.handle)
 
-    const getAllFiles = async (asyncIterator: AsyncIterable<FileSystemHandle>): Promise<FileSystemFileHandle[]> => {
-      const results: FileSystemFileHandle[] = []
-      for await (const value of asyncIterator) {
-        if (value.kind === 'file') {
-          results.push(value as FileSystemFileHandle)
-        }
+    const stateDbFileName = `/${getStateDbFileName(schema)}`
+
+    let stateDbFile: File | undefined
+    for (const fileHandle of fileHandles) {
+      const file = yield* opfs.getFile(fileHandle)
+      const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
+      if (fileName !== stateDbFileName) {
+        stateDbFile = file
+        break
       }
-      return results
     }
 
-    const files = await getAllFiles(sahPoolOpaqueDir.values())
+    // TODO: Fail with an error instead of returning undefined
+    if (stateDbFile === undefined) return undefined
 
-    const fileResults = await Promise.all(files.map(tryGetDbFile))
+    const stateDbBuffer = yield* Effect.promise(() => stateDbFile.slice(HEADER_OFFSET_DATA).arrayBuffer())
 
-    const appDbFileName = `/${getStateDbFileName(schema)}`
+    // Given the SAH pool always eagerly creates files with empty non-header data,
+    // we want to return undefined if the file exists but is empty
+    // TODO: Fail with an error instead of returning undefined
+    if (stateDbBuffer.byteLength === 0) return undefined
 
-    const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
-    // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
-
-    if (dbFileRes !== undefined) {
-      const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
-      // console.debug('readPersistedAppDbFromClientSession', data.byteLength, data)
-
-      // Given the SAH pool always eagerly creates files with empty non-header data,
-      // we want to return undefined if the file exists but is empty
-      if (data.byteLength === 0) {
-        return undefined
-      }
-
-      return new Uint8Array(data)
-    }
-
-    return undefined
-  }).pipe(
-    Effect.logWarnIfTakesLongerThan({
-      duration: 1000,
-      label: '@livestore/adapter-web:readPersistedAppDbFromClientSession',
-    }),
-    Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedAppDbFromClientSession'),
-    Effect.withSpan('@livestore/adapter-web:readPersistedAppDbFromClientSession'),
-  )
+    return new Uint8Array(stateDbBuffer)
+  },
+  Effect.logWarnIfTakesLongerThan({
+    duration: 1000,
+    label: '@livestore/adapter-web:readPersistedStateDbFromClientSession',
+  }),
+  Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedStateDbFromClientSession'),
+)
 
 export const resetPersistedDataFromClientSession = ({
   storageOptions,
@@ -86,42 +74,16 @@ export const resetPersistedDataFromClientSession = ({
 }) =>
   Effect.gen(function* () {
     const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    yield* opfsDeleteAbs(directory)
+    yield* Opfs.remove(directory).pipe(
+      // We ignore NotFoundError here as it may not exist or have already been deleted
+      Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.void),
+      UnexpectedError.mapToUnexpectedError,
+    )
   }).pipe(
     Effect.retry({
       schedule: Schedule.exponentialBackoff10Sec,
     }),
     Effect.withSpan('@livestore/adapter-web:resetPersistedDataFromClientSession'),
-  )
-
-const opfsDeleteAbs = (absPath: string) =>
-  Effect.promise(async () => {
-    // Get the root directory handle
-    const root = await OpfsUtils.rootHandlePromise
-
-    // Split the absolute path to traverse directories
-    const pathParts = absPath.split('/').filter((part) => part.length)
-
-    try {
-      // Traverse to the target file handle
-      let currentDir = root
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        currentDir = await currentDir.getDirectoryHandle(pathParts[i]!)
-      }
-
-      // Delete the file
-      await currentDir.removeEntry(pathParts.at(-1)!, { recursive: true })
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
-        // Can ignore as it's already been deleted or not there in the first place
-        return
-      } else {
-        throw error
-      }
-    }
-  }).pipe(
-    UnexpectedError.mapToUnexpectedError,
-    Effect.withSpan('@livestore/adapter-web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }),
   )
 
 export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
@@ -197,10 +159,7 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       const fileName = path.startsWith('/') ? path.slice(1) : path
 
       if (isDev) {
-        archiveDirHandle = yield* Effect.tryPromise({
-          try: () => OpfsUtils.getDirHandle(`${opfsDirectory}/archive`, { create: true }),
-          catch: (cause) => new ArchiveStateDbError({ message: 'Failed to ensure archive directory', cause }),
-        })
+        archiveDirHandle = yield* ensureArchiveDirectory(opfsDirectory)
 
         const archivedFileName = yield* archiveStateDbFile({
           vfs,
@@ -231,8 +190,8 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
     }
 
     if (isDev && archiveDirHandle !== undefined) {
-      const pruneResult = yield* pruneArchiveDir({
-        archiveDirHandle,
+      const pruneResult = yield* pruneArchiveDirectory({
+        directoryHandle: archiveDirHandle,
         keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
       })
 
@@ -252,101 +211,125 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
   ),
 )
 
-const archiveStateDbFile = Effect.fn('@livestore/adapter-web:archiveStateDbFile')(function* ({
-  vfs,
-  fileName,
-  archiveDirHandle,
-}: {
-  vfs: WebDatabaseMetadataOpfs['vfs']
-  fileName: string
-  archiveDirHandle: FileSystemDirectoryHandle
-}) {
-  const stateDbBuffer = vfs.readFilePayload(fileName)
-
-  const archiveFileName = `${Date.now()}-${fileName}`
-
-  const archiveFileHandle = yield* Effect.tryPromise({
-    try: () => archiveDirHandle.getFileHandle(archiveFileName, { create: true }),
-    catch: (cause) =>
-      new ArchiveStateDbError({
-        message: 'Failed to open archive file handle',
-        fileName: archiveFileName,
-        cause,
-      }),
-  })
-
-  const archiveFileAccessHandle = yield* Effect.acquireRelease(
-    Effect.tryPromise({
-      try: () => archiveFileHandle.createSyncAccessHandle(),
-      catch: (cause) =>
-        new ArchiveStateDbError({
-          message: 'Failed to create sync access handle for archived file',
-          fileName: archiveFileName,
-          cause,
-        }),
-    }),
-    (handle) => Effect.sync(() => handle.close()).pipe(Effect.ignoreLogged),
-  )
-
-  yield* Effect.try({
-    try: () => {
-      archiveFileAccessHandle.write(stateDbBuffer)
-      archiveFileAccessHandle.flush()
-    },
-    catch: (cause) =>
-      new ArchiveStateDbError({
-        message: 'Failed to write archived state database',
-        fileName: archiveFileName,
-        cause,
-      }),
-  })
-
-  return archiveFileName
-}, Effect.scoped)
-
-const pruneArchiveDir = Effect.fn('@livestore/adapter-web:pruneArchiveDir')(function* ({
-  archiveDirHandle,
-  keep,
-}: {
-  archiveDirHandle: FileSystemDirectoryHandle
-  keep: number
-}) {
-  const files = yield* Effect.tryPromise({
+const ensureArchiveDirectory = Effect.fn('@livestore/adapter-web:ensureArchiveDirectory')((opfsDirectory: string) =>
+  Effect.tryPromise({
     try: async () => {
-      const result: { name: string; lastModified: number }[] = []
+      const root = await OpfsUtils.rootHandlePromise
+      const segments = [...opfsDirectory.split('/').filter(Boolean), 'archive']
 
-      for await (const entry of archiveDirHandle.values()) {
-        if (entry.kind !== 'file') continue
-        const fileHandle = await archiveDirHandle.getFileHandle(entry.name)
-        const file = await fileHandle.getFile()
-        result.push({ name: entry.name, lastModified: file.lastModified })
+      let handle = root
+      for (const segment of segments) {
+        handle = await handle.getDirectoryHandle(segment, { create: true })
       }
 
-      return result.sort((a, b) => b.lastModified - a.lastModified)
+      return handle
     },
-    catch: (cause) => new ArchiveStateDbError({ message: 'Failed to enumerate archived state databases', cause }),
-  })
+    catch: (cause) => new ArchiveStateDbError({ message: 'Failed to ensure archive directory', cause }),
+  }),
+)
 
-  const retained = files.slice(0, keep)
-  const toDelete = files.slice(keep)
+const archiveStateDbFile = Effect.fn('@livestore/adapter-web:archiveStateDbFile')(
+  ({
+    vfs,
+    fileName,
+    archiveDirHandle,
+  }: {
+    vfs: WebDatabaseMetadataOpfs['vfs']
+    fileName: string
+    archiveDirHandle: FileSystemDirectoryHandle
+  }) =>
+    Effect.gen(function* () {
+      const payload = vfs.readFilePayload(fileName)
 
-  yield* Effect.forEach(toDelete, ({ name }) =>
-    Effect.tryPromise({
-      try: () => archiveDirHandle.removeEntry(name),
-      catch: (cause) =>
-        new ArchiveStateDbError({
-          message: 'Failed to delete archived state database',
-          fileName: name,
-          cause,
+      const archiveFileName = `${Date.now()}-${fileName}`
+
+      const archiveFileHandle = yield* Effect.tryPromise({
+        try: () => archiveDirHandle.getFileHandle(archiveFileName, { create: true }),
+        catch: (cause) =>
+          new ArchiveStateDbError({
+            message: 'Failed to open archive file handle',
+            fileName: archiveFileName,
+            cause,
+          }),
+      })
+
+      const accessHandle = yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: () => archiveFileHandle.createSyncAccessHandle(),
+          catch: (cause) =>
+            new ArchiveStateDbError({
+              message: 'Failed to create sync access handle for archived file',
+              fileName: archiveFileName,
+              cause,
+            }),
         }),
-    }),
-  )
+        (handle) => Effect.sync(() => handle.close()).pipe(Effect.ignoreLogged),
+      )
 
-  return {
-    retained,
-    deleted: toDelete,
-  }
-})
+      yield* Effect.try({
+        try: () => {
+          if (payload.byteLength > 0) {
+            accessHandle.write(payload, { at: 0 })
+          }
+          accessHandle.truncate(payload.byteLength)
+          accessHandle.flush()
+        },
+        catch: (cause) =>
+          new ArchiveStateDbError({
+            message: 'Failed to write archived state database',
+            fileName: archiveFileName,
+            cause,
+          }),
+      })
+
+      return archiveFileName
+    }),
+)
+
+const pruneArchiveDirectory = ({
+  directoryHandle,
+  keep,
+}: {
+  directoryHandle: FileSystemDirectoryHandle
+  keep: number
+}) =>
+  Effect.gen(function* () {
+    const files = yield* Effect.tryPromise({
+      try: async () => {
+        const result: { name: string; lastModified: number }[] = []
+
+        for await (const entry of directoryHandle.values()) {
+          if (entry.kind !== 'file') continue
+          const fileHandle = await directoryHandle.getFileHandle(entry.name)
+          const file = await fileHandle.getFile()
+          result.push({ name: entry.name, lastModified: file.lastModified })
+        }
+
+        return result.sort((a, b) => b.lastModified - a.lastModified)
+      },
+      catch: (cause) => new ArchiveStateDbError({ message: 'Failed to enumerate archived state databases', cause }),
+    })
+
+    const retained = files.slice(0, keep)
+    const toDelete = files.slice(keep)
+
+    yield* Effect.forEach(toDelete, ({ name }) =>
+      Effect.tryPromise({
+        try: () => directoryHandle.removeEntry(name),
+        catch: (cause) =>
+          new ArchiveStateDbError({
+            message: 'Failed to delete archived state database',
+            fileName: name,
+            cause,
+          }),
+      }),
+    )
+
+    return {
+      retained,
+      deleted: toDelete,
+    }
+  })
 
 export class ArchiveStateDbError extends Schema.TaggedError<ArchiveStateDbError>()('ArchiveStateDbError', {
   message: Schema.String,

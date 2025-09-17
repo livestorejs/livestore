@@ -1,34 +1,73 @@
+// This file exists for backwards compatibility since they're part of this package's exports and is also exposed in
+// `__debugLiveStoreUtils`.
+//
+// New code should use the OPFS utilities available in `@livestore/utils/effect` directly.
+
 // NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
 
 import { prettyBytes } from '@livestore/utils'
+import { Effect, Opfs } from '@livestore/utils/effect'
+
+const OPFS_UNSUPPORTED_ERROR = new Error(
+  `Can't get OPFS root handle in this environment as navigator.storage is undefined`,
+)
 
 // To improve LiveStore compatibility with e.g. Node.js we're guarding for `navigator` / `navigator.storage` to be defined.
-export const rootHandlePromise =
-  typeof navigator === 'undefined' || navigator.storage === undefined
-    ? // We're using a proxy here to make the promise reject lazy
-      (new Proxy(
-        {},
-        {
-          get: () =>
-            Promise.reject(
-              new Error(`Can't get OPFS root handle in this environment as navigator.storage is undefined`),
-            ),
-        },
-      ) as never)
-    : navigator.storage.getDirectory()
+const hasOpfsSupport = typeof navigator !== 'undefined' && navigator.storage !== undefined
 
-export const getDirHandle = async (absDirPath: string | undefined, options: { create?: boolean } = {}) => {
-  const rootHandle = await rootHandlePromise
-  if (absDirPath === undefined || absDirPath === '' || absDirPath === '/') return rootHandle
+const runOpfsEffect = <A>(effect: Effect.Effect<A, unknown, Opfs.Opfs>) =>
+  hasOpfsSupport
+    ? effect.pipe(Effect.provide(Opfs.Opfs.Default), Effect.runPromise)
+    : Promise.reject(OPFS_UNSUPPORTED_ERROR)
 
-  let dirHandle = rootHandle
-  const directoryStack = absDirPath.split('/').filter(Boolean)
-  while (directoryStack.length > 0) {
-    dirHandle = await dirHandle.getDirectoryHandle(directoryStack.shift()!, options)
-  }
+export const rootHandlePromise = hasOpfsSupport
+  ? runOpfsEffect(
+      Effect.gen(function* () {
+        const opfs = yield* Opfs.Opfs
+        return yield* opfs.getRootDirectoryHandle
+      }),
+    )
+  : // We're using a proxy here to make the promise reject lazy
+    (new Proxy(
+      {},
+      {
+        get: () => Promise.reject(OPFS_UNSUPPORTED_ERROR),
+      },
+    ) as never)
 
-  return dirHandle
+export const getDirHandle = (absDirPath: string | undefined, options: { create?: boolean } = {}) => {
+  if (absDirPath === undefined) return rootHandlePromise
+  return runOpfsEffect(Opfs.getDirectoryHandleByPath(absDirPath, options))
 }
+
+const printTreeEffect = (
+  directoryHandle: FileSystemDirectoryHandle,
+  depth: number,
+  prefix: string,
+): Effect.Effect<void, unknown, Opfs.Opfs> =>
+  Effect.gen(function* () {
+    if (depth < 0) return
+
+    const opfs = yield* Opfs.Opfs
+    const entries = yield* opfs.listEntries(directoryHandle)
+
+    for (const entry of entries) {
+      const isDirectory = entry.kind === 'directory'
+      let sizeString: string | undefined
+
+      if (entry.kind === 'file') {
+        const fileHandle = entry.handle
+        const file = yield* opfs.getFile(fileHandle)
+        sizeString = prettyBytes(file.size)
+      }
+
+      yield* Effect.log(`${prefix}${isDirectory ? '📁' : '📄'} ${entry.name} ${sizeString ? `(${sizeString})` : ''}`)
+
+      if (!isDirectory) continue
+
+      yield* printTreeEffect(entry.handle, depth - 1, `${prefix}  `)
+    }
+  })
 
 export const printTree = async (
   directoryHandle_: FileSystemDirectoryHandle | Promise<FileSystemDirectoryHandle> = rootHandlePromise,
@@ -38,24 +77,17 @@ export const printTree = async (
   if (depth < 0) return
 
   const directoryHandle = await directoryHandle_
-  const entries = directoryHandle.values()
-
-  for await (const entry of entries) {
-    const isDirectory = entry.kind === 'directory'
-    const size = entry.kind === 'file' ? await entry.getFile().then((file) => prettyBytes(file.size)) : undefined
-    console.log(`${prefix}${isDirectory ? '📁' : '📄'} ${entry.name} ${size ? `(${size})` : ''}`)
-
-    if (isDirectory) {
-      const nestedDirectoryHandle = await directoryHandle.getDirectoryHandle(entry.name)
-      await printTree(nestedDirectoryHandle, depth - 1, `${prefix}  `)
-    }
-  }
+  await runOpfsEffect(printTreeEffect(directoryHandle, depth, prefix))
 }
 
-export const deleteAll = async (directoryHandle: FileSystemDirectoryHandle) => {
-  if (directoryHandle.kind !== 'directory') return
+export const deleteAll = (directoryHandle: FileSystemDirectoryHandle) =>
+  runOpfsEffect(
+    Effect.gen(function* () {
+      const opfs = yield* Opfs.Opfs
+      const entries = yield* opfs.listEntries(directoryHandle)
 
-  for await (const entryName of directoryHandle.keys()) {
-    await directoryHandle.removeEntry(entryName, { recursive: true })
-  }
-}
+      for (const entry of entries) {
+        yield* opfs.removeEntry(directoryHandle, entry.name, { recursive: true })
+      }
+    }),
+  )

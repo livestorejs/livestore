@@ -34,7 +34,10 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as OpfsUtils from '../../opfs-utils.ts'
-import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.ts'
+import {
+  readPersistedStateDbFromClientSession,
+  resetPersistedDataFromClientSession,
+} from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
@@ -184,7 +187,7 @@ export const makePersistedAdapter =
       const dataFromFile =
         options.experimental?.disableFastPath === true
           ? undefined
-          : yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
+          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema })
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
