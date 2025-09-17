@@ -20,25 +20,29 @@ export * from '@effect/vitest'
 
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
-export const makeWithTestCtx: <R1, E1>(
-  ctxParams: WithTestCtxParams<R1, E1>,
-) => (
-  testContext: Vitest.TestContext,
-) => <A, E>(
-  self: Effect.Effect<A, E, Scope.Scope | NoInfer<R1> | OtelTracer.OtelTracer>,
-) => Effect.Effect<A, E1 | Cause.TimeoutException | E, Scope.Scope> =
-  (ctxParams) => (testContext: Vitest.TestContext) =>
-    withTestCtx(testContext, ctxParams)
+export const makeWithTestCtx: <ROut, E1, RIn>(
+  ctxParams: WithTestCtxParams<ROut, E1, RIn>,
+) => (testContext: Vitest.TestContext) => <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+) => Effect.Effect<
+  A,
+  E | E1 | Cause.TimeoutException,
+  // Exclude dependencies provided by `withTestCtx` from the layer dependencies
+  | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+  // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
+  // by the layer from the effect dependencies
+  | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+> = (ctxParams) => (testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)
 
-export type WithTestCtxParams<R1, E1> = {
+export type WithTestCtxParams<ROut, E1, RIn> = {
   suffix?: string
-  makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<R1, E1, Scope.Scope>
+  makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn | Scope.Scope>
   timeout?: Duration.DurationInput
   forceOtel?: boolean
 }
 
 export const withTestCtx =
-  <R1 = never, E1 = never>(
+  <ROut = never, E1 = never, RIn = never>(
     testContext: Vitest.TestContext,
     {
       suffix,
@@ -47,23 +51,31 @@ export const withTestCtx =
       forceOtel = false,
     }: {
       suffix?: string
-      makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<R1, E1, Scope.Scope>
+      makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn>
       timeout?: Duration.DurationInput
       forceOtel?: boolean
     } = {},
   ) =>
-  <A, E>(
-    self: Effect.Effect<A, E, Scope.Scope | OtelTracer.OtelTracer | R1>,
-  ): Effect.Effect<A, E | Cause.TimeoutException | E1, Scope.Scope> => {
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+  ): Effect.Effect<
+    A,
+    E | E1 | Cause.TimeoutException,
+    // Exclude dependencies provided internally from the provided layer's dependencies
+    | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+    // Exclude dependencies provided internally **and** dependencies produced by the
+    // provided layer from the effect dependencies
+    | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+  > => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`
-    const layer = makeLayer?.(testContext)
+    const layer = makeLayer?.(testContext) ?? Layer.empty
 
     const otelLayer =
       DEBUGGER_ACTIVE || forceOtel
         ? OtelLiveHttp({ rootSpanName: spanName, serviceName: 'vitest-runner', skipLogUrl: false })
         : OtelLiveDummy
 
-    const combinedLayer = (layer ?? Layer.empty).pipe(Layer.provideMerge(otelLayer))
+    const combinedLayer = layer.pipe(Layer.provideMerge(otelLayer))
 
     return self.pipe(
       DEBUGGER_ACTIVE
