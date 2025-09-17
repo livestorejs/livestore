@@ -20,7 +20,7 @@ export * from '@effect/vitest'
 
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
-export const makeWithTestCtx: <ROut, E1, RIn>(
+export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   ctxParams: WithTestCtxParams<ROut, E1, RIn>,
 ) => (testContext: Vitest.TestContext) => <A, E, R>(
   self: Effect.Effect<A, E, R>,
