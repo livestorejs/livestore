@@ -19,8 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup environment
-        uses: ./.github/actions/setup-env
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Mixedbread CLI
+        run: npm i -g @mixedbread/cli
 
       - name: Sync vector store
         shell: bash
@@ -28,4 +33,4 @@ jobs:
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
-        run: pnpm exec mxbai vs sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
+        run: mxbai vs sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
