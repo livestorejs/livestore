@@ -53,9 +53,9 @@
     "astro": "astro",
     "build": "astro check && astro build",
     "dev": "astro dev",
+    "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
+    "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
     "preview": "astro preview",
-    "start": "astro dev",
-    "sync-content": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
-    "sync-content:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run"
+    "start": "astro dev"
   }
 }

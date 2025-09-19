@@ -58,7 +58,7 @@ const MixedbreadConfigSchema = z
          *
          * export default {
          *   apiKey: process.env.MXBAI_API_KEY,
-         *   vectorStoreId: process.env.VECTOR_STORE_ID,
+         *   vectorStoreId: process.env.MXBAI_VECTOR_STORE_ID,
          *   maxResults: 15,
          * } satisfies MixedbreadClientOptions;
          */
