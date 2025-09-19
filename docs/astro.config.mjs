@@ -224,26 +224,46 @@ export default defineConfig({
                 entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
                 tsconfig: '../packages/@livestore/livestore/tsconfig.json',
                 output: 'api/livestore',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/react/src/mod.ts'],
                 tsconfig: '../packages/@livestore/react/tsconfig.json',
                 output: 'api/react',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
                 output: 'api/adapter-web',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
                 output: 'api/adapter-node',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
                 output: 'api/adapter-expo',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: [
@@ -252,11 +272,19 @@ export default defineConfig({
                 ],
                 tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
                 output: 'api/sync-cf',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
                 tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
                 output: 'api/sync-electric',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
             ]
           : []),
