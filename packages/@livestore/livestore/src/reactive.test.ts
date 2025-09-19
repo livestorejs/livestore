@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-
+import type { DebugRefreshReasonBase, DebugThunkInfo } from './reactive.ts'
 import { ReactiveGraph } from './reactive.ts'
 
 describe('a trivial graph', () => {
@@ -430,6 +430,55 @@ describe('error handling', () => {
 // causing a TypeError when the outer runEffects tried to access currentDebugRefresh.refreshedAtoms.
 // Fix: Use local variables to capture debug state instead of relying on shared mutable state.
 describe('bug fix: currentDebugRefresh race condition', () => {
+  it('keeps the debug refresh context when nested effect runs are triggered', () => {
+    type TestRefreshReason = DebugRefreshReasonBase | { _tag: 'outer' } | { _tag: 'nested' }
+
+    const graph = new ReactiveGraph<TestRefreshReason, DebugThunkInfo>()
+    graph.context = {}
+
+    const triggerRef = graph.makeRef(0, { label: 'trigger' })
+    const responseRef = graph.makeRef(0, { label: 'response' })
+
+    const triggerThunk = graph.makeThunk((get) => get(triggerRef), { label: 'triggerThunk' })
+    const laterThunk = graph.makeThunk((get) => get(triggerRef) + 1, { label: 'laterThunk' })
+    const responseThunk = graph.makeThunk((get) => get(responseRef), { label: 'responseThunk' })
+
+    const nestedEffect = graph.makeEffect((get) => {
+      get(responseThunk)
+    })
+
+    let observedLater: number | undefined
+    const outerEffect = graph.makeEffect((get) => {
+      const current = get(triggerThunk)
+
+      if (current !== 0) {
+        graph.setRef(responseRef, current, {
+          debugRefreshReason: { _tag: 'nested' },
+        })
+      }
+
+      observedLater = get(laterThunk)
+    })
+
+    nestedEffect.doEffect()
+    outerEffect.doEffect()
+    graph.debugRefreshInfos.clear()
+
+    graph.setRef(triggerRef, 1, { debugRefreshReason: { _tag: 'outer' } })
+
+    expect(observedLater).toBe(2)
+
+    const refreshInfos = Array.from(graph.debugRefreshInfos)
+    const outerRefresh = refreshInfos.find((info) => info.reason._tag === 'outer')
+    expect(outerRefresh).toBeDefined()
+    const refreshedLabels = outerRefresh!.refreshedAtoms.map((atomInfo) => atomInfo.atom.label)
+    expect(refreshedLabels).toContain('triggerThunk')
+    expect(refreshedLabels).toContain('laterThunk')
+
+    const makeThunkRefreshes = refreshInfos.filter((info) => info.reason._tag === 'makeThunk')
+    expect(makeThunkRefreshes).toHaveLength(0)
+  })
+
   it('handles nested runEffects from effect calling setRef', () => {
     const graph = new ReactiveGraph()
     graph.context = {}
