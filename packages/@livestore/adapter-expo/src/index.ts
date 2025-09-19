@@ -18,7 +18,17 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Exit, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Queue,
+  Schedule,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
@@ -307,7 +317,10 @@ const resetExpoPersistence = ({
         cause,
         note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId}`,
       }),
-  }).pipe(Effect.withSpan('@livestore/adapter-expo:resetPersistence', { attributes: { storeId } }))
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-expo:resetPersistence', { attributes: { storeId } }),
+  )
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
