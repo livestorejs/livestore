@@ -14,7 +14,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
-import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.ts'
+import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
 const port = 5252

@@ -1,23 +1,8 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { StarlightPlugin } from '@astrojs/starlight/types'
-import type { AstroUserConfig, ViteUserConfig } from 'astro'
 import { z } from 'astro/zod'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
-
-export interface MixedbreadClientOptions {
-  /** Your Mixedbread API key */
-  apiKey: string
-  /** Your Vector Store ID */
-  vectorStoreId: string
-  /** The maximum number of results to return per search */
-  maxResults?: number
-  /** Base URL for the Mixedbread API */
-  baseUrl?: string
-  /** Disable saving recent searches and favorites to local storage */
-  disableUserPersonalization?: boolean
-}
 
 /** Mixedbread Vector Search configuration options. */
 const MixedbreadConfigSchema = z
@@ -82,10 +67,21 @@ const MixedbreadConfigSchema = z
       .strict(),
   )
 
-type MixedbreadUserConfig = z.infer<typeof MixedbreadConfigSchema>
+/**
+ * @typedef {Object} MixedbreadClientOptions
+ * @property {string} apiKey - Your Mixedbread API key
+ * @property {string} vectorStoreId - Your Vector Store ID
+ * @property {number} [maxResults] - The maximum number of results to return per search
+ * @property {string} [baseUrl] - Base URL for the Mixedbread API
+ * @property {boolean} [disableUserPersonalization] - Disable saving recent searches and favorites to local storage
+ */
 
-/** Starlight Mixedbread plugin. */
-export const starlightMixedbread = (userConfig: MixedbreadUserConfig): StarlightPlugin => {
+/**
+ * Starlight Mixedbread plugin.
+ * @param {z.infer<typeof MixedbreadConfigSchema>} userConfig
+ * @returns {import('@astrojs/starlight/types').StarlightPlugin}
+ */
+export const starlightMixedbread = (userConfig) => {
   const opts = MixedbreadConfigSchema.parse(userConfig)
   return {
     name: 'starlight-mixedbread',
@@ -115,7 +111,7 @@ export const starlightMixedbread = (userConfig: MixedbreadUserConfig): Starlight
                 vite: {
                   plugins: [vitePluginMixedbread(config.root, opts)],
                 },
-              } satisfies AstroUserConfig)
+              })
             },
           },
         })
@@ -124,13 +120,17 @@ export const starlightMixedbread = (userConfig: MixedbreadUserConfig): Starlight
   }
 }
 
-/** Vite plugin that exposes the Mixedbread config via virtual modules. */
-function vitePluginMixedbread(root: URL, config: MixedbreadUserConfig): VitePlugin {
+/**
+ * Vite plugin that exposes the Mixedbread config via virtual modules.
+ * @param {URL} root
+ * @param {z.infer<typeof MixedbreadConfigSchema>} config
+ * @returns {import('vite').Plugin}
+ */
+function vitePluginMixedbread(root, config) {
   const moduleId = 'virtual:starlight/mixedbread-config'
   const resolvedModuleId = `\0${moduleId}`
 
-  const resolveId = (id: string, base = root) =>
-    JSON.stringify(id.startsWith('.') ? resolve(fileURLToPath(base), id) : id)
+  const resolveId = (id, base = root) => JSON.stringify(id.startsWith('.') ? resolve(fileURLToPath(base), id) : id)
 
   const moduleContent = `
 	${
@@ -151,4 +151,5 @@ function vitePluginMixedbread(root: URL, config: MixedbreadUserConfig): VitePlug
   }
 }
 
-type VitePlugin = NonNullable<ViteUserConfig['plugins']>[number]
+// Export the type for external use
+export { MixedbreadClientOptions }
