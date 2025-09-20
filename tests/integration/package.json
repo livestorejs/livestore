@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-vite": "0.4.0-dev.7",
