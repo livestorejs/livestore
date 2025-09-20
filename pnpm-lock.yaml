@@ -225,7 +225,7 @@ importers:
         specifier: 0.34.3
         version: 0.34.3
       solid-js:
-        specifier: ^1.9.3
+        specifier: 1.9.9
         version: 1.9.9
       starlight-auto-sidebar:
         specifier: 0.1.2
@@ -3544,7 +3544,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@0.24.21':
     resolution: {integrity: sha512-DT6K9vgFHqqWL/19mU1ofRcPoO1pn4qmgi76GtuiNU4tbBe/02mRHwFsQw7qRfFAT28If5e/wiwVozgSuZVL8g==}
