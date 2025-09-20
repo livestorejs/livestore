@@ -1,3 +1,4 @@
+import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
 import Slugger from 'github-slugger'
@@ -6,7 +7,7 @@ import removeMd from 'remove-markdown'
 export const prerender = false
 
 const mxbai = new Mixedbread({
-  apiKey: import.meta.env.MXBAI_API_KEY,
+  apiKey: MXBAI_API_KEY,
 })
 
 const slugger = new Slugger()
@@ -59,7 +60,7 @@ function extractHeadingTitle(text: string): string {
 }
 
 export const GET: APIRoute = async ({ url }) => {
-  if (!import.meta.env.MXBAI_API_KEY || !import.meta.env.MXBAI_VECTOR_STORE_ID) {
+  if (!MXBAI_API_KEY || !MXBAI_VECTOR_STORE_ID) {
     return new Response(JSON.stringify({ error: 'Mixedbread Search is not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -78,7 +79,7 @@ export const GET: APIRoute = async ({ url }) => {
   try {
     const response = await mxbai.vectorStores.search({
       query,
-      vector_store_identifiers: [import.meta.env.MXBAI_VECTOR_STORE_ID],
+      vector_store_identifiers: [MXBAI_VECTOR_STORE_ID],
       top_k: 10,
       search_options: {
         return_metadata: true,

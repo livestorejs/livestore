@@ -6,7 +6,7 @@ import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
-import { defineConfig } from 'astro/config'
+import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
@@ -40,6 +40,12 @@ export default defineConfig({
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
+  },
+  env: {
+    schema: {
+      MXBAI_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      MXBAI_VECTOR_STORE_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+    },
   },
   integrations: [
     react(),
