@@ -1,3 +1,4 @@
+import './disable-proxy-env.ts'
 import './thread-polyfill.ts'
 
 import * as ChildProcess from 'node:child_process'
