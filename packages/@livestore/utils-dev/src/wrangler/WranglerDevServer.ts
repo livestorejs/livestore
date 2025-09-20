@@ -194,10 +194,7 @@ const verifyHttpConnectivity = ({
     yield* withRetries(client.get(url))
   })
 
-const loopbackConnectivityAttempt = (
-  url: URL,
-  connectTimeout: Duration.DurationInput,
-): Effect.Effect<void, unknown> =>
+const loopbackConnectivityAttempt = (url: URL, connectTimeout: Duration.DurationInput): Effect.Effect<void, unknown> =>
   Effect.tryPromise({
     try: () => {
       const protocol = url.protocol
