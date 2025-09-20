@@ -215,6 +215,7 @@ Creates a LiveStore instance within a Durable Object.
 - `storage` - Durable Object storage instance
 - `syncBackendDurableObject` - Sync backend DO stub
 - `livePull` - Enable real-time updates (default: `false`)
+- `resetPersistence` - Drop LiveStore state/eventlog persistence before booting (development-only, default: `false`)
 
 ### `syncUpdateRpc(payload)`
 
@@ -242,6 +243,37 @@ async syncUpdateRpc(payload: unknown) {
 - Always use the provided `handleSyncUpdateRpc` function - don't implement custom logic
 
 For sync backend-related APIs like `makeDurableObject`, `handleSyncRequest`, and `getSyncRequestSearchParams`, see the [Cloudflare sync provider documentation](/reference/syncing/sync-provider/cloudflare/).
+
+### Resetting LiveStore persistence (development only)
+
+When iterating locally you can ask the adapter to wipe the Durable Object's LiveStore databases before booting by providing `resetPersistence: true` for a specific request. Only call this when you intentionally trigger a protected route or query parameter.
+
+```ts
+const url = new URL(request.url)
+const shouldReset =
+  env.ENVIRONMENT !== 'production' &&
+  url.pathname === '/internal/livestore-dev-reset' &&
+  url.searchParams.get('token') === env.ADMIN_SECRET
+
+const store = await createStoreDoPromise({
+  schema,
+  storeId,
+  clientId: 'client-do',
+  sessionId: nanoid(),
+  durableObjectId: this.state.id.toString(),
+  bindingName: 'CLIENT_DO',
+  storage: this.state.storage,
+  syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(
+    this.env.SYNC_BACKEND_DO.idFromName(storeId)
+  ),
+  livePull: true,
+  resetPersistence: shouldReset,
+})
+```
+
+:::caution
+Resetting persistence deletes all LiveStore state and eventlog data stored inside the Durable Object. Only enable it for guarded development flows (e.g. behind an authenticated admin route or secret query parameter) and never expose it to production traffic.
+:::
 
 ## Advanced Features
 

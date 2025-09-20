@@ -11,7 +11,7 @@ import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer 
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import type * as CfWorker from './cf-types.ts'
 
 export const makeAdapter =
@@ -20,11 +20,13 @@ export const makeAdapter =
     clientId,
     syncOptions,
     sessionId,
+    resetPersistence = false,
   }: {
     storage: CfWorker.DurableObjectStorage
     clientId: string
     syncOptions: SyncOptions
     sessionId: string
+    resetPersistence?: boolean
   }): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
@@ -43,17 +45,28 @@ export const makeAdapter =
       const schemaHashSuffix =
         schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
+      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
+      const eventlogDbFileName = getEventlogDbFileName()
+
+      if (resetPersistence === true) {
+        yield* resetDurableObjectPersistence({
+          storage,
+          storeId,
+          dbFileNames: [stateDbFileName, eventlogDbFileName],
+        })
+      }
+
       const dbState = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
-        fileName: getStateDbFileName(schemaHashSuffix),
+        fileName: stateDbFileName,
         configureDb: () => {},
       }).pipe(UnexpectedError.mapToUnexpectedError)
 
       const dbEventlog = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
-        fileName: `eventlog@${liveStoreStorageFormatVersion}.db`,
+        fileName: eventlogDbFileName,
         configureDb: () => {},
       }).pipe(UnexpectedError.mapToUnexpectedError)
 
@@ -142,3 +155,48 @@ export const makeAdapter =
     )
 
 const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
+
+const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`
+
+const resetDurableObjectPersistence = ({
+  storage,
+  storeId,
+  dbFileNames,
+}: {
+  storage: CfWorker.DurableObjectStorage
+  storeId: string
+  dbFileNames: ReadonlyArray<string>
+}) =>
+  Effect.try({
+    try: () =>
+      storage.transactionSync(() => {
+        for (const baseName of dbFileNames) {
+          const likePattern = `${baseName}%`
+          safeSqlExec(storage, 'DELETE FROM vfs_blocks WHERE file_path LIKE ?', likePattern)
+          safeSqlExec(storage, 'DELETE FROM vfs_files WHERE file_path LIKE ?', likePattern)
+        }
+      }),
+    catch: (cause) =>
+      new UnexpectedError({
+        cause,
+        note: `@livestore/adapter-cloudflare: Failed to reset persistence for store ${storeId}`,
+      }),
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-cloudflare:resetPersistence', { attributes: { storeId } }),
+  )
+
+const safeSqlExec = (storage: CfWorker.DurableObjectStorage, query: string, binding: string) => {
+  try {
+    storage.sql.exec(query, binding)
+  } catch (error) {
+    if (isMissingVfsTableError(error)) {
+      return
+    }
+
+    throw error
+  }
+}
+
+const isMissingVfsTableError = (error: unknown): boolean =>
+  error instanceof Error && error.message.toLowerCase().includes('no such table')

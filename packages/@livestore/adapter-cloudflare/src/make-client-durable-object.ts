@@ -45,6 +45,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSche
   durableObjectId: string
   bindingName: string
   livePull?: boolean
+  resetPersistence?: boolean
 }
 
 export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>({
@@ -57,6 +58,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
   durableObjectId,
   bindingName,
   livePull = false,
+  resetPersistence = false,
 }: CreateStoreDoOptions<TSchema>) =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
@@ -65,6 +67,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
       clientId,
       sessionId,
       storage,
+      resetPersistence,
       syncOptions: {
         backend: makeDoRpcSync({
           syncBackendStub: syncBackendDurableObject,
