@@ -6,7 +6,7 @@ import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
-import { defineConfig } from 'astro/config'
+import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
@@ -14,6 +14,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
+import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
 const port = 5252
@@ -40,6 +41,12 @@ export default defineConfig({
   image: {
     domains: ['gitbucket.schickling.dev'],
   },
+  env: {
+    schema: {
+      MXBAI_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      MXBAI_VECTOR_STORE_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+    },
+  },
   integrations: [
     react(),
     starlight({
@@ -63,6 +70,12 @@ export default defineConfig({
         // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
         // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
         // starlightAutoSidebar(),
+
+        starlightMixedbread({
+          apiKey: process.env.MXBAI_API_KEY ?? '',
+          vectorStoreId: process.env.MXBAI_VECTOR_STORE_ID ?? '',
+          maxResults: 8,
+        }),
 
         starlightSidebarTopics([
           {
@@ -217,26 +230,46 @@ export default defineConfig({
                 entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
                 tsconfig: '../packages/@livestore/livestore/tsconfig.json',
                 output: 'api/livestore',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/react/src/mod.ts'],
                 tsconfig: '../packages/@livestore/react/tsconfig.json',
                 output: 'api/react',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
                 output: 'api/adapter-web',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
                 output: 'api/adapter-node',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
                 tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
                 output: 'api/adapter-expo',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: [
@@ -245,11 +278,19 @@ export default defineConfig({
                 ],
                 tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
                 output: 'api/sync-cf',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
                 tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
                 output: 'api/sync-electric',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                },
               }),
             ]
           : []),
