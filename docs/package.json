@@ -14,6 +14,7 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@local/shared": "workspace:*",
     "@mixedbread/cli": "1.2.1",

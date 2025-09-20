@@ -48,6 +48,7 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*",

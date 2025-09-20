@@ -16,6 +16,7 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "postgres": "3.4.7"
   },

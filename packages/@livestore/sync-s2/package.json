@@ -1,0 +1,33 @@
+{
+  "name": "@livestore/sync-s2",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./s2-proxy-helpers": "./src/s2-proxy-helpers.ts"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {},
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./s2-proxy-helpers": "./dist/s2-proxy-helpers.js"
+    }
+  },
+  "scripts": {
+    "build": "",
+    "test": "echo 'No tests yet'"
+  }
+}
