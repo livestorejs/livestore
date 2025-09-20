@@ -28,3 +28,7 @@ Use the `mono` CLI for common workflows:
 ## TypeScript
 
 - Avoid `as any`, force-casting etc as much as possible.
+
+## Git
+
+- Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
