@@ -1,3 +1,5 @@
+import * as http from 'node:http'
+import * as https from 'node:https'
 import * as path from 'node:path'
 import * as Toml from '@iarna/toml'
 import { IS_CI } from '@livestore/utils'
@@ -150,31 +152,119 @@ const verifyHttpConnectivity = ({
   connectTimeout: Duration.DurationInput
 }): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const client = yield* HttpClient.HttpClient
+    const parsedUrl = new URL(url)
+    const shouldBypassProxy = isLoopbackHostname(parsedUrl.hostname)
 
     if (showLogs) {
-      yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
+      const suffix = shouldBypassProxy ? ' (proxy bypass for loopback)' : ''
+      yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}${suffix}`)
     }
 
-    // Try to connect with retries using exponential backoff
-    yield* client.get(url).pipe(
-      Effect.retryOrElse(
-        Schedule.exponential('50 millis', 2).pipe(
-          Schedule.jittered,
-          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
-          Schedule.compose(Schedule.count),
-        ),
-        (error, attemptCount) =>
-          Effect.fail(
-            new WranglerDevServerError({
-              cause: error,
-              message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
-              port: 0,
-            }),
+    const withRetries = <A, R>(effect: Effect.Effect<A, unknown, R>) =>
+      effect.pipe(
+        Effect.retryOrElse(
+          Schedule.exponential('50 millis', 2).pipe(
+            Schedule.jittered,
+            Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
+            Schedule.compose(Schedule.count),
           ),
-      ),
-      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
-      Effect.asVoid,
-      Effect.withSpan('verifyHttpConnectivity'),
-    )
+          (error, attemptCount) =>
+            Effect.fail(
+              new WranglerDevServerError({
+                cause: error,
+                message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
+                port: 0,
+              }),
+            ),
+        ),
+        Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+        Effect.asVoid,
+        Effect.withSpan('verifyHttpConnectivity'),
+      )
+
+    if (shouldBypassProxy) {
+      // When connecting to loopback, bypass HTTP(S)_PROXY entirely
+      yield* withRetries(loopbackConnectivityAttempt(parsedUrl, connectTimeout))
+      return
+    }
+
+    const client = yield* HttpClient.HttpClient
+
+    // Try to connect with retries using exponential backoff
+    yield* withRetries(client.get(url))
   })
+
+const loopbackConnectivityAttempt = (
+  url: URL,
+  connectTimeout: Duration.DurationInput,
+): Effect.Effect<void, unknown> =>
+  Effect.tryPromise({
+    try: () => {
+      const protocol = url.protocol
+      const isHttps = protocol === 'https:'
+      const hostname = resolveLoopbackHostname(url.hostname)
+      const port = url.port === '' ? (isHttps ? 443 : 80) : Number(url.port)
+      const pathWithQuery = `${url.pathname}${url.search}` || '/'
+      const perAttemptTimeoutMillis = Math.min(Duration.toMillis(connectTimeout), 1_000)
+
+      return new Promise<void>((resolve, reject) => {
+        const request = (isHttps ? https : http).request(
+          {
+            hostname,
+            port,
+            path: pathWithQuery,
+            method: 'GET',
+            timeout: perAttemptTimeoutMillis,
+          },
+          (response) => {
+            response.resume()
+            resolve()
+          },
+        )
+
+        request.on('error', reject)
+        request.on('timeout', () => {
+          request.destroy(new Error(`Request timed out after ${perAttemptTimeoutMillis}ms`))
+        })
+
+        request.end()
+      })
+    },
+    catch: (error) => error as unknown,
+  })
+
+const isLoopbackHostname = (hostname: string): boolean => {
+  const normalized = hostname.toLowerCase()
+
+  if (normalized === 'localhost') {
+    return true
+  }
+
+  if (normalized === '0.0.0.0' || normalized === '::') {
+    return true
+  }
+
+  if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
+    return true
+  }
+
+  if (normalized === '127.0.0.1' || normalized.startsWith('127.')) {
+    return true
+  }
+
+  return false
+}
+
+const resolveLoopbackHostname = (hostname: string): string => {
+  const normalized = hostname.toLowerCase()
+
+  if (normalized === '0.0.0.0') {
+    return '127.0.0.1'
+  }
+
+  if (normalized === '::') {
+    return '::1'
+  }
+
+  return hostname
+}
