@@ -88,6 +88,10 @@ LiveStore currently only support OPFS to locally persist its data. In the future
 
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads.
 
+### Resetting local persistence
+
+Resetting local persistence only clears data stored in the browser and does not affect any connected sync backend.
+
 In case you want to reset the local persistence of a client, you can provide the `resetPersistence` option to the adapter.
 
 ```ts
