@@ -31,7 +31,7 @@ declare module 'solid-js' {
   export function createSignal<T>(value: T): [Accessor<T>, Setter<T>]
   export function onCleanup(fn: () => void): void
 
-  export interface HTMLAttributes<T> {
+  export interface HTMLAttributes<_T> {
     children?: any
     class?: string
     classList?: Record<string, boolean | undefined>
