@@ -32,3 +32,22 @@ Use the `mono` CLI for common workflows:
 ## Git
 
 - Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+
+### Branch Naming Conventions
+
+- Use descriptive branch names that clearly indicate the purpose: `feat/add-user-auth`, `fix/memory-leak`, `docs/api-reference`
+- Keep branch names concise but specific (under 30 characters when possible)
+- Use kebab-case for consistency
+
+### Development Workflow
+
+- Create feature branches from `dev` branch: `git checkout -b feat/my-feature dev`
+- Run the full test suite before pushing: `direnv exec . mono test unit`
+- Ensure TypeScript compilation passes: `direnv exec . mono ts`
+- Use `direnv exec . mono lint --fix` to automatically fix formatting issues
+
+### Environment Variables
+
+- Copy environment variable examples from `.envrc` comments to your `.envrc.local` file
+- Required for docs development: `MXBAI_API_KEY` and `MXBAI_VECTOR_STORE_ID`
+- Never commit sensitive environment variables to the repository
