@@ -3,12 +3,10 @@ import { events } from '@livestore/livestore/internal/testing-utils'
 import {
   Effect,
   FetchHttpClient,
-  type HttpClient,
   KeyValueStore,
   Layer,
   Logger,
   LogLevel,
-  ManagedRuntime,
   Option,
   Stream,
 } from '@livestore/utils/effect'
@@ -19,30 +17,26 @@ import { SyncProviderImpl } from './types.ts'
 
 // Focused S2 scenarios
 
-const withTestCtx = ({ suffix }: { suffix?: string } = {}) => Vitest.makeWithTestCtx({ suffix })
+const providerLayer = S2Provider.layer.pipe(
+  Layer.provideMerge(FetchHttpClient.layer),
+  Layer.provideMerge(KeyValueStore.layerMemory),
+  Layer.provide(Logger.prettyWithThread('s2-specific')),
+  Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+  Layer.orDie,
+)
+
+const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
+  Vitest.makeWithTestCtx({
+    suffix,
+    makeLayer: () => providerLayer,
+  })
 
 Vitest.describe('S2-specific', { timeout: 60000 }, () => {
-  let runtime: ManagedRuntime.ManagedRuntime<
-    SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore,
-    never
-  >
   let testId: string
 
   Vitest.beforeAll(async () => {
     testId = nanoid()
-    runtime = ManagedRuntime.make(
-      S2Provider.layer.pipe(
-        Layer.provideMerge(FetchHttpClient.layer),
-        Layer.provideMerge(KeyValueStore.layerMemory),
-        Layer.provide(Logger.prettyWithThread('s2-specific')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
-        Layer.orDie,
-      ),
-    )
-    await runtime.runPromise(Effect.void)
   })
-
-  Vitest.afterAll(async () => await runtime.dispose())
 
   const makeProvider = (testName?: string) =>
     Effect.suspend(() =>
@@ -52,7 +46,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
           clientId: 'test-client',
           payload: undefined,
         }),
-      ).pipe(Effect.provide(runtime)),
+      ),
     )
 
   Vitest.scopedLive('SSE reconnect resumes and receives new events', (test) =>
@@ -88,17 +82,18 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
 
       const result = yield* fiber
       expect(result.batch.length).toBe(1)
-    }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('retries transient append failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-append-${test.task.name}-${testId}`
       const provider = yield* SyncProviderImpl
+      const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
       // Induce one append failure on server; client should retry and succeed
-      yield* provider.providerSpecific.failNextAppend(storeId, 1)
+      yield* providerSpecific.failNextAppend(storeId, 1)
 
       yield* syncBackend.push([
         LiveStoreEvent.AnyEncodedGlobal.make({
@@ -115,13 +110,14 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         Stream.runFirstUnsafe,
       )
       expect(result.batch.length).toBe(1)
-    }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('retries transient non-live read failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-read-${test.task.name}-${testId}`
       const provider = yield* SyncProviderImpl
+      const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
       // Push an event to be read
@@ -136,14 +132,14 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       ])
 
       // Induce one read failure; client should retry and still receive the event
-      yield* provider.providerSpecific.failNextRead(storeId, 1)
+      yield* providerSpecific.failNextRead(storeId, 1)
 
       const result = yield* syncBackend.pull(Option.none()).pipe(
         Stream.filter((i) => i.batch.length > 0),
         Stream.runFirstUnsafe,
       )
       expect(result.batch.length).toBe(1)
-    }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    }).pipe(withTestCtx()(test)),
   )
 
   Vitest.scopedLive('non-live decoding (JSON ReadBatch) returns events', (test) =>
@@ -179,6 +175,6 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       // Expect first two events to be our valid ones (ordering preserved)
       expect(eventsPulled[0]!.name).toBe(ev1.name)
       expect(eventsPulled[1]!.name).toBe(ev2.name)
-    }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    }).pipe(withTestCtx()(test)),
   )
 })
