@@ -7,6 +7,7 @@
     "./run-tests": "./scripts/run-tests.ts"
   },
   "dependencies": {
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
