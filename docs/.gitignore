@@ -4,6 +4,7 @@ dist/
 .astro/*
 !.astro/types.d.ts
 !.astro/content.d.ts
+!.astro/env.d.ts
 
 # dependencies
 node_modules/
