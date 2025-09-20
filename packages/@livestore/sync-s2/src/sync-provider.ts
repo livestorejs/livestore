@@ -150,10 +150,15 @@ export const makeSyncBackend =
                   const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
                   const batch = decodeReadBatch(readBatch)
 
-                  const lastSeqNum = batch.at(-1)?.eventEncoded.seqNum
+                  const lastS2SeqNum = batch.at(-1)?.metadata.pipe(
+                    Option.map((_) => _.s2SeqNum),
+                    Option.getOrUndefined,
+                  )
                   const tailSeqNum = readBatch.tail?.seq_num
                   const remaining =
-                    lastSeqNum !== undefined && tailSeqNum !== undefined ? tailSeqNum - lastSeqNum : undefined
+                    lastS2SeqNum !== undefined && tailSeqNum !== undefined
+                      ? Math.max(0, tailSeqNum - (lastS2SeqNum + 1))
+                      : undefined
 
                   return Option.some({
                     batch,
