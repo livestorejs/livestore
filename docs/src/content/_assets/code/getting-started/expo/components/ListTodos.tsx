@@ -1,15 +1,17 @@
+/// <reference path="../types.d.ts" />
+
 import { useQuery, useStore } from '@livestore/react'
-import React from 'react'
+import { type FC, useCallback } from 'react'
 import { Button, ScrollView, Text, View } from 'react-native'
 
 import { visibleTodos$ } from '../livestore/queries.ts'
-import { events, tables } from '../livestore/schema.ts'
+import { events, type tables } from '../livestore/schema.ts'
 
-export const ListTodos: React.FC = () => {
+export const ListTodos: FC = () => {
   const { store } = useStore()
   const todos = useQuery(visibleTodos$)
 
-  const toggleTodo = React.useCallback(
+  const toggleTodo = useCallback(
     ({ id, completed }: typeof tables.todos.Type) => {
       store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
     },

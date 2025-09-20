@@ -1,9 +1,11 @@
+/// <reference path="./types.d.ts" />
+
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { LiveStoreProvider } from '@livestore/react'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { StatusBar } from 'expo-status-bar'
-import React from 'react'
-import { SafeAreaView, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
+import { type FC } from 'react'
+import { unstable_batchedUpdates as batchUpdates, SafeAreaView, Text, View } from 'react-native'
 
 import { ListTodos } from './components/ListTodos.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
@@ -16,7 +18,7 @@ const adapter = makePersistedAdapter({
   sync: { backend: makeWsSync({ url: syncUrl }) },
 })
 
-export const Root: React.FC = () => (
+export const Root: FC = () => (
   <SafeAreaView style={{ flex: 1 }}>
     <LiveStoreProvider
       schema={schema}

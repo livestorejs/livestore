@@ -1,12 +1,14 @@
+/// <reference path="../types.d.ts" />
+
 import { nanoid } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
-import React from 'react'
+import { type FC } from 'react'
 import { Button, TextInput, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 
-export const NewTodo: React.FC = () => {
+export const NewTodo: FC = () => {
   const { store } = useStore()
   const { newTodoText } = useQuery(uiState$)
 

@@ -1,14 +1,14 @@
+/// <reference path="../types.d.ts" />
 /** @jsxImportSource solid-js */
 import { query } from '@livestore/solid'
-import type { Component } from 'solid-js'
-import { For } from 'solid-js'
+import { For, type Component } from 'solid-js'
 
 import { visibleTodos$ } from '../livestore/queries.ts'
-import { events, tables } from '../livestore/schema.ts'
+import { events, type tables } from '../livestore/schema.ts'
 import { store } from '../livestore/store.ts'
 
 export const MainSection: Component = () => {
-  const todos = query(visibleTodos$, [])
+  const todos = query(visibleTodos$, [] as (typeof tables.todos.Type)[])
   const todoItems = () => todos() ?? ([] as (typeof tables.todos.Type)[])
 
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) =>
@@ -20,7 +20,7 @@ export const MainSection: Component = () => {
     <section class="main">
       <ul class="todo-list">
         <For each={todoItems()}>
-          {(todo) => (
+          {(todo: typeof tables.todos.Type) => (
             <li>
               <div class="view">
                 <input type="checkbox" class="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />

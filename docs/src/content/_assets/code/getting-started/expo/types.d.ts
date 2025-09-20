@@ -18,4 +18,49 @@ declare module 'react-native' {
 declare module 'expo-status-bar' {
   export const StatusBar: React.ComponentType<{ style?: 'auto' | 'light' | 'dark' }>
 }
-export {}
+
+declare module 'expo-application' {
+  export function getAndroidId(): string | null
+  export function getIosIdForVendorAsync(): Promise<string | null>
+}
+
+declare module 'expo-sqlite' {
+  type DatabaseOptions = { useNewConnection?: boolean }
+  type DatabaseLocation = string
+
+  export type SQLiteRunResult = {
+    resetSync(): void
+    getAllSync<T = unknown>(): T[]
+    changes: number
+  }
+
+  export type SQLiteStatement = {
+    executeSync(parameters?: unknown[]): SQLiteRunResult
+    finalizeSync(): void
+  }
+
+  export type SQLiteSession = {
+    attachSync(databaseName: string | null): void
+    createChangesetSync(): ArrayBuffer
+    invertChangesetSync(data: ArrayBuffer): ArrayBuffer
+    applyChangesetSync(data: ArrayBuffer): void
+    closeSync(): void
+  }
+
+  export type SQLiteDatabase = {
+    prepareSync(source: string): SQLiteStatement
+    serializeSync(): ArrayBuffer
+    closeSync(): void
+    createSessionSync(): SQLiteSession
+  }
+
+  export function openDatabaseSync(
+    name: string,
+    options?: DatabaseOptions,
+    directory?: DatabaseLocation,
+  ): SQLiteDatabase
+  export function deleteDatabaseSync(name: string, directory?: DatabaseLocation): void
+  export function deserializeDatabaseSync(data: ArrayBuffer | Uint8Array): SQLiteDatabase
+  export function backupDatabaseSync(options: { sourceDatabase: SQLiteDatabase; destDatabase: SQLiteDatabase }): void
+  export const defaultDatabaseDirectory: string
+}
