@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /// <reference path="./types.d.ts" />
 
 import { makePersistedAdapter } from '@livestore/adapter-expo'

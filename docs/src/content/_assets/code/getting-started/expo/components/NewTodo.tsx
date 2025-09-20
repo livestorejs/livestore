@@ -1,6 +1,6 @@
+/// <reference lib="dom" />
 /// <reference path="../types.d.ts" />
 
-import { nanoid } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { type FC } from 'react'
 import { Button, TextInput, View } from 'react-native'
@@ -14,10 +14,16 @@ export const NewTodo: FC = () => {
 
   const updateText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const createTodo = () =>
-    store.commit(events.todoCreated({ id: nanoid(), text: newTodoText }), events.uiStateSet({ newTodoText: '' }))
+    store.commit(
+      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+      events.uiStateSet({ newTodoText: '' }),
+    )
 
   const addSampleTodos = () => {
-    const todos = Array.from({ length: 5 }, (_, index) => ({ id: nanoid(), text: `Todo ${index + 1}` }))
+    const todos = Array.from({ length: 5 }, (_, index) => ({
+      id: crypto.randomUUID(),
+      text: `Todo ${index + 1}`,
+    }))
     store.commit(...todos.map((todo) => events.todoCreated(todo)))
   }
 
