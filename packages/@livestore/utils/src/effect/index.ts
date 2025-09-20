@@ -1,7 +1,5 @@
 import '../global.ts'
 
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-export { Sse } from '@effect/experimental'
 export {
   AiError,
   LanguageModel,
@@ -16,6 +14,8 @@ export {
   Toolkit,
   Toolkit as AiToolkit,
 } from '@effect/ai'
+// export { DevTools as EffectDevtools } from '@effect/experimental'
+export { Sse } from '@effect/experimental'
 export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,
