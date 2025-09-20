@@ -67,6 +67,7 @@ export const command = Cli.Command.make(
         'node-effect-cli',
         'node-todomvc-sync-cf',
         'web-todomvc-sync-electric',
+        'web-todomvc-sync-s2',
         'cloudflare-todomvc',
       ])
       const examplesToDeploy = fs
