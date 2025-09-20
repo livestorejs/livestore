@@ -10,7 +10,7 @@
     "livestore": "./src/bin.ts"
   },
   "dependencies": {
-    "@effect/ai-openai": "0.29.0",
+    "@effect/ai-openai": "0.30.1",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },

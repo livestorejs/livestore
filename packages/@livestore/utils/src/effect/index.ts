@@ -1,8 +1,21 @@
 import '../global.ts'
 
-export { AiError, AiLanguageModel, AiModel, AiTool, AiToolkit, McpSchema, McpServer } from '@effect/ai'
 // export { DevTools as EffectDevtools } from '@effect/experimental'
 export { Sse } from '@effect/experimental'
+export {
+  AiError,
+  LanguageModel,
+  LanguageModel as AiLanguageModel,
+  McpSchema,
+  McpServer,
+  Model,
+  Model as AiModel,
+  Prompt,
+  Tool,
+  Tool as AiTool,
+  Toolkit,
+  Toolkit as AiToolkit,
+} from '@effect/ai'
 export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,

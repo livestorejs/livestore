@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
-    "@effect/language-service": "^0.36.0",
+    "@effect/language-service": "^0.40.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
