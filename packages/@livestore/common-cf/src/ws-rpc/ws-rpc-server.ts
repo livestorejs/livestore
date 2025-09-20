@@ -302,7 +302,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
           return Effect.void
         },
         // Always just one client
-        clientIds: Effect.sync(() => [id]),
+        clientIds: Effect.sync(() => new Set([id]) as ReadonlySet<number>),
         initialMessage: Effect.succeedNone,
         supportsAck: true,
         supportsTransferables: false,

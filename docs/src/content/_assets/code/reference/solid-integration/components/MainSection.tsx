@@ -1,7 +1,8 @@
 /// <reference path="../types.d.ts" />
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: TODO 🫠 */
 /** @jsxImportSource solid-js */
 import { query } from '@livestore/solid'
-import { For, type Component } from 'solid-js'
+import { type Component, For } from 'solid-js'
 
 import { visibleTodos$ } from '../livestore/queries.ts'
 import { events, type tables } from '../livestore/schema.ts'

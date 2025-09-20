@@ -5,7 +5,7 @@ import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { LiveStoreProvider } from '@livestore/react'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { StatusBar } from 'expo-status-bar'
-import { type FC } from 'react'
+import type { FC } from 'react'
 import { unstable_batchedUpdates as batchUpdates, SafeAreaView, Text, View } from 'react-native'
 
 import { ListTodos } from './components/ListTodos.tsx'

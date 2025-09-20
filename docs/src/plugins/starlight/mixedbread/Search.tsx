@@ -26,7 +26,7 @@ const CONSTANTS = {
 }
 
 export function isMacOS(): boolean {
-  return typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
+  return navigator?.platform.toUpperCase().includes('MAC')
 }
 
 export function Search() {
