@@ -48,6 +48,15 @@ export function vitePluginSnippet() {
           imports.push(match[1])
           match = importRegex.exec(content)
         }
+
+        // Match triple-slash references to local files (e.g. /// <reference path="../types.d.ts" />)
+        const referenceRegex = /\/\/\/\s*<reference\s+path=["'](.+?)["']\s*\/>/g
+        let referenceMatch = referenceRegex.exec(content)
+        while (referenceMatch !== null) {
+          imports.push(referenceMatch[1])
+          referenceMatch = referenceRegex.exec(content)
+        }
+
         return imports
       }
 
