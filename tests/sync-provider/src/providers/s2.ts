@@ -5,6 +5,7 @@ import * as S2Sync from '@livestore/sync-s2'
 import { makeSyncBackend } from '@livestore/sync-s2'
 import * as S2Helpers from '@livestore/sync-s2/s2-proxy-helpers'
 import {
+  Config,
   Effect,
   HttpClient,
   HttpClientRequest,
@@ -90,12 +91,10 @@ export const layer: SyncProviderLayer = Layer.scoped(
   }),
 ).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
 
-const DEFAULT_TOKEN = 'IMsAAAAAAABoxXwlsp9DjKV7fv46EZXqk2U+nDkBuCnxXnnS'
-
 const startApiProxy = Effect.gen(function* () {
   const endpointPort = yield* getFreePort
   const basin = `ls-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const token = process.env.S2_ACCESS_TOKEN ?? DEFAULT_TOKEN
+  const token = yield* Config.string('S2_ACCESS_TOKEN')
 
   const s2Config: S2Helpers.S2Config = {
     basin,

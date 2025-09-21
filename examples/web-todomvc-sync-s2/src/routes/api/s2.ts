@@ -1,11 +1,19 @@
 import { Schema } from '@livestore/livestore'
 import * as S2 from '@livestore/sync-s2'
 import * as S2Helpers from '@livestore/sync-s2/s2-proxy-helpers'
+import { Config, Effect } from '@livestore/utils/effect'
 import { createServerFileRoute } from '@tanstack/react-start/server'
 
+const { token: s2Token, basin: s2Basin } = Effect.runSync(
+  Config.all({
+    token: Config.string('S2_ACCESS_TOKEN'),
+    basin: Config.string('S2_BASIN').pipe(Config.withDefault('ls-examples')),
+  }),
+)
+
 const s2Config: S2Helpers.S2Config = {
-  basin: process.env.S2_BASIN ?? 'ls-examples',
-  token: process.env.S2_ACCESS_TOKEN ?? 'IMsAAAAAAABoxXwlsp9DjKV7fv46EZXqk2U+nDkBuCnxXnnS',
+  basin: s2Basin,
+  token: s2Token,
 }
 
 export const ServerRoute = createServerFileRoute('/api/s2').methods({
