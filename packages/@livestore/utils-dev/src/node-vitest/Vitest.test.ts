@@ -96,6 +96,22 @@ Vitest.describe('Vitest.asProp', () => {
 
         return
       }),
-    { fastCheck: { numRuns: 5, endOnFailure: true }, fails: true },
+    {
+      fastCheck: {
+        numRuns: 5,
+        endOnFailure: true,
+        // Use a fixed seed so at least one sample exceeds 50. Without a seed the
+        // property relied on luck: each draw has a ~50% chance to be <= 50, so the
+        // probability of all five runs staying <= 50 is about 0.5^5 ≈ 3%. Whenever
+        // that happened Vitest still expected the explicit failure (`fails: true`)
+        // and the suite failed flakily. With seed 20250115 the draws begin [5, 66, …],
+        // so the second run consistently hits the >50 branch and demonstrates the
+        // endOnFailure behaviour. If we ever want to remove the seed, switching to an
+        // explicit `fastCheck.examples` array would be an equivalent deterministic
+        // alternative.
+        seed: 20250115,
+      },
+      fails: true,
+    },
   )
 })
