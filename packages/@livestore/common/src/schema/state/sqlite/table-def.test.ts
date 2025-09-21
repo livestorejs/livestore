@@ -178,6 +178,59 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.age.columnType).toBe('integer')
   })
 
+  it('should support schemas that transform flat columns into nested types', () => {
+    const Flat = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      contactFirstName: Schema.String,
+      contactLastName: Schema.String,
+      contactEmail: Schema.String.pipe(State.SQLite.withUnique),
+    })
+
+    const Nested = Schema.transform(
+      Flat,
+      Schema.Struct({
+        id: Schema.String,
+        contact: Schema.Struct({
+          firstName: Schema.String,
+          lastName: Schema.String,
+          email: Schema.String,
+        }),
+      }),
+      {
+        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+          id,
+          contact: {
+            firstName: contactFirstName,
+            lastName: contactLastName,
+            email: contactEmail,
+          },
+        }),
+        encode: ({ id, contact }) => ({
+          id,
+          contactFirstName: contact.firstName,
+          contactLastName: contact.lastName,
+          contactEmail: contact.email,
+        }),
+      },
+    )
+
+    const contactsTable = State.SQLite.table({
+      name: 'contacts',
+      schema: Nested,
+    })
+
+    const columns = contactsTable.sqliteDef.columns as Record<string, any>
+
+    expect(Object.keys(columns)).toEqual(['id', 'contactFirstName', 'contactLastName', 'contactEmail'])
+    expect(columns.id.primaryKey).toBe(true)
+    expect(columns.contactEmail.columnType).toBe('text')
+    expect(contactsTable.sqliteDef.indexes).toContainEqual({
+      name: 'idx_contacts_contactEmail_unique',
+      columns: ['contactEmail'],
+      isUnique: true,
+    })
+  })
+
   it('should extract table name from Schema.Class identifier', () => {
     class TodoItem extends Schema.Class<TodoItem>('TodoItem')({
       id: Schema.String,
