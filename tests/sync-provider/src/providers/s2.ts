@@ -67,7 +67,6 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .execute(req)
               .pipe(
                 Effect.andThen((res) => res.text),
-                Effect.ignore,
                 Effect.retry(Schedule.exponentialBackoff10Sec),
                 Effect.withSpan('s2-provider:append-raw-request', {
                   attributes: { storeId, recordCount: bodies.length },
@@ -86,7 +85,6 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .execute(req)
               .pipe(
                 Effect.andThen((res) => res.text),
-                Effect.ignore,
                 Effect.retry(Schedule.exponentialBackoff10Sec),
                 Effect.withSpan('s2-provider:fail-next-append-request', { attributes: { storeId, count } }),
               )
@@ -103,7 +101,6 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .execute(req)
               .pipe(
                 Effect.andThen((res) => res.text),
-                Effect.ignore,
                 Effect.retry(Schedule.exponentialBackoff10Sec),
                 Effect.withSpan('s2-provider:fail-next-read-request', { attributes: { storeId, count } }),
               )
