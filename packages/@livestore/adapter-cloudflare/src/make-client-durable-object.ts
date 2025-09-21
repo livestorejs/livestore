@@ -35,16 +35,30 @@ export type MakeDurableObjectClass = <TSchema extends LiveStoreSchema = LiveStor
   new (ctx: CfWorker.DurableObjectState, env: Env): CfWorker.DurableObject & CfWorker.Rpc.DurableObjectBranded
 }
 
+/**
+ * Options used to initialize the LiveStore Durable Object runtime.
+ */
 export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> = {
+  /** LiveStore schema that defines state, migrations, and validators. */
   schema: TSchema
+  /** Logical identifier for the store instance persisted inside the Durable Object. */
   storeId: string
+  /** Unique identifier for the client that owns the Durable Object instance. */
   clientId: string
+  /** Identifier for the LiveStore session running inside the Durable Object. */
   sessionId: string
+  /** Cloudflare Durable Object storage binding backing the local SQLite files. */
   storage: CfWorker.DurableObjectStorage
+  /** RPC stub pointing at the sync backend Durable Object used for replication. */
   syncBackendDurableObject: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
+  /** Durable Object identifier for the current instance, forwarded to the sync backend. */
   durableObjectId: string
+  /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
   bindingName: string
+  /** Enables live pull mode to receive sync updates via Durable Object RPC callbacks. */
   livePull?: boolean
+  /** Clears existing Durable Object persistence before bootstrapping the store. */
+  resetPersistence?: boolean
 }
 
 export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>({
@@ -57,6 +71,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
   durableObjectId,
   bindingName,
   livePull = false,
+  resetPersistence = false,
 }: CreateStoreDoOptions<TSchema>) =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
@@ -65,6 +80,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
       clientId,
       sessionId,
       storage,
+      resetPersistence,
       syncOptions: {
         backend: makeDoRpcSync({
           syncBackendStub: syncBackendDurableObject,

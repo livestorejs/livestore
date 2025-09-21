@@ -1921,6 +1921,9 @@ importers:
 
   tests/integration:
     dependencies:
+      '@livestore/adapter-cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-node
@@ -1955,6 +1958,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@local/shared
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 4.20250823.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
