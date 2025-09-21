@@ -12,6 +12,7 @@ import {
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+import { shouldNeverHappen } from '@livestore/utils'
 import { events, schema, tables } from '../schema.ts'
 
 type PersistenceSnapshot = {
@@ -38,23 +39,15 @@ type Env = {
 
 export class SyncBackendDO extends makeDurableObject({}) {}
 
-const DurableObjectBase = DurableObject as unknown as new (
-  state: CfTypes.DurableObjectState,
-  env: Env,
-) => CfTypes.DurableObject
-
-export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCallback {
-  private readonly ctx: CfTypes.DurableObjectState
-  private readonly env: Env
+export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCallback {
+  __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
 
-  constructor(state: CfTypes.DurableObjectState, env: Env) {
+  constructor(state: DurableObjectState, env: Env) {
     super(state, env)
-    this.ctx = state
-    this.env = env
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -162,12 +155,14 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       if (resetPersistence) {
         const storage = this.ctx.storage
         const originalTransactionSync = storage.transactionSync
+        const invokeOriginalTransactionSync = <T>(callback: () => T): T =>
+          originalTransactionSync.call(storage, callback) as T
 
         // `resetPersistence: true` instructs the adapter to wipe vfs_* rows inside a
         // transaction. Intercept that call so the test can assert we saw the rows
         // disappear before the new store writes anything back.
-        const wrappedTransactionSync: typeof originalTransactionSync = (closure) =>
-          originalTransactionSync.call(storage, () => {
+        const wrappedTransactionSync: CfTypes.DurableObjectStorage['transactionSync'] = <T>(closure: () => T) =>
+          invokeOriginalTransactionSync(() => {
             if (snapshotDuringReset !== undefined) {
               return closure()
             }
@@ -198,7 +193,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
 
     // Returning the cached store lets subsequent calls reuse the same instance
     // without touching persistence unless a reset is requested explicitly.
-    return this.cachedStore
+    return this.cachedStore ?? shouldNeverHappen(`Store not initialized for storeId ${storeId}`)
   }
 
   private getPersistenceSnapshot(): PersistenceSnapshot {
