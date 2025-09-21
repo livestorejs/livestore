@@ -13,6 +13,7 @@ import {
   LogLevel,
   ManagedRuntime,
   Option,
+  Schema,
   Stream,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -48,6 +49,100 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
   stream.pipe(
     Stream.filter(({ batch }) => batch.length > 0),
     Stream.runFirstUnsafe,
+  )
+
+const MIN_BACKLOG_PAYLOAD_BYTES = 1_000_000
+
+const fewLargeScenarioSchema = Schema.Struct({
+  variant: Schema.Literal('fewLarge'),
+  eventCount: Schema.Int.pipe(Schema.between(20, 72)),
+  payloadSize: Schema.Int.pipe(Schema.between(70_000, 140_000)),
+  pushBatchSize: Schema.Int.pipe(Schema.between(2, 12)),
+}).pipe(
+  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
+    message: () => 'Large event scenarios should exceed provider payload limits',
+  }),
+)
+
+const manySmallScenarioSchema = Schema.Struct({
+  variant: Schema.Literal('manySmall'),
+  eventCount: Schema.Int.pipe(Schema.between(1_200, 2_200)),
+  payloadSize: Schema.Int.pipe(Schema.between(900, 1_400)),
+  pushBatchSize: Schema.Int.pipe(Schema.between(20, 160)),
+}).pipe(
+  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
+    message: () => 'Small event scenarios should exceed provider payload limits',
+  }),
+)
+
+const LargeBacklogScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
+
+type LargeBacklogScenario = Schema.Schema.Type<typeof LargeBacklogScenarioSchema>
+
+const deterministicBacklogCases: ReadonlyArray<{
+  label: string
+  scenario: LargeBacklogScenario
+}> = [
+  {
+    label: 'streams dozens of extremely large events',
+    scenario: { variant: 'fewLarge', eventCount: 60, payloadSize: 120_000, pushBatchSize: 6 },
+  },
+  {
+    label: 'streams thousands of small events',
+    scenario: { variant: 'manySmall', eventCount: 1_800, payloadSize: 1_024, pushBatchSize: 90 },
+  },
+]
+
+const approxBacklogPayloadBytes = (scenario: LargeBacklogScenario) => scenario.eventCount * scenario.payloadSize
+
+const backlogScenarioSummary = (scenario: LargeBacklogScenario) =>
+  `${scenario.variant}-${scenario.eventCount}x${scenario.payloadSize}`
+
+const makeBacklogEvents = (
+  scenario: LargeBacklogScenario,
+  { baseId }: { baseId: string },
+): ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal> => {
+  const payload = 'x'.repeat(scenario.payloadSize)
+
+  return Array.from({ length: scenario.eventCount }, (_, index) =>
+    LiveStoreEvent.AnyEncodedGlobal.make({
+      ...events.todoCreated({
+        id: `${baseId}-${index}`,
+        text: payload,
+        completed: false,
+      }),
+      clientId: `${baseId}-client`,
+      sessionId: `${baseId}-session`,
+      seqNum: EventSequenceNumber.globalEventSequenceNumber(index + 1),
+      parentSeqNum:
+        index === 0 ? EventSequenceNumber.ROOT.global : EventSequenceNumber.globalEventSequenceNumber(index),
+    }),
+  )
+}
+
+const pushBacklogEvents = (
+  syncBackend: SyncBackend.SyncBackend,
+  backlog: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+  pushBatchSize: number,
+) =>
+  Effect.gen(function* () {
+    const batchSize = Math.max(1, pushBatchSize)
+
+    for (let index = 0; index < backlog.length; index += batchSize) {
+      const batch = backlog.slice(index, index + batchSize)
+      if (batch.length === 0) continue
+
+      yield* syncBackend.push(batch)
+    }
+  })
+
+const collectBacklogPullStats = (syncBackend: SyncBackend.SyncBackend) =>
+  syncBackend.pull(Option.none()).pipe(
+    Stream.runFold({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
+      totalEvents: acc.totalEvents + batch.length,
+      nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
+      maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
+    })),
   )
 
 // TODO come up with a way to target specific providers individually
@@ -200,6 +295,81 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(secondPull).toEqual(SyncBackend.pullResItemEmpty())
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.describe('large backlog handling', () => {
+    for (const { label, scenario } of deterministicBacklogCases) {
+      const scenarioSummary = backlogScenarioSummary(scenario)
+
+      Vitest.scopedLive(label, (test) =>
+        Effect.gen(function* () {
+          const scenarioId = nanoid()
+          const approxBytes = approxBacklogPayloadBytes(scenario)
+
+          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
+
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
+
+          const backlog = makeBacklogEvents(scenario, {
+            baseId: `${scenario.variant}-${scenarioId}`,
+          })
+
+          yield* pushBacklogEvents(syncBackend, backlog, scenario.pushBatchSize)
+
+          const stats = yield* collectBacklogPullStats(syncBackend)
+
+          expect(stats.totalEvents).toBe(scenario.eventCount)
+          expect(stats.nonEmptyBatches).toBeGreaterThan(0)
+
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+            expect(stats.nonEmptyBatches).toBeGreaterThan(1)
+          }
+        }).pipe(
+          withTestCtx({
+            suffix: scenarioSummary,
+            timeout: 60_000,
+          })(test),
+        ),
+      )
+    }
+
+    Vitest.scopedLive.prop(
+      'streams backlog variations over provider payload limits',
+      [LargeBacklogScenarioSchema],
+      ([scenario], test) => {
+        const summary = backlogScenarioSummary(scenario)
+
+        return Effect.gen(function* () {
+          const scenarioId = nanoid()
+          const approxBytes = approxBacklogPayloadBytes(scenario)
+
+          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
+
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
+
+          const backlog = makeBacklogEvents(scenario, {
+            baseId: `${scenario.variant}-${scenarioId}`,
+          })
+
+          yield* pushBacklogEvents(syncBackend, backlog, scenario.pushBatchSize)
+
+          const stats = yield* collectBacklogPullStats(syncBackend)
+
+          expect(stats.totalEvents).toBe(scenario.eventCount)
+          expect(stats.nonEmptyBatches).toBeGreaterThan(0)
+
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+            expect(stats.nonEmptyBatches).toBeGreaterThan(1)
+          }
+        }).pipe(
+          withTestCtx({
+            suffix: summary,
+            timeout: 60_000,
+          })(test),
+        )
+      },
+      { fastCheck: { numRuns: 4 } },
+    )
+  })
 
   Vitest.scopedLive('non-live pull returns multiple events', (test) =>
     Effect.gen(function* () {

@@ -1,5 +1,5 @@
 import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnexpectedError } from '@livestore/common'
-import { Effect, Option, pipe, ReadonlyArray, type Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, type Schema, Stream } from '@livestore/utils/effect'
 import { SyncMessage } from '../../common/mod.ts'
 import { PULL_CHUNK_SIZE } from '../shared.ts'
 import { DoCtx } from './layer.ts'
@@ -30,24 +30,25 @@ export const makeEndingPullStream = (
       return yield* new BackendIdMismatchError({ expected: backendId, received: req.cursor.value.backendId })
     }
 
-    // TODO use streaming for db results
-    const remainingEvents = yield* storage.getEvents(Option.getOrUndefined(req.cursor)?.eventSequenceNumber)
-
-    const batches = pipe(
-      remainingEvents,
-      ReadonlyArray.chunksOf(PULL_CHUNK_SIZE),
-      ReadonlyArray.map((batch, i) => {
-        const remaining = Math.max(0, remainingEvents.length - (i + 1) * PULL_CHUNK_SIZE)
-
-        return SyncMessage.PullResponse.make({
-          batch,
-          pageInfo: remaining > 0 ? SyncBackend.pageInfoMoreKnown(remaining) : SyncBackend.pageInfoNoMore,
-          backendId,
-        })
-      }),
+    const { stream: storedEvents, total } = yield* storage.getEvents(
+      Option.getOrUndefined(req.cursor)?.eventSequenceNumber,
     )
 
-    return Stream.fromIterable(batches).pipe(
+    return storedEvents.pipe(
+      Stream.grouped(PULL_CHUNK_SIZE),
+      Stream.mapAccum(total, (remaining, chunk) => {
+        const asArray = Chunk.toReadonlyArray(chunk)
+        const nextRemaining = Math.max(0, remaining - asArray.length)
+
+        return [
+          nextRemaining,
+          SyncMessage.PullResponse.make({
+            batch: asArray,
+            pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
+            backendId,
+          }),
+        ] as const
+      }),
       Stream.tap(
         Effect.fn(function* (res) {
           if (doOptions?.onPullRes) {
