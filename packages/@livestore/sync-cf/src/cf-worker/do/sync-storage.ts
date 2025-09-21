@@ -1,21 +1,18 @@
 import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { SyncMetadata } from '../../common/sync-message-types.ts'
 import { type Env, PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
 import { eventlogTable } from './sqlite.ts'
 
 export type SyncStorage = {
   dbName: string
-  // getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError>
-  getEvents: (
-    cursor: number | undefined,
-  ) => Effect.Effect<
+  getEvents: (cursor: number | undefined) => Effect.Effect<
     {
       total: number
       stream: Stream.Stream<
-        ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
         UnexpectedError
       >
     },
@@ -40,17 +37,6 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
       Effect.withSpan('@livestore/sync-cf:durable-object:execDb'),
     )
 
-  // const getHead: Effect.Effect<EventSequenceNumber.GlobalEventSequenceNumber, UnexpectedError> = Effect.gen(
-  //   function* () {
-  //     const result = yield* execDb<{ seqNum: EventSequenceNumber.GlobalEventSequenceNumber }>((db) =>
-  //       db.prepare(`SELECT seqNum FROM ${dbName} ORDER BY seqNum DESC LIMIT 1`).all(),
-  //     )
-
-  //     return result[0]?.seqNum ?? EventSequenceNumber.ROOT.global
-  //   },
-  // ).pipe(UnexpectedError.mapToUnexpectedError)
-
-  // TODO support streaming
   // Cloudflare's D1 HTTP endpoint rejects JSON responses once they exceed ~1MB.
   // Keep individual SELECT batches comfortably below that threshold so we can
   // serve large histories without tripping the limit.
@@ -61,6 +47,24 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
   const D1_MIN_PAGE_SIZE = 1
 
   const decodeEventlogRows = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))
+  const textEncoder = new TextEncoder()
+
+  const decreaseLimit = (limit: number) => Math.max(D1_MIN_PAGE_SIZE, Math.floor(limit / 2))
+  const increaseLimit = (limit: number) => Math.min(D1_INITIAL_PAGE_SIZE, limit * 2)
+
+  const computeNextLimit = (limit: number, encodedSize: number) => {
+    if (encodedSize > D1_TARGET_RESPONSE_BYTES && limit > D1_MIN_PAGE_SIZE) {
+      const next = decreaseLimit(limit)
+      return next === limit ? limit : next
+    }
+
+    if (encodedSize < D1_TARGET_RESPONSE_BYTES / 2 && limit < D1_INITIAL_PAGE_SIZE) {
+      const next = increaseLimit(limit)
+      return next === limit ? limit : next
+    }
+
+    return limit
+  }
 
   const getEvents = (
     cursor: number | undefined,
@@ -68,15 +72,13 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
     {
       total: number
       stream: Stream.Stream<
-        ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
         UnexpectedError
       >
     },
     UnexpectedError
   > =>
     Effect.gen(function* () {
-      const textEncoder = new TextEncoder()
-
       const countStatement =
         cursor === undefined
           ? `SELECT COUNT(*) as total FROM ${dbName}`
@@ -89,92 +91,57 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
 
       const total = Number(countRows[0]?.total ?? 0)
 
-      type State = {
-        cursor: number | undefined
-        limit: number
-        remaining: number
-      }
+      type State = { cursor: number | undefined; limit: number }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
 
-      const initialState: State = {
-        cursor,
-        limit: D1_INITIAL_PAGE_SIZE,
-        remaining: total,
-      }
+      const initialState: State = { cursor, limit: D1_INITIAL_PAGE_SIZE }
 
-      const stream = Stream.unfoldEffect(initialState, (state) =>
+      const fetchPage = (
+        state: State,
+      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnexpectedError> =>
         Effect.gen(function* () {
-          if (state.remaining <= 0) {
+          const statement =
+            state.cursor === undefined
+              ? `SELECT * FROM ${dbName} ORDER BY seqNum ASC LIMIT ?`
+              : `SELECT * FROM ${dbName} WHERE seqNum > ? ORDER BY seqNum ASC LIMIT ?`
+
+          const rawEvents = yield* execDb((db) => {
+            const prepared = db.prepare(statement)
+            return state.cursor === undefined
+              ? prepared.bind(state.limit).all()
+              : prepared.bind(state.cursor, state.limit).all()
+          })
+
+          if (rawEvents.length === 0) {
             return Option.none()
           }
 
-          let chunkLimit = state.limit
-          let chunk: Array<any> | undefined
+          const encodedSize = textEncoder.encode(JSON.stringify(rawEvents)).byteLength
 
-          while (chunk === undefined) {
-            const statement =
-              state.cursor === undefined
-                ? `SELECT * FROM ${dbName} ORDER BY seqNum ASC LIMIT ?`
-                : `SELECT * FROM ${dbName} WHERE seqNum > ? ORDER BY seqNum ASC LIMIT ?`
+          if (encodedSize > D1_TARGET_RESPONSE_BYTES && state.limit > D1_MIN_PAGE_SIZE) {
+            const nextLimit = decreaseLimit(state.limit)
 
-            const rawEvents = yield* execDb((db) => {
-              const prepared = db.prepare(statement)
-              return state.cursor === undefined
-                ? prepared.bind(chunkLimit).all()
-                : prepared.bind(state.cursor, chunkLimit).all()
-            })
-
-            if (rawEvents.length === 0) {
-              return Option.none()
-            }
-
-            const encodedSize = textEncoder.encode(JSON.stringify(rawEvents)).byteLength
-
-            if (encodedSize > D1_TARGET_RESPONSE_BYTES && chunkLimit > D1_MIN_PAGE_SIZE) {
-              const nextLimit = Math.max(D1_MIN_PAGE_SIZE, Math.floor(chunkLimit / 2))
-
-              if (nextLimit === chunkLimit) {
-                chunk = rawEvents
-              } else {
-                chunkLimit = nextLimit
-                continue
-              }
-            } else {
-              chunk = rawEvents
+            if (nextLimit !== state.limit) {
+              return yield* fetchPage({ cursor: state.cursor, limit: nextLimit })
             }
           }
 
-          const decodedChunk = decodeEventlogRows(chunk).map(({ createdAt, ...eventEncoded }) => ({
+          const decodedRows = Chunk.fromIterable(decodeEventlogRows(rawEvents))
+
+          const eventsChunk = Chunk.map(decodedRows, ({ createdAt, ...eventEncoded }) => ({
             eventEncoded,
             metadata: Option.some(SyncMetadata.make({ createdAt })),
           }))
 
-          const emittedCount = decodedChunk.length
-          const nextRemaining = Math.max(0, state.remaining - emittedCount)
-          const nextCursor = chunk[chunk.length - 1]!.seqNum
+          const lastSeqNum = Chunk.unsafeLast(decodedRows).seqNum
+          const nextState: State = { cursor: lastSeqNum, limit: computeNextLimit(state.limit, encodedSize) }
 
-          const nextState: State = {
-            cursor: nextCursor,
-            limit: chunkLimit,
-            remaining: nextRemaining,
-          }
+          return Option.some([eventsChunk, nextState] as const)
+        })
 
-          return Option.some<[
-            ReadonlyArray<{
-              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
-              metadata: Option.Option<SyncMetadata>
-            }>,
-            State,
-          ]>([
-            decodedChunk,
-            nextState,
-          ])
-        }),
-      )
+      const stream = Stream.unfoldChunkEffect(initialState, fetchPage)
 
-      return {
-        total,
-        stream,
-      }
+      return { total, stream }
     }).pipe(
       UnexpectedError.mapToUnexpectedError,
       Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', { attributes: { dbName, cursor } }),

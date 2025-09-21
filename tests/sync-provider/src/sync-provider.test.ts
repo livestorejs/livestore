@@ -59,12 +59,9 @@ const fewLargeScenarioSchema = Schema.Struct({
   payloadSize: Schema.Int.pipe(Schema.between(70_000, 140_000)),
   pushBatchSize: Schema.Int.pipe(Schema.between(2, 12)),
 }).pipe(
-  Schema.filter(
-    (scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES,
-    {
-      message: () => 'Large event scenarios should exceed provider payload limits',
-    },
-  ),
+  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
+    message: () => 'Large event scenarios should exceed provider payload limits',
+  }),
 )
 
 const manySmallScenarioSchema = Schema.Struct({
@@ -73,23 +70,14 @@ const manySmallScenarioSchema = Schema.Struct({
   payloadSize: Schema.Int.pipe(Schema.between(900, 1_400)),
   pushBatchSize: Schema.Int.pipe(Schema.between(20, 160)),
 }).pipe(
-  Schema.filter(
-    (scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES,
-    {
-      message: () => 'Small event scenarios should exceed provider payload limits',
-    },
-  ),
+  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
+    message: () => 'Small event scenarios should exceed provider payload limits',
+  }),
 )
 
 const LargeBacklogScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
 
 type LargeBacklogScenario = Schema.Schema.Type<typeof LargeBacklogScenarioSchema>
-
-type BacklogPullStats = {
-  totalEvents: number
-  nonEmptyBatches: number
-  maxBatchSize: number
-}
 
 const deterministicBacklogCases: ReadonlyArray<{
   label: string
@@ -105,8 +93,7 @@ const deterministicBacklogCases: ReadonlyArray<{
   },
 ]
 
-const approxBacklogPayloadBytes = (scenario: LargeBacklogScenario) =>
-  scenario.eventCount * scenario.payloadSize
+const approxBacklogPayloadBytes = (scenario: LargeBacklogScenario) => scenario.eventCount * scenario.payloadSize
 
 const backlogScenarioSummary = (scenario: LargeBacklogScenario) =>
   `${scenario.variant}-${scenario.eventCount}x${scenario.payloadSize}`
@@ -128,9 +115,7 @@ const makeBacklogEvents = (
       sessionId: `${baseId}-session`,
       seqNum: EventSequenceNumber.globalEventSequenceNumber(index + 1),
       parentSeqNum:
-        index === 0
-          ? EventSequenceNumber.ROOT.global
-          : EventSequenceNumber.globalEventSequenceNumber(index),
+        index === 0 ? EventSequenceNumber.ROOT.global : EventSequenceNumber.globalEventSequenceNumber(index),
     }),
   )
 }
@@ -152,15 +137,13 @@ const pushBacklogEvents = (
   })
 
 const collectBacklogPullStats = (syncBackend: SyncBackend.SyncBackend) =>
-  syncBackend
-    .pull(Option.none())
-    .pipe(
-      Stream.runFold<BacklogPullStats>({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
-        totalEvents: acc.totalEvents + batch.length,
-        nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
-        maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
-      })),
-    )
+  syncBackend.pull(Option.none()).pipe(
+    Stream.runFold({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
+      totalEvents: acc.totalEvents + batch.length,
+      nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
+      maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
+    })),
+  )
 
 // TODO come up with a way to target specific providers individually
 Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
@@ -324,9 +307,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
           expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
 
-          const syncBackend = yield* makeProvider(
-            `${test.task.name}-${scenario.variant}-${scenarioId}`,
-          )
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
 
           const backlog = makeBacklogEvents(scenario, {
             baseId: `${scenario.variant}-${scenarioId}`,
@@ -363,9 +344,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
           expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
 
-          const syncBackend = yield* makeProvider(
-            `${test.task.name}-${scenario.variant}-${scenarioId}`,
-          )
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
 
           const backlog = makeBacklogEvents(scenario, {
             baseId: `${scenario.variant}-${scenarioId}`,

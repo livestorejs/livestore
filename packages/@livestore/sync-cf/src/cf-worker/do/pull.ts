@@ -1,5 +1,5 @@
 import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnexpectedError } from '@livestore/common'
-import { Chunk, Effect, Option, pipe, type Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, type Schema, Stream } from '@livestore/utils/effect'
 import { SyncMessage } from '../../common/mod.ts'
 import { PULL_CHUNK_SIZE } from '../shared.ts'
 import { DoCtx } from './layer.ts'
@@ -30,12 +30,11 @@ export const makeEndingPullStream = (
       return yield* new BackendIdMismatchError({ expected: backendId, received: req.cursor.value.backendId })
     }
 
-    const { stream: storedBatches, total } = yield* storage.getEvents(
+    const { stream: storedEvents, total } = yield* storage.getEvents(
       Option.getOrUndefined(req.cursor)?.eventSequenceNumber,
     )
 
-    return storedBatches.pipe(
-      Stream.flatMap((batch) => Stream.fromIterable(batch)),
+    return storedEvents.pipe(
       Stream.grouped(PULL_CHUNK_SIZE),
       Stream.mapAccum(total, (remaining, chunk) => {
         const asArray = Chunk.toReadonlyArray(chunk)
