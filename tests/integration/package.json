@@ -21,12 +21,12 @@
     "@local/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
     "@opentelemetry/resources": "^2.0.1",
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@opentelemetry/sdk-trace-web": "^2.0.1",
-    "@cloudflare/workers-types": "catalog:",
     "@playwright/test": "catalog:",
     "@tanstack/react-router": "^1.131.28",
     "@tanstack/router-plugin": "^1.131.28",

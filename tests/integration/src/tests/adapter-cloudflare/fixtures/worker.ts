@@ -46,10 +46,6 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
 
-  constructor(state: DurableObjectState, env: Env) {
-    super(state, env)
-  }
-
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     const storeId = url.searchParams.get('storeId')
