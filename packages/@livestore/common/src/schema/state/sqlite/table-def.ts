@@ -1,5 +1,5 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import { Option, type Schema, SchemaAST, type Types } from '@livestore/utils/effect'
+import { Option, Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -221,7 +221,7 @@ export function table<
     ) as SqliteDsl.Columns
     additionalIndexes = []
   } else if ('schema' in args) {
-    const result = schemaFieldsToColumns(SchemaAST.getPropertySignatures(args.schema.ast))
+    const result = schemaFieldsToColumns(Schema.getResolvedPropertySignatures(args.schema))
     columns = result.columns
 
     // We'll set tableName first, then use it for index names
