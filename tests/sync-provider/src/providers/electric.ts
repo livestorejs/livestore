@@ -1,3 +1,13 @@
+/**
+ * ElectricSQL Test Provider
+ *
+ * This provider writes events directly to Postgres and reads them through ElectricSQL's HTTP API.
+ * This is the expected ElectricSQL architecture: applications write to Postgres, and Electric
+ * automatically syncs and serves that data through its shape-based replication system.
+ *
+ * Note: There may be a small delay between writing to Postgres and Electric discovering/syncing
+ * the new data, especially for newly created tables. This is normal ElectricSQL behavior.
+ */
 import http from 'node:http'
 import path from 'node:path'
 import { UnexpectedError } from '@livestore/common'
