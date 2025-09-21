@@ -452,6 +452,11 @@ export const makePersistedAdapter =
                 attributes: { batchSize: batch.length },
               }),
             ),
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-web:client-session:streamEvents'),
+              Stream.orDie,
+            ),
         },
 
         initialState: { leaderHead: initialLeaderHead, migrationsReport },
