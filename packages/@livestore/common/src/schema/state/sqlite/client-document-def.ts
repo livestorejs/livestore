@@ -1,6 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../adapter-types.ts'
 import { sql } from '../../../util.ts'
@@ -273,7 +273,7 @@ export const deriveEventAndMaterializer = ({
     }
 
     // Override the full value if it's not an object or no partial set is allowed
-    const schemaProps = SchemaAST.getPropertySignatures(valueSchema.ast)
+    const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
       const valueColJsonSchema = Schema.parseJson(valueSchema)
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)

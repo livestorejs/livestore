@@ -13,6 +13,7 @@
     { "path": "./examples/web-todomvc-experimental" },
     { "path": "./examples/web-todomvc-solid" },
     { "path": "./examples/web-todomvc-sync-cf" },
-    { "path": "./examples/web-todomvc-sync-electric" }
+    { "path": "./examples/web-todomvc-sync-electric" },
+    { "path": "./examples/web-todomvc-sync-s2" }
   ]
 }

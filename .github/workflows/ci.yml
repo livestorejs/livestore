@@ -14,6 +14,7 @@ on:
 
 env:
   GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  S2_ACCESS_TOKEN: ${{ secrets.S2_ACCESS_TOKEN }}
 
 jobs:
   lint:

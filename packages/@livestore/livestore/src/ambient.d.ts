@@ -1,6 +1,6 @@
-interface Window {
-  [key: `__debug${string}`]: any
-}
+// interface Window {
+//   [key: `__debug${string}`]: any
+// }
 
 var __debugLiveStore: any
 var __debugLiveStoreUtils: any
