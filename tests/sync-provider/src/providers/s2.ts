@@ -227,9 +227,14 @@ const makeRouter = ({
         const streamName = S2Sync.makeS2StreamName(parsed.storeId)
         if (!createdStreams.has(streamName)) {
           yield* basinClient.createStream({ stream: streamName }).pipe(
-            Effect.ignoreIf((_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists'),
+            Effect.catchIf(
+              (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',
+              () => Effect.void,
+            ),
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:create-stream', { attributes: { stream: streamName, route: 'push' } }),
+            Effect.withSpan('s2-provider:create-stream', {
+              attributes: { stream: streamName, route: 'push' },
+            }),
           )
           createdStreams.add(streamName)
         }
@@ -261,9 +266,14 @@ const makeRouter = ({
         const stream = S2Sync.makeS2StreamName(body.storeId)
         if (!createdStreams.has(stream)) {
           yield* basinClient.createStream({ stream }).pipe(
-            Effect.ignoreIf((_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists'),
+            Effect.catchIf(
+              (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',
+              () => Effect.void,
+            ),
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:create-stream', { attributes: { stream, route: 'append-raw' } }),
+            Effect.withSpan('s2-provider:create-stream', {
+              attributes: { stream, route: 'append-raw' },
+            }),
           )
           createdStreams.add(stream)
         }
