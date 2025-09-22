@@ -6,7 +6,7 @@ import {
   type MockSyncBackend,
   makeMockSyncBackend,
   ServerAheadError,
-  type SyncBackend,
+  SyncBackend,
   type SyncState,
   type UnexpectedError,
 } from '@livestore/common'
@@ -257,6 +257,67 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
     }).pipe(withTestCtx()(test)),
   )
 
+  Vitest.scopedLive('stalls pushes after ServerAheadError when backend withholds backlog stream', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+
+      yield* testContext.pushEncoded(
+        eventFactory.todoCreated.next({ id: 'needs-retry', text: 'retry-me', completed: false }),
+      )
+
+      // Allow the push fiber to hit the simulated ServerAheadError and park.
+      yield* Effect.sleep(50)
+
+      const backlogChunk = backendFactory.todoCreated.next({
+        id: 'backend-backlog',
+        text: 'from-backend',
+        completed: false,
+      })
+
+      yield* testContext.mockSyncBackend.advance(backlogChunk)
+
+      // Without catch-up logic we never retry the stalled push, so this times out today.
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(2000))
+    }).pipe(
+      withTestCtx({
+        mockBackendOverride: (mock) => () =>
+          Effect.gen(function* () {
+            const baseBackend = yield* mock.makeSyncBackend
+            let hasFailed = false
+            let firstLivePull = true
+
+            return {
+              ...baseBackend,
+              pull: (cursor, options) => {
+                if (options?.live === true && firstLivePull) {
+                  firstLivePull = false
+                  return Stream.concat(Stream.make(SyncBackend.pullResItemEmpty()), Stream.never)
+                }
+                return baseBackend.pull(cursor, options)
+              },
+              push: (batch) =>
+                Effect.gen(function* () {
+                  if (!hasFailed) {
+                    hasFailed = true
+                    return yield* new InvalidPushError({
+                      cause: new ServerAheadError({
+                        minimumExpectedNum: EventSequenceNumber.globalEventSequenceNumber(batch[0]!.seqNum + 1),
+                        providedNum: EventSequenceNumber.globalEventSequenceNumber(batch[0]!.seqNum),
+                      }),
+                    })
+                  }
+
+                  return yield* baseBackend.push(batch)
+                }),
+            }
+          }),
+      })(test),
+    ),
+  )
   // - test for filtering out local push queue items with an older rebase generation
   //   this can happen in a scenario like this
   //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)

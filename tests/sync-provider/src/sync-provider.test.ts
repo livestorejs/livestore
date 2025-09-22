@@ -311,7 +311,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (
+            name.toLowerCase().includes('cloudflare') &&
+            (scenario.variant === 'manySmall' || scenario.variant === 'fewLarge')
+          ) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -405,6 +408,40 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
         const result = yield* fiber
         expect(result.batch.length).toBe(1)
+      }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('replays backlog when resubscribing with the same cursor', (test) =>
+      Effect.gen(function* () {
+        const syncBackend = yield* makeProvider(test.task.name)
+
+        const eventFactory = makeFactory({ client: defaultClient })
+        eventFactory.todoCreated.advanceTo(1, 'root')
+
+        const baseline = eventFactory.todoCreated.next({ id: 'baseline', text: 'baseline', completed: false })
+        yield* syncBackend.push([baseline])
+
+        const catchUp = yield* syncBackend.pull(Option.none()).pipe(runFirstNonEmpty)
+        const cursor = SyncBackend.cursorFromPullResItem(catchUp)
+        expect(Option.isSome(cursor)).toBe(true)
+
+        const syncProvider = yield* SyncProviderImpl
+        yield* syncProvider.turnBackendOffline
+        yield* Effect.sleep(50)
+        yield* syncProvider.turnBackendOnline
+
+        const backlog = eventFactory.todoCreated.next({ id: 'backlog', text: 'backlog', completed: false })
+        yield* syncBackend.push([backlog])
+
+        const deliveredSeq = yield* syncBackend.pull(cursor, { live: true }).pipe(
+          Stream.flatMap((item) => Stream.fromIterable(item.batch)),
+          Stream.map((record) => record.eventEncoded.seqNum),
+          Stream.filter((seqNum) => seqNum === backlog.seqNum),
+          Stream.runFirstUnsafe,
+          Effect.timeout(5000),
+        )
+
+        expect(deliveredSeq).toEqual(backlog.seqNum)
       }).pipe(Effect.provide(runtime), withTestCtx()(test)),
     )
   })

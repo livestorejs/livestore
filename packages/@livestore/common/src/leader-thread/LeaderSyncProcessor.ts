@@ -1,5 +1,4 @@
 import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
   Cause,
@@ -8,16 +7,21 @@ import {
   Effect,
   Exit,
   FiberHandle,
+  type HttpClient,
   Layer,
   Option,
   OtelTracer,
   pipe,
   Queue,
   ReadonlyArray,
+  Ref,
+  type Runtime,
   Schedule,
+  type Scope,
   Stream,
   Subscribable,
   SubscriptionRef,
+  type Tracer,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import {
@@ -34,6 +38,7 @@ import {
   type InvalidPushError,
   type IsOfflineError,
   LeaderAheadError,
+  type ServerAheadError,
   type SyncBackend,
 } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
@@ -114,7 +119,7 @@ export const makeLeaderSyncProcessor = ({
       localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 1
@@ -287,50 +292,140 @@ export const makeLeaderSyncProcessor = ({
       }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
-      const backendPushingEffect = backgroundBackendPushing({
-        syncBackendPushQueue,
-        otelSpan,
-        devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        backendPushBatchSize,
-      }).pipe(Effect.catchAllCause(maybeShutdownOnError))
-
-      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-
-      yield* backgroundBackendPulling({
-        isClientEvent,
-        restartBackendPushing: (filteredRebasedPending) =>
-          Effect.gen(function* () {
-            // Stop current pushing fiber
-            yield* FiberHandle.clear(backendPushingFiberHandle)
-
-            // Reset the sync backend push queue
-            yield* BucketQueue.clear(syncBackendPushQueue)
-            yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
-
-            // Restart pushing fiber
-            yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-          }),
-        syncStateSref,
-        localPushesLatch,
-        pullLatch,
-        livePull,
-        dbState,
-        otelSpan,
-        initialBlockingSyncContext,
-        devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        connectedClientSessionPullQueues,
-        advancePushHead,
-      }).pipe(
-        Effect.retry({
-          // We want to retry pulling if we've lost connection to the sync backend
-          while: (cause) => cause._tag === 'IsOfflineError',
-        }),
-        Effect.catchAllCause(maybeShutdownOnError),
-        // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
-        // This might be a bug in Effect. Only seems to happen in the browser.
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
-        Effect.forkScoped,
+      const backendPullingFiberHandle = yield* FiberHandle.make<void, never>()
+      const catchUpSignalRef = yield* Ref.make<Option.Option<Deferred.Deferred<void, never>>>(Option.none())
+      const catchUpPendingRef = yield* Ref.make<Option.Option<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>>>(
+        Option.none(),
       )
+
+      const makeBackendPushingEffect = (): Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient> =>
+        backgroundBackendPushing({
+          syncBackendPushQueue,
+          otelSpan,
+          devtoolsLatch: ctxRef.current?.devtoolsLatch,
+          backendPushBatchSize,
+          onServerAhead: handleServerAhead,
+        }).pipe(Effect.catchAllCause(maybeShutdownOnError))
+
+      const makeBackendPullingEffect = (): Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient> =>
+        backgroundBackendPulling({
+          isClientEvent,
+          restartBackendPushing: (filteredRebasedPending) =>
+            Effect.gen(function* () {
+              const catchUpInProgress = yield* Ref.get(catchUpSignalRef)
+              if (catchUpInProgress._tag === 'Some') {
+                yield* Ref.set(catchUpPendingRef, Option.some(filteredRebasedPending))
+                return
+              }
+
+              yield* FiberHandle.clear(backendPushingFiberHandle)
+
+              yield* BucketQueue.clear(syncBackendPushQueue)
+              yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
+
+              yield* FiberHandle.run(backendPushingFiberHandle, makeBackendPushingEffect())
+            }),
+          syncStateSref,
+          localPushesLatch,
+          pullLatch,
+          livePull,
+          dbState,
+          otelSpan,
+          initialBlockingSyncContext,
+          devtoolsLatch: ctxRef.current?.devtoolsLatch,
+          connectedClientSessionPullQueues,
+          advancePushHead,
+          onSyncStateUpdated: () =>
+            Effect.gen(function* () {
+              const maybeCatchUpSignal = yield* Ref.get(catchUpSignalRef)
+              if (maybeCatchUpSignal._tag === 'Some') {
+                yield* Deferred.succeed(maybeCatchUpSignal.value, void 0)
+                yield* Ref.set(catchUpSignalRef, Option.none())
+                if (LS_DEV) {
+                  yield* Effect.logDebug('server-ahead catch-up signal resolved', {})
+                }
+              }
+            }),
+        }).pipe(
+          Effect.retry({
+            while: (cause) => cause._tag === 'IsOfflineError',
+          }),
+          Effect.catchAllCause(maybeShutdownOnError),
+          Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        )
+
+      const handleServerAhead = ({
+        batch,
+        error,
+      }: {
+        batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
+        error: InvalidPushError & { cause: ServerAheadError }
+      }) =>
+        Effect.gen(function* () {
+          otelSpan?.addEvent('backend-push-server-ahead', {
+            batchSize: batch.length,
+            minimumExpected: error.cause.minimumExpectedNum,
+            provided: error.cause.providedNum,
+          })
+
+          if (LS_DEV) {
+            yield* Effect.logDebug('server-ahead catch-up start', {
+              batchSize: batch.length,
+              minimumExpected: error.cause.minimumExpectedNum,
+              provided: error.cause.providedNum,
+            })
+          }
+
+          const existingSignal = yield* Ref.get(catchUpSignalRef)
+          if (existingSignal._tag === 'Some') {
+            yield* Deferred.await(existingSignal.value)
+            return
+          }
+
+          const catchUpDeferred = yield* Deferred.make<void, never>()
+          yield* Ref.set(catchUpSignalRef, Option.some(catchUpDeferred))
+
+          const maybeExistingPending = yield* Ref.get(catchUpPendingRef)
+          if (maybeExistingPending._tag === 'None') {
+            yield* Ref.set(catchUpPendingRef, Option.some(Array.from(batch)))
+          }
+
+          yield* localPushesLatch.close
+          yield* pullLatch.await
+
+          yield* FiberHandle.clear(backendPullingFiberHandle)
+          yield* FiberHandle.run(backendPullingFiberHandle, makeBackendPullingEffect())
+
+          yield* Deferred.await(catchUpDeferred)
+
+          const pendingAfterCatchUp = yield* Ref.get(catchUpPendingRef)
+          if (pendingAfterCatchUp._tag === 'Some') {
+            if (LS_DEV) {
+              yield* Effect.logDebug('server-ahead catch-up requeue', {
+                seqNums: pendingAfterCatchUp.value.map((event) => EventSequenceNumber.toString(event.seqNum)),
+              })
+            }
+            yield* BucketQueue.replace(syncBackendPushQueue, pendingAfterCatchUp.value)
+            yield* Ref.set(catchUpPendingRef, Option.none())
+          }
+
+          if (LS_DEV) {
+            const postCatchUpState = yield* syncStateSref
+            yield* Effect.logDebug('server-ahead catch-up recovered', {
+              upstreamHead:
+                postCatchUpState === undefined
+                  ? 'undefined'
+                  : EventSequenceNumber.toString(postCatchUpState.upstreamHead),
+              pending:
+                postCatchUpState === undefined
+                  ? []
+                  : postCatchUpState.pending.map((event) => EventSequenceNumber.toString(event.seqNum)),
+            })
+          }
+        }).pipe(Effect.ensuring(localPushesLatch.open))
+
+      yield* FiberHandle.run(backendPushingFiberHandle, makeBackendPushingEffect())
+      yield* FiberHandle.run(backendPullingFiberHandle, makeBackendPullingEffect())
 
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
@@ -599,6 +694,7 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext,
   connectedClientSessionPullQueues,
   advancePushHead,
+  onSyncStateUpdated,
 }: {
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
@@ -614,6 +710,7 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   connectedClientSessionPullQueues: PullQueueSet
   advancePushHead: (eventNum: EventSequenceNumber.EventSequenceNumber) => void
+  onSyncStateUpdated?: (state: SyncState.SyncState) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
     const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
@@ -724,6 +821,10 @@ const backgroundBackendPulling = ({
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
+        if (onSyncStateUpdated !== undefined) {
+          yield* onSyncStateUpdated(mergeResult.newSyncState)
+        }
+
         // Allow local pushes to be processed again
         if (pageInfo._tag === 'NoMore') {
           yield* localPushesLatch.open
@@ -778,11 +879,16 @@ const backgroundBackendPushing = ({
   otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
+  onServerAhead,
 }: {
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
   backendPushBatchSize: number
+  onServerAhead: (params: {
+    batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
+    error: InvalidPushError & { cause: ServerAheadError }
+  }) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
 }) =>
   Effect.gen(function* () {
     const { syncBackend } = yield* LeaderThreadCtx
@@ -797,6 +903,13 @@ const backgroundBackendPushing = ({
 
       if (devtoolsLatch !== undefined) {
         yield* devtoolsLatch.await
+      }
+
+      if (LS_DEV) {
+        yield* Effect.logDebug('backend-push queueItems', {
+          batchSize: queueItems.length,
+          seqNums: queueItems.map((item) => EventSequenceNumber.toString(item.seqNum)),
+        })
       }
 
       otelSpan?.addEvent('backend-push', {
@@ -839,13 +952,15 @@ const backgroundBackendPushing = ({
             batchSize: queueItems.length,
           })
           const error = pushResult.left
-          if (
-            error._tag === 'IsOfflineError' ||
-            (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError')
-          ) {
-            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
+          if (error._tag === 'IsOfflineError') {
             yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
             return yield* Effect.never
+          }
+
+          if (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError') {
+            const typedError = error as InvalidPushError & { cause: ServerAheadError }
+            yield* onServerAhead({ batch: queueItems, error: typedError })
+            return
           }
 
           return yield* error
