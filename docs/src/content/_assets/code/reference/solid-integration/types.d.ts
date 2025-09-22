@@ -55,3 +55,10 @@ declare module 'solid-js/jsx-runtime' {
   export function jsx(type: any, props: any, key?: any): any
   export { jsx as jsxs, jsx as jsxDEV }
 }
+
+declare namespace JSX {
+  interface Element {}
+  interface IntrinsicElements {
+    [element: string]: Record<string, unknown>
+  }
+}
