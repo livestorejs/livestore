@@ -6,12 +6,14 @@ import {
   type MockSyncBackend,
   makeMockSyncBackend,
   ServerAheadError,
+  type SyncBackend,
   type SyncState,
   type UnexpectedError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
@@ -24,9 +26,7 @@ import {
   Layer,
   Logger,
   LogLevel,
-  Predicate,
   Queue,
-  Schema,
   type Scope,
   Stream,
   WebChannel,
@@ -56,6 +56,7 @@ const withTestCtx = (
     /** Warning: Setting `livePull` to `false` will lead to some less explored scenarios (e.g. only pulls once on boot) */
     syncOptions?: Partial<SyncOptions>
     captureShutdown?: boolean
+    mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
   } = {},
 ) =>
   Vitest.makeWithTestCtx({
@@ -66,15 +67,19 @@ const withTestCtx = (
     forceOtel: true,
   })
 
+const makeEventFactory = EventFactory.makeFactory(events)
+
 Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      yield* testContext.localPush(
-        events.todoCreated({ id: '1', text: 't1' }),
-        events.todoCreated({ id: '2', text: 't2' }),
+      const eventFactory = testContext.eventFactory
+
+      yield* testContext.pushEncoded(
+        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
       )
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
@@ -103,19 +108,18 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+
       yield* testContext.mockSyncBackend.disconnect
 
       yield* testContext.mockSyncBackend.advance(
-        testContext
-          .encodeLiveStoreEvent({
-            ...events.todoCreated({ id: '1', text: 't1' }),
-            seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-            parentSeqNum: EventSequenceNumber.ROOT,
-          })
-          .toGlobal(),
+        backendFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
       )
 
-      yield* testContext.localPush(events.todoCreated({ id: '2', text: 't2' }))
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
@@ -143,14 +147,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
 
       const numberOfPushes = 100
 
       yield* Effect.forEach(
         Array.from({ length: numberOfPushes }, (_, i) => i),
         (i) =>
-          testContext.localPush(
-            events.todoCreated({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
+          testContext.pushEncoded(
+            eventFactory.todoCreated.next({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
           ),
         { concurrency: 'unbounded' },
       ).pipe(Effect.withSpan(`@livestore/common-tests:sync:events(${numberOfPushes})`))
@@ -171,24 +176,20 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('concurrent pushes', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
 
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
-          .advance(
-            testContext
-              .encodeLiveStoreEvent({
-                ...events.todoCreated({ id: `backend_${i}`, text: '', completed: false }),
-                seqNum: EventSequenceNumber.make({ global: i + 1, client: 0 }),
-                parentSeqNum: EventSequenceNumber.make({ global: i, client: 0 }),
-              })
-              .toGlobal(),
-          )
+          .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
           .pipe(Effect.fork)
       }
 
       for (let i = 0; i < 5; i++) {
         yield* testContext
-          .localPush(events.todoCreated({ id: `local_${i}`, text: '', completed: false }))
+          .pushEncoded(eventFactory.todoCreated.next({ id: `local_${i}`, text: '', completed: false }))
           .pipe(Effect.tapCauseLogPretty, Effect.exit)
       }
 
@@ -200,14 +201,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('handles duplicate local push events', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
 
       for (let i = 0; i < 10; i++) {
-        const event = {
-          ...events.todoCreated({ id: `session_1_${i}`, text: '', completed: false }),
-          seqNum: EventSequenceNumber.make({ global: i + 1, client: 0 }),
-          parentSeqNum: EventSequenceNumber.make({ global: i, client: 0 }),
-        }
-        yield* testContext.localPush(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+        const event = eventFactory.todoCreated.next({ id: `session_1_${i}`, text: '', completed: false })
+        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
@@ -226,6 +224,10 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('simulate ServerAheadError push error', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
 
       // Cause the next push to fail with ServerAheadError so the pushing fiber parks (Effect.never)
       yield* testContext.mockSyncBackend.failNextPushes(
@@ -240,7 +242,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       )
 
       // Enqueue one local event which will attempt a push and hit the simulated error
-      yield* testContext.localPush(events.todoCreated({ id: 'stall', text: 'stall' }))
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'stall', text: 'stall', completed: false }))
 
       // Waiting a bit to make sure we've already attempted to push to the backend
       // TODO replace this sleep with a an API that allows us to wait until the push was processed by the sync backend
@@ -248,18 +250,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
 
       // Sync protocol requires that the sync backend emits a new pull chunk alongside the ServerAheadError
       yield* testContext.mockSyncBackend.advance(
-        testContext
-          .encodeLiveStoreEvent({
-            ...events.todoCreated({ id: '1', text: 't1' }),
-            seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-            parentSeqNum: EventSequenceNumber.ROOT,
-          })
-          .toGlobal(),
+        backendFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
       )
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
     }).pipe(withTestCtx()(test)),
   )
+
   // - test for filtering out local push queue items with an older rebase generation
   //   this can happen in a scenario like this
   //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)
@@ -272,16 +269,17 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
 
       // Make next few pushes fail at the mock backend level
       yield* testContext.mockSyncBackend.failNextPushes(2)
 
       // Push a few local events; initial push attempts will fail
-      yield* testContext.localPush(
-        events.todoCreated({ id: 'p1', text: 'a' }),
-        events.todoCreated({ id: 'p2', text: 'b' }),
-        events.todoCreated({ id: 'p3', text: 'c' }),
-        events.todoCreated({ id: 'p4', text: 'd' }),
+      yield* testContext.pushEncoded(
+        eventFactory.todoCreated.next({ id: 'p1', text: 'a', completed: false }),
+        eventFactory.todoCreated.next({ id: 'p2', text: 'b', completed: false }),
+        eventFactory.todoCreated.next({ id: 'p3', text: 'c', completed: false }),
+        eventFactory.todoCreated.next({ id: 'p4', text: 'd', completed: false }),
       )
 
       // Expect all 4 to eventually be pushed to the backend (with timeout to catch stalls)
@@ -301,6 +299,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   Vitest.scopedLive('shutdowns on BackendIdMismatchError push', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
@@ -308,7 +307,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       )
 
       // Trigger a local push
-      yield* testContext.localPush(events.todoCreated({ id: 'mismatch', text: 'x' }))
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
       // Expect a shutdown message to be sent with InvalidPushError/BackendIdMismatchError
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
@@ -319,18 +318,18 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   )
 })
 
+type LeaderEventFactory = ReturnType<typeof makeEventFactory>
+
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
-    encodeLiveStoreEvent: (
-      event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
-    ) => LiveStoreEvent.EncodedWithMeta
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
+    eventFactory: LeaderEventFactory
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
-    localPush: (
-      ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
+    pushEncoded: (
+      ...events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
@@ -340,12 +339,14 @@ const LeaderThreadCtxLive = ({
   params,
   syncOptions,
   captureShutdown,
+  mockBackendOverride,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
   /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
   syncOptions?: Partial<SyncOptions>
   captureShutdown?: boolean
+  mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
 }) =>
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()
@@ -365,7 +366,8 @@ const LeaderThreadCtxLive = ({
       syncPayload: undefined,
       makeSqliteDb,
       syncOptions: {
-        backend: syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend),
+        backend:
+          mockBackendOverride?.(mockSyncBackend) ?? syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend),
         ...omitUndefineds({
           livePull: syncOptions?.livePull,
           onSyncError: syncOptions?.onSyncError,
@@ -385,38 +387,21 @@ const LeaderThreadCtxLive = ({
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
 
-      const encodeLiveStoreEvent = ({
-        ...event
-      }: Omit<typeof LiveStoreEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
+      const eventFactory = makeEventFactory({
+        client: EventFactory.clientIdentity(leaderThreadCtx.clientId, 'static-session-id'),
+      })
+
+      const toEncodedWithMeta = (event: LiveStoreEvent.AnyEncodedGlobal) =>
         new LiveStoreEvent.EncodedWithMeta({
-          ...Schema.encodeUnknownSync(leaderThreadCtx.eventSchema)({
-            ...event,
-            clientId: leaderThreadCtx.clientId,
-            sessionId: 'static-session-id',
-          }),
+          ...LiveStoreEvent.encodedFromGlobal(event),
         })
 
-      const currentLiveStoreEventSequenceNumber = { current: EventSequenceNumber.ROOT }
+      const pushEncoded = (...events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) =>
+        leaderThreadCtx.syncProcessor.push(events.map((event) => toEncodedWithMeta(event)))
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
         cursor: EventSequenceNumber.ROOT,
       })
-
-      const toEncodedLiveStoreEvent = (event: LiveStoreEvent.PartialAnyDecoded | LiveStoreEvent.AnyDecoded) => {
-        if (Predicate.hasProperty(event, 'seqNum')) {
-          return encodeLiveStoreEvent(event)
-        }
-
-        const nextNumPair = EventSequenceNumber.nextPair({
-          seqNum: currentLiveStoreEventSequenceNumber.current,
-          isClient: false,
-        })
-        currentLiveStoreEventSequenceNumber.current = nextNumPair.seqNum
-        return encodeLiveStoreEvent({ ...event, ...nextNumPair })
-      }
-
-      const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>
-        leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)))
 
       const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()
 
@@ -432,9 +417,9 @@ const LeaderThreadCtxLive = ({
       return Layer.succeed(TestContext, {
         mockSyncBackend,
         shutdownDeferred,
-        encodeLiveStoreEvent,
         pullQueue,
-        localPush,
+        eventFactory,
+        pushEncoded,
       })
     }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
 
