@@ -1,5 +1,6 @@
 import { SyncBackend } from '@livestore/common'
-import { EventSequenceNumber, LiveStoreEvent, nanoid } from '@livestore/livestore'
+import { EventFactory } from '@livestore/common/testing'
+import { nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import type * as ElectricSync from '@livestore/sync-electric'
 import {
@@ -74,14 +75,12 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       const provider = yield* Effect.provide(SyncProviderImpl, runtime)
 
       // Push a valid event first
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('test-client', 'test-session'),
+      })
+
       yield* syncBackend.push([
-        LiveStoreEvent.AnyEncodedGlobal.make({
-          ...events.todoCreated({ id: 'delete-test', text: 'Will be deleted', completed: false }),
-          clientId: 'test-client',
-          sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
-        }),
+        eventFactory.todoCreated.next({ id: 'delete-test', text: 'Will be deleted', completed: false }),
       ])
 
       const initialPullRes = yield* syncBackend.pull(Option.none()).pipe(Stream.runHead)
@@ -125,14 +124,12 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       const provider = yield* Effect.provide(SyncProviderImpl, runtime)
 
       // Push a valid event first
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('test-client', 'test-session'),
+      })
+
       yield* syncBackend.push([
-        LiveStoreEvent.AnyEncodedGlobal.make({
-          ...events.todoCreated({ id: 'update-test', text: 'Will be updated', completed: false }),
-          clientId: 'test-client',
-          sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
-        }),
+        eventFactory.todoCreated.next({ id: 'update-test', text: 'Will be updated', completed: false }),
       ])
 
       const initialPullRes = yield* syncBackend.pull(Option.none()).pipe(Stream.runHead)

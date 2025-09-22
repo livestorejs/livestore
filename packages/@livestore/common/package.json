@@ -9,7 +9,8 @@
     "./leader-thread": "./src/leader-thread/mod.ts",
     "./schema": "./src/schema/mod.ts",
     "./sync/next": "./src/sync/next/mod.ts",
-    "./sync/next/test": "./src/sync/next/test/mod.ts"
+    "./sync/next/test": "./src/sync/next/test/mod.ts",
+    "./testing": "./src/testing/mod.ts"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*",
@@ -37,7 +38,8 @@
       "./leader-thread": "./dist/leader-thread/mod.js",
       "./schema": "./dist/schema/mod.js",
       "./sync/next": "./dist/sync/next/mod.js",
-      "./sync/next/test": "./dist/sync/next/test/mod.js"
+      "./sync/next/test": "./dist/sync/next/test/mod.js",
+      "./testing": "./dist/testing/mod.js"
     }
   },
   "scripts": {
