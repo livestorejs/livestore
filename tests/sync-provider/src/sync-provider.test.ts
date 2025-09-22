@@ -1,6 +1,7 @@
 import { SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
-import { nanoid } from '@livestore/livestore'
+import type { LiveStoreEvent } from '@livestore/livestore'
+import { EventSequenceNumber, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import {
   Chunk,
@@ -112,19 +113,14 @@ const makeBacklogEvents = (
   { baseId }: { baseId: string },
 ): ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal> => {
   const payload = 'x'.repeat(scenario.payloadSize)
+  const backlogClient = EventFactory.clientIdentity(`${baseId}-client`, `${baseId}-session`)
+  const eventFactory = makeFactory({ client: backlogClient, startSeq: 1, initialParent: 'root' })
 
   return Array.from({ length: scenario.eventCount }, (_, index) =>
-    LiveStoreEvent.AnyEncodedGlobal.make({
-      ...events.todoCreated({
-        id: `${baseId}-${index}`,
-        text: payload,
-        completed: false,
-      }),
-      clientId: `${baseId}-client`,
-      sessionId: `${baseId}-session`,
-      seqNum: EventSequenceNumber.globalEventSequenceNumber(index + 1),
-      parentSeqNum:
-        index === 0 ? EventSequenceNumber.ROOT.global : EventSequenceNumber.globalEventSequenceNumber(index),
+    eventFactory.todoCreated.next({
+      id: `${baseId}-${index}`,
+      text: payload,
+      completed: false,
     }),
   )
 }
@@ -253,6 +249,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     Vitest.scopedLive('survives idle and receives later event', (test) =>
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
+        const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
 
         // Start live pull and wait for the first non-empty batch in a fiber
         const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.fork)
@@ -261,15 +258,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         yield* Effect.sleep(800)
 
         // Push an event; live stream should emit it
-        yield* syncBackend.push([
-          LiveStoreEvent.AnyEncodedGlobal.make({
-            ...events.todoCreated({ id: 'idle-1', text: 'Late event', completed: false }),
-            clientId: 'test-client',
-            sessionId: 'test-session',
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-            parentSeqNum: EventSequenceNumber.ROOT.global,
-          }),
-        ])
+        yield* syncBackend.push([eventFactory.todoCreated.next({ id: 'idle-1', text: 'Late event', completed: false })])
 
         const result = yield* fiber
         expect(result.batch.length).toBe(1)
@@ -376,16 +365,15 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
   Vitest.scopedLive('non-live pull returns multiple events', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
+      const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
 
       // Push at least two events
       for (let i = 0; i < 2; i++) {
         yield* syncBackend.push([
-          LiveStoreEvent.AnyEncodedGlobal.make({
-            ...events.todoCreated({ id: `multi-${i}`, text: `Event ${i}`, completed: i % 2 === 0 }),
-            clientId: 'test-client',
-            sessionId: 'test-session',
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(i + 1),
-            parentSeqNum: i === 0 ? EventSequenceNumber.ROOT.global : EventSequenceNumber.globalEventSequenceNumber(i),
+          eventFactory.todoCreated.next({
+            id: `multi-${i}`,
+            text: `Event ${i}`,
+            completed: i % 2 === 0,
           }),
         ])
       }
@@ -566,27 +554,19 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       const TOTAL_EVENTS = 10000
       const BATCH_SIZE = 100 // Push in batches to avoid any push limits
       const startSeq = 20000 // Use high sequence numbers to avoid conflicts
+      const eventFactory = makeFactory({ client: defaultClient, startSeq, initialParent: 'root' })
 
       // Push 10000 events in batches
       for (let batchStart = 0; batchStart < TOTAL_EVENTS; batchStart += BATCH_SIZE) {
-        const batchEvents = []
+        const batchEvents: Array<LiveStoreEvent.AnyEncodedGlobal> = []
         const batchEnd = Math.min(batchStart + BATCH_SIZE, TOTAL_EVENTS)
 
         for (let i = batchStart; i < batchEnd; i++) {
           batchEvents.push(
-            LiveStoreEvent.AnyEncodedGlobal.make({
-              ...events.todoCreated({
-                id: `batch-${i}`,
-                text: `Event ${i}`,
-                completed: false,
-              }),
-              clientId: 'test-client',
-              sessionId: 'test-session',
-              seqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq + i),
-              parentSeqNum:
-                i === 0
-                  ? EventSequenceNumber.ROOT.global
-                  : EventSequenceNumber.globalEventSequenceNumber(startSeq + i - 1),
+            eventFactory.todoCreated.next({
+              id: `batch-${i}`,
+              text: `Event ${i}`,
+              completed: false,
             }),
           )
         }
