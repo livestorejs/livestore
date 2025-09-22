@@ -219,7 +219,7 @@ describe('table function overloads', () => {
       schema: Nested,
     })
 
-    const columns = contactsTable.sqliteDef.columns as Record<string, any>
+    const columns = contactsTable.sqliteDef.columns
 
     expect(Object.keys(columns)).toEqual(['id', 'contactFirstName', 'contactLastName', 'contactEmail'])
     expect(columns.id.primaryKey).toBe(true)
