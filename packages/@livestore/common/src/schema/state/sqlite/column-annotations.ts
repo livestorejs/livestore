@@ -1,5 +1,5 @@
 import type { Schema } from '@livestore/utils/effect'
-import { dual } from '@livestore/utils/effect'
+import { dual, Option, SchemaAST } from '@livestore/utils/effect'
 import type { SqliteDsl } from './db-schema/mod.ts'
 
 export const PrimaryKeyId = Symbol.for('livestore/state/sqlite/annotations/primary-key')
@@ -32,7 +32,7 @@ Here are the knobs you can turn per-column when you CREATE TABLE (or ALTER TABLE
  * Adds a primary key annotation to a schema.
  */
 export const withPrimaryKey = <T extends Schema.Schema.All>(schema: T) =>
-  schema.annotations({ [PrimaryKeyId]: true }) as T
+  applyAnnotations(schema, { [PrimaryKeyId]: true })
 
 /**
  * Adds a column type annotation to a schema.
@@ -43,19 +43,19 @@ export const withColumnType: {
   <T extends Schema.Schema.All>(schema: T, type: SqliteDsl.FieldColumnType): T
 } = dual(2, <T extends Schema.Schema.All>(schema: T, type: SqliteDsl.FieldColumnType) => {
   validateSchemaColumnTypeCompatibility(schema, type)
-  return schema.annotations({ [ColumnType]: type }) as T
+  return applyAnnotations(schema, { [ColumnType]: type })
 })
 
 /**
  * Adds an auto-increment annotation to a schema.
  */
 export const withAutoIncrement = <T extends Schema.Schema.All>(schema: T) =>
-  schema.annotations({ [AutoIncrement]: true }) as T
+  applyAnnotations(schema, { [AutoIncrement]: true })
 
 /**
  * Adds a unique constraint annotation to a schema.
  */
-export const withUnique = <T extends Schema.Schema.All>(schema: T) => schema.annotations({ [Unique]: true }) as T
+export const withUnique = <T extends Schema.Schema.All>(schema: T) => applyAnnotations(schema, { [Unique]: true })
 
 /**
  * Adds a default value annotation to a schema.
@@ -64,7 +64,7 @@ export const withDefault: {
   // TODO make type safe
   <T extends Schema.Schema.All>(schema: T, value: unknown): T
   (value: unknown): <T extends Schema.Schema.All>(schema: T) => T
-} = dual(2, <T extends Schema.Schema.All>(schema: T, value: unknown) => schema.annotations({ [Default]: value }) as T)
+} = dual(2, <T extends Schema.Schema.All>(schema: T, value: unknown) => applyAnnotations(schema, { [Default]: value }))
 
 /**
  * Validates that a schema is compatible with the specified SQLite column type
@@ -74,4 +74,14 @@ const validateSchemaColumnTypeCompatibility = (
   _columnType: SqliteDsl.FieldColumnType,
 ): void => {
   // TODO actually implement this
+}
+
+const applyAnnotations = <T extends Schema.Schema.All>(schema: T, overrides: Record<PropertyKey, unknown>): T => {
+  const identifier = SchemaAST.getIdentifierAnnotation(schema.ast)
+  const shouldPreserveIdentifier = Option.isSome(identifier) && !(SchemaAST.IdentifierAnnotationId in overrides)
+  const annotations: Record<PropertyKey, unknown> = shouldPreserveIdentifier
+    ? { ...overrides, [SchemaAST.IdentifierAnnotationId]: identifier.value }
+    : overrides
+
+  return schema.annotations(annotations) as T
 }

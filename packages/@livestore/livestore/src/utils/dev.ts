@@ -2,6 +2,11 @@ import type { SqliteDb } from '@livestore/common'
 import { prettyBytes } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
+declare global {
+  // declaring a global *value* is the least fussy when augmenting inline
+  var __debugLiveStoreUtils: any
+}
+
 export const downloadBlob = (
   data: Uint8Array<ArrayBuffer> | Blob | string,
   fileName: string,

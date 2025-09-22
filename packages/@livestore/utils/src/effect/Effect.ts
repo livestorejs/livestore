@@ -15,7 +15,8 @@ import {
 } from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
-import type { LazyArg } from 'effect/Function'
+import { dual, type LazyArg } from 'effect/Function'
+import type { Predicate, Refinement } from 'effect/Predicate'
 
 import { isPromise } from '../mod.ts'
 import { UnknownError } from './Error.ts'
@@ -105,6 +106,20 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
       )
     }),
   )
+
+export const ignoreIf: {
+  <E, EB extends E>(
+    refinement: Refinement<NoInfer<E>, EB>,
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, Exclude<E, EB>, R>
+  <E>(predicate: Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <A, E, R, EB extends E>(
+    self: Effect.Effect<A, E, R>,
+    refinement: Refinement<E, EB>,
+  ): Effect.Effect<void, Exclude<E, EB>, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>): Effect.Effect<void, E, R>
+} = dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>) =>
+  self.pipe(Effect.catchIf(predicate, () => Effect.void)),
+)
 
 export const eventListener = <TEvent = unknown>(
   target: Stream.EventListener<TEvent>,

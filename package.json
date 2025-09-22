@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
-    "@effect/language-service": "^0.36.0",
+    "@effect/language-service": "^0.40.0",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -48,6 +48,7 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@livestore/wa-sqlite": "workspace:*",

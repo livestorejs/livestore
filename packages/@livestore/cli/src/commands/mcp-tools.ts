@@ -1,4 +1,4 @@
-import { AiTool, AiToolkit, Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Schema, Tool, Toolkit } from '@livestore/utils/effect'
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
 import { socialSchemaContent } from '../mcp-content/schemas/social.ts'
@@ -6,10 +6,10 @@ import { todoSchemaContent } from '../mcp-content/schemas/todo.ts'
 import { coachTool, coachToolHandler } from './mcp-coach.ts'
 
 // Create toolkit with tools and handlers following Tim Smart's pattern
-export const livestoreToolkit = AiToolkit.make(
+export const livestoreToolkit = Toolkit.make(
   coachTool,
 
-  AiTool.make('livestore_generate_schema', {
+  Tool.make('livestore_generate_schema', {
     description:
       'Generate a LiveStore schema for a specific use case. Choose from predefined types (todo, blog, social, ecommerce) or request a custom schema by providing a description.',
     parameters: {
@@ -33,7 +33,7 @@ export const livestoreToolkit = AiToolkit.make(
     }),
   }),
 
-  AiTool.make('livestore_get_example_schema', {
+  Tool.make('livestore_get_example_schema', {
     description:
       'Get a complete example LiveStore schema with TypeScript code. Returns ready-to-use schema definitions for common application types.',
     parameters: {
@@ -50,8 +50,8 @@ export const livestoreToolkit = AiToolkit.make(
       }),
     }),
   })
-    .annotate(AiTool.Readonly, true)
-    .annotate(AiTool.Destructive, false),
+    .annotate(Tool.Readonly, true)
+    .annotate(Tool.Destructive, false),
 )
 
 // Tool handlers using Tim Smart's pattern

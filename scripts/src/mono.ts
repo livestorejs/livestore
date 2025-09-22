@@ -16,19 +16,31 @@ import { deployToNetlify } from './shared/netlify.ts'
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
+const docsPath = `${cwd}/docs`
 
 const docsBuildCommand = Cli.Command.make(
   'build',
-  { apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)) },
-  ({ apiDocs }) =>
-    cmd('pnpm astro build', {
-      cwd: `${process.env.WORKSPACE_ROOT}/docs`,
+  {
+    apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
+    clean: Cli.Options.boolean('clean').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Remove docs build artifacts before compilation'),
+    ),
+  },
+  Effect.fn(function* ({ apiDocs, clean }) {
+    if (clean) {
+      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { cwd: docsPath, shell: true })
+    }
+
+    yield* cmd('pnpm astro build', {
+      cwd: docsPath,
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
       },
-    }),
+    })
+  }),
 )
 
 const docsCommand = Cli.Command.make('docs').pipe(
@@ -40,11 +52,11 @@ const docsCommand = Cli.Command.make('docs').pipe(
       },
       ({ open }) =>
         Effect.gen(function* () {
-          const logPath = `${process.env.WORKSPACE_ROOT}/docs/logs/${new Date().toISOString()}.log`
-          fs.mkdirSync(`${process.env.WORKSPACE_ROOT}/docs/logs`, { recursive: true })
+          const logPath = `${docsPath}/logs/${new Date().toISOString()}.log`
+          fs.mkdirSync(`${docsPath}/logs`, { recursive: true })
 
           yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined, '2>&1', '|', 'tee', logPath], {
-            cwd: `${process.env.WORKSPACE_ROOT}/docs`,
+            cwd: docsPath,
             shell: true,
           })
         }),
@@ -62,7 +74,7 @@ const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(
         function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
           if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true })
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false })
           }
 
           const branchName = yield* Effect.gen(function* () {
@@ -77,8 +89,6 @@ const docsCommand = Cli.Command.make('docs').pipe(
             }
             return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
           })
-
-          const docsPath = `${process.env.WORKSPACE_ROOT}/docs`
 
           yield* Effect.log(`Branch name: "${branchName}"`)
 

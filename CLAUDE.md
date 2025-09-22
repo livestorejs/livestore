@@ -71,6 +71,9 @@ Use the `mono` CLI for common workflows:
 
 ### Environment Variables
 
-- Copy environment variable examples from `.envrc` comments to your `.envrc.local` file
-- Required for docs development: `MXBAI_API_KEY` and `MXBAI_VECTOR_STORE_ID`
-- Never commit sensitive environment variables to the repository
+- Keep sensitive environment variables in `.envrc.local` and never commit them to the repository.
+
+## Documentation / Examples
+
+- It's critical that the documentation and examples are up to date and accurate. When changing code, make sure to update the documentation and examples.
+- For code snippets make sure to follow @contributor-docs/docs/snippets.md

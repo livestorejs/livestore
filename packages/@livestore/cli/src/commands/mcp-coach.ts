@@ -1,17 +1,18 @@
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai'
 import {
   AiError,
-  AiLanguageModel,
-  AiTool,
   Config,
   Effect,
   FetchHttpClient,
+  LanguageModel,
   Layer,
+  Prompt,
   Schema,
+  Tool,
 } from '@livestore/utils/effect'
 
 // Define the coach tool that analyzes LiveStore usage
-export const coachTool = AiTool.make('livestore_coach', {
+export const coachTool = Tool.make('livestore_coach', {
   description:
     'Analyze LiveStore code (schemas, queries, mutations, etc.) and provide AI-powered feedback on best practices, performance, and improvements.',
   parameters: {
@@ -58,7 +59,10 @@ export const coachToolHandler = Effect.fnUntraced(
     // Build the analysis prompt
     const codeTypeContext = codeType ? `This is ${codeType} code using LiveStore. ` : 'This is LiveStore code. '
 
-    const prompt = `${codeTypeContext}Please review the following code and provide helpful feedback focusing on:
+    const prompt = Prompt.makeMessage('user', {
+      content: [
+        Prompt.makePart('text', {
+          text: `${codeTypeContext}Please review the following code and provide helpful feedback focusing on:
 
 1. LiveStore best practices and conventions
 2. Schema design and relationships (if applicable)
@@ -79,13 +83,18 @@ Please provide:
 3. Best practice recommendations
 4. Any potential issues or concerns
 
-Format your response as constructive feedback that helps developers improve their LiveStore usage.`
+Format your response as constructive feedback that helps developers improve their LiveStore usage.`,
+        }),
+      ],
+    })
 
-    const systemPrompt = `You are an expert LiveStore developer and code reviewer. Provide constructive, specific, and actionable feedback on LiveStore code. Focus on best practices, performance, and maintainability.`
+    const systemPrompt = Prompt.makeMessage('system', {
+      content: `You are an expert LiveStore developer and code reviewer. Provide constructive, specific, and actionable feedback on LiveStore code. Focus on best practices, performance, and maintainability.`,
+    })
 
     // Get OpenAI client and call the API
-    const llm = yield* AiLanguageModel.AiLanguageModel
-    const completion = yield* llm.generateText({ prompt, system: systemPrompt })
+    const llm = yield* LanguageModel.LanguageModel
+    const completion = yield* llm.generateText({ prompt: Prompt.fromMessages([systemPrompt, prompt]) })
 
     const feedback = completion.text ?? 'Unable to generate feedback'
 

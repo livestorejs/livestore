@@ -10,10 +10,10 @@ import { makeTiged, versionNpmSuffix } from '../../../../data.js'
 import { MIN_NODE_VERSION } from '@local/shared'
 import babelConfigCode from '../../../../../examples/expo-todomvc-sync-cf/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/expo-todomvc-sync-cf/metro.config.js?raw'
-import schemaCode from '../../../../../examples/expo-todomvc-sync-cf/src/livestore/schema.ts?raw'
-import rootCode from '../../../../../examples/expo-todomvc-sync-cf/src/Root.tsx?raw'
-import headerCode from '../../../../../examples/expo-todomvc-sync-cf/src/components/NewTodo.tsx?raw'
-import mainSectionCode from '../../../../../examples/expo-todomvc-sync-cf/src/components/ListTodos.tsx?raw'
+import schemaCode from '../../_assets/code/getting-started/expo/livestore/schema.ts?snippet'
+import rootCode from '../../_assets/code/getting-started/expo/Root.tsx?snippet'
+import headerCode from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
+import mainSectionCode from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
 
 export const CODE = {
   babelConfig: babelConfigCode,
@@ -203,7 +203,7 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
+<Code code={CODE.schema} lang="ts" meta="twoslash" title="src/livestore/schema.ts" />
 
 ## Add the LiveStore Provider
 
@@ -211,7 +211,7 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
+<Code code={CODE.root} lang="tsx" meta="twoslash" title="src/Root.tsx" />
 
 ### Commit events
 
@@ -219,7 +219,7 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-<Code code={CODE.header} lang="tsx" title="src/components/NewTodo.tsx" />
+<Code code={CODE.header} lang="tsx" meta="twoslash" title="src/components/NewTodo.tsx" />
 
 ## Queries
 
@@ -229,7 +229,7 @@ Consider abstracting queries into a separate file to keep your code organized, t
 
 Here's an example:
 
-<Code code={CODE.mainSection} lang="tsx" title="src/components/ListTodos.tsx" />
+<Code code={CODE.mainSection} lang="tsx" meta="twoslash" title="src/components/ListTodos.tsx" />
 
 ## Devtools
 

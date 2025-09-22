@@ -34,3 +34,6 @@ _tmp*
 .output
 
 scripts/.completions
+
+# locally downloaded S2 CLI
+.infra/s2/

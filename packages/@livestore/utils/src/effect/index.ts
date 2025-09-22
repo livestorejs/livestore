@@ -1,6 +1,21 @@
 import '../global.ts'
 
-export { AiError, AiLanguageModel, AiModel, AiTool, AiToolkit, McpSchema, McpServer } from '@effect/ai'
+export {
+  AiError,
+  LanguageModel,
+  LanguageModel as AiLanguageModel,
+  McpSchema,
+  McpServer,
+  Model,
+  Model as AiModel,
+  Prompt,
+  Tool,
+  Tool as AiTool,
+  Toolkit,
+  Toolkit as AiToolkit,
+} from '@effect/ai'
+// export { DevTools as EffectDevtools } from '@effect/experimental'
+export { Sse } from '@effect/experimental'
 export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
   Command,
@@ -122,22 +137,19 @@ export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
+export * as Effect from './Effect.ts'
+export * from './Error.ts'
 export * as Logger from './Logger.ts'
 export * as OtelTracer from './OtelTracer.ts'
 export * as RpcClient from './RpcClient.ts'
+export * as Schedule from './Schedule.ts'
+export * as Scheduler from './Scheduler.ts'
 export * as Schema from './Schema/index.ts'
+export * as ServiceContext from './ServiceContext.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'
 export * as SubscriptionRef from './SubscriptionRef.ts'
 export * as TaskTracing from './TaskTracing.ts'
 export * as WebChannel from './WebChannel/mod.ts'
-export * as WebSocket from './WebSocket.ts'
-
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-
-export * as Effect from './Effect.ts'
-export * from './Error.ts'
-export * as Schedule from './Schedule.ts'
-export * as Scheduler from './Scheduler.ts'
-export * as ServiceContext from './ServiceContext.ts'
 export * as WebLock from './WebLock.ts'
+export * as WebSocket from './WebSocket.ts'
