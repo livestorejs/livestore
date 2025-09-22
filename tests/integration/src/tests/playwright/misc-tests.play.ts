@@ -68,3 +68,42 @@ test(
     }),
   ),
 )
+
+test(
+  'duplicate-tab rekeys session id',
+  runTest(
+    Effect.gen(function* () {
+      const exit = yield* runAndGetExit({
+        importPath: `${modulePrefix}/duplicate-tab.ts`,
+        exportName: 'testDuplicateTab',
+        schema: Bridge.ResultDuplicateSessionId,
+      })
+
+      expect(Exit.isSuccess(exit)).toBe(true)
+
+      if (Exit.isSuccess(exit) === false) {
+        return
+      }
+
+      const { firstSessionId, secondSessionId, sessionStorageBeforeSecond, sessionStorageAfterSecond, workerNames } =
+        exit.value
+
+      expect(sessionStorageBeforeSecond).toBe(firstSessionId)
+      expect(sessionStorageAfterSecond).toBe(secondSessionId)
+      expect(secondSessionId).not.toBe(firstSessionId)
+
+      expect(workerNames).toHaveLength(2)
+      const [firstWorker, secondWorker] = workerNames
+
+      if (firstWorker === undefined || secondWorker === undefined) {
+        return
+      }
+
+      expect(firstWorker).toEqual(expect.objectContaining({ tab: 'first' as const }))
+      expect(firstWorker.name).toContain(firstSessionId)
+      expect(secondWorker).toEqual(expect.objectContaining({ tab: 'second' as const }))
+      expect(secondWorker.name).toContain(secondSessionId)
+      expect(secondWorker.name).not.toContain(firstSessionId)
+    }),
+  ),
+)
