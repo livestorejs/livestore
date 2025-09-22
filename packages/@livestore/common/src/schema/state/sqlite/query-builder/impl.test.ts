@@ -683,6 +683,127 @@ describe('query builder', () => {
       expect(pattern1).toEqual(pattern2)
     })
   })
+
+  describe('schema transforms', () => {
+    const Flat = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      contactFirstName: Schema.String,
+      contactLastName: Schema.String,
+      contactEmail: Schema.String.pipe(State.SQLite.withUnique),
+    })
+
+    const Nested = Schema.transform(
+      Flat,
+      Schema.Struct({
+        id: Schema.String,
+        contact: Schema.Struct({
+          firstName: Schema.String,
+          lastName: Schema.String,
+          email: Schema.String,
+        }),
+      }),
+      {
+        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+          id,
+          contact: {
+            firstName: contactFirstName,
+            lastName: contactLastName,
+            email: contactEmail,
+          },
+        }),
+        encode: ({ id, contact }) => ({
+          id,
+          contactFirstName: contact.firstName,
+          contactLastName: contact.lastName,
+          contactEmail: contact.email,
+        }),
+      },
+    )
+
+    const makeContactsTable = () =>
+      State.SQLite.table({
+        name: 'contacts',
+        schema: Nested,
+        // schema: Flat,
+      })
+
+    it('exposes flattened insert type while schema type is nested', () => {
+      const contactsTable = makeContactsTable()
+
+      type InsertInput = Parameters<(typeof contactsTable)['insert']>[0]
+      type NestedType = Schema.Schema.Type<typeof Nested>
+
+      type Assert<T extends true> = T
+
+      type InsertKeys = keyof InsertInput
+      type NestedKeys = keyof NestedType
+
+      type _InsertHasFlattenedColumns = Assert<
+        'contactFirstName' extends InsertKeys
+          ? 'contactLastName' extends InsertKeys
+            ? 'contactEmail' extends InsertKeys
+              ? true
+              : false
+            : false
+          : false
+      >
+
+      type _InsertDoesNotExposeNested = Assert<Extract<'contact', InsertKeys> extends never ? true : false>
+
+      type _SchemaTypeIsNested = Assert<'contact' extends NestedKeys ? true : false>
+
+      void contactsTable
+    })
+
+    it('fails to encode nested inserts because flat columns are required', () => {
+      const contactsTable = makeContactsTable()
+
+      expect(
+        contactsTable
+          // TODO in the future we should use decoded types here instead of encoded
+          .insert({
+            id: 'person-1',
+            contactFirstName: 'Ada',
+            contactLastName: 'Lovelace',
+            contactEmail: 'ada@example.com',
+          })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "person-1",
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+          ],
+          "query": "INSERT INTO 'contacts' (id, contactFirstName, contactLastName, contactEmail) VALUES (?, ?, ?, ?)",
+          "usedTables": Set {
+            "contacts",
+          },
+        }
+      `)
+    })
+
+    it('fails to encode nested inserts because flat columns are required', () => {
+      const contactsTable = makeContactsTable()
+
+      expect(() =>
+        contactsTable
+          .insert({
+            id: 'person-1',
+            // @ts-expect-error
+            contact: {
+              firstName: 'Ada',
+              lastName: 'Lovelace',
+              email: 'ada@example.com',
+            },
+          })
+          .asSql(),
+      ).toThrowErrorMatchingInlineSnapshot(`
+        [ParseError: contacts\n└─ ["contactFirstName"]\n   └─ is missing]
+      `)
+    })
+  })
 })
 
 // TODO nested queries

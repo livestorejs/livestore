@@ -381,12 +381,13 @@ export declare namespace SchemaToColumns {
   export type ColumnDefForType<TEncoded, TType> = SqliteDsl.ColumnDefinition<TEncoded, TType>
 
   // Create columns type from schema Type and Encoded
-  export type FromTypes<TType, TEncoded> = TType extends Record<string, any>
-    ? TEncoded extends Record<string, any>
-      ? {
-          [K in keyof TType & keyof TEncoded]: ColumnDefForType<TEncoded[K], TType[K]>
-        }
-      : SqliteDsl.Columns
+  export type FromTypes<TType, TEncoded> = TEncoded extends Record<string, any>
+    ? {
+        [K in keyof TEncoded]-?: ColumnDefForType<
+          TEncoded[K],
+          TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K]
+        >
+      }
     : SqliteDsl.Columns
 }
 
