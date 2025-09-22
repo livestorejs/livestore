@@ -410,10 +410,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         yield* Effect.sleep(100)
         yield* syncProvider.turnBackendOnline
 
-        const factories = makeFactory({ client: defaultClient })
+        const eventFactory = makeFactory({ client: defaultClient })
 
-        factories.todoCreated.advanceTo(1, 'root')
-        yield* syncBackend.push([factories.todoCreated.next({ id: '1', text: 'Test event 1.', completed: false })])
+        eventFactory.todoCreated.advanceTo(1, 'root')
+        yield* syncBackend.push([eventFactory.todoCreated.next({ id: '1', text: 'Test event 1.', completed: false })])
 
         const result = yield* fiber
         expect(result.batch.length).toBe(1)
