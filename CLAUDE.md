@@ -29,6 +29,29 @@ Use the `mono` CLI for common workflows:
 
 - Avoid `as any`, force-casting etc as much as possible.
 
+## Task-based Approach
+
+### 0. Tasks
+- Operate on a task basis. Store all intermediate context in markdown files inside `tasks/<task-id>/` folders.
+- Use semantic task ID slugs.
+
+### 1. Research
+- Identify existing patterns in the codebase.
+- Search external resources if relevant.
+- Begin by asking follow-up questions to set the research direction.
+- Document findings in the `research.md` file.
+
+### 2. Planning
+- Review `research.md` in `tasks/<task-id>`.
+- Based on the research, create a plan for implementing the user request. Reuse existing patterns, components, and code wherever possible.
+- If needed, ask clarifying questions to the user to better understand the scope of the task.
+- Write a comprehensive plan in `plan.md`. This plan should include all the context required for an engineer to implement the feature.
+
+### 3. Implementation
+- Read `plan.md` and create a to-do list with all required items.
+- Execute the plan step by step.
+- Continue as far as possible. If ambiguities remain, note all questions at the end and group them together.
+
 ## Git
 
 - Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.

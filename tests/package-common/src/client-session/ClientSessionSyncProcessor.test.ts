@@ -10,6 +10,7 @@ import {
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
@@ -102,19 +103,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('sync backend is ahead', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
-      const encoded = encode(events.todoCreated({ id: '1', text: 't1', completed: false }))
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
 
       const store = yield* makeStore()
 
       store.commit(events.todoCreated({ id: '2', text: 't2', completed: false }))
 
-      yield* mockSyncBackend.advance({
-        ...encoded,
-        seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-        parentSeqNum: EventSequenceNumber.ROOT.global,
-        clientId: 'other-client',
-        sessionId: 'static-session-id',
-      })
+      yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
     }).pipe(withTestCtx(test)),
@@ -123,18 +120,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('race condition between client session and sync backend', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
 
       const store = yield* makeStore()
 
       for (let i = 0; i < 5; i++) {
         yield* mockSyncBackend
-          .advance({
-            ...encode(events.todoCreated({ id: `backend_${i}`, text: '', completed: false })),
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(i + 1),
-            parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(i),
-            clientId: 'other-client',
-            sessionId: 'static-session-id',
-          })
+          .advance(eventFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
           .pipe(Effect.fork)
       }
 
@@ -215,15 +209,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const { mockSyncBackend } = yield* TestContext
       const shutdownDeferred = yield* makeShutdownDeferred
 
-      yield* mockSyncBackend.advance(
-        LiveStoreEvent.AnyEncodedGlobal.make({
-          ...encode(events.todoCreated({ id: `backend_0`, text: 't2', completed: false })),
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
-          clientId: 'other-client',
-          sessionId: 'other-client-session1',
-        }),
-      )
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'other-client-session1'),
+      })
+
+      yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: `backend_0`, text: 't2', completed: false }))
 
       const makeLeaderThread = yield* Effect.cachedFunction(
         Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {

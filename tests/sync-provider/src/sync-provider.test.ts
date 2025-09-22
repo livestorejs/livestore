@@ -1,5 +1,6 @@
 import { SyncBackend } from '@livestore/common'
-import { EventSequenceNumber, LiveStoreEvent, nanoid } from '@livestore/livestore'
+import { EventFactory } from '@livestore/common/testing'
+import { nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import {
   Chunk,
@@ -26,6 +27,14 @@ import * as ElectricProvider from './providers/electric.ts'
 import * as MockProvider from './providers/mock.ts'
 import * as S2Provider from './providers/s2.ts'
 import { SyncProviderImpl } from './types.ts'
+
+// NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
+// queueing/rebase rules, and live pulls represent the long-lived stream the leader relies on.
+// Keep scenarios aligned with those invariants so we only test protocol-compliant usage.
+
+const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
+
+const makeFactory = EventFactory.makeFactory(events)
 
 const providerLayers = [
   MockProvider,
@@ -173,7 +182,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         _.makeProvider({
           // Isolated store for each provider and test to avoid conflicts
           storeId: `test-store-${name}-${testName}-${testId}`,
-          clientId: 'test-client',
+          clientId: defaultClient.clientId,
           payload: undefined,
         }),
       ).pipe(Effect.provide(runtime)),
@@ -272,16 +281,9 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
-      yield* syncBackend.push([
-        // TODO come up with a nicer DSL for this
-        LiveStoreEvent.AnyEncodedGlobal.make({
-          ...events.todoCreated({ id: '1', text: 'Test event 1', completed: false }),
-          clientId: 'test-client',
-          sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
-        }),
-      ])
+      const eventFactory = makeFactory({ client: defaultClient })
+
+      yield* syncBackend.push([eventFactory.todoCreated.next({ id: '1', text: 'Test event 1.', completed: false })])
 
       // First pull without cursor
       const firstPull = yield* syncBackend.pull(Option.none()).pipe(runFirstNonEmpty)
@@ -408,15 +410,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         yield* Effect.sleep(100)
         yield* syncProvider.turnBackendOnline
 
-        yield* syncBackend.push([
-          LiveStoreEvent.AnyEncodedGlobal.make({
-            ...events.todoCreated({ id: '1', text: 'Test event 1', completed: false }),
-            clientId: 'test-client',
-            sessionId: 'test-session',
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-            parentSeqNum: EventSequenceNumber.ROOT.global,
-          }),
-        ])
+        const factories = makeFactory({ client: defaultClient })
+
+        factories.todoCreated.advanceTo(1, 'root')
+        yield* syncBackend.push([factories.todoCreated.next({ id: '1', text: 'Test event 1.', completed: false })])
 
         const result = yield* fiber
         expect(result.batch.length).toBe(1)
@@ -431,15 +428,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       // Push multiple events to ensure we have data
       const eventsToCreate = 5
       const startSeq = 1 // Start from 1 for this test
+      const eventFactory = makeFactory({ client: defaultClient, startSeq, initialParent: 'root' })
+
       for (let i = 0; i < eventsToCreate; i++) {
         yield* syncBackend.push([
-          LiveStoreEvent.AnyEncodedGlobal.make({
-            ...events.todoCreated({ id: `remaining-test-${i}`, text: `Event ${i}`, completed: false }),
-            clientId: 'test-client',
-            sessionId: 'test-session',
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq + i),
-            parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq - 1 + i),
-          }),
+          eventFactory.todoCreated.next({ id: `remaining-test-${i}`, text: `Event ${i}`, completed: false }),
         ])
       }
 
@@ -499,18 +492,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       // Use different sequence numbers to avoid conflicts with other tests
       const totalEvents = 10
       const startSeq = 100 // Use 100+ to avoid conflicts with other tests
+      const eventFactory = makeFactory({ client: defaultClient, startSeq, initialParent: 'root' })
+
       for (let i = 0; i < totalEvents; i++) {
         yield* syncBackend.push([
-          LiveStoreEvent.AnyEncodedGlobal.make({
-            ...events.todoCreated({ id: `limited-${i}`, text: `Limited Event ${i}`, completed: false }),
-            clientId: 'test-client',
-            sessionId: 'test-session',
-            seqNum: EventSequenceNumber.globalEventSequenceNumber(startSeq + i),
-            parentSeqNum:
-              i === 0
-                ? EventSequenceNumber.ROOT.global
-                : EventSequenceNumber.globalEventSequenceNumber(startSeq - 1 + i),
-          }),
+          eventFactory.todoCreated.next({ id: `limited-${i}`, text: `Limited Event ${i}`, completed: false }),
         ])
       }
 

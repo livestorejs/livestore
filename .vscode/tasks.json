@@ -194,6 +194,36 @@
         "showReuseMessage": false,
         "clear": true
       }
+    },
+    {
+      "label": "dev:zellij",
+      "type": "process",
+      "detail": "Attach to a slugified zellij session per workspace to persist remote terminal state.",
+      "command": "bash",
+      "args": [
+        "-lc",
+        // slugify absolute workspace path so each project reuses its zellij session
+        "session=$(pwd | sed -e 's/[^[:alnum:]]\\+/-/g' -e 's/^-//' -e 's/-$//' | tr '[:upper:]' '[:lower:]'); echo \"[zellij] attaching to $session\"; echo \"[zellij] ready\"; zellij attach -c \"$session\"; status=$?; echo \"[zellij] session closed\"; exit $status"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "zellij",
+        "pattern": {
+          "regexp": ".^"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[zellij\\] attaching to .+$",
+          "endsPattern": "^\\[zellij\\] ready$"
+        }
+      },
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "dev:zellij",
+        "showReuseMessage": false,
+        "clear": false
+      }
     }
   ]
 }
