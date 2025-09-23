@@ -10,15 +10,11 @@ export interface Env {
   TEST_RPC_DO: DurableObjectNamespace<TestRpcDurableObject>
 }
 
-export class TestRpcDurableObject extends DurableObject {
+export class TestRpcDurableObject extends DurableObject<Env> {
   __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
-  env: Env
-  ctx: DurableObjectState
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
-    this.env = env
-    this.ctx = state
 
     const handlersLayer = TestRpcs.toLayer({
       Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),

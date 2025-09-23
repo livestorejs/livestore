@@ -215,6 +215,9 @@ export const pageConsole = ({
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 404 (Not Found)',
               ) === false &&
+              message.message.includes(
+                'Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)',
+              ) === false &&
               message.message.includes('All fibers interrupted without errors') === false
             ) {
               if (errorGroupRef.current === undefined) {
