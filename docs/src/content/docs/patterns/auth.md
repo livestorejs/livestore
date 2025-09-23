@@ -43,6 +43,7 @@ export class SyncBackendDO extends makeDurableObject({
 }) {}
 
 export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: async (payload: any, context) => {
     const { storeId } = context
     const { authToken } = payload

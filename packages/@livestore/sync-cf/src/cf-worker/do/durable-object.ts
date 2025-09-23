@@ -16,7 +16,7 @@ import {
 } from '@livestore/utils/effect'
 import {
   type Env,
-  getSyncRequestSearchParams,
+  matchSyncRequest,
   type MakeDurableObjectClassOptions,
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
@@ -148,12 +148,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
     fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
-        const requestParamsResult = getSyncRequestSearchParams(request)
-        if (requestParamsResult._tag === 'None') {
+        const searchParams = matchSyncRequest(request)
+        if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
         }
 
-        const { storeId, payload, transport } = requestParamsResult.value
+        const { storeId, payload, transport } = searchParams
 
         if (enabledTransports.has(transport) === false) {
           throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)

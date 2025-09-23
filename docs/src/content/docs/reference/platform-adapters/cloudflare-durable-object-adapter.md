@@ -176,14 +176,15 @@ export default {
     const url = new URL(request.url)
 
     // Handle sync backend requests
-    const requestParamsResult = SyncBackend.getSyncRequestSearchParams(request)
-    if (requestParamsResult._tag === 'Some') {
+    const searchParams = SyncBackend.matchSyncRequest(request)
+    if (searchParams !== undefined) {
       return SyncBackend.handleSyncRequest({
         request,
-        searchParams: requestParamsResult.value,
+        searchParams,
         env,
         ctx,
-        options: { headers: {} },
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+        headers: {},
       })
     }
 
@@ -242,7 +243,7 @@ async syncUpdateRpc(payload: unknown) {
 - The method signature must match exactly for the RPC system to work
 - Always use the provided `handleSyncUpdateRpc` function - don't implement custom logic
 
-For sync backend-related APIs like `makeDurableObject`, `handleSyncRequest`, and `getSyncRequestSearchParams`, see the [Cloudflare sync provider documentation](/reference/syncing/sync-provider/cloudflare/).
+For sync backend-related APIs like `makeDurableObject`, `handleSyncRequest`, and `matchSyncRequest`, see the [Cloudflare sync provider documentation](/reference/syncing/sync-provider/cloudflare/).
 
 ### Resetting LiveStore persistence (development only)
 

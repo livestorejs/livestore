@@ -1,7 +1,8 @@
 import type { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, type Option, Schema, UrlParams } from '@livestore/utils/effect'
+import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
+import type { SearchParams } from '../common/mod.ts'
 
 export interface Env {
   /** Eventlog database */
@@ -48,17 +49,24 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
-export const DEFAULT_SYNC_DURABLE_OBJECT_NAME = 'SYNC_BACKEND_DO'
-
 export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
 export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
 
-export const getSyncRequestSearchParams = (request: CfTypes.Request): Option.Option<typeof SearchParamsSchema.Type> => {
+/**
+ * Extracts the LiveStore sync search parameters from a request. Returns
+ * `undefined` when the request does not carry valid sync metadata so callers
+ * can fall back to custom routing.
+ */
+export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
   const urlParams = UrlParams.fromInput(url.searchParams)
   const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
 
-  return paramsResult
+  if (paramsResult._tag === 'None') {
+    return undefined
+  }
+
+  return paramsResult.value
 }
 
 export const MAX_PULL_EVENTS_PER_MESSAGE = 100

@@ -19,4 +19,6 @@ export class SyncBackendDO extends makeDurableObject({
   // },
 }) {}
 
-export default makeWorker()
+export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
+})
