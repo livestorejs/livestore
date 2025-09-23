@@ -33,6 +33,15 @@ interface DeploymentConfig {
   target: NetlifyTarget
 }
 
+interface DeploymentSummary {
+  example: string
+  site: string
+  siteName: string
+  deployUrl: string
+  target: NetlifyTarget['_tag']
+  alias?: string
+}
+
 /**
  * Resolve the current git branch and short SHA from CI-friendly environment variables or git.
  * We prefer `GITHUB_BRANCH_NAME` when present so GitHub Actions can inject the branch during checkout.
@@ -128,7 +137,16 @@ const buildAndDeployExample = ({ example, deployment }: { example: string; deplo
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
 
-    return result
+    const summary: DeploymentSummary = {
+      example,
+      site: deployment.site,
+      siteName: result.site_name,
+      deployUrl: result.deploy_url,
+      target: deployment.target._tag,
+      alias: deployment.target._tag === 'alias' ? deployment.target.alias : '<none>',
+    }
+
+    return summary
   }).pipe(
     Effect.withSpan(`deploy-example-${example}`, {
       attributes: {
@@ -192,10 +210,18 @@ export const command = Cli.Command.make(
         { concurrency: 4 },
       )
 
-      console.log(`Deployed ${results.length} examples:`)
-      for (const result of results) {
-        console.log(`  ${result.site_name}: ${result.deploy_url}`)
-      }
+      console.log(`Deployed ${results.length} examples`)
+
+      const tableRows = results.map((result) => ({
+        Example: result.example,
+        Site: result.site,
+        'Site Name': result.siteName,
+        Target: result.target === 'alias' ? `alias:${result.alias ?? 'n/a'}` : result.target,
+        'Deploy URL': result.deployUrl,
+      }))
+
+      console.log('\nDeployment summary:')
+      console.table(tableRows)
     },
     Effect.catchIf(
       (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
