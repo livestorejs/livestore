@@ -11,7 +11,7 @@ import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
   message: Schema.String,
-  cause: Schema.Defect,
+  cause: Schema.optional(Schema.Defect),
 }) {}
 
 export const readPersistedStateDbFromClientSession = Effect.fn(
@@ -26,7 +26,7 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
     storeId: string
     schema: LiveStoreSchema
   }) {
-    const accessHandlePoolDirString = sanitizeOpfsDir(storageOptions.directory, storeId)
+    const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
     const opfs = yield* Opfs.Opfs
     const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
@@ -69,7 +69,7 @@ export const resetPersistedDataFromClientSession = Effect.fn(
   '@livestore/adapter-web:resetPersistedDataFromClientSession',
 )(
   function* ({ storageOptions, storeId }: { storageOptions: WorkerSchema.StorageType; storeId: string }) {
-    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
+    const directory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* Opfs.remove(directory).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
       Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.void),
@@ -81,19 +81,20 @@ export const resetPersistedDataFromClientSession = Effect.fn(
   }),
 )
 
-export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
-  // Root dir should be `''` not `/`
-  if (directory === undefined || directory === '' || directory === '/')
-    return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
+export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) =>
+  Effect.gen(function* () {
+    if (directory === undefined || directory === '' || directory === '/') {
+      return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
+    }
 
-  if (directory.includes('/')) {
-    throw new Error(
-      `@livestore/adapter-web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`,
-    )
-  }
+    if (directory.includes('/')) {
+      return yield* new PersistedSqliteError({
+        message: `@livestore/adapter-web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`,
+      })
+    }
 
-  return `${directory}@${liveStoreStorageFormatVersion}`
-}
+    return `${directory}@${liveStoreStorageFormatVersion}`
+  })
 
 export const getStateDbFileName = (schema: LiveStoreSchema) => {
   const schemaHashSuffix =
