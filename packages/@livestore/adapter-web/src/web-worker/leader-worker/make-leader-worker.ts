@@ -108,12 +108,13 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
+        const opfsDirectory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
         const runtime = yield* Effect.runtime<never>()
 
         const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
             _tag: 'opfs',
-            opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
+            opfsDirectory,
             fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
             configureDb: (db) =>
               configureConnection(db, {
