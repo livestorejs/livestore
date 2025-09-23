@@ -73,12 +73,18 @@ export const resetPersistedDataFromClientSession = Effect.fn(
     yield* Opfs.remove(directory).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
       Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.void),
-      UnexpectedError.mapToUnexpectedError,
     )
   },
   Effect.retry({
     schedule: Schedule.exponentialBackoff10Sec,
   }),
+  Effect.mapError(
+    (error) =>
+      new PersistedSqliteError({
+        message: 'Failed to reset persisted data from client session',
+        cause: error,
+      }),
+  ),
 )
 
 export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) =>
