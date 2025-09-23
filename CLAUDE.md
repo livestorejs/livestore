@@ -32,13 +32,13 @@ Use the `mono` CLI for common workflows:
 ## Task-based Approach
 
 ### 0. Tasks
-- Operate on a task basis. Store all intermediate context in markdown files inside `tasks/<task-id>/` folders.
+- Operate on a task basis. Store all intermediate context in markdown files inside `tasks/{year}/{month}/{branch-name}/{task-id}/` folders.
 - Use semantic task ID slugs.
 
 ### 1. Research
 - Identify existing patterns in the codebase.
 - Search external resources if relevant.
-- Begin by asking follow-up questions to set the research direction.
+- Begin by asking follow-up questions to set the research direction. Avoid trivial questions that you can look up yourself. Already do some preliminary research first to only ask questions that are ambiguous or strategically important.
 - Document findings in the `research.md` file.
 
 ### 2. Planning
@@ -68,6 +68,18 @@ Use the `mono` CLI for common workflows:
 - Run the full test suite before pushing: `direnv exec . mono test unit`
 - Ensure TypeScript compilation passes: `direnv exec . mono ts`
 - Use `direnv exec . mono lint --fix` to automatically fix formatting issues
+
+### Pull Requests
+
+Describe the pull request in terms of the problem it addresses and the approach it takes—avoid titles like "update tests" that hide the intent. A good title should hint at both the underlying issue and the chosen fix, e.g. `Fix backlog replay flake by stabilizing event helper`. Frame the story around the impact to downstream data consumers or workflows rather than generic "user-facing" language.
+
+Checklist:
+- State the problem, solution, and validation steps in the PR body using the template sections.
+- Mention any trade-offs or follow-up work the reviewer should know about.
+- Link the relevant issue (or explicitly call out "n/a").
+- Note which tests were run (or why none were needed).
+- Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
+- When possible, include demo evidence (logs, screenshots, CLI commands, or quick diagrams like Mermaid/ASCII) that demonstrates the change from a data-workflow perspective so reviewers can visualize the impact faster.
 
 ### Environment Variables
 
