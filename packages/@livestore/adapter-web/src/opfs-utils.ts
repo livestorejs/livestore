@@ -3,8 +3,6 @@
 //
 // New code should use the OPFS utilities available in `@livestore/utils/effect` directly.
 
-// NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
-
 import { prettyBytes } from '@livestore/utils'
 import { Effect, Opfs } from '@livestore/utils/effect'
 
@@ -20,6 +18,7 @@ const runOpfsEffect = <A>(effect: Effect.Effect<A, unknown, Opfs.Opfs>) =>
     ? effect.pipe(Effect.provide(Opfs.Opfs.Default), Effect.runPromise)
     : Promise.reject(OPFS_UNSUPPORTED_ERROR)
 
+// NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
 export const rootHandlePromise = hasOpfsSupport
   ? runOpfsEffect(
       Effect.gen(function* () {
