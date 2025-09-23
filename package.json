@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@biomejs/biome": "^2.2.2",
-    "@effect/language-service": "^0.40.0",
+    "@biomejs/biome": "^2.2.4",
+    "@effect/language-service": "^0.40.1",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -15,7 +15,7 @@
     "vitest": "catalog:",
     "yaml": "^2.8.1"
   },
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.17.1",
   "pnpm": {
     "patchedDependencies": {
       "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
