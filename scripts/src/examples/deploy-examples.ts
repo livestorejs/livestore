@@ -3,9 +3,11 @@ import process from 'node:process'
 
 import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { deployToNetlify } from '../shared/netlify.ts'
+
+type NetlifyTarget = Parameters<typeof deployToNetlify>[0]['target']
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.
@@ -20,23 +22,153 @@ if (!workspaceRoot) {
 
 const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples`
 
-const buildAndDeployExample = ({
-  example,
-  prod,
+const DEV_BRANCH_NAME = 'dev'
+
+/**
+ * Thin wrapper around the Netlify deploy target union so we can annotate the site that should
+ * receive a deploy and whether we intend to hit prod or a named alias.
+ */
+interface DeploymentConfig {
+  site: string
+  target: NetlifyTarget
+}
+
+interface DeploymentSummary {
+  example: string
+  site: string
+  siteName: string
+  deployUrl: string
+  target: NetlifyTarget['_tag']
+  alias?: string
+}
+
+/**
+ * Resolve the current git branch and short SHA from CI-friendly environment variables or git.
+ * We prefer `GITHUB_BRANCH_NAME` when present so GitHub Actions can inject the branch during checkout.
+ */
+const getBranchInfo = Effect.gen(function* () {
+  const branchFromEnv = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_REF_NAME ?? process.env.GITHUB_HEAD_REF
+
+  let branchName =
+    branchFromEnv && branchFromEnv.trim().length > 0
+      ? branchFromEnv.trim()
+      : (yield* cmdText('git rev-parse --abbrev-ref HEAD', { cwd: workspaceRoot })).trim()
+
+  if (branchName === '' || branchName === 'HEAD') {
+    const refFromEnv = process.env.GITHUB_REF
+    if (refFromEnv?.startsWith('refs/')) {
+      const [, , ...rest] = refFromEnv.split('/')
+      branchName = rest.join('/')
+    }
+  }
+
+  const shortSha = (yield* cmdText('git rev-parse --short HEAD', { cwd: workspaceRoot })).trim()
+
+  return { branchName, shortSha }
+})
+
+const DNS_LABEL_MAX_LENGTH = 63
+const NETLIFY_ALIAS_SEPARATOR_LENGTH = 2 // `alias--site` joins alias + site with two hyphens
+
+const sanitizeAlias = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '')
+
+const trimAliasToDnsLabel = (aliasCandidate: string, maxLength: number) => {
+  if (maxLength <= 0) {
+    return Option.none<string>()
+  }
+
+  const sanitized = sanitizeAlias(aliasCandidate)
+  if (sanitized.length === 0) {
+    return Option.none<string>()
+  }
+
+  const trimmed = sanitized.slice(0, maxLength).replace(/-+$/g, '')
+
+  return trimmed.length > 0 ? Option.some(trimmed) : Option.none<string>()
+}
+
+export const resolveAlias = ({
+  site,
   alias,
+  normalizedBranch,
+  shortSha,
+}: {
+  site: string
+  alias: Option.Option<string>
+  normalizedBranch: string
+  shortSha: string
+}) => {
+  const maxAliasLength = Math.max(1, DNS_LABEL_MAX_LENGTH - (site.length + NETLIFY_ALIAS_SEPARATOR_LENGTH))
+
+  const candidates: string[] = [
+    ...(Option.isSome(alias) ? [alias.value] : []),
+    `branch-${normalizedBranch}-${shortSha}`,
+    `snapshot-${shortSha}`,
+    shortSha,
+  ]
+
+  for (const candidate of candidates) {
+    const trimmed = trimAliasToDnsLabel(candidate, maxAliasLength)
+    if (Option.isSome(trimmed)) {
+      return trimmed.value
+    }
+  }
+
+  // Fallback: use the short SHA truncated to fit the DNS label limit.
+  return shortSha.slice(0, Math.min(shortSha.length, maxAliasLength))
+}
+
+/**
+ * Decide which Netlify site and target we should deploy to for a given example based on branch,
+ * CLI flags (`--prod` and `--alias`), and a fall-back alias derived from the branch + commit.
+ */
+const resolveDeployment = ({
+  example,
+  alias,
+  prod,
+  branchName,
+  shortSha,
 }: {
   example: string
-  prod: boolean
   alias: Option.Option<string>
-}) =>
+  prod: boolean
+  branchName: string
+  shortSha: string
+}): DeploymentConfig => {
+  const exampleSite = `example-${example}`
+  const devSite = `${exampleSite}-dev`
+
+  const normalizedBranch = branchName.toLowerCase()
+  const site = prod || normalizedBranch === 'main' ? exampleSite : devSite
+
+  const safeAlias = resolveAlias({ site, alias, normalizedBranch, shortSha })
+
+  if (Option.isSome(alias)) {
+    return { site, target: { _tag: 'alias', alias: safeAlias } }
+  }
+
+  if (prod || normalizedBranch === 'main' || normalizedBranch === DEV_BRANCH_NAME) {
+    return { site, target: { _tag: 'prod' } }
+  }
+
+  return { site, target: { _tag: 'alias', alias: safeAlias } }
+}
+
+const buildAndDeployExample = ({ example, deployment }: { example: string; deployment: DeploymentConfig }) =>
   Effect.gen(function* () {
     const cwd = `${EXAMPLES_SRC_DIR}/${example}`
     yield* cmd(['pnpm', 'build'], { cwd })
 
     const result = yield* deployToNetlify({
-      site: `example-${example}`,
+      site: deployment.site,
       dir: `${EXAMPLES_SRC_DIR}/${example}/dist`,
-      target: Option.isSome(alias) ? { _tag: 'alias', alias: alias.value } : { _tag: 'prod' },
+      target: deployment.target,
       cwd,
     }).pipe(
       Effect.retry({ times: 2 }),
@@ -45,9 +177,25 @@ const buildAndDeployExample = ({
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
 
-    return result
+    const summary: DeploymentSummary = {
+      example,
+      site: deployment.site,
+      siteName: result.site_name,
+      deployUrl: result.deploy_url,
+      target: deployment.target._tag,
+      alias: deployment.target._tag === 'alias' ? deployment.target.alias : '<none>',
+    }
+
+    return summary
   }).pipe(
-    Effect.withSpan(`deploy-example-${example}`, { attributes: { example, prod, alias } }),
+    Effect.withSpan(`deploy-example-${example}`, {
+      attributes: {
+        example,
+        site: deployment.site,
+        target: deployment.target._tag,
+        alias: deployment.target._tag === 'alias' ? deployment.target.alias : undefined,
+      },
+    }),
     Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     Effect.annotateLogs({ example }),
   )
@@ -61,6 +209,10 @@ export const command = Cli.Command.make(
   },
   Effect.fn(
     function* ({ alias, exampleFilter, prod }) {
+      const { branchName, shortSha } = yield* getBranchInfo
+
+      console.log(`Deploy branch: ${branchName}`)
+
       const excludeDirs = new Set([
         'expo-linearlite',
         'expo-todomvc-sync-cf',
@@ -90,14 +242,26 @@ export const command = Cli.Command.make(
 
       const results = yield* Effect.forEach(
         filteredExamplesToDeploy,
-        (example) => buildAndDeployExample({ example, prod, alias }),
+        (example) =>
+          buildAndDeployExample({
+            example,
+            deployment: resolveDeployment({ example, alias, prod, branchName, shortSha }),
+          }),
         { concurrency: 4 },
       )
 
-      console.log(`Deployed ${results.length} examples:`)
-      for (const result of results) {
-        console.log(`  ${result.site_name}: ${result.deploy_url}`)
-      }
+      console.log(`Deployed ${results.length} examples`)
+
+      const tableRows = results.map((result) => ({
+        Example: result.example,
+        Site: result.site,
+        'Site Name': result.siteName,
+        Target: result.target === 'alias' ? `alias:${result.alias ?? 'n/a'}` : result.target,
+        'Deploy URL': result.deployUrl,
+      }))
+
+      console.log('\nDeployment summary:')
+      console.table(tableRows)
     },
     Effect.catchIf(
       (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
