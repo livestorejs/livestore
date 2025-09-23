@@ -92,20 +92,22 @@ export const resetPersistedDataFromClientSession = Effect.fn(
   }),
 )
 
-export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) =>
-  Effect.gen(function* () {
-    if (directory === undefined || directory === '' || directory === '/') {
-      return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
-    }
+export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir')(function* (
+  directory: string | undefined,
+  storeId: string,
+) {
+  if (directory === undefined || directory === '' || directory === '/') {
+    return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
+  }
 
-    if (directory.includes('/')) {
-      return yield* new PersistedSqliteError({
-        message: `@livestore/adapter-web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`,
-      })
-    }
+  if (directory.includes('/')) {
+    return yield* new PersistedSqliteError({
+      message: `Nested directories are not yet supported ('${directory}')`,
+    })
+  }
 
-    return `${directory}@${liveStoreStorageFormatVersion}`
-  })
+  return `${directory}@${liveStoreStorageFormatVersion}`
+})
 
 export const getStateDbFileName = (schema: LiveStoreSchema) => {
   const schemaHashSuffix =
