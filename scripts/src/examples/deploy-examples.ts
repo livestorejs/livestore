@@ -3,9 +3,11 @@ import process from 'node:process'
 
 import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { deployToNetlify } from '../shared/netlify.ts'
+
+type NetlifyTarget = Parameters<typeof deployToNetlify>[0]['target']
 
 /**
  * This script is used to deploy prod-builds of all examples to Netlify.
@@ -20,23 +22,104 @@ if (!workspaceRoot) {
 
 const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples`
 
-const buildAndDeployExample = ({
+const DEV_BRANCH_NAME = 'dev'
+
+/**
+ * Thin wrapper around the Netlify deploy target union so we can annotate the site that should
+ * receive a deploy and whether we intend to hit prod or a named alias.
+ */
+interface DeploymentConfig {
+  site: string
+  target: NetlifyTarget
+}
+
+/**
+ * Resolve the current git branch and short SHA from CI-friendly environment variables or git.
+ * We prefer `GITHUB_BRANCH_NAME` when present so GitHub Actions can inject the branch during checkout.
+ */
+const getBranchInfo = Effect.gen(function* () {
+  const branchFromEnv = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_REF_NAME ?? process.env.GITHUB_HEAD_REF
+
+  let branchName =
+    branchFromEnv && branchFromEnv.trim().length > 0
+      ? branchFromEnv.trim()
+      : (yield* cmdText('git rev-parse --abbrev-ref HEAD', { cwd: workspaceRoot })).trim()
+
+  if (branchName === '' || branchName === 'HEAD') {
+    const refFromEnv = process.env.GITHUB_REF
+    if (refFromEnv?.startsWith('refs/')) {
+      const [, , ...rest] = refFromEnv.split('/')
+      branchName = rest.join('/')
+    }
+  }
+
+  const shortSha = (yield* cmdText('git rev-parse --short HEAD', { cwd: workspaceRoot })).trim()
+
+  return { branchName, shortSha }
+})
+
+const sanitizeAlias = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/**
+ * Decide which Netlify site and target we should deploy to for a given example based on branch,
+ * CLI flags (`--prod` and `--alias`), and a fall-back alias derived from the branch + commit.
+ */
+const resolveDeployment = ({
   example,
-  prod,
   alias,
+  prod,
+  branchName,
+  shortSha,
 }: {
   example: string
-  prod: boolean
   alias: Option.Option<string>
-}) =>
+  prod: boolean
+  branchName: string
+  shortSha: string
+}): DeploymentConfig => {
+  const exampleSite = `example-${example}`
+  const devSite = `${exampleSite}-dev`
+
+  const normalizedBranch = branchName.toLowerCase()
+  const site = prod || normalizedBranch === 'main' ? exampleSite : devSite
+
+  const aliasValue = Option.isSome(alias)
+    ? sanitizeAlias(alias.value)
+    : sanitizeAlias(`branch-${normalizedBranch}-${shortSha}`)
+
+  const defaultAlias = sanitizeAlias(`snapshot-${shortSha}`)
+  const aliasCandidate = aliasValue.length > 0 ? aliasValue : defaultAlias
+  const safeAlias =
+    aliasCandidate.length > 0
+      ? aliasCandidate.slice(0, 63)
+      : (defaultAlias.length > 0 ? defaultAlias : `snapshot-${shortSha}`).slice(0, 63)
+
+  if (Option.isSome(alias)) {
+    return { site, target: { _tag: 'alias', alias: safeAlias } }
+  }
+
+  if (prod || normalizedBranch === 'main' || normalizedBranch === DEV_BRANCH_NAME) {
+    return { site, target: { _tag: 'prod' } }
+  }
+
+  return { site, target: { _tag: 'alias', alias: safeAlias } }
+}
+
+const buildAndDeployExample = ({ example, deployment }: { example: string; deployment: DeploymentConfig }) =>
   Effect.gen(function* () {
     const cwd = `${EXAMPLES_SRC_DIR}/${example}`
     yield* cmd(['pnpm', 'build'], { cwd })
 
     const result = yield* deployToNetlify({
-      site: `example-${example}`,
+      site: deployment.site,
       dir: `${EXAMPLES_SRC_DIR}/${example}/dist`,
-      target: Option.isSome(alias) ? { _tag: 'alias', alias: alias.value } : { _tag: 'prod' },
+      target: deployment.target,
       cwd,
     }).pipe(
       Effect.retry({ times: 2 }),
@@ -47,7 +130,14 @@ const buildAndDeployExample = ({
 
     return result
   }).pipe(
-    Effect.withSpan(`deploy-example-${example}`, { attributes: { example, prod, alias } }),
+    Effect.withSpan(`deploy-example-${example}`, {
+      attributes: {
+        example,
+        site: deployment.site,
+        target: deployment.target._tag,
+        alias: deployment.target._tag === 'alias' ? deployment.target.alias : undefined,
+      },
+    }),
     Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
     Effect.annotateLogs({ example }),
   )
@@ -61,6 +151,10 @@ export const command = Cli.Command.make(
   },
   Effect.fn(
     function* ({ alias, exampleFilter, prod }) {
+      const { branchName, shortSha } = yield* getBranchInfo
+
+      console.log(`Deploy branch: ${branchName}`)
+
       const excludeDirs = new Set([
         'expo-linearlite',
         'expo-todomvc-sync-cf',
@@ -90,7 +184,11 @@ export const command = Cli.Command.make(
 
       const results = yield* Effect.forEach(
         filteredExamplesToDeploy,
-        (example) => buildAndDeployExample({ example, prod, alias }),
+        (example) =>
+          buildAndDeployExample({
+            example,
+            deployment: resolveDeployment({ example, alias, prod, branchName, shortSha }),
+          }),
         { concurrency: 4 },
       )
 

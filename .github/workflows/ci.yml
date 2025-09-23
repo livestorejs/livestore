@@ -201,10 +201,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup-env
-      - run: |
-          mono examples deploy \
-            --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
-            --alias=snapshot-$(git rev-parse --short HEAD)
+      - run: mono examples deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'

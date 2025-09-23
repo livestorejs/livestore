@@ -5,7 +5,7 @@ description: LiveStore examples built with the Node adapter for server-side envi
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { nodeExamples } from '../../../data/examples.ts';
+import { nodeExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 import { getBranchName } from '../../../../data.js';
 
 # Node Adapter Examples
@@ -13,8 +13,11 @@ import { getBranchName } from '../../../../data.js';
 Examples using `@livestore/adapter-node` for Node.js server-side applications.
 
 <CardGrid>
-{nodeExamples.map((example) => (
-  <Card title={example.title} key={example.title}>
+{nodeExamples.map((example) => {
+  const { primaryUrl, secondaryUrl, primaryLabel, secondaryLabel } = getExampleDemoLinks(example);
+
+  return (
+    <Card title={example.title} key={example.title}>
     {example.image ? (
       <Image src={example.image.url} width={example.image.width} height={example.image.height} alt={`${example.title} application interface`} />
     ) : (
@@ -28,13 +31,17 @@ Examples using `@livestore/adapter-node` for Node.js server-side applications.
       <p><strong>Sync Provider:</strong> {example.syncProvider}</p>
     )}
     <div style="margin-top: auto; padding-top: 1rem;">
-      {example.demoUrl && (
-        <p style="margin: 0 0 0.5rem 0;"><a href={example.demoUrl} target="_blank" rel="noopener noreferrer">Try Demo →</a></p>
+      {primaryUrl && (
+        <p style="margin: 0 0 0.5rem 0;"><a href={primaryUrl} target="_blank" rel="noopener noreferrer">{primaryLabel}</a></p>
+      )}
+      {secondaryUrl && (
+        <p style="margin: 0 0 0.5rem 0;"><a href={secondaryUrl} target="_blank" rel="noopener noreferrer">{secondaryLabel}</a></p>
       )}
       <p style="margin: 0;"><a href={example.sourceUrl} target="_blank" rel="noopener noreferrer">View Source →</a></p>
     </div>
-  </Card>
-))}
+    </Card>
+  );
+})}
 </CardGrid>
 
 ## Node Adapter
