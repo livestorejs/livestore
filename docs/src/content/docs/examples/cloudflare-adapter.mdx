@@ -5,7 +5,7 @@ description: LiveStore examples built with the Cloudflare adapter for edge compu
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { cloudflareExamples } from '../../../data/examples.ts';
+import { cloudflareExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 import { getBranchName } from '../../../../data.js';
 
 # Cloudflare Durable Objects Examples
@@ -13,8 +13,11 @@ import { getBranchName } from '../../../../data.js';
 Examples using `@livestore/adapter-cloudflare` for Cloudflare Workers and Durable Objects.
 
 <CardGrid>
-{cloudflareExamples.map((example) => (
-  <Card title={example.title} key={example.title}>
+{cloudflareExamples.map((example) => {
+  const { url, label } = getExampleDemoLinks(example);
+
+  return (
+    <Card title={example.title} key={example.title}>
     {example.image ? (
       <Image src={example.image.url} width={example.image.width} height={example.image.height} alt={`${example.title} application interface`} />
     ) : (
@@ -28,13 +31,14 @@ Examples using `@livestore/adapter-cloudflare` for Cloudflare Workers and Durabl
       <p><strong>Sync Provider:</strong> {example.syncProvider}</p>
     )}
     <div style="margin-top: auto; padding-top: 1rem;">
-      {example.demoUrl && (
-        <p style="margin: 0 0 0.5rem 0;"><a href={example.demoUrl} target="_blank" rel="noopener noreferrer">Try Demo →</a></p>
+      {url && (
+        <p style="margin: 0 0 0.5rem 0;"><a href={url} target="_blank" rel="noopener noreferrer">{label}</a></p>
       )}
       <p style="margin: 0;"><a href={example.sourceUrl} target="_blank" rel="noopener noreferrer">View Source →</a></p>
     </div>
-  </Card>
-))}
+    </Card>
+  );
+})}
 </CardGrid>
 
 ## Cloudflare Adapter

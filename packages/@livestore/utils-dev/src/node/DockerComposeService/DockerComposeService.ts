@@ -80,7 +80,13 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         )
 
         yield* Effect.log(`Successfully pulled Docker Compose images`)
-      }).pipe(Effect.withSpan('pullDockerComposeImages'))
+      }).pipe(
+        Effect.withSpan('pullDockerComposeImages'),
+        Effect.retry({
+          schedule: Schedule.exponentialBackoff10Sec,
+          while: Schema.is(DockerComposeError),
+        }),
+      )
 
       const start = (options: StartOptions = {}) =>
         Effect.gen(function* () {
