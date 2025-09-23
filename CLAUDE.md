@@ -28,6 +28,30 @@ Use the `mono` CLI for common workflows:
 ## TypeScript
 
 - Avoid `as any`, force-casting etc as much as possible.
+- When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
+
+## Task-based Approach
+
+### 0. Tasks
+- Operate on a task basis. Store all intermediate context in markdown files inside `tasks/{year}/{month}/{branch-name}/{task-id}/` folders.
+- Use semantic task ID slugs.
+
+### 1. Research
+- Identify existing patterns in the codebase.
+- Search external resources if relevant.
+- Begin by asking follow-up questions to set the research direction. Avoid trivial questions that you can look up yourself. Already do some preliminary research first to only ask questions that are ambiguous or strategically important.
+- Document findings in the `research.md` file.
+
+### 2. Planning
+- Review `research.md` in `tasks/<task-id>`.
+- Based on the research, create a plan for implementing the user request. Reuse existing patterns, components, and code wherever possible.
+- If needed, ask clarifying questions to the user to better understand the scope of the task.
+- Write a comprehensive plan in `plan.md`. This plan should include all the context required for an engineer to implement the feature.
+
+### 3. Implementation
+- Read `plan.md` and create a to-do list with all required items.
+- Execute the plan step by step.
+- Continue as far as possible. If ambiguities remain, note all questions at the end and group them together.
 
 ## Git
 
@@ -45,6 +69,23 @@ Use the `mono` CLI for common workflows:
 - Run the full test suite before pushing: `direnv exec . mono test unit`
 - Ensure TypeScript compilation passes: `direnv exec . mono ts`
 - Use `direnv exec . mono lint --fix` to automatically fix formatting issues
+
+### Issues
+
+When asked to create a GitHub issue, use the GitHub CLI to do so.
+
+### Pull Requests
+
+Describe the pull request in terms of the problem it addresses and the approach it takes—avoid titles like "update tests" that hide the intent. A good title should hint at both the underlying issue and the chosen fix, e.g. `Fix backlog replay flake by stabilizing event helper`. Frame the story around the impact to downstream data consumers or workflows rather than generic "user-facing" language.
+
+Checklist:
+- State the problem, solution, and validation steps in the PR body using the template sections.
+- Mention any trade-offs or follow-up work the reviewer should know about.
+- Link the relevant issue (or explicitly call out "n/a").
+- Note which tests were run (or why none were needed).
+- Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
+- After every substantial change (new commit, merge, or rebase), reread the PR title/body and refresh them before pushing or requesting review.
+- When possible, include demo evidence (logs, screenshots, CLI commands, or quick diagrams like Mermaid/ASCII) that demonstrates the change from a data-workflow perspective so reviewers can visualize the impact faster.
 
 ### Environment Variables
 
