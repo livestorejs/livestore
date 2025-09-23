@@ -10,11 +10,13 @@ export interface Env {
   TEST_RPC_DO: DurableObjectNamespace<TestRpcDurableObject>
 }
 
-export class TestRpcDurableObject extends DurableObject<Env> {
+export class TestRpcDurableObject extends DurableObject<Env, unknown> {
   __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
+
+    this.ctx = state
 
     const handlersLayer = TestRpcs.toLayer({
       Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
@@ -65,7 +67,7 @@ export class TestRpcDurableObject extends DurableObject<Env> {
 
     const { 0: client, 1: server } = new WebSocketPair()
 
-    // Hibernate the server
+    // Hibernate the server; DurableObjectState is stored on ctx
     this.ctx.acceptWebSocket(server)
 
     return new Response(null, {
