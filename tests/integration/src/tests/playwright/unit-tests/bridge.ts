@@ -24,6 +24,13 @@ export class ResultMultipleMigrations extends Schema.TaggedStruct('Bridge.Result
   exit: Schema.Exit({
     success: Schema.Struct({
       migrationsCount: Schema.Number,
+      archivedStateDbFiles: Schema.Array(
+        Schema.Struct({
+          name: Schema.String,
+          size: Schema.Number,
+          lastModified: Schema.Number,
+        }),
+      ),
     }),
     failure: UnexpectedError,
     defect: Schema.Defect,

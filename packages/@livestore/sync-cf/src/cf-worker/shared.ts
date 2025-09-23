@@ -61,7 +61,12 @@ export const getSyncRequestSearchParams = (request: CfTypes.Request): Option.Opt
   return paramsResult
 }
 
-export const PULL_CHUNK_SIZE = 100
+export const MAX_PULL_EVENTS_PER_MESSAGE = 100
+
+// Cloudflare hibernated WebSocket frames begin failing just below 1MB. Keep our
+// payloads comfortably beneath that ceiling so we don't rely on implementation
+// quirks of local dev servers.
+export const MAX_WS_MESSAGE_BYTES = 900_000
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {

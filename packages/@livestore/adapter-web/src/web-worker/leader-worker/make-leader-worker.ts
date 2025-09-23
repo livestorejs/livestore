@@ -137,6 +137,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           yield* cleanupOldStateDbFiles({
             vfs: dbState.metadata.vfs,
             currentSchema: schema,
+            opfsDirectory: dbState.metadata.persistenceInfo.opfsDirectory,
           })
         }
 
