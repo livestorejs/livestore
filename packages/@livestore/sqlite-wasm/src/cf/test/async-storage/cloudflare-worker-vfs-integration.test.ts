@@ -102,6 +102,24 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
       setAlarm: async (_timestamp: number | Date) => {},
       deleteAlarm: async () => {},
       sql: {} as any,
+      kv: {
+        get: (key: string) => {
+          storageOperations.push(`kv-get: ${key}`)
+          return storageData.get(key)
+        },
+        put: (key: string, value: unknown) => {
+          storageOperations.push(`kv-put: ${key}`)
+          storageData.set(key, value)
+        },
+        delete: (key: string) => {
+          storageOperations.push(`kv-delete: ${key}`)
+          return storageData.delete(key)
+        },
+        list: () => {
+          storageOperations.push('kv-list')
+          return storageData.entries()
+        },
+      },
     }
 
     vfs = new CloudflareWorkerVFS('test-integration-vfs', mockStorage, {})
