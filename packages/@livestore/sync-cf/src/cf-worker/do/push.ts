@@ -51,6 +51,13 @@ export const makePush =
         // Validate the batch
         const firstEventParent = pushRequest.batch[0]!.parentSeqNum
         if (firstEventParent !== currentHead) {
+          // yield* Effect.logDebug('ServerAheadError: backend head mismatch', {
+          //   expectedHead: currentHead,
+          //   providedHead: firstEventParent,
+          //   batchSize: pushRequest.batch.length,
+          //   backendId,
+          // })
+
           return yield* new ServerAheadError({ minimumExpectedNum: currentHead, providedNum: firstEventParent })
         }
 
