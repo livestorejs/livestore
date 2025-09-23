@@ -1,4 +1,4 @@
-import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { liveStoreStorageFormatVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
@@ -6,7 +6,7 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Effect, Opfs, Schedule, Schema } from '@livestore/utils/effect'
+import { type BrowserError, Effect, Opfs, Schedule, Schema } from '@livestore/utils/effect'
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -14,18 +14,24 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
   cause: Schema.optional(Schema.Defect),
 }) {}
 
-export const readPersistedStateDbFromClientSession = Effect.fn(
-  '@livestore/adapter-web:readPersistedStateDbFromClientSession',
-)(
-  function* ({
-    storageOptions,
-    storeId,
-    schema,
-  }: {
-    storageOptions: WorkerSchema.StorageType
-    storeId: string
-    schema: LiveStoreSchema
-  }) {
+export const readPersistedStateDbFromClientSession: (args: {
+  storageOptions: WorkerSchema.StorageType
+  storeId: string
+  schema: LiveStoreSchema
+}) => Effect.Effect.AsEffect<
+  Effect.Effect<
+    Uint8Array<ArrayBuffer>,
+    | PersistedSqliteError
+    | BrowserError.UnknownError
+    | BrowserError.TypeError
+    | BrowserError.NotFoundError
+    | BrowserError.NotAllowedError
+    | BrowserError.TypeMismatchError
+    | BrowserError.SecurityError,
+    Opfs.Opfs
+  >
+> = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
+  function* ({ storageOptions, storeId, schema }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
     const opfs = yield* Opfs.Opfs
@@ -46,15 +52,21 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
       }
     }
 
-    // TODO: Fail with an error instead of returning undefined
-    if (stateDbFile === undefined) return undefined
+    if (stateDbFile === undefined) {
+      return yield* new PersistedSqliteError({
+        message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+      })
+    }
 
     const stateDbBuffer = yield* Effect.promise(() => stateDbFile.slice(HEADER_OFFSET_DATA).arrayBuffer())
 
-    // Given the SAH pool always eagerly creates files with empty non-header data,
+    // Given the access handle pool always eagerly creates files with empty non-header data,
     // we want to return undefined if the file exists but is empty
-    // TODO: Fail with an error instead of returning undefined
-    if (stateDbBuffer.byteLength === 0) return undefined
+    if (stateDbBuffer.byteLength === 0) {
+      return yield* new PersistedSqliteError({
+        message: `State database file is empty in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+      })
+    }
 
     return new Uint8Array(stateDbBuffer)
   },
@@ -78,13 +90,6 @@ export const resetPersistedDataFromClientSession = Effect.fn(
   Effect.retry({
     schedule: Schedule.exponentialBackoff10Sec,
   }),
-  Effect.mapError(
-    (error) =>
-      new PersistedSqliteError({
-        message: 'Failed to reset persisted data from client session',
-        cause: error,
-      }),
-  ),
 )
 
 export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) =>

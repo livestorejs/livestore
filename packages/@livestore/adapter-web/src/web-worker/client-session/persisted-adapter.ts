@@ -21,6 +21,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Opfs,
   ParseResult,
   Queue,
   Schema,
@@ -187,7 +188,15 @@ export const makePersistedAdapter =
       const dataFromFile =
         options.experimental?.disableFastPath === true
           ? undefined
-          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema })
+          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
+              Effect.tapError((error) =>
+                Effect.logDebug('[@livestore/adapter-web:client-session] Error reading persisted db', error, {
+                  storeId,
+                }),
+              ),
+              // If we get any error here, we return `undefined` to fall back to the slow path
+              Effect.catchAll(() => Effect.succeed(undefined)),
+            )
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
@@ -524,7 +533,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError)
+    }).pipe(Effect.provide(Opfs.Opfs.Default), UnexpectedError.mapToUnexpectedError)
 
 // NOTE for `local` storage we could also use the eventlog db to store the data
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {
