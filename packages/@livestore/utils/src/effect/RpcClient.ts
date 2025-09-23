@@ -40,6 +40,10 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
 
       yield* Effect.suspend(() => {
+        // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
+        // Reset the timer as soon as _any_ frame arrives so that large batches which
+        // don't contain explicit `Pong` messages don't trigger the open-timeout defect.
+        // (The actual pong handler still calls `onPong()` to resolve manual pings.)
         // CHANGED: don't reset parser on every message
         // parser = serialization.unsafeMake()
         pinger.reset()
@@ -53,6 +57,9 @@ export const makeProtocolSocketWithIsConnected = (options: {
                 while: () => i < responses.length,
                 body: () => {
                   const response = responses[i++]!
+                  // Keep extending the watchdog for each data frame to avoid
+                  // disconnecting mid-stream when the server is busy sending batches.
+                  pinger.reset()
                   if (response._tag === 'Pong') {
                     pinger.onPong()
                   }
