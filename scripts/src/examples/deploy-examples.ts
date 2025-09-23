@@ -93,7 +93,7 @@ const trimAliasToDnsLabel = (aliasCandidate: string, maxLength: number) => {
   return trimmed.length > 0 ? Option.some(trimmed) : Option.none<string>()
 }
 
-const resolveAlias = ({
+export const resolveAlias = ({
   site,
   alias,
   normalizedBranch,
