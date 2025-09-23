@@ -65,26 +65,21 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
   Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedStateDbFromClientSession'),
 )
 
-export const resetPersistedDataFromClientSession = ({
-  storageOptions,
-  storeId,
-}: {
-  storageOptions: WorkerSchema.StorageType
-  storeId: string
-}) =>
-  Effect.gen(function* () {
+export const resetPersistedDataFromClientSession = Effect.fn(
+  '@livestore/adapter-web:resetPersistedDataFromClientSession',
+)(
+  function* ({ storageOptions, storeId }: { storageOptions: WorkerSchema.StorageType; storeId: string }) {
     const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* Opfs.remove(directory).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
       Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.void),
       UnexpectedError.mapToUnexpectedError,
     )
-  }).pipe(
-    Effect.retry({
-      schedule: Schedule.exponentialBackoff10Sec,
-    }),
-    Effect.withSpan('@livestore/adapter-web:resetPersistedDataFromClientSession'),
-  )
+  },
+  Effect.retry({
+    schedule: Schedule.exponentialBackoff10Sec,
+  }),
+)
 
 export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   // Root dir should be `''` not `/`
