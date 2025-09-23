@@ -16,8 +16,8 @@ import {
 } from '@livestore/utils/effect'
 import {
   type Env,
-  matchSyncRequest,
   type MakeDurableObjectClassOptions,
+  matchSyncRequest,
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
 } from '../shared.ts'

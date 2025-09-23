@@ -3,9 +3,9 @@ import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import { schema, tables } from './livestore/schema.ts'
 import type { Env } from './env.ts'
 import { storeIdFromRequest } from './env.ts'
+import { schema, tables } from './livestore/schema.ts'
 
 export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcCallback {
   private storeId: string | undefined

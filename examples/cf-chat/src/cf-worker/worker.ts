@@ -2,9 +2,9 @@
 
 import '@livestore/adapter-cloudflare/polyfill'
 
-import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
-import { storeIdFromRequest, type Env } from './env.ts'
+import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { type Env, storeIdFromRequest } from './env.ts'
 
 const handler = {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {

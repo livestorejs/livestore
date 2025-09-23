@@ -1,7 +1,6 @@
-import type { ClientDoWithRpcCallback } from '@livestore/adapter-cloudflare'
 import type { D1Database } from '@cloudflare/workers-types'
-import type { CfTypes } from '@livestore/sync-cf/cf-worker'
-import type { SyncBackendRpcInterface } from '@livestore/sync-cf/cf-worker'
+import type { ClientDoWithRpcCallback } from '@livestore/adapter-cloudflare'
+import type { CfTypes, SyncBackendRpcInterface } from '@livestore/sync-cf/cf-worker'
 
 export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
