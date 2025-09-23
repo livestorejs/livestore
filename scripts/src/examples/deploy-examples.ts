@@ -67,6 +67,9 @@ const getBranchInfo = Effect.gen(function* () {
   return { branchName, shortSha }
 })
 
+const DNS_LABEL_MAX_LENGTH = 63
+const NETLIFY_ALIAS_SEPARATOR_LENGTH = 2 // `alias--site` joins alias + site with two hyphens
+
 const sanitizeAlias = (value: string) =>
   value
     .trim()
@@ -74,6 +77,52 @@ const sanitizeAlias = (value: string) =>
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/--+/g, '-')
     .replace(/^-|-$/g, '')
+
+const trimAliasToDnsLabel = (aliasCandidate: string, maxLength: number) => {
+  if (maxLength <= 0) {
+    return Option.none<string>()
+  }
+
+  const sanitized = sanitizeAlias(aliasCandidate)
+  if (sanitized.length === 0) {
+    return Option.none<string>()
+  }
+
+  const trimmed = sanitized.slice(0, maxLength).replace(/-+$/g, '')
+
+  return trimmed.length > 0 ? Option.some(trimmed) : Option.none<string>()
+}
+
+const resolveAlias = ({
+  site,
+  alias,
+  normalizedBranch,
+  shortSha,
+}: {
+  site: string
+  alias: Option.Option<string>
+  normalizedBranch: string
+  shortSha: string
+}) => {
+  const maxAliasLength = Math.max(1, DNS_LABEL_MAX_LENGTH - (site.length + NETLIFY_ALIAS_SEPARATOR_LENGTH))
+
+  const candidates: string[] = [
+    ...(Option.isSome(alias) ? [alias.value] : []),
+    `branch-${normalizedBranch}-${shortSha}`,
+    `snapshot-${shortSha}`,
+    shortSha,
+  ]
+
+  for (const candidate of candidates) {
+    const trimmed = trimAliasToDnsLabel(candidate, maxAliasLength)
+    if (Option.isSome(trimmed)) {
+      return trimmed.value
+    }
+  }
+
+  // Fallback: use the short SHA truncated to fit the DNS label limit.
+  return shortSha.slice(0, Math.min(shortSha.length, maxAliasLength))
+}
 
 /**
  * Decide which Netlify site and target we should deploy to for a given example based on branch,
@@ -98,16 +147,7 @@ const resolveDeployment = ({
   const normalizedBranch = branchName.toLowerCase()
   const site = prod || normalizedBranch === 'main' ? exampleSite : devSite
 
-  const aliasValue = Option.isSome(alias)
-    ? sanitizeAlias(alias.value)
-    : sanitizeAlias(`branch-${normalizedBranch}-${shortSha}`)
-
-  const defaultAlias = sanitizeAlias(`snapshot-${shortSha}`)
-  const aliasCandidate = aliasValue.length > 0 ? aliasValue : defaultAlias
-  const safeAlias =
-    aliasCandidate.length > 0
-      ? aliasCandidate.slice(0, 63)
-      : (defaultAlias.length > 0 ? defaultAlias : `snapshot-${shortSha}`).slice(0, 63)
+  const safeAlias = resolveAlias({ site, alias, normalizedBranch, shortSha })
 
   if (Option.isSome(alias)) {
     return { site, target: { _tag: 'alias', alias: safeAlias } }

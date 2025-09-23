@@ -28,6 +28,7 @@ Use the `mono` CLI for common workflows:
 ## TypeScript
 
 - Avoid `as any`, force-casting etc as much as possible.
+- When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
 
 ## Git
 
