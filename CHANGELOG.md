@@ -26,6 +26,7 @@ The adapter supports:
 - D1 database integration for event persistence
 - Hibernatable architecture to minimize compute costs
 - Direct integration with the Cloudflare sync provider
+- Explicit configuration of the sync Durable Object binding (`syncBackendBinding`) so production workers never rely on defaults
 
 See the [Cloudflare adapter documentation](https://dev.docs.livestore.dev/reference/platform-adapters/cloudflare-durable-object-adapter/) for setup instructions.
 
@@ -42,6 +43,7 @@ Key improvements:
 - Two-phase sync: bulk transfer followed by real-time reactive updates
 - Improved error handling and recovery mechanisms
 - Comprehensive test coverage ensuring reliability
+- Added `matchSyncRequest` helper to decode sync request search params. It returns the parsed values or `undefined`, making it straightforward to branch before calling `handleSyncRequest`.
 
 ### Schema-First SQLite Table Definitions
 
@@ -114,7 +116,7 @@ Pure materializers are essential for:
 
 ### New Examples
 
-- **CF Chat**: Real-time chat application showcasing LiveStore's Cloudflare Durable Objects adapter with WebSocket synchronization, reactive message handling, and bot interactions. Demonstrates both client-side React components and server-side Durable Object integration.
+- **CF Chat**: Real-time chat application showcasing LiveStore's Cloudflare Durable Objects adapter with WebSocket synchronization, reactive message handling, and bot interactions. Demonstrates both client-side React components and server-side Durable Object integration, with Durable Objects and the worker fetch handler factored into dedicated modules for easier reuse.
 
 ### Breaking Changes
 
