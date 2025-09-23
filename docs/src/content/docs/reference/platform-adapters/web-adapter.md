@@ -86,6 +86,8 @@ const adapter = makeInMemoryAdapter({
 
 LiveStore currently only support OPFS to locally persist its data. In the future we might add support for other storage types (e.g. IndexedDB).
 
+During development (`NODE_ENV !== 'production'`), LiveStore automatically copies older state database files into `archive/` inside the OPFS directory for the store (e.g. `livestore-<storeId>@<version>/archive/`). The three most recent copies are retained so you can inspect pre-migration data; older archives are pruned. In production, we delete outdated state databases immediately.
+
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads.
 
 ### Resetting local persistence

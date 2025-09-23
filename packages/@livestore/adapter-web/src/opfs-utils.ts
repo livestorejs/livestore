@@ -17,14 +17,14 @@ export const rootHandlePromise =
       ) as never)
     : navigator.storage.getDirectory()
 
-export const getDirHandle = async (absDirPath: string | undefined) => {
+export const getDirHandle = async (absDirPath: string | undefined, options: { create?: boolean } = {}) => {
   const rootHandle = await rootHandlePromise
-  if (absDirPath === undefined) return rootHandle
+  if (absDirPath === undefined || absDirPath === '' || absDirPath === '/') return rootHandle
 
   let dirHandle = rootHandle
-  const directoryStack = absDirPath?.split('/').filter(Boolean)
+  const directoryStack = absDirPath.split('/').filter(Boolean)
   while (directoryStack.length > 0) {
-    dirHandle = await dirHandle.getDirectoryHandle(directoryStack.shift()!)
+    dirHandle = await dirHandle.getDirectoryHandle(directoryStack.shift()!, options)
   }
 
   return dirHandle
