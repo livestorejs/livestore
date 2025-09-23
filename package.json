@@ -39,7 +39,7 @@
     "@livestore/cli": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.7",
+    "@livestore/devtools-vite": "0.4.0-dev.8",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",

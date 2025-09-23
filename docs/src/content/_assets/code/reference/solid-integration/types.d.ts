@@ -53,5 +53,11 @@ declare module 'solid-js' {
 declare module 'solid-js/jsx-runtime' {
   export const Fragment: unique symbol
   export function jsx(type: any, props: any, key?: any): any
-  export { jsx as jsxs, jsx as jsxDEV }
+  export type { jsx as jsxs, jsx as jsxDEV }
+}
+
+declare namespace JSX {
+  interface IntrinsicElements {
+    [element: string]: Record<string, unknown>
+  }
 }

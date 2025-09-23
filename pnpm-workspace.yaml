@@ -10,7 +10,7 @@ catalog:
   # Type packages
   "@types/react": 19.1.11
   "@types/react-dom": 19.1.8
-  "@types/node": 24.2.0
+  "@types/node": 24.5.2
   "@types/chrome": 0.1.4
 
   # Build tools
