@@ -69,6 +69,10 @@ Use the `mono` CLI for common workflows:
 - Ensure TypeScript compilation passes: `direnv exec . mono ts`
 - Use `direnv exec . mono lint --fix` to automatically fix formatting issues
 
+### Issues
+
+When asked to create a GitHub issue, use the GitHub CLI to do so.
+
 ### Pull Requests
 
 Describe the pull request in terms of the problem it addresses and the approach it takes—avoid titles like "update tests" that hide the intent. A good title should hint at both the underlying issue and the chosen fix, e.g. `Fix backlog replay flake by stabilizing event helper`. Frame the story around the impact to downstream data consumers or workflows rather than generic "user-facing" language.
