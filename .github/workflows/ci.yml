@@ -56,7 +56,7 @@ jobs:
           if mono test integration node-sync; then
             exit 0
           else
-            echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624)"
+            echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
             exit 0
           fi
       - name: Display node-sync logs
