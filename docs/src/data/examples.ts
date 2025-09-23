@@ -26,14 +26,11 @@ export interface Example {
 }
 
 export const getExampleDemoLinks = (example: Example) => {
-  const primaryUrl = IS_MAIN_BRANCH ? (example.demoUrl ?? example.devDemoUrl) : (example.devDemoUrl ?? example.demoUrl)
-  const secondaryUrl = !IS_MAIN_BRANCH && example.demoUrl && example.devDemoUrl ? example.demoUrl : undefined
+  const url = IS_MAIN_BRANCH ? (example.demoUrl ?? example.devDemoUrl) : (example.devDemoUrl ?? example.demoUrl)
 
   return {
-    primaryUrl,
-    secondaryUrl,
-    primaryLabel: IS_MAIN_BRANCH ? 'Try Demo →' : 'Try Dev Demo →',
-    secondaryLabel: 'View Prod Demo →',
+    url,
+    label: IS_MAIN_BRANCH ? 'Try Demo →' : 'Try Dev Demo →',
   }
 }
 

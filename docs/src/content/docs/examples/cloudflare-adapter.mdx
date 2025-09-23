@@ -14,7 +14,7 @@ Examples using `@livestore/adapter-cloudflare` for Cloudflare Workers and Durabl
 
 <CardGrid>
 {cloudflareExamples.map((example) => {
-  const { primaryUrl, secondaryUrl, primaryLabel, secondaryLabel } = getExampleDemoLinks(example);
+  const { url, label } = getExampleDemoLinks(example);
 
   return (
     <Card title={example.title} key={example.title}>
@@ -31,11 +31,8 @@ Examples using `@livestore/adapter-cloudflare` for Cloudflare Workers and Durabl
       <p><strong>Sync Provider:</strong> {example.syncProvider}</p>
     )}
     <div style="margin-top: auto; padding-top: 1rem;">
-      {primaryUrl && (
-        <p style="margin: 0 0 0.5rem 0;"><a href={primaryUrl} target="_blank" rel="noopener noreferrer">{primaryLabel}</a></p>
-      )}
-      {secondaryUrl && (
-        <p style="margin: 0 0 0.5rem 0;"><a href={secondaryUrl} target="_blank" rel="noopener noreferrer">{secondaryLabel}</a></p>
+      {url && (
+        <p style="margin: 0 0 0.5rem 0;"><a href={url} target="_blank" rel="noopener noreferrer">{label}</a></p>
       )}
       <p style="margin: 0;"><a href={example.sourceUrl} target="_blank" rel="noopener noreferrer">View Source →</a></p>
     </div>
