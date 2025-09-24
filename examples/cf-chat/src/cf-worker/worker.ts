@@ -1,14 +1,17 @@
+/// <reference types="@cloudflare/workers-types" />
+
+import '@livestore/adapter-cloudflare/polyfill'
+
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import type { Env } from './shared.ts'
-import { storeIdFromRequest } from './shared.ts'
+import { type Env, storeIdFromRequest } from './shared.ts'
 
 export default {
   fetch: async (request, env, ctx) => {
     const url = new URL(request.url)
 
+    // Handle LiveStore sync requests
     const searchParams = SyncBackend.matchSyncRequest(request)
-
     if (searchParams !== undefined) {
       return SyncBackend.handleSyncRequest({
         request,
@@ -16,11 +19,10 @@ export default {
         env,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
-        headers: {},
       })
     }
 
-    if (url.pathname.endsWith('/client-do')) {
+    if (url.pathname.includes('/client-do')) {
       const storeId = storeIdFromRequest(request)
       const id = env.CLIENT_DO.idFromName(storeId)
 
@@ -29,10 +31,10 @@ export default {
 
     if (url.pathname === '/') {
       // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-      return new Response('CloudFlare TodoMVC LiveStore Demo') as CfTypes.Response
+      return new Response('LiveChat App with CF DO Bot') as CfTypes.Response
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
-    return new Response('Invalid path', { status: 400 }) as CfTypes.Response
+    return new Response('Not found', { status: 404 }) as CfTypes.Response
   },
 } satisfies CfTypes.ExportedHandler<Env>

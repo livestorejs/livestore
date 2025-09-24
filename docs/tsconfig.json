@@ -4,6 +4,7 @@
   "references": [
     { "path": "../packages/@livestore/adapter-web" },
     { "path": "../packages/@livestore/adapter-expo" },
+    { "path": "../packages/@livestore/adapter-cloudflare" },
     { "path": "../packages/@livestore/common" },
     { "path": "../packages/@livestore/livestore" },
     { "path": "../packages/@livestore/solid" },

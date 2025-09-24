@@ -16,8 +16,8 @@ import {
 } from '@livestore/utils/effect'
 import {
   type Env,
-  getSyncRequestSearchParams,
   type MakeDurableObjectClassOptions,
+  matchSyncRequest,
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
@@ -33,10 +33,10 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
 
-const DurableObjectBase = DurableObject as any as new (
+const DurableObjectBase = DurableObject<Env> as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
-) => CfTypes.DurableObject
+) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
@@ -99,13 +99,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
-    ctx: CfTypes.DurableObjectState
-    env: Env
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
-      this.ctx = ctx
-      this.env = env
 
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
@@ -148,12 +144,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
     fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
-        const requestParamsResult = getSyncRequestSearchParams(request)
-        if (requestParamsResult._tag === 'None') {
+        const searchParams = matchSyncRequest(request)
+        if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
         }
 
-        const { storeId, payload, transport } = requestParamsResult.value
+        const { storeId, payload, transport } = searchParams
 
         if (enabledTransports.has(transport) === false) {
           throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)

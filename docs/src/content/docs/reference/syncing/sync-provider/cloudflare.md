@@ -193,15 +193,40 @@ export class SyncBackendDO extends makeDurableObject({
 Creates a complete Cloudflare Worker for the sync backend.
 
 **Options:**
+- `syncBackendBinding` - Durable Object binding name defined in `wrangler.toml`
 - `validatePayload?` - Payload validation function: `(payload, context) => void | Promise<void>`
 - `enableCORS?` - Enable CORS headers (default: `false`)
-- `durableObject?` - Durable Object configuration:
-  - `name?` - Binding name (default: `'SYNC_BACKEND_DO'`)
+
+`makeWorker` is a quick way to get started in simple demos. In most production workers you typically want to share routing logic with other endpoints, so prefer wiring your own `fetch` handler and call `handleSyncRequest` when you detect a sync request. A minimal example:
+
+```ts
+import { handleSyncRequest, matchSyncRequest } from '@livestore/sync-cf/cf-worker'
+
+export default {
+  fetch: async (request, env, ctx) => {
+    const searchParams = matchSyncRequest(request)
+
+    if (searchParams !== undefined) {
+      return handleSyncRequest({
+        request,
+        searchParams,
+        env,
+        ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+      })
+    }
+
+    // Custom routes, assets, etc.
+    return new Response('Not found', { status: 404 })
+  },
+}
+```
 
 ```ts
 import { makeWorker } from '@livestore/sync-cf/cf-worker'
 
 export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: (payload, { storeId }) => {
     if (!payload?.authToken) {
       throw new Error('Missing auth token')
@@ -212,13 +237,10 @@ export default makeWorker({
     console.log(`Validated connection for store: ${storeId}`)
   },
   enableCORS: true,
-  durableObject: {
-    name: 'SYNC_BACKEND_DO'
-  }
 })
 ```
 
-### `handleSyncRequest(options)`
+### `handleSyncRequest(args)`
 
 Handles sync backend HTTP requests in custom workers.
 
@@ -227,29 +249,27 @@ Handles sync backend HTTP requests in custom workers.
 - `searchParams` - Parsed sync request parameters
 - `env` - Worker environment
 - `ctx` - Worker execution context
-- `options` - Additional options:
-  - `headers?` - Response headers
-  - `validatePayload?` - Payload validation function
-  - `durableObject?` - DO configuration
+- `syncBackendBinding` - Durable Object binding name defined in `wrangler.toml`
+- `headers?` - Response headers
+- `validatePayload?` - Payload validation function
 
 ```ts
-import { handleSyncRequest, getSyncRequestSearchParams } from '@livestore/sync-cf/cf-worker'
+import { handleSyncRequest, matchSyncRequest } from '@livestore/sync-cf/cf-worker'
 
 export default {
   fetch: async (request, env, ctx) => {
-    const requestParamsResult = getSyncRequestSearchParams(request)
+    const searchParams = matchSyncRequest(request)
     
-    if (requestParamsResult._tag === 'Some') {
+    if (searchParams !== undefined) {
       return handleSyncRequest({
         request,
-        searchParams: requestParamsResult.value,
+        searchParams,
         env,
         ctx,
-        options: {
-          headers: { 'X-Custom': 'header' },
-          validatePayload: (payload, context) => {
-            // Custom validation logic
-          }
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+        headers: { 'X-Custom': 'header' },
+        validatePayload: (payload, context) => {
+          // Custom validation logic
         },
       })
     }
@@ -259,18 +279,18 @@ export default {
 }
 ```
 
-### `getSyncRequestSearchParams(request)`
+### `matchSyncRequest(request)`
 
 Parses and validates sync request search parameters.
 
-Returns an `Option` type: `Some` with valid parameters or `None` if not a sync request.
+Returns the decoded search params or `undefined` if the request is not a LiveStore sync request.
 
 ```ts
-import { getSyncRequestSearchParams } from '@livestore/sync-cf/cf-worker'
+import { matchSyncRequest } from '@livestore/sync-cf/cf-worker'
 
-const requestParamsResult = getSyncRequestSearchParams(request)
-if (requestParamsResult._tag === 'Some') {
-  const { storeId, payload, transport } = requestParamsResult.value
+const searchParams = matchSyncRequest(request)
+if (searchParams !== undefined) {
+  const { storeId, payload, transport } = searchParams
   console.log(`Sync request for store ${storeId} via ${transport}`)
 }
 ```
@@ -403,6 +423,7 @@ export class SyncBackendDO extends makeDurableObject({
 }) {}
 
 export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: (payload, { storeId }) => {
     if (!payload?.userId) {
       throw new Error('User ID required')

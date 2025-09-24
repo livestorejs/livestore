@@ -22,7 +22,7 @@ export const { getStaticPaths, GET } = OGImageRoute({
   // as the file is named `[...slug].ts`.
   param: 'slug',
   // Define a function called for each page to customize the generated image.
-  getImageOptions: (_id, page: (typeof pages)[number]) => {
+  getImageOptions: (_id: string, page: (typeof pages)[string]) => {
     return {
       // Use the page title and description as the image title and description.
       title: page.data.title,

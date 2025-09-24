@@ -1,5 +1,5 @@
 name = "cloudflare-todomvc"
-main = "./src/worker.ts"
+main = "./src/index.ts"
 compatibility_date = "2025-05-07"
 compatibility_flags = [
   "enable_request_signal", # Needed for HTTP RPC streams
