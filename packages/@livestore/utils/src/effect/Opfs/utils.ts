@@ -42,14 +42,33 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   yield* opfs.removeEntry(parentDirHandle, targetName ?? '', { recursive: recursive })
 })
 
-export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (
-  parent: FileSystemDirectoryHandle,
-  name: string,
-) {
-  const opfs = yield* Opfs
+/**
+ * Check if a `path` exists.
+ */
+export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path: string) {
+  const pathSegments = path.split('/').filter((segment) => segment.length > 0)
 
-  return yield* opfs.getFileHandle(parent, name).pipe(
-    Effect.orElse(() => opfs.getDirectoryHandle(parent, name, { create: false })),
+  const opfs = yield* Opfs
+  const rootDirHandle = yield* opfs.getRootDirectoryHandle
+
+  if (pathSegments.length === 0) return true
+
+  const targetName = pathSegments.pop()
+  if (targetName === undefined) return false
+
+  let parentDirHandle = rootDirHandle
+  for (const segment of pathSegments) {
+    const directoryHandle = yield* opfs
+      .getDirectoryHandle(parentDirHandle, segment, { create: false })
+      .pipe(Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed(undefined)))
+
+    if (directoryHandle === undefined) return false
+
+    parentDirHandle = directoryHandle
+  }
+
+  return yield* opfs.getFileHandle(parentDirHandle, targetName).pipe(
+    Effect.orElse(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
     Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed(false)),
   )
