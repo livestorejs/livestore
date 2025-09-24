@@ -3,13 +3,38 @@
 import * as Browser from '../BrowserError.ts'
 import { Effect, Option, Schema } from '../index.ts'
 
+/**
+ * Effect service that exposes ergonomic wrappers around Origin Private File System (OPFS) operations.
+ *
+ * @remarks
+ * - Async helpers mirror the File System Access API and convert failures into `BrowserError` variants.
+ * - Sync access handle helpers require a dedicated worker; invoking them in other contexts fails at runtime.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
+ */
 export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
   effect: Effect.gen(function* () {
+    /**
+     * Acquire the OPFS root directory handle.
+     *
+     * @returns Root directory handle for the current origin.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/getDirectory | MDN Reference}
+     */
     const getRootDirectoryHandle = Effect.tryPromise({
       try: () => navigator.storage.getDirectory(),
       catch: (u) => Browser.parseBrowserError(u, [Browser.SecurityError]),
     })
 
+    /**
+     * Resolve (and optionally create) a file handle relative to a directory.
+     *
+     * @param parent - Directory to search.
+     * @param name - Target file name.
+     * @param options - Forwarded `getFileHandle` options such as `{ create: true }`.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/getFileHandle | MDN Reference}
+     */
     const getFileHandle = (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetFileOptions) =>
       Effect.tryPromise({
         try: () => parent.getFileHandle(name, options),
@@ -22,6 +47,15 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           ]),
       })
 
+    /**
+     * Resolve (and optionally create) a directory handle relative to another directory.
+     *
+     * @param parent - Directory to search.
+     * @param name - Target directory name.
+     * @param options - Forwarded `getDirectoryHandle` options such as `{ create: true }`.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/getDirectoryHandle | MDN Reference}
+     */
     const getDirectoryHandle = (
       parent: FileSystemDirectoryHandle,
       name: string,
@@ -38,6 +72,15 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           ]),
       })
 
+    /**
+     * Remove a file-system entry (file or directory) from its parent directory.
+     *
+     * @param parent - Directory containing the entry.
+     * @param name - Entry name.
+     * @param options - Removal behavior (for example `{ recursive: true }`).
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/removeEntry | MDN Reference}
+     */
     const removeEntry = (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemRemoveOptions) =>
       Effect.tryPromise({
         try: () => parent.removeEntry(name, options),
@@ -50,6 +93,14 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           ]),
       })
 
+    /**
+     * Collect a snapshot of child file-system handles for a directory.
+     *
+     * @param directory - Directory whose entries should be listed.
+     * @returns Handles grouped by kind and annotated with names.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/entries | MDN Reference}
+     */
     const listEntries = (directory: FileSystemDirectoryHandle) =>
       Effect.gen(function* () {
         const entries: (
@@ -91,18 +142,43 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         })
       })
 
+    /**
+     * Resolve the relative path from a parent directory to a descendant handle.
+     *
+     * @param parent - Reference directory.
+     * @param child - File or directory handle within the parent hierarchy.
+     * @returns `Option.some(pathSegments)` when reachable, otherwise `Option.none()`.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/resolve | MDN Reference}
+     */
     const resolve = (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
       Effect.tryPromise({
         try: () => parent.resolve(child),
         catch: (u) => Browser.parseBrowserError(u),
       }).pipe(Effect.map((path) => (path === null ? Option.none() : Option.some(path))))
 
+    /**
+     * Read the underlying `File` for a file handle.
+     *
+     * @param handle - Handle referencing the target file.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/getFile | MDN Reference}
+     */
     const getFile = (handle: FileSystemFileHandle) =>
       Effect.tryPromise({
         try: () => handle.getFile(),
         catch: (u) => Browser.parseBrowserError(u, [Browser.NotAllowedError, Browser.NotFoundError]),
       })
 
+    /**
+     * Overwrite the contents of a file with the provided data.
+     *
+     * @param handle - File to write to.
+     * @param data - Chunk(s) accepted by `FileSystemWritableFileStream.write`.
+     * @param options - Stream creation options (for example `{ keepExistingData: false }`).
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createWritable | MDN Reference}
+     */
     const writeFile = (
       handle: FileSystemFileHandle,
       data: FileSystemWriteChunkType,
@@ -132,6 +208,14 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
+    /**
+     * Append data to the end of an existing file.
+     *
+     * @param handle - File to extend.
+     * @param data - Data to append.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/write | MDN Reference}
+     */
     const appendToFile = (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
       Effect.acquireUseRelease(
         Effect.tryPromise({
@@ -164,6 +248,14 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
+    /**
+     * Truncate a file to the specified size in bytes.
+     *
+     * @param handle - File to shrink or pad.
+     * @param size - Target byte length.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream/truncate | MDN Reference}
+     */
     const truncateFile = (handle: FileSystemFileHandle, size: number) =>
       Effect.acquireUseRelease(
         Effect.tryPromise({
@@ -189,9 +281,18 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
-    // Sync Access Handle Operations (Dedicated Workers Only)
-    // Note: Sync Access Handles are only available in Dedicated Workers
-    // See: https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
+    /**
+     * Create a synchronous access handle for a file.
+     *
+     * @param handle - File handle to open.
+     * @returns A managed handle that is automatically closed when released.
+     *
+     * @remarks
+     * - Only available in Dedicated Web Workers.
+     * - This method is asynchronous even though the `FileSystemSyncAccessHandle` APIs are synchronous.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle | MDN Reference}
+     */
     const createSyncAccessHandle = (handle: FileSystemFileHandle) =>
       Effect.acquireRelease(
         Effect.tryPromise({
@@ -207,6 +308,19 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         (syncHandle) => Effect.sync(() => syncHandle.close()),
       )
 
+    /**
+     * Perform a synchronous read into the provided buffer from a sync access handle.
+     *
+     * @param handle - Sync access handle to read from.
+     * @param buffer - Destination buffer.
+     * @param options - Read position options.
+     * @returns Number of bytes read.
+     *
+     * @remarks
+     * Only available in Dedicated Web Workers.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/read | MDN Reference}
+     */
     const syncRead = (handle: FileSystemSyncAccessHandle, buffer: ArrayBuffer, options?: FileSystemReadWriteOptions) =>
       Effect.try({
         try: () => {
@@ -216,6 +330,19 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => Browser.parseBrowserError(u, [Browser.RangeError, Browser.InvalidStateError, Browser.TypeError]),
       })
 
+    /**
+     * Perform a synchronous write from the provided buffer into the file.
+     *
+     * @param handle - Sync access handle to write to.
+     * @param buffer - Source data.
+     * @param options - Write position options.
+     * @returns Number of bytes written.
+     *
+     * @remarks
+     * Only available in Dedicated Web Workers.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/write | MDN Reference}
+     */
     const syncWrite = (
       handle: FileSystemSyncAccessHandle,
       buffer: AllowSharedBufferSource,
@@ -226,18 +353,50 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => Browser.parseBrowserError(u),
       })
 
+    /**
+     * Truncate the file associated with a sync access handle to the specified size.
+     *
+     * @param handle - Sync access handle to mutate.
+     * @param size - Desired byte length.
+     *
+     * @remarks
+     * Only available in Dedicated Web Workers.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/truncate | MDN Reference}
+     */
     const syncTruncate = (handle: FileSystemSyncAccessHandle, size: number) =>
       Effect.try({
         try: () => handle.truncate(size),
         catch: (u) => Browser.parseBrowserError(u),
       })
 
+    /**
+     * Retrieve the current size of a file via its sync access handle.
+     *
+     * @param handle - Sync access handle.
+     * @returns File size in bytes.
+     *
+     * @remarks
+     * Only available in Dedicated Web Workers.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/getSize | MDN Reference}
+     */
     const syncGetSize = (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.getSize(),
         catch: (u) => Browser.parseBrowserError(u),
       })
 
+    /**
+     * Flush pending synchronous writes to durable storage.
+     *
+     * @param handle - Sync access handle to flush.
+     *
+     * @remarks
+     * Only available in Dedicated Web Workers.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/flush | MDN Reference}
+     */
     const syncFlush = (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.flush(),
@@ -248,12 +407,16 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      * Synchronously write the content of the specified buffer to the file associated with the handle,
      * replacing the file if it already exists.
      *
-     * @remarks
+     * @param handle - Sync access handle to overwrite.
+     * @param buffer - Raw data to persist.
+     * @returns Effect that resolves once every byte is flushed to durable storage.
      *
-     * - This function is only available in Dedicated Web Workers.
-     * - Crash safety: NOT atomic. A crash mid-write can leave the file in a truncated or partially-written state.
-     *   If you need atomic replace, use `writeFile()` or a tempFile+copy pattern (which requires preparing two
-     *   FileSystemSyncAccessHandles in advance).
+     * @remarks
+     * - Only available in Dedicated Web Workers.
+     * - Crash safety: not atomic. A crash mid-write can leave the file truncated or partially written.
+     *   For atomic replacement, prefer `writeFile` or a temp-file copy pattern with two prepared handles.
+     *
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle | MDN Reference}
      */
     const syncWriteFile = (handle: FileSystemSyncAccessHandle, buffer: AllowSharedBufferSource) => {
       return Effect.gen(function* () {
@@ -309,6 +472,9 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
   }),
 }) {}
 
+/**
+ * Error raised when OPFS operations fail.
+ */
 export class OpfsError extends Schema.TaggedError<OpfsError>()('@livestore/utils/Opfs/Error', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
