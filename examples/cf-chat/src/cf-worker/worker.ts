@@ -4,14 +4,14 @@ import '@livestore/adapter-cloudflare/polyfill'
 
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import { type Env, storeIdFromRequest } from './env.ts'
+import { type Env, storeIdFromRequest } from './shared.ts'
 
-const handler = {
-  fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
+export default {
+  fetch: async (request, env, ctx) => {
     const url = new URL(request.url)
 
+    // Handle LiveStore sync requests
     const searchParams = SyncBackend.matchSyncRequest(request)
-
     if (searchParams !== undefined) {
       return SyncBackend.handleSyncRequest({
         request,
@@ -37,6 +37,4 @@ const handler = {
     // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
     return new Response('Not found', { status: 404 }) as CfTypes.Response
   },
-}
-
-export default handler satisfies CfTypes.ExportedHandler<Env>
+} satisfies CfTypes.ExportedHandler<Env>

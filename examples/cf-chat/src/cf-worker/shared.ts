@@ -1,11 +1,11 @@
-import type { D1Database } from '@cloudflare/workers-types'
 import type { ClientDoWithRpcCallback } from '@livestore/adapter-cloudflare'
 import type { CfTypes, SyncBackendRpcInterface } from '@livestore/sync-cf/cf-worker'
 
 export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
-  DB: D1Database
+  SYNC_BACKEND_URL: string
+  DB: CfTypes.D1Database
   ADMIN_SECRET: string
 }
 

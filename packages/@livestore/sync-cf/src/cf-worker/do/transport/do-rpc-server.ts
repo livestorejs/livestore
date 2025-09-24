@@ -1,5 +1,5 @@
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import { toDurableObjectHandler } from '@livestore/common-cf'
+import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
   Headers,
@@ -22,7 +22,9 @@ export interface DoRpcHandlerOptions {
   input: Omit<DoCtxInput, 'from'>
 }
 
-export const createDoRpcHandler = (options: DoRpcHandlerOptions) =>
+export const createDoRpcHandler = (
+  options: DoRpcHandlerOptions,
+): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
   Effect.gen(this, function* () {
     const { payload, input } = options
     // const { rpcSubscriptions, backendId, doOptions, ctx, env } = yield* DoCtx

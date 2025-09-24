@@ -3,21 +3,14 @@ import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import type { Env } from './env.ts'
-import { storeIdFromRequest } from './env.ts'
 import { schema, tables } from './livestore/schema.ts'
+import type { Env } from './shared.ts'
+import { storeIdFromRequest } from './shared.ts'
 
-export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcCallback {
+export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   private storeId: string | undefined
   private cachedStore: Store<typeof schema> | undefined
   private storeSubscription: Unsubscribe | undefined
-
-  constructor(
-    readonly state: DurableObjectState,
-    readonly env: Env,
-  ) {
-    super(state, env)
-  }
 
   async fetch(request: Request): Promise<Response> {
     // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
@@ -45,9 +38,9 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObjectId: this.state.id.toString(),
+      durableObjectId: this.ctx.id.toString(),
       bindingName: 'CLIENT_DO',
-      storage: this.state.storage,
+      storage: this.ctx.storage,
       syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
@@ -68,7 +61,7 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
       })
     }
 
-    await this.state.storage.setAlarm(Date.now() + 1000)
+    await this.ctx.storage.setAlarm(Date.now() + 1000)
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {

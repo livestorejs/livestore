@@ -3,21 +3,14 @@ import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/a
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { events, schema, tables } from '../livestore/schema.ts'
-import type { Env } from './env.ts'
-import { storeIdFromRequest } from './env.ts'
+import type { Env } from './shared.ts'
+import { storeIdFromRequest } from './shared.ts'
 
-export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcCallback {
+export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'livestore-client-do' as never
   private storeId: string | undefined
   private cachedStore: Store<typeof schema> | undefined
   private storeSubscription: Unsubscribe | undefined
-
-  constructor(
-    readonly state: DurableObjectState,
-    readonly env: Env,
-  ) {
-    super(state, env)
-  }
 
   async fetch(request: Request): Promise<Response> {
     try {
@@ -70,9 +63,9 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObjectId: this.state.id.toString(),
+      durableObjectId: this.ctx.id.toString(),
       bindingName: 'CLIENT_DO',
-      storage: this.state.storage as any,
+      storage: this.ctx.storage,
       syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
