@@ -116,6 +116,7 @@ export const getStateDbFileName = (schema: LiveStoreSchema) => {
 }
 
 export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
+export const ARCHIVE_DIR_NAME = 'archive'
 
 /**
  * Cleanup old state database files after successful migration.
@@ -124,156 +125,113 @@ export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
  * @param vfs - The AccessHandlePoolVFS instance for safe file operations
  * @param currentSchema - Current schema (to avoid deleting the active database)
  */
-export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(
-  function* ({
-    vfs,
-    currentSchema,
-    opfsDirectory,
-  }: {
-    vfs: WebDatabaseMetadataOpfs['vfs']
-    currentSchema: LiveStoreSchema
-    opfsDirectory: string
-  }) {
-    // Only cleanup for auto migration strategy because:
-    // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
-    //   which accumulate over time and can exhaust OPFS file pool capacity
-    // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
-    //   so there are never multiple old files to clean up
-    if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
-      yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
-      return
-    }
-
-    const isDev = isDevEnv()
-    const currentDbFileName = getStateDbFileName(currentSchema)
-    const currentPath = `/${currentDbFileName}`
-
-    const allPaths = yield* Effect.sync(() => vfs.getTrackedFilePaths())
-    const oldStateDbPaths = allPaths.filter(
-      (path) => path.startsWith('/state') && path.endsWith('.db') && path !== currentPath,
-    )
-
-    if (oldStateDbPaths.length === 0) {
-      yield* Effect.logDebug('State db cleanup completed: no old database files found')
-      return
-    }
-
-    yield* Effect.logDebug(`Found ${oldStateDbPaths.length} old state database file(s) to clean up`)
-
-    let deletedCount = 0
-    const archivedFileNames: string[] = []
-    let archiveDirHandle: FileSystemDirectoryHandle | undefined
-
-    for (const path of oldStateDbPaths) {
-      const fileName = path.startsWith('/') ? path.slice(1) : path
-
-      if (isDev) {
-        yield* Opfs.makeDirectory(`${opfsDirectory}/archive`)
-
-        const archiveFileData = vfs.readFilePayload(fileName)
-
-        const archiveFileName = `${Date.now()}-${fileName}`
-
-        yield* Opfs.writeFile(`${opfsDirectory}/archive/${archiveFileName}`, new Uint8Array(archiveFileData))
-
-        archivedFileNames.push(archiveFileName)
-      }
-
-      const vfsResultCode = yield* Effect.try({
-        try: () => vfs.jDelete(fileName, 0),
-        catch: (cause) => new SqliteVfsError({ operation: 'jDelete', fileName, cause }),
-      })
-
-      // 0 indicates a successful result in SQLite.
-      // See https://www.sqlite.org/c3ref/c_abort.html
-      if (vfsResultCode !== 0) {
-        return yield* new SqliteVfsError({
-          operation: 'jDelete',
-          fileName,
-          vfsResultCode,
-        })
-      }
-
-      deletedCount++
-      yield* Effect.logDebug(`Successfully deleted old state database file: ${fileName}`)
-    }
-
-    if (isDev && archiveDirHandle !== undefined) {
-      const pruneResult = yield* pruneArchiveDirectory({
-        directoryHandle: archiveDirHandle,
-        keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
-      })
-
-      yield* Effect.logDebug(
-        `State db cleanup completed: archived ${archivedFileNames.length} file(s); removed ${deletedCount} old database file(s) from active pool; archive retained ${pruneResult.retained.length} file(s)`,
-      )
-    } else {
-      yield* Effect.logDebug(`State db cleanup completed: removed ${deletedCount} old database file(s)`)
-    }
-  },
-  Effect.mapError(
-    (error) =>
-      new PersistedSqliteError({
-        message: 'Failed to clean up old state database file(s)',
-        cause: error,
-      }),
-  ),
-)
-
-const pruneArchiveDirectory = ({
-  directoryHandle,
-  keep,
+export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({
+  vfs,
+  currentSchema,
+  opfsDirectory,
 }: {
-  directoryHandle: FileSystemDirectoryHandle
-  keep: number
-}) =>
-  Effect.gen(function* () {
-    const files = yield* Effect.tryPromise({
-      try: async () => {
-        const result: { name: string; lastModified: number }[] = []
+  vfs: WebDatabaseMetadataOpfs['vfs']
+  currentSchema: LiveStoreSchema
+  opfsDirectory: string
+}) {
+  // Only cleanup for auto migration strategy because:
+  // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
+  //   which accumulate over time and can exhaust OPFS file pool capacity
+  // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
+  //   so there are never multiple old files to clean up
+  if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
+    yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
+    return
+  }
 
-        for await (const entry of directoryHandle.values()) {
-          if (entry.kind !== 'file') continue
-          const fileHandle = await directoryHandle.getFileHandle(entry.name)
-          const file = await fileHandle.getFile()
-          result.push({ name: entry.name, lastModified: file.lastModified })
-        }
+  const isDev = isDevEnv()
+  const currentDbFileName = getStateDbFileName(currentSchema)
+  const currentPath = `/${currentDbFileName}`
 
-        return result.sort((a, b) => b.lastModified - a.lastModified)
-      },
-      catch: (cause) => new ArchiveStateDbError({ message: 'Failed to enumerate archived state databases', cause }),
+  const allPaths = yield* Effect.sync(() => vfs.getTrackedFilePaths())
+  const oldStateDbPaths = allPaths.filter(
+    (path) => path.startsWith('/state') && path.endsWith('.db') && path !== currentPath,
+  )
+
+  if (oldStateDbPaths.length === 0) {
+    yield* Effect.logDebug('State db cleanup completed: no old database files found')
+    return
+  }
+
+  yield* Effect.logDebug(`Found ${oldStateDbPaths.length} old state database file(s) to clean up`)
+
+  let deletedCount = 0
+  const archivedFileNames: string[] = []
+  const absoluteArchiveDirName = `${opfsDirectory}/${ARCHIVE_DIR_NAME}`
+  if (isDev && !(yield* Opfs.exists(absoluteArchiveDirName))) yield* Opfs.makeDirectory(absoluteArchiveDirName)
+
+  for (const path of oldStateDbPaths) {
+    const fileName = path.startsWith('/') ? path.slice(1) : path
+
+    if (isDev) {
+      const archiveFileData = vfs.readFilePayload(fileName)
+
+      const archiveFileName = `${Date.now()}-${fileName}`
+
+      yield* Opfs.writeFile(`${opfsDirectory}/archive/${archiveFileName}`, new Uint8Array(archiveFileData))
+
+      archivedFileNames.push(archiveFileName)
+    }
+
+    const vfsResultCode = yield* Effect.try({
+      try: () => vfs.jDelete(fileName, 0),
+      catch: (cause) =>
+        new PersistedSqliteError({ message: `Failed to delete old state database file: ${fileName}`, cause }),
     })
 
-    const retained = files.slice(0, keep)
-    const toDelete = files.slice(keep)
-
-    yield* Effect.forEach(toDelete, ({ name }) =>
-      Effect.tryPromise({
-        try: () => directoryHandle.removeEntry(name),
-        catch: (cause) =>
-          new ArchiveStateDbError({
-            message: 'Failed to delete archived state database',
-            fileName: name,
-            cause,
-          }),
-      }),
-    )
-
-    return {
-      retained,
-      deleted: toDelete,
+    // 0 indicates a successful result in SQLite.
+    // See https://www.sqlite.org/c3ref/c_abort.html
+    if (vfsResultCode !== 0) {
+      return yield* new PersistedSqliteError({
+        message: `Failed to delete old state database file: ${fileName}, got result code: ${vfsResultCode}`,
+      })
     }
-  })
 
-export class ArchiveStateDbError extends Schema.TaggedError<ArchiveStateDbError>()('ArchiveStateDbError', {
-  message: Schema.String,
-  fileName: Schema.optional(Schema.String),
-  cause: Schema.Defect,
-}) {}
+    deletedCount++
+    yield* Effect.logDebug(`Successfully deleted old state database file: ${fileName}`)
+  }
 
-export class SqliteVfsError extends Schema.TaggedError<SqliteVfsError>()('SqliteVfsError', {
-  operation: Schema.String,
-  fileName: Schema.String,
-  vfsResultCode: Schema.optional(Schema.Number),
-  cause: Schema.optional(Schema.Defect),
-}) {}
+  if (isDev) {
+    const pruneResult = yield* pruneArchiveDirectory({
+      archiveDirectory: absoluteArchiveDirName,
+      keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
+    })
+
+    yield* Effect.logDebug(
+      `State db cleanup completed: archived ${archivedFileNames.length} file(s); removed ${deletedCount} old database file(s) from active pool; archive retained ${pruneResult.retained.length} file(s)`,
+    )
+  } else {
+    yield* Effect.logDebug(`State db cleanup completed: removed ${deletedCount} old database file(s)`)
+  }
+})
+
+const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDirectory')(function* ({
+  archiveDirectory,
+  keep,
+}: {
+  archiveDirectory: string
+  keep: number
+}) {
+  const opfs = yield* Opfs.Opfs
+
+  const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
+  const entries = yield* opfs.listEntries(archiveDirHandle)
+  const files = entries.filter((entry) => entry.kind === 'file')
+  const filesWithMetadata = yield* Effect.forEach(files, (file) => Opfs.getMetadata(file.handle))
+  const sortedFilesWithMetadata = filesWithMetadata.sort((a, b) => b.lastModified - a.lastModified)
+
+  const retained = sortedFilesWithMetadata.slice(0, keep)
+  const toDelete = sortedFilesWithMetadata.slice(keep)
+
+  yield* Effect.forEach(toDelete, ({ name }) => opfs.removeEntry(archiveDirHandle, name))
+
+  return {
+    retained,
+    deleted: toDelete,
+  }
+})
