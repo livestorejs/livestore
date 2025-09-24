@@ -9,6 +9,7 @@
     "@astrojs/react": "4.3.0",
     "@astrojs/starlight": "0.35.2",
     "@astrojs/starlight-tailwind": "4.0.1",
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-expo": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",

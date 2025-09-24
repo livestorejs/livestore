@@ -1,19 +1,6 @@
 /// <reference types="vite/client" />
-/// <reference path="./node_modules/@livestore/solid/index.d.ts" />
 /// <reference path="./node_modules/solid-js/index.d.ts" />
 /// <reference path="./node_modules/solid-js/jsx-runtime/index.d.ts" />
-
-declare module '@livestore/solid' {
-  import type { Accessor } from 'solid-js'
-
-  export function query<TResult>(queryDef: unknown, initialValue: TResult): Accessor<TResult>
-
-  export function getStore<TSchema>(options: {
-    adapter: unknown
-    schema: TSchema
-    storeId: string
-  }): Promise<Accessor<{ commit: (event: unknown) => unknown } | undefined>>
-}
 
 declare module 'solid-js' {
   export type Accessor<T> = () => T
