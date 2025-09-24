@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import * as Browser from '../BrowserError.ts'
-import { Effect, Option } from '../index.ts'
+import { Effect, Option, Schema } from '../index.ts'
 
 export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
   effect: Effect.gen(function* () {
@@ -105,7 +105,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
 
     const writeFile = (
       handle: FileSystemFileHandle,
-      data: BufferSource | Blob | string,
+      data: FileSystemWriteChunkType,
       options?: FileSystemCreateWritableOptions,
     ) =>
       Effect.acquireUseRelease(
@@ -132,7 +132,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
-    const appendToFile = (handle: FileSystemFileHandle, data: BufferSource | Blob | string) =>
+    const appendToFile = (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
       Effect.acquireUseRelease(
         Effect.tryPromise({
           try: () => handle.createWritable({ keepExistingData: true }),
@@ -204,7 +204,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
               Browser.NoModificationAllowedError,
             ]),
         }),
-        (syncHandle) => Effect.sync(() => syncHandle.close()).pipe(Effect.orElse(() => Effect.void)),
+        (syncHandle) => Effect.sync(() => syncHandle.close()),
       )
 
     const syncRead = (handle: FileSystemSyncAccessHandle, buffer: ArrayBuffer, options?: FileSystemReadWriteOptions) =>
@@ -216,12 +216,13 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => Browser.parseBrowserError(u, [Browser.RangeError, Browser.InvalidStateError, Browser.TypeError]),
       })
 
-    const syncWrite = (handle: FileSystemSyncAccessHandle, buffer: ArrayBuffer, options?: FileSystemReadWriteOptions) =>
+    const syncWrite = (
+      handle: FileSystemSyncAccessHandle,
+      buffer: AllowSharedBufferSource,
+      options?: FileSystemReadWriteOptions,
+    ) =>
       Effect.try({
-        try: () => {
-          const view = new Uint8Array(buffer)
-          return handle.write(view, options)
-        },
+        try: () => handle.write(buffer, options),
         catch: (u) => Browser.parseBrowserError(u),
       })
 
@@ -243,6 +244,49 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => Browser.parseBrowserError(u),
       })
 
+    /**
+     * Synchronously write the content of the specified buffer to the file associated with the handle,
+     * replacing the file if it already exists.
+     *
+     * @remarks
+     *
+     * - This function is only available in Dedicated Web Workers.
+     * - Crash safety: NOT atomic. A crash mid-write can leave the file in a truncated or partially-written state.
+     *   If you need atomic replace, use `writeFile()` or a tempFile+copy pattern (which requires preparing two
+     *   FileSystemSyncAccessHandles in advance).
+     */
+    const syncWriteFile = (handle: FileSystemSyncAccessHandle, buffer: AllowSharedBufferSource) => {
+      return Effect.gen(function* () {
+        const bytes =
+          // If it's already a view (e.g., Uint8Array, DataView), wrap its underlying buffer slice.
+          ArrayBuffer.isView(buffer)
+            ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+            : // If it's a (Shared)ArrayBuffer-like, view the whole buffer.
+              new Uint8Array(buffer as ArrayBufferLike)
+
+        // 1) Clear existing contents
+        yield* syncTruncate(handle, 0)
+
+        // 2) Write all bytes retrying until the entire buffer is written. `syncWrite()` may write fewer bytes than
+        // requested, so we loop until we've written everything or detect no forward progress. This guards against
+        // short writes which can occur under quota pressure, buffering limits, or transient errors.
+        let offset = 0
+        while (offset < bytes.byteLength) {
+          const wrote = yield* syncWrite(handle, bytes.subarray(offset), { at: offset })
+          if (wrote === 0) {
+            // No forward progress -> treat as I/O error / out-of-quota condition.
+            return yield* new OpfsError({
+              message: `Short write: wrote ${offset} of ${bytes.byteLength} bytes.`,
+            })
+          }
+          offset += Number(wrote)
+        }
+
+        // 3) Ensure durability up to this point.
+        yield* syncFlush(handle)
+      })
+    }
+
     return {
       getRootDirectoryHandle,
       getFileHandle,
@@ -260,6 +304,12 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       syncTruncate,
       syncGetSize,
       syncFlush,
+      syncWriteFile,
     } as const
   }),
+}) {}
+
+export class OpfsError extends Schema.TaggedError<OpfsError>()('@livestore/utils/Opfs/Error', {
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect),
 }) {}
