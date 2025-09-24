@@ -1,16 +1,23 @@
 import { Effect } from '../index.ts'
 import { Opfs, OpfsError } from './Opfs.ts'
 
-// A valid segment is a string that is not an empty string, is not equal to "." or "..",
-// and does not contain '/' or any other character used as path separator on the underlying platform.
-// See https://fs.spec.whatwg.org/#valid-file-name
+/**
+ * Set of path segments that are forbidden by the File System specification.
+ *
+ * A valid segment is non-empty, not equal to `.` or `..`, and must not have path separator characters.
+ *
+ * @see {@link https://fs.spec.whatwg.org/#valid-file-name | File System Spec}
+ */
 const DISALLOWED_SEGMENTS = new Set(['.', '..'])
 
 /**
- * Parse a path string into validated OPFS segments.
+ * Parse a slash-separated OPFS path into validated segments.
  *
- * Rejects empty paths and disallows `.` / `..` segments so callers cannot rely on implicit
- * current/parent-directory semantics (which the File System Access API does not support).
+ * Rejects empty paths and disallows `.` / `..` so callers cannot rely on implicit current/parent
+ * directory semantics that the File System Access API does not support.
+ *
+ * @param path - Slash-delimited path relative to the OPFS root.
+ * @returns Effect that yields the sanitized path segments.
  */
 const parsePathSegments = (path: string) =>
   Effect.gen(function* () {
@@ -34,10 +41,10 @@ const parsePathSegments = (path: string) =>
   })
 
 /**
- * Traverse a list of segments starting from the OPFS root directory.
+ * Resolve a directory path from the OPFS root and return the final directory handle.
  *
  * @param segments - Ordered list of directory names to follow.
- * @param options - Optional options forwarded to each `getDirectoryHandle` call.
+ * @param options - Options forwarded to each `getDirectoryHandle` call.
  */
 const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSystemGetDirectoryOptions) =>
   Effect.gen(function* () {
@@ -53,7 +60,7 @@ const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSy
   })
 
 /**
- * Ensure that a directory path exists, creating missing segments when allowed.
+ * Ensure that a directory path exists, creating intermediate segments when permitted.
  *
  * @param segments - Ordered list of directory names to ensure.
  * @param options.recursive - When `true`, create every missing segment. Otherwise only the leaf is created.
@@ -78,6 +85,13 @@ const ensureDirectoryPath = (segments: ReadonlyArray<string>, options: { readonl
     return currentDirHandle
   })
 
+/**
+ * Resolve a directory handle using a slash-delimited OPFS path.
+ *
+ * @param path - Directory path relative to the OPFS root.
+ * @param options - Options forwarded to `getDirectoryHandle` when traversing segments.
+ * @returns Directory handle for the final segment.
+ */
 export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDirectoryHandleByPath')(function* (
   path: string,
   options?: FileSystemGetDirectoryOptions,
@@ -87,7 +101,10 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
 })
 
 /**
- * Remove a file or directory. By setting the recursive option to true, you can recursively remove nested directories.
+ * Remove a file or directory identified by an OPFS path.
+ *
+ * @param path - Slash-delimited path to delete.
+ * @param options.recursive - When `true`, recursively delete directory contents; defaults to `false`.
  */
 export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   path: string,
@@ -105,7 +122,10 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
 })
 
 /**
- * Check if a `path` exists.
+ * Determine whether a file or directory exists at the given OPFS path.
+ *
+ * @param path - Slash-delimited path to inspect.
+ * @returns `true` if the path resolves to a file or directory, otherwise `false`.
  */
 export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path: string) {
   const pathSegments = yield* parsePathSegments(path)
@@ -127,7 +147,10 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
 })
 
 /**
- * Create a directory at `path`. You can optionally specify whether to recursively create nested directories.
+ * Create a directory at the provided path, optionally creating parents recursively.
+ *
+ * @param path - Slash-delimited directory path.
+ * @param options.recursive - When `true`, create all missing parent segments; defaults to `false`.
  */
 export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(function* (
   path: string,
@@ -139,6 +162,12 @@ export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(fu
   yield* ensureDirectoryPath(pathSegments, { recursive })
 })
 
+/**
+ * Extract basic metadata for a given file handle.
+ *
+ * @param handle - File handle whose metadata should be read.
+ * @returns Object containing name, size, MIME type, and last modification timestamp.
+ */
 export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(function* (handle: FileSystemFileHandle) {
   const opfs = yield* Opfs
 
@@ -152,42 +181,11 @@ export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(functi
   )
 })
 
-export const copyFile = Effect.fn('@livestore/utils:Opfs.copyFile')(function* (
-  source: FileSystemFileHandle,
-  destDir: FileSystemDirectoryHandle,
-  destName: string,
-) {
-  const opfs = yield* Opfs
-
-  return yield* Effect.scoped(
-    Effect.gen(function* () {
-      const file = yield* opfs.getFile(source)
-      const destHandle = yield* opfs.getFileHandle(destDir, destName, { create: true })
-      yield* opfs.writeFile(destHandle, file)
-      return destHandle
-    }),
-  )
-})
-
-export const moveFile = Effect.fn('@livestore/utils:Opfs.moveFile')(function* (
-  sourceFile: FileSystemFileHandle,
-  sourceDir: FileSystemDirectoryHandle,
-  destDir: FileSystemDirectoryHandle,
-  destName: string,
-) {
-  const opfs = yield* Opfs
-
-  return yield* Effect.scoped(
-    Effect.gen(function* () {
-      const destHandle = yield* copyFile(sourceFile, destDir, destName)
-      yield* opfs.removeEntry(sourceDir, sourceFile.name)
-      return destHandle
-    }),
-  )
-})
-
 /**
- * Write data to a file at `path`, replacing the file if it already exists.
+ * Write bytes to an OPFS path, creating or replacing the target file.
+ *
+ * @param path - Slash-delimited file path.
+ * @param data - Bytes to persist.
  */
 export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
   const pathSegments = yield* parsePathSegments(path)
