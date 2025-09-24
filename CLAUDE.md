@@ -59,13 +59,12 @@ Use the `mono` CLI for common workflows:
 
 ### Branch Naming Conventions
 
-- Use descriptive branch names that clearly indicate the purpose: `feat/add-user-auth`, `fix/memory-leak`, `docs/api-reference`
+- Use descriptive branch names that clearly indicate the purpose: `my-username/feat/add-user-auth`, `my-username/fix/memory-leak`, `my-username/docs/api-reference`
 - Keep branch names concise but specific (under 30 characters when possible)
 - Use kebab-case for consistency
 
 ### Development Workflow
 
-- Create feature branches from `dev` branch: `git checkout -b feat/my-feature dev`
 - Run the full test suite before pushing: `direnv exec . mono test unit`
 - Ensure TypeScript compilation passes: `direnv exec . mono ts`
 - Use `direnv exec . mono lint --fix` to automatically fix formatting issues
@@ -84,6 +83,7 @@ Checklist:
 - Link the relevant issue (or explicitly call out "n/a").
 - Note which tests were run (or why none were needed).
 - Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
+- Keep CHANGELOG.md up to date with the changes in the PR according to `contributor-docs/changelog-guide.md`.
 - Make sure to apply appropriate labels. Don't create new labels, but only reuse existing ones.
 - After every substantial change (new commit, merge, or rebase), reread the PR title/body and refresh them before pushing or requesting review.
 - When possible, include demo evidence (logs, screenshots, CLI commands, or quick diagrams like Mermaid/ASCII) that demonstrates the change from a data-workflow perspective so reviewers can visualize the impact faster.

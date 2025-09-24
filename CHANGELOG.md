@@ -17,107 +17,11 @@
 > pnpm add @livestore/livestore@dev @livestore/adapter-cloudflare@dev @livestore/sync-cf@dev
 > ```
 
-### Cloudflare Workers and Durable Objects Support
+### Highlights
 
-LiveStore now runs natively on Cloudflare Workers through the new `@livestore/adapter-cloudflare` package. This adapter leverages Durable Objects for stateful coordination and D1 for persistence, enabling globally distributed applications with local-first performance characteristics.
-
-The adapter supports:
-- Stateful Durable Objects for managing LiveStore instances
-- D1 database integration for event persistence
-- Hibernatable architecture to minimize compute costs
-- Direct integration with the Cloudflare sync provider
-- Explicit configuration of the sync Durable Object binding (`syncBackendBinding`) so production workers never rely on defaults
-- Simplified `createStoreDo` API by grouping Durable Object context (`state`, `env`, `bindingName`) and the sync backend stub for clearer setup
-
-See the [Cloudflare adapter documentation](https://dev.docs.livestore.dev/reference/platform-adapters/cloudflare-durable-object-adapter/) for setup instructions.
-
-### Redesigned Cloudflare Sync Provider
-
-The `@livestore/sync-cf` package has been rewritten to provide more reliable and efficient synchronization. The new implementation supports three transport protocols, each optimized for different deployment scenarios:
-
-- **WebSocket transport**: Bidirectional real-time communication with automatic reconnection
-- **HTTP transport**: Request-response based sync with polling for environments that don't support WebSockets
-- **Durable Object RPC transport**: Direct communication between Durable Objects, eliminating network overhead
-
-Key improvements:
-- Streaming pull operations reduce initial sync latency
-- Two-phase sync: bulk transfer followed by real-time reactive updates
-- Improved error handling and recovery mechanisms
-- Comprehensive test coverage ensuring reliability
-- Added `matchSyncRequest` helper to decode sync request search params. It returns the parsed values or `undefined`, making it straightforward to branch before calling `handleSyncRequest`.
-
-### Schema-First SQLite Table Definitions
-
-Tables can now be defined using only Effect schemas, eliminating the need for separate column definitions:
-
-```typescript
-// Define your schema
-const Recipe = Schema.Struct({
-  id: Schema.String.pipe(State.SQLite.withPrimaryKey),
-  name: Schema.String,
-  createdAt: Schema.String.pipe(State.SQLite.withDefault(() => "CURRENT_TIMESTAMP"))
-})
-
-// Create table with automatic column inference
-const recipes = State.SQLite.table({
-  name: "recipes", 
-  schema: Recipe
-})
-```
-
-This approach provides:
-- Single source of truth for type and database schema
-- Compile-time type safety from schema through queries
-- Reduced boilerplate and potential for errors
-- Alignment with Effect's schema-first philosophy
-
-### Non-Pure Materializer Detection
-
-LiveStore now detects and warns about non-pure materializers during development, helping prevent subtle bugs and ensuring predictable behavior:
-
-```typescript
-// This will trigger warnings in development
-const materializers = State.SQLite.materializers(events, {
-  'todoCreated': (payload) => {
-    // Non-pure: generates different IDs on each call
-    const id = nanoid()
-    
-    // Non-pure: uses external state
-    const timestamp = Date.now()
-    
-    return todos.insert({ 
-      id,                   // Different id each time!
-      ...payload, 
-      createdAt: timestamp  // Different createdAt each time!
-    })
-  },
-  
-  // Pure materializer - no warnings
-  'userRegistered': (payload) => {
-    return users.insert(payload)  // Same input = same output
-  }
-})
-```
-
-Pure materializers are essential for:
-- Consistent replay during sync operations
-- Reliable testing and debugging
-- Predictable application behavior across different environments
-
-### New Features
-
-- `LiveStoreSchema.Any` type alias for flexible schema composition
-- Query builder const assertions for improved type inference
-- Effect `Equal` and `Hash` trait implementations for `LiveQueryDef` and `SignalDef`
-- Expose sync payload and store ID to `onPull`/`onPush` handlers (#451)
-- Pass event with clientId to materializers (#574)
-- Store operations throw `StoreAlreadyShutdownError` when called after shutdown
-- QueryBuilder support in store.subscribe() (#371, thanks @rgbkrk)
-- Enable exactOptionalPropertyTypes with comprehensive type fixes (#600)
-
-### New Examples
-
-- **CF Chat**: Real-time chat application showcasing LiveStore's Cloudflare Durable Objects adapter with WebSocket synchronization, reactive message handling, and bot interactions. Demonstrates both client-side React components and server-side Durable Object integration, with Durable Objects and the worker fetch handler factored into dedicated modules for easier reuse.
+- **New Cloudflare adapter:** Added the Workers/Durable Object adapter and rewrote the sync provider so LiveStore ships WebSocket, HTTP, and Durable Object RPC transports as first-party Cloudflare options (#451, #574).
+- **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
+- **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51).
 
 ### Fixes
 
@@ -125,90 +29,187 @@ Pure materializers are essential for:
 
 ### Breaking Changes
 
-#### `store.shutdown` API
+- **`store.shutdown` API:** The shutdown method now returns an Effect instead of a Promise. Use `yield* store.shutdown()` inside Effects or `await store.shutdownPromise()` when a Promise is needed.
 
-The shutdown method now returns an Effect instead of a Promise:
+  ```typescript
+  // Before
+  await store.shutdown()
 
-```typescript
-// Before
-await store.shutdown()
+  // After (Effect API)
+  yield* store.shutdown()
 
-// After (Effect API)
-yield* store.shutdown()
+  // Or use the Promise helper
+  await store.shutdownPromise()
+  ```
 
-// Or use the Promise API
-await store.shutdownPromise()
-```
+- **`QueryBuilder.first()` behaviour:** `table.query.first()` now returns `undefined` when no rows match. To keep the old behaviour, pass `{ behaviour: "error" }`, or supply a fallback.
 
-#### `QueryBuilder.first()` behavior
+  ```typescript
+  // Before: threw an error when no rows matched
+  const user = table.query.first()  // throws
 
-The default behavior when no rows match has changed:
+  // After: returns undefined when no rows match
+  const user = table.query.first()  // returns undefined
 
-```typescript
-// Before: threw an error when no rows matched
-const user = table.query.first()  // throws
+  // To preserve old behaviour
+  const strictUser = table.query.first({ behaviour: "error" })
 
-// After: returns undefined when no rows match
-const user = table.query.first()  // returns undefined
+  // Or provide a fallback value
+  const fallbackUser = table.query.first({
+    behaviour: "fallback",
+    fallback: () => ({ id: "default", name: "Guest" })
+  })
+  ```
 
-// To preserve old behavior
-const user = table.query.first({ behaviour: "error" })
+- **Raw SQL event availability:** The `livestore.RawSql` event is no longer added automatically. Define it explicitly when needed:
 
-// Or provide a fallback
-const user = table.query.first({
-  behaviour: "fallback",
-  fallback: () => ({ id: "default", name: "Guest" })
-})
-```
+  ```typescript
+  import { Events, Schema } from '@livestore/livestore'
 
-#### Removal of automatic raw SQL event
+  const rawSqlEvent = Events.clientOnly({
+    name: 'livestore.RawSql',
+    schema: Schema.Struct({
+      sql: Schema.String,
+      bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
+      writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
+    }),
+  })
+  ```
 
-The `livestore.RawSql` event is no longer automatically available. If needed, define it explicitly:
+- **wa-sqlite version alignment:** `@livestore/wa-sqlite` now follows LiveStore's versioning scheme to keep adapters on matching releases.
 
-```typescript
-import { Events, Schema } from '@livestore/livestore'
+  ```bash
+  # Before: wa-sqlite had independent versioning
+  pnpm add wa-sqlite@1.0.5
 
-const rawSqlEvent = Events.clientOnly({
-  name: 'livestore.RawSql',
-  schema: Schema.Struct({
-    sql: Schema.String,
-    bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
-    writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
-  }),
-})
-```
+  # After: wa-sqlite follows LiveStore versioning
+  pnpm add @livestore/wa-sqlite@dev
+  ```
 
-#### wa-sqlite versioning alignment
+  This change affects projects that directly depend on wa-sqlite. Most users rely on it indirectly through LiveStore adapters and don't need to change anything.
 
-The `@livestore/wa-sqlite` package now follows LiveStore's versioning scheme instead of its independent versioning. This ensures version consistency across all LiveStore packages.
+### Changes
 
-Migration:
-```bash
-# Before: wa-sqlite had independent versioning
-pnpm add wa-sqlite@1.0.5
+#### Platform adapters
 
-# After: wa-sqlite follows LiveStore versioning  
-pnpm add @livestore/wa-sqlite@dev
-```
+LiveStore now runs natively on Cloudflare Workers through the `@livestore/adapter-cloudflare` package. Durable Objects handle coordination and D1 provides persistence, enabling globally distributed applications with local-first behaviour. The adapter provides:
 
-This change affects projects that directly depend on wa-sqlite. Most users rely on it indirectly through LiveStore adapters and don't need to change anything.
+- Stateful Durable Objects for LiveStore instances
+- D1 database integration for event persistence
+- Hibernate-friendly architecture to minimise compute costs
+- Direct integration with the Cloudflare sync provider
 
-### Bug Fixes
+See the [Cloudflare adapter documentation](https://dev.docs.livestore.dev/reference/platform-adapters/cloudflare-durable-object-adapter/) for setup details and deployment guidance.
+
+#### Sync provider
+
+The `@livestore/sync-cf` package has been rewritten to offer three first-party transports—WebSocket, HTTP, and Durable Object RPC—so Cloudflare deployments can choose the right balance of latency and infrastructure support:
+
+- **WebSocket transport:** Bidirectional real-time communication with automatic reconnection
+- **HTTP transport:** Request/response sync with polling for environments that can’t keep WebSocket connections open
+- **Durable Object RPC:** Direct Durable Object calls that avoid network overhead entirely
+
+Key improvements include streaming pull operations (faster initial sync), a two-phase sync (bulk transfer followed by real-time updates), improved error recovery, and comprehensive test coverage.
+
+#### Core Runtime & Storage
+
+- **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
+
+  ```typescript
+  // Define your schema
+  const Recipe = Schema.Struct({
+    id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+    name: Schema.String,
+    createdAt: Schema.String.pipe(State.SQLite.withDefault(() => "CURRENT_TIMESTAMP"))
+  })
+
+  // Create table with automatic column inference
+  const recipes = State.SQLite.table({
+    name: "recipes",
+    schema: Recipe
+  })
+  ```
+
+  This keeps the schema as a single source of truth, enforces types at compile time, and removes duplicate column definitions.
+- **Materializer hash checks:** Development builds compute hashes for materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
+
+  ```typescript
+  // This triggers warnings in development
+  const materializers = State.SQLite.materializers(events, {
+    todoCreated: (payload) => {
+      const id = nanoid()        // Non-pure: different ID each call
+      const timestamp = Date.now() // Non-pure: uses external state
+
+      return todos.insert({
+        id,
+        ...payload,
+        createdAt: timestamp,
+      })
+    },
+
+    // Pure materializer - no warnings
+    userRegistered: (payload) => users.insert(payload),
+  })
+  ```
+
+  Pure materializers ensure deterministic replay during sync, improve test reliability, and make debugging predictable.
+
+#### API & DX
+
+- `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
+- Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
+- Store shutdown calls now fail with `StoreAlreadyShutdownError` after shutdown to prevent misuse.
+- Exact optional property types are enabled, surfacing missing optional handling at compile time (#600).
+- Effect `Equal` and `Hash` implementations for `LiveQueryDef` and `SignalDef` improve comparisons.
+- Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).
+- Materializers receive each event's `clientId`, simplifying multi-client workflows (#574).
+
+#### Bug fixes
+
+##### Schema & Migration
 
 - Fix client document schema migration with optimistic decoding (#588)
-- Fix query builder method order to preserve where clauses (#586)
 - Fix race condition in schema migration initialization (#566)
 - Fix handling of optional fields without defaults in client documents (#487)
+
+##### Query & Caching
+
+- Fix query builder method order to preserve where clauses (#586)
 - Fix Symbol values in QueryCache key generation
-- Fix TypeScript build issues and examples restructuring
+
+##### SQLite & Storage
+
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups.
+
+##### Concurrency & Lifecycle
+
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
+
+##### TypeScript & Build
+
+- Fix TypeScript build issues and examples restructuring
 - Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
 
+#### Examples
+
+- **CF Chat:** A Cloudflare Durable Objects chat example demonstrates WebSocket sync, reactive message handling, and bot integrations across client React components and Durable Object services.
+
+#### Experimental features
+- LiveStore CLI for project scaffolding (experimental preview, not production-ready)
+
+#### Updated (peer) dependencies
+- Effect updated to 3.17.9
+- React updated to 19.1.0
+- Vite updated to 7.1.3
+- TypeScript 5.9.2 compatibility
+
 ### Internal Changes
+
+> Updates in this section are primarily relevant to maintainers and contributors. They cover infrastructure, tooling, and other non-user-facing work that supports the release.
 
 #### Testing Infrastructure
 - Comprehensive sync provider test suite with property-based testing
@@ -238,15 +239,6 @@ Key changes:
 - Fixed test setup issues and improved reliability (#583)
 
 This integration lays the foundation for future SQLite optimizations specific to LiveStore's event-sourcing and sync requirements.
-
-#### Experimental Features
-- LiveStore CLI for project scaffolding (experimental preview, not production-ready)
-
-### Dependencies
-- Effect updated to 3.17.9
-- Vite updated to 7.1.3
-- React updated to 19.0.0
-- TypeScript 5.9.2 compatibility
 
 ### Todo
 
