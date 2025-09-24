@@ -33,10 +33,10 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
 
-const DurableObjectBase = DurableObject as any as new (
+const DurableObjectBase = DurableObject<Env> as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
-) => CfTypes.DurableObject
+) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
@@ -99,13 +99,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
-    ctx: CfTypes.DurableObjectState
-    env: Env
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
-      this.ctx = ctx
-      this.env = env
 
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
