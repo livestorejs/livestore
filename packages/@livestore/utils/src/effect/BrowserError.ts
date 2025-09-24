@@ -228,7 +228,7 @@ export class UnknownError extends Schema.TaggedError<UnknownError>()('@livestore
   module: Schema.optional(Schema.String),
   method: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
-  cause: Schema.optional(Schema.Unknown),
+  cause: Schema.optional(Schema.Defect),
 }) {
   readonly [TypeId]: TypeId = TypeId
   get message(): string {
