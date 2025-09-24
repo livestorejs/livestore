@@ -84,6 +84,7 @@ Checklist:
 - Note which tests were run (or why none were needed).
 - Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
 - Keep CHANGELOG.md up to date with the changes in the PR according to `contributor-docs/changelog-guide.md`.
+- Make sure to apply appropriate labels. Don't create new labels, but only reuse existing ones.
 - After every substantial change (new commit, merge, or rebase), reread the PR title/body and refresh them before pushing or requesting review.
 - When possible, include demo evidence (logs, screenshots, CLI commands, or quick diagrams like Mermaid/ASCII) that demonstrates the change from a data-workflow perspective so reviewers can visualize the impact faster.
 

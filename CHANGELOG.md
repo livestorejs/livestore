@@ -23,6 +23,10 @@
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
 - **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51).
 
+### Fixes
+
+- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`).
+
 ### Breaking Changes
 
 - **`store.shutdown` API:** The shutdown method now returns an Effect instead of a Promise. Use `yield* store.shutdown()` inside Effects or `await store.shutdownPromise()` when a Promise is needed.

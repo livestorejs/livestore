@@ -17,7 +17,7 @@
     "@livestore/devtools-vite": "0.4.0-dev.8",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.9.2",
-    "vite": "^7.1.3",
+    "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.8"
   },
   "engines": {

@@ -39,8 +39,8 @@ const PERSISTENT_FILE_TYPES =
 // - 2 main databases (state + eventlog) × 4 files each (main, journal, WAL, shm) = 8 files
 // - Up to 5 SQLite temporary files (super-journal, temp DB, materializations,
 //   transient indices, VACUUM temp DB) = 5 files
-// - 3 old state databases after migrations for debugging during development = 3 files
-// - Safety buffer for future SQLite versions and unpredictable usage = 4 files
+// - Transient state database archival operations = 1 file
+// - Safety buffer for future SQLite versions and unpredictable usage = 6 files
 // Total: 20 files
 //
 // References:
@@ -90,6 +90,48 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     const path = this.#getPath(zName)
     const accessHandle = this.#mapPathToAccessHandle.get(path)!
     return this.#mapAccessHandleToName.get(accessHandle)!
+  }
+
+  /**
+   * Reads the SQLite payload (without the OPFS header) for the given file.
+   *
+   * @privateRemarks
+   *
+   * Since the file's access handle is a FileSystemSyncAccessHandle — which
+   * acquires an exclusive lock — we don't need to handle short reads as
+   * the file cannot be modified by other threads.
+   */
+  readFilePayload(zName: string): ArrayBuffer {
+    const path = this.#getPath(zName)
+    const accessHandle = this.#mapPathToAccessHandle.get(path)
+
+    if (accessHandle === undefined) {
+      throw new OpfsError({
+        path,
+        cause: new Error('Cannot read payload for untracked OPFS path'),
+      })
+    }
+
+    const fileSize = accessHandle.getSize()
+    if (fileSize <= HEADER_OFFSET_DATA) {
+      throw new OpfsError({
+        path,
+        cause: new Error(
+          `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
+        ),
+      })
+    }
+
+    const payloadSize = fileSize - HEADER_OFFSET_DATA
+    const payload = new Uint8Array(payloadSize)
+    const bytesRead = accessHandle.read(payload, { at: HEADER_OFFSET_DATA })
+    if (bytesRead !== payloadSize) {
+      throw new OpfsError({
+        path,
+        cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
+      })
+    }
+    return payload.buffer
   }
 
   resetAccessHandle(zName: string) {

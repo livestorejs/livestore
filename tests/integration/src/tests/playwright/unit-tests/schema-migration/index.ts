@@ -1,12 +1,15 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
+import { liveStoreStorageFormatVersion } from '@livestore/common'
 import { Effect, Logger, LogLevel, Queue, Schedule, Schema } from '@livestore/utils/effect'
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { schema } from '../schema.ts'
 import LiveStoreWorkerAlt from './livestore-alt.worker.ts?worker'
 import { schema as schemaAlt } from './schema-alt.ts'
+
+const storeId = 'migration-test'
 
 export const testMultipleMigrations = () =>
   Effect.gen(function* () {
@@ -33,7 +36,7 @@ export const testMultipleMigrations = () =>
           },
         })({
           schema,
-          storeId: 'migration-test',
+          storeId,
           devtoolsEnabled: false,
           bootStatusQueue,
           shutdown: () => Effect.void,
@@ -59,6 +62,7 @@ export const testMultipleMigrations = () =>
 
     return {
       migrationsCount,
+      archivedStateDbFiles: yield* Effect.promise(() => collectArchiveSnapshot()),
     }
   }).pipe(
     Effect.tapCauseLogPretty,
@@ -71,3 +75,33 @@ export const testMultipleMigrations = () =>
     Effect.scoped,
     Effect.runPromise,
   )
+
+const collectArchiveSnapshot = async () => {
+  const segments = [`livestore-${storeId}@${liveStoreStorageFormatVersion}`, 'archive']
+  if (segments.length === 0) return []
+
+  const root = await navigator.storage.getDirectory()
+  let handle: FileSystemDirectoryHandle = root
+
+  for (const segment of segments) {
+    try {
+      handle = await handle.getDirectoryHandle(segment)
+    } catch (error) {
+      if ((error as DOMException).name === 'NotFoundError') {
+        return []
+      }
+      throw error
+    }
+  }
+
+  const files: { name: string; size: number; lastModified: number }[] = []
+
+  for await (const entry of handle.values()) {
+    if (entry.kind !== 'file') continue
+    const fileHandle = await handle.getFileHandle(entry.name)
+    const file = await fileHandle.getFile()
+    files.push({ name: entry.name, size: file.size, lastModified: file.lastModified })
+  }
+
+  return files
+}
