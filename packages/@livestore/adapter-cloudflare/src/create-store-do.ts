@@ -1,38 +1,12 @@
-import type { UnexpectedError } from '@livestore/common'
-import { createStore, type LiveStoreSchema, provideOtel, type Store, type Unsubscribe } from '@livestore/livestore'
+import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import { Effect, Logger, LogLevel, Scope } from '@livestore/utils/effect'
 import type * as CfWorker from './cf-types.ts'
 import { makeAdapter } from './make-adapter.ts'
 
-declare class Response extends CfWorker.Response {}
-
-export type MakeDurableObjectClassOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> = {
-  schema: TSchema
-  // storeId: string
-  clientId: string
-  sessionId: string
-  onStoreReady?: (store: Store<TSchema>) => Effect.SyncOrPromiseOrEffect<void, UnexpectedError>
-  // makeStore?: (adapter: Adapter) => Promise<Store<TSchema>>
-  // onLiveStoreEvent?: (event: LiveStoreEvent.ForSchema<TSchema>) => Promise<void>
-  registerQueries?: (store: Store<TSchema>) => Effect.SyncOrPromiseOrEffect<ReadonlyArray<Unsubscribe>>
-  syncBackendUrl?: string
-  // Hook for custom request handling (e.g., testing endpoints)
-  handleCustomRequest?: (
-    request: CfWorker.Request,
-    ensureStore: Effect.Effect<Store<TSchema>, UnexpectedError, never>,
-  ) => Effect.SyncOrPromiseOrEffect<CfWorker.Response | undefined, UnexpectedError>
-}
-
 export type Env = {
   SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace
-}
-
-export type MakeDurableObjectClass = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>(
-  options: MakeDurableObjectClassOptions<TSchema>,
-) => {
-  new (ctx: CfWorker.DurableObjectState, env: Env): CfWorker.DurableObject & CfWorker.Rpc.DurableObjectBranded
 }
 
 /**
@@ -51,13 +25,24 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSche
   storage: CfWorker.DurableObjectStorage
   /** RPC stub pointing at the sync backend Durable Object used for replication. */
   syncBackendDurableObject: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
-  /** Durable Object identifier for the current instance, forwarded to the sync backend. */
+  /**
+   * Durable Object identifier for the current instance, forwarded to the sync backend.
+   *
+   * @example
+   * ```ts
+   * const durableObjectId = this.state.id.toString()
+   * ```
+   */
   durableObjectId: string
   /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
   bindingName: string
   /** Enables live pull mode to receive sync updates via Durable Object RPC callbacks. */
   livePull?: boolean
-  /** Clears existing Durable Object persistence before bootstrapping the store. */
+  /**
+   * Clears existing Durable Object persistence before bootstrapping the store.
+   *
+   * Note: Only use this for development purposes.
+   */
   resetPersistence?: boolean
 }
 
@@ -87,9 +72,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
           durableObjectContext: { bindingName, durableObjectId },
         }),
         livePull, // Uses DO RPC callbacks for reactive pull
-        // backend: makeHttpSync({ url: `http://localhost:8787`, livePull: { pollInterval: 500 } }),
         initialSyncOptions: { _tag: 'Blocking', timeout: 500 },
-        // backend: makeWsSyncProviderClient({ durableObject: syncBackendDurableObject }),
       },
     })
 
