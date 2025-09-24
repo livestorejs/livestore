@@ -39,30 +39,70 @@ export const isBrowserError = (u: unknown): u is BrowserError => Predicate.hasPr
 // [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error#standard_error_types)
 // [Specification](https://webidl.spec.whatwg.org/#dfn-simple-exception)
 
+/**
+ * Error for the web standard "EvalError" simple exception.
+ *
+ * Thrown when the `eval` function is used in a way that violates its usage restrictions.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Evalerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-evalerror | Specification}
+ */
 export class EvalError extends Schema.TaggedError<EvalError>()('@livestore/utils/Browser/EvalError', {
   cause: Schema.instanceOf(globalThis.EvalError),
 }) {
   readonly [TypeId]: TypeId = TypeId
 }
 
+/**
+ * Error for the web standard "RangeError" simple exception.
+ *
+ * Indicates that a numeric value is outside the permitted range.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Rangeerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-rangeerror | Specification}
+ */
 export class RangeError extends Schema.TaggedError<RangeError>()('@livestore/utils/Browser/RangeError', {
   cause: Schema.instanceOf(globalThis.RangeError),
 }) {
   readonly [TypeId]: TypeId = TypeId
 }
 
+/**
+ * Error for the web standard "ReferenceError" simple exception.
+ *
+ * Raised when code references an identifier that has not been defined.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Referenceerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-referenceerror | Specification}
+ */
 export class ReferenceError extends Schema.TaggedError<ReferenceError>()('@livestore/utils/Browser/ReferenceError', {
   cause: Schema.instanceOf(globalThis.ReferenceError),
 }) {
   readonly [TypeId]: TypeId = TypeId
 }
 
+/**
+ * Error for the web standard "TypeError" simple exception.
+ *
+ * Occurs when an operation is applied to a value of an inappropriate type.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Typeerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-typeerror | Specification}
+ */
 export class TypeError extends Schema.TaggedError<TypeError>()('@livestore/utils/Browser/TypeError', {
   cause: Schema.instanceOf(globalThis.TypeError),
 }) {
   readonly [TypeId]: TypeId = TypeId
 }
 
+/**
+ * Error for the web standard "URIError" simple exception.
+ *
+ * Signals incorrect usage of global URI handling functions such as `decodeURI` or `encodeURI`.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-urierror | Specification}
+ */
 export class URIError extends Schema.TaggedError<URIError>()('@livestore/utils/Browser/URIError', {
   cause: Schema.instanceOf(globalThis.URIError),
 }) {
@@ -87,6 +127,14 @@ const domExceptionWithName = (expectedName: string) =>
     ),
   )
 
+/**
+ * Error for the web standard "QuotaExceededError" DOMException-derived error.
+ *
+ * The quota has been exceeded.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/QuotaExceededError | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#quotaexceedederror | Specification}
+ */
 export class QuotaExceededError extends Schema.TaggedError<QuotaExceededError>()(
   '@livestore/utils/Browser/QuotaExceededError',
   {
@@ -110,6 +158,14 @@ export class QuotaExceededError extends Schema.TaggedError<QuotaExceededError>()
 // [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/DOMException#error_names)
 // [Specification](https://webidl.spec.whatwg.org/#idl-DOMException-error-names)
 
+/**
+ * Error for the web standard "NoModificationAllowedError" DOMException.
+ *
+ * The object can not be modified.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#nomodificationallowederror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#nomodificationallowederror | Specification}
+ */
 export class NoModificationAllowedError extends Schema.TaggedError<NoModificationAllowedError>()(
   '@livestore/utils/Browser/NoModificationAllowedError',
   {
@@ -120,6 +176,14 @@ export class NoModificationAllowedError extends Schema.TaggedError<NoModificatio
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "NotFoundError" DOMException
+ *
+ * The object can not be found here.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#notfounderror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#notfounderror | Specification}
+ */
 export class NotFoundError extends Schema.TaggedError<NotFoundError>()('@livestore/utils/Browser/NotFoundError', {
   cause: domExceptionWithName('NotFoundError'),
 }) {
@@ -127,6 +191,14 @@ export class NotFoundError extends Schema.TaggedError<NotFoundError>()('@livesto
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "NotAllowedError" DOMException
+ *
+ * The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#notallowederror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#notallowederror | Specification}
+ */
 export class NotAllowedError extends Schema.TaggedError<NotAllowedError>()('@livestore/utils/Browser/NotAllowedError', {
   cause: domExceptionWithName('NotAllowedError'),
 }) {
@@ -134,6 +206,14 @@ export class NotAllowedError extends Schema.TaggedError<NotAllowedError>()('@liv
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "TypeMismatchError" DOMException.
+ *
+ * The object can not be converted to the expected type.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#typemismatcherror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#typemismatcherror | Specification}
+ */
 export class TypeMismatchError extends Schema.TaggedError<TypeMismatchError>()(
   '@livestore/utils/Browser/TypeMismatchError',
   {
@@ -144,6 +224,14 @@ export class TypeMismatchError extends Schema.TaggedError<TypeMismatchError>()(
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "InvalidStateError" DOMException.
+ *
+ * The object is in an invalid state.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#invalidstateerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#invalidstateerror | Specification}
+ */
 export class InvalidStateError extends Schema.TaggedError<InvalidStateError>()(
   '@livestore/utils/Browser/InvalidStateError',
   {
@@ -154,6 +242,14 @@ export class InvalidStateError extends Schema.TaggedError<InvalidStateError>()(
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "AbortError" DOMException.
+ *
+ * The operation was aborted.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#aborterror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#aborterror | Specification}
+ */
 export class AbortError extends Schema.TaggedError<AbortError>()('@livestore/utils/Browser/AbortError', {
   cause: domExceptionWithName('AbortError'),
 }) {
@@ -161,6 +257,14 @@ export class AbortError extends Schema.TaggedError<AbortError>()('@livestore/uti
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "InvalidModificationError" DOMException.
+ *
+ * The object can not be modified in this way.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#invalidmodificationerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#invalidmodificationerror | Specification}
+ */
 export class InvalidModificationError extends Schema.TaggedError<InvalidModificationError>()(
   '@livestore/utils/Browser/InvalidModificationError',
   {
@@ -171,6 +275,14 @@ export class InvalidModificationError extends Schema.TaggedError<InvalidModifica
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "SecurityError" DOMException.
+ *
+ * The operation is insecure.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#securityerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#securityerror | Specification}
+ */
 export class SecurityError extends Schema.TaggedError<SecurityError>()('@livestore/utils/Browser/SecurityError', {
   cause: domExceptionWithName('SecurityError'),
 }) {
@@ -178,6 +290,14 @@ export class SecurityError extends Schema.TaggedError<SecurityError>()('@livesto
   readonly message = this.cause.message
 }
 
+/**
+ * Error for the web standard "DataCloneError" DOMException.
+ *
+ * The object can not be cloned.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#datacloneerror | MDN Reference}
+ * @see {@link https://webidl.spec.whatwg.org/#datacloneerror | Specification}
+ */
 export class DataCloneError extends Schema.TaggedError<DataCloneError>()('@livestore/utils/Browser/DataCloneError', {
   cause: domExceptionWithName('DataCloneError'),
 }) {
@@ -335,6 +455,12 @@ export const BrowserError: Schema.Union<
   UnknownError,
 )
 
+/**
+ * Constructor type for any `BrowserError` variant exposed by the schema union.
+ *
+ * Useful when constraining APIs (e.g. `parseBrowserError`) to accept only
+ * specific browser error constructors while preserving their instance types.
+ */
 type BrowserErrorConstructor = (typeof BrowserError.members)[number]
 
 /**
