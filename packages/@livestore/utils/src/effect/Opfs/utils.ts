@@ -55,6 +55,34 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (
   )
 })
 
+/**
+ * Create a directory at `path`. You can optionally specify whether to recursively create nested directories.
+ */
+export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(function* (
+  path: string,
+  options?: { readonly recursive?: boolean },
+) {
+  const recursive = options?.recursive ?? false
+  const pathSegments = path.split('/').filter((segment) => segment.length > 0)
+
+  const opfs = yield* Opfs
+  const rootDirHandle = yield* opfs.getRootDirectoryHandle
+
+  let currentDirHandle = rootDirHandle
+  yield* Effect.forEach(pathSegments, (segment, index) =>
+    Effect.gen(function* () {
+      const isLastSegment = index === pathSegments.length - 1
+      const shouldCreate = recursive || isLastSegment
+
+      currentDirHandle = yield* opfs.getDirectoryHandle(
+        currentDirHandle,
+        segment,
+        shouldCreate ? { create: true } : undefined,
+      )
+    }),
+  )
+})
+
 export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(function* (handle: FileSystemFileHandle) {
   const opfs = yield* Opfs
 
@@ -98,6 +126,32 @@ export const moveFile = Effect.fn('@livestore/utils:Opfs.moveFile')(function* (
       const destHandle = yield* copyFile(sourceFile, destDir, destName)
       yield* opfs.removeEntry(sourceDir, sourceFile.name)
       return destHandle
+    }),
+  )
+})
+
+/**
+ * Write data to a file at `path`, replacing the file if it already exists.
+ */
+export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
+  const pathSegments = path.split('/').filter((segment) => segment.length > 0)
+  const fileName = pathSegments.pop()
+
+  const opfs = yield* Opfs
+
+  return yield* Effect.scoped(
+    Effect.gen(function* () {
+      let parentDirHandle = yield* opfs.getRootDirectoryHandle
+      for (const segment of pathSegments) {
+        parentDirHandle = yield* opfs.getDirectoryHandle(parentDirHandle, segment)
+      }
+
+      // TODO: Fail with an error if fileName is undefined or properly parse the path to handle such cases.
+      const fileHandle = yield* opfs.getFileHandle(parentDirHandle, fileName ?? '', { create: true })
+
+      yield* opfs.writeFile(fileHandle, new Uint8Array(data), {
+        keepExistingData: false,
+      })
     }),
   )
 })

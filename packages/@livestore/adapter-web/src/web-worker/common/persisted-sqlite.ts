@@ -168,15 +168,15 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       const fileName = path.startsWith('/') ? path.slice(1) : path
 
       if (isDev) {
-        archiveDirHandle = yield* ensureArchiveDirectory(opfsDirectory)
+        yield* Opfs.makeDirectory(`${opfsDirectory}/archive`)
 
-        const archivedFileName = yield* archiveStateDbFile({
-          vfs,
-          fileName,
-          archiveDirHandle,
-        })
+        const archiveFileData = vfs.readFilePayload(fileName)
 
-        archivedFileNames.push(archivedFileName)
+        const archiveFileName = `${Date.now()}-${fileName}`
+
+        yield* Opfs.writeFile(`${opfsDirectory}/archive/${archiveFileName}`, new Uint8Array(archiveFileData))
+
+        archivedFileNames.push(archiveFileName)
       }
 
       const vfsResultCode = yield* Effect.try({
@@ -218,81 +218,6 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
         cause: error,
       }),
   ),
-)
-
-const ensureArchiveDirectory = Effect.fn('@livestore/adapter-web:ensureArchiveDirectory')((opfsDirectory: string) =>
-  Effect.tryPromise({
-    try: async () => {
-      const root = await OpfsUtils.rootHandlePromise
-      const segments = [...opfsDirectory.split('/').filter(Boolean), 'archive']
-
-      let handle = root
-      for (const segment of segments) {
-        handle = await handle.getDirectoryHandle(segment, { create: true })
-      }
-
-      return handle
-    },
-    catch: (cause) => new ArchiveStateDbError({ message: 'Failed to ensure archive directory', cause }),
-  }),
-)
-
-const archiveStateDbFile = Effect.fn('@livestore/adapter-web:archiveStateDbFile')(
-  ({
-    vfs,
-    fileName,
-    archiveDirHandle,
-  }: {
-    vfs: WebDatabaseMetadataOpfs['vfs']
-    fileName: string
-    archiveDirHandle: FileSystemDirectoryHandle
-  }) =>
-    Effect.gen(function* () {
-      const payload = vfs.readFilePayload(fileName)
-
-      const archiveFileName = `${Date.now()}-${fileName}`
-
-      const archiveFileHandle = yield* Effect.tryPromise({
-        try: () => archiveDirHandle.getFileHandle(archiveFileName, { create: true }),
-        catch: (cause) =>
-          new ArchiveStateDbError({
-            message: 'Failed to open archive file handle',
-            fileName: archiveFileName,
-            cause,
-          }),
-      })
-
-      const accessHandle = yield* Effect.acquireRelease(
-        Effect.tryPromise({
-          try: () => archiveFileHandle.createSyncAccessHandle(),
-          catch: (cause) =>
-            new ArchiveStateDbError({
-              message: 'Failed to create sync access handle for archived file',
-              fileName: archiveFileName,
-              cause,
-            }),
-        }),
-        (handle) => Effect.sync(() => handle.close()).pipe(Effect.ignoreLogged),
-      )
-
-      yield* Effect.try({
-        try: () => {
-          if (payload.byteLength > 0) {
-            accessHandle.write(payload, { at: 0 })
-          }
-          accessHandle.truncate(payload.byteLength)
-          accessHandle.flush()
-        },
-        catch: (cause) =>
-          new ArchiveStateDbError({
-            message: 'Failed to write archived state database',
-            fileName: archiveFileName,
-            cause,
-          }),
-      })
-
-      return archiveFileName
-    }),
 )
 
 const pruneArchiveDirectory = ({
