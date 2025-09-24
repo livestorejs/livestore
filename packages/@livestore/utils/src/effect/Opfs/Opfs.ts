@@ -7,8 +7,8 @@ import { Effect, Option, Schema } from '../index.ts'
  * Effect service that exposes ergonomic wrappers around Origin Private File System (OPFS) operations.
  *
  * @remarks
- * - Async helpers mirror the File System Access API and convert failures into `BrowserError` variants.
- * - Sync access handle helpers require a dedicated worker; invoking them in other contexts fails at runtime.
+ * - Helpers mirror the File System Access API where possible and parse browser exceptions into Effect errors.
+ * - Sync access handle helpers can only be used in dedicated workers; invoking them in other contexts fails at runtime.
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
  */
