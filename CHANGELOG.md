@@ -6,7 +6,7 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
-## 0.4.0
+## 0.4.0 (Unreleased)
 
 > For v0.4.0 features, see the development documentation at [dev.docs.livestore.dev](https://dev.docs.livestore.dev) which includes the latest documentation.
 
@@ -115,6 +115,10 @@ Pure materializers are essential for:
 ### New Examples
 
 - **CF Chat**: Real-time chat application showcasing LiveStore's Cloudflare Durable Objects adapter with WebSocket synchronization, reactive message handling, and bot interactions. Demonstrates both client-side React components and server-side Durable Object integration.
+
+### Fixes
+
+- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`).
 
 ### Breaking Changes
 
