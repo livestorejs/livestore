@@ -1,4 +1,5 @@
 import { UnexpectedError } from '@livestore/common'
+import type { HelperTypes } from '@livestore/common-cf'
 import type { Schema } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import type { CfTypes, SearchParams } from '../common/mod.ts'
@@ -7,35 +8,6 @@ import { type Env, matchSyncRequest } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Response extends CfDeclare.Response {}
-
-export namespace HelperTypes {
-  type AnyDON = CfTypes.DurableObjectNamespace<any>
-
-  type DOKeys<T> = {
-    [K in keyof T]-?: T[K] extends AnyDON ? K : never
-  }[keyof T]
-
-  type NonBuiltins<T> = Omit<T, keyof Env>
-
-  /**
-   * Helper type to extract DurableObject keys from Env to give consumer type safety.
-   *
-   * @example
-   * ```ts
-   *  type PlatformEnv = {
-   *    DB: D1Database
-   *    ADMIN_TOKEN: string
-   *    SYNC_BACKEND_DO: DurableObjectNamespace<SyncBackendDO>
-   * }
-   *  export default makeWorker<PlatformEnv>({
-   *    syncBackendBinding: 'SYNC_BACKEND_DO',
-   *    // ^ (property) syncBackendBinding: "SYNC_BACKEND_DO"
-   *  });
-   */
-  export type ExtractDurableObjectKeys<TEnv = Env> = DOKeys<NonBuiltins<TEnv>> extends never
-    ? string
-    : DOKeys<NonBuiltins<TEnv>>
-}
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
 export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined> = {

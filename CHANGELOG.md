@@ -27,6 +27,7 @@ The adapter supports:
 - Hibernatable architecture to minimize compute costs
 - Direct integration with the Cloudflare sync provider
 - Explicit configuration of the sync Durable Object binding (`syncBackendBinding`) so production workers never rely on defaults
+- Simplified `createStoreDo` API by grouping Durable Object context (`state`, `env`, `bindingName`) and the sync backend stub for clearer setup
 
 See the [Cloudflare adapter documentation](https://dev.docs.livestore.dev/reference/platform-adapters/cloudflare-durable-object-adapter/) for setup instructions.
 

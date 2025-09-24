@@ -130,7 +130,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
     if (shouldRecreate) {
       if (this.cachedStore !== undefined) {
-        await this.cachedStore.shutdown()
+        await this.cachedStore.shutdownPromise()
       }
 
       const buildStore = () =>
@@ -139,10 +139,8 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
           storeId,
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
-          storage: this.ctx.storage,
-          syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-          durableObjectId: this.ctx.id.toString(),
-          bindingName: 'TEST_STORE_DO',
+          durableObject: { ctx: this.ctx as CfTypes.DurableObjectState, env: this.env, bindingName: 'TEST_STORE_DO' },
+          syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
 

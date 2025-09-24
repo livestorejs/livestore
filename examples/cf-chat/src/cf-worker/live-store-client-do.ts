@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+import type { CfTypes } from '@livestore/sync-cf/common'
 import { events, schema, tables } from '../livestore/schema.ts'
 import type { Env } from './shared.ts'
 import { storeIdFromRequest } from './shared.ts'
@@ -63,10 +64,8 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObjectId: this.ctx.id.toString(),
-      bindingName: 'CLIENT_DO',
-      storage: this.ctx.storage,
-      syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      durableObject: { ctx: this.ctx as CfTypes.DurableObjectState, env: this.env, bindingName: 'CLIENT_DO' },
+      syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
 

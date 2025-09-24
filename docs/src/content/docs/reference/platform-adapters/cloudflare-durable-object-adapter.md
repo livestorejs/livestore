@@ -123,10 +123,12 @@ export class LiveStoreClientDO extends DurableObject implements ClientDoWithRpcC
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObjectId: this.state.id.toString(),
-      bindingName: 'CLIENT_DO',
-      storage: this.state.storage,
-      syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(
+      durableObject: {
+        ctx: this.state as CfTypes.DurableObjectState,
+        env: this.env,
+        bindingName: 'CLIENT_DO',
+      },
+      syncBackendStub: this.env.SYNC_BACKEND_DO.get(
         this.env.SYNC_BACKEND_DO.idFromName(storeId)
       ),
       livePull: true, // Enable real-time updates
@@ -211,10 +213,11 @@ Creates a LiveStore instance within a Durable Object.
 - `storeId` - Unique identifier for the store
 - `clientId` - Client identifier
 - `sessionId` - Session identifier (use `nanoid()`)
-- `durableObjectId` - Durable Object ID as string
-- `bindingName` - Name of the client DO binding
-- `storage` - Durable Object storage instance
-- `syncBackendDurableObject` - Sync backend DO stub
+- `durableObject` - Context about the Durable Object hosting the store:
+  - `state` - Durable Object state handle (e.g. `this.ctx`)
+  - `env` - Environment bindings for the Durable Object
+  - `bindingName` - Name other workers use to reach this Durable Object
+- `syncBackendStub` - Durable Object stub used to reach the sync backend
 - `livePull` - Enable real-time updates (default: `false`)
 - `resetPersistence` - Drop LiveStore state/eventlog persistence before booting (development-only, default: `false`)
 
@@ -261,10 +264,12 @@ const store = await createStoreDoPromise({
   storeId,
   clientId: 'client-do',
   sessionId: nanoid(),
-  durableObjectId: this.state.id.toString(),
-  bindingName: 'CLIENT_DO',
-  storage: this.state.storage,
-  syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(
+  durableObject: {
+    state: this.state,
+    env: this.env,
+    bindingName: 'CLIENT_DO',
+  },
+  syncBackendStub: this.env.SYNC_BACKEND_DO.get(
     this.env.SYNC_BACKEND_DO.idFromName(storeId)
   ),
   livePull: true,

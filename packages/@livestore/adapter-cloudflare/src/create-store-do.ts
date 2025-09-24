@@ -1,3 +1,4 @@
+import type { HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
@@ -6,13 +7,10 @@ import type * as CfWorker from './cf-types.ts'
 import { makeAdapter } from './make-adapter.ts'
 
 export type Env = {
-  SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace
+  SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace<CfSyncBackend.SyncBackendRpcInterface>
 }
 
-/**
- * Options used to initialize the LiveStore Durable Object runtime.
- */
-export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> = {
+export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> = {
   /** LiveStore schema that defines state, migrations, and validators. */
   schema: TSchema
   /** Logical identifier for the store instance persisted inside the Durable Object. */
@@ -21,22 +19,22 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSche
   clientId: string
   /** Identifier for the LiveStore session running inside the Durable Object. */
   sessionId: string
-  /** Cloudflare Durable Object storage binding backing the local SQLite files. */
-  storage: CfWorker.DurableObjectStorage
+  /** Runtime details about the Durable Object this store runs inside. Needed for sync backend to call back to this instance. */
+  durableObject: {
+    /** Durable Object state handle (e.g. `this.ctx`). */
+    ctx: TState
+    /** Environment bindings associated with the Durable Object. */
+    env: TEnv
+    /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
+    bindingName: HelperTypes.ExtractDurableObjectKeys<NoInfer<TEnv>>
+  }
   /** RPC stub pointing at the sync backend Durable Object used for replication. */
-  syncBackendDurableObject: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
+  syncBackendStub: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
   /**
-   * Durable Object identifier for the current instance, forwarded to the sync backend.
+   * Enables live pull mode to receive sync updates via Durable Object RPC callbacks.
    *
-   * @example
-   * ```ts
-   * const durableObjectId = this.state.id.toString()
-   * ```
+   * @default false
    */
-  durableObjectId: string
-  /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
-  bindingName: string
-  /** Enables live pull mode to receive sync updates via Durable Object RPC callbacks. */
   livePull?: boolean
   /**
    * Clears existing Durable Object persistence before bootstrapping the store.
@@ -46,19 +44,25 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema = LiveStoreSche
   resetPersistence?: boolean
 }
 
-export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>({
+// TODO Also support in Cloudflare workers outside of a durable object context.
+export const createStoreDo = <
+  TSchema extends LiveStoreSchema,
+  TEnv,
+  TState extends CfWorker.DurableObjectState = CfWorker.DurableObjectState,
+>({
   schema,
   storeId,
   clientId,
   sessionId,
-  storage,
-  syncBackendDurableObject,
-  durableObjectId,
-  bindingName,
+  durableObject,
+  syncBackendStub,
   livePull = false,
   resetPersistence = false,
-}: CreateStoreDoOptions<TSchema>) =>
+}: CreateStoreDoOptions<TSchema, TEnv, TState>) =>
   Effect.gen(function* () {
+    const { ctx, bindingName } = durableObject
+    const storage = ctx.storage
+    const durableObjectId = ctx.id.toString()
     const scope = yield* Scope.make()
 
     const adapter = makeAdapter({
@@ -68,7 +72,7 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
       resetPersistence,
       syncOptions: {
         backend: makeDoRpcSync({
-          syncBackendStub: syncBackendDurableObject,
+          syncBackendStub,
           durableObjectContext: { bindingName, durableObjectId },
         }),
         livePull, // Uses DO RPC callbacks for reactive pull
@@ -79,8 +83,12 @@ export const createStoreDo = <TSchema extends LiveStoreSchema = LiveStoreSchema.
     return yield* createStore({ schema, adapter, storeId }).pipe(Scope.extend(scope), provideOtel({}))
   })
 
-export const createStoreDoPromise = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any>(
-  options: CreateStoreDoOptions<TSchema>,
+export const createStoreDoPromise = <
+  TSchema extends LiveStoreSchema,
+  TEnv,
+  TState extends CfWorker.DurableObjectState = CfWorker.DurableObjectState,
+>(
+  options: CreateStoreDoOptions<TSchema, TEnv, TState>,
 ) =>
   createStoreDo(options).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
