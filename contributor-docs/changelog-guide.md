@@ -63,9 +63,9 @@ Use the following order inside the Changes section to keep entries easy to scan.
 3. Core Runtime & Storage.
 4. APIs & DX.
 5. Bug Fixes.
-6. Examples.
-7. Experimental features.
-8. Dependencies.
+6. Examples / Documentation.
+7. Dependencies.
+8. Experimental features (optional).
 
 When listing Bug Fixes, group items by area.
 
