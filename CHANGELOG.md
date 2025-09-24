@@ -107,7 +107,7 @@ The `@livestore/sync-cf` package has been rewritten to offer three first-party t
 
 Key improvements include streaming pull operations (faster initial sync), a two-phase sync (bulk transfer followed by real-time updates), improved error recovery, and comprehensive test coverage.
 
-#### General
+#### Core Runtime & Storage
 
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
 
@@ -160,33 +160,47 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).
 - Materializers receive each event's `clientId`, simplifying multi-client workflows (#574).
 
+#### Bug fixes
+
+##### Schema & Migration
+
+- Fix client document schema migration with optimistic decoding (#588)
+- Fix race condition in schema migration initialization (#566)
+- Fix handling of optional fields without defaults in client documents (#487)
+
+##### Query & Caching
+
+- Fix query builder method order to preserve where clauses (#586)
+- Fix Symbol values in QueryCache key generation
+
+##### SQLite & Storage
+
+- Fix in-memory SQLite database connection handling in Expo adapter
+- Fix OPFS file pool capacity exhaustion from old state databases (#569)
+- Upgrade wa-sqlite to SQLite 3.50.4 (#581)
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups.
+
+##### Concurrency & Lifecycle
+
+- Fix correct type assertion in withLock function
+- Fix finalizers execution order (#450)
+
+##### TypeScript & Build
+
+- Fix TypeScript build issues and examples restructuring
+- Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
+
 #### Examples
 
 - **CF Chat:** A Cloudflare Durable Objects chat example demonstrates WebSocket sync, reactive message handling, and bot integrations across client React components and Durable Object services.
 
-#### Bug fixes
-
-- Fix client document schema migration with optimistic decoding (#588)
-- Fix query builder method order to preserve where clauses (#586)
-- Fix race condition in schema migration initialization (#566)
-- Fix handling of optional fields without defaults in client documents (#487)
-- Fix Symbol values in QueryCache key generation
-- Fix TypeScript build issues and examples restructuring
-- Fix in-memory SQLite database connection handling in Expo adapter
-- Fix OPFS file pool capacity exhaustion from old state databases (#569)
-- Upgrade wa-sqlite to SQLite 3.50.4 (#581)
-- Fix correct type assertion in withLock function
-- Fix finalizers execution order (#450)
-- Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
-- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups.
-
 #### Experimental features
 - LiveStore CLI for project scaffolding (experimental preview, not production-ready)
 
-#### Dependencies
+#### Updated (peer) dependencies
 - Effect updated to 3.17.9
-- Vite updated to 7.1.3
 - React updated to 19.1.0
+- Vite updated to 7.1.3
 - TypeScript 5.9.2 compatibility
 
 ### Internal Changes

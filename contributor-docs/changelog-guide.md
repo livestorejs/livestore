@@ -21,7 +21,7 @@ The changelog should meet the goals of an application developer as follows:
 
 - Track every user-facing change in `CHANGELOG.md` and keep the upcoming release section current.
 - Preserve an immutable history for past releases—only adjust sealed sections for editorial tweaks such as typo fixes or refreshed documentation links.
-- Describe only the delta between consecutive versions; avoid logging intermediate commits toward the same version.
+- Describe only the delta between consecutive versions. Avoid logging intermediate commits toward the same version.
 - Lead with a concise summary of major highlights, followed immediately by explicit breaking change callouts.
 - Use a functional structure for the main changes section—group updates by areas such as platform adapters, sync providers, core runtime, tooling, or documentation.
 - Preface the upcoming release section with a short note pointing to the development docs and summarising how to install the dev build.
@@ -45,14 +45,35 @@ The changelog should meet the goals of an application developer as follows:
 
 ## Release Layout
 
-1. **Highlights** – A short subsection summarising the most important changes (usually 3–5 bullet points). Each bullet should mention the impacted surface and link to additional detail below.
-2. **Breaking Changes** – Dedicated subsection describing required migrations or behavioural shifts. Provide actionable guidance for library users.
-3. **Changes** – The primary body of the release notes. Organise subsections by user-facing functionality (for example Platform Adapters, Sync Providers, Core Packages, Tooling, Documentation) so readers can scan the areas they care about. Within each subsection, list changes with links to the relevant issues/PRs.
-4. **Internal Changes** – Deep technical context, internal refactors, or operational guidance for maintainers and contributors. Keep this as the final section so they can dive into implementation details, rationale, and follow-up actions.
+1. **Highlights:** A short subsection summarising the most important changes (usually 3 to 5 bullet points). Each bullet should mention the impacted surface and link to additional detail below.
+2. **Breaking Changes:** Dedicated subsection describing required migrations or behavioural shifts. Provide actionable guidance for library users.
+3. **Changes:** The primary body of the release notes. Organise subsections by user-facing functionality (for example Platform Adapters, Sync Providers, Core Packages, Tooling, Documentation) so readers can scan the areas they care about. Within each subsection, list changes with links to the relevant issues/PRs.
+4. **Internal Changes:** Deep technical context, internal refactors, or operational guidance for maintainers and contributors. Keep this as the final section so they can dive into implementation details, rationale, and follow-up actions.
 
 When adding new content, keep the subsections in this order and avoid inserting other categories above Highlights or Breaking Changes.
 
 For the **Internal Changes** section, open with a short sentence that makes clear the content targets maintainers and contributors, then group items by theme (tooling, infrastructure, migrations).
+
+### Changes Subsection Structure
+
+Use the following order inside the Changes section to keep entries easy to scan.
+
+1. Platform Adapters.
+2. Sync Providers.
+3. Core Runtime & Storage.
+4. APIs & DX.
+5. Bug Fixes.
+6. Examples.
+7. Experimental features.
+8. Dependencies.
+
+When listing Bug Fixes, group items by area.
+
+- Schema & Migration.
+- Query & Caching.
+- SQLite & Storage.
+- Concurrency & Lifecycle.
+- TypeScript & Build.
 
 ## Highlight Selection
 
@@ -67,7 +88,7 @@ For the **Internal Changes** section, open with a short sentence that makes clea
 
 ## Breaking Changes
 
-- Document each breaking change with a clear before/after comparison. Use code snippets when possible; fall back to concise text when code is not applicable.
+- Document each breaking change with a clear before/after comparison. Use code snippets when possible. Fall back to concise text when code is not applicable.
 - Call out migration steps so application developers know exactly how to adapt their code.
 - Keep each item scoped to a single behavioural change and link to the supporting PR or documentation.
 
@@ -90,6 +111,12 @@ For the **Internal Changes** section, open with a short sentence that makes clea
 - Avoid vague benefit statements (for example “streamlines everyday usage”). Explain the concrete behaviour or capability that changed so developers know what to adopt. Use established acronyms (like DX) when they keep the bullet concise without losing clarity. Skip filler phrases (for example “day-to-day workflows”) and focus on the specific capability delivered.
 - Maintain a neutral, technical, factual tone aimed at application developers consuming an open-source library, and avoid marketing or celebratory phrasing.
 - Apply consistent heading formatting, tense rules, and reference style across the release notes.
+
+### Punctuation
+
+- Avoid semicolons and en dashes (–) in prose. Prefer full stops.
+- For ranges, write “to” (for example “3 to 5”).
+- For asides, prefer short sentences or parentheses instead of dashes.
 
 ### Examples
 
