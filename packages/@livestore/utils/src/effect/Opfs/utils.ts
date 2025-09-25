@@ -41,6 +41,22 @@ const parsePathSegments = (path: string) =>
   })
 
 /**
+ * Determine whether the provided OPFS path refers to the origin root.
+ */
+const isRootPath = (path: string) => path === '' || path === '/'
+
+/**
+ * Split a set of path segments into parent and leaf portions.
+ *
+ * @param segments - Non-empty sequence of path segments pointing to a concrete entry.
+ * @returns Parent directory segments and the final segment representing the target entry.
+ */
+const splitPathSegments = (segments: ReadonlyArray<string>) => ({
+  parentSegments: segments.slice(0, -1),
+  leafSegment: segments[segments.length - 1]!,
+})
+
+/**
  * Resolve a directory path from the OPFS root and return the final directory handle.
  *
  * @param segments - Ordered list of directory names to follow.
@@ -96,6 +112,11 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
   path: string,
   options?: FileSystemGetDirectoryOptions,
 ) {
+  if (isRootPath(path)) {
+    const opfs = yield* Opfs
+    return yield* opfs.getRootDirectoryHandle
+  }
+
   const pathSegments = yield* parsePathSegments(path)
   return yield* traverseDirectoryPath(pathSegments, options)
 })
@@ -111,11 +132,22 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   options?: { readonly recursive?: boolean },
 ) {
   const recursive = options?.recursive ?? false
-  const pathSegments = yield* parsePathSegments(path)
-  const targetName = pathSegments[pathSegments.length - 1]!
-  const parentSegments = pathSegments.slice(0, -1)
-
   const opfs = yield* Opfs
+
+  if (isRootPath(path)) {
+    const rootHandle = yield* opfs.getRootDirectoryHandle
+    const entries = yield* opfs.listEntries(rootHandle)
+
+    for (const entry of entries) {
+      // Clearing the root implies removing every entry recursively.
+      yield* opfs.removeEntry(rootHandle, entry.name, { recursive: true })
+    }
+
+    return
+  }
+
+  const pathSegments = yield* parsePathSegments(path)
+  const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
 
   yield* opfs.removeEntry(parentDirHandle, targetName, { recursive })
@@ -128,9 +160,10 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
  * @returns `true` if the path resolves to a file or directory, otherwise `false`.
  */
 export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path: string) {
+  if (isRootPath(path)) return true
+
   const pathSegments = yield* parsePathSegments(path)
-  const targetName = pathSegments[pathSegments.length - 1]!
-  const parentSegments = pathSegments.slice(0, -1)
+  const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
 
   const opfs = yield* Opfs
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments, { create: false }).pipe(
@@ -157,6 +190,9 @@ export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(fu
   options?: { readonly recursive?: boolean },
 ) {
   const recursive = options?.recursive ?? false
+
+  if (isRootPath(path)) return
+
   const pathSegments = yield* parsePathSegments(path)
 
   yield* ensureDirectoryPath(pathSegments, { recursive })
@@ -188,9 +224,14 @@ export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(functi
  * @param data - Bytes to persist.
  */
 export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
+  if (isRootPath(path)) {
+    return yield* new OpfsError({
+      message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
+    })
+  }
+
   const pathSegments = yield* parsePathSegments(path)
-  const fileName = pathSegments[pathSegments.length - 1]!
-  const parentSegments = pathSegments.slice(0, -1)
+  const { parentSegments, leafSegment: fileName } = splitPathSegments(pathSegments)
 
   return yield* Effect.scoped(
     Effect.gen(function* () {
