@@ -1,4 +1,4 @@
-import { Effect } from '../index.ts'
+import { Effect } from 'effect'
 import { Opfs, OpfsError } from './Opfs.ts'
 
 /**

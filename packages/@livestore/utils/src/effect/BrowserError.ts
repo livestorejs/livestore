@@ -1,4 +1,4 @@
-import { Either, ParseResult, Predicate, Schema } from './index.ts'
+import { Either, ParseResult, Predicate, Schema } from 'effect'
 
 /**
  * Unique identifier for browser errors.

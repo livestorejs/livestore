@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
+import { Effect, Option, Schema } from 'effect'
 import * as Browser from '../BrowserError.ts'
-import { Effect, Option, Schema } from '../index.ts'
 
 /**
  * Effect service that exposes ergonomic wrappers around Origin Private File System (OPFS) operations.
