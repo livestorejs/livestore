@@ -33,8 +33,6 @@ import {
   WorkerError,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-
-import * as OpfsUtils from '../../opfs-utils.ts'
 import {
   readPersistedStateDbFromClientSession,
   resetPersistedDataFromClientSession,
@@ -47,7 +45,7 @@ import { loadSqlite3 } from './sqlite-loader.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    opfs: OpfsUtils,
+    opfs: Opfs.debugUtils,
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }

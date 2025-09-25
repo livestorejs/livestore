@@ -17,6 +17,7 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Opfs,
   OtelTracer,
   Scheduler,
   type Schema,
@@ -26,7 +27,6 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import * as OpfsUtils from '../../opfs-utils.ts'
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
@@ -42,7 +42,7 @@ export type WorkerOptions = {
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    opfs: OpfsUtils,
+    opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
@@ -94,6 +94,7 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
+          Effect.provide(Opfs.Opfs.Default),
           Effect.provide(
             WebmeshWorker.CacheService.layer({ nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }) }),
           ),
