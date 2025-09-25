@@ -13,7 +13,7 @@ import * as Browser from '../BrowserError.ts'
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
  */
 export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
-  effect: Effect.gen(function* () {
+  sync: () => {
     /**
      * Acquire the OPFS root directory handle.
      *
@@ -421,8 +421,37 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       syncGetSize,
       syncFlush,
     } as const
-  }),
+  },
+  accessors: true,
 }) {}
+
+const notFoundError = new Browser.NotFoundError({
+  cause: new DOMException('The object can not be found here.', 'NotFoundError'),
+})
+
+const unknownError = (message: string) => new Browser.UnknownError({ description: message })
+
+/**
+ * A no-op Opfs service that can be used for testing.
+ */
+export const noopOpfs = new Opfs({
+  getRootDirectoryHandle: Effect.fail(unknownError('OPFS is not supported in this environment')),
+  getFileHandle: () => Effect.fail(notFoundError),
+  getDirectoryHandle: () => Effect.fail(notFoundError),
+  removeEntry: () => Effect.fail(notFoundError),
+  listEntries: () => Effect.succeed([]),
+  resolve: () => Effect.succeed(Option.none()),
+  getFile: () => Effect.fail(notFoundError),
+  writeFile: () => Effect.fail(notFoundError),
+  appendToFile: () => Effect.fail(notFoundError),
+  truncateFile: () => Effect.fail(notFoundError),
+  createSyncAccessHandle: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  syncRead: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  syncWrite: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  syncTruncate: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  syncGetSize: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  syncFlush: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+})
 
 /**
  * Error raised when OPFS operations fail.

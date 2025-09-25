@@ -27,24 +27,24 @@ export const readPersistedStateDbFromClientSession: (args: {
     | BrowserError.NotFoundError
     | BrowserError.NotAllowedError
     | BrowserError.TypeMismatchError
-    | BrowserError.SecurityError,
+    | BrowserError.SecurityError
+    | Opfs.OpfsError,
     Opfs.Opfs
   >
 > = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
   function* ({ storageOptions, storeId, schema }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
-    const opfs = yield* Opfs.Opfs
     const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
 
-    const entries = yield* opfs.listEntries(accessHandlePoolDirHandle)
+    const entries = yield* Opfs.Opfs.listEntries(accessHandlePoolDirHandle)
     const fileHandles = entries.filter((entry) => entry.kind === 'file').map((entry) => entry.handle)
 
     const stateDbFileName = `/${getStateDbFileName(schema)}`
 
     let stateDbFile: File | undefined
     for (const fileHandle of fileHandles) {
-      const file = yield* opfs.getFile(fileHandle)
+      const file = yield* Opfs.Opfs.getFile(fileHandle)
       const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
       if (fileName !== stateDbFileName) {
         stateDbFile = file
@@ -217,10 +217,8 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   archiveDirectory: string
   keep: number
 }) {
-  const opfs = yield* Opfs.Opfs
-
   const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
-  const entries = yield* opfs.listEntries(archiveDirHandle)
+  const entries = yield* Opfs.Opfs.listEntries(archiveDirHandle)
   const files = entries.filter((entry) => entry.kind === 'file')
   const filesWithMetadata = yield* Effect.forEach(files, (file) => Opfs.getMetadata(file.handle))
   const sortedFilesWithMetadata = filesWithMetadata.sort((a, b) => b.lastModified - a.lastModified)
@@ -228,7 +226,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   const retained = sortedFilesWithMetadata.slice(0, keep)
   const toDelete = sortedFilesWithMetadata.slice(keep)
 
-  yield* Effect.forEach(toDelete, ({ name }) => opfs.removeEntry(archiveDirHandle, name))
+  yield* Effect.forEach(toDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
 
   return {
     retained,

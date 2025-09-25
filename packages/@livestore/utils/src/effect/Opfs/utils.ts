@@ -64,12 +64,11 @@ const splitPathSegments = (segments: ReadonlyArray<string>) => ({
  */
 const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSystemGetDirectoryOptions) =>
   Effect.gen(function* () {
-    const opfs = yield* Opfs
-    let currentDirHandle = yield* opfs.getRootDirectoryHandle
+    let currentDirHandle = yield* Opfs.getRootDirectoryHandle
 
     for (let index = 0; index < segments.length; index++) {
       const segment = segments[index]!
-      currentDirHandle = yield* opfs.getDirectoryHandle(currentDirHandle, segment, options)
+      currentDirHandle = yield* Opfs.getDirectoryHandle(currentDirHandle, segment, options)
     }
 
     return currentDirHandle
@@ -83,15 +82,14 @@ const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSy
  */
 const ensureDirectoryPath = (segments: ReadonlyArray<string>, options: { readonly recursive: boolean }) =>
   Effect.gen(function* () {
-    const opfs = yield* Opfs
-    let currentDirHandle = yield* opfs.getRootDirectoryHandle
+    let currentDirHandle = yield* Opfs.getRootDirectoryHandle
 
     for (let index = 0; index < segments.length; index++) {
       const segment = segments[index]!
       const isLast = index === segments.length - 1
       const shouldCreate = options.recursive || isLast
 
-      currentDirHandle = yield* opfs.getDirectoryHandle(
+      currentDirHandle = yield* Opfs.getDirectoryHandle(
         currentDirHandle,
         segment,
         shouldCreate ? { create: true } : undefined,
@@ -113,8 +111,7 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
   options?: FileSystemGetDirectoryOptions,
 ) {
   if (isRootPath(path)) {
-    const opfs = yield* Opfs
-    return yield* opfs.getRootDirectoryHandle
+    return yield* Opfs.getRootDirectoryHandle
   }
 
   const pathSegments = yield* parsePathSegments(path)
@@ -132,15 +129,14 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   options?: { readonly recursive?: boolean },
 ) {
   const recursive = options?.recursive ?? false
-  const opfs = yield* Opfs
 
   if (isRootPath(path)) {
-    const rootHandle = yield* opfs.getRootDirectoryHandle
-    const entries = yield* opfs.listEntries(rootHandle)
+    const rootHandle = yield* Opfs.getRootDirectoryHandle
+    const entries = yield* Opfs.listEntries(rootHandle)
 
     for (const entry of entries) {
       // Clearing the root implies removing every entry recursively.
-      yield* opfs.removeEntry(rootHandle, entry.name, { recursive: true })
+      yield* Opfs.removeEntry(rootHandle, entry.name, { recursive: true })
     }
 
     return
@@ -150,7 +146,7 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
 
-  yield* opfs.removeEntry(parentDirHandle, targetName, { recursive })
+  yield* Opfs.removeEntry(parentDirHandle, targetName, { recursive })
 })
 
 /**
@@ -165,15 +161,14 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   const pathSegments = yield* parsePathSegments(path)
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
 
-  const opfs = yield* Opfs
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments, { create: false }).pipe(
     Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed(undefined)),
   )
 
   if (parentDirHandle === undefined) return false
 
-  return yield* opfs.getFileHandle(parentDirHandle, targetName).pipe(
-    Effect.orElse(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
+  return yield* Opfs.getFileHandle(parentDirHandle, targetName).pipe(
+    Effect.orElse(() => Opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
     Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed(false)),
   )
@@ -205,9 +200,7 @@ export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(fu
  * @returns Object containing name, size, MIME type, and last modification timestamp.
  */
 export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(function* (handle: FileSystemFileHandle) {
-  const opfs = yield* Opfs
-
-  return yield* opfs.getFile(handle).pipe(
+  return yield* Opfs.getFile(handle).pipe(
     Effect.map((file) => ({
       name: file.name,
       size: file.size,
@@ -235,11 +228,10 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
 
   return yield* Effect.scoped(
     Effect.gen(function* () {
-      const opfs = yield* Opfs
       const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
-      const fileHandle = yield* opfs.getFileHandle(parentDirHandle, fileName, { create: true })
+      const fileHandle = yield* Opfs.getFileHandle(parentDirHandle, fileName, { create: true })
 
-      yield* opfs.writeFile(fileHandle, new Uint8Array(data), {
+      yield* Opfs.writeFile(fileHandle, new Uint8Array(data), {
         keepExistingData: false,
       })
     }),
@@ -266,13 +258,11 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
     ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
     : new Uint8Array(buffer as ArrayBufferLike)
 
-  const opfs = yield* Opfs
-
-  yield* opfs.syncTruncate(handle, 0)
+  yield* Opfs.syncTruncate(handle, 0)
 
   let offset = 0
   while (offset < bytes.byteLength) {
-    const wrote = yield* opfs.syncWrite(handle, bytes.subarray(offset), { at: offset })
+    const wrote = yield* Opfs.syncWrite(handle, bytes.subarray(offset), { at: offset })
     if (wrote === 0) {
       return yield* new OpfsError({
         message: `Short write: wrote ${offset} of ${bytes.byteLength} bytes.`,
@@ -281,7 +271,7 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
     offset += Number(wrote)
   }
 
-  yield* opfs.syncFlush(handle)
+  yield* Opfs.syncFlush(handle)
 })
 
 /**
@@ -304,15 +294,14 @@ const ROOT_NAME = '/'
  * Materialize the entire OPFS tree starting from the origin root.
  */
 const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
-  const opfs = yield* Opfs
-  const rootHandle = yield* opfs.getRootDirectoryHandle
+  const rootHandle = yield* Opfs.getRootDirectoryHandle
 
   const collectDirectory: (
     handle: FileSystemDirectoryHandle,
     pathSegments: ReadonlyArray<string>,
-  ) => Effect.Effect<OpfsTreeNode, unknown, never> = (handle, pathSegments) =>
+  ) => Effect.Effect<OpfsTreeNode, unknown, Opfs> = (handle, pathSegments) =>
     Effect.gen(function* () {
-      const entries = yield* opfs.listEntries(handle)
+      const entries = yield* Opfs.listEntries(handle)
       const sorted = entries.slice().sort((left, right) => left.name.localeCompare(right.name))
 
       const children: OpfsTreeNode[] = []

@@ -20,12 +20,7 @@ const runOpfsEffect = <A>(effect: Effect.Effect<A, unknown, Opfs.Opfs>) =>
 
 // NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
 export const rootHandlePromise = hasOpfsSupport
-  ? runOpfsEffect(
-      Effect.gen(function* () {
-        const opfs = yield* Opfs.Opfs
-        return yield* opfs.getRootDirectoryHandle
-      }),
-    )
+  ? runOpfsEffect(Opfs.Opfs.getRootDirectoryHandle)
   : // We're using a proxy here to make the promise reject lazy
     (new Proxy(
       {},
@@ -47,8 +42,7 @@ const printTreeEffect = (
   Effect.gen(function* () {
     if (depth < 0) return
 
-    const opfs = yield* Opfs.Opfs
-    const entries = yield* opfs.listEntries(directoryHandle)
+    const entries = yield* Opfs.Opfs.listEntries(directoryHandle)
 
     for (const entry of entries) {
       const isDirectory = entry.kind === 'directory'
@@ -56,7 +50,7 @@ const printTreeEffect = (
 
       if (entry.kind === 'file') {
         const fileHandle = entry.handle
-        const file = yield* opfs.getFile(fileHandle)
+        const file = yield* Opfs.Opfs.getFile(fileHandle)
         sizeString = prettyBytes(file.size)
       }
 
@@ -82,11 +76,10 @@ export const printTree = async (
 export const deleteAll = (directoryHandle: FileSystemDirectoryHandle) =>
   runOpfsEffect(
     Effect.gen(function* () {
-      const opfs = yield* Opfs.Opfs
-      const entries = yield* opfs.listEntries(directoryHandle)
+      const entries = yield* Opfs.Opfs.listEntries(directoryHandle)
 
       for (const entry of entries) {
-        yield* opfs.removeEntry(directoryHandle, entry.name, { recursive: true })
+        yield* Opfs.Opfs.removeEntry(directoryHandle, entry.name, { recursive: true })
       }
     }),
   )
