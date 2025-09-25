@@ -80,21 +80,20 @@ export const testMultipleMigrations = () =>
   )
 
 const collectArchiveSnapshot = Effect.gen(function* () {
-  const opfs = yield* Opfs.Opfs
   const segments = [`livestore-${storeId}@${liveStoreStorageFormatVersion}`, 'archive']
 
-  let handle = yield* opfs.getRootDirectoryHandle
+  let handle = yield* Opfs.Opfs.getRootDirectoryHandle
   for (const segment of segments) {
-    handle = yield* opfs.getDirectoryHandle(handle, segment)
+    handle = yield* Opfs.Opfs.getDirectoryHandle(handle, segment)
   }
 
-  const entries = yield* opfs.listEntries(handle)
+  const entries = yield* Opfs.Opfs.listEntries(handle)
   const files: { name: string; size: number; lastModified: number }[] = []
 
   for (const entry of entries) {
     if (entry.kind !== 'file') continue
     const fileHandle = entry.handle
-    const file = yield* opfs.getFile(fileHandle)
+    const file = yield* Opfs.Opfs.getFile(fileHandle)
     files.push({ name: entry.name, size: file.size, lastModified: file.lastModified })
   }
 
