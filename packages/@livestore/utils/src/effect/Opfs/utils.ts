@@ -206,6 +206,44 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
 })
 
 /**
+ * Synchronously write bytes to the target file handle, truncating any existing content.
+ *
+ * @param handle - Sync access handle to overwrite.
+ * @param buffer - Raw data to persist.
+ * @returns Effect that resolves once every byte is flushed to durable storage.
+ *
+ * @remarks
+ * - Only available in Dedicated Web Workers.
+ * - Crash safety: not atomic. A crash mid-write can leave the file truncated or partially written.
+ *   For atomic replacement, prefer `writeFile` or a temp-file pattern with two prepared handles.
+ */
+export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(function* (
+  handle: FileSystemSyncAccessHandle,
+  buffer: AllowSharedBufferSource,
+) {
+  const bytes = ArrayBuffer.isView(buffer)
+    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+    : new Uint8Array(buffer as ArrayBufferLike)
+
+  const opfs = yield* Opfs
+
+  yield* opfs.syncTruncate(handle, 0)
+
+  let offset = 0
+  while (offset < bytes.byteLength) {
+    const wrote = yield* opfs.syncWrite(handle, bytes.subarray(offset), { at: offset })
+    if (wrote === 0) {
+      return yield* new OpfsError({
+        message: `Short write: wrote ${offset} of ${bytes.byteLength} bytes.`,
+      })
+    }
+    offset += Number(wrote)
+  }
+
+  yield* opfs.syncFlush(handle)
+})
+
+/**
  * Metadata exposed directly on OPFS handles so we avoid `getFile()` reads.
  */
 interface OpfsEntryMetadata {
