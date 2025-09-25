@@ -403,53 +403,6 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => Browser.parseBrowserError(u),
       })
 
-    /**
-     * Synchronously write the content of the specified buffer to the file associated with the handle,
-     * replacing the file if it already exists.
-     *
-     * @param handle - Sync access handle to overwrite.
-     * @param buffer - Raw data to persist.
-     * @returns Effect that resolves once every byte is flushed to durable storage.
-     *
-     * @remarks
-     * - Only available in Dedicated Web Workers.
-     * - Crash safety: not atomic. A crash mid-write can leave the file truncated or partially written.
-     *   For atomic replacement, prefer `writeFile` or a temp-file copy pattern with two prepared handles.
-     *
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle | MDN Reference}
-     */
-    const syncWriteFile = (handle: FileSystemSyncAccessHandle, buffer: AllowSharedBufferSource) => {
-      return Effect.gen(function* () {
-        const bytes =
-          // If it's already a view (e.g., Uint8Array, DataView), wrap its underlying buffer slice.
-          ArrayBuffer.isView(buffer)
-            ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
-            : // If it's a (Shared)ArrayBuffer-like, view the whole buffer.
-              new Uint8Array(buffer as ArrayBufferLike)
-
-        // 1) Clear existing contents
-        yield* syncTruncate(handle, 0)
-
-        // 2) Write all bytes retrying until the entire buffer is written. `syncWrite()` may write fewer bytes than
-        // requested, so we loop until we've written everything or detect no forward progress. This guards against
-        // short writes which can occur under quota pressure, buffering limits, or transient errors.
-        let offset = 0
-        while (offset < bytes.byteLength) {
-          const wrote = yield* syncWrite(handle, bytes.subarray(offset), { at: offset })
-          if (wrote === 0) {
-            // No forward progress -> treat as I/O error / out-of-quota condition.
-            return yield* new OpfsError({
-              message: `Short write: wrote ${offset} of ${bytes.byteLength} bytes.`,
-            })
-          }
-          offset += Number(wrote)
-        }
-
-        // 3) Ensure durability up to this point.
-        yield* syncFlush(handle)
-      })
-    }
-
     return {
       getRootDirectoryHandle,
       getFileHandle,
@@ -467,7 +420,6 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       syncTruncate,
       syncGetSize,
       syncFlush,
-      syncWriteFile,
     } as const
   }),
 }) {}
