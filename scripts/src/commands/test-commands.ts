@@ -7,7 +7,11 @@ import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
-import { providerKeys, type ProviderKey as TSyncProviderChoice, providerRegistry } from '@local/tests-sync-provider/registry'
+import {
+  providerKeys,
+  providerRegistry,
+  type ProviderKey as TSyncProviderChoice,
+} from '@local/tests-sync-provider/registry'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -201,7 +205,7 @@ export const syncProviderTest = Cli.Command.make(
       const suite = providerRegistry[provider.value].name
       // Vitest may render the provider name wrapped in quotes in the full test title.
       // Use a forgiving pattern that matches with or without surrounding quotes.
-      const pattern = `[\"\']?${escapeRegex(suite)}[\"\']? sync provider`
+      const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
       args.push('--testNamePattern', pattern)
     }
 
