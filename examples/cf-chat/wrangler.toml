@@ -1,6 +1,7 @@
 name = "livestore-cf-adapter-chat"
 main = "src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
+preview_urls = true
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
@@ -13,11 +14,6 @@ class_name = "LiveStoreClientDO"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
-
-[[d1_databases]]
-binding = "DB"
-database_name = "cf-chat-demo"
-database_id = "3335b917-2c3f-4c3c-a04f-78d74d46c141"
 
 [observability]
 enabled = true

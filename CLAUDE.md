@@ -29,6 +29,7 @@ Use the `mono` CLI for common workflows:
 
 - Avoid `as any`, force-casting etc as much as possible.
 - When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
+- When refactoring code you don't need to consider backwards compatibility unless specifically asked for.
 
 ## Task-based Approach
 
@@ -71,7 +72,8 @@ Use the `mono` CLI for common workflows:
 
 ### Issues
 
-When asked to create a GitHub issue, use the GitHub CLI to do so.
+- When asked to create a GitHub issue, use the GitHub CLI to do so.
+- Add appropriate labels to the issue. Only use existing labels, don't create new ones.
 
 ### Pull Requests
 

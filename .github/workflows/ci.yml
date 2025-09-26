@@ -83,6 +83,9 @@ jobs:
           retention-days: 30
 
   test-integration-sync-provider:
+    strategy:
+      matrix:
+        provider: [mock, electric, s2, cf-http-d1, cf-http-do, cf-ws-d1, cf-ws-do, cf-do-rpc-d1, cf-do-rpc-do]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +101,8 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - run: mono test integration sync-provider
+      - name: Run sync-provider tests for ${{ matrix.provider }}
+        run: mono test integration sync-provider --provider ${{ matrix.provider }}
 
   test-integration-playwright:
     strategy:

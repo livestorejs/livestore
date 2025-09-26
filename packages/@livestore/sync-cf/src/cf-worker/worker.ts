@@ -107,7 +107,7 @@ export const makeWorker = <
 }
 
 /**
- * Handles `/sync` endpoint.
+ * Handles LiveStore sync requests (e.g. with search params `?storeId=...&transport=...`).
  *
  * @example
  * ```ts

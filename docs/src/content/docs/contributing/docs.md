@@ -9,6 +9,6 @@ Please follow LiveStore's [guiding principles](/contributing/contributing#guidin
 
 This project broadly tries to follow the [Prisma docs style guide](https://www.prisma.io/docs/about/style-guide/writing-style).
 
-## Reusing code
+## Snippets
 
-When including code snippets, please try to `import` the code from the source in order to avoid duplication.
+For snippet guidelines, see: `/contributor-docs/docs/snippets.md`

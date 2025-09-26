@@ -6,6 +6,7 @@ import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/uti
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
+import { githubCommand } from './commands/github.ts'
 import { lintCommand } from './commands/lint.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
@@ -52,12 +53,10 @@ const docsCommand = Cli.Command.make('docs').pipe(
       },
       ({ open }) =>
         Effect.gen(function* () {
-          const logPath = `${docsPath}/logs/${new Date().toISOString()}.log`
-          fs.mkdirSync(`${docsPath}/logs`, { recursive: true })
-
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined, '2>&1', '|', 'tee', logPath], {
+          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             cwd: docsPath,
             shell: true,
+            logDir: `${docsPath}/logs`,
           })
         }),
     ),
@@ -246,6 +245,7 @@ const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([
     examplesCommand,
     lintCommand,
+    githubCommand,
     testCommand,
     tsCommand,
     circularCommand,

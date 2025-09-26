@@ -2,11 +2,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
+import {
+  providerKeys,
+  providerRegistry,
+  type ProviderKey as TSyncProviderChoice,
+} from '@local/tests-sync-provider/registry'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -182,17 +187,33 @@ export const waSqliteTest = Cli.Command.make(
 
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
-  {},
-  Effect.fn(function* () {
+  {
+    provider: Cli.Options.choice('provider', [...providerKeys]).pipe(
+      Cli.Options.optional,
+      Cli.Options.withDescription('Run only a specific sync provider test suite'),
+    ),
+  },
+  Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
     yield* syncProviderTestsPrepare.prepareCi
 
-    yield* cmd(['vitest', 'run'], {
+    const args: string[] = ['vitest', 'run']
+    if (Option.isSome(provider)) {
+      const suite = providerRegistry[provider.value].name
+      // Vitest may render the provider name wrapped in quotes in the full test title.
+      // Use a forgiving pattern that matches with or without surrounding quotes.
+      const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
+      args.push('--testNamePattern', pattern)
+    }
+
+    yield* cmd(args, {
       cwd: `${cwd}/tests/sync-provider`,
     })
   }),
-)
+).pipe(Cli.Command.withDescription('Run sync provider tests (optionally filtered by provider)'))
 
 export const nodeSyncTest = Cli.Command.make(
   'node-sync',
@@ -218,7 +239,7 @@ const testIntegrationAllCommand = Cli.Command.make(
         integrationTests.miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        syncProviderTest.handler({}),
+        syncProviderTest.handler({ provider: Option.none() }),
         waSqliteTest.handler({}),
         nodeSyncTest.handler({}),
       ],

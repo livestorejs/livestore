@@ -1,5 +1,3 @@
-/// <reference path="./types.d.ts" />
-
 import type { DurableObjectState } from 'cloudflare:workers'
 import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid } from '@livestore/livestore'
