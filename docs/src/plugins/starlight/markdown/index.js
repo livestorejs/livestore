@@ -1,6 +1,7 @@
 // Local drop-in for starlight-markdown until upstream fix lands.
 // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
 // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
+// Local tracking issue: https://github.com/livestorejs/livestore/issues/699
 // TODO: Delete this local integration and the alias in astro.config.mjs once upstream is fixed.
 export function starlightMarkdownIntegration() {
   return {

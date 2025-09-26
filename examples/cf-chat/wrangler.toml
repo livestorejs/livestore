@@ -1,6 +1,7 @@
 name = "livestore-cf-adapter-chat"
 main = "src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
+preview_urls = true
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"

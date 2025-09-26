@@ -322,7 +322,8 @@ export default defineConfig({
         // Use local fixed implementation for starlight-markdown to keep prod builds working.
         // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
         // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
-        // TODO: Remove this alias once the upstream fix is released.
+        // Local tracking issue: https://github.com/livestorejs/livestore/issues/699
+        // TODO: Remove this alias once the upstream fix is released and close the tracking issue.
         'starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/index.js', import.meta.url)),
         // Internal entrypoint used by our local integration when injecting routes
         '@local/starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/', import.meta.url)),

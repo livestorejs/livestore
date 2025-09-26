@@ -72,7 +72,8 @@ Use the `mono` CLI for common workflows:
 
 ### Issues
 
-When asked to create a GitHub issue, use the GitHub CLI to do so.
+- When asked to create a GitHub issue, use the GitHub CLI to do so.
+- Add appropriate labels to the issue. Only use existing labels, don't create new ones.
 
 ### Pull Requests
 

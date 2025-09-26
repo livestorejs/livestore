@@ -1,6 +1,7 @@
 // Local fixed implementation for starlight-markdown route handler.
 // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
 // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
+// Local tracking issue: https://github.com/livestorejs/livestore/issues/699
 // TODO: Remove this file once the upstream plugin normalizes paths consistently.
 import { getCollection, getEntry } from 'astro:content'
 
