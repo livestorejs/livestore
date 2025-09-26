@@ -62,6 +62,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, 
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -113,8 +114,8 @@ export type StoreCommitOptions = {
 
 export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   /**
-   * By default only new events are returned.
-   * Use this to get all events from a specific point in time.
+   * Starting position in the event stream.
+   * @default EventSequenceNumber.ROOT (all events from the beginning)
    */
   cursor?: EventSequenceNumber.EventSequenceNumber
   /**
@@ -123,15 +124,63 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    */
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
   /**
-   * Whether to include client-only events or only return synced events
+   * Minimum sync level required for events to be included.
+   * - 'client': Include all events (including pending in client session)
+   * - 'leader': Only include events confirmed by the leader thread
+   * - 'backend': Only include events confirmed by the sync backend
+   * @default 'client'
+   */
+  minSyncLevel?: 'client' | 'leader' | 'backend'
+  /**
+   * Whether to include client-only events
    * @default true
+   * @deprecated Use minSyncLevel instead for more granular control
    */
   includeClientOnly?: boolean
   /**
    * Exclude own events that have not been pushed to the sync backend yet
    * @default false
+   * @deprecated Use minSyncLevel: 'backend' instead
    */
   excludeUnpushed?: boolean
+  /**
+   * Only include events after this logical timestamp (exclusive)
+   * @default undefined (no lower bound)
+   */
+  since?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events up to this logical timestamp (inclusive)
+   * @default undefined (no upper bound)
+   */
+  until?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * If true, only returns a snapshot of existing events and completes.
+   * If false, continues streaming new events as they arrive.
+   * @default false (live streaming)
+   */
+  snapshotOnly?: boolean
+  /**
+   * Only include events from specific client IDs
+   * @default undefined (include all clients)
+   */
+  clientIds?: ReadonlyArray<string>
+  /**
+   * Only include events from specific session IDs
+   * @default undefined (include all sessions)
+   */
+  sessionIds?: ReadonlyArray<string>
+  /**
+   * Number of events to fetch in each batch when streaming from database
+   * @default 1000
+   */
+  eventQueryBatchSize?: number
+
+  // Future filtering ideas (not implemented yet):
+  // - parentEventId: Filter by parent event
+  // - argPattern: Pattern matching on event arguments
+  // - aggregation: Count events by type, time buckets, etc.
+  // - eventMetadata: Filter by custom metadata
+  // - rebaseGeneration: Filter by rebase generation
 }
 
 export type Unsubscribe = () => void
