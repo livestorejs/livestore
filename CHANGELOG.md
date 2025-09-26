@@ -22,6 +22,7 @@
 - **New Cloudflare adapter:** Added the Workers/Durable Object adapter and rewrote the sync provider so LiveStore ships WebSocket, HTTP, and Durable Object RPC transports as first-party Cloudflare options (#451, #574).
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
 - **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51).
+- **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266).
 
 ### Fixes
 
@@ -88,6 +89,33 @@
 
   This change affects projects that directly depend on wa-sqlite. Most users rely on it indirectly through LiveStore adapters and don't need to change anything.
 
+- **Cloudflare sync provider storage selection:** Removed implicit D1 auto‑selection and env‑based fallbacks. D1 must be selected explicitly via `storage: { _tag: 'd1', binding: 'DB' }` on the sync Durable Object. The default is DO SQLite (see issue #266).
+
+  Before (implicit D1 when env.DB was present):
+
+  ```ts
+  export class SyncBackendDO extends makeDurableObject({
+    // storage engine auto‑selected based on env
+  }) {}
+  ```
+
+  After (explicit binding for D1):
+
+  ```ts
+  // wrangler.toml
+  // [[d1_databases]]
+  // binding = "DB"
+  // database_name = "your-db"
+  // database_id = "..."
+
+  // code
+  export class SyncBackendDO extends makeDurableObject({
+    storage: { _tag: 'd1', binding: 'DB' },
+  }) {}
+  ```
+
+  To use the default DO SQLite, omit the `storage` option or pass `{ _tag: 'do-sqlite' }`.
+
 ### Changes
 
 #### Platform adapters
@@ -110,6 +138,9 @@ The `@livestore/sync-cf` package has been rewritten to offer three first-party t
 - **Durable Object RPC:** Direct Durable Object calls that avoid network overhead entirely
 
 Key improvements include streaming pull operations (faster initial sync), a two-phase sync (bulk transfer followed by real-time updates), improved error recovery, and comprehensive test coverage.
+
+- **Storage engine configuration:** Default storage is DO SQLite; configure D1 explicitly with `storage: { _tag: 'd1', binding: '<binding>' }`. Removed env‑based fallback detection. Docs include a “Storage engines” section, and examples default to DO storage (see issue #266).
+- **DO SQLite insert batching:** Adjusted insert chunk size to stay under parameter limits for large batches.
 
 #### Core Runtime & Storage
 
@@ -197,6 +228,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 #### Examples
 
 - **CF Chat:** A Cloudflare Durable Objects chat example demonstrates WebSocket sync, reactive message handling, and bot integrations across client React components and Durable Object services.
+- Cloudflare examples now default to DO SQLite storage. D1 usage is documented via an explicit binding and a one‑line `storage` option in code.
 
 #### Experimental features
 - LiveStore CLI for project scaffolding (experimental preview, not production-ready)
@@ -215,6 +247,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Comprehensive sync provider test suite with property-based testing
 - Node.js sync test infrastructure with Wrangler dev server integration (#594)
 - Parallel CI test execution reducing test time significantly (#523)
+- Cloudflare sync provider tests run against both storage engines (D1 and DO SQLite) using separate wrangler configs.
 
 #### Development Tooling
 - Migration from ESLint to Biome for improved performance (#447)

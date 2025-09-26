@@ -3,16 +3,33 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /**
- * Vite plugin that handles ?snippet imports for multi-file Twoslash code snippets
+ * Vite plugin to build multi-file Twoslash snippets via `?snippet` imports.
  *
- * Usage: import snippet from './main-file.ts?snippet'
+ * Why this exists
+ * - Twoslash runs a TypeScript program over the provided virtual files. Feeding it
+ *   unrelated files dramatically increases type-check cost per snippet.
+ * - We therefore start from the snippet's main file and follow only its relative
+ *   imports and triple-slash references, instead of scanning the whole directory.
+ *   This keeps the virtual project minimal and fast.
  *
- * This will:
- * 1. Find all .ts files in the same directory
- * 2. Follow imports to include referenced files from other directories
- * 3. Sort them with .d.ts files first, dependencies before dependents
- * 4. Add @filename directives for each
- * 5. Place ---cut--- before the imported file
+ * How it works
+ * - Usage: `import snippet from './main-file.ts?snippet'`
+ * - We enqueue `main-file.ts`, parse its imports and triple-slash references,
+ *   resolve them relative to the file, and repeat (BFS) while de-duping.
+ * - We flatten paths relative to a shared `baseDir` and emit `@filename` headers
+ *   so Twoslash can see all files in a single flat namespace.
+ * - We order files with `.d.ts` first (ambient types), dependencies before main,
+ *   and then alphabetically for stable output.
+ *
+ * Caveats / Notes
+ * - Only relative import specifiers (./ or ../) are supported; path aliases and
+ *   bare module specifiers are intentionally ignored to keep examples self-contained.
+ * - We try both `.ts` and `.tsx` when the import has no extension; directory
+ *   index resolution (e.g. `./dir/index.ts`) is not supported by design.
+ * - Circular imports are handled via a `processed` set.
+ * - `@filename` paths use forward slashes; Twoslash expects POSIX-style paths.
+ * - If performance ever regresses again, consider memoizing per main file keyed
+ *   by file content hash and import graph, but current overhead is small.
  *
  * @returns {import('vite').Plugin}
  */
@@ -29,12 +46,16 @@ export function vitePluginSnippet() {
 
       const dir = path.dirname(filepath)
       const mainFile = path.basename(filepath)
-      // For the base directory, we want the parent of the parent
-      // e.g., from /patterns/effect/batch-example/batch.ts we want /patterns/effect/
+      // Base directory for flattening `@filename` paths.
+      // Example: from `/patterns/effect/batch-example/batch.ts` we want `/patterns/effect/`.
+      // Keeping the same base across related examples allows sharing stub types.
       const baseDir = path.dirname(path.dirname(filepath))
 
       /**
-       * Extract relative imports from a file
+       * Extract relative import specifiers and triple-slash references.
+       * - Only `./` and `../` specifiers are considered.
+       * - Bare specifiers and aliases are ignored on purpose to avoid pulling in large graphs.
+       *
        * @param {string} content
        * @returns {string[]}
        */
@@ -60,46 +81,12 @@ export function vitePluginSnippet() {
         return imports
       }
 
-      /**
-       * Recursively find all .ts and .tsx files in the directory and subdirectories
-       * @returns {{ path: string, relative: string }[]}
-       */
-      function findTsFiles(/** @type {string} */ dirPath, /** @type {string} */ baseDir = '') {
-        const files = []
-        const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-
-        for (const entry of entries) {
-          const fullPath = path.join(dirPath, entry.name)
-          const relativePath = baseDir ? path.join(baseDir, entry.name) : entry.name
-
-          if (entry.isDirectory()) {
-            // Recursively search subdirectories
-            files.push(...findTsFiles(fullPath, relativePath))
-          } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
-            files.push({
-              path: fullPath,
-              relative: relativePath,
-            })
-          }
-        }
-
-        return files
-      }
-
-      // Start with files in the current directory
-      const filesInDir = findTsFiles(dir)
+      // Track discovered files keyed by path relative to the base directory
       const allFiles = new Map()
       const processed = new Set()
 
-      // Add files from current directory
-      for (const file of filesInDir) {
-        // Calculate relative path from base directory
-        const relativeFromBase = path.relative(baseDir, file.path)
-        allFiles.set(relativeFromBase, { ...file, relative: relativeFromBase })
-      }
-
-      // Process imports to find additional files
-      const queue = [...filesInDir]
+      // Seed the queue with only the main file; we follow imports from there for performance
+      const queue = [{ path: filepath, relative: path.relative(baseDir, filepath) }]
 
       while (queue.length > 0) {
         const fileInfo = queue.shift()
@@ -114,7 +101,7 @@ export function vitePluginSnippet() {
           // Resolve the import relative to the file's directory
           const resolvedPath = path.resolve(path.dirname(fileInfo.path), importPath)
 
-          // Check if file exists (try with and without extension)
+          // Check if file exists (try with and without extension, .ts then .tsx)
           let fullPath = resolvedPath
           if (!fs.existsSync(fullPath) && !fullPath.endsWith('.ts') && !fullPath.endsWith('.tsx')) {
             if (fs.existsSync(`${fullPath}.ts`)) {
@@ -137,7 +124,7 @@ export function vitePluginSnippet() {
         }
       }
 
-      // Convert to array and sort
+      // Convert to array and sort for stable, dependency-first order
       const files = Array.from(allFiles.values()).sort((a, b) => {
         // Ensure .d.ts files come first
         const aIsDts = a.relative.endsWith('.d.ts')
@@ -145,13 +132,13 @@ export function vitePluginSnippet() {
         if (aIsDts && !bIsDts) return -1
         if (!aIsDts && bIsDts) return 1
 
-        // Put the main file last (after its dependencies)
+        // Put the main file last (after its dependencies) so Twoslash shows it after type context
         const aIsMain = path.basename(a.relative) === mainFile && a.relative.includes(path.basename(dir))
         const bIsMain = path.basename(b.relative) === mainFile && b.relative.includes(path.basename(dir))
         if (aIsMain && !bIsMain) return 1
         if (!aIsMain && bIsMain) return -1
 
-        // Otherwise sort alphabetically
+        // Otherwise sort alphabetically for stability
         return a.relative.localeCompare(b.relative)
       })
 
@@ -160,14 +147,13 @@ export function vitePluginSnippet() {
       for (const fileInfo of files) {
         const fileContent = fs.readFileSync(fileInfo.path, 'utf-8')
 
-        // Add @filename directive
-        // For Twoslash, we need to create a flat structure where all files can find each other
-        // We'll use the full path relative to the base directory
+        // Add @filename directive:
+        // Twoslash expects a flat virtual FS; use baseDir-relative POSIX paths.
         const filenameForTwoslash = fileInfo.relative.replace(/\\/g, '/')
 
         snippetContent += `// @filename: ${filenameForTwoslash}\n`
 
-        // Add ---cut--- before the main file
+        // Add ---cut--- before the main file to focus the rendered snippet
         if (path.basename(fileInfo.relative) === mainFile && fileInfo.relative.includes(path.basename(dir))) {
           snippetContent += '// ---cut---\n'
         }
@@ -181,6 +167,17 @@ export function vitePluginSnippet() {
       }
 
       // Return as a module that exports the snippet
+      if (snippetContent.length === 0) {
+        // Fallback: include the main file content so downstream renderers don't error on empty code
+        try {
+          const fallback = fs.readFileSync(filepath, 'utf-8')
+          if (fallback && typeof fallback === 'string') {
+            return { code: `export default ${JSON.stringify(fallback)}`, map: null }
+          }
+        } catch {}
+        // At least return a comment to avoid runtime errors in Code component
+        return { code: `export default ${JSON.stringify(`/* snippet not found: ${filepath}?${query} */`)}`, map: null }
+      }
       return {
         code: `export default ${JSON.stringify(snippetContent)}`,
         map: null,

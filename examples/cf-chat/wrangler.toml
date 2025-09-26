@@ -14,10 +14,5 @@ class_name = "LiveStoreClientDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "cf-chat-demo"
-database_id = "3335b917-2c3f-4c3c-a04f-78d74d46c141"
-
 [observability]
 enabled = true

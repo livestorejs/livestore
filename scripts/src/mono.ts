@@ -52,12 +52,10 @@ const docsCommand = Cli.Command.make('docs').pipe(
       },
       ({ open }) =>
         Effect.gen(function* () {
-          const logPath = `${docsPath}/logs/${new Date().toISOString()}.log`
-          fs.mkdirSync(`${docsPath}/logs`, { recursive: true })
-
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined, '2>&1', '|', 'tee', logPath], {
+          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             cwd: docsPath,
             shell: true,
+            logDir: `${docsPath}/logs`,
           })
         }),
     ),

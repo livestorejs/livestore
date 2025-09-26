@@ -21,7 +21,8 @@ export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
 
-export const layer: SyncProviderLayer = Layer.scoped(
+const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
+  Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
     const server = yield* WranglerDevServerService
@@ -37,14 +38,29 @@ export const layer: SyncProviderLayer = Layer.scoped(
       providerSpecific: {},
     }
   }),
-).pipe(
-  Layer.provide(
-    WranglerDevServerService.Default({
-      cwd: path.join(import.meta.dirname, 'cloudflare'),
-    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
-  ),
-  UnexpectedError.mapToUnexpectedErrorLayer,
-)
+  ).pipe(
+    Layer.provide(
+      WranglerDevServerService.Default({
+        cwd: path.join(import.meta.dirname, 'cloudflare'),
+        wranglerConfigPath: config?.wranglerConfigPath,
+      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+    ),
+    UnexpectedError.mapToUnexpectedErrorLayer,
+  )
+
+export const d1 = {
+  name: `${name} (D1)`,
+  layer: makeLayer({
+    label: 'D1',
+    wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-d1.toml'),
+  }),
+  prepare,
+}
+export const doSqlite = {
+  name: `${name} (DO)`,
+  layer: makeLayer({ wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'), label: 'DO' }),
+  prepare,
+}
 
 /**
  * Given we can't use the DO RPC sync provider client only within a Durable Object,

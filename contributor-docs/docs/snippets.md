@@ -38,6 +38,13 @@ This automatically:
 - Keep imports between files relative with explicit extensions (e.g., `./livestore/schema.ts`)
 - The plugin preserves directory structure in the virtual file system
 
+### `prelude.ts` and `---cut---`
+
+- Use the TwoSlash cut marker `// ---cut---` to hide boilerplate/setup from the rendered snippet while keeping it type-checked.
+- Multi-file: put setup-only code (e.g., triple-slash references, ambient types) in a `prelude.ts` in the same folder. The snippet plugin bundles it before the main file; because it inserts `// ---cut---` right before the main file, users won’t see `prelude.ts`, but the types are available.
+- Single-file: add `// ---cut---` at the point where the visible snippet should begin; anything above is hidden.
+- Don’t re-declare LiveStore types; import from the real packages or reference an existing local `types.d.ts` in the snippet folder (kept hidden via `prelude.ts`).
+
 Example directory structure:
 ```
 src/content/_assets/code/getting-started/react-web/
@@ -48,6 +55,10 @@ src/content/_assets/code/getting-started/react-web/
 ├── Header.tsx
 └── MainSection.tsx
 ```
+
+### Dependencies
+
+- Packages that are imported from should be installed as `devDependencies` in the `docs` package.json. Don't re-define the types via `declare module` in the snippets.
 
 ### Configuration
 

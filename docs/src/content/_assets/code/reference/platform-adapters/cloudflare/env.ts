@@ -1,5 +1,3 @@
-/// <reference path="./types.d.ts" />
-
 import type { ClientDoWithRpcCallback } from '@livestore/adapter-cloudflare'
 import type { CfTypes, SyncBackendRpcInterface } from '@livestore/sync-cf/cf-worker'
 

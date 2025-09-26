@@ -314,6 +314,17 @@ export default defineConfig({
         strict: false,
       },
     },
+    optimizeDeps: {
+      // Avoid pre-bundling the minimum RN/Expo modules that break esbuild.
+      // - RN ships Flow-typed sources (not supported by esbuild):
+      //   https://github.com/evanw/esbuild/issues/79
+      //   Example Flow file: getDevServer.js in react-native
+      // - expo-sqlite publishes JSX in .js which triggers:
+      //   "JSX syntax extension is not currently enabled":
+      //   https://github.com/evanw/esbuild/issues/1888
+      // Reference RN Flow discussion: https://github.com/facebook/react-native/issues/36343
+      exclude: ['react-native', 'expo-sqlite'],
+    },
     plugins: [tailwind(), vitePluginSnippet()],
   },
   markdown: {

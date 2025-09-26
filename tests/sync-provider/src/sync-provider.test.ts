@@ -40,9 +40,12 @@ const makeFactory = EventFactory.makeFactory(events)
 
 const providerLayers = [
   MockProvider,
-  CloudflareHttpProvider,
-  CloudflareDoRpcProvider,
-  CloudflareWsProvider,
+  CloudflareHttpProvider.d1,
+  CloudflareHttpProvider.doSqlite,
+  CloudflareDoRpcProvider.d1,
+  CloudflareDoRpcProvider.doSqlite,
+  CloudflareWsProvider.d1,
+  CloudflareWsProvider.doSqlite,
   ElectricProvider,
   S2Provider,
 ]
