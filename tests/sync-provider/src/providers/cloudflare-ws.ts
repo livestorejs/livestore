@@ -43,6 +43,9 @@ export const d1 = {
 }
 export const doSqlite = {
   name: `${name} (DO)`,
-  layer: makeLayer({ wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'), label: 'DO' }),
+  layer: makeLayer({
+    wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'),
+    label: 'DO',
+  }),
   prepare,
 }

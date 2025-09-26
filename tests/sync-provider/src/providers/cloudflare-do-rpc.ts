@@ -23,21 +23,21 @@ export const prepare = Effect.void
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
   Layer.scoped(
-  SyncProviderImpl,
-  Effect.gen(function* () {
-    const server = yield* WranglerDevServerService
+    SyncProviderImpl,
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServerService
 
-    return {
-      makeProvider: (args, options) =>
-        makeProxyDoRpcSync({
-          port: server.port,
-          pingSchedule: options?.pingSchedule,
-        })(args),
-      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
-      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-      providerSpecific: {},
-    }
-  }),
+      return {
+        makeProvider: (args, options) =>
+          makeProxyDoRpcSync({
+            port: server.port,
+            pingSchedule: options?.pingSchedule,
+          })(args),
+        turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+        turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+        providerSpecific: {},
+      }
+    }),
   ).pipe(
     Layer.provide(
       WranglerDevServerService.Default({
@@ -58,7 +58,10 @@ export const d1 = {
 }
 export const doSqlite = {
   name: `${name} (DO)`,
-  layer: makeLayer({ wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'), label: 'DO' }),
+  layer: makeLayer({
+    wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'),
+    label: 'DO',
+  }),
   prepare,
 }
 

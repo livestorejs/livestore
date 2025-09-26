@@ -58,17 +58,22 @@ export const cmd: (
       logDir: options?.logDir,
     })
 
-    const makeAndRun = (input: string | string[]) => {
+    const makeAndRun = (input: string | string[], useShell: boolean) => {
       if (Array.isArray(input)) {
         const [c, ...a] = input
         return Command.make(c!, ...a)
       } else {
-        // Run the whole string via shell
-        return Command.make(input)
+        if (useShell) {
+          // Pipeline / tee requires shell
+          return Command.make(input)
+        }
+        // No shell: split into executable and args
+        const [c, ...a] = input.split(' ')
+        return Command.make(c!, ...a)
       }
     }
 
-    return yield* makeAndRun(finalInput).pipe(
+    return yield* makeAndRun(finalInput, subshell).pipe(
       // TODO don't forward abort signal to the command
       Command.stdin('inherit'), // Forward stdin to the command
       // inherit = Stream stdout to process.stdout, pipe = Stream stdout to process.stderr

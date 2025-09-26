@@ -9,8 +9,10 @@ import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
+import starlightContextualMenu from 'starlight-contextual-menu'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
+import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
@@ -66,6 +68,10 @@ export default defineConfig({
       },
       routeMiddleware: './src/routeMiddleware.ts',
       plugins: [
+        // Generate Markdown versions of pages for contextual menu "View as Markdown"
+        starlightMarkdown(),
+        // Add contextual menu to pages (copy/view, optional providers)
+        starlightContextualMenu(),
         // Used to adjust the order of sidebar items
         // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
         // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4

@@ -148,7 +148,9 @@ export const makeStorage = (
       return { total, stream }
     }).pipe(
       UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', { attributes: { dbName, cursor, engine: engine._tag } }),
+      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
+        attributes: { dbName, cursor, engine: engine._tag },
+      }),
     )
 
   const appendEventsD1: SyncStorage['appendEvents'] = (batch, createdAt) =>
@@ -185,8 +187,8 @@ export const makeStorage = (
             .run(),
         )
       }
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+    }).pipe(
+      UnexpectedError.mapToUnexpectedError,
       Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
         attributes: { dbName, batchLength: batch.length, engine: engine._tag },
       }),
@@ -219,9 +221,7 @@ export const makeStorage = (
       let total = 0
       try {
         const cursorIter =
-          cursor === undefined
-            ? ctx.storage.sql.exec(selectCountSql)
-            : ctx.storage.sql.exec(selectCountSql, cursor)
+          cursor === undefined ? ctx.storage.sql.exec(selectCountSql) : ctx.storage.sql.exec(selectCountSql, cursor)
         for (const row of cursorIter) {
           total = Number((row as any).total ?? 0)
         }
@@ -276,7 +276,9 @@ export const makeStorage = (
       return { total, stream }
     }).pipe(
       UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', { attributes: { dbName, cursor, engine: engine._tag } }),
+      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
+        attributes: { dbName, cursor, engine: engine._tag },
+      }),
     )
 
   const appendEventsDoSqlite: SyncStorage['appendEvents'] = (batch, createdAt) =>

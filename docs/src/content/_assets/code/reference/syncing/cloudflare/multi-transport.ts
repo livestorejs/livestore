@@ -19,4 +19,3 @@ export class SyncBackendDO extends makeDurableObject({
     console.log(`Push via ${transport}:`, message.batch.length)
   },
 }) {}
-
