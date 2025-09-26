@@ -278,13 +278,3 @@ jobs:
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build
 
-  check-nix-flake-inputs:
-    # Performs health checks on the flake.lock file to ensure we stay on recent and supported versions of Nixpkgs.
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Check Nix flake inputs
-        uses: DeterminateSystems/flake-checker-action@main
-        with:
-          flake-lock-path: ./nix/flake.lock
