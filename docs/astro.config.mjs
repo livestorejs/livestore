@@ -1,5 +1,6 @@
 // @ts-check
 
+import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
@@ -9,8 +10,10 @@ import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
+import starlightContextualMenu from 'starlight-contextual-menu'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
+import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
@@ -66,6 +69,12 @@ export default defineConfig({
       },
       routeMiddleware: './src/routeMiddleware.ts',
       plugins: [
+        // Generate Markdown versions of pages for contextual menu "View as Markdown".
+        // The upstream plugin has a bug in how it resolves entries during build.
+        // We alias it to a local drop-in replacement that fixes path resolution.
+        starlightMarkdown(),
+        // Add contextual menu to pages (copy/view, optional providers)
+        starlightContextualMenu(),
         // Used to adjust the order of sidebar items
         // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
         // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
@@ -308,11 +317,34 @@ export default defineConfig({
     '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
   },
   vite: {
+    resolve: {
+      alias: {
+        // Use local fixed implementation for starlight-markdown to keep prod builds working.
+        // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
+        // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
+        // Local tracking issue: https://github.com/livestorejs/livestore/issues/699
+        // TODO: Remove this alias once the upstream fix is released and close the tracking issue.
+        'starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/index.js', import.meta.url)),
+        // Internal entrypoint used by our local integration when injecting routes
+        '@local/starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/', import.meta.url)),
+      },
+    },
     server: {
       fs: {
         // Needed to load the CHANGELOG.md file which is outside this package
         strict: false,
       },
+    },
+    optimizeDeps: {
+      // Avoid pre-bundling the minimum RN/Expo modules that break esbuild.
+      // - RN ships Flow-typed sources (not supported by esbuild):
+      //   https://github.com/evanw/esbuild/issues/79
+      //   Example Flow file: getDevServer.js in react-native
+      // - expo-sqlite publishes JSX in .js which triggers:
+      //   "JSX syntax extension is not currently enabled":
+      //   https://github.com/evanw/esbuild/issues/1888
+      // Reference RN Flow discussion: https://github.com/facebook/react-native/issues/36343
+      exclude: ['react-native', 'expo-sqlite'],
     },
     plugins: [tailwind(), vitePluginSnippet()],
   },

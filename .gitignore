@@ -7,6 +7,9 @@ test-results
 playwright-report
 .playwright-mcp
 
+# Process IDs
+*.pid
+
 .envrc.local
 
 tmp*
@@ -37,3 +40,6 @@ scripts/.completions
 
 # locally downloaded S2 CLI
 .infra/s2/
+
+.devenv
+.devenv*

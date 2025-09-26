@@ -1,6 +1,8 @@
 import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import { Command, type CommandExecutor, Effect, identity, type PlatformError, Schema } from '@livestore/utils/effect'
 
+import { applyLoggingToCommand } from './cmd-log.ts'
+
 export const cmd: (
   commandInput: string | (string | undefined)[],
   options?:
@@ -10,25 +12,68 @@ export const cmd: (
         stdout?: 'inherit' | 'pipe'
         shell?: boolean
         env?: Record<string, string | undefined>
+        /**
+         * When provided, streams command output to terminal AND to a canonical log file (`${logDir}/dev.log`) in this directory.
+         * Also archives the previous run to `${logDir}/archive/dev-<ISO>.log` and keeps only the latest 50 archives.
+         */
+        logDir?: string
+        /** Optional basename for the canonical log file; defaults to 'dev.log' */
+        logFileName?: string
+        /** Optional number of archived logs to retain; defaults to 50 */
+        logRetention?: number
       }
     | undefined,
 ) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError | CmdError, CommandExecutor.CommandExecutor> =
   Effect.fn('cmd')(function* (commandInput, options) {
     const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-    const [command, ...args] = Array.isArray(commandInput)
-      ? commandInput.filter(isNotUndefined)
-      : commandInput.split(' ')
+
+    const asArray = Array.isArray(commandInput)
+    const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+    const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
 
     const debugEnvStr = Object.entries(options?.env ?? {})
       .map(([key, value]) => `${key}='${value}' `)
       .join('')
-    const subshellStr = options?.shell ? ' (in subshell)' : ''
-    const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+
+    // Compose command with optional tee logging via helper
+    const loggingOpts = {
+      ...(options?.logDir ? { logDir: options.logDir } : {}),
+      ...(options?.logFileName ? { logFileName: options.logFileName } : {}),
+      ...(options?.logRetention ? { logRetention: options.logRetention } : {}),
+    } as const
+    const { input: finalInput, subshell: needsShell } = yield* applyLoggingToCommand(commandInput, loggingOpts)
+
+    const subshell = (options?.shell ? true : false) || needsShell
+
+    const commandDebugStr =
+      debugEnvStr + (Array.isArray(finalInput) ? (finalInput as string[]).join(' ') : (finalInput as string))
+    const subshellStr = subshell ? ' (in subshell)' : ''
 
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
-    yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, cwd, command, args })
+    yield* Effect.annotateCurrentSpan({
+      'span.label': commandDebugStr,
+      cwd,
+      command,
+      args,
+      logDir: options?.logDir,
+    })
 
-    return yield* Command.make(command!, ...args).pipe(
+    const makeAndRun = (input: string | string[], useShell: boolean) => {
+      if (Array.isArray(input)) {
+        const [c, ...a] = input
+        return Command.make(c!, ...a)
+      } else {
+        if (useShell) {
+          // Pipeline / tee requires shell
+          return Command.make(input)
+        }
+        // No shell: split into executable and args
+        const [c, ...a] = input.split(' ')
+        return Command.make(c!, ...a)
+      }
+    }
+
+    return yield* makeAndRun(finalInput, subshell).pipe(
       // TODO don't forward abort signal to the command
       Command.stdin('inherit'), // Forward stdin to the command
       // inherit = Stream stdout to process.stdout, pipe = Stream stdout to process.stderr
@@ -36,7 +81,7 @@ export const cmd: (
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
       Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),
-      options?.shell ? Command.runInShell(true) : identity,
+      subshell ? Command.runInShell(true) : identity,
       Command.env(options?.env ?? {}),
       Command.exitCode,
       Effect.tap((exitCode) =>

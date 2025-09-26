@@ -27,7 +27,7 @@ The changelog should meet the goals of an application developer as follows:
 - Preface the upcoming release section with a short note pointing to the development docs and summarising how to install the dev build.
 - Close each release with a maintainer-oriented section that follows the highlights and breaking changes, giving contributors deeper technical context.
 - Require each pull request or commit that changes behaviour to update the upcoming section before merging.
-- Include PR/issue links in the changelog.
+- Include PR/issue links in the changelog. Each user‑facing bullet MUST link at least one GitHub issue (preferred) and/or PR that tracks the change. If no issue exists, create one and link it before merging. Do NOT use placeholders (for example, `#XXXX`).
 - Thank external contributors by tagging them with `@<username>` in the changelog.
 
 ## Active Release Workflow
@@ -56,7 +56,19 @@ For the **Internal Changes** section, open with a short sentence that makes clea
 
 ### Changes Subsection Structure
 
-Use the following order inside the Changes section to keep entries easy to scan.
+Use the following order inside the Changes section to keep entries easy to scan. Each bullet MUST include a GitHub issue link (and optionally a PR link) that readers can follow for context and discussion.
+
+### Link Quality Rules
+
+- Prefer a narrowly scoped issue that directly tracks the change over an epic/meta issue. If you reference an epic, also include the implementation issue or PR.
+- If multiple repos are involved, include cross‑repo links (for example, `livestorejs/livestore#123`, `org/other-repo#456`).
+- If an issue does not exist yet, create it first and then update the changelog before merging.
+- Changelogs MUST NOT merge with missing or placeholder links.
+
+### PR Checklist Enforcement
+
+- Ensure every new or modified user‑facing bullet in `CHANGELOG.md` includes a valid issue link.
+- Ensure the linked issue describes the problem/solution clearly enough for readers to trace context.
 
 1. Platform Adapters.
 2. Sync Providers.

@@ -1,0 +1,294 @@
+---
+title: 'Cloudflare Workers'
+sidebar:
+  order: 10
+---
+
+import { Code } from '@astrojs/starlight/components'
+import wsBasic from '../../../../_assets/code/reference/syncing/cloudflare/client-ws.ts?snippet'
+import httpBasic from '../../../../_assets/code/reference/syncing/cloudflare/client-http.ts?snippet'
+import wsOptions from '../../../../_assets/code/reference/syncing/cloudflare/client-ws-options.ts?snippet'
+import httpOptions from '../../../../_assets/code/reference/syncing/cloudflare/client-http-options.ts?snippet'
+import doSyncBackend from '../../../../_assets/code/reference/syncing/cloudflare/do-sync-backend.ts?snippet'
+import doRpcClient from '../../../../_assets/code/reference/syncing/cloudflare/client-do-rpc.ts?snippet'
+import workerMakeWorker from '../../../../_assets/code/reference/syncing/cloudflare/worker-makeWorker.ts?snippet'
+import workerHandleSync from '../../../../_assets/code/reference/syncing/cloudflare/worker-handleSyncRequest.ts?snippet'
+import workerAuth from '../../../../_assets/code/reference/syncing/cloudflare/worker-auth.ts?snippet'
+import workerMinimal from '../../../../_assets/code/reference/syncing/cloudflare/worker-minimal.ts?snippet'
+import matchSnippet from '../../../../_assets/code/reference/syncing/cloudflare/match-sync.ts?snippet'
+import envSnippet from '../../../../_assets/code/reference/syncing/cloudflare/env.ts?snippet'
+import basicWsClient from '../../../../_assets/code/reference/syncing/cloudflare/basic-ws-client.ts?snippet'
+import clientDoSnippet from '../../../../_assets/code/reference/platform-adapters/cloudflare/client-do.ts?snippet'
+import multiTransport from '../../../../_assets/code/reference/syncing/cloudflare/multi-transport.ts?snippet'
+
+The `@livestore/sync-cf` package provides a comprehensive LiveStore sync provider for Cloudflare Workers. It uses Durable Objects for connectivity and, by default, persists events in the Durable Object’s own SQLite. You can optionally use Cloudflare D1 instead. Multiple transports are supported to fit different deployment scenarios.
+
+## Installation
+
+```bash
+pnpm add @livestore/sync-cf
+```
+
+## Transport Modes
+
+The sync provider supports three transport protocols, each optimized for different use cases:
+
+### WebSocket Transport (Recommended)
+
+Real-time bidirectional communication with automatic reconnection and live pull support.
+
+<Code lang="ts" meta="twoslash" code={wsBasic} title="client.ts" />
+
+### HTTP Transport
+
+HTTP-based sync with polling for live updates. Requires the `enable_request_signal` compatibility flag.
+
+<Code lang="ts" meta="twoslash" code={httpBasic} title="client.ts" />
+
+### Durable Object RPC Transport
+
+Direct RPC communication between Durable Objects (internal use by `@livestore/adapter-cloudflare`).
+
+<Code lang="ts" meta="twoslash" code={doRpcClient} title="client.ts" />
+
+## Client API Reference
+
+### `makeWsSync(options)`
+
+Creates a WebSocket-based sync backend client.
+
+**Options:**
+- `url` - WebSocket URL (supports `ws`/`wss` or `http`/`https` protocols)
+- `webSocketFactory?` - Custom WebSocket implementation
+- `ping?` - Ping configuration:
+  - `enabled?: boolean` - Enable/disable ping (default: `true`)
+  - `requestTimeout?: Duration` - Ping timeout (default: 10 seconds)
+  - `requestInterval?: Duration` - Ping interval (default: 10 seconds)
+
+**Features:**
+- Real-time live pull
+- Automatic reconnection
+- Connection status tracking
+- Ping/pong keep-alive
+
+<Code lang="ts" meta="twoslash" code={wsOptions} title="client.ts" />
+
+### `makeHttpSync(options)`
+
+Creates an HTTP-based sync backend client with polling for live updates.
+
+**Options:**
+- `url` - HTTP endpoint URL
+- `headers?` - Additional HTTP headers
+- `livePull?` - Live pull configuration:
+  - `pollInterval?: Duration` - Polling interval (default: 5 seconds)
+- `ping?` - Ping configuration (same as WebSocket)
+
+**Features:**
+- HTTP request/response based
+- Polling-based live pull
+- Custom headers support
+- Connection status via ping
+
+<Code lang="ts" meta="twoslash" code={httpOptions} title="client.ts" />
+
+### `makeDoRpcSync(options)`
+
+Creates a Durable Object RPC-based sync backend (for internal use).
+
+**Options:**
+- `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
+- `durableObjectContext` - Context for RPC callbacks:
+  - `bindingName` - Wrangler binding name for the client DO
+  - `durableObjectId` - Client Durable Object ID
+
+**Features:**
+- Direct RPC communication
+- Real-time live pull via callbacks
+- Hibernation support
+
+### `handleSyncUpdateRpc(payload)`
+
+Handles RPC callback for live pull updates in Durable Objects.
+
+<Code lang="ts" meta="twoslash" code={clientDoSnippet} title="src/LiveStoreClientDO.ts" />
+
+## Server API Reference
+
+### `makeDurableObject(options)`
+
+Creates a sync backend Durable Object class.
+
+**Options:**
+- `onPush?` - Callback for push events: `(message, context) => void | Promise<void>`
+- `onPushRes?` - Callback for push responses: `(message) => void | Promise<void>`
+- `onPull?` - Callback for pull requests: `(message, context) => void | Promise<void>`
+- `onPullRes?` - Callback for pull responses: `(message) => void | Promise<void>`
+- `storage?` - Storage engine: `{ _tag: 'do-sqlite' } | { _tag: 'd1', binding: string }` (default: `do-sqlite`)
+- `enabledTransports?` - Set of enabled transports: `Set<'http' | 'ws' | 'do-rpc'>`
+- `otel?` - OpenTelemetry configuration:
+  - `baseUrl?` - OTEL endpoint URL
+  - `serviceName?` - Service name for traces
+
+<Code lang="ts" meta="twoslash" code={doSyncBackend} title="src/SyncBackendDO.ts" />
+
+### `makeWorker(options)`
+
+Creates a complete Cloudflare Worker for the sync backend.
+
+**Options:**
+- `syncBackendBinding` - Durable Object binding name defined in `wrangler.toml`
+- `validatePayload?` - Payload validation function: `(payload, context) => void | Promise<void>`
+- `enableCORS?` - Enable CORS headers (default: `false`)
+
+`makeWorker` is a quick way to get started in simple demos. In most production workers you typically want to share routing logic with other endpoints, so prefer wiring your own `fetch` handler and call `handleSyncRequest` when you detect a sync request. A minimal example:
+
+<Code lang="ts" meta="twoslash" code={workerMinimal} title="src/worker.ts" />
+
+<Code lang="ts" meta="twoslash" code={workerMakeWorker} title="src/worker.ts" />
+
+### `handleSyncRequest(args)`
+
+Handles sync backend HTTP requests in custom workers.
+
+**Options:**
+- `request` - The incoming request
+- `searchParams` - Parsed sync request parameters
+- `env` - Worker environment
+- `ctx` - Worker execution context
+- `syncBackendBinding` - Durable Object binding name defined in `wrangler.toml`
+- `headers?` - Response headers
+- `validatePayload?` - Payload validation function
+
+<Code lang="ts" meta="twoslash" code={workerHandleSync} title="src/worker.ts" />
+
+### `matchSyncRequest(request)`
+
+Parses and validates sync request search parameters.
+
+Returns the decoded search params or `undefined` if the request is not a LiveStore sync request.
+
+<Code lang="ts" meta="twoslash" code={matchSnippet} title="match-sync.ts" />
+
+## Configuration
+
+### Wrangler Configuration
+
+Configure your `wrangler.toml` for sync backend deployment (default: DO SQLite storage):
+
+```toml
+name = "livestore-sync"
+main = "./src/worker.ts"
+compatibility_date = "2025-05-07"
+compatibility_flags = [
+  "enable_request_signal", # Required for HTTP streaming
+]
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[vars]
+ADMIN_SECRET = "your-admin-secret"
+```
+
+To use D1 instead of DO SQLite, add a D1 binding and reference it from `makeDurableObject({ storage: { _tag: 'd1', binding: '...' } })`:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "livestore-sync"
+database_id = "your-database-id"
+
+[vars]
+ADMIN_SECRET = "your-admin-secret"
+```
+
+### Environment Variables
+
+Required environment bindings:
+
+<Code lang="ts" meta="twoslash" code={envSnippet} title="src/env.ts" />
+
+## Transport Protocol Details
+
+LiveStore identifies sync requests purely by search parameters; the request path does not matter. Use `matchSyncRequest(request)` to detect sync traffic.
+
+Required search parameters:
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `storeId` | `string` | Yes | Target LiveStore identifier. |
+| `transport` | `'ws' \| 'http'` | Yes | Transport protocol selector. |
+| `payload` | JSON (URI-encoded) | No | Arbitrary JSON used for auth/tenant routing; validated in `validatePayload`. |
+
+Examples (any path):
+
+- WebSocket: `https://sync.example.com?storeId=abc&transport=ws` (must include `Upgrade: websocket`)
+- HTTP: `https://sync.example.com?storeId=abc&transport=http`
+
+Notes:
+- For `transport=ws`, if the request is not a WebSocket upgrade, the backend returns `426 Upgrade Required`.
+- `transport='do-rpc'` is internal for Durable Object RPC and not exposed via URL parameters.
+
+## Data Storage
+
+By default, events are stored in the Durable Object’s SQLite with tables following the pattern:
+```
+eventlog_{PERSISTENCE_FORMAT_VERSION}_{storeId}
+```
+
+You can opt into D1 with the same table shape. The persistence format version is automatically managed and incremented when the storage schema changes.
+
+### Storage Engines
+- DO SQLite (default)
+  - Pros: easiest deploy (no D1), data co-located with the DO, lowest latency
+  - Cons: not directly inspectable outside the DO; operational tooling must go through the DO
+- D1 (optional)
+  - Pros: inspectable using D1 tools/clients; enables cross-store analytics outside DOs
+  - Cons: extra hop, JSON response size considerations; requires D1 provisioning
+
+## Deployment
+
+Deploy to Cloudflare Workers:
+
+```bash
+# Deploy the worker
+npx wrangler deploy
+
+# Create D1 database
+npx wrangler d1 create livestore-sync
+
+# Run migrations if needed
+npx wrangler d1 migrations apply livestore-sync
+```
+
+## Local Development
+
+Run locally with Wrangler:
+
+```bash
+# Start local development server
+npx wrangler dev
+
+# Access local D1 database
+# Located at: .wrangler/state/d1/miniflare-D1DatabaseObject/XXX.sqlite
+```
+
+## Examples
+
+### Basic WebSocket Client
+
+<Code lang="ts" meta="twoslash" code={basicWsClient} title="src/main.ts" />
+
+### Custom Worker with Authentication
+
+<Code lang="ts" meta="twoslash" code={workerAuth} title="src/worker.ts" />
+
+### Multi-Transport Setup
+
+<Code lang="ts" meta="twoslash" code={multiTransport} title="src/SyncBackendDO.ts" />

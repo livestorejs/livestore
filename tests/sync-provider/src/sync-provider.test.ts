@@ -23,11 +23,7 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import * as CloudflareDoRpcProvider from './providers/cloudflare-do-rpc.ts'
-import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
-import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
-import * as ElectricProvider from './providers/electric.ts'
-import * as MockProvider from './providers/mock.ts'
-import * as S2Provider from './providers/s2.ts'
+import { providerKeys, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 // NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
@@ -38,14 +34,7 @@ const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const makeFactory = EventFactory.makeFactory(events)
 
-const providerLayers = [
-  MockProvider,
-  CloudflareHttpProvider,
-  CloudflareDoRpcProvider,
-  CloudflareWsProvider,
-  ElectricProvider,
-  S2Provider,
-]
+const providerLayers = providerKeys.map((key) => providerRegistry[key])
 
 const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.DurationInput } = {}) =>
   Vitest.makeWithTestCtx({
