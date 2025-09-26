@@ -6,6 +6,7 @@ import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/uti
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
+import { githubCommand } from './commands/github.ts'
 import { lintCommand } from './commands/lint.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
@@ -244,6 +245,7 @@ const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([
     examplesCommand,
     lintCommand,
+    githubCommand,
     testCommand,
     tsCommand,
     circularCommand,
