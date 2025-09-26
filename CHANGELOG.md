@@ -19,14 +19,14 @@
 
 ### Highlights
 
-- **New Cloudflare adapter:** Added the Workers/Durable Object adapter and rewrote the sync provider so LiveStore ships WebSocket, HTTP, and Durable Object RPC transports as first-party Cloudflare options (#451, #574).
+- **New Cloudflare adapter:** Added the Workers/Durable Object adapter and rewrote the sync provider so LiveStore ships WebSocket, HTTP, and Durable Object RPC transports as first-party Cloudflare options (#528, #591).
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
-- **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51).
-- **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266).
+- **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51, #503).
+- **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 
 ### Fixes
 
-- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`).
+- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`). (#694)
 
 ### Breaking Changes
 
@@ -62,7 +62,7 @@
   })
   ```
 
-- **Raw SQL event availability:** The `livestore.RawSql` event is no longer added automatically. Define it explicitly when needed:
+- **Raw SQL event availability:** The `livestore.RawSql` event is no longer added automatically. Define it explicitly when needed (#469):
 
   ```typescript
   import { Events, Schema } from '@livestore/livestore'
@@ -89,7 +89,7 @@
 
   This change affects projects that directly depend on wa-sqlite. Most users rely on it indirectly through LiveStore adapters and don't need to change anything.
 
-- **Cloudflare sync provider storage selection:** Removed implicit D1 auto‑selection and env‑based fallbacks. D1 must be selected explicitly via `storage: { _tag: 'd1', binding: 'DB' }` on the sync Durable Object. The default is DO SQLite (see issue #266).
+- **Cloudflare sync provider storage selection:** Removed implicit D1 auto‑selection and env‑based fallbacks. D1 must be selected explicitly via `storage: { _tag: 'd1', binding: 'DB' }` on the sync Durable Object. The default is DO SQLite (see issue #266, #693).
 
   Before (implicit D1 when env.DB was present):
 
@@ -129,6 +129,10 @@ LiveStore now runs natively on Cloudflare Workers through the `@livestore/adapte
 
 See the [Cloudflare adapter documentation](https://dev.docs.livestore.dev/reference/platform-adapters/cloudflare-durable-object-adapter/) for setup details and deployment guidance.
 
+- Cloudflare adapter: Added a development-only reset persistence option to clear Durable Object state (#664).
+- Node and Expo adapters: Added development-only reset persistence options to clear local state (#654).
+- Web adapter: Archive development state databases with bounded retention to avoid OPFS exhaustion (#649, thanks @IGassmann).
+
 #### Sync provider
 
 The `@livestore/sync-cf` package has been rewritten to offer three first-party transports—WebSocket, HTTP, and Durable Object RPC—so Cloudflare deployments can choose the right balance of latency and infrastructure support:
@@ -141,6 +145,10 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 
 - **Storage engine configuration:** Default storage is DO SQLite; configure D1 explicitly with `storage: { _tag: 'd1', binding: '<binding>' }`. Removed env‑based fallback detection. Docs include a “Storage engines” section, and examples default to DO storage (see issue #266).
 - **DO SQLite insert batching:** Adjusted insert chunk size to stay under parameter limits for large batches.
+
+- WebSocket transport: Introduced message chunking limits to stay under platform constraints (#687).
+- Reliability: Retry and backoff on push errors, restart push on advance, and add regression tests (#639).
+- Resilience: Improve sync provider robustness and align test helpers for CI and local development (#682, #646).
 
 #### Core Runtime & Storage
 
@@ -189,11 +197,12 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 
 - `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
-- Store shutdown calls now fail with `StoreAlreadyShutdownError` after shutdown to prevent misuse.
+- Store operations after shutdown are rejected with a descriptive `UnexpectedError`. Shutdown now returns an Effect (see breaking changes).
 - Exact optional property types are enabled, surfacing missing optional handling at compile time (#600).
 - Effect `Equal` and `Hash` implementations for `LiveQueryDef` and `SignalDef` improve comparisons.
 - Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).
 - Materializers receive each event's `clientId`, simplifying multi-client workflows (#574).
+- React peer dependency relaxed from exact to caret range for smoother upgrades (#621).
 
 #### Bug fixes
 
@@ -225,18 +234,20 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Fix TypeScript build issues and examples restructuring
 - Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
 
-#### Examples
+#### Docs & Examples
 
 - **CF Chat:** A Cloudflare Durable Objects chat example demonstrates WebSocket sync, reactive message handling, and bot integrations across client React components and Durable Object services.
 - Cloudflare examples now default to DO SQLite storage. D1 usage is documented via an explicit binding and a one‑line `storage` option in code.
+- Add Netlify dev deployments for examples to simplify testing (#684).
+- Use Twoslash for select getting started snippets in docs (#658).
 
 #### Experimental features
 - LiveStore CLI for project scaffolding (experimental preview, not production-ready)
 
 #### Updated (peer) dependencies
-- Effect updated to 3.17.9
-- React updated to 19.1.0
-- Vite updated to 7.1.3
+- Effect updated to 3.17.14
+- React updated to 19.1.1
+- Vite updated to 7.1.7
 - TypeScript 5.9.2 compatibility
 
 ### Internal Changes
