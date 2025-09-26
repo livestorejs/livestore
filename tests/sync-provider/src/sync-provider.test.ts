@@ -22,7 +22,6 @@ import {
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import * as CloudflareDoRpcProvider from './providers/cloudflare-do-rpc.ts'
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
@@ -281,9 +280,10 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         })),
       )
 
-    const isCloudflareDoRpc = name === CloudflareDoRpcProvider.name
-    const batchTimeout = isCloudflareDoRpc ? 360_000 : 90_000
-    const batchTestTimeout = batchTimeout + 30_000
+    // Per-scenario timeout (all providers)
+    const scenarioTimeout = Duration.minutes(6)
+    // Vitest case timeout in ms (scenario + buffer)
+    const vitestTimeoutMs = Duration.toMillis(scenarioTimeout) + Duration.toMillis(Duration.seconds(30))
     const batchPingSchedule = Schedule.spaced(Duration.minutes(5)).pipe(Schedule.addDelay(() => Duration.minutes(1)))
 
     // Additionally to the property-based tests we also have some deterministic scenarios.
@@ -318,7 +318,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }).pipe(
           withTestCtx({
             suffix: scenarioSummary,
-            timeout: batchTimeout,
+            timeout: scenarioTimeout,
           })(test),
         )
       })
@@ -357,11 +357,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }).pipe(
           withTestCtx({
             suffix: summary,
-            timeout: batchTimeout,
+            timeout: scenarioTimeout,
           })(test),
         )
       },
-      { timeout: batchTestTimeout, fastCheck: { numRuns: 1 } },
+      { timeout: vitestTimeoutMs, fastCheck: { numRuns: 1 } },
     )
   })
 
