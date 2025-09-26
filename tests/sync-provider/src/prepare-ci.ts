@@ -1,10 +1,6 @@
 import { type CommandExecutor, Effect, type PlatformError } from '@livestore/utils/effect'
 import type { DockerComposeError } from '@livestore/utils-dev/node'
-import * as CloudflareDoRpc from './providers/cloudflare-do-rpc.ts'
-import * as CloudflareHttpRpc from './providers/cloudflare-http-rpc.ts'
-import * as CloudflareWs from './providers/cloudflare-ws.ts'
-import * as Electric from './providers/electric.ts'
-import * as S2 from './providers/s2.ts'
+import { providerKeys, providerRegistry } from './providers/registry.ts'
 
 // Meant to separate test preparation from test execution (e.g. pulling docker images)
 export const prepareCi: Effect.Effect<
@@ -14,12 +10,8 @@ export const prepareCi: Effect.Effect<
 > = Effect.gen(function* () {
   yield* Effect.log('Preparing sync provider tests')
 
-  yield* Effect.all(
-    [Electric.prepare, CloudflareWs.prepare, CloudflareHttpRpc.prepare, CloudflareDoRpc.prepare, S2.prepare],
-    {
-      concurrency: 'unbounded',
-    },
-  )
+  // Prepare all providers (note: many are Effect.void and complete instantly)
+  yield* Effect.forEach(providerKeys, (key) => providerRegistry[key].prepare, { concurrency: 'unbounded' })
 
   yield* Effect.log('Sync provider tests prepared')
 }).pipe(Effect.withSpan('prepare-ci'))

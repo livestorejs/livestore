@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./prepare-ci": "./src/prepare-ci.ts"
+    "./prepare-ci": "./src/prepare-ci.ts",
+    "./registry": "./src/providers/registry.ts"
   },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
