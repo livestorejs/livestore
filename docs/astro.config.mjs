@@ -1,5 +1,6 @@
 // @ts-check
 
+import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
@@ -68,7 +69,9 @@ export default defineConfig({
       },
       routeMiddleware: './src/routeMiddleware.ts',
       plugins: [
-        // Generate Markdown versions of pages for contextual menu "View as Markdown"
+        // Generate Markdown versions of pages for contextual menu "View as Markdown".
+        // The upstream plugin has a bug in how it resolves entries during build.
+        // We alias it to a local drop-in replacement that fixes path resolution.
         starlightMarkdown(),
         // Add contextual menu to pages (copy/view, optional providers)
         starlightContextualMenu(),
@@ -314,6 +317,17 @@ export default defineConfig({
     '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
   },
   vite: {
+    resolve: {
+      alias: {
+        // Use local fixed implementation for starlight-markdown to keep prod builds working.
+        // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
+        // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
+        // TODO: Remove this alias once the upstream fix is released.
+        'starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/index.js', import.meta.url)),
+        // Internal entrypoint used by our local integration when injecting routes
+        '@local/starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/', import.meta.url)),
+      },
+    },
     server: {
       fs: {
         // Needed to load the CHANGELOG.md file which is outside this package
