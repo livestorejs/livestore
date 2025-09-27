@@ -11,7 +11,7 @@ runs:
       with:
         # https://app.cachix.org/cache/livestore (requires auth)
         name: livestore
-        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: Install devenv
       shell: bash
