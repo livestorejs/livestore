@@ -1,38 +1,25 @@
 name: Set up environment
-description: Minimal setup using Nix + devenv + direnv.
+description: Minimal setup using Nix + devenv (GitHub Actions integration).
 runs:
   using: composite
   steps:
-    - name: Install Determinate Nix
-      uses: DeterminateSystems/determinate-nix-action@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
 
-    - name: Install devenv + direnv
+    - name: Enable devenv Cachix cache
+      uses: cachix/cachix-action@v16
+      with:
+        name: devenv
+
+    - name: Install devenv
       shell: bash
-      run: |
-        nix profile install github:cachix/devenv
-        nix profile install nixpkgs#direnv
+      run: nix profile install nixpkgs#devenv
 
-    - name: Configure direnv for devenv
-      shell: bash
-      run: |
-        mkdir -p ~/.config/direnv
-        devenv direnvrc >> ~/.config/direnv/direnvrc
-
-    - name: Load environment with direnv
-      shell: bash
-      run: |
-        direnv allow
-        direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
-        direnv export gha >> "$GITHUB_ENV"
-
-    - name: Detect pnpm store path
+    - name: Detect pnpm store path (via devenv)
       shell: bash
       run: |
         set -e
-        if ! command -v pnpm >/dev/null 2>&1; then
-          corepack enable || true
-        fi
-        echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+        echo "PNPM_STORE_PATH=$(devenv shell --command pnpm store path --silent)" >> "$GITHUB_ENV"
 
     - name: Cache pnpm store
       uses: actions/cache@v4

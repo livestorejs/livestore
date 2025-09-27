@@ -25,6 +25,7 @@
       "@tailwindcss/oxide",
       "dtrace-provider",
       "esbuild",
+      "@mixedbread/cli",
       "msgpackr-extract",
       "protobufjs",
       "sharp",

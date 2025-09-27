@@ -19,6 +19,9 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -27,6 +30,9 @@ jobs:
 
   test-unit:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -35,6 +41,9 @@ jobs:
 
   test-integration-node-sync:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -87,6 +96,9 @@ jobs:
       matrix:
         provider: [mock, electric, s2, cf-http-d1, cf-http-do, cf-ws-d1, cf-ws-do, cf-do-rpc-d1, cf-do-rpc-do]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -109,6 +121,9 @@ jobs:
       matrix:
         suite: [misc, todomvc, devtools]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -173,6 +188,9 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
   wa-sqlite-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -197,6 +215,9 @@ jobs:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-latest
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -210,6 +231,9 @@ jobs:
 
   build-and-deploy-examples-src:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -221,6 +245,9 @@ jobs:
 
   build-deploy-docs:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -277,4 +304,3 @@ jobs:
       - if: ${{ matrix.app != 'expo-linearlite' }} # TODO: build expo app with EAS
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build
-

@@ -13,7 +13,7 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "start": "bun src/main.ts"
