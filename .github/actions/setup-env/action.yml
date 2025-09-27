@@ -19,7 +19,7 @@ runs:
       shell: bash
       run: |
         set -e
-        echo "PNPM_STORE_PATH=$(devenv shell --command pnpm store path --silent)" >> "$GITHUB_ENV"
+        echo "PNPM_STORE_PATH=$(devenv shell pnpm store path --silent)" >> "$GITHUB_ENV"
 
     - name: Cache pnpm store
       uses: actions/cache@v4

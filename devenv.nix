@@ -7,6 +7,8 @@ in
   # JavaScript toolchain with Corepack (pnpm/yarn) enabled
   languages.javascript = {
     enable = true;
+    # Pin Corepack to Node 24 so pnpm/yarn shims run on Node 24
+    package = pkgs.nodejs_24;
     corepack.enable = true;
   };
 
@@ -61,4 +63,3 @@ in
     [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
   '';
 }
-
