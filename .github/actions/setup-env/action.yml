@@ -15,18 +15,21 @@ runs:
       shell: bash
       run: nix profile install nixpkgs#devenv
 
-    - name: Detect pnpm store path (via devenv)
+    - name: Get pnpm store directory
+      # This is needed because pnpm's store path is not fixed and can vary based on the environment.
+      id: pnpm-store
       shell: bash
-      run: |
-        set -e
-        echo "PNPM_STORE_PATH=$(devenv shell pnpm store path --silent)" >> "$GITHUB_ENV"
+      # We use `devenv shell` because the `pnpm` CLI is installed via Nix.
+      run: echo "DIR_PATH=$(devenv shell --quiet pnpm store path --silent)" >> $GITHUB_OUTPUT
 
     - name: Cache pnpm store
       uses: actions/cache@v4
       with:
-        path: ${{ env.PNPM_STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: ${{ runner.os }}-pnpm-store-
+       # We only should cache the pnpm store, and not the node_modules directory. Caching it duplicates effort since the
+       # pnpm store already covers the package contents, and leads to issues with package resolution.
+       path: ${{ steps.pnpm-store.outputs.DIR_PATH }}
+       key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+       restore-keys: ${{ runner.os }}-pnpm-store-
 
     - name: Collect and log runner machine info
       shell: bash
