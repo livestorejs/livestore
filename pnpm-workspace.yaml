@@ -29,7 +29,7 @@ catalog:
   "react-dom": 19.1.1
 
   # Testing
-  "@playwright/test": 1.55.1
+  "@playwright/test": 1.55.1-beta-1758616458000
 
   # Effect/OpenTelemetry
   effect: 3.17.14

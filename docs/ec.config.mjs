@@ -9,10 +9,31 @@ export default defineEcConfig({
     ecTwoSlash({
       twoslashOptions: {
         compilerOptions: {
+          // Use exactly the same strict settings as tsconfig.base.json
+          strict: true,
+          exactOptionalPropertyTypes: true,
+          noUncheckedIndexedAccess: true,
+          strictNullChecks: true,
+          noFallthroughCasesInSwitch: true,
+          forceConsistentCasingInFileNames: true,
+          isolatedModules: true,
+          noErrorTruncation: true,
+
+          // Module/import settings (match docs tsconfig.json)
           allowImportingTsExtensions: true,
           moduleResolution: ts.ModuleResolutionKind.Bundler,
+          module: ts.ModuleKind.ESNext,
+          verbatimModuleSyntax: true,
+          esModuleInterop: true,
+          allowJs: true,
+          rewriteRelativeImportExtensions: true,
+          erasableSyntaxOnly: true,
+
+          // Build settings
+          target: ts.ScriptTarget.ESNext,
           jsx: ts.JsxEmit.ReactJSX,
-          exactOptionalPropertyTypes: true,
+          skipLibCheck: true,
+          resolveJsonModule: true,
         },
       },
     }),
