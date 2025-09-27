@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-
+// ---cut---
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
