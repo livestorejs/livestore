@@ -139,12 +139,10 @@ const links = Object.entries({
 <script>
   // Handle version switching while preserving the current path
   document.addEventListener("DOMContentLoaded", () => {
-    const versionSelect = document.getElementById(
-      "version-select"
-    ) as HTMLSelectElement;
+    const versionSelect = document.getElementById("version-select")
+    if (!(versionSelect instanceof HTMLSelectElement)) return
 
-    if (versionSelect) {
-      versionSelect.addEventListener("change", () => {
+    versionSelect.addEventListener("change", () => {
         const targetUrl = versionSelect.value;
         if (targetUrl === undefined || targetUrl === null) return;
 
@@ -158,6 +156,5 @@ const links = Object.entries({
         // Navigate to the new URL
         window.location.href = newUrl.toString();
       });
-    }
   });
 </script>

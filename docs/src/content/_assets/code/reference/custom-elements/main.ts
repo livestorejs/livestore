@@ -73,10 +73,11 @@ class TodoListElement extends HTMLElement {
       const row = document.createElement('div')
       row.style.display = 'flex'
       row.style.alignItems = 'center'
-      row.append(item, deleteButton)
+      row.appendChild(item)
+      row.appendChild(deleteButton)
 
       const wrapper = document.createElement('li')
-      wrapper.append(row)
+      wrapper.appendChild(row)
       return wrapper
     })
 
