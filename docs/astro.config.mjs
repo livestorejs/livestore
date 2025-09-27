@@ -16,7 +16,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
-import { getBranchName } from './data.js'
+import { getBranchName } from './src/data/data.ts'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 

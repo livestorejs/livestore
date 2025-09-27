@@ -40,7 +40,7 @@ export function vitePluginSnippet() {
     transform(_code, id) {
       // Check if this is a ?snippet import
       const [filepath, query] = id.split('?')
-      if (!query || !query.includes('snippet')) {
+      if (!query || !query.includes('snippet') || !filepath) {
         return null
       }
 
@@ -60,12 +60,13 @@ export function vitePluginSnippet() {
        * @returns {string[]}
        */
       function extractImports(content) {
+        /** @type {string[]} */
         const imports = []
         // Match both import statements and export ... from statements
         const importRegex = /(?:import|export)\s+(?:.*?\s+from\s+)?['"](\.\.?\/[^'"]+)['"]/g
         let match
         match = importRegex.exec(content)
-        while (match !== null) {
+        while (match !== null && match[1] !== undefined) {
           imports.push(match[1])
           match = importRegex.exec(content)
         }
@@ -73,7 +74,7 @@ export function vitePluginSnippet() {
         // Match triple-slash references to local files (e.g. /// <reference path="../types.d.ts" />)
         const referenceRegex = /\/\/\/\s*<reference\s+path=["'](.+?)["']\s*\/>/g
         let referenceMatch = referenceRegex.exec(content)
-        while (referenceMatch !== null) {
+        while (referenceMatch !== null && referenceMatch[1] !== undefined) {
           imports.push(referenceMatch[1])
           referenceMatch = referenceRegex.exec(content)
         }

@@ -1,6 +1,20 @@
+// https://github.com/withastro/astro/blob/main/packages/astro/tsconfigs/base.json
 {
-  "extends": "astro/tsconfigs/strict",
-  "include": ["src", "data.ts"],
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ESNext",
+    "jsx": "preserve",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["src"],
   "references": [
     { "path": "../packages/@livestore/adapter-web" },
     { "path": "../packages/@livestore/adapter-expo" },
