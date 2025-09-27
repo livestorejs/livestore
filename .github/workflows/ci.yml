@@ -169,6 +169,9 @@ jobs:
           fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
