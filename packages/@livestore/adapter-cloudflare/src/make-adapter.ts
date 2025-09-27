@@ -8,11 +8,11 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import type * as CfWorker from './cf-types.ts'
 
 export const makeAdapter =
   ({
@@ -22,7 +22,7 @@ export const makeAdapter =
     sessionId,
     resetPersistence = false,
   }: {
-    storage: CfWorker.DurableObjectStorage
+    storage: CfTypes.DurableObjectStorage
     clientId: string
     syncOptions: SyncOptions
     sessionId: string
@@ -163,7 +163,7 @@ const resetDurableObjectPersistence = ({
   storeId,
   dbFileNames,
 }: {
-  storage: CfWorker.DurableObjectStorage
+  storage: CfTypes.DurableObjectStorage
   storeId: string
   dbFileNames: ReadonlyArray<string>
 }) =>
@@ -186,7 +186,7 @@ const resetDurableObjectPersistence = ({
     Effect.withSpan('@livestore/adapter-cloudflare:resetPersistence', { attributes: { storeId } }),
   )
 
-const safeSqlExec = (storage: CfWorker.DurableObjectStorage, query: string, binding: string) => {
+const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, binding: string) => {
   try {
     storage.sql.exec(query, binding)
   } catch (error) {

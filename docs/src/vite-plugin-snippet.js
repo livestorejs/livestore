@@ -86,7 +86,11 @@ export function vitePluginSnippet() {
       const processed = new Set()
 
       // Seed the queue with only the main file; we follow imports from there for performance
-      const queue = [{ path: filepath, relative: path.relative(baseDir, filepath) }]
+      const mainRelativePath = path.relative(baseDir, filepath)
+      const queue = [{ path: filepath, relative: mainRelativePath }]
+
+      // Ensure the main file itself is included in the snippet output
+      allFiles.set(mainRelativePath, { path: filepath, relative: mainRelativePath })
 
       while (queue.length > 0) {
         const fileInfo = queue.shift()

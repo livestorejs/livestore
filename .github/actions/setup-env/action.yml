@@ -9,7 +9,9 @@ runs:
     - name: Enable devenv Cachix cache
       uses: cachix/cachix-action@v16
       with:
-        name: devenv
+        # https://app.cachix.org/cache/livestore (requires auth)
+        name: livestore
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
     - name: Install devenv
       shell: bash
