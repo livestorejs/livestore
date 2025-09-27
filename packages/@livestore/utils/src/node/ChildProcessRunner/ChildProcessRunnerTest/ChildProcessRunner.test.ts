@@ -2,7 +2,7 @@ import * as ChildProcess from 'node:child_process'
 
 import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
-import { Chunk, Effect, Exit, Fiber, Scope, Stream } from 'effect'
+import { Chunk, Deferred, Effect, Exit, Fiber, Scope, Stream } from 'effect'
 
 import * as ChildProcessWorker from '../ChildProcessWorker.ts'
 import type { WorkerMessage } from './schema.ts'
@@ -61,7 +61,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
 
     it('should clean up child processes when Effect is interrupted', () =>
       Effect.gen(function* () {
-        let workerPid: number | undefined
+        const workerPidDeferred = yield* Deferred.make<number>()
 
         const testEffect = Effect.gen(function* () {
           const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
@@ -69,34 +69,39 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
           })
           const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 }))
-          workerPid = result.pid
+          yield* Deferred.succeed(workerPidDeferred, result.pid)
 
           // Verify the worker process is running
-          assert.strictEqual(isProcessRunning(workerPid), true, 'Worker process should be running')
+          assert.strictEqual(isProcessRunning(result.pid), true, 'Worker process should be running')
 
           // Start a long-running operation that we'll interrupt
           yield* Effect.sleep('60 seconds')
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run the test effect but interrupt it after 2 seconds
-        const fiber = yield* Effect.fork(testEffect)
+        const fiber = yield* Effect.forkScoped(testEffect)
+
+        const workerPid = yield* Deferred.await(workerPidDeferred).pipe(
+          Effect.raceFirst(
+            Fiber.join(fiber).pipe(
+              Effect.flatMap(() => Effect.fail(new Error('testEffect completed before reporting worker PID'))),
+            ),
+          ),
+          Effect.timeout(10_000),
+        )
+
         yield* Effect.sleep('2 seconds')
         yield* Fiber.interrupt(fiber)
 
         // Wait a moment for cleanup to complete
         yield* Effect.sleep('1 second')
 
-        // Verify the child process was cleaned up
-        if (workerPid) {
-          assert.strictEqual(
-            isProcessRunning(workerPid),
-            false,
-            `Worker process ${workerPid} should be terminated after Effect interruption`,
-          )
-        } else {
-          assert.fail('Worker PID was not captured')
-        }
-      }).pipe(Effect.runPromise))
+        assert.strictEqual(
+          isProcessRunning(workerPid),
+          false,
+          `Worker process ${workerPid} should be terminated after Effect interruption`,
+        )
+      }).pipe(Effect.scoped, Effect.runPromise))
 
     it('should clean up child processes when scope is closed abruptly', () =>
       Effect.gen(function* () {
