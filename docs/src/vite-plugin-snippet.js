@@ -48,7 +48,7 @@ export function vitePluginSnippet() {
       const mainFile = path.basename(filepath)
       // Base directory for flattening `@filename` paths.
       // Example: from `/patterns/effect/batch-example/batch.ts` we want `/patterns/effect/`.
-      // Keeping the same base across related examples allows sharing stub types.
+      // Keeping the same base across related examples allows sharing any ambient `.d.ts` files.
       const baseDir = path.dirname(path.dirname(filepath))
 
       /**
@@ -88,8 +88,6 @@ export function vitePluginSnippet() {
 
       /** @type {Array<{ path: string; relative: string }>} */
       const queue = []
-      const addedPreludes = new Set()
-      const baseDirReal = fs.realpathSync.native(baseDir)
 
       /**
        * Enqueue a file (if it exists) so it becomes part of the virtual program.
@@ -110,45 +108,8 @@ export function vitePluginSnippet() {
         queue.push(entry)
       }
 
-      /**
-       * Include `prelude.ts` files for the provided file and its ancestor directories.
-       * Ensures shared shims (e.g. vite/client) are available regardless of import order.
-       *
-       * Example (✓ included, ✗ skipped when resolving `patterns/effect/store-setup/atoms.ts`):
-       *
-       * patterns/
-       * ├─ effect/
-       * │  ├─ prelude.ts          ✓
-       * │  ├─ store-setup/
-       * │  │  ├─ prelude.ts       ✓
-       * │  │  └─ atoms.ts         (lookup origin)
-       * │  └─ other/
-       * │     └─ prelude.ts       ✗ (sibling branch)
-       *
-       * @param {string} absolutePath
-       */
-      function enqueuePreludes(absolutePath) {
-        let currentDir = path.dirname(absolutePath)
-        while (currentDir.startsWith(baseDirReal)) {
-          const preludePath = path.resolve(currentDir, 'prelude.ts')
-          if (!addedPreludes.has(preludePath)) {
-            addedPreludes.add(preludePath)
-            enqueueFile(preludePath)
-          }
-          if (currentDir === baseDirReal) {
-            break
-          }
-          const parentDir = path.dirname(currentDir)
-          if (parentDir === currentDir) {
-            break
-          }
-          currentDir = parentDir
-        }
-      }
-
       // Seed the queue with the main file; we follow imports from there for performance
       enqueueFile(filepath)
-      enqueuePreludes(filepath)
 
       while (queue.length > 0) {
         const fileInfo = queue.shift()
@@ -172,7 +133,6 @@ export function vitePluginSnippet() {
           for (const candidate of candidatePaths) {
             if (fs.existsSync(candidate)) {
               enqueueFile(candidate)
-              enqueuePreludes(candidate)
               break
             }
           }

@@ -38,12 +38,12 @@ This automatically:
 - Keep imports between files relative with explicit extensions (e.g., `./livestore/schema.ts`)
 - The plugin preserves directory structure in the virtual file system
 
-### `prelude.ts` and `---cut---`
+### Ambient types and `// ---cut---`
 
 - Use the TwoSlash cut marker `// ---cut---` to hide boilerplate/setup from the rendered snippet while keeping it type-checked.
-- Multi-file: put setup-only code (e.g., triple-slash references, ambient types) in a `prelude.ts`. The snippet plugin looks for `prelude.ts` in the snippet’s own directory *and every ancestor directory inside the snippet base*, bundling any that exist before the main file. Because `// ---cut---` is inserted immediately before the main file, readers never see the preludes, but the types are available to all files in that directory tree.
+- Multi-file: ambient declarations live in `*.d.ts` files alongside the snippet. The snippet plugin brings those files in automatically (they are listed before the main file and therefore get trimmed by the cut marker).
 - Single-file: add `// ---cut---` at the point where the visible snippet should begin; anything above is hidden.
-- Don’t re-declare LiveStore types; import from the real packages or reference an existing local `types.d.ts` in the snippet folder (kept hidden via `prelude.ts`).
+- Don’t re-declare LiveStore types; import from the real packages or place shared declarations in a local `types.d.ts` if you need ambient helpers.
 
 Example directory structure:
 ```
