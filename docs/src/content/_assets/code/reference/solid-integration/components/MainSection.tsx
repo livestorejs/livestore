@@ -1,4 +1,3 @@
-/// <reference path="../types.d.ts" />
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: TODO 🫠 */
 /** @jsxImportSource solid-js */
 import { query } from '@livestore/solid'

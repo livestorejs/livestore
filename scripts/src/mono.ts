@@ -33,6 +33,9 @@ const docsBuildCommand = Cli.Command.make(
       yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { cwd: docsPath, shell: true })
     }
 
+    // Always clean up .netlify folder as it can cause issues with the build
+    yield* cmd('rm -rf .netlify', { cwd: docsPath })
+
     yield* cmd('pnpm astro build', {
       cwd: docsPath,
       env: {

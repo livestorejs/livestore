@@ -1,5 +1,6 @@
 // @ts-check
 
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
@@ -43,6 +44,9 @@ export default defineConfig({
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
+  },
+  build: {
+    concurrency: os.cpus().length,
   },
   env: {
     schema: {

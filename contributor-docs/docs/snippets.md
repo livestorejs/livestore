@@ -10,7 +10,7 @@
   - Avoid using TS workarounds like `// @ts-ignore`, `// @ts-expect-error`, `// @ts-nocheck`, `as any` etc.
   - Don't use `// @errors: 18004` etc to suppress errors.
   - Avoid using `declare` as workarounds but rather prefer proper imports.
-  - Packages that are imported from should be installed as `devDependencies` in the `docs` package.json.
+  - Declare snippet-only dependencies in `src/content/_assets/code/package.json` so docs dependencies stay lean.
   - Use explicit `.ts` and `.tsx` extensions for relative file imports.
 
 ### Multi-file Snippets
@@ -41,7 +41,7 @@ This automatically:
 ### `prelude.ts` and `---cut---`
 
 - Use the TwoSlash cut marker `// ---cut---` to hide boilerplate/setup from the rendered snippet while keeping it type-checked.
-- Multi-file: put setup-only code (e.g., triple-slash references, ambient types) in a `prelude.ts` in the same folder. The snippet plugin bundles it before the main file; because it inserts `// ---cut---` right before the main file, users won’t see `prelude.ts`, but the types are available.
+- Multi-file: put setup-only code (e.g., triple-slash references, ambient types) in a `prelude.ts`. The snippet plugin looks for `prelude.ts` in the snippet’s own directory *and every ancestor directory inside the snippet base*, bundling any that exist before the main file. Because `// ---cut---` is inserted immediately before the main file, readers never see the preludes, but the types are available to all files in that directory tree.
 - Single-file: add `// ---cut---` at the point where the visible snippet should begin; anything above is hidden.
 - Don’t re-declare LiveStore types; import from the real packages or reference an existing local `types.d.ts` in the snippet folder (kept hidden via `prelude.ts`).
 
@@ -58,15 +58,19 @@ src/content/_assets/code/getting-started/react-web/
 
 ### Dependencies
 
-- Packages that are imported from should be installed as `devDependencies` in the `docs` package.json. Don't re-define the types via `declare module` in the snippets.
+- Install snippet-only packages via `pnpm --filter docs-code-snippets add <pkg>` so they live in `src/content/_assets/code/package.json`. Don't re-define modules—import from real packages.
+
+### Type checking
+
+- The snippets use `src/content/_assets/code/tsconfig.json`, mirroring the compiler options wired into Twoslash. Use that config if you need to run targeted TypeScript checks for snippet folders.
 
 ### Configuration
 
 **Vite Plugin**: The `?snippet` functionality is implemented via `docs/src/vite-plugin-snippet.js` which is registered in `docs/astro.config.mjs`.
 
 **Expressive Code**: See `docs/ec.config.mjs` for Twoslash configuration:
-- TypeScript compiler options include `allowImportingTsExtensions: true` and `moduleResolution: Bundler`
-- JSX is configured for React
+- Twoslash reads `src/content/_assets/code/tsconfig.json`, so compiler options stay aligned with the snippet workspace (NodeNext modules/resolution, React JSX, `node` + `vite/client` types).
+- The language-service cache is shared across snippets to avoid re-parsing dependencies.
 
 ### Testing
 

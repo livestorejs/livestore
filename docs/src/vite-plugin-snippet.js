@@ -86,12 +86,69 @@ export function vitePluginSnippet() {
       const allFiles = new Map()
       const processed = new Set()
 
-      // Seed the queue with only the main file; we follow imports from there for performance
-      const mainRelativePath = path.relative(baseDir, filepath)
-      const queue = [{ path: filepath, relative: mainRelativePath }]
+      /** @type {Array<{ path: string; relative: string }>} */
+      const queue = []
+      const addedPreludes = new Set()
+      const baseDirReal = fs.realpathSync.native(baseDir)
 
-      // Ensure the main file itself is included in the snippet output
-      allFiles.set(mainRelativePath, { path: filepath, relative: mainRelativePath })
+      /**
+       * Enqueue a file (if it exists) so it becomes part of the virtual program.
+       * Normalises paths relative to `baseDir` to keep `@filename` directives stable.
+       *
+       * @param {string} absolutePath
+       */
+      function enqueueFile(absolutePath) {
+        if (!fs.existsSync(absolutePath)) {
+          return
+        }
+        const relativePath = path.relative(baseDir, absolutePath)
+        if (allFiles.has(relativePath)) {
+          return
+        }
+        const entry = { path: absolutePath, relative: relativePath }
+        allFiles.set(relativePath, entry)
+        queue.push(entry)
+      }
+
+      /**
+       * Include `prelude.ts` files for the provided file and its ancestor directories.
+       * Ensures shared shims (e.g. vite/client) are available regardless of import order.
+       *
+       * Example (✓ included, ✗ skipped when resolving `patterns/effect/store-setup/atoms.ts`):
+       *
+       * patterns/
+       * ├─ effect/
+       * │  ├─ prelude.ts          ✓
+       * │  ├─ store-setup/
+       * │  │  ├─ prelude.ts       ✓
+       * │  │  └─ atoms.ts         (lookup origin)
+       * │  └─ other/
+       * │     └─ prelude.ts       ✗ (sibling branch)
+       *
+       * @param {string} absolutePath
+       */
+      function enqueuePreludes(absolutePath) {
+        let currentDir = path.dirname(absolutePath)
+        while (currentDir.startsWith(baseDirReal)) {
+          const preludePath = path.resolve(currentDir, 'prelude.ts')
+          if (!addedPreludes.has(preludePath)) {
+            addedPreludes.add(preludePath)
+            enqueueFile(preludePath)
+          }
+          if (currentDir === baseDirReal) {
+            break
+          }
+          const parentDir = path.dirname(currentDir)
+          if (parentDir === currentDir) {
+            break
+          }
+          currentDir = parentDir
+        }
+      }
+
+      // Seed the queue with the main file; we follow imports from there for performance
+      enqueueFile(filepath)
+      enqueuePreludes(filepath)
 
       while (queue.length > 0) {
         const fileInfo = queue.shift()
@@ -107,24 +164,17 @@ export function vitePluginSnippet() {
           const resolvedPath = path.resolve(path.dirname(fileInfo.path), importPath)
 
           // Check if file exists (try with and without extension, .ts then .tsx)
-          let fullPath = resolvedPath
-          if (!fs.existsSync(fullPath) && !fullPath.endsWith('.ts') && !fullPath.endsWith('.tsx')) {
-            if (fs.existsSync(`${fullPath}.ts`)) {
-              fullPath = `${fullPath}.ts`
-            } else if (fs.existsSync(`${fullPath}.tsx`)) {
-              fullPath = `${fullPath}.tsx`
-            } else {
-              continue // Skip if file doesn't exist
-            }
+          const candidatePaths = [resolvedPath]
+          if (!resolvedPath.endsWith('.ts') && !resolvedPath.endsWith('.tsx')) {
+            candidatePaths.push(`${resolvedPath}.ts`, `${resolvedPath}.tsx`)
           }
 
-          // Calculate relative path from base directory
-          const relativePath = path.relative(baseDir, fullPath)
-
-          if (!allFiles.has(relativePath) && fs.existsSync(fullPath)) {
-            const newFile = { path: fullPath, relative: relativePath }
-            allFiles.set(relativePath, newFile)
-            queue.push(newFile)
+          for (const candidate of candidatePaths) {
+            if (fs.existsSync(candidate)) {
+              enqueueFile(candidate)
+              enqueuePreludes(candidate)
+              break
+            }
           }
         }
       }

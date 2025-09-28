@@ -1,6 +1,7 @@
 packages:
   - scripts
   - docs
+  - docs/src/content/_assets/code
   - packages/@livestore/*
   - packages/@local/*
   - examples/*
