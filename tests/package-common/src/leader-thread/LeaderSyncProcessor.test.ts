@@ -220,13 +220,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
 
   /**
    * Session A pushes e1…e6 through the public `push` API while session B (same
-   * client, different session) wakes with stale state and enqueues [e2, e7, e8]. We expect the leader
-   * to accept the batch after rebasing it to [e7, e8, e9] and to expose the rebased sequence numbers
-   * via the mock backend.
+   * client, different session) wakes with stale state and enqueues [e2, e7, e8]. The leader should
+   * reject the batch with `LeaderAheadError`, forcing session B to rebase locally.
    */
-  Vitest.scopedLive('leader push API rebases stale batch from secondary session', (test) =>
+  Vitest.scopedLive('leader push API rejects stale batch from secondary session', (test) =>
     Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
       const sessionAFactory = makeEventFactory({
@@ -240,16 +238,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
         startSeq: 2,
         initialParent: 1,
       })
-
-      const pushedEventsDeferred = yield* Deferred.make<Chunk.Chunk<LiveStoreEvent.AnyEncodedGlobal>, never>()
-
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(
-        Stream.filter((event) => event.sessionId === 'session-B'),
-        Stream.take(3),
-        Stream.runCollect,
-        Effect.intoDeferred(pushedEventsDeferred),
-        Effect.forkScoped,
-      )
 
       const sessionAEvents = [
         sessionAFactory.todoCreated.next({ id: 'A-1', text: 'A-1', completed: false }),
@@ -269,31 +257,23 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       const followUpB2 = sessionBFactory.todoCreated.next({ id: 'B-follow-8', text: 'B-follow-8', completed: false })
 
       // Session B resumes with a stale pending mutation followed by two fresh events
-      yield* testContext.pushEncoded(staleEventB, followUpB1, followUpB2)
+      const pushResult = yield* testContext
+        .pushEncoded(staleEventB, followUpB1, followUpB2)
+        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
 
-      const targetHeadGlobal = EventSequenceNumber.globalEventSequenceNumber(9)
+      expect(pushResult._tag).toBe('Left')
+      if (pushResult._tag !== 'Left') {
+        return
+      }
 
-      const finalState = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((_) => _.localHead.global === targetHeadGlobal),
-        Stream.runHead,
-        Effect.flatten,
-        Effect.timeout(Duration.seconds(5)),
-      )
+      const error = pushResult.left
+      expect(error._tag).toBe('LeaderAheadError')
+      if (error._tag !== 'LeaderAheadError') {
+        return
+      }
 
-      const pushedEvents = yield* pushedEventsDeferred
-
-      const pushedSeqs = pushedEvents.pipe(Chunk.toReadonlyArray).map((event) => ({
-        session: event.sessionId,
-        seq: EventSequenceNumber.toString(EventSequenceNumber.fromGlobal(event.seqNum)),
-      }))
-
-      expect(pushedSeqs).toEqual([
-        { session: 'session-B', seq: 'e7' },
-        { session: 'session-B', seq: 'e8' },
-        { session: 'session-B', seq: 'e9' },
-      ])
-
-      expect(EventSequenceNumber.toString(finalState.localHead)).toBe('e9')
+      expect(EventSequenceNumber.toString(error.minimumExpectedNum)).toBe('e6')
+      expect(EventSequenceNumber.toString(error.providedNum)).toBe('e2')
     }).pipe(withTestCtx()(test)),
   )
 

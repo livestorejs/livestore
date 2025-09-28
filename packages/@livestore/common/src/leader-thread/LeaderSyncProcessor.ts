@@ -166,55 +166,22 @@ export const makeLeaderSyncProcessor = ({
 
         // console.debug('push', newEvents)
 
-        /**
-         * Different client sessions mint sequence numbers from their own view of the
-         * leader head. While session A’s events may already sit in the shared queue
-         * (advancing `pushHeadRef`) session B can legitimately enqueue a "stale" e2
-         * because it has not observed those pushes yet. We normalise here so the
-         * leader, not the clients, resolves that race.
-         */
-        const { batch: normalizedBatch, rebased } = ensurePushBatchMonotonic({
-          batch: newEvents,
-          pushHead: pushHeadRef.current,
-          schema,
-        })
+        yield* validatePushBatch(newEvents, pushHeadRef.current)
 
-        if (rebased) {
-          ctxRef.current?.otelSpan?.addEvent('push:rebased-batch', {
-            batchSize: normalizedBatch.length,
-            headBefore: EventSequenceNumber.toString(pushHeadRef.current),
-            headAfter: EventSequenceNumber.toString(normalizedBatch.at(-1)!.seqNum),
-          })
-
-          yield* Effect.annotateCurrentSpan({
-            pushBatchRebased: true,
-            rebasedBatchSize: normalizedBatch.length,
-            headBefore: EventSequenceNumber.toString(pushHeadRef.current),
-            rebasedHead: EventSequenceNumber.toString(normalizedBatch.at(-1)!.seqNum),
-          })
-        }
-
-        yield* validatePushBatch(normalizedBatch, pushHeadRef.current)
-
-        const normalizedBatchTail = normalizedBatch.at(-1)
-        if (normalizedBatchTail === undefined) {
-          return shouldNeverHappen('Normalized batch unexpectedly empty')
-        }
-
-        advancePushHead(normalizedBatchTail.seqNum)
+        advancePushHead(newEvents.at(-1)!.seqNum)
 
         const waitForProcessing = options?.waitForProcessing ?? false
 
         if (waitForProcessing) {
-          const deferreds = yield* Effect.forEach(normalizedBatch, () => Deferred.make<void, LeaderAheadError>())
+          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
-          const items = normalizedBatch.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
+          const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
           yield* BucketQueue.offerAll(localPushesQueue, items)
 
           yield* Effect.all(deferreds)
         } else {
-          const items = normalizedBatch.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
+          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
@@ -1024,12 +991,13 @@ const validatePushBatch = (
       return
     }
 
-    // Make sure batch is monotonically increasing
+    // Ensure strictly ascending sequence numbers so the leader never regresses
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
-        shouldNeverHappen(
-          `Events must be ordered in monotonically ascending order by eventNum. Received: [${batch.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-        )
+        return yield* LeaderAheadError.make({
+          minimumExpectedNum: batch[i - 1]!.seqNum,
+          providedNum: batch[i]!.seqNum,
+        })
       }
     }
 
@@ -1041,67 +1009,3 @@ const validatePushBatch = (
       })
     }
   })
-
-/**
- * Normalise a candidate local-push batch so the sequence numbers are strictly
- * increasing relative to the leader's current head.
- *
- * 1. If the batch is already monotonic and strictly ahead of `pushHead`, it is
- *    returned untouched.
- * 2. Otherwise every event is `rebase`d onto the current head (preserving the
- *    clientOnly flag) and the entire batch is yielded back with
- *    `pushHead.rebaseGeneration + 1`.
- */
-const ensurePushBatchMonotonic = ({
-  batch,
-  pushHead,
-  schema,
-}: {
-  batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  pushHead: EventSequenceNumber.EventSequenceNumber
-  schema: LiveStoreSchema
-}): {
-  batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  rebased: boolean
-} => {
-  if (batch.length === 0) {
-    return { batch, rebased: false }
-  }
-
-  let isStrictlyAscending = true
-  for (let i = 1; i < batch.length; i++) {
-    if (!EventSequenceNumber.isGreaterThan(batch[i]!.seqNum, batch[i - 1]!.seqNum)) {
-      isStrictlyAscending = false
-      break
-    }
-  }
-
-  const firstEvent = batch[0]!
-  const firstGreaterThanHead = EventSequenceNumber.isGreaterThan(firstEvent.seqNum, pushHead)
-  const firstEqualToHead = EventSequenceNumber.isEqual(firstEvent.seqNum, pushHead)
-
-  if (isStrictlyAscending && firstGreaterThanHead) {
-    return { batch, rebased: false }
-  }
-
-  if (firstEqualToHead) {
-    return { batch, rebased: false }
-  }
-
-  const rebasedBatch: LiveStoreEvent.EncodedWithMeta[] = []
-  const nextRebaseGeneration = pushHead.rebaseGeneration + 1
-  let prevSeqNum = pushHead
-
-  for (const event of batch) {
-    const { eventDef } = getEventDef(schema, event.name)
-    const rebasedEvent = event.rebase({
-      parentSeqNum: prevSeqNum,
-      isClient: eventDef.options.clientOnly,
-      rebaseGeneration: nextRebaseGeneration,
-    })
-    rebasedBatch.push(rebasedEvent)
-    prevSeqNum = rebasedEvent.seqNum
-  }
-
-  return { batch: rebasedBatch, rebased: true }
-}
