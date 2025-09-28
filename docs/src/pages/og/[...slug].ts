@@ -42,5 +42,4 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   return run
 }
 
-export const GET: typeof ogRoute.GET = async (context) =>
-  enqueue(async () => ogRoute.GET(context))
+export const GET: typeof ogRoute.GET = async (context) => enqueue(async () => ogRoute.GET(context))
