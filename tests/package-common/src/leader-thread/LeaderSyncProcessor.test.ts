@@ -21,6 +21,7 @@ import {
   Chunk,
   Context,
   Deferred,
+  Duration,
   Effect,
   FetchHttpClient,
   Layer,
@@ -215,6 +216,85 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
         params: { localPushBatchSize: 2 },
       })(test),
     ),
+  )
+
+  /**
+   * Session A pushes e1…e6 through the public `push` API while session B (same
+   * client, different session) wakes with stale state and enqueues [e2, e7, e8]. We expect the leader
+   * to accept the batch after rebasing it to [e7, e8, e9] and to expose the rebased sequence numbers
+   * via the mock backend.
+   */
+  Vitest.scopedLive('leader push API rebases stale batch from secondary session', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const sessionAFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-A'),
+        startSeq: 1,
+        initialParent: 'root',
+      })
+
+      const sessionBFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-B'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      const pushedEventsDeferred = yield* Deferred.make<Chunk.Chunk<LiveStoreEvent.AnyEncodedGlobal>, never>()
+
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(
+        Stream.filter((event) => event.sessionId === 'session-B'),
+        Stream.take(3),
+        Stream.runCollect,
+        Effect.intoDeferred(pushedEventsDeferred),
+        Effect.forkScoped,
+      )
+
+      const sessionAEvents = [
+        sessionAFactory.todoCreated.next({ id: 'A-1', text: 'A-1', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-2', text: 'A-2', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-3', text: 'A-3', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-4', text: 'A-4', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-5', text: 'A-5', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-6', text: 'A-6', completed: false }),
+      ]
+
+      // Session A floods the leader with six optimistic events (e1…e6)
+      yield* testContext.pushEncoded(...sessionAEvents)
+
+      const staleEventB = sessionBFactory.todoCreated.next({ id: 'B-stale', text: 'B-stale', completed: false })
+      sessionBFactory.todoCreated.advanceTo(7, 6) // Make sure we rebase to e7
+      const followUpB1 = sessionBFactory.todoCreated.next({ id: 'B-follow-7', text: 'B-follow-7', completed: false })
+      const followUpB2 = sessionBFactory.todoCreated.next({ id: 'B-follow-8', text: 'B-follow-8', completed: false })
+
+      // Session B resumes with a stale pending mutation followed by two fresh events
+      yield* testContext.pushEncoded(staleEventB, followUpB1, followUpB2)
+
+      const targetHeadGlobal = EventSequenceNumber.globalEventSequenceNumber(9)
+
+      const finalState = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === targetHeadGlobal),
+        Stream.runHead,
+        Effect.flatten,
+        Effect.timeout(Duration.seconds(5)),
+      )
+
+      const pushedEvents = yield* pushedEventsDeferred
+
+      const pushedSeqs = pushedEvents.pipe(Chunk.toReadonlyArray).map((event) => ({
+        session: event.sessionId,
+        seq: EventSequenceNumber.toString(EventSequenceNumber.fromGlobal(event.seqNum)),
+      }))
+
+      expect(pushedSeqs).toEqual([
+        { session: 'session-B', seq: 'e7' },
+        { session: 'session-B', seq: 'e8' },
+        { session: 'session-B', seq: 'e9' },
+      ])
+
+      expect(EventSequenceNumber.toString(finalState.localHead)).toBe('e9')
+    }).pipe(withTestCtx()(test)),
   )
 
   // TODO tests for
