@@ -982,6 +982,11 @@ const makePullQueueSet = Effect.gen(function* () {
   }
 })
 
+/**
+ * Validate a client-provided batch before it is admitted to the leader queue.
+ * Ensures the numbers form a strictly increasing chain and that the first
+ * event sits ahead of the current push head.
+ */
 const validatePushBatch = (
   batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
   pushHead: EventSequenceNumber.EventSequenceNumber,
@@ -991,7 +996,10 @@ const validatePushBatch = (
       return
     }
 
-    // Ensure strictly ascending sequence numbers so the leader never regresses
+    // Example: session A already enqueued e1…e6 while session B (same client, different
+    // session) still believes the head is e1 and submits [e2, e7, e8]. The numbers look
+    // monotonic from B’s perspective, but we must reject and force B to rebase locally
+    // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
         return yield* LeaderAheadError.make({
