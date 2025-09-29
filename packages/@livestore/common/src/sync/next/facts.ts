@@ -1,6 +1,4 @@
 import { notYetImplemented } from '@livestore/utils'
-import { Graph } from '@livestore/utils/effect'
-
 import type {
   EventDefFactInput,
   EventDefFacts,
@@ -34,7 +32,7 @@ export const factsSnapshotForDag = (
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
-  const orderedEventSequenceNumberStrs = Graph.topologicalSort(dag)
+  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds()
 
   for (let i = 0; i < orderedEventSequenceNumberStrs.length; i++) {
     const event = dag.getNodeAttributes(orderedEventSequenceNumberStrs[i]!)
