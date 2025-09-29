@@ -6,6 +6,7 @@
   "dependencies": {
     "@effect-atom/atom": "0.1.20",
     "@effect-atom/atom-livestore": "0.1.16",
+    "@cloudflare/workers-types": "catalog:",
     "@effect-atom/atom-react": "0.1.15",
     "@types/node": "catalog:",
     "effect": "catalog:",

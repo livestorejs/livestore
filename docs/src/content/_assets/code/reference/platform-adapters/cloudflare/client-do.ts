@@ -1,3 +1,5 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
@@ -20,7 +22,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
   private readonly todosQuery = tables.todos.select()
 
   async fetch(request: Request): Promise<Response> {
-    // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     this.storeId = storeIdFromRequest(request)
 
     const store = await this.getStore()
@@ -44,7 +46,12 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObject: { ctx: this.ctx, env: this.env, bindingName: 'CLIENT_DO' },
+      durableObject: {
+        // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
+        ctx: this.ctx,
+        env: this.env,
+        bindingName: 'CLIENT_DO',
+      },
       syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })

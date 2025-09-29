@@ -28,11 +28,11 @@ export default {
     }
 
     if (url.pathname === '/') {
-      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+      // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
       return new Response('CloudFlare TodoMVC LiveStore Demo') as CfTypes.Response
     }
 
-    // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     return new Response('Invalid path', { status: 400 }) as CfTypes.Response
   },
 } satisfies CfTypes.ExportedHandler<Env>

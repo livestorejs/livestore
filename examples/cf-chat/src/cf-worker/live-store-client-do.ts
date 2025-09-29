@@ -15,7 +15,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
 
   async fetch(request: Request): Promise<Response> {
     try {
-      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+      // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
       this.storeId = storeIdFromRequest(request)
 
       const store = await this.getStore()
