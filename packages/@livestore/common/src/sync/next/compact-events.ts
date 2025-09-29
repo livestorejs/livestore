@@ -1,6 +1,6 @@
+import { Graph } from '@livestore/utils/effect'
 import { EventSequenceNumber } from '../../schema/mod.ts'
 import { replacesFacts } from './facts.ts'
-import { graphologyDag } from './graphology_.ts'
 import type { HistoryDag } from './history-dag-common.ts'
 import { emptyHistoryDag } from './history-dag-common.ts'
 
@@ -17,7 +17,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   const dag = inputDag.copy()
   const compactedEventCount = 0
 
-  const orderedEventSequenceNumberStrs = graphologyDag.topologicalSort(dag).reverse()
+  const orderedEventSequenceNumberStrs = Graph.topologicalSort(dag).reverse()
 
   // drop root
   orderedEventSequenceNumberStrs.pop()
@@ -116,7 +116,7 @@ const findSubDagsInHistory = (
   const subDags: HistoryDag[] = []
   const allOutsideDependencies: string[][] = []
 
-  for (const eventNumStr of graphologyDag.topologicalSort(inputDag)) {
+  for (const eventNumStr of Graph.topologicalSort(inputDag)) {
     if (eventNumStr === upToExclEventSequenceNumberStr) {
       break
     }
@@ -189,8 +189,8 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
   }
 
   // TODO write tests that covers deterministic order when DAGs have branches
-  const nodeEntriesA = graphologyDag.topologicalSort(dagA).map((nodeId) => dagA.getNodeAttributes(nodeId))
-  const nodeEntriesB = graphologyDag.topologicalSort(dagB).map((nodeId) => dagB.getNodeAttributes(nodeId))
+  const nodeEntriesA = Graph.topologicalSort(dagA).map((nodeId) => dagA.getNodeAttributes(nodeId))
+  const nodeEntriesB = Graph.topologicalSort(dagB).map((nodeId) => dagB.getNodeAttributes(nodeId))
 
   for (let i = 0; i < nodeEntriesA.length; i++) {
     const nodeA = nodeEntriesA[i]!

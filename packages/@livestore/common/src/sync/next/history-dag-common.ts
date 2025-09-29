@@ -1,6 +1,6 @@
+import { Graph } from '@livestore/utils/effect'
 import type { EventDefFactsGroup } from '../../schema/EventDef.ts'
 import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
-import { graphology } from './graphology_.ts'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
 export type ConnectionType = (typeof connectionTypeOptions)[number]
@@ -10,13 +10,11 @@ export type ConnectionType = (typeof connectionTypeOptions)[number]
  * - total-order (parent) relationships
  * - dependency (requires/reads facts) relationships
  */
-export type HistoryDag = graphology.IGraph<HistoryDagNode, { type: ConnectionType }>
+export type HistoryDag = Graph.MutableDirectedGraph<string, HistoryDagNode, { type: ConnectionType }>
 
 export const emptyHistoryDag = (): HistoryDag =>
-  new graphology.Graph({
+  new Graph.MutableDirectedGraph<string, HistoryDagNode, { type: ConnectionType }>({
     allowSelfLoops: false,
-    multi: true,
-    type: 'directed',
   })
 
 // TODO consider making `ROOT_ID` parent to itself
