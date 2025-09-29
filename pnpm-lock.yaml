@@ -292,6 +292,9 @@ importers:
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-cloudflare
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-web
@@ -1355,9 +1358,18 @@ importers:
       '@effect/ai-openai':
         specifier: 0.31.0
         version: 0.31.0(@effect/ai@0.28.0(@effect/experimental@0.55.0(@effect/platform@0.91.1(effect@3.17.14))(effect@3.17.14)(ioredis@5.7.0))(@effect/platform@0.91.1(effect@3.17.14))(@effect/rpc@0.70.0(@effect/platform@0.91.1(effect@3.17.14))(effect@3.17.14))(effect@3.17.14))(@effect/experimental@0.55.0(@effect/platform@0.91.1(effect@3.17.14))(effect@3.17.14)(ioredis@5.7.0))(@effect/platform@0.91.1(effect@3.17.14))(effect@3.17.14)
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../adapter-node
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../livestore
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../sync-cf
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils

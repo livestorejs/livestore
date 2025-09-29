@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@effect/ai-openai": "0.31.0",
+    "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
