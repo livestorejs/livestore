@@ -5,7 +5,7 @@ import type { Adapter } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import React from 'react'
 import { unstable_batchedUpdates } from 'react-dom'
-import { createStoreContext } from './types.js'
+import { createStoreContext } from './createStoreContext.tsx'
 
 // Mock schemas for demonstration (actual schemas would be created with makeSchema)
 // These are just for showing the type-safe API, not actual implementations
