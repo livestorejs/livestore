@@ -22,21 +22,19 @@ import YAML from 'yaml'
  */
 const OWNER = 'livestorejs'
 const REPO = 'livestore'
-const WORKFLOW_NAME = 'ci'
 
 /**
  * Build the list of required contexts from the workflow definition and registry.
  * Keeps the protected checks aligned with CI without querying run history.
  */
-const computeRequiredContextsFromWorkflow = (workflowPath: string, workflowName: string) =>
+const computeRequiredContextsFromWorkflow = (workflowPath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const raw = yield* fs.readFileString(workflowPath)
     const doc = YAML.parse(raw) as any
 
     const contexts: string[] = []
-    const pushContext = (jobId: string, suffix?: string) =>
-      contexts.push(`${workflowName} / ${jobId}${suffix ? ` (${suffix})` : ''}`)
+    const pushContext = (jobId: string, suffix?: string) => contexts.push(suffix ? `${jobId} (${suffix})` : jobId)
 
     const jobs: Record<string, any> = doc?.jobs ?? {}
 
@@ -60,7 +58,23 @@ const computeRequiredContextsFromWorkflow = (workflowPath: string, workflowName:
       pushContext('test-integration-playwright')
     }
 
-    return contexts
+    for (const additional of ['perf-test', 'wa-sqlite-test', 'check-nix-flake-inputs']) {
+      if (jobs[additional]) pushContext(additional)
+    }
+
+    return Array.from(new Set(contexts)).sort((a, b) => a.localeCompare(b))
+  })
+
+const getCurrentRequiredContexts = (branch: string) =>
+  Effect.gen(function* () {
+    const response = yield* cmdText(
+      ['gh', 'api', `repos/${OWNER}/${REPO}/branches/${branch}/protection`, '--jq', '.'],
+      { stderr: 'pipe' },
+    )
+
+    const parsed = JSON.parse(response) as { required_status_checks?: { contexts?: string[] } } | null
+    const current = parsed?.required_status_checks?.contexts ?? []
+    return Array.isArray(current) ? current : []
   })
 
 const getStrictFlag = (branch: string) =>
@@ -127,11 +141,31 @@ const updateBranchProtectionCommand = Cli.Command.make(
 
     const contexts = yield* computeRequiredContextsFromWorkflow(
       path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'workflows', 'ci.yml'),
-      WORKFLOW_NAME,
     )
 
+    const existing = yield* getCurrentRequiredContexts(branch)
+
     if (dryRun) {
-      console.log(`Would set required checks for ${OWNER}/${REPO}@${branch}:`)
+      const desiredSet = new Set(contexts)
+      const existingSet = new Set(existing)
+      const toRemove = existing.filter((context) => !desiredSet.has(context)).sort((a, b) => a.localeCompare(b))
+      const toAdd = contexts.filter((context) => !existingSet.has(context)).sort((a, b) => a.localeCompare(b))
+
+      if (toRemove.length > 0) {
+        console.log('Would remove:')
+        for (const context of toRemove) console.log(`- ${context}`)
+      } else {
+        console.log('Would remove: (none)')
+      }
+
+      if (toAdd.length > 0) {
+        console.log('Would add:')
+        for (const context of toAdd) console.log(`- ${context}`)
+      } else {
+        console.log('Would add: (none)')
+      }
+
+      console.log('Would set required checks to:')
       for (const c of contexts) console.log(`- ${c}`)
       return
     }
