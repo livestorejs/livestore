@@ -17,15 +17,20 @@ runs:
     - name: Install devenv
       shell: bash
       run: nix profile add nixpkgs#devenv
+    
+    - name: Warmup devenv (skip setup)
+      shell: bash
+      run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
 
     - name: Get pnpm store directory
       # This is needed because pnpm's store path is not fixed and can vary based on the environment.
       id: pnpm-store
       shell: bash
       # We use `devenv shell` because the `pnpm` CLI is installed via Nix.
+      # But we still skip the setup step as it would call `pnpm install` which we don't want to do here yet.
       # Write to $GITHUB_ENV so subsequent steps can read it as env
       run: |
-        PNPM_STORE_PATH=$(devenv shell --quiet pnpm store path --silent 2>/dev/null | tail -n 1 | tr -d '\r')
+        PNPM_STORE_PATH=$(DEVENV_SKIP_SETUP=1 devenv shell --quiet pnpm store path --silent 2>/dev/null | tail -n 1 | tr -d '\r')
         echo "PNPM_STORE_PATH=${PNPM_STORE_PATH}" >> "$GITHUB_ENV"
 
     - name: Cache pnpm store
@@ -36,6 +41,11 @@ runs:
        path: ${{ env.PNPM_STORE_PATH }}
        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
        restore-keys: ${{ runner.os }}-pnpm-store-
+    
+    # Calls `pnpm install` and other setup steps.
+    - name: Run devenv setup script
+      shell: bash
+      run: devenv shell --verbose env
 
     - name: Collect and log runner machine info
       shell: bash

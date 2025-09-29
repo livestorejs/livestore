@@ -153,8 +153,8 @@ export function vitePluginSnippet() {
 
       // Expressive Code shows the first file by default; make sure that’s the “main” file
       // for the snippet so the rendered docs start with the snippet the reader expects.
-      const mainIdx = files.findIndex((entry) =>
-        path.basename(entry.relative) === mainFile && entry.relative.includes(path.basename(dir)),
+      const mainIdx = files.findIndex(
+        (entry) => path.basename(entry.relative) === mainFile && entry.relative.includes(path.basename(dir)),
       )
       if (mainIdx > 0) {
         files.unshift(files.splice(mainIdx, 1)[0])
