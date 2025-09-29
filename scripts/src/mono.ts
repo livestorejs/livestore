@@ -65,6 +65,52 @@ const docsCommand = Cli.Command.make('docs').pipe(
     ),
     docsBuildCommand,
     Cli.Command.make(
+      'preview',
+      {
+        port: Cli.Options.text('port').pipe(
+          Cli.Options.optional,
+          Cli.Options.withDescription('Port for the preview server'),
+        ),
+        build: Cli.Options.boolean('build').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Build the docs before starting the preview server'),
+        ),
+      },
+      Effect.fn(function* ({ port: portOption, build }) {
+        if (build) {
+          yield* docsBuildCommand.handler({ apiDocs: false, clean: false })
+        }
+
+        const portArg = portOption._tag === 'Some' ? portOption.value : undefined
+
+        const distPath = `${docsPath}/dist`
+        if (!fs.existsSync(distPath)) {
+          yield* Effect.logWarning(
+            `Docs dist folder not found at ${distPath}. Run 'mono docs build' or pass '--build' to 'mono docs preview'.`,
+          )
+        }
+
+        yield* cmd(
+          [
+            'bunx',
+            'netlify-cli',
+            'dev',
+            '--context',
+            'production',
+            '--dir=dist',
+            portArg !== undefined ? `--port=${portArg}` : undefined,
+          ],
+          {
+            cwd: docsPath,
+            logDir: `${docsPath}/logs`,
+            env: {
+              NODE_ENV: 'production',
+            },
+          },
+        )
+      }),
+    ),
+    Cli.Command.make(
       'deploy',
       {
         // TODO clean up when Effect CLI boolean flag is fixed

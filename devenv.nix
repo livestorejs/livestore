@@ -34,7 +34,7 @@ in
     export VITE_LIVESTORE_SYNC_URL="http://localhost:8787"
 
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
-    export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
+    export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
 
     export GRAFANA_ENDPOINT="http://localhost:30003"
     export VITE_GRAFANA_ENDPOINT="$GRAFANA_ENDPOINT"
@@ -58,8 +58,10 @@ in
 
     export NODE_OPTIONS="--disable-warning=ExperimentalWarning"
 
-    # Project setup + completions (best-effort)
-    bun run "$WORKSPACE_ROOT/scripts/standalone/setup.ts" || true
+    # Project setup + completions
+    if [ -z "''${DEVENV_SKIP_SETUP:-}" ]; then
+      bun run "$WORKSPACE_ROOT/scripts/standalone/setup.ts" || true
+    fi
     [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
   '';
 }

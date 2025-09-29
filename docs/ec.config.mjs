@@ -1,13 +1,25 @@
 // @ts-check
 
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { shouldNeverHappen } from '@livestore/utils'
 import { defineEcConfig } from 'astro-expressive-code'
 import ecTwoSlash from 'expressive-code-twoslash'
 import ts from 'typescript'
 
 // Twoslash should see the same workspace layout as the snippet sources.
-const codeRoot = fileURLToPath(new URL('./src/content/_assets/code/', import.meta.url))
+const moduleDir = path.dirname(fileURLToPath(import.meta.url))
+let codeRoot = path.resolve(moduleDir, 'src/content/_assets/code')
+
+// When bundled for `astro build`, this module lives under `.netlify/build/chunks`.
+// In that case the relative lookup above misses the source tree, so fall back to
+// the workspace root (exposed via $WORKSPACE_ROOT / process.cwd()).
+if (!fs.existsSync(codeRoot)) {
+  const workspaceRoot =
+    process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
+  codeRoot = path.resolve(workspaceRoot, 'docs/src/content/_assets/code')
+}
 const snippetTsconfigPath = path.join(codeRoot, 'tsconfig.json')
 
 // Keep Twoslash compiler options in sync with the snippet workspace tsconfig.
