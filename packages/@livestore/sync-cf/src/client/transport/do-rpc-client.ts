@@ -1,4 +1,5 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
@@ -19,7 +20,6 @@ import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../com
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
-import { splitChunkBySize } from '../../common/transport-chunking.ts'
 
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 

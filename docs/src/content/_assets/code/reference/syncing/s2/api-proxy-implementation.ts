@@ -62,24 +62,23 @@ export async function POST(request: Request) {
   await S2Helpers.ensureStream(s2Config, streamName)
 
   // Build push request with proper formatting
-  const {
-    url: pushUrl,
-    headers,
-    body,
-  } = S2Helpers.buildPushRequest({
+  const pushRequests = S2Helpers.buildPushRequests({
     config: s2Config,
     storeId: parsed.storeId,
     batch: parsed.batch,
   })
 
-  const res = await fetch(pushUrl, {
-    method: 'POST',
-    headers,
-    body,
-  })
+  for (const pushRequest of pushRequests) {
+    const res = await fetch(pushRequest.url, {
+      method: 'POST',
+      headers: pushRequest.headers,
+      body: pushRequest.body,
+    })
 
-  if (!res.ok) {
-    return S2Helpers.errorResponse('Push failed', 500)
+    if (!res.ok) {
+      return S2Helpers.errorResponse('Push failed', 500)
+    }
   }
+
   return S2Helpers.successResponse()
 }
