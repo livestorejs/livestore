@@ -33,7 +33,7 @@ const useMinimalStore = minimalContext[1]
 function _MinimalExample() {
   return (
     <MinimalProvider
-      storeId="workspace-1" // ✅ Required - TS error if missing (not provided in config)
+      // storeId defaults to the store name ('minimal') but can be overridden
       adapter={workspaceAdapter} // ✅ Required - TS error if missing
       batchUpdates={unstable_batchedUpdates} // ✅ Required - TS error if missing
     >
@@ -60,7 +60,6 @@ const fullContext = createStoreContext({
   schema: projectSchema,
   adapter: projectAdapter,
   batchUpdates: unstable_batchedUpdates,
-  storeId: 'main-project',
   disableDevtools: false,
 })
 const FullProvider = fullContext[0]
@@ -98,57 +97,25 @@ const partialContext = createStoreContext({
   name: 'partial',
   schema: issueSchema,
   adapter: issueAdapter, // Provided here
-  // storeId not provided - will be required at Provider
 })
 const PartialProvider = partialContext[0]
 const usePartialStore = partialContext[1]
 
-// ============================================
-// Example 3b: Partial Configuration (with storeId)
-// ============================================
-// Adapter and storeId provided, batchUpdates not provided
-const partialWithIdContext = createStoreContext({
-  name: 'partialWithId',
-  schema: issueSchema,
-  adapter: issueAdapter,
-  storeId: 'default-issue', // Provided here
-})
-const PartialWithIdProvider = partialWithIdContext[0]
-const _usePartialWithIdStore = partialWithIdContext[1]
-
-// Both batchUpdates and storeId required (storeId not provided in config)
+// Only batchUpdates required (storeId defaults to the store name when not provided)
 function _PartialExample() {
   return (
-    <PartialProvider
-      storeId="custom-issue" // ✅ Required - TS error if missing (not provided in config)
-      batchUpdates={unstable_batchedUpdates} // ✅ Required
-    >
+    <PartialProvider batchUpdates={unstable_batchedUpdates}>
       <PartialContent />
     </PartialProvider>
   )
 }
 
-// Only batchUpdates required (storeId provided in config)
-function _PartialWithIdExample() {
+// StoreId can be passed to have distinct store instances
+function _PartialOverrideExample() {
   return (
-    <PartialWithIdProvider
-      batchUpdates={unstable_batchedUpdates} // ✅ Required
-      // storeId is optional - defaults to 'default-issue' from config
-    >
+    <PartialProvider storeId="custom-issue" batchUpdates={unstable_batchedUpdates}>
       <PartialContent />
-    </PartialWithIdProvider>
-  )
-}
-
-// Can still override the storeId from config
-function _PartialWithIdOverrideExample() {
-  return (
-    <PartialWithIdProvider
-      batchUpdates={unstable_batchedUpdates} // ✅ Required
-      storeId="override-issue" // ✅ Optional - overrides config value
-    >
-      <PartialContent />
-    </PartialWithIdProvider>
+    </PartialProvider>
   )
 }
 

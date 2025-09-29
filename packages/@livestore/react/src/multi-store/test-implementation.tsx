@@ -68,12 +68,11 @@ const [FullProvider, useFullStore] = createStoreContext({
   schema: todoSchema,
   adapter: makeInMemoryAdapter(),
   batchUpdates: unstable_batchedUpdates,
-  storeId: 'full-default',
 })
 
 function TestFull() {
   return (
-    <FullProvider>
+    <FullProvider storeId="full-default">
       <Suspense fallback={<div>Loading...</div>}>
         <FullContent />
       </Suspense>
@@ -132,7 +131,6 @@ const [ParentProvider, useParentStore] = createStoreContext({
   schema: todoSchema,
   adapter: makeInMemoryAdapter(),
   batchUpdates: unstable_batchedUpdates,
-  storeId: 'parent-store',
 })
 
 const [ChildProvider, useChildStore] = createStoreContext({
@@ -144,7 +142,7 @@ const [ChildProvider, useChildStore] = createStoreContext({
 
 function TestNested() {
   return (
-    <ParentProvider>
+    <ParentProvider storeId="parent-store">
       <Suspense fallback={<div>Loading parent...</div>}>
         <ParentContent />
       </Suspense>
