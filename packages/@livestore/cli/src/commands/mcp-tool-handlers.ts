@@ -1,61 +1,14 @@
-import { Effect, Schema, Tool, Toolkit } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
 import { socialSchemaContent } from '../mcp-content/schemas/social.ts'
 import { todoSchemaContent } from '../mcp-content/schemas/todo.ts'
-import { coachTool, coachToolHandler } from './mcp-coach.ts'
-
-// Create toolkit with tools and handlers following Tim Smart's pattern
-export const livestoreToolkit = Toolkit.make(
-  coachTool,
-
-  Tool.make('livestore_generate_schema', {
-    description:
-      'Generate a LiveStore schema for a specific use case. Choose from predefined types (todo, blog, social, ecommerce) or request a custom schema by providing a description.',
-    parameters: {
-      schemaType: Schema.String.annotations({
-        description: "Schema type: 'todo', 'blog', 'social', 'ecommerce', or 'custom'",
-      }),
-      customDescription: Schema.optional(
-        Schema.String.annotations({
-          description:
-            "For custom schemas: describe your data model needs (e.g., 'user management system with roles and permissions')",
-        }),
-      ),
-    },
-    success: Schema.Struct({
-      schemaCode: Schema.String.annotations({
-        description: 'The generated LiveStore schema TypeScript code',
-      }),
-      explanation: Schema.String.annotations({
-        description: 'Brief explanation of the schema structure',
-      }),
-    }),
-  }),
-
-  Tool.make('livestore_get_example_schema', {
-    description:
-      'Get a complete example LiveStore schema with TypeScript code. Returns ready-to-use schema definitions for common application types.',
-    parameters: {
-      type: Schema.String.annotations({
-        description: "Example type: 'todo', 'blog', 'social', or 'ecommerce'",
-      }),
-    },
-    success: Schema.Struct({
-      schemaCode: Schema.String.annotations({
-        description: 'The complete LiveStore schema code',
-      }),
-      description: Schema.String.annotations({
-        description: 'Description of what this schema models',
-      }),
-    }),
-  })
-    .annotate(Tool.Readonly, true)
-    .annotate(Tool.Destructive, false),
-)
+import * as Runtime from '../mcp-runtime/runtime.ts'
+import { coachToolHandler } from './mcp-coach.ts'
+import { livestoreToolkit } from './mcp-tools-defs.ts'
 
 // Tool handlers using Tim Smart's pattern
-export const toolHandlers = livestoreToolkit.of({
+export const toolHandlers: any = livestoreToolkit.of({
   livestore_coach: coachToolHandler,
 
   livestore_generate_schema: Effect.fnUntraced(function* ({ schemaType, customDescription }) {
@@ -165,5 +118,42 @@ export const schema = Schema.create({
     }
 
     return { schemaCode, description }
+  }),
+
+  // Connect the single in-process LiveStore instance from user module
+  livestore_instance_connect: Effect.fnUntraced(function* ({ storePath, storeId }) {
+    const store = yield* Runtime.init({ storePath, storeId }).pipe(Effect.orDie)
+    const eventNames = Array.from(store.schema.eventsDefsMap.keys())
+    const tableNames = Array.from(store.schema.state.sqlite.tables.keys())
+
+    return {
+      storeId: store.storeId,
+      clientId: store.clientId,
+      sessionId: store.sessionId,
+      schemaInfo: {
+        tableNames,
+        eventNames,
+      },
+    }
+  }),
+
+  // Execute a raw SQL query against the local client DB
+  livestore_instance_query: Effect.fnUntraced(function* ({ sql, bindValues }) {
+    return yield* Runtime.query({ sql, bindValues })
+  }),
+
+  // Validate and commit events
+  livestore_instance_commit_events: Effect.fnUntraced(function* ({ events }) {
+    return yield* Runtime.commit({ events })
+  }),
+
+  // Status
+  livestore_instance_status: Effect.fnUntraced(function* () {
+    return yield* Runtime.status
+  }),
+
+  // Disconnect
+  livestore_instance_disconnect: Effect.fnUntraced(function* () {
+    return yield* Runtime.disconnect
   }),
 })

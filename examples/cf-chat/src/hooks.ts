@@ -16,6 +16,10 @@ export const useChat = () => {
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
   const [uiState, setUiState] = useClientDocument(tables.uiState)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Circuit breaker: track which messageIds we've already emitted a read receipt for
+  const readCircuitBreakerRef = useRef<Set<string>>(new Set())
+  // Circuit breaker: prevent re-emitting lastSeenMessageId across rebases
+  const lastSeenCircuitBreakerRef = useRef<Set<string>>(new Set())
 
   // Get data from store
   const messages = store.useQuery(messagesQuery)
@@ -30,26 +34,35 @@ export const useChat = () => {
     const latestMessage = messages[messages.length - 1]
     if (!latestMessage) return
 
+    // Persist last seen for UI when it changes.
+    // Guard with a session-local circuit breaker so rollbacks/rebases
+    // don't cause repeated uiStateSet emissions.
     if (uiState.lastSeenMessageId !== latestMessage.id) {
-      if (latestMessage.userId !== userContext.userId) {
-        playIncomingSound()
+      if (!lastSeenCircuitBreakerRef.current.has(latestMessage.id)) {
+        lastSeenCircuitBreakerRef.current.add(latestMessage.id)
+        setUiState({ lastSeenMessageId: latestMessage.id })
       }
+    }
 
-      setUiState({ lastSeenMessageId: latestMessage.id })
-
-      if (latestMessage.userId !== userContext.userId) {
+    // Only react to messages from others and guard with a session-local circuit breaker
+    if (latestMessage.userId !== userContext.userId) {
+      if (!readCircuitBreakerRef.current.has(latestMessage.id)) {
+        readCircuitBreakerRef.current.add(latestMessage.id)
+        playIncomingSound()
         store.commit(
           events.messageRead({
             id: `read-${latestMessage.id}-${userContext.userId}`,
             messageId: latestMessage.id,
             userId: userContext.userId,
             username: userContext.username,
-            timestamp: new Date(),
+            // Use the message timestamp for deterministic args across sessions.
+            // This avoids cross-session divergence (args equality) during merge.
+            timestamp: new Date(latestMessage.timestamp),
           }),
         )
       }
     }
-  }, [messages, userContext.userId, userContext.username, uiState.lastSeenMessageId, setUiState, store])
+  }, [messages, userContext.userId, userContext.username, store, setUiState, uiState.lastSeenMessageId])
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
