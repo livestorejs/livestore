@@ -1,3 +1,6 @@
+# Jobs tagged with LIVESTORE_BRANCH_PROTECTION_REQUIRED are used by
+# scripts/src/commands/github.ts (mono github branch-protection update)
+# to keep GitHub’s branch protection checks in sync with this workflow.
 name: ci
 run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 
@@ -20,6 +23,8 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -31,6 +36,8 @@ jobs:
 
   test-unit:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -42,6 +49,8 @@ jobs:
 
   test-integration-node-sync:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -97,6 +106,8 @@ jobs:
       matrix:
         provider: [mock, electric, s2, cf-http-d1, cf-http-do, cf-ws-d1, cf-ws-do, cf-do-rpc-d1, cf-do-rpc-do]
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -122,6 +133,8 @@ jobs:
       matrix:
         suite: [misc, todomvc, devtools]
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -169,6 +182,8 @@ jobs:
           fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -192,6 +207,8 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
   wa-sqlite-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -18,9 +18,11 @@ import {
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
+import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../common/constants.ts'
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
+import { splitChunkBySize } from '../../common/transport-chunking.ts'
 
 export interface HttpSyncOptions {
   /**
@@ -176,7 +178,25 @@ export const makeHttpSync =
             return
           }
 
-          yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch, backendId: backendIdHelper.get() })
+          const backendId = backendIdHelper.get()
+          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
+            splitChunkBySize({
+              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+              maxBytes: MAX_HTTP_REQUEST_BYTES,
+              encode: (items) => ({
+                batch: items,
+                storeId,
+                payload,
+                backendId,
+              }),
+            }),
+            Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
+          )
+
+          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
+            const chunkArray = Chunk.toReadonlyArray(chunk)
+            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
+          }
         }).pipe(
           pushSemaphore.withPermits(1),
           Effect.mapError((cause) =>

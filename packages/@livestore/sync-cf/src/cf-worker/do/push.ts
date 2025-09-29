@@ -7,8 +7,9 @@ import {
 } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
-import { splitChunkBySize } from '../../common/ws-chunking.ts'
+import { splitChunkBySize } from '../../common/transport-chunking.ts'
 import { type Env, type MakeDurableObjectClassOptions, type StoreId, WebSocketAttachmentSchema } from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
@@ -82,6 +83,8 @@ export const makePush =
         // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
         const responses = yield* Chunk.fromIterable(pushRequest.batch).pipe(
           splitChunkBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_WS_MESSAGE_BYTES,
             encode: (items) =>
               encodePullResponse(
                 SyncMessage.PullResponse.make({
