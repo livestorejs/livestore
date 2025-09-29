@@ -321,32 +321,22 @@ function Dashboard() {
 ```tsx
 function IssueBoard({ issueIds }: { issueIds: string[] }) {
   return (
-    <>
-      {/* Set up multiple issue store providers */}
-      {issueIds.map(id => (
-        <IssueStoreProvider key={id} storeId={`issue-${id}`} />
-      ))}
-      
-      {/* Access them in child components */}
-      <Suspense fallback={<Loading />}>
-        <div className="issue-grid">
-          {issueIds.map(id => (
-            <IssueCard key={id} issueId={id} />
-          ))}
-        </div>
-      </Suspense>
-    </>
+    <Suspense fallback={<Loading />}>
+      <div className="issue-grid">
+        {issueIds.map(id => (
+          <IssueStoreProvider key={id} storeId={`issue-${id}`}>
+            <IssueCard issueId={id} />
+          </IssueStoreProvider>
+        ))}
+      </div>
+    </Suspense>
   )
 }
 
 function IssueCard({ issueId }: { issueId: string }) {
-  // Access specific instance
+  // Access specific instance by storeId
   const issueStore = useIssueStore({ storeId: `issue-${issueId}` })
-  
-  if (!issueStore) {
-    return <div>Issue not found</div>
-  }
-  
+
   const issue = issueStore.useQuery(issueQuery)
   return <Card>{issue.title}</Card>
 }
