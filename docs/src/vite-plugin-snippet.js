@@ -147,15 +147,18 @@ export function vitePluginSnippet() {
         if (aIsDts && !bIsDts) return -1
         if (!aIsDts && bIsDts) return 1
 
-        // Put the main file last (after its dependencies) so Twoslash shows it after type context
-        const aIsMain = path.basename(a.relative) === mainFile && a.relative.includes(path.basename(dir))
-        const bIsMain = path.basename(b.relative) === mainFile && b.relative.includes(path.basename(dir))
-        if (aIsMain && !bIsMain) return 1
-        if (!aIsMain && bIsMain) return -1
-
         // Otherwise sort alphabetically for stability
         return a.relative.localeCompare(b.relative)
       })
+
+      // Expressive Code shows the first file by default; make sure that’s the “main” file
+      // for the snippet so the rendered docs start with the snippet the reader expects.
+      const mainIdx = files.findIndex((entry) =>
+        path.basename(entry.relative) === mainFile && entry.relative.includes(path.basename(dir)),
+      )
+      if (mainIdx > 0) {
+        files.unshift(files.splice(mainIdx, 1)[0])
+      }
 
       let snippetContent = ''
 
