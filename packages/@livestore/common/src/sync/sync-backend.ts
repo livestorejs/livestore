@@ -91,6 +91,37 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   }
 }
 
+/**
+ * Runtime type guard for SyncBackend objects.
+ * Performs lightweight structural checks on the object shape.
+ */
+export const isSyncBackend = (value: unknown): value is SyncBackend<any> => {
+  if (typeof value !== 'object' || value === null) return false
+
+  const v: any = value
+  const hasCoreFns =
+    typeof v.connect === 'function' &&
+    typeof v.pull === 'function' &&
+    typeof v.push === 'function' &&
+    typeof v.ping === 'function'
+
+  const hasSupports =
+    typeof v.supports === 'object' &&
+    v.supports !== null &&
+    typeof v.supports.pullPageInfoKnown === 'boolean' &&
+    typeof v.supports.pullLive === 'boolean'
+
+  const hasMetadata =
+    typeof v.metadata === 'object' &&
+    v.metadata !== null &&
+    typeof v.metadata.name === 'string' &&
+    typeof v.metadata.description === 'string'
+
+  const hasIsConnected = typeof v.isConnected === 'object' && v.isConnected !== null
+
+  return hasCoreFns && hasSupports && hasMetadata && hasIsConnected
+}
+
 export const PullResPageInfo = Schema.Union(
   Schema.TaggedStruct('MoreUnknown', {}),
   Schema.TaggedStruct('MoreKnown', {

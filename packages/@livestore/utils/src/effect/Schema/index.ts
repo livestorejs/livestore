@@ -96,4 +96,4 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
   Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ title: 'JsonValue' })
+).annotations({ identifier: 'JsonValue' })
