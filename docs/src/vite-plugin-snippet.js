@@ -40,7 +40,7 @@ export function vitePluginSnippet() {
     transform(_code, id) {
       // Check if this is a ?snippet import
       const [filepath, query] = id.split('?')
-      if (!query || !query.includes('snippet')) {
+      if (!query || !query.includes('snippet') || !filepath) {
         return null
       }
 
@@ -48,7 +48,7 @@ export function vitePluginSnippet() {
       const mainFile = path.basename(filepath)
       // Base directory for flattening `@filename` paths.
       // Example: from `/patterns/effect/batch-example/batch.ts` we want `/patterns/effect/`.
-      // Keeping the same base across related examples allows sharing stub types.
+      // Keeping the same base across related examples allows sharing any ambient `.d.ts` files.
       const baseDir = path.dirname(path.dirname(filepath))
 
       /**
@@ -60,12 +60,13 @@ export function vitePluginSnippet() {
        * @returns {string[]}
        */
       function extractImports(content) {
+        /** @type {string[]} */
         const imports = []
         // Match both import statements and export ... from statements
         const importRegex = /(?:import|export)\s+(?:.*?\s+from\s+)?['"](\.\.?\/[^'"]+)['"]/g
         let match
         match = importRegex.exec(content)
-        while (match !== null) {
+        while (match !== null && match[1] !== undefined) {
           imports.push(match[1])
           match = importRegex.exec(content)
         }
@@ -73,7 +74,7 @@ export function vitePluginSnippet() {
         // Match triple-slash references to local files (e.g. /// <reference path="../types.d.ts" />)
         const referenceRegex = /\/\/\/\s*<reference\s+path=["'](.+?)["']\s*\/>/g
         let referenceMatch = referenceRegex.exec(content)
-        while (referenceMatch !== null) {
+        while (referenceMatch !== null && referenceMatch[1] !== undefined) {
           imports.push(referenceMatch[1])
           referenceMatch = referenceRegex.exec(content)
         }
@@ -85,8 +86,30 @@ export function vitePluginSnippet() {
       const allFiles = new Map()
       const processed = new Set()
 
-      // Seed the queue with only the main file; we follow imports from there for performance
-      const queue = [{ path: filepath, relative: path.relative(baseDir, filepath) }]
+      /** @type {Array<{ path: string; relative: string }>} */
+      const queue = []
+
+      /**
+       * Enqueue a file (if it exists) so it becomes part of the virtual program.
+       * Normalises paths relative to `baseDir` to keep `@filename` directives stable.
+       *
+       * @param {string} absolutePath
+       */
+      function enqueueFile(absolutePath) {
+        if (!fs.existsSync(absolutePath)) {
+          return
+        }
+        const relativePath = path.relative(baseDir, absolutePath)
+        if (allFiles.has(relativePath)) {
+          return
+        }
+        const entry = { path: absolutePath, relative: relativePath }
+        allFiles.set(relativePath, entry)
+        queue.push(entry)
+      }
+
+      // Seed the queue with the main file; we follow imports from there for performance
+      enqueueFile(filepath)
 
       while (queue.length > 0) {
         const fileInfo = queue.shift()
@@ -102,24 +125,16 @@ export function vitePluginSnippet() {
           const resolvedPath = path.resolve(path.dirname(fileInfo.path), importPath)
 
           // Check if file exists (try with and without extension, .ts then .tsx)
-          let fullPath = resolvedPath
-          if (!fs.existsSync(fullPath) && !fullPath.endsWith('.ts') && !fullPath.endsWith('.tsx')) {
-            if (fs.existsSync(`${fullPath}.ts`)) {
-              fullPath = `${fullPath}.ts`
-            } else if (fs.existsSync(`${fullPath}.tsx`)) {
-              fullPath = `${fullPath}.tsx`
-            } else {
-              continue // Skip if file doesn't exist
-            }
+          const candidatePaths = [resolvedPath]
+          if (!resolvedPath.endsWith('.ts') && !resolvedPath.endsWith('.tsx')) {
+            candidatePaths.push(`${resolvedPath}.ts`, `${resolvedPath}.tsx`)
           }
 
-          // Calculate relative path from base directory
-          const relativePath = path.relative(baseDir, fullPath)
-
-          if (!allFiles.has(relativePath) && fs.existsSync(fullPath)) {
-            const newFile = { path: fullPath, relative: relativePath }
-            allFiles.set(relativePath, newFile)
-            queue.push(newFile)
+          for (const candidate of candidatePaths) {
+            if (fs.existsSync(candidate)) {
+              enqueueFile(candidate)
+              break
+            }
           }
         }
       }
@@ -132,15 +147,18 @@ export function vitePluginSnippet() {
         if (aIsDts && !bIsDts) return -1
         if (!aIsDts && bIsDts) return 1
 
-        // Put the main file last (after its dependencies) so Twoslash shows it after type context
-        const aIsMain = path.basename(a.relative) === mainFile && a.relative.includes(path.basename(dir))
-        const bIsMain = path.basename(b.relative) === mainFile && b.relative.includes(path.basename(dir))
-        if (aIsMain && !bIsMain) return 1
-        if (!aIsMain && bIsMain) return -1
-
         // Otherwise sort alphabetically for stability
         return a.relative.localeCompare(b.relative)
       })
+
+      // Expressive Code shows the first file by default; make sure that’s the “main” file
+      // for the snippet so the rendered docs start with the snippet the reader expects.
+      const mainIdx = files.findIndex(
+        (entry) => path.basename(entry.relative) === mainFile && entry.relative.includes(path.basename(dir)),
+      )
+      if (mainIdx > 0) {
+        files.unshift(files.splice(mainIdx, 1)[0])
+      }
 
       let snippetContent = ''
 

@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.9",
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.55.1-beta-1758616458000",
     "@tanstack/react-router": "^1.131.28",
     "@tanstack/router-devtools": "^1.130.13",
     "@tanstack/router-plugin": "^1.131.28",
@@ -34,7 +34,7 @@
     "vite": "^7.1.7"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",

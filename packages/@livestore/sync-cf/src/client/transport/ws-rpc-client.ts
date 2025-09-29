@@ -1,6 +1,8 @@
 import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
+import type { LiveStoreEvent } from '@livestore/common/schema'
 import { omit } from '@livestore/utils'
 import {
+  Chunk,
   type Duration,
   Effect,
   Layer,
@@ -18,6 +20,8 @@ import {
 } from '@livestore/utils/effect'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
+import { splitChunkBySize } from '../../common/ws-chunking.ts'
+
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
 
 export interface WsSyncOptions {
@@ -150,22 +154,34 @@ export const makeWsSync =
 
         push: (batch) =>
           Effect.gen(function* () {
-            if (batch.length === 0) {
-              return
-            }
+            if (batch.length === 0) return
 
-            return yield* rpcClient.SyncWsRpc.Push({
+            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => ({
               storeId,
               payload,
               batch,
               backendId: backendIdHelper.get(),
-            }).pipe(
-              Effect.mapError((cause) =>
-                cause._tag === 'InvalidPushError'
-                  ? cause
-                  : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
-              ),
+            })
+
+            const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
+              splitChunkBySize({ encode: encodePayload }),
+              Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
             )
+
+            for (const sub of chunksChunk) {
+              yield* rpcClient.SyncWsRpc.Push({
+                storeId,
+                payload,
+                batch: Chunk.toReadonlyArray(sub),
+                backendId: backendIdHelper.get(),
+              }).pipe(
+                Effect.mapError((cause) =>
+                  cause._tag === 'InvalidPushError'
+                    ? cause
+                    : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
+                ),
+              )
+            }
           }).pipe(Effect.withSpan('push')),
         ping,
         metadata: {

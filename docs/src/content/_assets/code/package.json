@@ -1,0 +1,19 @@
+{
+  "name": "docs-code-snippets",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@effect-atom/atom": "0.1.20",
+    "@effect-atom/atom-livestore": "0.1.16",
+    "@effect-atom/atom-react": "0.1.15",
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "expo-status-bar": "3.0.8",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native": "0.81.4",
+    "solid-js": "1.9.9"
+  }
+}

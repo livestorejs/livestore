@@ -1,4 +1,3 @@
-import type { DurableObjectState } from 'cloudflare:workers'
 import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid } from '@livestore/livestore'
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
@@ -12,7 +11,7 @@ export const maybeResetStore = async ({
 }: {
   request: Request
   env: Env
-  ctx: DurableObjectState
+  ctx: CfTypes.DurableObjectState
 }) => {
   const url = new URL(request.url)
   const shouldReset =
@@ -25,11 +24,7 @@ export const maybeResetStore = async ({
     storeId,
     clientId: 'client-do',
     sessionId: nanoid(),
-    durableObject: {
-      ctx: ctx as CfTypes.DurableObjectState,
-      env,
-      bindingName: 'CLIENT_DO',
-    },
+    durableObject: { ctx, env, bindingName: 'CLIENT_DO' },
     syncBackendStub: env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)),
     livePull: true,
     resetPersistence: shouldReset,

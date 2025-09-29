@@ -9,15 +9,15 @@ import type {
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
+import type { CfTypes } from '@livestore/common-cf'
 import { Effect } from '@livestore/utils/effect'
-import type * as CfWorker from './cf-types.ts'
 
 // Simplified prepared statement implementation using only public API
 class CloudflarePreparedStatement implements PreparedStatement {
-  private sqlStorage: CfWorker.SqlStorage
+  private sqlStorage: CfTypes.SqlStorage
   public readonly sql: string
 
-  constructor(sqlStorage: CfWorker.SqlStorage, sql: string) {
+  constructor(sqlStorage: CfTypes.SqlStorage, sql: string) {
     this.sqlStorage = sqlStorage
     this.sql = sql
   }
@@ -46,7 +46,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
   select = <T>(bindValues?: PreparedBindValues): readonly T[] => {
     try {
-      const cursor = this.sqlStorage.exec<Record<string, CfWorker.SqlStorageValue>>(
+      const cursor = this.sqlStorage.exec<Record<string, CfTypes.SqlStorageValue>>(
         this.sql,
         ...(bindValues ? Object.values(bindValues) : []),
       )
@@ -84,12 +84,12 @@ type CloudflareDatabaseInput =
       _tag: 'file'
       // databaseName: string
       // directory: string
-      db: CfWorker.SqlStorage
+      db: CfTypes.SqlStorage
       configureDb: (db: SqliteDb) => void
     }
   | {
       _tag: 'in-memory'
-      db: CfWorker.SqlStorage
+      db: CfTypes.SqlStorage
       configureDb: (db: SqliteDb) => void
     }
 
@@ -137,7 +137,7 @@ export const makeSqliteDb_ = <
   sqlStorage,
   metadata,
 }: {
-  sqlStorage: CfWorker.SqlStorage
+  sqlStorage: CfTypes.SqlStorage
   metadata: TMetadata
 }): SqliteDb<TMetadata> => {
   const preparedStmts: PreparedStatement[] = []

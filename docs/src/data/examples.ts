@@ -1,4 +1,4 @@
-import { getBranchName, IS_MAIN_BRANCH } from '../../data.js'
+import { getBranchName, IS_MAIN_BRANCH } from './data.ts'
 
 // Hosted assets - To upload new assets:
 // 1. Get auth token: TOKEN=$(curl -s -X POST https://gitbucket.schickling.dev/api/auth | jq -r '.token')

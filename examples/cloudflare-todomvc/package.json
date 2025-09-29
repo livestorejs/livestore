@@ -14,7 +14,7 @@
     "wrangler": "^4.38.0"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "wrangler build",

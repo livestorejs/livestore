@@ -1,6 +1,7 @@
 import type { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
@@ -78,13 +79,6 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
 
   return paramsResult.value
 }
-
-export const MAX_PULL_EVENTS_PER_MESSAGE = 100
-
-// Cloudflare hibernated WebSocket frames begin failing just below 1MB. Keep our
-// payloads comfortably beneath that ceiling so we don't rely on implementation
-// quirks of local dev servers.
-export const MAX_WS_MESSAGE_BYTES = 900_000
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {

@@ -21,7 +21,7 @@
     "vite-plugin-solid": "^2.11.8"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",

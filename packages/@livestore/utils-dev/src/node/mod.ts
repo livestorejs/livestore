@@ -104,10 +104,7 @@ export const OtelLiveHttp = ({
         const tracer = yield* OtelTracer.OtelTracer
         const currentSpan = yield* OtelTracer.currentOtelSpan
 
-        const nodeTiming = performance.nodeTiming
-
-        // TODO get rid of this workaround for Bun once Bun properly supports performance.nodeTiming
-        const startTime = IS_BUN ? nodeTiming.startTime : performance.timeOrigin + nodeTiming.nodeStart
+        const { nodeTiming, endAbs, durationAttr } = computeBootstrapTiming()
 
         const bootSpan = tracer.startSpan(
           'node-bootstrap',
@@ -118,13 +115,13 @@ export const OtelLiveHttp = ({
               'node.timing.environment': nodeTiming.environment,
               'node.timing.bootstrapComplete': nodeTiming.bootstrapComplete,
               'node.timing.loopStart': nodeTiming.loopStart,
-              'node.timing.duration': nodeTiming.duration,
+              'node.timing.duration': durationAttr,
             },
           },
           otel.trace.setSpanContext(otel.context.active(), currentSpan.spanContext()),
         )
 
-        bootSpan.end(startTime + nodeTiming.duration)
+        bootSpan.end(endAbs)
       }).pipe(Effect.provide(layer), Effect.orDie)
     }
 
@@ -168,3 +165,50 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     // TODO make dynamic via env var
     return `${grafanaEndpoint}/explore?${searchParams.toString()}`
   })
+
+/**
+ * Compute absolute start/end timestamps for the Node.js bootstrap span in a
+ * way that works in both Node and Bun.
+ *
+ * Context: Bun's perf_hooks PerformanceNodeTiming currently throws when
+ * accessing standard PerformanceEntry getters like `startTime` and
+ * `duration`, and some fields differ in semantics (e.g. `nodeStart` appears
+ * as an epoch timestamp rather than an offset). See:
+ * https://github.com/oven-sh/bun/issues/23041
+ *
+ * We therefore avoid the problematic getters and derive absolute timestamps
+ * using fields that exist in both runtimes.
+ *
+ * TODO: Simplify to a single, non-branching computation once the Bun issue
+ * above is fixed and Bun matches Node's semantics for PerformanceNodeTiming.
+ */
+const computeBootstrapTiming = () => {
+  const nodeTiming = performance.nodeTiming
+
+  // Absolute start time in ms since epoch.
+  const startAbs = IS_BUN
+    ? typeof nodeTiming.nodeStart === 'number'
+      ? nodeTiming.nodeStart
+      : performance.timeOrigin
+    : performance.timeOrigin + nodeTiming.nodeStart
+
+  // Absolute end time.
+  const endAbs = IS_BUN
+    ? (() => {
+        const { loopStart, bootstrapComplete } = nodeTiming
+        if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
+        if (typeof bootstrapComplete === 'number' && bootstrapComplete >= startAbs) return bootstrapComplete
+        return startAbs + 1
+      })()
+    : startAbs + nodeTiming.duration
+
+  // Duration attribute value for the span.
+  const durationAttr = IS_BUN
+    ? (() => {
+        const { loopStart } = nodeTiming
+        return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0
+      })()
+    : nodeTiming.duration
+
+  return { nodeTiming, startAbs, endAbs, durationAttr } as const
+}

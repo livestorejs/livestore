@@ -30,8 +30,8 @@ export interface SearchResult {
 function filePathToHref(filePath: string): string {
   // Extract the path after /src/content/docs/
   const match = filePath.match(/\/src\/content\/docs\/(.+)$/)
-  if (!match) return '/'
-  let href = match[1]
+  if (!match || !match[1]) return '/'
+  let href = match[1]!
   href = href.replace(/\.(md|mdx)$/, '')
   href = href.replace(/\/index$/, '')
   return `/${href}`

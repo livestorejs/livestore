@@ -1,5 +1,6 @@
 // @ts-check
 
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
@@ -16,7 +17,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
-import { getBranchName } from './data.js'
+import { getBranchName } from './src/data/data.ts'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
@@ -43,6 +44,9 @@ export default defineConfig({
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
+  },
+  build: {
+    concurrency: os.cpus().length,
   },
   env: {
     schema: {

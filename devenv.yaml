@@ -1,0 +1,9 @@
+inputs:
+  nixpkgs:
+    url: github:NixOS/nixpkgs/nixos-unstable
+  playwright-web-flake:
+    url: github:pietdevries94/playwright-web-flake
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+

@@ -36,7 +36,6 @@
     "remark-custom-header-id": "1.0.0",
     "remove-markdown": "0.6.2",
     "sharp": "0.34.3",
-    "solid-js": "1.9.9",
     "starlight-auto-sidebar": "0.1.2",
     "starlight-contextual-menu": "0.1.3",
     "starlight-links-validator": "0.17.1",
@@ -49,12 +48,7 @@
     "typescript": "catalog:"
   },
   "devDependencies": {
-    "@effect-atom/atom": "^0.1.20",
-    "@effect-atom/atom-livestore": "^0.1.16",
-    "@effect-atom/atom-react": "^0.1.15",
-    "@types/react-dom": "catalog:",
-    "effect": "catalog:",
-    "jotai": "^2.13.1"
+    "@types/react-dom": "catalog:"
   },
   "scripts": {
     "astro": "astro",
