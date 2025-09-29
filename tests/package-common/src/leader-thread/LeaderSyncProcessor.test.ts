@@ -21,6 +21,7 @@ import {
   Chunk,
   Context,
   Deferred,
+  Duration,
   Effect,
   FetchHttpClient,
   Layer,
@@ -215,6 +216,65 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
         params: { localPushBatchSize: 2 },
       })(test),
     ),
+  )
+
+  /**
+   * Session A pushes e1…e6 through the public `push` API while session B (same
+   * client, different session) wakes with stale state and enqueues [e2, e7, e8]. The leader should
+   * reject the batch with `LeaderAheadError`, forcing session B to rebase locally.
+   */
+  Vitest.scopedLive('leader push API rejects stale batch from secondary session', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      const sessionAFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-A'),
+        startSeq: 1,
+        initialParent: 'root',
+      })
+
+      const sessionBFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-B'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      const sessionAEvents = [
+        sessionAFactory.todoCreated.next({ id: 'A-1', text: 'A-1', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-2', text: 'A-2', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-3', text: 'A-3', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-4', text: 'A-4', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-5', text: 'A-5', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-6', text: 'A-6', completed: false }),
+      ]
+
+      // Session A floods the leader with six optimistic events (e1…e6)
+      yield* testContext.pushEncoded(...sessionAEvents)
+
+      const staleEventB = sessionBFactory.todoCreated.next({ id: 'B-stale', text: 'B-stale', completed: false })
+      sessionBFactory.todoCreated.advanceTo(7, 6) // Make sure we rebase to e7
+      const followUpB1 = sessionBFactory.todoCreated.next({ id: 'B-follow-7', text: 'B-follow-7', completed: false })
+      const followUpB2 = sessionBFactory.todoCreated.next({ id: 'B-follow-8', text: 'B-follow-8', completed: false })
+
+      // Session B resumes with a stale pending mutation followed by two fresh events
+      const pushResult = yield* testContext
+        .pushEncoded(staleEventB, followUpB1, followUpB2)
+        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+
+      expect(pushResult._tag).toBe('Left')
+      if (pushResult._tag !== 'Left') {
+        return
+      }
+
+      const error = pushResult.left
+      expect(error._tag).toBe('LeaderAheadError')
+      if (error._tag !== 'LeaderAheadError') {
+        return
+      }
+
+      expect(EventSequenceNumber.toString(error.minimumExpectedNum)).toBe('e6')
+      expect(EventSequenceNumber.toString(error.providedNum)).toBe('e2')
+    }).pipe(withTestCtx()(test)),
   )
 
   // TODO tests for
