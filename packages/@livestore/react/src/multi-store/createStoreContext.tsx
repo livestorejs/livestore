@@ -39,7 +39,7 @@ export function createStoreContext<
       schema: config.schema, // Schema always from config
       adapter: (props as any).adapter ?? config.adapter,
       batchUpdates: (props as any).batchUpdates ?? config.batchUpdates,
-      storeId: (props as any).storeId ?? config.storeId ?? config.name,
+      storeId: (props as any).storeId ?? config.name,
     }
 
     // Validate required props at runtime (development only)

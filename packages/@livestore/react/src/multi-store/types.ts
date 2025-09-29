@@ -13,7 +13,6 @@ export interface CreateStoreContextConfig<TSchema extends LiveStoreSchema> {
   name: string
   schema: TSchema
   adapter?: Adapter
-  storeId?: string
   batchUpdates?: (fn: () => void) => void
   disableDevtools?: boolean
   confirmUnsavedChanges?: boolean
@@ -40,7 +39,6 @@ export interface BaseProviderProps {
 type ConfigurableProps = {
   adapter: Adapter
   batchUpdates: (fn: () => void) => void
-  storeId: string
 }
 
 // Helper to extract props from config that have non-undefined values
@@ -52,6 +50,7 @@ type ProvidedConfigProps<T> = {
 // Props in config become optional (can override), props not in config are required
 export type ComputeProviderProps<TConfig extends CreateStoreContextConfig<any>> = {
   children: ReactNode
+  storeId?: string
   disableDevtools?: boolean
   confirmUnsavedChanges?: boolean
   syncPayload?: Schema.JsonValue
