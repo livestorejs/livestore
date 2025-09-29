@@ -121,8 +121,8 @@ export const schema = Schema.create({
   }),
 
   // Connect the single in-process LiveStore instance from user module
-  livestore_instance_connect: Effect.fnUntraced(function* ({ storePath, storeId }) {
-    const store = yield* Runtime.init({ storePath, storeId }).pipe(Effect.orDie)
+  livestore_instance_connect: Effect.fnUntraced(function* ({ storePath, storeId, clientId, sessionId }) {
+    const store = yield* Runtime.init({ storePath, storeId, clientId, sessionId }).pipe(Effect.orDie)
     const eventNames = Array.from(store.schema.eventsDefsMap.keys())
     const tableNames = Array.from(store.schema.state.sqlite.tables.keys())
 

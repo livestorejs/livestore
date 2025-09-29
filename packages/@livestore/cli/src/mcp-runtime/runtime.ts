@@ -13,7 +13,17 @@ let store: Store<any> | undefined
  * Dynamically imports a module that exports a `makeStore({ storeId }): Promise<Store>` function,
  * calls it with the provided storeId, and caches the Store instance for subsequent tool calls.
  */
-export const init = ({ storePath, storeId }: { storePath: string; storeId: string }) =>
+export const init = ({
+  storePath,
+  storeId,
+  clientId,
+  sessionId,
+}: {
+  storePath: string
+  storeId: string
+  clientId?: string
+  sessionId?: string
+}) =>
   Effect.promise(async () => {
     if (!storeId || typeof storeId !== 'string') {
       throw new Error('Invalid storeId: expected a non-empty string')
@@ -52,6 +62,8 @@ export const init = ({ storePath, storeId }: { storePath: string; storeId: strin
     // Build Node adapter internally
     const adapter = makeNodeAdapter({
       storage: { type: 'in-memory' },
+      ...(clientId ? { clientId } : {}),
+      ...(sessionId ? { sessionId } : {}),
       sync: {
         backend: syncBackend as any,
         initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
