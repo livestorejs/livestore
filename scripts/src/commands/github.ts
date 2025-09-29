@@ -3,7 +3,6 @@ import path from 'node:path'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
-import { providerKeys } from '@local/tests-sync-provider/registry'
 import YAML from 'yaml'
 
 /**
@@ -12,16 +11,119 @@ import YAML from 'yaml'
  * Why this exists:
  * - GitHub branch protection requires an explicit, static list of required check contexts.
  * - Our CI evolves (matrix expansions, renamed jobs), which easily drifts from the protected list.
- * - This command computes the exact contexts from the workflow and our provider registry and
- *   applies them via the GitHub CLI, keeping protection in lockstep with CI.
+ * - This command computes the exact contexts from the workflow definition and applies them via
+ *   the GitHub CLI, keeping protection in lockstep with CI.
  *
  * Key properties:
  * - Deterministic and branch-agnostic: reads `.github/workflows/ci.yml` instead of inspecting runs.
- * - Single source of truth: matrix providers from the test registry; suites from the workflow YAML.
+ * - Single source of truth: parses the workflow jobs (including matrix axes) directly from YAML.
  * - Idempotent: clears existing required checks first, then sets the precise, desired set.
  */
 const OWNER = 'livestorejs'
 const REPO = 'livestore'
+/** Flagged on jobs in the workflow YAML to mark them as branch protection required. */
+const BRANCH_PROTECTION_ENV_KEY = 'LIVESTORE_BRANCH_PROTECTION_REQUIRED'
+
+const isRecord = (input: unknown): input is Record<string, unknown> =>
+  typeof input === 'object' && input !== null && !Array.isArray(input)
+
+type TMatrixCombination = Record<string, unknown>
+
+const formatMatrixValue = (value: unknown): string => {
+  if (value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
+}
+
+const createCombinationKey = (combo: TMatrixCombination): string => {
+  const entries = Object.entries(combo)
+    .filter(([key]) => key !== 'name')
+    .sort(([a], [b]) => a.localeCompare(b))
+  return entries.map(([key, value]) => `${key}=${formatMatrixValue(value)}`).join('|')
+}
+
+const matchesExclusion = (combo: TMatrixCombination, candidate: Record<string, unknown>): boolean => {
+  const entries = Object.entries(candidate)
+  if (entries.length === 0) return false
+  for (const [key, value] of entries) {
+    if (key === 'name') continue
+    if (!Object.hasOwn(combo, key)) return false
+    if (formatMatrixValue(combo[key]) !== formatMatrixValue(value)) return false
+  }
+  return true
+}
+
+const expandMatrix = (
+  matrix: unknown,
+): { combinations: ReadonlyArray<TMatrixCombination>; axisOrder: ReadonlyArray<string> } => {
+  if (!isRecord(matrix)) return { combinations: [], axisOrder: [] }
+
+  const axisEntries = Object.entries(matrix).filter(([, value]) => Array.isArray(value))
+  const axisOrder = axisEntries.map(([key]) => key)
+
+  let combinations: TMatrixCombination[] = [{}]
+
+  for (const [axis, values] of axisEntries) {
+    if (!Array.isArray(values) || values.length === 0) continue
+    const next: TMatrixCombination[] = []
+    for (const combo of combinations) {
+      for (const value of values) {
+        next.push({ ...combo, [axis]: value })
+      }
+    }
+    combinations = next.length > 0 ? next : combinations
+  }
+
+  if (axisOrder.length === 0 && combinations.length === 0) {
+    combinations = [{}]
+  }
+
+  const includes = Array.isArray(matrix.include) ? (matrix.include as Array<unknown>).filter(isRecord) : []
+
+  const excludes = Array.isArray(matrix.exclude) ? (matrix.exclude as Array<unknown>).filter(isRecord) : []
+
+  const combined = [...combinations, ...includes]
+
+  const seen = new Set<string>()
+  const result: TMatrixCombination[] = []
+
+  for (const combo of combined) {
+    if (excludes.some((candidate) => matchesExclusion(combo, candidate))) {
+      continue
+    }
+
+    const key = createCombinationKey(combo)
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    result.push(combo)
+  }
+
+  return { combinations: result, axisOrder }
+}
+
+const formatJobContext = (jobName: string, combo: TMatrixCombination, axisOrder: ReadonlyArray<string>): string => {
+  const orderedKeys: string[] = []
+  for (const key of axisOrder) {
+    if (!orderedKeys.includes(key)) orderedKeys.push(key)
+  }
+  for (const key of Object.keys(combo)) {
+    if (key === 'name') continue
+    if (!orderedKeys.includes(key)) orderedKeys.push(key)
+  }
+
+  const values = orderedKeys
+    .map((key) => combo[key])
+    .filter((value) => value !== undefined)
+    .map((value) => formatMatrixValue(value))
+    .filter((value) => value.length > 0)
+
+  if (values.length === 0) return jobName
+  return `${jobName} (${values.join(', ')})`
+}
 
 /**
  * Build the list of required contexts from the workflow definition and registry.
@@ -31,38 +133,48 @@ const computeRequiredContextsFromWorkflow = (workflowPath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const raw = yield* fs.readFileString(workflowPath)
-    const doc = YAML.parse(raw) as any
+    const doc = YAML.parse(raw)
 
-    const contexts: string[] = []
-    const pushContext = (jobId: string, suffix?: string) => contexts.push(suffix ? `${jobId} (${suffix})` : jobId)
-
-    const jobs: Record<string, any> = doc?.jobs ?? {}
-
-    // Baseline jobs we enforce
-    for (const base of ['lint', 'test-unit', 'test-integration-node-sync']) {
-      if (jobs[base]) pushContext(base)
+    if (!isRecord(doc)) {
+      return []
     }
 
-    // Sync-provider matrix from registry keys
-    if (jobs['test-integration-sync-provider']) {
-      for (const key of providerKeys) pushContext('test-integration-sync-provider', key)
+    const jobsNode = doc.jobs
+    if (!isRecord(jobsNode)) {
+      return []
     }
 
-    // Playwright matrix suites parsed from workflow YAML
-    const pw = jobs['test-integration-playwright']
-    const suites: unknown = pw?.strategy?.matrix?.suite
-    if (Array.isArray(suites)) {
-      for (const s of suites as string[]) pushContext('test-integration-playwright', s)
-    } else if (pw) {
-      // Fallback if suites are not discoverable
-      pushContext('test-integration-playwright')
+    const contexts = new Set<string>()
+
+    for (const [jobId, jobValue] of Object.entries(jobsNode)) {
+      if (!isRecord(jobValue)) continue
+
+      const envNode = jobValue.env
+      const isProtected =
+        (isRecord(envNode) && String(envNode[BRANCH_PROTECTION_ENV_KEY]).toLowerCase() === 'true') || false
+      if (!isProtected) continue
+
+      const rawName = jobValue.name
+      const jobName = typeof rawName === 'string' && !rawName.includes('${{') && rawName.trim() !== '' ? rawName : jobId
+
+      const strategy = jobValue.strategy
+      if (isRecord(strategy) && Object.hasOwn(strategy, 'matrix')) {
+        const { combinations, axisOrder } = expandMatrix(strategy.matrix)
+
+        if (combinations.length === 0) {
+          contexts.add(jobName)
+        } else {
+          for (const combo of combinations) {
+            contexts.add(formatJobContext(jobName, combo, axisOrder))
+          }
+        }
+        continue
+      }
+
+      contexts.add(jobName)
     }
 
-    for (const additional of ['perf-test', 'wa-sqlite-test', 'check-nix-flake-inputs']) {
-      if (jobs[additional]) pushContext(additional)
-    }
-
-    return Array.from(new Set(contexts)).sort((a, b) => a.localeCompare(b))
+    return Array.from(contexts).sort((a, b) => a.localeCompare(b))
   })
 
 const getCurrentRequiredContexts = (branch: string) =>
