@@ -1,9 +1,10 @@
 // Example usage of the multi-store API showing type safety
 // This file demonstrates the type-safe API but is not meant to be imported
 
+/** biome-ignore-all lint/correctness/noUnusedVariables: we want to show unused variables as part of the example */
 import type { Adapter } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import React from 'react'
+import { Suspense } from 'react'
 import { unstable_batchedUpdates } from 'react-dom'
 import { createStoreContext } from './createStoreContext.tsx'
 
@@ -22,23 +23,21 @@ const issueAdapter: Adapter = {} as any
 // Example 1: Minimal Configuration
 // ============================================
 // Only schema and name provided - adapter and batchUpdates required at Provider
-const minimalContext = createStoreContext({
+const [MinimalStoreProvider, useMinimalStore] = createStoreContext({
   name: 'minimal',
   schema: workspaceSchema,
 })
-const MinimalProvider = minimalContext[0]
-const useMinimalStore = minimalContext[1]
 
 // TypeScript enforces required props
-function _MinimalExample() {
+function MinimalExample() {
   return (
-    <MinimalProvider
+    <MinimalStoreProvider
       // storeId defaults to the store name ('minimal') but can be overridden
       adapter={workspaceAdapter} // ✅ Required - TS error if missing
       batchUpdates={unstable_batchedUpdates} // ✅ Required - TS error if missing
     >
       <MinimalContent />
-    </MinimalProvider>
+    </MinimalStoreProvider>
   )
 }
 
@@ -55,67 +54,62 @@ function _MinimalExample() {
 // Example 2: Full Configuration
 // ============================================
 // Everything provided upfront - nothing required at Provider
-const fullContext = createStoreContext({
+const [FullStoreProvider, useFullStore] = createStoreContext({
   name: 'full',
   schema: projectSchema,
   adapter: projectAdapter,
   batchUpdates: unstable_batchedUpdates,
   disableDevtools: false,
 })
-const FullProvider = fullContext[0]
-const useFullStore = fullContext[1]
 
 // Only children required
-function _FullExample() {
+function FullExample() {
   return (
-    <FullProvider>
-      {' '}
+    <FullStoreProvider>
       {/* // ✅ Valid - all requirements satisfied */}
       <FullContent />
-    </FullProvider>
+    </FullStoreProvider>
   )
 }
 
 // Can still override config values
-function _FullWithOverrides() {
+function FullWithOverrides() {
   return (
-    <FullProvider
-      storeId="other-project" // ✅ Optional override
+    <FullStoreProvider
+      storeId="other-project" // ✅ Optional override (defaults to store name 'full')
       adapter={projectAdapter} // ✅ Optional override
       disableDevtools={true} // ✅ Optional override
     >
       <FullContent />
-    </FullProvider>
+    </FullStoreProvider>
   )
 }
 
 // ============================================
-// Example 3: Partial Configuration (without storeId)
+// Example 3: Partial Configuration
 // ============================================
-// Adapter provided, batchUpdates and storeId not provided
-const partialContext = createStoreContext({
+// Adapter provided and batchUpdates not provided
+const [PartialStoreProvider, usePartialStore] = createStoreContext({
   name: 'partial',
   schema: issueSchema,
   adapter: issueAdapter, // Provided here
 })
-const PartialProvider = partialContext[0]
-const usePartialStore = partialContext[1]
 
-// Only batchUpdates required (storeId defaults to the store name when not provided)
-function _PartialExample() {
+// Only batchUpdates required
+function PartialExample() {
   return (
-    <PartialProvider batchUpdates={unstable_batchedUpdates}>
+    <PartialStoreProvider batchUpdates={unstable_batchedUpdates}>
       <PartialContent />
-    </PartialProvider>
+    </PartialStoreProvider>
   )
 }
 
 // StoreId can be passed to have distinct store instances
-function _PartialOverrideExample() {
+function PartialOverrideExample() {
   return (
-    <PartialProvider storeId="custom-issue" batchUpdates={unstable_batchedUpdates}>
+    <PartialStoreProvider storeId="custom-issue" batchUpdates={unstable_batchedUpdates}>
       <PartialContent />
-    </PartialProvider>
+    </PartialStoreProvider>
   )
 }
 
@@ -123,18 +117,18 @@ function _PartialOverrideExample() {
 // Example 4: Using the Stores
 // ============================================
 function MinimalContent() {
-  const _store = useMinimalStore()
   // store is fully typed with workspaceSchema
-
-  // Can also access specific instances
-  const _specificStore = useMinimalStore({ storeId: 'workspace-123' })
+  const store = useMinimalStore()
 
   return <div>Workspace Store</div>
 }
 
 function FullContent() {
-  const _store = useFullStore()
   // store is fully typed with projectSchema
+  const store = useFullStore()
+
+  // Can also access specific instances
+  const specificStore = useFullStore({ storeId: 'other-project' })
 
   // Future: will have React-specific methods
   // const tasks = store.useQuery(tasksQuery)
@@ -143,8 +137,8 @@ function FullContent() {
 }
 
 function PartialContent() {
-  const _store = usePartialStore()
   // store is fully typed with issueSchema
+  const store = usePartialStore()
 
   return <div>Issue Store</div>
 }
@@ -152,23 +146,23 @@ function PartialContent() {
 // ============================================
 // Example 5: Multiple Instances
 // ============================================
-function _MultipleIssues({ issueIds }: { issueIds: string[] }) {
+function MultipleIssues({ issueIds }: { issueIds: string[] }) {
   // Note: In practice, you'd wrap each component with its own provider
   // This is just demonstrating the pattern
   return (
-    <React.Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       {issueIds.map((id) => (
-        <PartialProvider key={id} storeId={`issue-${id}`} batchUpdates={unstable_batchedUpdates}>
+        <PartialStoreProvider key={id} storeId={`issue-${id}`} batchUpdates={unstable_batchedUpdates}>
           <IssueView issueId={id} />
-        </PartialProvider>
+        </PartialStoreProvider>
       ))}
-    </React.Suspense>
+    </Suspense>
   )
 }
 
 function IssueView({ issueId }: { issueId: string }) {
   // Access specific instance
-  const _store = usePartialStore({ storeId: `issue-${issueId}` })
+  const store = usePartialStore({ storeId: `issue-${issueId}` })
 
   return <div>Issue {issueId}</div>
 }
@@ -176,34 +170,34 @@ function IssueView({ issueId }: { issueId: string }) {
 // ============================================
 // Example 6: Nested Stores
 // ============================================
-function _App() {
+function App() {
   return (
     // Workspace store with full config
-    <FullProvider>
-      <React.Suspense fallback={<div>Loading workspace...</div>}>
+    <FullStoreProvider>
+      <Suspense fallback={<div>Loading workspace...</div>}>
         <WorkspaceView />
-      </React.Suspense>
-    </FullProvider>
+      </Suspense>
+    </FullStoreProvider>
   )
 }
 
 function WorkspaceView() {
-  const _workspaceStore = useFullStore()
+  const workspaceStore = useFullStore()
   // Use workspace data to determine project ID
   const projectId = 'project-from-workspace'
 
   return (
     // Project store nested inside workspace
-    <PartialProvider storeId={projectId} batchUpdates={unstable_batchedUpdates}>
-      <React.Suspense fallback={<div>Loading project...</div>}>
+    <PartialStoreProvider storeId={projectId} batchUpdates={unstable_batchedUpdates}>
+      <Suspense fallback={<div>Loading project...</div>}>
         <ProjectView />
-      </React.Suspense>
-    </PartialProvider>
+      </Suspense>
+    </PartialStoreProvider>
   )
 }
 
 function ProjectView() {
-  const _projectStore = usePartialStore()
+  const projectStore = usePartialStore()
 
   return <div>Project content</div>
 }
