@@ -1,7 +1,9 @@
 import path from 'node:path'
 import { SyncBackend, UnexpectedError } from '@livestore/common'
+import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
 import {
+  Chunk,
   Effect,
   Layer,
   Option,
@@ -142,9 +144,33 @@ const makeProxyDoRpcSync = ({
             Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
           ),
       push: (batch) =>
-        client
-          .Push({ clientId, storeId, payload, batch })
-          .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+        Effect.gen(function* () {
+          if (batch.length === 0) {
+            return
+          }
+
+          const chunkedBatches = yield* Chunk.fromIterable(batch).pipe(
+            splitChunkBySize({
+              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+              encode: (items) => ({
+                clientId,
+                storeId,
+                payload,
+                batch: items,
+              }),
+            }),
+          )
+
+          for (const chunk of chunkedBatches) {
+            yield* client.Push({
+              clientId,
+              storeId,
+              payload,
+              batch: Chunk.toReadonlyArray(chunk),
+            })
+          }
+        }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie),
       ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       metadata,
       supports: {
