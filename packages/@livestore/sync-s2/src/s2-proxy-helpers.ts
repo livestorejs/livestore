@@ -5,6 +5,7 @@
 
 import type { LiveStoreEvent } from '@livestore/livestore'
 import type { PullArgs } from './api-schema.ts'
+import { chunkEventsForS2 } from './limits.ts'
 import { makeS2StreamName } from './make-s2-url.ts'
 
 /** Configuration for S2 connections */
@@ -125,7 +126,20 @@ export const buildPullRequest = ({
   }
 }
 
-export const buildPushRequest = ({
+export interface S2PushRequest {
+  readonly url: string
+  readonly method: 'POST'
+  readonly headers: Record<string, string>
+  readonly body: string
+}
+
+/**
+ * Builds one or more append requests against S2. The helper applies the
+ * documented 1 MiB / 1000-record limits via `chunkEventsForS2`, so callers
+ * receive a request per compliant chunk instead of hitting 413 responses at
+ * runtime.
+ */
+export const buildPushRequests = ({
   config,
   storeId,
   batch,
@@ -133,21 +147,17 @@ export const buildPushRequest = ({
   config: S2Config
   storeId: string
   batch: readonly LiveStoreEvent.AnyEncodedGlobal[]
-}): {
-  url: string
-  method: 'POST'
-  headers: Record<string, string>
-  /** JSON-encoded batch */
-  body: string
-} => {
+}): ReadonlyArray<S2PushRequest> => {
   const streamName = makeS2StreamName(storeId)
   const url = getBasinUrl(config, `/streams/${encodeURIComponent(streamName)}/records`)
-  return {
+  const chunks = chunkEventsForS2(batch)
+
+  return chunks.map((chunk) => ({
     url,
-    method: 'POST',
+    method: 'POST' as const,
     headers: getPushHeaders(config.token),
-    body: JSON.stringify(formatBatchForS2(batch)),
-  }
+    body: JSON.stringify({ records: chunk.records }),
+  }))
 }
 
 // Response helpers
@@ -176,22 +186,4 @@ export const errorResponse = (message: string, status = 500): Response => {
     status,
     headers: { 'content-type': 'application/json' },
   })
-}
-
-// Batch formatting helper
-export const formatBatchForS2 = (
-  batch: readonly LiveStoreEvent.AnyEncodedGlobal[],
-): { records: { body: string }[] } => {
-  return {
-    records: batch.map((ev) => ({ body: JSON.stringify(ev) })),
-  }
-}
-
-export const asCurl = (request: { url: string; method: string; headers: Record<string, string>; body?: string }) => {
-  const url = request.url
-  const method = request.method
-  const headers = Object.entries(request.headers).map(([key, value]) => `-H "${key}: ${value}"`)
-  const body = request.body
-  const headersStr = headers.join(' ')
-  return `curl -X ${method} ${url} ${headersStr} ${body ? `-d '${body}'` : ''}`
 }
