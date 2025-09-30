@@ -24,6 +24,7 @@
     "jsdom": "^26.1.0",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-error-boundary": "^6.0.0",
     "react-window": "^1.8.11",
     "typescript": "catalog:",
     "vite": "catalog:",

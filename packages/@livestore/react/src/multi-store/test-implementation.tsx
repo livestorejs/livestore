@@ -5,7 +5,7 @@ import { Events, makeSchema, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 import { Suspense } from 'react'
 import { unstable_batchedUpdates } from 'react-dom'
-import { createStoreContext } from './createStoreContext.js'
+import { createStoreContext } from './createStoreContext.tsx'
 
 // ============================================
 // Create a test schema
@@ -38,18 +38,18 @@ const todoSchema = makeSchema({ state, events })
 // Test 1: Minimal configuration (all required at Provider)
 // ============================================
 
-const [MinimalProvider, useMinimalStore] = createStoreContext({
+const [MinimalStoreProvider, useMinimalStore] = createStoreContext({
   name: 'minimal',
   schema: todoSchema,
 })
 
 function TestMinimal() {
   return (
-    <MinimalProvider storeId="test-minimal" adapter={makeInMemoryAdapter()} batchUpdates={unstable_batchedUpdates}>
-      <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading minimal store...</div>}>
+      <MinimalStoreProvider adapter={makeInMemoryAdapter()} batchUpdates={unstable_batchedUpdates}>
         <MinimalContent />
-      </Suspense>
-    </MinimalProvider>
+      </MinimalStoreProvider>
+    </Suspense>
   )
 }
 
@@ -63,7 +63,7 @@ function MinimalContent() {
 // Test 2: Full configuration (nothing required at Provider)
 // ============================================
 
-const [FullProvider, useFullStore] = createStoreContext({
+const [FullStoreProvider, useFullStore] = createStoreContext({
   name: 'full',
   schema: todoSchema,
   adapter: makeInMemoryAdapter(),
@@ -72,11 +72,11 @@ const [FullProvider, useFullStore] = createStoreContext({
 
 function TestFull() {
   return (
-    <FullProvider storeId="full-default">
-      <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading full store...</div>}>
+      <FullStoreProvider storeId="full-default">
         <FullContent />
-      </Suspense>
-    </FullProvider>
+      </FullStoreProvider>
+    </Suspense>
   )
 }
 
@@ -90,7 +90,7 @@ function FullContent() {
 // Test 3: Multiple instances
 // ============================================
 
-const [MultiProvider, useMultiStore] = createStoreContext({
+const [MultiStoreProvider, useMultiStore] = createStoreContext({
   name: 'multi',
   schema: todoSchema,
   adapter: makeInMemoryAdapter(),
@@ -100,17 +100,17 @@ const [MultiProvider, useMultiStore] = createStoreContext({
 function TestMultiInstance() {
   return (
     <>
-      <MultiProvider storeId="instance-1">
-        <Suspense fallback={<div>Loading instance 1...</div>}>
+      <Suspense fallback={<div>Loading instance 1...</div>}>
+        <MultiStoreProvider storeId="instance-1">
           <InstanceContent instanceId="instance-1" />
-        </Suspense>
-      </MultiProvider>
+        </MultiStoreProvider>
+      </Suspense>
 
-      <MultiProvider storeId="instance-2">
-        <Suspense fallback={<div>Loading instance 2...</div>}>
+      <Suspense fallback={<div>Loading instance 2...</div>}>
+        <MultiStoreProvider storeId="instance-2">
           <InstanceContent instanceId="instance-2" />
-        </Suspense>
-      </MultiProvider>
+        </MultiStoreProvider>
+      </Suspense>
     </>
   )
 }
@@ -126,15 +126,8 @@ function InstanceContent({ instanceId }: { instanceId: string }) {
 // Test 4: Nested stores
 // ============================================
 
-const [ParentProvider, useParentStore] = createStoreContext({
-  name: 'parent',
-  schema: todoSchema,
-  adapter: makeInMemoryAdapter(),
-  batchUpdates: unstable_batchedUpdates,
-})
-
-const [ChildProvider, useChildStore] = createStoreContext({
-  name: 'child',
+const [TodosStoreProvider, useTodosStore] = createStoreContext({
+  name: 'todos',
   schema: todoSchema,
   adapter: makeInMemoryAdapter(),
   batchUpdates: unstable_batchedUpdates,
@@ -142,30 +135,31 @@ const [ChildProvider, useChildStore] = createStoreContext({
 
 function TestNested() {
   return (
-    <ParentProvider storeId="parent-store">
-      <Suspense fallback={<div>Loading parent...</div>}>
+    <Suspense fallback={<div>Loading nested stores...</div>}>
+      <TodosStoreProvider storeId="parent-store">
         <ParentContent />
-      </Suspense>
-    </ParentProvider>
+      </TodosStoreProvider>
+    </Suspense>
   )
 }
 
 function ParentContent() {
-  const parentStore = useParentStore()
+  const parentStore = useTodosStore({ storeId: 'parent-store' })
   console.log('Parent store loaded:', parentStore.storeId)
 
   return (
-    <ChildProvider storeId={`child-of-${parentStore.storeId}`}>
-      <Suspense fallback={<div>Loading child...</div>}>
+    <Suspense fallback={<div>Loading child store...</div>}>
+      <TodosStoreProvider storeId={`child-of-${parentStore.storeId}`}>
         <ChildContent />
-      </Suspense>
-    </ChildProvider>
+      </TodosStoreProvider>
+    </Suspense>
   )
 }
 
 function ChildContent() {
-  const parentStore = useParentStore()
-  const childStore = useChildStore()
+  // When no `storeId` is provided, it should use the store instance of the closest todos store provider
+  const parentStore = useTodosStore()
+  const childStore = useTodosStore({ storeId: `child-of-${parentStore.storeId}` })
   console.log('Parent:', parentStore.storeId, 'Child:', childStore.storeId)
 
   return (

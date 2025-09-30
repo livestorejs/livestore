@@ -31,13 +31,15 @@ const [MinimalStoreProvider, useMinimalStore] = createStoreContext({
 // TypeScript enforces required props
 function MinimalExample() {
   return (
-    <MinimalStoreProvider
-      // storeId defaults to the store name ('minimal') but can be overridden
-      adapter={workspaceAdapter} // ✅ Required - TS error if missing
-      batchUpdates={unstable_batchedUpdates} // ✅ Required - TS error if missing
-    >
-      <MinimalContent />
-    </MinimalStoreProvider>
+    <Suspense fallback={<div>Loading minimal store...</div>}>
+      <MinimalStoreProvider
+        // storeId defaults to the store name ('minimal') but can be overridden
+        adapter={workspaceAdapter} // ✅ Required - TS error if missing
+        batchUpdates={unstable_batchedUpdates} // ✅ Required - TS error if missing
+      >
+        <MinimalContent />
+      </MinimalStoreProvider>
+    </Suspense>
   )
 }
 
@@ -65,23 +67,27 @@ const [FullStoreProvider, useFullStore] = createStoreContext({
 // Only children required
 function FullExample() {
   return (
-    <FullStoreProvider>
-      {/* // ✅ Valid - all requirements satisfied */}
-      <FullContent />
-    </FullStoreProvider>
+    <Suspense fallback={<div>Loading full store...</div>}>
+      <FullStoreProvider>
+        {/* // ✅ Valid - all requirements satisfied */}
+        <FullContent />
+      </FullStoreProvider>
+    </Suspense>
   )
 }
 
 // Can still override config values
 function FullWithOverrides() {
   return (
-    <FullStoreProvider
-      storeId="other-project" // ✅ Optional override (defaults to store name 'full')
-      adapter={projectAdapter} // ✅ Optional override
-      disableDevtools={true} // ✅ Optional override
-    >
-      <FullContent />
-    </FullStoreProvider>
+    <Suspense fallback={<div>Loading overridden project store...</div>}>
+      <FullStoreProvider
+        storeId="other-project" // ✅ Optional override (defaults to store name 'full')
+        adapter={projectAdapter} // ✅ Optional override
+        disableDevtools={true} // ✅ Optional override
+      >
+        <FullContent />
+      </FullStoreProvider>
+    </Suspense>
   )
 }
 
@@ -98,18 +104,22 @@ const [PartialStoreProvider, usePartialStore] = createStoreContext({
 // Only batchUpdates required
 function PartialExample() {
   return (
-    <PartialStoreProvider batchUpdates={unstable_batchedUpdates}>
-      <PartialContent />
-    </PartialStoreProvider>
+    <Suspense fallback={<div>Loading partial store...</div>}>
+      <PartialStoreProvider batchUpdates={unstable_batchedUpdates}>
+        <PartialContent />
+      </PartialStoreProvider>
+    </Suspense>
   )
 }
 
 // StoreId can be passed to have distinct store instances
 function PartialOverrideExample() {
   return (
-    <PartialStoreProvider storeId="custom-issue" batchUpdates={unstable_batchedUpdates}>
-      <PartialContent />
-    </PartialStoreProvider>
+    <Suspense fallback={<div>Loading issue store custom-issue...</div>}>
+      <PartialStoreProvider storeId="custom-issue" batchUpdates={unstable_batchedUpdates}>
+        <PartialContent />
+      </PartialStoreProvider>
+    </Suspense>
   )
 }
 
@@ -150,7 +160,7 @@ function MultipleIssues({ issueIds }: { issueIds: string[] }) {
   // Note: In practice, you'd wrap each component with its own provider
   // This is just demonstrating the pattern
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading issues...</div>}>
       {issueIds.map((id) => (
         <PartialStoreProvider key={id} storeId={`issue-${id}`} batchUpdates={unstable_batchedUpdates}>
           <IssueView issueId={id} />
@@ -173,11 +183,11 @@ function IssueView({ issueId }: { issueId: string }) {
 function App() {
   return (
     // Workspace store with full config
-    <FullStoreProvider>
-      <Suspense fallback={<div>Loading workspace...</div>}>
+    <Suspense fallback={<div>Loading workspace store...</div>}>
+      <FullStoreProvider>
         <WorkspaceView />
-      </Suspense>
-    </FullStoreProvider>
+      </FullStoreProvider>
+    </Suspense>
   )
 }
 
@@ -188,11 +198,11 @@ function WorkspaceView() {
 
   return (
     // Project store nested inside workspace
-    <PartialStoreProvider storeId={projectId} batchUpdates={unstable_batchedUpdates}>
-      <Suspense fallback={<div>Loading project...</div>}>
+    <Suspense fallback={<div>Loading project store...</div>}>
+      <PartialStoreProvider storeId={projectId} batchUpdates={unstable_batchedUpdates}>
         <ProjectView />
-      </Suspense>
-    </PartialStoreProvider>
+      </PartialStoreProvider>
+    </Suspense>
   )
 }
 

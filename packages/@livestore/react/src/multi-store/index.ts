@@ -1,9 +1,9 @@
 // Multi-store API exports
-export { createStoreContext } from './createStoreContext.js'
+export { createStoreContext } from './createStoreContext.tsx'
 export type {
   ComputeProviderProps,
   CreateStoreContextConfig,
   CreateStoreContextReturn,
   StoreWithReactAPI,
   UseStoreOptions,
-} from './types.js'
+} from './types.ts'
