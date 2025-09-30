@@ -41,8 +41,8 @@ This document outlines the requirements for supporting multiple LiveStore instan
 
 ### 7. Concurrent Store Loading
 - Independent stores must load concurrently for performance
-- Providers render children immediately (don't block on loading)
-- Use React Suspense for handling loading states
+- Providers integrate with React Suspense (they suspend until the store is ready)
+- Suspense fallbacks handle loading states
 
 ## Design Preferences
 
@@ -63,7 +63,7 @@ This document outlines the requirements for supporting multiple LiveStore instan
 
 ### Modern React Patterns
 - Custom hooks as primary API (similar to current `useStore()` pattern)
-- Hooks internally use `React.use(Promise)` for Suspense integration
+- Providers suspend using Suspense to cover initialization
 - Suspense for loading states
 - Error boundaries for error handling
 - No render props - all loading/error states handled by boundaries

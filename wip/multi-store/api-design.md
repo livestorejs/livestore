@@ -82,9 +82,9 @@ interface StoreProviderProps<TSchema> {
 
 ### Key Behaviors
 
-1. **Immediate Child Rendering**: Children render immediately, enabling concurrent store loading
-2. **Suspense-Only Loading**: No render props - loading states handled via Suspense boundaries
-3. **Error Boundaries**: Errors are thrown to be caught by Error Boundaries
+1. **Provider-Level Suspense**: `<WorkspaceStoreProvider>` (and friends) suspend until the underlying LiveStore instance reaches the `running` stage. Callers must wrap providers in `React.Suspense` to supply loading UIs.
+2. **No Render Props**: Loading is handled solely through Suspense fallbacks; there are no `renderLoading` or `renderError` props.
+3. **Error Boundaries**: Initialization errors are thrown so that React Error Boundaries can render recovery UIs.
 
 ## Store Access API
 
@@ -128,9 +128,8 @@ function IssueComparison({ issueIds }: { issueIds: [string, string] }) {
 
 Note: When using `storeId` option, the hook will:
 - Return the specific store instance if it exists
-- Throw a promise if the store is still loading (triggering Suspense)
-- Throw an error if the store failed to initialize
-- Return null if no provider with that storeId exists
+- Throw an error if no provider with that `storeId` has been mounted (or finished booting)
+- Surface initialization failures via React error boundaries (providers throw on error)
 
 ## Store Instance API
 
@@ -155,28 +154,26 @@ interface StoreWithReactAPI<TSchema> extends Store<TSchema> {
 
 ## Suspense Integration
 
-Stores integrate with React Suspense for loading states. The custom hooks internally use `React.use(Promise)` to trigger Suspense:
+Stores integrate with React Suspense by suspending at the provider boundary. Each `<XStoreProvider>` throws a promise until the underlying LiveStore instance reaches the `running` stage, so callers must wrap providers in `<Suspense>`:
 
 ```tsx
 function App() {
   return (
-    <WorkspaceStoreProvider>
-      <ProjectStoreProvider>
-        {/* Suspense boundary handles loading */}
-        <Suspense fallback={<LoadingSpinner />}>
-          <AppContent />
-        </Suspense>
-      </ProjectStoreProvider>
-    </WorkspaceStoreProvider>
+    <Suspense fallback={<LoadingSpinner />}>
+      <WorkspaceStoreProvider>
+          <ProjectStoreProvider>
+            <AppContent />
+          </ProjectStoreProvider>
+      </WorkspaceStoreProvider>
+    </Suspense>
   )
 }
 
 function AppContent() {
-  // These hooks throw promises if stores are still loading
+  // Providers guarantee the store is ready before children render
   const workspaceStore = useWorkspaceStore()
   const projectStore = useProjectStore()
-  
-  // Guaranteed to have loaded stores here
+
   const tasks = projectStore.useQuery(tasksQuery)
   return <TaskList tasks={tasks} />
 }
@@ -190,13 +187,13 @@ Errors are handled through React Error Boundaries. No render props are provided 
 function App() {
   return (
     <ErrorBoundary fallback={<ErrorPage />}>
-      <WorkspaceStoreProvider>
-        <ProjectStoreProvider>
-          <Suspense fallback={<Loading />}>
+      <Suspense fallback={<Loading />}>
+        <WorkspaceStoreProvider>
+          <ProjectStoreProvider>
             <AppContent />
-          </Suspense>
-        </ProjectStoreProvider>
-      </WorkspaceStoreProvider>
+          </ProjectStoreProvider>
+        </WorkspaceStoreProvider>
+      </Suspense>
     </ErrorBoundary>
   )
 }
@@ -222,10 +219,7 @@ The Provider component is not a raw `Context.Provider` but a custom component th
 
 ### Custom Hook Implementation
 
-The hooks use `React.use(Promise)` internally to:
-- Trigger Suspense when stores are loading
-- Throw errors for Error Boundaries
-- Provide type-safe store access
+The hooks simply read the store once the provider resumes rendering. By the time `useWorkspaceStore()` runs, the provider has already suspended (if needed) and the store is fully initialized. Errors still propagate to error boundaries, preserving type safety and DX.
 
 ## Usage Examples
 
@@ -242,11 +236,11 @@ export const [AppStoreProvider, useAppStore] = createStoreContext({
 // Use in app
 function App() {
   return (
-    <AppStoreProvider>
-      <Suspense fallback={<Loading />}>
+    <Suspense fallback={<Loading />}>
+      <AppStoreProvider>
         <MainContent />
-      </Suspense>
-    </AppStoreProvider>
+      </AppStoreProvider>
+    </Suspense>
   )
 }
 
@@ -262,11 +256,11 @@ function MainContent() {
 ```tsx
 function App() {
   return (
-    <WorkspaceStoreProvider storeId="workspace-123">
-      <Suspense fallback={<WorkspaceLoading />}>
+    <Suspense fallback={<WorkspaceLoading />}>
+      <WorkspaceStoreProvider storeId="workspace-123">
         <WorkspaceApp />
-      </Suspense>
-    </WorkspaceStoreProvider>
+      </WorkspaceStoreProvider>
+    </Suspense>
   )
 }
 
@@ -277,11 +271,11 @@ function WorkspaceApp() {
   
   // Set up project store with derived ID
   return (
-    <ProjectStoreProvider storeId={`project-${currentProject.id}`}>
-      <Suspense fallback={<ProjectLoading />}>
+    <Suspense fallback={<ProjectLoading />}>
+      <ProjectStoreProvider storeId={`project-${currentProject.id}`}>
         <ProjectView />
-      </Suspense>
-    </ProjectStoreProvider>
+      </ProjectStoreProvider>
+    </Suspense>
   )
 }
 ```
@@ -291,27 +285,26 @@ function WorkspaceApp() {
 ```tsx
 function Dashboard() {
   return (
-    // All stores load concurrently
-    <WorkspaceStoreProvider>
-      <SettingsStoreProvider>
+    // All stores load concurrently and each section can load independently 
+    <div className="dashboard">
+      <Suspense fallback={<WorkspaceLoading />}>
+        <WorkspaceStoreProvider>
+          <WorkspaceSection />
+        </WorkspaceStoreProvider>
+      </Suspense>
+      
+      <Suspense fallback={<SettingsLoading />}>
+        <SettingsStoreProvider>
+          <SettingsSection />
+        </SettingsStoreProvider>
+      </Suspense>
+
+      <Suspense fallback={<NotificationsLoading />}>
         <NotificationsStoreProvider>
-          {/* Each section can load independently */}
-          <div className="dashboard">
-            <Suspense fallback={<WorkspaceLoading />}>
-              <WorkspaceSection />
-            </Suspense>
-            
-            <Suspense fallback={<SettingsLoading />}>
-              <SettingsSection />
-            </Suspense>
-            
-            <Suspense fallback={<NotificationsLoading />}>
-              <NotificationsSection />
-            </Suspense>
-          </div>
+          <NotificationsSection />
         </NotificationsStoreProvider>
-      </SettingsStoreProvider>
-    </WorkspaceStoreProvider>
+      </Suspense>
+    </div>
   )
 }
 ```
@@ -370,11 +363,11 @@ const [AppStoreProvider, useAppStore] = createStoreContext({
 })
 
 <ErrorBoundary fallback={<Error />}>
-  <AppStoreProvider batchUpdates={batchUpdates}>
-    <Suspense fallback={<Loading />}>
+  <Suspense fallback={<Loading />}>
+    <AppStoreProvider batchUpdates={batchUpdates}>
       <App />
-    </Suspense>
-  </AppStoreProvider>
+    </AppStoreProvider>
+  </Suspense>
 </ErrorBoundary>
 
 // In component
