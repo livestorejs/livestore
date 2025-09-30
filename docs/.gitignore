@@ -8,6 +8,7 @@ dist/
 
 # dependencies
 node_modules/
+.cache/snippets/
 
 # logs
 npm-debug.log*

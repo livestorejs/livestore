@@ -4,7 +4,7 @@ sidebar:
   order: 21
 ---
 
-import { Code } from '@astrojs/starlight/components';
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
 import atomsCode from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet';
 import queriesCode from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet';
 import userListCode from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet';
@@ -45,7 +45,7 @@ pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
 
 Create a LiveStore-backed atom store with persistence and worker support using the `AtomLivestore.Tag` pattern:
 
-<Code lang="ts" code={atomsCode} meta="twoslash" title="atoms.ts" />
+<MultiCode code={atomsCode} />
 
 The `StoreTag` class provides the following static methods:
 - `StoreTag.runtime` - Access to Effect runtime
@@ -59,19 +59,19 @@ The `StoreTag` class provides the following static methods:
 
 Create reactive query atoms that automatically update when the underlying data changes:
 
-<Code lang="ts" code={queriesCode} meta="twoslash" title="queries.ts" />
+<MultiCode code={queriesCode} />
 
 ### Using Queries in React Components
 
 Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
-<Code lang="tsx" code={userListCode} meta="twoslash" title="UserList.tsx" />
+<MultiCode code={userListCode} />
 
 ### Integrating Effect Services
 
 Combine Effect services with LiveStore operations using the store's runtime:
 
-<Code lang="tsx" code={servicesCode} meta="twoslash" title="services.tsx" />
+<MultiCode code={servicesCode} />
 
 ### Advanced Patterns
 
@@ -79,19 +79,19 @@ Combine Effect services with LiveStore operations using the store's runtime:
 
 Combine local state with LiveStore for optimistic UI updates. When using `StoreTag.makeQueryUnsafe`, the data is directly available:
 
-<Code lang="ts" code={optimisticCode} meta="twoslash" title="optimistic.ts" />
+<MultiCode code={optimisticCode} />
 
 #### Derived State
 
 Create computed atoms based on LiveStore queries. When using the non-unsafe API, handle the Result type:
 
-<Code lang="ts" code={derivedCode} meta="twoslash" title="derived.ts" />
+<MultiCode code={derivedCode} />
 
 #### Batch Operations
 
 Perform multiple commits efficiently (commits are synchronous):
 
-<Code lang="ts" code={batchCode} meta="twoslash" title="batch.ts" />
+<MultiCode code={batchCode} />
 
 ### Best Practices
 

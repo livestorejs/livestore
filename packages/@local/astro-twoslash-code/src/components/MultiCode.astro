@@ -1,0 +1,297 @@
+---
+import { type MultiCodeProps, prepareMultiCodeData } from './multi-code.ts'
+import clientModuleUrl from './multi-code-client.ts?url'
+
+/**
+ * Server component that renders the multi-file code block shell.
+ *
+ * Orchestration:
+ *   - Inject global Twoslash assets (base/theme styles + modules) the first time a page renders a bundle.
+ *   - Lay out tabs, diagnostics summary, and copy controls using the prepared snippet metadata.
+ *   - Emit panel HTML (or an error fallback) alongside JSON diagnostics for the client runtime.
+ *   - Defer interactive behaviour to `multi-code-client.ts`, loaded exactly once per page.
+ */
+
+const prepared = prepareMultiCodeData(Astro.props as MultiCodeProps)
+const hasAnyDiagnostics = prepared.panels.some((panel) => panel.diagnostics.length > 0)
+const globalBaseStyles = prepared.globals.baseStyles
+const globalThemeStyles = prepared.globals.themeStyles
+const globalJsModules = prepared.globals.jsModules
+---
+{globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles}></style>}
+{globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles}></style>}
+{globalJsModules.map((moduleCode, index) => (
+  <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode}></script>
+))}
+
+<div class={prepared.containerClass} data-ls-multi-code data-ls-multi-code-id={prepared.baseId}>
+  <div class="ls-multi-code__header">
+    <div class="ls-multi-code__tablist" role="tablist">
+      {prepared.panels.map((file, index) => {
+        const diagCount = file.diagnostics.length
+        const diagLabel = diagCount === 1 ? '1 diagnostic' : `${diagCount} diagnostics`
+
+        return (
+          <button
+            type="button"
+            class="ls-multi-code__tab"
+            role="tab"
+            aria-selected={index === 0 ? 'true' : 'false'}
+            aria-controls={`${prepared.baseId}-panel-${index}`}
+            id={`${prepared.baseId}-tab-${index}`}
+            tabindex={index === 0 ? '0' : '-1'}
+            data-active={index === 0 ? '' : undefined}
+            title={file.filename}
+            data-index={index}
+            aria-label={diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined}
+            data-has-diagnostics={diagCount > 0 ? '' : undefined}
+          >
+            <span class="ls-multi-code__tab-label">{file.baseName}</span>
+            {diagCount > 0 && <span class="ls-multi-code__tab-indicator" aria-hidden="true"></span>}
+          </button>
+        )
+      })}
+    </div>
+    <div class="ls-multi-code__controls">
+      <div
+        class="ls-multi-code__status"
+        data-ls-multi-code-diagnostics
+        aria-live="polite"
+        hidden={!hasAnyDiagnostics ? true : undefined}
+      ></div>
+      <button
+        type="button"
+        class="ls-multi-code__copy"
+        data-ls-multi-code-copy
+        data-copy-default="Copy"
+        data-copy-success="Copied"
+      >
+        <span class="ls-multi-code__copy-label" data-ls-multi-code-copy-label>Copy</span>
+      </button>
+    </div>
+  </div>
+{prepared.panels.map((file, index) => (
+    <div
+      role="tabpanel"
+      id={`${prepared.baseId}-panel-${index}`}
+      aria-labelledby={`${prepared.baseId}-tab-${index}`}
+      class="ls-multi-code__panel"
+      data-active={index === 0 ? '' : undefined}
+      hidden={index === 0 ? undefined : true}
+      data-index={index}
+    >
+      {/* Diagnostics are parsed client-side to surface per-tab status without inflating the markup. */}
+      {file.diagnostics.length > 0 && (
+        <script type="application/json" data-ls-multi-code-panel-diagnostics>
+          {JSON.stringify(file.diagnostics)}
+        </script>
+      )}
+      {file.html !== null ? (
+        <>
+          {file.styles.length > 0 && (
+            <style
+              data-ls-twoslash-style={`${prepared.baseId}-style-${index}`}
+              set:html={file.styles.join('\n')}
+            ></style>
+          )}
+          <div class="ls-multi-code__html" set:html={file.html}></div>
+        </>
+      ) : (
+        <div class="ls-multi-code__error" role="alert" data-ls-multi-code-error="">
+          <p class="ls-multi-code__error-title">Unable to render Twoslash snippet</p>
+          <p class="ls-multi-code__error-details">
+            {`Check the diagnostics below for ${file.baseName ?? file.filename}.`}
+          </p>
+          {file.diagnostics.length > 0 ? (
+            <ul class="ls-multi-code__error-list">
+              {file.diagnostics.map((diagnostic) => (
+                <li class="ls-multi-code__error-item">
+                  {diagnostic}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="ls-multi-code__error-details">No diagnostics were provided.</p>
+          )}
+        </div>
+      )}
+    </div>
+  ))}
+
+  {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
+  <script type="module" src={clientModuleUrl}></script>
+</div>
+
+<style>
+.ls-multi-code {
+  display: block;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 60%, transparent);
+  background: var(--sl-color-bg-inline-code, color-mix(in srgb, var(--sl-color-gray-6) 80%, transparent));
+}
+
+
+.ls-multi-code__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 50%, transparent);
+  flex-wrap: wrap;
+}
+
+.ls-multi-code__tablist {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ls-multi-code__tab {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--sl-color-text, var(--sl-color-gray-2));
+  font: inherit;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ls-multi-code__tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Diagnostics badge: tiny dot signals warnings without adding text noise. */
+.ls-multi-code__tab-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--sl-color-text-destructive, var(--sl-color-red));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sl-color-bg), rgba(0, 0, 0, 0.05));
+}
+
+.ls-multi-code__tab::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -0.35rem;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.ls-multi-code__tab:hover {
+  color: var(--sl-color-text);
+}
+
+.ls-multi-code__tab--active {
+  background: color-mix(in srgb, var(--sl-color-accent) 15%, transparent);
+  color: var(--sl-color-text-accent, var(--sl-color-text));
+}
+
+.ls-multi-code__tab--active::after {
+  background: var(--sl-color-accent);
+}
+
+.ls-multi-code__panel {
+  display: block;
+}
+
+.ls-multi-code__panel[hidden] {
+  display: none;
+}
+
+.ls-multi-code__error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 40%, transparent);
+  background: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 8%, transparent);
+  color: var(--sl-color-text-destructive, var(--sl-color-red));
+}
+
+.ls-multi-code__error-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ls-multi-code__error-details {
+  margin: 0;
+  color: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 80%, transparent);
+}
+
+.ls-multi-code__error-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ls-multi-code__error-item {
+  list-style: disc;
+}
+
+.ls-multi-code__panel :global(.expressive-code) {
+  border-radius: 0;
+  border: 0;
+}
+
+.ls-multi-code__panel :global(.expressive-code .header) {
+  display: none;
+}
+
+.ls-multi-code__html :global(.expressive-code) {
+  border-radius: 0;
+  border: 0;
+}
+
+/* Diagnostics + copy controls share one cluster to keep layout stable. */
+.ls-multi-code__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Diagnostics summary mirrors the badge and exposes details via title tooltip. */
+.ls-multi-code__status {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--sl-color-text) 80%, transparent);
+}
+
+.ls-multi-code__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 60%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background: color-mix(in srgb, var(--sl-color-gray-6) 30%, transparent);
+  color: var(--sl-color-text, var(--sl-color-gray-2));
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ls-multi-code__copy:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sl-color-gray-6) 45%, transparent);
+  color: var(--sl-color-text);
+}
+
+.ls-multi-code__copy[data-copy-state='success'] {
+  background: color-mix(in srgb, var(--sl-color-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--sl-color-accent) 50%, transparent);
+  color: var(--sl-color-text-on-accent, var(--sl-color-text));
+}
+
+.ls-multi-code__copy:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>

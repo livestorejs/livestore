@@ -5,15 +5,14 @@ sidebar:
 description: How to integrate LiveStore with Solid.
 ---
 
-import { Code } from '@astrojs/starlight/components';
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
 import solidStoreCode from '../../../_assets/code/reference/solid-integration/livestore/store.ts?snippet'
-import solidMainSectionCode from '../../../_assets/code/reference/solid-integration/components/MainSection.tsx?snippet'
+import solidMainSectionCode from '../../../_assets/code/reference/solid-integration/MainSection.tsx?snippet'
 
 ## Example
 
 See [examples](/examples) for a complete example.
 
-<Code lang="ts" title="src/livestore/store.ts" code={solidStoreCode} meta="twoslash" />
+<MultiCode code={solidStoreCode} />
 
-<Code lang="ts" title="src/components/MainSection.tsx" code={solidMainSectionCode} meta="twoslash" />
-
+<MultiCode code={solidMainSectionCode} />

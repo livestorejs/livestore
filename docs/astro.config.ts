@@ -1,11 +1,10 @@
-// @ts-check
-
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
+import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
@@ -19,7 +18,6 @@ import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
-import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
 const port = 5252
 
@@ -55,6 +53,7 @@ export default defineConfig({
     },
   },
   integrations: [
+    createAstroTwoslashCodeIntegration({ rebuildCommand: 'mono docs snippets build' }),
     react(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
@@ -78,7 +77,7 @@ export default defineConfig({
         // We alias it to a local drop-in replacement that fixes path resolution.
         starlightMarkdown(),
         // Add contextual menu to pages (copy/view, optional providers)
-        starlightContextualMenu(),
+        starlightContextualMenu({ injectMarkdownRoutes: false }),
         // Used to adjust the order of sidebar items
         // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
         // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
@@ -350,7 +349,7 @@ export default defineConfig({
       // Reference RN Flow discussion: https://github.com/facebook/react-native/issues/36343
       exclude: ['react-native', 'expo-sqlite'],
     },
-    plugins: [tailwind(), vitePluginSnippet()],
+    plugins: [tailwind()],
   },
   markdown: {
     syntaxHighlight: {

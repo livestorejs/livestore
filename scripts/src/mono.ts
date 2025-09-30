@@ -5,6 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
+import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
 import { debugCommand } from './commands/debug.ts'
 import { githubCommand } from './commands/github.ts'
 import { lintCommand } from './commands/lint.ts'
@@ -18,6 +19,8 @@ const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 const docsPath = `${cwd}/docs`
+const docsRebuildCommand = 'mono docs snippets build'
+const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath, rebuildCommand: docsRebuildCommand })
 
 const docsBuildCommand = Cli.Command.make(
   'build',
@@ -35,6 +38,8 @@ const docsBuildCommand = Cli.Command.make(
 
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify', { cwd: docsPath })
+
+    yield* buildSnippets({ projectRoot: docsPath, rebuildCommand: docsRebuildCommand })
 
     yield* cmd('pnpm astro build', {
       cwd: docsPath,
@@ -64,6 +69,7 @@ const docsCommand = Cli.Command.make('docs').pipe(
         }),
     ),
     docsBuildCommand,
+    docsSnippetsCommand,
     Cli.Command.make(
       'preview',
       {

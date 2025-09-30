@@ -10,6 +10,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
+    "@local/astro-twoslash-code": "workspace:*",
     "@local/tests-integration": "workspace:*",
     "@local/tests-sync-provider": "workspace:*",
     "@types/bun": "^1.2.21",

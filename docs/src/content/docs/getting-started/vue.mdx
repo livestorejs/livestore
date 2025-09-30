@@ -7,6 +7,7 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
 import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import schemaCode from '../../_assets/code/getting-started/vue/livestore/schema.ts?snippet'
@@ -90,13 +91,13 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" meta="twoslash" title="src/livestore/schema.ts" />
+<MultiCode code={CODE.schema} />
 
 ### Create the LiveStore Worker
 
 Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-<Code code={CODE.worker} lang="ts" meta="twoslash" title="src/livestore/livestore.worker.ts" />
+<MultiCode code={CODE.worker} />
 
 ### Add the LiveStore Provider
 

@@ -5,7 +5,7 @@ sidebar:
 description: How to integrate LiveStore with Custom Elements aka Web Components.
 ---
 
-import { Code } from '@astrojs/starlight/components';
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
 import customElementsCode from '../../../_assets/code/reference/custom-elements/main.ts?snippet'
 
 LiveStore can be used with custom elements/web components.
@@ -14,5 +14,4 @@ LiveStore can be used with custom elements/web components.
 
 See [examples](/examples) for a complete example.
 
-<Code lang="ts" title="src/main.ts" code={customElementsCode} meta="twoslash" />
-
+<MultiCode code={customElementsCode} />

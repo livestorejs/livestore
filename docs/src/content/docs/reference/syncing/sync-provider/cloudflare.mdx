@@ -4,7 +4,7 @@ sidebar:
   order: 10
 ---
 
-import { Code } from '@astrojs/starlight/components'
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro'
 import wsBasic from '../../../../_assets/code/reference/syncing/cloudflare/client-ws.ts?snippet'
 import httpBasic from '../../../../_assets/code/reference/syncing/cloudflare/client-http.ts?snippet'
 import wsOptions from '../../../../_assets/code/reference/syncing/cloudflare/client-ws-options.ts?snippet'
@@ -37,19 +37,19 @@ The sync provider supports three transport protocols, each optimized for differe
 
 Real-time bidirectional communication with automatic reconnection and live pull support.
 
-<Code lang="ts" meta="twoslash" code={wsBasic} title="client.ts" />
+<MultiCode code={wsBasic} />
 
 ### HTTP Transport
 
 HTTP-based sync with polling for live updates. Requires the `enable_request_signal` compatibility flag.
 
-<Code lang="ts" meta="twoslash" code={httpBasic} title="client.ts" />
+<MultiCode code={httpBasic} />
 
 ### Durable Object RPC Transport
 
 Direct RPC communication between Durable Objects (internal use by `@livestore/adapter-cloudflare`).
 
-<Code lang="ts" meta="twoslash" code={doRpcClient} title="client.ts" />
+<MultiCode code={doRpcClient} />
 
 ## Client API Reference
 
@@ -71,7 +71,7 @@ Creates a WebSocket-based sync backend client.
 - Connection status tracking
 - Ping/pong keep-alive
 
-<Code lang="ts" meta="twoslash" code={wsOptions} title="client.ts" />
+<MultiCode code={wsOptions} />
 
 ### `makeHttpSync(options)`
 
@@ -90,7 +90,7 @@ Creates an HTTP-based sync backend client with polling for live updates.
 - Custom headers support
 - Connection status via ping
 
-<Code lang="ts" meta="twoslash" code={httpOptions} title="client.ts" />
+<MultiCode code={httpOptions} />
 
 ### `makeDoRpcSync(options)`
 
@@ -111,7 +111,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 Handles RPC callback for live pull updates in Durable Objects.
 
-<Code lang="ts" meta="twoslash" code={clientDoSnippet} title="src/LiveStoreClientDO.ts" />
+<MultiCode code={clientDoSnippet} />
 
 ## Server API Reference
 
@@ -130,7 +130,7 @@ Creates a sync backend Durable Object class.
   - `baseUrl?` - OTEL endpoint URL
   - `serviceName?` - Service name for traces
 
-<Code lang="ts" meta="twoslash" code={doSyncBackend} title="src/SyncBackendDO.ts" />
+<MultiCode code={doSyncBackend} />
 
 ### `makeWorker(options)`
 
@@ -143,9 +143,9 @@ Creates a complete Cloudflare Worker for the sync backend.
 
 `makeWorker` is a quick way to get started in simple demos. In most production workers you typically want to share routing logic with other endpoints, so prefer wiring your own `fetch` handler and call `handleSyncRequest` when you detect a sync request. A minimal example:
 
-<Code lang="ts" meta="twoslash" code={workerMinimal} title="src/worker.ts" />
+<MultiCode code={workerMinimal} />
 
-<Code lang="ts" meta="twoslash" code={workerMakeWorker} title="src/worker.ts" />
+<MultiCode code={workerMakeWorker} />
 
 ### `handleSyncRequest(args)`
 
@@ -160,7 +160,7 @@ Handles sync backend HTTP requests in custom workers.
 - `headers?` - Response headers
 - `validatePayload?` - Payload validation function
 
-<Code lang="ts" meta="twoslash" code={workerHandleSync} title="src/worker.ts" />
+<MultiCode code={workerHandleSync} />
 
 ### `matchSyncRequest(request)`
 
@@ -168,7 +168,7 @@ Parses and validates sync request search parameters.
 
 Returns the decoded search params or `undefined` if the request is not a LiveStore sync request.
 
-<Code lang="ts" meta="twoslash" code={matchSnippet} title="match-sync.ts" />
+<MultiCode code={matchSnippet} />
 
 ## Configuration
 
@@ -212,7 +212,7 @@ ADMIN_SECRET = "your-admin-secret"
 
 Required environment bindings:
 
-<Code lang="ts" meta="twoslash" code={envSnippet} title="src/env.ts" />
+<MultiCode code={envSnippet} />
 
 ## Transport Protocol Details
 
@@ -283,12 +283,12 @@ npx wrangler dev
 
 ### Basic WebSocket Client
 
-<Code lang="ts" meta="twoslash" code={basicWsClient} title="src/main.ts" />
+<MultiCode code={basicWsClient} />
 
 ### Custom Worker with Authentication
 
-<Code lang="ts" meta="twoslash" code={workerAuth} title="src/worker.ts" />
+<MultiCode code={workerAuth} />
 
 ### Multi-Transport Setup
 
-<Code lang="ts" meta="twoslash" code={multiTransport} title="src/SyncBackendDO.ts" />
+<MultiCode code={multiTransport} />

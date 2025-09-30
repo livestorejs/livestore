@@ -4,7 +4,7 @@ sidebar:
   order: 20
 ---
 
-import { Code } from '@astrojs/starlight/components'
+import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro'
 import envSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/env.ts?snippet'
 import syncBackendSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/sync-backend.ts?snippet'
 import clientDoSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/client-do.ts?snippet'
@@ -56,11 +56,11 @@ database_id = "your-database-id"
 
 Define your Worker bindings so TypeScript can guide you when wiring Durable Objects:
 
-<Code lang="ts" meta="twoslash" code={envSnippet} title="src/env.ts" />
+<MultiCode code={envSnippet} />
 
 We also use a small helper to extract the store identifier from incoming requests:
 
-<Code lang="ts" meta="twoslash" code={helperSnippet} title="src/shared.ts" />
+<MultiCode code={helperSnippet} />
 
 ## Basic setup
 
@@ -68,19 +68,19 @@ We also use a small helper to extract the store identifier from incoming request
 
 The sync backend handles pushing and pulling events between clients:
 
-<Code lang="ts" meta="twoslash" code={syncBackendSnippet} title="src/SyncBackendDO.ts" />
+<MultiCode code={syncBackendSnippet} />
 
 ### 2. Create the client Durable Object
 
 Each client Durable Object hosts a LiveStore instance and exposes DO RPC callbacks:
 
-<Code lang="ts" meta="twoslash" code={clientDoSnippet} title="src/LiveStoreClientDO.ts" />
+<MultiCode code={clientDoSnippet} />
 
 ### 3. Worker fetch handler
 
 The worker routes incoming requests either to the sync backend or to the client Durable Object:
 
-<Code lang="ts" meta="twoslash" code={workerSnippet} title="src/worker.ts" />
+<MultiCode code={workerSnippet} />
 
 ## API reference
 
@@ -109,7 +109,7 @@ Client Durable Objects must implement this method so the sync backend can delive
 
 When iterating locally, you can instruct the adapter to wipe the Durable Object’s LiveStore databases before booting by enabling `resetPersistence`. Guard this behind a protected route or admin token.
 
-<Code lang="ts" meta="twoslash" code={resetSnippet} title="src/utils/reset.ts" />
+<MultiCode code={resetSnippet} />
 
 :::caution
 Resetting persistence deletes all LiveStore state and eventlog data stored inside the Durable Object. Only expose this behaviour in guarded development flows and never to production traffic.

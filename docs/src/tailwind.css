@@ -116,6 +116,11 @@
   }
 }
 
+/* Hide Twoslash popup container on load */
+.expressive-code .twoslash-popup-container {
+  display: none;
+}
+
 /* @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
