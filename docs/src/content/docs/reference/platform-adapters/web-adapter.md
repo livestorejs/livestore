@@ -90,6 +90,8 @@ During development (`NODE_ENV !== 'production'`), LiveStore automatically copies
 
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads.
 
+To keep duplicated tabs isolated, the web adapter gates the cached session id behind the [Web Locks API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API). When a tab boots it reads `sessionStorage`, attempts to acquire an exclusive lock named `livestore-session-id-${storeId}-${candidate}`, and, if that lock is already held by another tab, generates a new `sessionId`, writes it back to `sessionStorage`, and retries until the lock succeeds. This ensures a cloned tab re-keys itself before its leader worker starts. If you want multiple tabs to intentionally share a session id (for example to reuse client documents across windows) you can pass a custom `sessionId` when creating the adapter.
+
 ### Resetting local persistence
 
 Resetting local persistence only clears data stored in the browser and does not affect any connected sync backend.

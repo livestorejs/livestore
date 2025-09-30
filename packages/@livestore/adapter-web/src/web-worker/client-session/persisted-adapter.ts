@@ -175,7 +175,13 @@ export const makePersistedAdapter =
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
       // Unique per client session (i.e. tab, window)
-      const sessionId = options.sessionId ?? getPersistedId(`sessionId:${storeId}`, 'session')
+      const sessionIdAcquisition =
+        options.sessionId === undefined
+          ? yield* getPersistedSessionId({ key: `sessionId:${storeId}`, storeId })
+          : { sessionId: options.sessionId, releaseLock: Effect.void }
+      const sessionId = sessionIdAcquisition.sessionId
+
+      yield* Effect.addFinalizer(() => sessionIdAcquisition.releaseLock)
 
       const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
 
@@ -530,6 +536,104 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 
   return newKey
 }
+
+type PersistedSessionIdAcquisition = {
+  sessionId: string
+  releaseLock: Effect.Effect<void, never>
+}
+
+const getPersistedSessionId = ({
+  key,
+  storeId,
+}: {
+  key: string
+  storeId: string
+}): Effect.Effect<PersistedSessionIdAcquisition> =>
+  Effect.gen(function* () {
+    const makeId = () => nanoid(5)
+
+    if (
+      typeof window === 'undefined' ||
+      typeof sessionStorage === 'undefined' ||
+      typeof navigator === 'undefined' ||
+      navigator.locks === undefined
+    ) {
+      const sessionId = makeId()
+      return { sessionId, releaseLock: Effect.void }
+    }
+
+    const storage = sessionStorage
+    const fullKey = `livestore:${key}`
+    const sessionLockDeferred = yield* Deferred.make<void>()
+    const cleanupFns: Array<() => void> = []
+    let releaseTriggered = false
+
+    const releaseLock = Effect.gen(function* () {
+      if (releaseTriggered) {
+        return
+      }
+
+      releaseTriggered = true
+
+      for (const cleanup of cleanupFns.splice(0, cleanupFns.length)) {
+        cleanup()
+      }
+
+      const alreadyDone = yield* Deferred.isDone(sessionLockDeferred)
+      if (alreadyDone === false) {
+        yield* Deferred.succeed(sessionLockDeferred, undefined)
+      }
+    })
+
+    // We may race with another tab that is trying to reuse the same persisted
+    // session id. Keep looping until we can atomically claim a lock for one of
+    // the candidate ids. Leaving the loop early would mean falling back to a
+    // randomly generated id without persisting it, which defeats the point of
+    // session level isolation for duplicated tabs. See the duplication spec in
+    // https://github.com/livestorejs/livestore/issues/377 for the full problem
+    // statement.
+    while (true) {
+      let candidate = storage.getItem(fullKey)
+      if (candidate === null) {
+        candidate = makeId()
+        storage.setItem(fullKey, candidate)
+      }
+
+      const lockName = `livestore-session-id-${storeId}-${candidate}`
+      const acquired = yield* WebLock.tryGetDeferredLock(sessionLockDeferred, lockName)
+
+      if (acquired) {
+        storage.setItem(fullKey, candidate)
+
+        const releaseOnUnload = () => {
+          if (releaseTriggered) {
+            return
+          }
+
+          releaseLock.pipe(Effect.runFork)
+        }
+
+        if (typeof window.addEventListener === 'function') {
+          window.addEventListener('beforeunload', releaseOnUnload)
+          cleanupFns.push(() => window.removeEventListener('beforeunload', releaseOnUnload))
+
+          window.addEventListener('pagehide', releaseOnUnload)
+          cleanupFns.push(() => window.removeEventListener('pagehide', releaseOnUnload))
+        }
+
+        return { sessionId: candidate, releaseLock }
+      }
+
+      // Another tab already holds the lock for the current candidate id. Mint a
+      // brand new candidate before retrying so that both tabs can converge on a
+      // unique value instead of thrashing on the same one while waiting for the
+      // other tab to release its lock. The duplication spec in
+      // https://github.com/livestorejs/livestore/issues/377 covers why duplicated
+      // tabs must re-key themselves before the leader worker boots.
+      const newCandidate = makeId()
+      storage.setItem(fullKey, newCandidate)
+    }
+  })
 
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>

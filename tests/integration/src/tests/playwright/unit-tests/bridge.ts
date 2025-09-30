@@ -36,3 +36,22 @@ export class ResultMultipleMigrations extends Schema.TaggedStruct('Bridge.Result
     defect: Schema.Defect,
   }),
 }) {}
+
+export class ResultDuplicateSessionId extends Schema.TaggedStruct('Bridge.ResultDuplicateSessionId', {
+  exit: Schema.Exit({
+    success: Schema.Struct({
+      firstSessionId: Schema.String,
+      secondSessionId: Schema.String,
+      sessionStorageBeforeSecond: Schema.Union(Schema.String, Schema.Null),
+      sessionStorageAfterSecond: Schema.Union(Schema.String, Schema.Null),
+      workerNames: Schema.Array(
+        Schema.Struct({
+          tab: Schema.Literal('first', 'second'),
+          name: Schema.String,
+        }),
+      ),
+    }),
+    failure: UnexpectedError,
+    defect: Schema.Defect,
+  }),
+}) {}
