@@ -429,7 +429,13 @@ const backgroundApplyLocalPushes = ({
       // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
       const [newEvents, deferreds] = pipe(
         batchItems,
-        ReadonlyArray.filter(([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration === currentRebaseGeneration),
+        ReadonlyArray.filter(([
+          eventEncoded,
+        ]) =>
+          // Keep events that match the current generation or newer. Older generations will
+          // be rejected below when their sequence numbers no longer advance the local head.
+          eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
+        ),
         ReadonlyArray.unzip,
       )
 

@@ -140,6 +140,43 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.scopedLive('client document pending events confirm after upstream advance', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const backendFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
+
+      const store = yield* makeStore()
+
+      store.commit(tables.appConfig.set({ theme: 'dark' }, 'session-a'))
+
+      const initialState = yield* store.syncProcessor.syncState.get
+      expect(initialState.pending.length).toBeGreaterThan(0)
+      expect(initialState.pending[0]?.seqNum.client ?? 0).toBeGreaterThan(0)
+      expect(initialState.pending[0]?.name).toEqual('app_configSet')
+
+      yield* mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'backend_rebase', text: '', completed: false }),
+      )
+
+      yield* store.syncProcessor.syncState.changes.pipe(
+        Stream.filter(
+          (state) =>
+            state.pending.length === 0 &&
+            EventSequenceNumber.isEqual(state.localHead, state.upstreamHead),
+        ),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('2 seconds'),
+      )
+
+      const finalState = yield* store.syncProcessor.syncState.get
+      expect(finalState.pending.length).toEqual(0)
+      expect(EventSequenceNumber.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.scopedLive('should fail for event that is not larger than expected upstream', (test) =>
     Effect.gen(function* () {
       const shutdownDeferred = yield* makeShutdownDeferred

@@ -27,6 +27,7 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Option,
   Queue,
   type Scope,
   Stream,
@@ -323,6 +324,44 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   //   2) pulling from backend -> causes rebase (rebase generation 1)
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
+
+  Vitest.scopedLive('accepts rebased client events when generation increases', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+
+      const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.nextPair({
+        seqNum: syncStateBefore.localHead,
+        isClient: true,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration + 1,
+      })
+
+      const rebasedClientEvent = LiveStoreEvent.EncodedWithMeta.make({
+        name: 'app_configSet',
+        args: { id: 'session-a', value: { theme: 'dark' } },
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+        clientId: leaderThreadCtx.clientId,
+        sessionId: 'session-a',
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([rebasedClientEvent])
+
+      const pendingStateOption = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.some((event) => event.name === 'app_configSet')),
+        Stream.take(1),
+        Stream.runHead,
+        Effect.timeout('1 seconds'),
+      )
+
+      expect(pendingStateOption._tag).toBe('Some')
+      if (pendingStateOption._tag !== 'Some') {
+        return
+      }
+
+      expect(pendingStateOption.value.pending.some((event) => event.name === 'app_configSet')).toBe(true)
+    }).pipe(withTestCtx()(test)),
+  )
 
   // Regression test for push fiber stalling when livePull=false and backend push errors occur
   Vitest.scopedLive('recovers from backend push errors without live pull', (test) =>
