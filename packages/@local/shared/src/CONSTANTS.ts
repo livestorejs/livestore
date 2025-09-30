@@ -1,7 +1,7 @@
 import path from 'node:path'
 import process from 'node:process'
 
-export const EFFECT_VERSION = '3.17.14'
+export const EFFECT_VERSION = '3.18.0'
 export const REACT_VERSION = '19.1.1'
 export const MIN_NODE_VERSION = '23.0.0'
 
