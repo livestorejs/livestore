@@ -90,11 +90,6 @@ overrides:
   '@livestore/wa-sqlite': workspace:*
   '@livestore/webmesh': workspace:*
 
-patchedDependencies:
-  graphology@0.26.0-alpha1:
-    hash: 4671a398efe6b0e0e6d5ed1ae2f66c45ec420889776f9d5963d2f6c5c06c0f8d
-    path: patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch
-
 importers:
 
   .:
@@ -1410,15 +1405,6 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
-      graphology:
-        specifier: 0.26.0-alpha1
-        version: 0.26.0-alpha1(patch_hash=4671a398efe6b0e0e6d5ed1ae2f66c45ec420889776f9d5963d2f6c5c06c0f8d)(graphology-types@0.24.8)
-      graphology-dag:
-        specifier: 0.4.1
-        version: 0.4.1(graphology-types@0.24.8)
-      graphology-types:
-        specifier: 0.24.8
-        version: 0.24.8
     devDependencies:
       '@livestore/utils-dev':
         specifier: workspace:*
@@ -9620,24 +9606,6 @@ packages:
     resolution: {integrity: sha512-is3hDn9zb8XXnjbEeAEIqxTpLHUiGBqjegLmXPuyMBfKAggpadWFku4/AP8iYAGBX6qR9/5UIUIp47V0XI3aMw==}
     hasBin: true
 
-  graphology-dag@0.4.1:
-    resolution: {integrity: sha512-3ch9oOAnHZDoT043vyg7ukmSkKJ505nFzaHaYOn0IF2PgGo5VtIavyVK4UpbIa4tli3hhGm1ZTdBsubTmaxu/w==}
-    peerDependencies:
-      graphology-types: '>=0.19.0'
-
-  graphology-types@0.24.8:
-    resolution: {integrity: sha512-hDRKYXa8TsoZHjgEaysSRyPdT6uB78Ci8WnjgbStlQysz7xR52PInxNsmnB7IBOM1BhikxkNyCVEFgmPKnpx3Q==}
-
-  graphology-utils@2.5.2:
-    resolution: {integrity: sha512-ckHg8MXrXJkOARk56ZaSCM1g1Wihe2d6iTmz1enGOz4W/l831MBCKSayeFQfowgF8wd+PQ4rlch/56Vs/VZLDQ==}
-    peerDependencies:
-      graphology-types: '>=0.23.0'
-
-  graphology@0.26.0-alpha1:
-    resolution: {integrity: sha512-XQ3b+P3Vvljq/mF+O15R5PlR8kVpRL8K8vhJWW9Enh2+iGNn5c3WZNpXP2OaAacfNV3a9gV3Ia6+Qz6do2JZ8w==}
-    peerDependencies:
-      graphology-types: '>=0.24.0'
-
   graphql-tag@2.12.6:
     resolution: {integrity: sha512-FdSNcu2QQcWnM2VNvSCCDCVS5PpPqpzgFT8+GXzqJuoDd0CBncxCY278u4mhRO7tMgo2JjgJA5aZ+nWSQ/Z+xg==}
     engines: {node: '>=10'}
@@ -11184,9 +11152,6 @@ packages:
   mlly@1.8.0:
     resolution: {integrity: sha512-l8D9ODSRWLe2KHJSifWGwBqpTZXIXTeo8mlKjY+E2HAakaTeNpqAyBZ8GSqLzHgw4XmHmC8whvpjJNMbFZN7/g==}
 
-  mnemonist@0.39.8:
-    resolution: {integrity: sha512-vyWo2K3fjrUw8YeeZ1zF0fy6Mu59RHokURlld8ymdUPjMlD9EC9ov1/YPqTgqRvUN9nTr3Gqfz29LYAmu0PHPQ==}
-
   module-definition@6.0.1:
     resolution: {integrity: sha512-FeVc50FTfVVQnolk/WQT8MX+2WVcDnTGiq6Wo+/+lJ2ET1bRVi3HG3YlJUfqagNMc/kUlFSoR96AJkxGpKz13g==}
     engines: {node: '>=18'}
@@ -11436,9 +11401,6 @@ packages:
   object-treeify@1.1.33:
     resolution: {integrity: sha512-EFVjAYfzWqWsBMRHPMAXLCDIJnpMhdWAqR7xG6M6a2cs6PMFpl/+Z20w9zDW4vkxOFfddegBKq9Rehd0bxWE7A==}
     engines: {node: '>= 10'}
-
-  obliterator@2.0.5:
-    resolution: {integrity: sha512-42CPE9AhahZRsMNslczq0ctAEtqk8Eka26QofnqC346BZdHDySk3LWka23LI7ULIw11NmltpiLagIq8gBozxTw==}
 
   ofetch@1.4.1:
     resolution: {integrity: sha512-QZj2DfGplQAr2oj9KzceK9Hwz6Whxazmn85yYeVuS3u9XTMOGMRx0kO95MQ+vLsj/S/NwBDMMLU5hpxvI6Tklw==}
@@ -23910,24 +23872,6 @@ snapshots:
     dependencies:
       lodash.merge: 4.6.2
 
-  graphology-dag@0.4.1(graphology-types@0.24.8):
-    dependencies:
-      graphology-types: 0.24.8
-      graphology-utils: 2.5.2(graphology-types@0.24.8)
-      mnemonist: 0.39.8
-
-  graphology-types@0.24.8: {}
-
-  graphology-utils@2.5.2(graphology-types@0.24.8):
-    dependencies:
-      graphology-types: 0.24.8
-
-  graphology@0.26.0-alpha1(patch_hash=4671a398efe6b0e0e6d5ed1ae2f66c45ec420889776f9d5963d2f6c5c06c0f8d)(graphology-types@0.24.8):
-    dependencies:
-      events: 3.3.0
-      graphology-types: 0.24.8
-      obliterator: 2.0.5
-
   graphql-tag@2.12.6(graphql@16.8.1):
     dependencies:
       graphql: 16.8.1
@@ -26214,10 +26158,6 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.1
 
-  mnemonist@0.39.8:
-    dependencies:
-      obliterator: 2.0.5
-
   module-definition@6.0.1:
     dependencies:
       ast-module-types: 6.0.1
@@ -26528,8 +26468,6 @@ snapshots:
   object-inspect@1.13.4: {}
 
   object-treeify@1.1.33: {}
-
-  obliterator@2.0.5: {}
 
   ofetch@1.4.1:
     dependencies:
