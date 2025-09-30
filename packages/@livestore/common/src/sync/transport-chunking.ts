@@ -15,6 +15,11 @@ export interface ChunkingOptions<A> {
    * fit within {@link maxBytes}. This lets callers control framing overhead.
    */
   readonly encode: (items: ReadonlyArray<A>) => unknown
+  /**
+   * Optional custom measurement function. When provided it overrides the
+   * default {@link JSON.stringify}-based measurement logic.
+   */
+  readonly measure?: (items: ReadonlyArray<A>) => number
 }
 
 /**
@@ -34,8 +39,13 @@ export const splitChunkBySize =
       const maxItems = Math.max(1, options.maxItems)
       const maxBytes = Math.max(1, options.maxBytes)
       const encode = options.encode
+      const measure = options.measure
 
-      const measure = (items: ReadonlyArray<A>) => {
+      const computeSize = (items: ReadonlyArray<A>) => {
+        if (measure !== undefined) {
+          return measure(items)
+        }
+
         const encoded = encode(items)
         return textEncoder.encode(JSON.stringify(encoded)).byteLength
       }
@@ -57,7 +67,7 @@ export const splitChunkBySize =
 
       for (const item of items) {
         current.push(item)
-        const exceedsLimit = current.length > maxItems || measure(current) > maxBytes
+        const exceedsLimit = current.length > maxItems || computeSize(current) > maxBytes
 
         if (exceedsLimit) {
           // remove the item we just added and emit the previous chunk if it exists
@@ -66,9 +76,9 @@ export const splitChunkBySize =
 
           if (last !== undefined) {
             current = [last]
-            const singleItemTooLarge = measure(current) > maxBytes
+            const singleItemTooLarge = computeSize(current) > maxBytes
             if (singleItemTooLarge || current.length > maxItems) {
-              return yield* new OversizeChunkItemError({ size: measure([last]), maxBytes })
+              return yield* new OversizeChunkItemError({ size: computeSize([last]), maxBytes })
             }
           }
         }

@@ -1,5 +1,6 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
   Chunk,
@@ -22,7 +23,6 @@ import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../commo
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
-import { splitChunkBySize } from '../../common/transport-chunking.ts'
 
 export interface HttpSyncOptions {
   /**

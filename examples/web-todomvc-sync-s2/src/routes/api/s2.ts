@@ -50,14 +50,30 @@ export const ServerRoute = createServerFileRoute('/api/s2').methods({
       await S2Helpers.ensureBasin(s2Config)
       await S2Helpers.ensureStream(s2Config, streamName)
 
-      const pushRequest = S2Helpers.buildPushRequest({ config: s2Config, storeId, batch })
-      const res = await fetch(pushRequest.url, { method: 'POST', headers: pushRequest.headers, body: pushRequest.body })
-      if (!res.ok) {
-        return S2Helpers.errorResponse('Push failed', 500)
+      const pushRequests = S2Helpers.buildPushRequests({ config: s2Config, storeId, batch })
+
+      for (const pushRequest of pushRequests) {
+        const res = await fetch(pushRequest.url, {
+          method: 'POST',
+          headers: pushRequest.headers,
+          body: pushRequest.body,
+        })
+
+        if (!res.ok) {
+          console.error('[api/s2] push error', res.status, await res.text())
+          return S2Helpers.errorResponse('Push failed', 500)
+        }
       }
-      console.error('[api/s2] push response', await res.text())
+
       return S2Helpers.successResponse()
-    } catch {
+    } catch (error) {
+      if (error instanceof S2.S2LimitExceededError) {
+        return S2Helpers.errorResponse(
+          `S2 limit exceeded (${error.limitType}): actual ${error.actual}, max ${error.max}`,
+          413,
+        )
+      }
+
       return S2Helpers.errorResponse('Push failed', 500)
     }
   },

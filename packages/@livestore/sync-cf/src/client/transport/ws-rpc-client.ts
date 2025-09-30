@@ -1,5 +1,6 @@
 import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
   Chunk,
@@ -21,7 +22,6 @@ import {
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
-import { splitChunkBySize } from '../../common/transport-chunking.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
 
 export interface WsSyncOptions {
