@@ -162,9 +162,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* store.syncProcessor.syncState.changes.pipe(
         Stream.filter(
-          (state) =>
-            state.pending.length === 0 &&
-            EventSequenceNumber.isEqual(state.localHead, state.upstreamHead),
+          (state) => state.pending.length === 0 && EventSequenceNumber.isEqual(state.localHead, state.upstreamHead),
         ),
         Stream.take(1),
         Stream.runDrain,

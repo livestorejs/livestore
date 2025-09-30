@@ -27,7 +27,6 @@ import {
   Layer,
   Logger,
   LogLevel,
-  Option,
   Queue,
   type Scope,
   Stream,
