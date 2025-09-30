@@ -16,10 +16,7 @@
   "dependencies": {
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "catalog:",
-    "graphology": "0.26.0-alpha1",
-    "graphology-dag": "0.4.1",
-    "graphology-types": "0.24.8"
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
