@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
-    "@effect/language-service": "^0.40.1",
+    "@effect/language-service": "^0.41.1",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -27,7 +27,10 @@
       "protobufjs",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "syncpack>effect": "3.18.0"
+    }
   },
   "resolutions": {
     "@livestore/adapter-cloudflare": "workspace:*",
