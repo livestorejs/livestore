@@ -69,8 +69,7 @@ export function createStoreContext<TSchema extends LiveStoreSchema>(config: {
 - [ ] Remove all render props (renderLoading, renderError, etc.)
 
 **Key Behaviors**:
-- Children render immediately (don't wait for store)
-- Store loads in background
+- Provider suspends until the LiveStore instance reaches the `running` stage
 - No render props - all loading/error handling via Suspense/Error Boundaries
 - Updates internal contexts when ready
 
@@ -99,17 +98,16 @@ export function createStoreContext<TSchema extends LiveStoreSchema>(config: {
 // No options: return nearest store
 const store = useStore()
 
-// With storeId: return specific instance or null
+// With storeId: return specific instance or throw if missing
 const store = useStore({ storeId: 'specific-id' })
 ```
 
 ### 3.2 Suspense Integration
 
 **Tasks**:
-- [ ] Use `React.use(Promise)` internally for Suspense
-- [ ] Create promises for loading stores
-- [ ] Implement promise caching
-- [ ] Handle promise rejection for errors
+- [ ] Make provider throw a promise until the store is ready (Suspense boundary handles fallback)
+- [ ] Ensure promise resolution on successful boot and rejection on fatal errors
+- [ ] Reset suspense handles when storeId changes or provider remounts
 
 ### 3.3 Error Handling
 
