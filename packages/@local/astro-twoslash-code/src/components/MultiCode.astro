@@ -318,14 +318,82 @@ if (localsRecord) {
       color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
   }
 
+  /*
+    Expressive Code injects the copy button inside the snippet frame. Nudge it upward
+    so it floats above the code block consistently across themes.
+  */
   .ls-multi-code__html :global(.copy) {
     transform: translate3d(0, calc(var(--ec-codePadBlk, 1rem) * -1.7), 0);
   }
 
+  /*
+    Reinstate the frame shadow and rounded corners after Expressive Code inlines the
+    snippet so the snippet still looks like a floating panel.
+  */
   .ls-multi-code__html :global(.frame) {
     box-shadow: 0 16px 34px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
     border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+  }
+
+  /*
+    Twoslash tooltips are re-parented to document.body, so they no longer match the
+    original `.expressive-code .twoslash-popup-container` selector shipped by
+    Expressive Code. Recreate the base chrome here so the popup retains its panel
+    styling after we hoist it out of the snippet frame.
+  */
+  :global(.twoslash-popup-container) {
+    background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
+    border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-radius: 4px;
+    box-shadow: 0 16px 32px
+      color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%, transparent);
+    color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
+    font-size: 0.9em;
+    margin-top: 0.5rem;
+    max-width: min(38ch, 90vw);
+    overflow-wrap: normal !important;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap !important;
+    width: max-content !important;
+    word-break: normal !important;
+  }
+
+  /*
+    The popup arrow also loses its styling without the `.expressive-code` ancestor.
+    Mirror the upstream colours so the arrow blends into the restored panel.
+  */
+  :global(.twoslash-popup-container::before) {
+    background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
+    border-right: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-top: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+  }
+
+  /*
+    Diagnostic metadata (`.twoslash-popup-docs`) scrolls behind the snippet when it
+    has no background. Give it a subtle panel surface, border, and standard code
+    styling so paragraphs and tags stay legible in both themes.
+  */
+  :global(.twoslash-popup-docs) {
+    background: color-mix(in srgb, var(--ec-twoSlash-bg, #1f2937) 96%, transparent);
+    border-top: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
+    display: block;
+    margin-top: 0.35rem;
+    max-width: min(38ch, 90vw);
+    padding: 0.4rem 0.75rem 0.5rem;
+    white-space: normal;
+  }
+
+  :global(.twoslash-popup-docs > *:last-child) {
+    margin-bottom: 0;
+  }
+
+  :global(.twoslash-popup-docs code) {
+    background: var(--ec-frm-edBg, color-mix(in srgb, #0f172a 80%, transparent)) !important;
+    border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem !important;
   }
 
   .ls-multi-code__error {

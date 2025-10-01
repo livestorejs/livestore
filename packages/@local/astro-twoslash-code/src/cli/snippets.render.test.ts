@@ -35,6 +35,8 @@ let twoslasher: TTwoslasher
 type TRenderer = Parameters<typeof __internal.renderSnippet>[0]
 let exampleRenderer: TRenderer
 let examplePaths: ReturnType<typeof resolveProjectPaths>
+let docsRenderer: TRenderer
+let docsPaths: ReturnType<typeof resolveProjectPaths>
 
 beforeAll(async () => {
   const modulePath = path.join(
@@ -47,6 +49,11 @@ beforeAll(async () => {
   examplePaths = resolveProjectPaths(exampleProjectRoot)
   const rendererResult = await Effect.runPromise(__internal.loadEcRenderer(examplePaths, {}))
   exampleRenderer = rendererResult.renderer
+
+  const docsProjectRoot = path.join(workspaceRoot, 'docs')
+  docsPaths = resolveProjectPaths(docsProjectRoot)
+  const docsRendererResult = await Effect.runPromise(__internal.loadEcRenderer(docsPaths, {}))
+  docsRenderer = docsRendererResult.renderer
 })
 
 const runExampleBuild = () =>
@@ -223,6 +230,28 @@ describe('renderSnippet integration', () => {
     expect(moduleCode).not.toContain('window.scroll')
     expect(moduleCode).toContain('if(!s)return;')
     expect(moduleCode).toContain('s.style.position="absolute"')
+  })
+
+  it('retains focus boundaries when snippets use cut markers', async () => {
+    const entryFilePath = path.join(
+      docsPaths.snippetAssetsRoot,
+      'reference/platform-adapters/node-adapter/worker-main.ts',
+    )
+    const bundle = buildSnippetBundle({ entryFilePath, baseDir: docsPaths.snippetAssetsRoot })
+
+    const rendered = await Effect.runPromise(
+      __internal.renderSnippet(docsRenderer, bundle, 'reference/platform-adapters/node-adapter/worker-main.ts'),
+    )
+
+    const html = rendered.html ?? ''
+    expect(html).toContain('const adapter = makeWorkerAdapter')
+    expect(html).not.toMatch(/__LS_FILE_(START|END)__/)
+    expect(html).not.toContain('// ---cut---')
+
+    const dataCodeMatch = html.match(/data-code="([^"]*)"/)
+    const dataCode = dataCodeMatch?.[1] ?? ''
+    expect(dataCode).toContain('const adapter = makeWorkerAdapter')
+    expect(dataCode).not.toMatch(/__LS_FILE_(START|END)__/)
   })
 })
 

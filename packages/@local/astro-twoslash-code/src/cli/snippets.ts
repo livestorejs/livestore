@@ -180,12 +180,13 @@ const assembleSnippet = (
   const focusLines: SnippetLine[] = []
   const supportLines: SnippetLine[] = []
 
-  const pushLines = (target: SnippetLine[], block: string, owner: string | null) => {
+  const pushLines = (target: SnippetLine[], block: string, owner: string, onAfterPush?: (line: string) => void) => {
     const normalized = block.replace(/\r?\n/g, '\n')
     const parts = normalized.split('\n')
     for (let index = 0; index < parts.length; index += 1) {
       const part = parts[index]!
       target.push({ content: part, owner })
+      onAfterPush?.(part)
     }
   }
 
@@ -196,17 +197,31 @@ const assembleSnippet = (
   for (const file of files) {
     const owner = file.virtualPath
     if (owner === focusVirtualPath) {
+      const insertStartSentinel = () => {
+        focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+      }
       focusLines.push({ content: `// @filename: ${owner}`, owner: null })
-      focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
-      pushLines(focusLines, file.content, owner)
+      insertStartSentinel()
+      pushLines(focusLines, file.content, owner, (line) => {
+        if (line.trimStart().startsWith('// ---cut')) {
+          insertStartSentinel()
+        }
+      })
       focusLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
       appendBlankLine(focusLines)
       continue
     }
 
+    const insertSupportStartSentinel = () => {
+      supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+    }
     supportLines.push({ content: `// @filename: ${owner}`, owner: null })
-    supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
-    pushLines(supportLines, file.content, owner)
+    insertSupportStartSentinel()
+    pushLines(supportLines, file.content, owner, (line) => {
+      if (line.trimStart().startsWith('// ---cut')) {
+        insertSupportStartSentinel()
+      }
+    })
     supportLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
     appendBlankLine(supportLines)
   }

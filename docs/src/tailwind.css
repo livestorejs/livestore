@@ -71,6 +71,8 @@
 :root {
   --custom-outline-color: var(--color-accent-200);
 
+  --ls-twoslash-tooltip-z: calc(var(--sl-z-index-navbar, 10) + 20);
+
   --sl-font: var(--font-sans);
   --sl-font-mono: var(--font-mono);
 
@@ -119,6 +121,10 @@
 /* Hide Twoslash popup container on initial load (still works on hover) */
 .expressive-code .twoslash-popup-container {
   display: none;
+}
+
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
 }
 
 /* @media (prefers-reduced-motion: no-preference) {

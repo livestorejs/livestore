@@ -290,9 +290,21 @@ importers:
       '@effect-atom/atom-react':
         specifier: 0.3.0
         version: 0.3.0(@effect/experimental@0.56.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0)(ioredis@5.7.0))(@effect/platform@0.92.0(effect@3.18.0))(@effect/rpc@0.71.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(effect@3.18.0)(react@19.1.1)(scheduler@0.26.0)
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/adapter-node
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/adapter-web
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/react
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/sync-cf
       '@types/node':
         specifier: 'catalog:'
         version: 24.5.2

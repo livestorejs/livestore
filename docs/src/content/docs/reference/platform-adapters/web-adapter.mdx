@@ -5,6 +5,11 @@ sidebar:
   order: 1
 ---
 
+import WebAdapterInMemorySnippet from '../../../../_assets/code/reference/platform-adapters/web-adapter/in-memory.ts?snippet'
+import WebAdapterMainSnippet from '../../../../_assets/code/reference/platform-adapters/web-adapter/main.ts?snippet'
+import WebAdapterResetSnippet from '../../../../_assets/code/reference/platform-adapters/web-adapter/reset-persistence.ts?snippet'
+import WebAdapterSyncSnippet from '../../../../_assets/code/reference/platform-adapters/web-adapter/sync-backend.ts?snippet'
+import WebAdapterWorkerSnippet from '../../../../_assets/code/reference/platform-adapters/web-adapter/livestore.worker.ts?snippet'
 ## Installation
 
 ```bash
@@ -13,49 +18,19 @@ npm install @livestore/adapter-web @livestore/wa-sqlite
 
 ## Example
 
-```ts
-// main.ts
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import LiveStoreWorker from './livestore.worker.ts?worker'
+<WebAdapterMainSnippet />
 
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-})
-```
-
-```ts
-// livestore.worker.ts
-import { makeWorker } from '@livestore/adapter-web/worker'
-
-import { schema } from './schema/index.js'
-
-makeWorker({ schema })
-```
+<WebAdapterWorkerSnippet />
 
 ## Adding a sync backend
 
-```ts
-// livestore.worker.ts
-import { makeSomeSyncBackend } from '@livestore/sync-some-sync-backend'
-
-makeWorker({ schema, sync: { backend: makeSomeSyncBackend('...') } })
-```
+<WebAdapterSyncSnippet />
 
 ## In-memory adapter
 
 You can also use the in-memory adapter which can be useful in certain scenarios (e.g. testing).
 
-```ts
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-
-const adapter = makeInMemoryAdapter({
-  schema,
-  // sync: { backend: makeSomeSyncBackend('...') },
-})
-```
+<WebAdapterInMemorySnippet />
 
 ## Web worker
 
@@ -96,23 +71,7 @@ Resetting local persistence only clears data stored in the browser and does not 
 
 In case you want to reset the local persistence of a client, you can provide the `resetPersistence` option to the adapter.
 
-```ts
-// Example which resets the persistence when the URL contains a `reset` query param
-const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
-
-if (resetPersistence) {
-  const searchParams = new URLSearchParams(window.location.search)
-  searchParams.delete('reset')
-  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
-}
-
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  resetPersistence
-})
-```
+<WebAdapterResetSnippet />
 
 If you want to reset persistence manually, you can:
 

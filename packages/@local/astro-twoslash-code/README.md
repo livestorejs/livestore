@@ -15,6 +15,18 @@ Utilities for rendering multi-file Expressive Code / Twoslash snippets in Astro 
 - TypeScript-aware Twoslash snippets with diagnostics
 - Real TypeScript build step for your code snippets to validate
 
+### Styling overlays
+
+Twoslash tooltips render into `document.body` so they can escape snippet frames. The markup uses the class `.twoslash-popup-container`. Consumers should assign an explicit stacking context to this selector to keep the tooltip above site chrome:
+
+```css
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
+}
+```
+
+The docs theme defines `--ls-twoslash-tooltip-z` relative to Starlight’s navbar (`calc(var(--sl-z-index-navbar) + 20)`) so overlays remain visible when the header is fixed.
+
 ## Conventions & Layout
 
 All paths are resolved relative to the Astro project root (usually the directory containing `astro.config.*`). The layout is intentionally fixed so different apps share the same structure:

@@ -5,6 +5,12 @@ sidebar:
 description: How to integrate LiveStore with React.
 ---
 
+import ReactContextSnippet from '../../../_assets/code/reference/framework-integrations/react/context-provider.tsx?snippet'
+import ReactProviderSnippet from '../../../_assets/code/reference/framework-integrations/react/provider.tsx?snippet'
+import ReactUseClientDocumentSnippet from '../../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
+import ReactUseQuerySnippet from '../../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
+import ReactUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
+
 While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
 
 ## Features
@@ -21,79 +27,23 @@ While LiveStore is framework agnostic, the `@livestore/react` package provides a
 
 In order to use LiveStore with React, you need to wrap your application in a `LiveStoreProvider`.
 
-```tsx
-import { LiveStoreProvider } from '@livestore/react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-
-const Root = () => {
-  return (
-    <LiveStoreProvider schema={schema} adapter={adapter} batchUpdates={batchUpdates}>
-      <App />
-    </LiveStoreProvider>
-  )
-}
-```
+<ReactProviderSnippet />
 
 For scenarios where you have an existing store instance, you can manually create a `LiveStoreContext.Provider`:
 
-```tsx
-import { LiveStoreContext } from '@livestore/react'
-import { createStorePromise } from '@livestore/livestore'
-
-const store = createStorePromise({ /* ... */ })
-
-const Root = () => {
-  return (
-    <LiveStoreContext.Provider value={{ stage: 'running', store }}>
-      <App />
-    </LiveStoreContext.Provider>
-  )
-}
-```
+<ReactContextSnippet />
 
 ### useStore
 
-```tsx
-import { useStore } from '@livestore/react'
-
-const MyComponent = () => {
-  const { store } = useStore()
-
-  React.useEffect(() => {
-    store.commit(tables.todos.insert({ id: '1', text: 'Hello, world!' }))
-  }, [])
-
-  return <div>...</div>
-}
-```
+<ReactUseStoreSnippet />
 
 ### useQuery
 
-```tsx
-import { useStore } from '@livestore/react'
-
-const query$ = tables.todos.query.where({ completed: true }).orderBy('createdAt', 'desc')
-
-const CompletedTodos = () => {
-  const { store } = useStore()
-  const todos = store.useQuery(query$)
-
-  return <div>{todos.map((todo) => <div key={todo.id}>{todo.text}</div>)}</div>
-}
-```
+<ReactUseQuerySnippet />
 
 ### useClientDocument
 
-```tsx
-import { useStore } from '@livestore/react'
-
-const TodoItem = ({ id }: { id: string }) => {
-  const { store } = useStore()
-  const [todo, updateTodo] = store.useClientDocument(tables.todos, id)
-
-  return <div onClick={() => updateTodo({ text: 'Hello, world!' })}>{todo.text}</div>
-}
-```
+<ReactUseClientDocumentSnippet />
 
 ## Usage with ...
 
