@@ -1,4 +1,10 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
+import {
+  InvalidPullError,
+  InvalidPushError,
+  IsOfflineError,
+  SyncBackend,
+  UnexpectedError,
+} from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
@@ -8,6 +14,7 @@ import {
   Effect,
   Layer,
   Option,
+  Ref,
   RpcClient,
   RpcSerialization,
   Schedule,
@@ -23,6 +30,18 @@ import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
+
+/**
+ * Temporary fail-fast until we add resume semantics for mid-stream socket closes.
+ */
+export class PullStreamInterruptedError extends Schema.TaggedError<PullStreamInterruptedError>()(
+  'PullStreamInterruptedError',
+  {
+    storeId: Schema.String,
+    remaining: Schema.Number,
+    chunkIndex: Schema.Number,
+  },
+) {}
 
 export interface WsSyncOptions {
   /**
@@ -125,27 +144,76 @@ export const makeWsSync =
 
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
+      type PullItem = SyncBackend.PullResItem<LiveStoreEvent.AnyEncodedGlobal>
+
       return SyncBackend.of<SyncMetadata>({
         isConnected,
         connect: ping,
         pull: (cursor, options) =>
-          rpcClient.SyncWsRpc.Pull({
-            storeId,
-            payload,
-            cursor: cursor.pipe(
-              Option.map((a) => ({
-                eventSequenceNumber: a.eventSequenceNumber,
-                backendId: backendIdHelper.get().pipe(Option.getOrThrow),
-              })),
-            ),
-            live: options?.live ?? false,
-          }).pipe(
-            Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-            Stream.map((res) => omit(res, ['backendId'])),
+          Stream.unwrapScoped(
+            Effect.gen(function* () {
+              const chunkIndexRef = yield* Ref.make(0)
+              const pendingRemainingRef = yield* Ref.make(Option.none<{
+                remaining: number
+                chunkIndex: number
+              }>())
+
+              const base = rpcClient.SyncWsRpc.Pull({
+                storeId,
+                payload,
+                cursor: cursor.pipe(
+                  Option.map((a) => ({
+                    eventSequenceNumber: a.eventSequenceNumber,
+                    backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+                  })),
+                ),
+                live: options?.live ?? false,
+              }).pipe(
+                Stream.tap((res) =>
+                  Effect.gen(function* () {
+                    yield* backendIdHelper.lazySet(res.backendId)
+
+                    yield* Ref.update(chunkIndexRef, (count) => count + 1)
+                    const chunkIndex = yield* Ref.get(chunkIndexRef)
+
+                    if (res.pageInfo._tag === 'MoreKnown') {
+                      yield* Ref.set(
+                        pendingRemainingRef,
+                        Option.some({ remaining: res.pageInfo.remaining, chunkIndex }),
+                      )
+                    } else {
+                      yield* Ref.set(pendingRemainingRef, Option.none())
+                    }
+                  }),
+                ),
+                Stream.map((res) => omit(res, ['backendId']) as PullItem),
+              )
+
+              const tail = Stream.unwrap(
+                Ref.get(pendingRemainingRef).pipe(
+                  Effect.map((pending) =>
+                    Option.match(pending, {
+                      // No pending remainder: stream completed normally.
+                      onNone: () => Stream.empty as Stream.Stream<PullItem>,
+                      onSome: ({ remaining, chunkIndex }) =>
+                        // Fail fast so callers surface the interruption instead of hanging.
+                        Stream.fail<PullItem, PullStreamInterruptedError>(
+                          new PullStreamInterruptedError({ storeId, remaining, chunkIndex }),
+                        ),
+                    }),
+                  ),
+                ),
+              )
+
+              return base.pipe(
+                Stream.concat<PullItem, never, never>(tail),
+              )
+            }),
+          ).pipe(
             Stream.mapError((cause) =>
               cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause)
                 ? new IsOfflineError({ cause: cause.cause })
-                : cause._tag === 'InvalidPullError'
+                : cause._tag === 'InvalidPullError' || cause._tag === 'PullStreamInterruptedError'
                   ? cause
                   : InvalidPullError.make({ cause }),
             ),

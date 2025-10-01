@@ -17,6 +17,7 @@
 
 import { notYetImplemented, omitUndefineds } from '@livestore/utils'
 import {
+  Cause,
   constVoid,
   Effect,
   Exit,
@@ -139,6 +140,22 @@ export const setupDurableObjectWebSocketRpc = ({
       yield* Effect.logDebug(`Launching WebSocket Effect RPC server`)
 
       const scope = yield* Scope.make()
+
+      // TMP instrumentation for H001 — remove after resume semantics land.
+      yield* Scope.addFinalizerExit(scope, (exit) => {
+        const exitKind = Exit.isSuccess(exit)
+          ? 'success'
+          : Exit.isInterrupted(exit)
+            ? 'interrupt'
+            : Exit.isFailure(exit)
+              ? 'failure'
+              : exit._tag
+        const cause = Exit.isSuccess(exit)
+          ? undefined
+          : Cause.pretty(exit.cause, { renderErrorCause: true })
+
+        return Effect.logDebug(`TMP ws scope close ${JSON.stringify({ exit: exitKind, cause })}`)
+      })
 
       const incomingQueue = yield* Mailbox.make<Uint8Array<ArrayBufferLike> | string>()
 

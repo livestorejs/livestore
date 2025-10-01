@@ -1,6 +1,6 @@
 import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnexpectedError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Chunk, Effect, Exit, Option, Ref, Schema, Stream } from '@livestore/utils/effect'
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import { DoCtx } from './layer.ts'
@@ -37,6 +37,9 @@ export const makeEndingPullStream = (
       Option.getOrUndefined(req.cursor)?.eventSequenceNumber,
     )
 
+    const chunkCounter = yield* Ref.make(0)
+    const eventCounter = yield* Ref.make(0)
+
     return storedEvents.pipe(
       Stream.mapChunksEffect(
         splitChunkBySize({
@@ -63,12 +66,39 @@ export const makeEndingPullStream = (
       }),
       Stream.tap(
         Effect.fn(function* (res) {
+          yield* Ref.update(chunkCounter, (count) => count + 1)
+          yield* Ref.update(eventCounter, (count) => count + res.batch.length)
+
           if (doOptions?.onPullRes) {
             yield* Effect.tryAll(() => doOptions.onPullRes!(res)).pipe(UnexpectedError.mapToUnexpectedError)
           }
         }),
       ),
       Stream.emitIfEmpty(SyncMessage.emptyPullResponse(backendId)),
+      // Ensure we always emit a final telemetry snapshot for correlation with client logs.
+      Stream.ensuringWith((exit) =>
+        Effect.gen(function* () {
+          const chunks = yield* Ref.get(chunkCounter)
+          const events = yield* Ref.get(eventCounter)
+
+          const exitKind = Exit.isSuccess(exit)
+            ? 'success'
+            : Exit.isInterrupted(exit)
+              ? 'interrupt'
+              : Exit.isFailure(exit)
+                ? 'failure'
+                : exit._tag
+          const cause = Exit.isSuccess(exit)
+            ? undefined
+            : Cause.pretty(exit.cause, { renderErrorCause: true })
+
+          // TMP telemetry for H001 — drop once streaming resume is robust.
+          console.log(
+            'TMP do pull stream exit',
+            JSON.stringify({ storeId, backendId, exit: exitKind, chunks, events, cause }),
+          )
+        }),
+      ),
     )
   }).pipe(
     Stream.unwrap,
