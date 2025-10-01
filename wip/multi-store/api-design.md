@@ -1,4 +1,4 @@
-# Multi-Store API Design Proposal
+# Multi-Store Design Proposal (Per-Type Registry)
 
 ## Overview
 
