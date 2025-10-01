@@ -1958,6 +1958,9 @@ importers:
 
   packages/@local/astro-twoslash-code:
     dependencies:
+      '@effect/platform-node':
+        specifier: 0.98.0
+        version: 0.98.0(@effect/cluster@0.50.0(@effect/platform@0.92.0(effect@3.18.0))(@effect/rpc@0.71.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(@effect/sql@0.46.0(@effect/experimental@0.56.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0)(ioredis@5.7.0))(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(@effect/workflow@0.11.0(@effect/platform@0.92.0(effect@3.18.0))(@effect/rpc@0.71.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(effect@3.18.0))(effect@3.18.0))(@effect/platform@0.92.0(effect@3.18.0))(@effect/rpc@0.71.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(@effect/sql@0.46.0(@effect/experimental@0.56.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0)(ioredis@5.7.0))(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(effect@3.18.0)
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../@livestore/utils

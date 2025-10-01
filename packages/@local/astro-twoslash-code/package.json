@@ -12,6 +12,7 @@
     "./components/MultiCode.astro": "./src/components/MultiCode.astro"
   },
   "dependencies": {
+    "@effect/platform-node": "0.98.0",
     "@livestore/utils": "workspace:*",
     "astro-expressive-code": "0.41.3",
     "expressive-code": "0.41.3",
