@@ -233,6 +233,7 @@ if (localsRecord) {
     background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 65%, transparent);
     color: var(--ec-codeFg, inherit);
     font: inherit;
+    font-size: calc(var(--ec-uiFontSize, 0.9rem) * 0.92);
     padding: calc(var(--ec-uiPadBlk, 0.6rem) + var(--ec-frm-edActTabIndHt, 0.2rem) * 0.5) var(--ec-uiPadInl, 1rem);
     border-radius: calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
@@ -318,7 +319,7 @@ if (localsRecord) {
   }
 
   .ls-multi-code__html :global(.copy) {
-    top: calc(var(--ec-codePadBlk, 1rem) * 0.4);
+    transform: translate3d(0, calc(var(--ec-codePadBlk, 1rem) * -1.7), 0);
   }
 
   .ls-multi-code__html :global(.frame) {

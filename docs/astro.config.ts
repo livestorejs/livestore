@@ -17,6 +17,7 @@ import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
+import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 
 const port = 5252
@@ -55,6 +56,7 @@ export default defineConfig({
   integrations: [
     createAstroTwoslashCodeIntegration(),
     react(),
+    createCopyPageClipboardFallbackIntegration(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
       social: [

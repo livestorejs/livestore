@@ -746,14 +746,15 @@ const patchJsModules = (modules: readonly string[]): string[] =>
           // overlays for both the docs and the example demo. We adjust the computed
           // coordinates below to account for window scroll offset so placement stays
           // consistent even when the page is scrolled far past the snippet.
-          if (!patched.includes('let t=document.body')) {
-            if (process.env.TWOSLASH_DEBUG === '1') {
-              console.warn('TMP tooltip patch: redirecting container to document.body (before replace)')
-            }
-            patched = patched.replace('let t=s.closest(".expressive-code")', 'let t=document.body')
-            if (process.env.TWOSLASH_DEBUG === '1') {
-              console.warn('TMP tooltip patch: contains document.body?', patched.includes('let t=document.body'))
-            }
+          const anchorPattern = 's.closest(".expressive-code")'
+          if (patched.includes(anchorPattern)) {
+            patched = patched.split(anchorPattern).join('document.body')
+          }
+          if (!patched.includes('if(!s)return;')) {
+            patched = patched.replace(
+              'let s=e.querySelector(".twoslash-popup-container"),',
+              'let s=e.querySelector(".twoslash-popup-container");if(!s)return;let ',
+            )
           }
           if (!patched.includes('let a=!1,r,u=0;')) {
             patched = patched.replace('let a=!1,r;', 'let a=!1,r,u=0;')
@@ -770,7 +771,7 @@ const patchJsModules = (modules: readonly string[]): string[] =>
           if (!patched.includes('s.style.visibility="hidden",new Promise')) {
             patched = patched.replace(
               't.appendChild(s),new Promise',
-              't.appendChild(s),s.style.display="block",s.style.visibility="hidden",new Promise',
+              't.appendChild(s),s.style.position="absolute",s.style.display="block",s.style.visibility="hidden",new Promise',
             )
           }
           if (!patched.includes('s.style.visibility="visible",s.setAttribute')) {
