@@ -1,7 +1,9 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
+  Chunk,
   Effect,
   identity,
   Layer,
@@ -14,6 +16,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type { SyncBackendRpcInterface } from '../../cf-worker/shared.ts'
+import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../common/constants.ts'
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
@@ -100,7 +103,24 @@ export const makeDoRpcSync =
             return
           }
 
-          yield* rpcClient.SyncDoRpc.Push({ batch, storeId, backendId: backendIdHelper.get() })
+          const backendId = backendIdHelper.get()
+          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
+            splitChunkBySize({
+              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+              encode: (items) => ({
+                batch: items,
+                storeId,
+                backendId,
+              }),
+            }),
+            Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
+          )
+
+          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
+            const chunkArray = Chunk.toReadonlyArray(chunk)
+            yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
+          }
         }).pipe(
           Effect.mapError((cause) =>
             cause._tag === 'InvalidPushError'

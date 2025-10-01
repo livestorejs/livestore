@@ -1,7 +1,8 @@
 import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
-import { splitChunkBySize } from '../../common/ws-chunking.ts'
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
@@ -39,6 +40,8 @@ export const makeEndingPullStream = (
     return storedEvents.pipe(
       Stream.mapChunksEffect(
         splitChunkBySize({
+          maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
+          maxBytes: MAX_WS_MESSAGE_BYTES,
           encode: (batch) =>
             encodePullResponse(
               SyncMessage.PullResponse.make({ batch, pageInfo: SyncBackend.pageInfoNoMore, backendId }),

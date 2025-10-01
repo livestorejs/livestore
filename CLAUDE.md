@@ -37,6 +37,7 @@ Use the `mono` CLI for common workflows:
 - Avoid `as any`, force-casting etc as much as possible.
 - When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
 - When refactoring code you don't need to consider backwards compatibility unless specifically asked for.
+- Add helper functions at the end of the file.
 
 ## Task-based Approach
 
@@ -49,6 +50,7 @@ Use the `mono` CLI for common workflows:
 - Search external resources if relevant.
 - Begin by asking follow-up questions to set the research direction. Avoid trivial questions that you can look up yourself. Already do some preliminary research first to only ask questions that are ambiguous or strategically important.
 - Document findings in the `research.md` file.
+- When working on a bug/problem, create a separate `problem.md` to document the problem with a detailed description of the problem, the expected behavior, and the actual behavior including clear reproduction steps and evidence (e.g. logs, screenshots, CLI output, etc.).
 
 ### 2. Planning
 - Review `research.md` in `tasks/<task-id>`.
