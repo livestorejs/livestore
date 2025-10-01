@@ -4,7 +4,7 @@ Utilities for rendering multi-file Expressive Code / Twoslash snippets in Astro 
 
 ## What It Provides
 
-- **Astro integration** `createAstroTwoslashCodeIntegration()` that registers the snippet Vite plugin with LiveStore's conventions.
+- **Astro integration** `createAstroTwoslashCodeIntegration()` that registers the snippet Vite plugin with LiveStore's conventions and keeps Twoslash artefacts warm during dev/build.
 - **Vite plugin** `createTwoslashSnippetPlugin()` and helpers for advanced setups.
 - **Effect CLI** helpers `buildSnippets()` / `createSnippetsCommand()` to pre-render snippets and write cache artefacts.
 - **UI primitives** `MultiCode.astro` (+ utilities) for rendering tabbed multi-file snippets.
@@ -71,6 +71,17 @@ The integration injects the Vite plugin so snippet imports resolve to cached art
 
 Share the same `snippetRuntime` object with your CLI script to keep the integration and build pipeline in sync. Leaving `runtime` undefined restores the defaults from the table above.
 
+By default the integration runs the snippet build once when the Astro dev server boots and again before `astro build`. Disable this with `autoBuild: false`, tweak inputs via `buildOptions`, or set `LS_TWOSLASH_SKIP_AUTO_BUILD=1` when you invoke Astro manually.
+
+```ts
+createAstroTwoslashCodeIntegration({
+  autoBuild: false,
+  buildOptions: {
+    projectRoot: fileURLToPath(new URL('./docs', import.meta.url)),
+  },
+})
+```
+
 ### 2. Pre-render Snippets
 
 ```ts
@@ -97,7 +108,7 @@ PlatformNode.NodeRuntime.runMain(
 )
 ```
 
-Wire this script into the project (e.g. `pnpm snippets:build`). The Vite plugin validates hashes at runtime and fails fast if the cache is missing or stale, so make this part of your build pipeline.
+Wire this script into the project (e.g. `pnpm snippets:build`). The CLI caches each rendered bundle and logs `Rendered X snippet bundles (Y cache hits)` after every run, so a warm build prints something like `Rendered 0 snippet bundles (43 cache hits)`. The Vite plugin validates hashes at runtime and fails fast if the cache is missing or stale, so keep this command in your pipeline even when the integration’s auto-build is enabled.
 
 ### 3. Render Snippets
 
@@ -111,7 +122,7 @@ The named `snippetData` export mirrors the structure returned by `?snippet-raw`,
 
 ## Example Project
 
-`examples/astro-twoslash-code-demo` is a minimal Astro app that uses the integration, prebuild script, and Playwright test to exercise the full workflow. Run:
+`packages/@local/astro-twoslash-code/example` is a minimal Astro app that uses the integration, prebuild script, and Playwright test to exercise the full workflow. Run:
 
 ```bash
 pnpm install

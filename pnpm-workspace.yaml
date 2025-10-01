@@ -4,6 +4,7 @@ packages:
   - docs/src/content/_assets/code
   - packages/@livestore/*
   - packages/@local/*
+  - packages/@local/astro-twoslash-code/example
   - examples/*
   - tests/*
 

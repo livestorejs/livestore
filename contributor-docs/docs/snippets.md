@@ -36,11 +36,13 @@ component always reflects the pre-rendered bundle stored in `docs/node_modules/.
 
 ## Build pipeline
 
-- `mono docs snippets build` walks the snippet workspace, constructs canonical virtual paths for
-  each bundle, runs Twoslash, and writes JSON artefacts plus a manifest to
-  `docs/node_modules/.astro-twoslash-code/`.
-- Astro’s docs build invokes the same command automatically and fails if artefacts are missing or
-  stale, so keep the cache committed for CI reproducibility.
+- The Astro integration triggers a snippet rebuild automatically when `astro dev` starts and before
+  `astro build`, keeping the cache in sync with source changes unless
+  `LS_TWOSLASH_SKIP_AUTO_BUILD=1` is set.
+- `mono docs snippets build` still walks the workspace, renders Twoslash bundles, and writes JSON
+  artefacts plus a manifest to `docs/node_modules/.astro-twoslash-code/` for ad-hoc or CI usage.
+- `mono docs build` runs the same prebuild unless you pass `--skip-snippets` (sets
+  `LS_TWOSLASH_SKIP_AUTO_BUILD=1` for the invoked Astro command).
 - The cache format is stable: each artefact lists the bundle’s source files, their hashes, and the
   rendered HTML/diagnostics per file.  The manifest aggregates bundle hashes and global styles
   emitted by Expressive Code.

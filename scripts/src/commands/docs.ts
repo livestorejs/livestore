@@ -5,7 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
-import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
+import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { deployToNetlify } from '../shared/netlify.ts'
 
@@ -24,8 +24,12 @@ const docsBuildCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Remove docs build artifacts before compilation'),
     ),
+    skipSnippets: Cli.Options.boolean('skip-snippets').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Skip the Twoslash snippet prebuild step'),
+    ),
   },
-  Effect.fn(function* ({ apiDocs, clean }) {
+  Effect.fn(function* ({ apiDocs, clean, skipSnippets }) {
     if (clean) {
       yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { cwd: docsPath, shell: true })
     }
@@ -33,14 +37,13 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify', { cwd: docsPath })
 
-    yield* buildSnippets({ projectRoot: docsPath })
-
     yield* cmd('pnpm astro build', {
       cwd: docsPath,
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
+        LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
       },
     })
   }),
@@ -78,7 +81,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       },
       Effect.fn(function* ({ port: portOption, build }) {
         if (build) {
-          yield* docsBuildCommand.handler({ apiDocs: false, clean: false })
+          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipSnippets: false })
         }
 
         const portArg = portOption._tag === 'Some' ? portOption.value : undefined
@@ -122,7 +125,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(
         function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
           if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false })
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
           }
 
           const branchName = yield* Effect.gen(function* () {

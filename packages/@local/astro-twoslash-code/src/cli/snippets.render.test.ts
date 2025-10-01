@@ -1,13 +1,16 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import * as ts from 'typescript'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
-import { __internal } from './snippets.ts'
+import { __internal, buildSnippets } from './snippets.ts'
 
 type TTwoslasher = (
   code: string,
@@ -27,6 +30,7 @@ const snippetRoot = fixturesRoot
 const tsconfigPath = path.join(fixturesRoot, 'tsconfig.json')
 const packageRoot = fileURLToPath(new URL('../..', import.meta.url))
 const workspaceRoot = process.env.WORKSPACE_ROOT ?? path.resolve(packageRoot, '../../..')
+const exampleProjectRoot = path.join(packageRoot, 'example')
 let twoslasher: TTwoslasher
 type TRenderer = Parameters<typeof __internal.renderSnippet>[0]
 let exampleRenderer: TRenderer
@@ -40,10 +44,13 @@ beforeAll(async () => {
   const module = await import(pathToFileURL(modulePath).href)
   twoslasher = module.twoslasher as TTwoslasher
 
-  examplePaths = resolveProjectPaths(path.join(workspaceRoot, 'examples/astro-twoslash-code-demo'))
+  examplePaths = resolveProjectPaths(exampleProjectRoot)
   const rendererResult = await Effect.runPromise(__internal.loadEcRenderer(examplePaths, {}))
   exampleRenderer = rendererResult.renderer
 })
+
+const runExampleBuild = () =>
+  buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
 
 const loadCompilerOptions = () => {
   const configSource = ts.readConfigFile(tsconfigPath, ts.sys.readFile)
@@ -106,6 +113,18 @@ describe('Twoslash renderer fixtures', () => {
   it('resolves canonical LiveStore schema pattern without TypeScript diagnostics', () => {
     const result = runTwoslashOnFixture('reference/solid-integration/app.tsx')
     expect(result.errors.map((error) => error.renderedMessage)).toEqual([])
+  })
+})
+
+describe('buildSnippets manifests', () => {
+  it('reuses cached artefacts when inputs are unchanged', async () => {
+    fs.rmSync(examplePaths.cacheRoot, { recursive: true, force: true })
+
+    const firstRendered = await Effect.runPromise(runExampleBuild())
+    expect(firstRendered).toBeGreaterThan(0)
+
+    const warmRendered = await Effect.runPromise(runExampleBuild())
+    expect(warmRendered).toBe(0)
   })
 })
 
@@ -193,5 +212,37 @@ describe('renderSnippet integration', () => {
     expect(decoded).toContain('\n\nexport const message')
     expect(decoded.endsWith('\n')).toBe(false)
     expect(blankLines.length).toBe(1)
+  })
+
+  it('anchors tooltip helpers to document.body', () => {
+    const tooltipModule = exampleRenderer.jsModules.find((code) => code.includes('function setupTooltip'))
+    const moduleCode = tooltipModule ?? shouldNeverHappen('Tooltip helper module was not emitted')
+
+    expect(moduleCode).toContain('t=document.body')
+    expect(moduleCode).not.toContain('closest(".expressive-code")')
+    expect(moduleCode).not.toContain('window.scroll')
+    expect(moduleCode).toContain('if(!s)return;')
+    expect(moduleCode).toContain('s.style.position="absolute"')
+  })
+})
+
+describe('buildSnippets cache reuse', () => {
+  const cacheRoot = path.join(exampleProjectRoot, 'node_modules', '.astro-twoslash-code')
+
+  const runBuild = () =>
+    Effect.runPromise(
+      buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)),
+    )
+
+  beforeAll(async () => {
+    fs.rmSync(cacheRoot, { recursive: true, force: true })
+  })
+
+  it('skips rendering when artefacts are fresh', async () => {
+    const firstRunCount = await runBuild()
+    expect(firstRunCount).toBeGreaterThan(0)
+
+    const secondRunCount = await runBuild()
+    expect(secondRunCount).toBe(0)
   })
 })

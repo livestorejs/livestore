@@ -19,8 +19,8 @@
     "typescript": "catalog:"
   },
   "scripts": {
-    "build": "pnpm snippets:build && astro build",
-    "dev": "pnpm snippets:build && astro dev",
+    "build": "astro build",
+    "dev": "astro dev",
     "preview": "astro preview",
     "snippets:build": "bun run scripts/build-snippets.ts",
     "test": "pnpm snippets:build && pnpm playwright test"

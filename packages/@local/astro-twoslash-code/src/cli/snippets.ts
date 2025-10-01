@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
 
+import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
 /**
  * Astro-Twoslash-Code snippets virtual-filesystem specification
  *
@@ -889,7 +890,7 @@ const collectSnippetEntries = (
   })
 
 /**
- * Dynamically loads the Expressive Code/Twoslash renderer using the docs configuration.
+ * Loads the Expressive Code/Twoslash renderer using the docs configuration.
  * This keeps the CLI aligned with the runtime renderer without duplicating config state.
  */
 const loadEcRenderer = (
@@ -899,8 +900,7 @@ const loadEcRenderer = (
   Effect.tryPromise({
     try: async () => {
       const { config, fingerprintHash } = createExpressiveCodeConfig(paths, runtimeOptions)
-      const astroExpressiveCodeModule = await import('astro-expressive-code')
-      const renderer = await astroExpressiveCodeModule.createRenderer(config)
+      const renderer = await astroExpressiveCodeModuleStatic.createRenderer(config)
       const typedRenderer = renderer as TExpressiveRenderer
       return {
         renderer: {
@@ -910,7 +910,12 @@ const loadEcRenderer = (
         configHash: fingerprintHash,
       }
     },
-    catch: (cause) => new SnippetBuildError({ message: 'Unable to load Expressive Code renderer', cause }),
+    catch: (cause) => {
+      if (process.env.TWOSLASH_DEBUG === '1') {
+        console.error('astro-twoslash-code: failed to load Expressive Code renderer', cause)
+      }
+      return new SnippetBuildError({ message: 'Unable to load Expressive Code renderer', cause })
+    },
   })
 
 type TRenderedSnippet = {
@@ -952,6 +957,17 @@ type TSnippetManifest = {
     artifactPath: string
     bundleHash: string
   }[]
+}
+
+type TManifestEntry = {
+  entryFile: string
+  mainFilename: string
+  artifactPath: string
+  bundleHash: string
+}
+
+type TPreviousManifest = {
+  entries: Map<string, TManifestEntry>
 }
 
 /**
@@ -1021,6 +1037,58 @@ const renderSnippet = (
           }),
   }).pipe(Effect.withSpan(`renderSnippet:${focusFilename}`, { attributes: { filename: focusFilename } }))
 
+const loadPreviousManifest = (
+  fs: FileSystem.FileSystem,
+  paths: TwoslashProjectPaths,
+  expectedConfigHash: string,
+): Effect.Effect<TPreviousManifest | null, never> =>
+  Effect.gen(function* () {
+    const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.either)
+    if (manifestExistsResult._tag === 'Left') {
+      yield* Effect.logWarning(
+        `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.left)}`,
+      )
+      return null
+    }
+    if (manifestExistsResult.right === false) {
+      return null
+    }
+
+    const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.either)
+    if (manifestSourceResult._tag === 'Left') {
+      yield* Effect.logWarning(
+        `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.left)}`,
+      )
+      return null
+    }
+
+    const manifestSource = manifestSourceResult.right
+    let parsed: TSnippetManifest
+    try {
+      parsed = JSON.parse(manifestSource) as TSnippetManifest
+    } catch (error) {
+      yield* Effect.logWarning(`Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(error)}`)
+      return null
+    }
+
+    if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
+      return null
+    }
+
+    const entries = new Map<string, TManifestEntry>()
+    for (const entry of parsed.entries ?? []) {
+      if (!entry?.entryFile) continue
+      entries.set(entry.entryFile, {
+        entryFile: entry.entryFile,
+        mainFilename: entry.mainFilename,
+        artifactPath: entry.artifactPath,
+        bundleHash: entry.bundleHash,
+      })
+    }
+
+    return { entries }
+  })
+
 export type BuildSnippetsOptions = {
   projectRoot?: string
   runtime?: TwoslashRuntimeOptions
@@ -1067,16 +1135,17 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
     }
 
     const { renderer, configHash } = yield* loadEcRenderer(paths, runtimeOptions)
-
+    const previousManifest = yield* loadPreviousManifest(fs, paths, configHash)
+    const previousEntries = previousManifest?.entries ?? new Map<string, TManifestEntry>()
     const artifactEntries: Array<TSnippetManifest['entries'][number]> = []
+    let renderedCount = 0
 
     yield* Effect.log(`Rendering ${snippetEntries.length} snippet bundles`)
 
     const buildSnippet = (entry: TSnippetEntry) =>
       Effect.gen(function* () {
-        yield* Effect.log(`Rendering snippet bundle for ${entry.entryPath}`)
-
         const bundle = buildSnippetBundle({ entryFilePath: entry.entryPath, baseDir: paths.snippetAssetsRoot })
+        const entryFileRelative = path.relative(paths.snippetAssetsRoot, bundle.entryFilePath).replace(/\\/g, '/')
 
         const filesWithHash = bundle.fileOrder.map((filename, index) => {
           const file = bundle.files[filename]
@@ -1094,6 +1163,30 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           }
         })
 
+        const bundleHash = hashString(
+          JSON.stringify({
+            files: filesWithHash.map((file) => ({ filename: file.filename, hash: file.hash })),
+            meta: 'twoslash',
+          }),
+        )
+
+        const cachedEntry = previousEntries.get(entryFileRelative)
+        if (cachedEntry && cachedEntry.bundleHash === bundleHash) {
+          const cachedArtifactPath = path.join(paths.cacheRoot, cachedEntry.artifactPath)
+          const cachedArtifactExists = yield* fs.exists(cachedArtifactPath)
+          if (cachedArtifactExists) {
+            artifactEntries.push({
+              entryFile: cachedEntry.entryFile,
+              mainFilename: cachedEntry.mainFilename,
+              artifactPath: cachedEntry.artifactPath,
+              bundleHash: cachedEntry.bundleHash,
+            })
+            return
+          }
+        }
+
+        yield* Effect.log(`Rendering snippet bundle for ${entry.entryPath}`)
+
         const renderedSnippets: Record<string, TRenderedSnippet> = {}
         for (const filename of bundle.fileOrder) {
           const rendered = yield* renderSnippet(renderer, bundle, filename)
@@ -1105,16 +1198,9 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           renderedSnippets[filename] = rendered
         }
 
-        const bundleHash = hashString(
-          JSON.stringify({
-            files: filesWithHash.map((file) => ({ filename: file.filename, hash: file.hash })),
-            meta: 'twoslash',
-          }),
-        )
-
         const artifact: TSnippetArtifact = {
           version: 1,
-          entryFile: path.relative(paths.snippetAssetsRoot, bundle.entryFilePath).replace(/\\/g, '/'),
+          entryFile: entryFileRelative,
           mainFilename: bundle.mainFileRelativePath,
           bundleHash,
           generatedAt: new Date().toISOString(),
@@ -1162,10 +1248,10 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           artifactPath: path.relative(paths.cacheRoot, artifactPath).replace(/\\/g, '/'),
           bundleHash: artifact.bundleHash,
         })
+
+        renderedCount += 1
       }).pipe(Effect.withSpan(`buildSnippet:${entry.entryPath}`, { attributes: { entryPath: entry.entryPath } }))
 
-    // Unfortunatelly running this concurrently won't help as we're bottlenecked by TS CPU
-    // We'd need to run this in a worker pool to make it faster
     yield* Effect.forEach(snippetEntries, buildSnippet)
 
     const manifest: TSnippetManifest = {
@@ -1182,7 +1268,10 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
       .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
       .pipe(Effect.mapError((cause) => new SnippetBuildError({ message: 'Unable to write snippets manifest', cause })))
 
-    yield* Effect.log(`Rendered ${artifactEntries.length} snippet bundles`)
+    const cacheHits = snippetEntries.length - renderedCount
+    yield* Effect.log(`Rendered ${renderedCount} snippet bundles (${cacheHits} cache hits)`)
+
+    return renderedCount
   })
 
 const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOptions => {
@@ -1217,7 +1306,9 @@ export const createSnippetsCommand = ({
     }),
   )
 
-  const buildHandler = Effect.withSpan('astro-twoslash-code/cli/snippets-build')(buildSnippetsInternal(resolved))
+  const buildHandler = Effect.withSpan('astro-twoslash-code/cli/snippets-build')(buildSnippetsInternal(resolved)).pipe(
+    Effect.asVoid,
+  )
 
   const buildCommand = Cli.Command.make('build', {}, () => buildHandler)
 

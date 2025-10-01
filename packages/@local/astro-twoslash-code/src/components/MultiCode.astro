@@ -28,12 +28,61 @@ const globalThemeStyles = prepared.globals.themeStyles
 // Snippet manifest generation patches `setupTooltip`, so the runtime modules can be
 // forwarded as-is here.
 const globalJsModules = prepared.globals.jsModules
+
+type TwoslashGlobalsRegistry = {
+  base: Set<string>
+  theme: Set<string>
+  modules: Set<string>
+}
+
+let shouldRenderBaseStyles = Boolean(globalBaseStyles)
+let shouldRenderThemeStyles = Boolean(globalThemeStyles)
+let jsModulesToRender = globalJsModules
+
+const localsRecord = (Astro as unknown as { locals?: Record<string, unknown> }).locals
+if (localsRecord) {
+  const registryKey = '__lsTwoslashGlobals'
+  if (localsRecord[registryKey] === undefined) {
+    localsRecord[registryKey] = {
+      base: new Set<string>(),
+      theme: new Set<string>(),
+      modules: new Set<string>(),
+    }
+  }
+  const registry = localsRecord[registryKey] as TwoslashGlobalsRegistry
+
+  if (globalBaseStyles) {
+    if (registry.base.has(globalBaseStyles)) {
+      shouldRenderBaseStyles = false
+    } else {
+      registry.base.add(globalBaseStyles)
+    }
+  }
+
+  if (globalThemeStyles) {
+    if (registry.theme.has(globalThemeStyles)) {
+      shouldRenderThemeStyles = false
+    } else {
+      registry.theme.add(globalThemeStyles)
+    }
+  }
+
+  if (globalJsModules.length > 0) {
+    jsModulesToRender = globalJsModules.filter((moduleCode) => {
+      if (registry.modules.has(moduleCode)) {
+        return false
+      }
+      registry.modules.add(moduleCode)
+      return true
+    })
+  }
+}
 ---
 
-{globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles} />}
-{globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles} />}
+{shouldRenderBaseStyles && globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles} />}
+{shouldRenderThemeStyles && globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles} />}
 {
-  globalJsModules.map((moduleCode, index) => (
+  jsModulesToRender.map((moduleCode, index) => (
     <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode} />
   ))
 }
@@ -139,15 +188,15 @@ const globalJsModules = prepared.globals.jsModules
 <style>
   .ls-multi-code {
     display: block;
+    --ls-multi-code-frame-shadow: color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.32)) 55%, transparent);
+    --ec-frm-frameBoxShdCssVal: 0 14px 32px var(--ls-multi-code-frame-shadow);
   }
 
   .ls-multi-code__frame {
     display: flex;
     flex-direction: column;
     border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
-    box-shadow: var(--ec-frm-frameBoxShdCssVal, 0 16px 40px rgba(15, 23, 42, 0.45));
     /* overflow: hidden; */
-    background: var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent)));
   }
 
   .ls-multi-code__toolbar {
@@ -241,6 +290,8 @@ const globalJsModules = prepared.globals.jsModules
     position: relative;
     background: var(--ec-frm-edBg, var(--ec-codeBg, #1e1e1e));
     margin: 0 !important;
+    border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
   }
 
   .ls-multi-code__panel {
@@ -262,10 +313,16 @@ const globalJsModules = prepared.globals.jsModules
   .ls-multi-code__html :global(.expressive-code) {
     position: relative;
     display: block;
+    --ec-frm-frameBoxShdCssVal: 0 16px 34px
+      color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
+  }
+
+  .ls-multi-code__html :global(.copy) {
+    top: calc(var(--ec-codePadBlk, 1rem) * 0.4);
   }
 
   .ls-multi-code__html :global(.frame) {
-    box-shadow: none;
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
     border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
   }
