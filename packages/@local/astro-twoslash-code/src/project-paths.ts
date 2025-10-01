@@ -6,16 +6,14 @@ export type TwoslashProjectPaths = {
   snippetAssetsRoot: string
   cacheRoot: string
   manifestPath: string
-  ecConfigPath: string
 }
 
 export const resolveProjectPaths = (projectRootInput: string): TwoslashProjectPaths => {
   const projectRoot = path.resolve(projectRootInput)
   const srcRoot = path.join(projectRoot, 'src')
   const snippetAssetsRoot = path.join(srcRoot, 'content', '_assets', 'code')
-  const cacheRoot = path.join(projectRoot, '.cache', 'snippets')
+  const cacheRoot = path.join(projectRoot, 'node_modules', '.astro-twoslash-code')
   const manifestPath = path.join(cacheRoot, 'manifest.json')
-  const ecConfigPath = path.join(projectRoot, 'ec.config.mjs')
 
   return {
     projectRoot,
@@ -23,10 +21,8 @@ export const resolveProjectPaths = (projectRootInput: string): TwoslashProjectPa
     snippetAssetsRoot,
     cacheRoot,
     manifestPath,
-    ecConfigPath,
   }
 }
 
-export const defaultRebuildCommand = 'mono docs snippets build'
-
-export const formatRebuildInstruction = (command: string): string => `Run "${command}" to regenerate snippet artefacts.`
+export const formatRebuildInstruction = (): string =>
+  'Regenerate snippet artefacts using your docs snippet build command.'

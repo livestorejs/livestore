@@ -1,0 +1,28 @@
+{
+  "name": "@local/astro-twoslash-code-demo",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@astrojs/starlight": "0.35.2",
+    "@livestore/utils": "workspace:*",
+    "@local/astro-twoslash-code": "workspace:*",
+    "astro": "5.13.4",
+    "astro-expressive-code": "0.41.3",
+    "expressive-code-twoslash": "0.5.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build": "pnpm snippets:build && astro build",
+    "dev": "pnpm snippets:build && astro dev",
+    "preview": "astro preview",
+    "snippets:build": "bun run scripts/build-snippets.ts",
+    "test": "pnpm snippets:build && pnpm playwright test"
+  }
+}

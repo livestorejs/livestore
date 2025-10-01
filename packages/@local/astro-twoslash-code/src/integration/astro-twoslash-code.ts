@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url'
 
 import type { AstroIntegration } from 'astro'
-import { defaultRebuildCommand } from '../project-paths.ts'
+import type { TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createTwoslashSnippetPlugin } from '../vite/vite-plugin-snippet.ts'
 
 export type AstroTwoslashCodeOptions = {
   projectRoot?: string
-  rebuildCommand?: string
+  runtime?: TwoslashRuntimeOptions
 }
 
 type ConfigSetupContext = Parameters<NonNullable<AstroIntegration['hooks']['astro:config:setup']>>[0]
@@ -17,9 +17,13 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
     'astro:config:setup'(context: ConfigSetupContext) {
       const { updateConfig, config } = context
       const projectRoot = options.projectRoot ?? fileURLToPath(config.root)
-      const rebuildCommand = options.rebuildCommand ?? defaultRebuildCommand
 
-      const plugin = createTwoslashSnippetPlugin({ projectRoot, rebuildCommand })
+      const pluginOptions = {
+        projectRoot,
+        ...(options.runtime !== undefined ? { runtime: options.runtime } : {}),
+      }
+
+      const plugin = createTwoslashSnippetPlugin(pluginOptions)
       const existingPlugins = config.vite?.plugins ?? []
 
       updateConfig({

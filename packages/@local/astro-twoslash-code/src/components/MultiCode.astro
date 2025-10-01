@@ -14,284 +14,291 @@ import clientModuleUrl from './multi-code-client.ts?url'
 
 const prepared = prepareMultiCodeData(Astro.props as MultiCodeProps)
 const hasAnyDiagnostics = prepared.panels.some((panel) => panel.diagnostics.length > 0)
+const activePanelDiagnostics = prepared.panels[0]?.diagnostics ?? []
+const initialDiagnosticsLabel =
+  activePanelDiagnostics.length === 0
+    ? ''
+    : activePanelDiagnostics.length === 1
+      ? '1 diagnostic'
+      : `${activePanelDiagnostics.length} diagnostics`
+const initialDiagnosticsTitle = activePanelDiagnostics.join('\n')
+const shouldHideStatus = initialDiagnosticsLabel.length === 0
 const globalBaseStyles = prepared.globals.baseStyles
 const globalThemeStyles = prepared.globals.themeStyles
+// Snippet manifest generation patches `setupTooltip`, so the runtime modules can be
+// forwarded as-is here.
 const globalJsModules = prepared.globals.jsModules
 ---
-{globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles}></style>}
-{globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles}></style>}
-{globalJsModules.map((moduleCode, index) => (
-  <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode}></script>
-))}
+
+{globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles} />}
+{globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles} />}
+{
+  globalJsModules.map((moduleCode, index) => (
+    <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode} />
+  ))
+}
 
 <div class={prepared.containerClass} data-ls-multi-code data-ls-multi-code-id={prepared.baseId}>
-  <div class="ls-multi-code__header">
-    <div class="ls-multi-code__tablist" role="tablist">
-      {prepared.panels.map((file, index) => {
-        const diagCount = file.diagnostics.length
-        const diagLabel = diagCount === 1 ? '1 diagnostic' : `${diagCount} diagnostics`
+  <div class="ls-multi-code__frame">
+    <div class="ls-multi-code__toolbar">
+      <div class="ls-multi-code__tablist" role="tablist">
+        {
+          prepared.panels.map((file, index) => {
+            const diagCount = file.diagnostics.length
+            const diagLabel = diagCount === 1 ? '1 diagnostic' : `${diagCount} diagnostics`
 
-        return (
-          <button
-            type="button"
-            class="ls-multi-code__tab"
-            role="tab"
-            aria-selected={index === 0 ? 'true' : 'false'}
-            aria-controls={`${prepared.baseId}-panel-${index}`}
-            id={`${prepared.baseId}-tab-${index}`}
-            tabindex={index === 0 ? '0' : '-1'}
-            data-active={index === 0 ? '' : undefined}
-            title={file.filename}
-            data-index={index}
-            aria-label={diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined}
-            data-has-diagnostics={diagCount > 0 ? '' : undefined}
-          >
-            <span class="ls-multi-code__tab-label">{file.baseName}</span>
-            {diagCount > 0 && <span class="ls-multi-code__tab-indicator" aria-hidden="true"></span>}
-          </button>
-        )
-      })}
-    </div>
-    <div class="ls-multi-code__controls">
+            return (
+              <button
+                type="button"
+                class={`ls-multi-code__tab${index === 0 ? ' ls-multi-code__tab--active' : ''}`}
+                role="tab"
+                aria-selected={index === 0 ? 'true' : 'false'}
+                aria-controls={`${prepared.baseId}-panel-${index}`}
+                id={`${prepared.baseId}-tab-${index}`}
+                tabindex={index === 0 ? '0' : '-1'}
+                data-active={index === 0 ? '' : undefined}
+                title={file.filename}
+                data-index={index}
+                aria-label={diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined}
+                data-has-diagnostics={diagCount > 0 ? '' : undefined}
+              >
+                <span class="ls-multi-code__tab-label">{file.baseName}</span>
+                {diagCount > 0 && <span class="ls-multi-code__tab-indicator" aria-hidden="true" />}
+              </button>
+            )
+          })
+        }
+      </div>
       <div
         class="ls-multi-code__status"
         data-ls-multi-code-diagnostics
         aria-live="polite"
-        hidden={!hasAnyDiagnostics ? true : undefined}
-      ></div>
-      <button
-        type="button"
-        class="ls-multi-code__copy"
-        data-ls-multi-code-copy
-        data-copy-default="Copy"
-        data-copy-success="Copied"
+        hidden={shouldHideStatus ? true : undefined}
+        title={initialDiagnosticsTitle.length > 0 ? initialDiagnosticsTitle : undefined}
       >
-        <span class="ls-multi-code__copy-label" data-ls-multi-code-copy-label>Copy</span>
-      </button>
+        {initialDiagnosticsLabel}
+      </div>
     </div>
-  </div>
-{prepared.panels.map((file, index) => (
-    <div
-      role="tabpanel"
-      id={`${prepared.baseId}-panel-${index}`}
-      aria-labelledby={`${prepared.baseId}-tab-${index}`}
-      class="ls-multi-code__panel"
-      data-active={index === 0 ? '' : undefined}
-      hidden={index === 0 ? undefined : true}
-      data-index={index}
-    >
-      {/* Diagnostics are parsed client-side to surface per-tab status without inflating the markup. */}
-      {file.diagnostics.length > 0 && (
-        <script type="application/json" data-ls-multi-code-panel-diagnostics>
-          {JSON.stringify(file.diagnostics)}
-        </script>
-      )}
-      {file.html !== null ? (
-        <>
-          {file.styles.length > 0 && (
-            <style
-              data-ls-twoslash-style={`${prepared.baseId}-style-${index}`}
-              set:html={file.styles.join('\n')}
-            ></style>
-          )}
-          <div class="ls-multi-code__html" set:html={file.html}></div>
-        </>
-      ) : (
-        <div class="ls-multi-code__error" role="alert" data-ls-multi-code-error="">
-          <p class="ls-multi-code__error-title">Unable to render Twoslash snippet</p>
-          <p class="ls-multi-code__error-details">
-            {`Check the diagnostics below for ${file.baseName ?? file.filename}.`}
-          </p>
-          {file.diagnostics.length > 0 ? (
-            <ul class="ls-multi-code__error-list">
-              {file.diagnostics.map((diagnostic) => (
-                <li class="ls-multi-code__error-item">
-                  {diagnostic}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p class="ls-multi-code__error-details">No diagnostics were provided.</p>
-          )}
-        </div>
-      )}
+    <div class="ls-multi-code__panels">
+      {
+        prepared.panels.map((file, index) => (
+          <div
+            role="tabpanel"
+            id={`${prepared.baseId}-panel-${index}`}
+            aria-labelledby={`${prepared.baseId}-tab-${index}`}
+            class={`ls-multi-code__panel${index === 0 ? ' ls-multi-code__panel--active' : ''}`}
+            data-active={index === 0 ? '' : undefined}
+            hidden={index === 0 ? undefined : true}
+            data-index={index}
+          >
+            {/* Diagnostics are parsed client-side to surface per-tab status without inflating the markup. */}
+            {file.diagnostics.length > 0 && (
+              <script
+                type="application/json"
+                data-ls-multi-code-panel-diagnostics
+                set:html={JSON.stringify(file.diagnostics)}
+              />
+            )}
+            {file.html !== null ? (
+              <>
+                {file.styles.length > 0 && (
+                  <style
+                    data-ls-twoslash-style={`${prepared.baseId}-style-${index}`}
+                    set:html={file.styles.join('\n')}
+                  />
+                )}
+                <div class="ls-multi-code__html" set:html={file.html} />
+              </>
+            ) : (
+              <div class="ls-multi-code__error" role="alert" data-ls-multi-code-error="">
+                <p class="ls-multi-code__error-title">Unable to render Twoslash snippet</p>
+                <p class="ls-multi-code__error-details">
+                  {`Check the diagnostics below for ${file.baseName ?? file.filename}.`}
+                </p>
+                {file.diagnostics.length > 0 ? (
+                  <ul class="ls-multi-code__error-list">
+                    {file.diagnostics.map((diagnostic) => (
+                      <li class="ls-multi-code__error-item">{diagnostic}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="ls-multi-code__error-details">No diagnostics were provided.</p>
+                )}
+              </div>
+            )}
+          </div>
+        ))
+      }
     </div>
-  ))}
 
-  {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
-  <script type="module" src={clientModuleUrl}></script>
+    {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
+    <script type="module" src={clientModuleUrl}></script>
+  </div>
 </div>
 
 <style>
-.ls-multi-code {
-  display: block;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 60%, transparent);
-  background: var(--sl-color-bg-inline-code, color-mix(in srgb, var(--sl-color-gray-6) 80%, transparent));
-}
+  .ls-multi-code {
+    display: block;
+  }
 
+  .ls-multi-code__frame {
+    display: flex;
+    flex-direction: column;
+    border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+    box-shadow: var(--ec-frm-frameBoxShdCssVal, 0 16px 40px rgba(15, 23, 42, 0.45));
+    /* overflow: hidden; */
+    background: var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent)));
+  }
 
-.ls-multi-code__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.85rem 0.4rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 50%, transparent);
-  flex-wrap: wrap;
-}
+  .ls-multi-code__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    background: linear-gradient(
+        to top,
+        var(--ec-frm-edTabBarBrdBtmCol, rgba(148, 163, 184, 0.35)) var(--ec-brdWd, 1px),
+        transparent var(--ec-brdWd, 1px)
+      ),
+      linear-gradient(
+        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent))),
+        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent)))
+      );
+    border: var(--ec-brdWd, 1px) solid var(--ec-frm-edTabBarBrdCol, rgba(148, 163, 184, 0.35));
+    border-bottom: none;
+    border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
+  }
 
-.ls-multi-code__tablist {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
+  .ls-multi-code__tablist {
+    display: inline-flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
 
-.ls-multi-code__tab {
-  position: relative;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--sl-color-text, var(--sl-color-gray-2));
-  font: inherit;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
+  .ls-multi-code__tab {
+    position: relative;
+    appearance: none;
+    border: var(--ec-brdWd, 1px) solid transparent;
+    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 65%, transparent);
+    color: var(--ec-codeFg, inherit);
+    font: inherit;
+    padding: calc(var(--ec-uiPadBlk, 0.6rem) + var(--ec-frm-edActTabIndHt, 0.2rem) * 0.5) var(--ec-uiPadInl, 1rem);
+    border-radius: calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
+    cursor: pointer;
+    margin: 0 !important;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease,
+      opacity 0.15s ease;
+  }
 
-.ls-multi-code__tab-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
+  .ls-multi-code__tab:hover,
+  .ls-multi-code__tab:focus-visible {
+    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 85%, transparent);
+    outline: none;
+  }
 
-/* Diagnostics badge: tiny dot signals warnings without adding text noise. */
-.ls-multi-code__tab-indicator {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: var(--sl-color-text-destructive, var(--sl-color-red));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sl-color-bg), rgba(0, 0, 0, 0.05));
-}
+  .ls-multi-code__tab--active {
+    background: var(--ec-frm-edActTabBg, var(--ec-codeBg, #1e1e1e));
+    color: var(--ec-frm-edActTabFg, inherit);
+    border-color: var(--ec-frm-edActTabBrdCol, transparent);
+  }
 
-.ls-multi-code__tab::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 -0.35rem;
-  height: 2px;
-  background: transparent;
-  transition: background 0.15s ease;
-}
+  .ls-multi-code__tab--active::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    inset: 0;
+    border-top: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndTopCol, transparent);
+    border-bottom: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndBtmCol, transparent);
+  }
 
-.ls-multi-code__tab:hover {
-  color: var(--sl-color-text);
-}
+  .ls-multi-code__tab-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
 
-.ls-multi-code__tab--active {
-  background: color-mix(in srgb, var(--sl-color-accent) 15%, transparent);
-  color: var(--sl-color-text-accent, var(--sl-color-text));
-}
+  .ls-multi-code__tab-indicator {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--sl-color-text-destructive, #ef4444);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ec-codeBg, #1e1e1e) 90%, transparent);
+  }
 
-.ls-multi-code__tab--active::after {
-  background: var(--sl-color-accent);
-}
+  .ls-multi-code__status {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--ec-codeFg, #cbd5f5) 70%, transparent);
+    padding-bottom: var(--ec-uiPadBlk, 0.6rem);
+  }
 
-.ls-multi-code__panel {
-  display: block;
-}
+  .ls-multi-code__panels {
+    position: relative;
+    background: var(--ec-frm-edBg, var(--ec-codeBg, #1e1e1e));
+    margin: 0 !important;
+  }
 
-.ls-multi-code__panel[hidden] {
-  display: none;
-}
+  .ls-multi-code__panel {
+    display: block;
+  }
 
-.ls-multi-code__error {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 40%, transparent);
-  background: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 8%, transparent);
-  color: var(--sl-color-text-destructive, var(--sl-color-red));
-}
+  .ls-multi-code__panel[hidden] {
+    display: none;
+  }
 
-.ls-multi-code__error-title {
-  margin: 0;
-  font-weight: 600;
-}
+  .ls-multi-code__panel--active {
+    display: block;
+  }
 
-.ls-multi-code__error-details {
-  margin: 0;
-  color: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 80%, transparent);
-}
+  .ls-multi-code__html {
+    position: relative;
+  }
 
-.ls-multi-code__error-list {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: grid;
-  gap: 0.25rem;
-}
+  .ls-multi-code__html :global(.expressive-code) {
+    position: relative;
+    display: block;
+  }
 
-.ls-multi-code__error-item {
-  list-style: disc;
-}
+  .ls-multi-code__html :global(.frame) {
+    box-shadow: none;
+    border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+  }
 
-.ls-multi-code__panel :global(.expressive-code) {
-  border-radius: 0;
-  border: 0;
-}
+  .ls-multi-code__error {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 40%, transparent);
+    background: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 8%, transparent);
+    color: var(--sl-color-text-destructive, var(--sl-color-red));
+  }
 
-.ls-multi-code__panel :global(.expressive-code .header) {
-  display: none;
-}
+  .ls-multi-code__error-title {
+    margin: 0;
+    font-weight: 600;
+  }
 
-.ls-multi-code__html :global(.expressive-code) {
-  border-radius: 0;
-  border: 0;
-}
+  .ls-multi-code__error-details {
+    margin: 0;
+    color: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 80%, transparent);
+  }
 
-/* Diagnostics + copy controls share one cluster to keep layout stable. */
-.ls-multi-code__controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+  .ls-multi-code__error-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.25rem;
+  }
 
-/* Diagnostics summary mirrors the badge and exposes details via title tooltip. */
-.ls-multi-code__status {
-  font-size: 0.85rem;
-  color: color-mix(in srgb, var(--sl-color-text) 80%, transparent);
-}
-
-.ls-multi-code__copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--sl-color-gray-5) 60%, transparent);
-  border-radius: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  background: color-mix(in srgb, var(--sl-color-gray-6) 30%, transparent);
-  color: var(--sl-color-text, var(--sl-color-gray-2));
-  font: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.ls-multi-code__copy:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--sl-color-gray-6) 45%, transparent);
-  color: var(--sl-color-text);
-}
-
-.ls-multi-code__copy[data-copy-state='success'] {
-  background: color-mix(in srgb, var(--sl-color-accent) 20%, transparent);
-  border-color: color-mix(in srgb, var(--sl-color-accent) 50%, transparent);
-  color: var(--sl-color-text-on-accent, var(--sl-color-text));
-}
-
-.ls-multi-code__copy:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+  .ls-multi-code__error-item {
+    list-style: disc;
+  }
 </style>

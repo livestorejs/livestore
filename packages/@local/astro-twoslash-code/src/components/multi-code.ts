@@ -17,11 +17,12 @@ type SnippetGlobals = {
 export type RawSnippetFile = {
   filename: string
   content: string
-  isMain?: boolean
+  isMain: boolean
+  hash: string
 }
 
 export type RenderedSnippet = {
-  filename: string
+  filename?: string
   html: string | null
   language: string
   meta: string
@@ -30,9 +31,10 @@ export type RenderedSnippet = {
 }
 
 export type SnippetBundle = {
-  files: RawSnippetFile[]
+  files: Record<string, Omit<RawSnippetFile, 'filename'>> | RawSnippetFile[]
+  fileOrder?: string[]
   mainFilename: string | null
-  rendered?: RenderedSnippet[]
+  rendered?: Record<string, Omit<RenderedSnippet, 'filename'>> | RenderedSnippet[]
   globals?: {
     baseStyles?: string
     themeStyles?: string
@@ -106,18 +108,85 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   const activeMeta = typeof rawMeta === 'string' && rawMeta.length > 0 ? rawMeta : 'twoslash'
   const className = typeof rawClassName === 'string' && rawClassName.length > 0 ? rawClassName : undefined
 
-  const rawFiles = Array.isArray(code?.files) ? code.files : []
-  const files = rawFiles.map((file) => ({
-    filename: normalizeFilename(file.filename ?? 'snippet.ts'),
-    content: file.content ?? '',
-    isMain: file.isMain === true,
-  }))
+  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+  const normalizedFilesMap = (() => {
+    if (isRecord(code?.files) && !Array.isArray(code?.files)) {
+      return Object.entries(code.files).reduce<Record<string, RawSnippetFile>>((acc, [key, value]) => {
+        if (!isRecord(value)) return acc
+        const filename = normalizeFilename(key)
+        const hash = value.hash
+        if (typeof hash !== 'string' || hash.length === 0) {
+          throw new Error(`Snippet file '${filename}' is missing a hash.`)
+        }
+        acc[filename] = {
+          filename,
+          content: typeof value.content === 'string' ? value.content : '',
+          isMain: value.isMain === true,
+          hash,
+        }
+        return acc
+      }, {})
+    }
+
+    if (Array.isArray(code?.files)) {
+      return code.files.reduce<Record<string, RawSnippetFile>>((acc, entry) => {
+        if (!entry) return acc
+        const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
+        const hash = (entry as { hash?: string }).hash
+        if (typeof hash !== 'string' || hash.length === 0) {
+          throw new Error(`Snippet file '${filename}' is missing a hash.`)
+        }
+        acc[filename] = {
+          filename,
+          content: entry.content ?? '',
+          isMain: entry.isMain === true,
+          hash,
+        }
+        return acc
+      }, {})
+    }
+
+    return {}
+  })()
+
+  const fileOrder =
+    Array.isArray(code?.fileOrder) && code.fileOrder.length > 0
+      ? code.fileOrder.map((filename) => normalizeFilename(filename))
+      : Object.keys(normalizedFilesMap)
+
+  const fileEntries: RawSnippetFile[] = fileOrder.map((filename) => {
+    const record = normalizedFilesMap[filename]
+    if (!record) {
+      throw new Error(`Missing snippet metadata for '${filename}'.`)
+    }
+    return record
+  })
 
   const renderedMap = new Map<string, RenderedSnippet>()
-  if (Array.isArray(code?.rendered)) {
+  if (isRecord(code?.rendered) && !Array.isArray(code.rendered)) {
+    for (const [key, value] of Object.entries(code.rendered)) {
+      if (!isRecord(value)) continue
+      const filename = normalizeFilename(key)
+      renderedMap.set(filename, {
+        filename,
+        html: typeof value.html === 'string' ? value.html : null,
+        language: typeof value.language === 'string' ? value.language : 'ts',
+        meta: typeof value.meta === 'string' && value.meta.length > 0 ? value.meta : activeMeta,
+        diagnostics: Array.isArray(value.diagnostics)
+          ? value.diagnostics.filter((item): item is string => typeof item === 'string')
+          : [],
+        styles: Array.isArray(value.styles)
+          ? value.styles.filter((item): item is string => typeof item === 'string')
+          : [],
+      })
+    }
+  } else if (Array.isArray(code?.rendered)) {
     for (const entry of code.rendered) {
-      renderedMap.set(normalizeFilename(entry.filename), {
-        filename: normalizeFilename(entry.filename),
+      if (!entry) continue
+      const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
+      renderedMap.set(filename, {
+        filename,
         html: entry.html ?? null,
         language: entry.language,
         meta: entry.meta ?? activeMeta,
@@ -127,8 +196,8 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
     }
   }
 
-  if (files.length === 0) {
-    files.push({ filename: 'snippet.ts', content: '', isMain: true })
+  if (fileEntries.length === 0) {
+    throw new Error('Snippet bundle does not contain any files.')
   }
 
   let preferredMain: string | null = null
@@ -136,19 +205,27 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
     preferredMain = normalizeFilename(code.mainFilename)
   }
   if (!preferredMain) {
-    const flagged = files.find((file) => file.isMain)
+    const flagged = fileEntries.find((file) => file.isMain)
     if (flagged) preferredMain = flagged.filename
   }
   if (!preferredMain) {
-    preferredMain = files[0]!.filename
+    preferredMain = fileEntries[0]!.filename
   }
 
-  const mainIndex = files.findIndex((file) => file.filename === preferredMain)
-  if (mainIndex > 0) {
-    files.unshift(files.splice(mainIndex, 1)[0]!)
-  }
+  const orderedFiles = (() => {
+    const currentIndex = fileEntries.findIndex((file) => file.filename === preferredMain)
+    if (currentIndex > 0) {
+      const updated = [...fileEntries]
+      updated.unshift(updated.splice(currentIndex, 1)[0]!)
+      return updated
+    }
+    if (currentIndex === -1 && preferredMain) {
+      throw new Error(`Main snippet file '${preferredMain}' is missing from metadata.`)
+    }
+    return fileEntries
+  })()
 
-  const panels: MultiCodeTab[] = files.map((file) => {
+  const panels: MultiCodeTab[] = orderedFiles.map((file) => {
     const parts = file.filename.split('/')
     const baseName = parts.length > 0 ? parts[parts.length - 1] || file.filename : file.filename
 

@@ -53,11 +53,14 @@ export interface SnippetFileRecord {
   isMain: boolean
 }
 
+export type SnippetFileMap = Record<string, SnippetFileRecord>
+
 export interface SnippetBundle {
   baseDir: string
   entryFilePath: string
   mainFileRelativePath: string
-  files: SnippetFileRecord[]
+  fileOrder: readonly string[]
+  files: SnippetFileMap
 }
 
 export interface BuildSnippetBundleOptions {
@@ -124,9 +127,9 @@ export const buildSnippetBundle = ({
     }
   }
 
-  const files = Array.from(collected.values())
+  const collectedFiles = Array.from(collected.values())
 
-  files.sort((left, right) => {
+  collectedFiles.sort((left, right) => {
     const leftIsDts = left.relativePath.endsWith('.d.ts')
     const rightIsDts = right.relativePath.endsWith('.d.ts')
     if (leftIsDts && !rightIsDts) return -1
@@ -135,21 +138,28 @@ export const buildSnippetBundle = ({
   })
 
   const mainRelativePath = toPosix(path.relative(resolvedBaseDir, absoluteEntry))
-  const mainIndex = files.findIndex((file) => file.relativePath === mainRelativePath)
+  const mainIndex = collectedFiles.findIndex((file) => file.relativePath === mainRelativePath)
   if (mainIndex > 0) {
-    files.unshift(files.splice(mainIndex, 1)[0]!)
+    collectedFiles.unshift(collectedFiles.splice(mainIndex, 1)[0]!)
   }
+
+  const fileOrder = collectedFiles.map((file) => file.relativePath)
+  const files: SnippetFileMap = {}
+  collectedFiles.forEach((file, index) => {
+    files[file.relativePath] = {
+      absolutePath: file.absolutePath,
+      relativePath: file.relativePath,
+      content: file.content,
+      isMain: index === 0,
+    }
+  })
 
   return {
     baseDir: resolvedBaseDir,
     entryFilePath: absoluteEntry,
     mainFileRelativePath: mainRelativePath,
-    files: files.map((file, index) => ({
-      absolutePath: file.absolutePath,
-      relativePath: file.relativePath,
-      content: file.content,
-      isMain: index === 0,
-    })),
+    fileOrder,
+    files,
   }
 }
 

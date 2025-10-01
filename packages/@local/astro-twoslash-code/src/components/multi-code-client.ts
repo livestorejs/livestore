@@ -3,7 +3,6 @@
  *
  * Responsibilities:
  *   - Hydrate tab interactions and keep `aria-selected` / focus state in sync.
- *   - Wire the shared copy button (clipboard + fallback) per active panel.
  *   - Surface diagnostics counts + tooltips based on server-provided JSON blobs.
  *   - Observe newly inserted containers (Astro islands/navigation) and initialize them once.
  */
@@ -15,8 +14,6 @@ const ACTIVE_KEY = 'active'
 const ACTIVE_INDEX_DATASET = 'lsMultiCodeActiveIndex'
 const DIAGNOSTICS_SELECTOR = '[data-ls-multi-code-panel-diagnostics]'
 const DIAGNOSTICS_OUTLET_SELECTOR = '[data-ls-multi-code-diagnostics]'
-const COPY_BUTTON_SELECTOR = '[data-ls-multi-code-copy]'
-const COPY_LABEL_SELECTOR = '[data-ls-multi-code-copy-label]'
 
 type Diagnostics = string[]
 
@@ -34,60 +31,7 @@ const parseDiagnostics = (panel: HTMLElement): Diagnostics => {
   }
 }
 
-// Expressive Code renders gutter + content; stitch everything back together before copying.
-const normalizeCodeFromPanel = (panel: HTMLElement): string => {
-  if (panel.querySelector('[data-ls-multi-code-error]')) {
-    return ''
-  }
-
-  const codeLines = panel.querySelectorAll('.ec-line .code')
-  if (codeLines.length > 0) {
-    return Array.from(codeLines)
-      .map((line) => line.textContent ?? '')
-      .join('\n')
-      .replace(/\u00A0/g, ' ')
-  }
-
-  const pre = panel.querySelector('pre')
-  if (pre) return (pre.textContent ?? '').replace(/\u00A0/g, ' ')
-
-  const html = panel.querySelector('.ls-multi-code__html')
-  return (html?.textContent ?? '').replace(/\u00A0/g, ' ')
-}
-
-// Prefer the async Clipboard API but keep an execCommand fallback for older browsers.
-const copyTextToClipboard = async (text: string): Promise<boolean> => {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      // fall through to fallback copy strategy
-    }
-  }
-
-  const fallback = document.createElement('textarea')
-  fallback.value = text
-  fallback.setAttribute('aria-hidden', 'true')
-  fallback.style.position = 'fixed'
-  fallback.style.top = '0'
-  fallback.style.left = '0'
-  fallback.style.opacity = '0'
-  document.body.appendChild(fallback)
-  fallback.select()
-
-  let success = false
-  try {
-    success = document.execCommand('copy')
-  } catch {
-    success = false
-  }
-
-  document.body.removeChild(fallback)
-  return success
-}
-
-// Bind tab interactions, copy control, and diagnostics status for a single container.
+// Bind tab interactions and diagnostics status for a single container.
 const initMultiCodeContainer = (container: HTMLElement): void => {
   if (container.dataset[READY_FLAG] === 'true') return
   container.dataset[READY_FLAG] = 'true'
@@ -97,19 +41,6 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
   if (tabs.length === 0 || panels.length === 0) return
 
   const diagnosticsOutlet = container.querySelector<HTMLElement>(DIAGNOSTICS_OUTLET_SELECTOR)
-  const copyButton = container.querySelector<HTMLButtonElement>(COPY_BUTTON_SELECTOR)
-  const copyLabel = copyButton?.querySelector<HTMLElement>(COPY_LABEL_SELECTOR)
-  const copyDefault = copyButton?.dataset.copyDefault ?? 'Copy'
-  const copySuccess = copyButton?.dataset.copySuccess ?? 'Copied'
-  let resetCopyTimeout: number | null = null
-
-  const setCopyState = (state: 'default' | 'success') => {
-    if (!copyButton) return
-    copyButton.dataset.copyState = state
-    if (copyLabel) {
-      copyLabel.textContent = state === 'success' ? copySuccess : copyDefault
-    }
-  }
 
   const updateDiagnostics = (index: number) => {
     if (!diagnosticsOutlet) return
@@ -133,13 +64,6 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
     const label = diagnostics.length === 1 ? '1 diagnostic' : `${diagnostics.length} diagnostics`
     diagnosticsOutlet.textContent = label
     diagnosticsOutlet.title = diagnostics.join('\n')
-  }
-
-  const setCopyAvailability = (index: number) => {
-    if (!copyButton) return
-    const panel = panels[index]
-    const text = isHTMLElement(panel) ? normalizeCodeFromPanel(panel) : ''
-    copyButton.disabled = text.trim().length === 0
   }
 
   const getActiveIndex = (): number => {
@@ -172,8 +96,6 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
       }
     })
 
-    setCopyState('default')
-    setCopyAvailability(index)
     updateDiagnostics(index)
     container.dataset[ACTIVE_INDEX_DATASET] = String(index)
   }
@@ -204,23 +126,6 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
       }
     })
   })
-
-  if (copyButton) {
-    copyButton.addEventListener('click', async () => {
-      const panel = panels[getActiveIndex()]
-      if (!isHTMLElement(panel)) return
-      const text = normalizeCodeFromPanel(panel)
-      if (!text.trim()) return
-      const copied = await copyTextToClipboard(text)
-      if (!copied) return
-      setCopyState('success')
-      if (resetCopyTimeout !== null) window.clearTimeout(resetCopyTimeout)
-      resetCopyTimeout = window.setTimeout(() => {
-        setCopyState('default')
-        resetCopyTimeout = null
-      }, 1600)
-    })
-  }
 
   setActive(getActiveIndex())
 }

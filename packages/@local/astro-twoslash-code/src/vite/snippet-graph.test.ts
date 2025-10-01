@@ -13,16 +13,18 @@ describe('buildSnippetBundle', () => {
     const bundle = buildSnippetBundle({ entryFilePath: entryFile })
 
     expect(bundle.mainFileRelativePath).toBe('basic/main.ts')
-    expect(bundle.files.map((file) => file.relativePath)).toStrictEqual([
+    expect(bundle.fileOrder).toStrictEqual([
       'basic/main.ts',
       'basic/ambient.d.ts',
       'basic/utils.ts',
       'shared/helper.ts',
     ])
-    expect(bundle.files[0]?.isMain).toBe(true)
-    for (const file of bundle.files) {
-      expect(typeof file.content).toBe('string')
-      expect(file.content.length).toBeGreaterThan(0)
+    expect(bundle.files['basic/main.ts']?.isMain).toBe(true)
+    for (const filename of bundle.fileOrder) {
+      const file = bundle.files[filename]
+      expect(file).toBeDefined()
+      expect(typeof file?.content).toBe('string')
+      expect(file?.content.length ?? 0).toBeGreaterThan(0)
     }
   })
 
@@ -31,7 +33,7 @@ describe('buildSnippetBundle', () => {
 
     const bundle = buildSnippetBundle({ entryFilePath: entryFile })
 
-    expect(bundle.files.map((file) => file.relativePath)).toStrictEqual(['missing/main.ts'])
-    expect(bundle.files[0]?.isMain).toBe(true)
+    expect(bundle.fileOrder).toStrictEqual(['missing/main.ts'])
+    expect(bundle.files['missing/main.ts']?.isMain).toBe(true)
   })
 })

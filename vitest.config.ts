@@ -18,6 +18,7 @@ export default defineConfig({
     projects: [
       ...rootPackages,
       // path.join(rootDir, 'tests/'),
+      path.join(rootDir, 'packages/@local/astro-twoslash-code/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/node-misc/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/adapter-cloudflare/vitest.config.ts'),

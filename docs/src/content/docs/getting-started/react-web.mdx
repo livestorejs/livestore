@@ -7,23 +7,25 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
 import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
-import schemaCode from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?snippet'
-import workerCode from '../../_assets/code/getting-started/react-web/livestore.worker.ts?snippet'
-import rootCode from '../../_assets/code/getting-started/react-web/Root.tsx?snippet'
-import headerCode from '../../_assets/code/getting-started/react-web/Header.tsx?snippet'
-import mainSectionCode from '../../_assets/code/getting-started/react-web/MainSection.tsx?snippet'
+import SchemaSnippet from '../../../../../examples/web-todomvc-sync-cf/src/livestore/schema.ts?snippet'
+import WorkerSnippet from '../../_assets/code/getting-started/react-web/livestore.worker.ts?snippet'
+import RootSnippet from '../../_assets/code/getting-started/react-web/Root.tsx?snippet'
+import HeaderSnippet from '../../_assets/code/getting-started/react-web/Header.tsx?snippet'
+import MainSectionSnippet from '../../_assets/code/getting-started/react-web/MainSection.tsx?snippet'
 
 export const CODE = {
   viteConfig: viteConfigCode,
-  schema: schemaCode,
-  root: rootCode,
-  header: headerCode,
-  mainSection: mainSectionCode,
-  worker: workerCode,
+}
+
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  root: RootSnippet,
+  header: HeaderSnippet,
+  mainSection: MainSectionSnippet,
+  worker: WorkerSnippet,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -137,13 +139,13 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<MultiCode code={CODE.schema} />
+<SNIPPETS.schema />
 
 ## Create the LiveStore Worker
 
 Create a file named `livestore.worker.ts` inside the `src` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-<MultiCode code={CODE.worker} />
+<SNIPPETS.worker />
 
 ## Add the LiveStore Provider
 
@@ -151,7 +153,7 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-<MultiCode code={CODE.root} />
+<SNIPPETS.root />
 
 ### Commit events
 
@@ -159,7 +161,7 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-<MultiCode code={CODE.header} />
+<SNIPPETS.header />
 
 ## Queries
 
@@ -169,4 +171,4 @@ Consider abstracting queries into a separate file to keep your code organized, t
 
 Here's an example:
 
-<MultiCode code={CODE.mainSection} />
+<SNIPPETS.mainSection />

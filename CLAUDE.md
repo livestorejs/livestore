@@ -4,6 +4,13 @@
 
 This repository uses [`direnv`](https://direnv.net) for automatic environment setup. Run `direnv allow` once, then direnv automatically runs the setup script which installs dependencies and builds TypeScript.
 
+## Zellij (mandatory when working in a zellij session)
+
+- Always check if you are in a zellij session by checking if `$ZELLIJ` is set to any non-empty value.
+- Keeping the active tab name accurate is required for every agent session when a zellij session is open; run `zellij action rename-tab "<new-name>"` as soon as you start the task and whenever the focus changes.
+- Tab names must stay short, descriptive, and in kebab-case (< 30 characters, abbreviations allowed).
+- Describe the current problem/goal and keep names unambiguous within the session; avoid repeating the session name.
+
 ## Tooling
 
 - When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)

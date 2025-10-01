@@ -6,15 +6,17 @@ sidebar:
 ---
 
 import { Code } from '@astrojs/starlight/components';
-import MultiCode from '@local/astro-twoslash-code/components/MultiCode.astro';
-import clientSetupCode from '../../../../_assets/code/reference/syncing/s2/client-setup.ts?snippet';
-import apiProxyImplementationCode from '../../../../_assets/code/reference/syncing/s2/api-proxy-implementation.ts?snippet';
+import ClientSetupSnippet from '../../../../_assets/code/reference/syncing/s2/client-setup.ts?snippet';
+import ApiProxyImplementationSnippet from '../../../../_assets/code/reference/syncing/s2/api-proxy-implementation.ts?snippet';
 import recordStructureExampleCode from '../../../../_assets/code/reference/syncing/s2/record-structure.json?raw';
 
+export const SNIPPETS = {
+  clientSetup: ClientSetupSnippet,
+  apiProxyImplementation: ApiProxyImplementationSnippet,
+};
+
 export const CODE = {
-  clientSetup: clientSetupCode,
-  apiProxyImplementation: apiProxyImplementationCode,
-  recordStructureExample: recordStructureExampleCode
+  recordStructureExample: recordStructureExampleCode,
 };
 
 The `@livestore/sync-s2` package lets you sync LiveStore with the official S2 backend (s2.dev).
@@ -55,7 +57,7 @@ The API proxy handles:
 
 Basic usage in your worker/server code:
 
-<MultiCode code={CODE.clientSetup} />
+<SNIPPETS.clientSetup />
 
 ## API Proxy Implementation
 
@@ -71,7 +73,7 @@ Your proxy needs three endpoints:
 
 The `@livestore/sync-s2` package provides helper functions to simplify the proxy implementation:
 
-<MultiCode code={CODE.apiProxyImplementation} />
+<SNIPPETS.apiProxyImplementation />
 
 ### Cursor Semantics
 

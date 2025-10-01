@@ -2,6 +2,83 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 
 /**
+ * Astro-Twoslash-Code snippets virtual-filesystem specification
+ *
+ * Why this exists
+ * ----------------
+ *   Docs authors scatter runnable examples across `docs/src/content/_assets/code/**` and
+ *   reference them via `?snippet` imports.  At build time we have to aggregate those loose
+ *   files, give Twoslash a coherent (TypeScript-compatible) virtual filesystem, and then ship
+ *   pre-rendered artefacts plus a manifest that Astro can hydrate.  The machinery below is the
+ *   canonical description of how physical files are converted into virtual paths, how we guard
+ *   against ambiguous aliases, and which invariants consumers can rely on.
+ *
+ * Source directory model
+ * ----------------------
+ *   - `resolveProjectPaths(projectRoot)` anchors every run in a single snippet root
+ *     (`{projectRoot}/src/content/_assets/code`).  All bundle operations happen inside this root.
+ *   - `buildSnippetBundle` follows relative `./` and `../` imports.  Anything outside the snippet
+ *     root is intentionally ignored; authors must copy supporting files into the docs repo.
+ *   - Triple-slash references are stripped (`sanitizeSnippetContent`) so that Twoslash does not
+ *     accidentally traverse "real" project dependencies.
+ *
+ * Canonical virtual paths
+ * -----------------------
+ *   - Every collected file receives a canonical virtual path that mirrors its relative path from
+ *     the snippet root (e.g. `reference/solid-integration/livestore/schema.ts →
+ *     ./reference/solid-integration/livestore/schema.ts`).  Dot-segments are collapsed, but parent
+ *     traversals are preserved to keep cross-directory references resolvable.
+ *   - We record these canonical paths once per file.  Duplicates (such as `./schema.ts` and
+ *     `./reference/.../schema.ts`) are not emitted because TypeScript would otherwise drop the
+ *     duplicate from program state, leading to the "Cannot find module" errors that motivated this
+ *     rewrite.
+ *
+ * Specifier rewrites & focus handling
+ * -----------------------------------
+ *   - `normalizeRelativeSpecifiers` walks each file, captures the author-written specifier
+ *     (`raw`), normalises it relative to the source file (`normalized`), and resolves a canonical
+ *     target (`canonical`).  This table is the ground truth for later transformations.
+ *   - When we render a focus file, its content is rewritten to canonical specifiers only for the
+ *     Twoslash compilation (`focusTwoslashContent`).  Supporting files retain their canonical
+ *     source unchanged, ensuring a stable view of the module graph.
+ *   - `assembleSnippet` prefixes every virtual file with ownership sentinels (`// __LS_FILE_START__` /
+ *     `// __LS_FILE_END__`).  The focus file is concatenated after the supporting files so the
+ *     markers always appear, even when Expressive Code reorders blocks during rendering.
+ *   - After Twoslash finishes, we trim the rendered AST to the focus segment, strip all sentinel
+ *     lines from the HTML and copy payloads, and `restoreFocusSpecifiers` walks the AST to swap the
+ *     canonical strings back to the author-written forms so the docs match the prose.
+ *
+ * Artefact manifest contract
+ * --------------------------
+ *   - Each snippet bundle yields a JSON artefact stored under
+ *     `{projectRoot}/.cache/snippets/<main-file>.json`.  The payload lists:
+ *       * `files`: hashed source files with their relative (on-disk) paths.
+ *       * `rendered`: per-file HTML/diagnostics keyed by the original relative filename.
+ *   - The manifest (`.cache/snippets/manifest.json`) aggregates bundle hashes and the renderer
+ *     assets (base styles, theme styles, JS modules).  Astro consumes this manifest to inline
+ *     static assets without re-running Twoslash.
+ *
+ * Design decisions & unsupported patterns
+ * ---------------------------------------
+ *   - One bundle ↔ one authoritative path per file.  We deliberately avoid alias files or
+ *     duplicate `// @filename` sections; doing so keeps TypeScript's incremental compiler stable.
+ *   - Import specifiers must remain relative (`./` or `../`).  Absolute, package-based, or runtime
+ *     dynamic imports are rejected by the crawler and therefore unsupported.
+ *   - References that escape the snippet root (`../..`) are normalised but still trimmed to their
+ *     canonical representation; if the resolved file lives outside the root it is skipped.  This
+ *     prevents unintentional leakage of monorepo sources into the docs build.
+ *   - Worker query parameters (`?worker`, `?sharedworker`) and similar suffixes are preserved.  We
+ *     treat everything after `?`/`#` as a transparent suffix when rewriting specifiers.
+ *   - The tooling assumes NodeNext-style resolution with explicit extensions.  Files without an
+ *     extension or specifiers resolved via index files are not supported.
+ *
+ * This comment is the authoritative spec for the path handling layer—keep it in sync with any
+ * behavioural changes so downstream consumers understand the guarantees they receive.  If you touch
+ * any code in this module, update this spec first; drift here will guarantee regressions the next
+ * time someone tweaks Twoslash or the docs build.
+ */
+
+/**
  * CLI entrypoint that keeps docs snippets warm.
  *
  * Workflow overview:
@@ -20,12 +97,13 @@ import type {
   ElementContent as THastElementContent,
   Parent as THastParent,
   RootContent as THastRootContent,
-  Text as THastText,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
 
-import { defaultRebuildCommand, resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
-import { buildSnippetBundle } from '../vite/snippet-graph.ts'
+import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
+import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
+import type { SnippetBundle } from '../vite/snippet-graph.ts'
+import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -78,41 +156,281 @@ const guessLanguage = (filename: string, fallback: string | undefined = undefine
 }
 
 /**
- * Combines all virtual files of a bundle into a single Twoslash snippet string.
- * Ensures the focused file receives the `// ---cut---` marker so it appears first in the UI.
+ * Combines all virtual files of a bundle into a single Twoslash snippet string while
+ * retaining ownership metadata for every line. Twoslash still receives a concatenated
+ * snippet, but callers can later recover the focus-only section without relying on
+ * heuristics from the rendered HTML.
  */
-const FILE_START_SENTINEL = '__LS_FILE_START__'
-const FILE_END_SENTINEL = '__LS_FILE_END__'
 
-const assembleSnippet = (files: Array<{ virtualPath: string; content: string }>, focusVirtualPath: string): string => {
-  const segments: string[] = []
-  const focusFile = files.find((file) => file.virtualPath === focusVirtualPath)
+type SnippetLine = {
+  content: string
+  owner: string | null
+}
 
-  if (focusFile) {
-    segments.push(`// @filename: ${focusFile.virtualPath}`)
-    segments.push(`// ${FILE_START_SENTINEL}:${focusFile.virtualPath}`)
-    segments.push(focusFile.content)
-    segments.push(`// ${FILE_END_SENTINEL}:${focusFile.virtualPath}`)
-    segments.push('')
+type AssembledSnippet = {
+  code: string
+  lines: SnippetLine[]
+}
+
+const assembleSnippet = (
+  files: Array<{ virtualPath: string; content: string }>,
+  focusVirtualPath: string,
+): AssembledSnippet => {
+  const focusLines: SnippetLine[] = []
+  const supportLines: SnippetLine[] = []
+
+  const pushLines = (target: SnippetLine[], block: string, owner: string | null) => {
+    const normalized = block.replace(/\r?\n/g, '\n')
+    const parts = normalized.split('\n')
+    for (let index = 0; index < parts.length; index += 1) {
+      const part = parts[index]!
+      target.push({ content: part, owner })
+    }
+  }
+
+  const appendBlankLine = (target: SnippetLine[]) => {
+    target.push({ content: '', owner: null })
   }
 
   for (const file of files) {
-    if (file.virtualPath === focusVirtualPath) continue
-    segments.push(`// @filename: ${file.virtualPath}`)
-    segments.push(`// ${FILE_START_SENTINEL}:${file.virtualPath}`)
-    segments.push('// ---cut---')
-    segments.push(file.content)
-    segments.push(`// ${FILE_END_SENTINEL}:${file.virtualPath}`)
-    segments.push('')
+    const owner = file.virtualPath
+    if (owner === focusVirtualPath) {
+      focusLines.push({ content: `// @filename: ${owner}`, owner: null })
+      focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+      pushLines(focusLines, file.content, owner)
+      focusLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
+      appendBlankLine(focusLines)
+      continue
+    }
+
+    supportLines.push({ content: `// @filename: ${owner}`, owner: null })
+    supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+    pushLines(supportLines, file.content, owner)
+    supportLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
+    appendBlankLine(supportLines)
   }
 
-  while (segments.length > 0 && segments[segments.length - 1] === '') {
-    segments.pop()
+  const lines = [...focusLines, ...supportLines]
+  while (lines.length > 0 && lines[lines.length - 1]?.content === '') {
+    lines.pop()
   }
 
-  const snippet = segments.join('\n')
-  return snippet.endsWith('\n') ? snippet : `${snippet}\n`
+  const code = lines.map((line) => line.content).join('\n')
+  return {
+    code: code.endsWith('\n') ? code : `${code}\n`,
+    lines,
+  }
 }
+
+const sanitizeSnippetContent = (content: string): string => content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
+
+/**
+ * Establishes canonical snippet filenames that mirror the on-disk structure.
+ *
+ * Why: Twoslash spins up a TypeScript program from our virtual file set. When
+ * multiple aliases point at the same file (e.g. `./schema.ts` and
+ * `./reference/.../schema.ts`) the compiler silently drops the duplicate, which
+ * is exactly what triggered the missing-module diagnostics. Canonicalising here
+ * gives us a single authoritative path that can be swapped in/out per focus
+ * file while keeping the rest of the graph stable.
+ */
+const canonicalizeDisplayPath = (relativePath: string, fallback: string): string => {
+  if (relativePath.length === 0) return fallback
+  const normalized = path.posix.normalize(relativePath)
+  if (normalized === '.' || normalized.length === 0) return fallback
+  return normalized
+}
+
+const canonicalizeVirtualPath = (displayPath: string): string =>
+  displayPath.startsWith('.') ? displayPath : `./${displayPath}`
+
+type TVirtualFileRecord = SnippetBundle['files'][number] & {
+  virtualPath: string
+  canonicalVirtualPath: string
+  displayPath: string
+  content: string
+  canonicalContent: string
+  focusContent: string
+  focusTwoslashContent: string
+  relativeImports: readonly {
+    raw: string
+    normalized: string
+    canonical: string
+  }[]
+}
+
+const splitImportSpecifier = (specifier: string): { pathPart: string; suffix: string } => {
+  const queryIndex = specifier.indexOf('?')
+  const hashIndex = specifier.indexOf('#')
+  const cutIndex =
+    queryIndex >= 0 && hashIndex >= 0 ? Math.min(queryIndex, hashIndex) : queryIndex >= 0 ? queryIndex : hashIndex
+  if (cutIndex === -1) {
+    return { pathPart: specifier, suffix: '' }
+  }
+  return {
+    pathPart: specifier.slice(0, cutIndex),
+    suffix: specifier.slice(cutIndex),
+  }
+}
+
+const replaceRelativeSpecifier = (source: string, from: string, to: string): string => {
+  if (from === to) {
+    return source
+  }
+
+  const patterns: Array<[string, string]> = [
+    [`'${from}'`, `'${to}'`],
+    [`"${from}"`, `"${to}"`],
+    [`\`${from}\``, `\`${to}\``],
+    [`path="${from}"`, `path="${to}"`],
+    [`path='${from}'`, `path='${to}'`],
+  ]
+
+  let rewritten = source
+  for (const [needle, replacement] of patterns) {
+    if (rewritten.includes(needle)) {
+      rewritten = rewritten.replaceAll(needle, replacement)
+    }
+  }
+  return rewritten
+}
+
+type Mutable<T> = {
+  -readonly [P in keyof T]: Mutable<T[P]>
+}
+
+/**
+ * Computes the mapping between the import specifiers a doc author wrote and the
+ * canonical paths Twoslash needs to compile the bundle.
+ *
+ * Why: Every focus file should retain human-friendly imports (`./schema.ts`),
+ * but Twoslash requires canonical locations so the entire snippet graph shares
+ * a coherent module namespace. Capturing both forms lets us hand the canonical
+ * variants to Twoslash for type-checking and later restore the originals for the
+ * rendered output.
+ */
+const normalizeRelativeSpecifiers = (
+  content: string,
+  fileRelativePath: string,
+  canonicalMap: Map<string, string>,
+): { content: string; rewrites: TVirtualFileRecord['relativeImports'] } => {
+  let rewritten = content
+  const rewrites: Mutable<TVirtualFileRecord['relativeImports']> = []
+
+  for (const specifier of snippetGraphInternal.extractRelativeImports(content)) {
+    if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue
+    const { pathPart, suffix } = splitImportSpecifier(specifier)
+    const fromDir = path.posix.dirname(fileRelativePath)
+    const resolved = path.posix.normalize(path.posix.join(fromDir, pathPart))
+
+    let relativeSpecifier = path.posix.relative(fromDir, resolved)
+    if (relativeSpecifier.length === 0 || relativeSpecifier === '.') {
+      relativeSpecifier = `./${path.posix.basename(resolved)}`
+    } else if (!relativeSpecifier.startsWith('./') && !relativeSpecifier.startsWith('../')) {
+      relativeSpecifier = `./${relativeSpecifier}`
+    }
+
+    const normalizedSpecifier = `${relativeSpecifier}${suffix}`
+    rewritten = replaceRelativeSpecifier(rewritten, specifier, normalizedSpecifier)
+
+    const canonicalVirtual = canonicalMap.get(resolved) ?? canonicalizeVirtualPath(resolved)
+    const canonicalSpecifier = `${canonicalVirtual}${suffix}`
+    rewrites.push({ raw: specifier, normalized: normalizedSpecifier, canonical: canonicalSpecifier })
+  }
+
+  return { content: rewritten, rewrites }
+}
+
+const applySpecifierRewrites = (
+  content: string,
+  rewrites: TVirtualFileRecord['relativeImports'],
+  from: 'raw' | 'normalized' | 'canonical',
+  to: 'raw' | 'normalized' | 'canonical',
+): string => {
+  let output = content
+
+  for (const rewrite of rewrites) {
+    const source = rewrite[from]
+    const target = rewrite[to]
+    if (source === target) {
+      continue
+    }
+    output = replaceRelativeSpecifier(output, source, target)
+  }
+
+  return output
+}
+
+const createVirtualFiles = (files: SnippetBundle['files'], fileOrder: readonly string[]): TVirtualFileRecord[] => {
+  const records = fileOrder.map((filename) => {
+    const file = files[filename]
+    if (!file) {
+      throw new Error(`createVirtualFiles: missing file record for ${filename}`)
+    }
+    const fallbackName = path.posix.basename(file.absolutePath) || 'index.ts'
+    const displayPath = canonicalizeDisplayPath(file.relativePath, fallbackName)
+    const canonicalVirtualPath = canonicalizeVirtualPath(displayPath)
+    const sanitizedContent = sanitizeSnippetContent(file.content)
+
+    return {
+      ...file,
+      virtualPath: canonicalVirtualPath,
+      canonicalVirtualPath,
+      displayPath,
+      canonicalContent: sanitizedContent,
+      focusContent: sanitizedContent,
+      content: sanitizedContent,
+    }
+  })
+
+  const canonicalMap = new Map<string, string>(
+    records.map((record) => [record.relativePath, record.canonicalVirtualPath]),
+  )
+
+  return records.map((record) => {
+    const { content: canonicalContent, rewrites } = normalizeRelativeSpecifiers(
+      record.canonicalContent,
+      record.relativePath,
+      canonicalMap,
+    )
+
+    return {
+      ...record,
+      canonicalContent,
+      content: canonicalContent,
+      focusTwoslashContent: applySpecifierRewrites(record.focusContent, rewrites, 'raw', 'canonical'),
+      relativeImports: rewrites,
+    }
+  })
+}
+
+/**
+ * Builds the per-focus virtual file list passed into Twoslash.
+ *
+ * Why: Twoslash expects canonical import specifiers during compilation. Only the
+ * focus file temporarily receives the canonicalised content (so the compiler can
+ * resolve its dependencies), while supporting files stay untouched. That keeps
+ * the virtual file identity stable while avoiding duplicate `// @filename`
+ * blocks for the same module.
+ */
+const remapVirtualPathsForFocus = (files: TVirtualFileRecord[], focusFilename: string): TVirtualFileRecord[] => {
+  const normalizedFocus = path.posix.normalize(focusFilename)
+
+  return files.map((file) => {
+    const isFocus = file.relativePath === normalizedFocus
+
+    return {
+      ...file,
+      virtualPath: file.canonicalVirtualPath,
+      content: isFocus ? file.focusTwoslashContent : file.canonicalContent,
+    }
+  })
+}
+
+const resolveFocusVirtualPath = (virtualFiles: TVirtualFileRecord[], focusFilename: string): string =>
+  virtualFiles.find((file) => file.relativePath === focusFilename)?.virtualPath ??
+  virtualFiles[0]?.virtualPath ??
+  focusFilename
 
 const isElementNode = (node: THastElementContent | THastRootContent | undefined): node is THastElement =>
   Boolean(node && node.type === 'element')
@@ -133,6 +451,10 @@ const extractText = (node: THastElementContent | THastRootContent | null | undef
   return ''
 }
 
+/**
+ * Helper for walking the HAST emitted by Expressive Code. We only care about a
+ * couple of wrapper nodes (figure/pre/code), so a shallow scan is sufficient.
+ */
 const findChildByTag = (parent: THastParent | null | undefined, tagName: string): THastElement | null => {
   if (!parent?.children) return null
   for (const child of parent.children) {
@@ -143,67 +465,161 @@ const findChildByTag = (parent: THastParent | null | undefined, tagName: string)
   return null
 }
 
-const trimRenderedAst = (root: THastElement, focusVirtualPath: string): THastElement => {
+const toClassList = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => toClassList(item))
+  }
+  if (typeof value === 'string') {
+    return value.split(/\s+/).filter((item) => item.length > 0)
+  }
+  return []
+}
+
+const collectDiagnostics = (node: THastElement): string[] => {
+  const diagnostics: string[] = []
+
+  const walk = (current: THastElementContent | THastRootContent | undefined) => {
+    if (!isElementNode(current)) return
+
+    const element = current as THastElement
+    const classList = toClassList(element.properties?.className)
+    if (classList.includes('twoslash-error-box-content-message')) {
+      const message = extractText(element).trim()
+      if (message.length > 0) {
+        diagnostics.push(message)
+      }
+    }
+
+    if (Array.isArray(element.children)) {
+      for (const child of element.children) {
+        walk(child as THastElementContent | THastRootContent)
+      }
+    }
+  }
+
+  walk(node as unknown as THastElementContent)
+  return diagnostics
+}
+
+const normalizeSnippetPath = (value: string): string => {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return trimmed
+  const normalized = path.posix.normalize(trimmed)
+  if (normalized.startsWith('./') || normalized.startsWith('../')) {
+    return normalized
+  }
+  return `./${normalized}`
+}
+
+const stripSnippetSentinels = (value: string): string => {
+  const normalised = value.replace(/\u007f/g, '\n')
+  const cleanedLines: string[] = []
+
+  /**
+   * Preserve author-formatted blank lines while removing Twoslash sentinels that leak into the markup.
+   * Sentinel-only rows are dropped entirely so they don't introduce synthetic whitespace artifacts.
+   */
+  for (const line of normalised.split(/\r?\n/)) {
+    let current = line
+    const trimmed = current.trimStart()
+    if (trimmed.startsWith('// @filename:')) {
+      continue
+    }
+    if (trimmed.startsWith('// ---cut---')) {
+      continue
+    }
+    const beforeStart = current
+    current = current.replace(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/, '')
+    const removedStart = beforeStart !== current
+    const beforeEnd = current
+    current = current.replace(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/, '')
+    const removedEnd = beforeEnd !== current
+    if ((removedStart || removedEnd) && current.trim().length === 0) {
+      continue
+    }
+    cleanedLines.push(current)
+  }
+
+  // Remove trailing whitespace-only rows while keeping interior blank lines intact.
+  let end = cleanedLines.length
+  while (end > 0 && cleanedLines[end - 1]?.trim().length === 0) {
+    end -= 1
+  }
+
+  return cleanedLines.slice(0, end).join('\n')
+}
+
+const stripSentinelsFromDataCodeAttributes = (html: string): string =>
+  html.replace(/(data-code=")([^"]*)("|$)/g, (_match, prefix, value, suffix) => {
+    const cleaned = stripSnippetSentinels(value)
+    const restored = cleaned.replace(/\n/g, '\u007f')
+    return `${prefix}${restored}${suffix}`
+  })
+
+const extractCanonicalOwner = (raw: string | null | undefined): string | null => {
+  if (typeof raw !== 'string') return null
+  const [token] = raw.trim().split(/\s+/, 1)
+  if (!token) return null
+  return normalizeSnippetPath(token)
+}
+
+const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled: AssembledSnippet): THastElement => {
   const figure = findChildByTag(root as THastParent, 'figure')
   const pre = findChildByTag(figure, 'pre')
   const code = findChildByTag(pre, 'code')
   if (!code || !Array.isArray(code.children)) return root
 
-  const focusName = path.posix.basename(focusVirtualPath)
-  const focusRelative = focusVirtualPath
+  const canonicalFocus = extractCanonicalOwner(focusVirtualPath) ?? normalizeSnippetPath(focusVirtualPath)
+  const focusName = path.posix.basename(canonicalFocus)
+  const focusMarkers = new Set<string>([canonicalFocus, normalizeSnippetPath(focusName), focusName])
+
   const filtered: THastElement[] = []
-  let currentFile: string | null = null
+  let includeFocus = false
 
+  // Preserve blank lines inside the focus file while we iterate; we'll drop trailing empties afterwards.
   for (const child of code.children) {
-    if (!isElementNode(child)) {
+    if (!isElementNode(child)) continue
+    if ((child as THastElement).tagName !== 'div') continue
+
+    const rawText = extractText(child as THastElementContent)
+    const text = rawText.trim()
+    if (text.length === 0) {
+      if (!includeFocus) continue
+      filtered.push(child as THastElement)
       continue
     }
-    const elementChild = child as THastElement
-    if (elementChild.tagName !== 'div') {
-      continue
-    }
-    const lineText = extractText(elementChild as THastElementContent).trim()
-    const filenameMatch = lineText.match(/^\/\/\s*@filename:\s*(.+)$/)
-    if (filenameMatch) {
-      currentFile = filenameMatch[1]?.trim() ?? null
-      continue
-    }
-    const fileStartMatch = lineText.match(/^\/\/\s*__LS_FILE_START__:(.+)$/)
-    if (fileStartMatch) {
-      currentFile = fileStartMatch[1]?.trim() ?? currentFile
-      continue
-    }
-    const fileEndMatch = lineText.match(/^\/\/\s*__LS_FILE_END__:(.+)$/)
-    if (fileEndMatch) {
-      currentFile = null
-      continue
-    }
-    if (currentFile === null) {
+    const startMatch = text.match(/__LS_FILE_START__:(.+)$/)
+    if (startMatch) {
+      const owner = extractCanonicalOwner(startMatch[1])
+      includeFocus = owner !== null && focusMarkers.has(owner)
       continue
     }
 
-    const belongsToFocus =
-      currentFile === focusName ||
-      currentFile === focusRelative ||
-      currentFile === `./${focusName}` ||
-      currentFile === `./${focusRelative}`
-
-    if (belongsToFocus) {
-      const textContent = lineText
-      if (textContent.startsWith('/// <reference')) {
-        continue
+    const endMatch = text.match(/__LS_FILE_END__:(.+)$/)
+    if (endMatch) {
+      const owner = extractCanonicalOwner(endMatch[1])
+      if (owner !== null && focusMarkers.has(owner)) {
+        includeFocus = false
       }
-      if (textContent.startsWith('// @filename:')) {
-        continue
-      }
-      if (textContent.startsWith('// ---cut---')) {
-        continue
-      }
-      if (textContent.startsWith('// __LS_FILE_START__') || textContent.startsWith('// __LS_FILE_END__')) {
-        continue
-      }
-      filtered.push(elementChild)
+      continue
     }
+
+    if (text.startsWith('// @filename:')) continue
+    if (text.startsWith('// ---cut---')) continue
+    if (text.startsWith('/// <reference') || text.startsWith('/// &lt;reference')) continue
+    if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) continue
+    if (!includeFocus) continue
+
+    filtered.push(child as THastElement)
+  }
+
+  while (filtered.length > 0) {
+    const last = filtered[filtered.length - 1]!
+    if (extractText(last as THastElementContent).trim().length === 0) {
+      filtered.pop()
+      continue
+    }
+    break
   }
 
   if (filtered.length === 0) {
@@ -213,18 +629,164 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string): THastEle
   code.children = filtered
 
   const figcaption = findChildByTag(figure, 'figcaption')
-  const titleContainer = findChildByTag(figcaption, 'span')
-  if (titleContainer && Array.isArray(titleContainer.children)) {
-    const textNode = titleContainer.children.find((child) => (child as THastText).type === 'text') as
-      | THastText
-      | undefined
-    if (textNode) {
-      textNode.value = focusName
+  if (figure && Array.isArray((figure as THastParent).children) && figcaption) {
+    ;(figure as THastParent).children = (figure as THastParent).children.filter((child) => child !== figcaption)
+  }
+
+  const copyElement =
+    figure && Array.isArray((figure as THastParent).children)
+      ? (figure as THastParent).children.find((child) => {
+          if (!isElementNode(child)) return false
+          if (child.tagName !== 'div') return false
+          return toClassList((child as THastElement).properties?.className).includes('copy')
+        })
+      : null
+
+  if (copyElement && isElementNode(copyElement) && Array.isArray((copyElement as THastParent).children)) {
+    for (const node of (copyElement as THastParent).children) {
+      if (!isElementNode(node)) continue
+      if (node.tagName !== 'button') continue
+      const properties = node.properties ?? {}
+      const trimmedSource = assembled.lines
+        .filter((line) => line.owner === canonicalFocus)
+        .map((line) => line.content)
+        .join('\n')
+      const sanitizedDataCode = stripSnippetSentinels(trimmedSource)
+      delete properties['data-code']
+      properties.dataCode = sanitizedDataCode
     }
+  }
+
+  if (figure && Array.isArray((figure as THastParent).children)) {
+    const retainedChildren: Array<THastElementContent> = []
+    if (pre) retainedChildren.push(pre as unknown as THastElementContent)
+    if (copyElement && isElementNode(copyElement)) {
+      retainedChildren.push(copyElement as THastElementContent)
+    }
+    ;(figure as THastParent).children = retainedChildren
   }
 
   return root
 }
+
+/**
+ * Restores the author-written specifiers inside the rendered AST so the docs
+ the author-written specifiers inside the rendered AST so the docs
+ * show the paths people expect.
+ *
+ * Why: The snippet fed into Twoslash uses canonical specifiers to make the
+ * compiler happy. Without restoring the original strings the published docs
+ * would leak those canonical paths (`./reference/...`), which is confusing and
+ * contradicts the examples in the prose. Walking the AST keeps the hydration
+ * metadata intact while swapping the readable import names back in.
+ */
+const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord['relativeImports']): THastElement => {
+  const replacements = rewrites.filter((rewrite) => rewrite.canonical !== rewrite.raw)
+  if (replacements.length === 0) {
+    return root
+  }
+
+  const replaceValue = (value: unknown): string | undefined => {
+    if (typeof value !== 'string' || value.length === 0) {
+      return typeof value === 'string' ? value : undefined
+    }
+    let current = value
+    for (const rewrite of replacements) {
+      if (current.includes(rewrite.canonical)) {
+        current = current.split(rewrite.canonical).join(rewrite.raw)
+      }
+    }
+    return current
+  }
+
+  const walk = (node: THastElementContent | THastRootContent | null | undefined): void => {
+    if (!node) return
+    if ((node as { type?: string }).type === 'text') {
+      const textNode = node as { value?: string }
+      const replaced = replaceValue(textNode.value)
+      if (replaced !== undefined) {
+        textNode.value = replaced
+      }
+      return
+    }
+    if (isElementNode(node)) {
+      const element = node as THastElement
+      if (Array.isArray(element.children)) {
+        for (const child of element.children) {
+          walk(child as THastElementContent | THastRootContent)
+        }
+      }
+    }
+  }
+
+  walk(root as unknown as THastElementContent)
+  return root
+}
+
+const sanitizeRenderedHtml = (html: string): string => {
+  if (!html) return html
+  return html.replace(/<figcaption[^>]*>[\s\S]*?<\/figcaption>/g, '')
+}
+
+/**
+ * Normalises the emitted Twoslash tooltip helper that ships with Expressive Code.
+ * The upstream script uses `@floating-ui/dom` to position tooltips. We intercept
+ * the generated module to guard against zero-sized targets, toggle visibility
+ * deterministically, and (crucially) decide which container receives the popup.
+ * The docs pipeline simply forwards these modules, so this patch is the single
+ * source of truth for tooltip behaviour on the site.
+ */
+const patchJsModules = (modules: readonly string[]): string[] =>
+  modules.map((moduleCode) =>
+    moduleCode.includes('function setupTooltip')
+      ? (() => {
+          let patched = moduleCode
+          // Anchor the tooltip in `document.body` so a single container handles
+          // overlays for both the docs and the example demo. We adjust the computed
+          // coordinates below to account for window scroll offset so placement stays
+          // consistent even when the page is scrolled far past the snippet.
+          if (!patched.includes('let t=document.body')) {
+            if (process.env.TWOSLASH_DEBUG === '1') {
+              console.warn('TMP tooltip patch: redirecting container to document.body (before replace)')
+            }
+            patched = patched.replace('let t=s.closest(".expressive-code")', 'let t=document.body')
+            if (process.env.TWOSLASH_DEBUG === '1') {
+              console.warn('TMP tooltip patch: contains document.body?', patched.includes('let t=document.body'))
+            }
+          }
+          if (!patched.includes('let a=!1,r,u=0;')) {
+            patched = patched.replace('let a=!1,r;', 'let a=!1,r,u=0;')
+          }
+          if (!patched.includes('return void requestAnimationFrame(n);')) {
+            patched = patched.replace(
+              'function n(){clearTimeout(r),t.appendChild(s),',
+              'function n(){clearTimeout(r);const c=e.getBoundingClientRect();if(c.width===0&&c.height===0){if(u<5){u+=1;return void requestAnimationFrame(n);}return;}u=0;t.appendChild(s),',
+            )
+          }
+          if (patched.includes('t.appendChild(s),t.appendChild(s),')) {
+            patched = patched.replace('t.appendChild(s),t.appendChild(s),', 't.appendChild(s),')
+          }
+          if (!patched.includes('s.style.visibility="hidden",new Promise')) {
+            patched = patched.replace(
+              't.appendChild(s),new Promise',
+              't.appendChild(s),s.style.display="block",s.style.visibility="hidden",new Promise',
+            )
+          }
+          if (!patched.includes('s.style.visibility="visible",s.setAttribute')) {
+            patched = patched.replace(
+              // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
+              'Object.assign(s.style,{display:"block",left:`${o?20:e}px`,top:t+"px"})',
+              // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
+              'Object.assign(s.style,{left:`${o?20:e}px`,top:t+"px"}),s.style.visibility="visible"',
+            )
+          }
+          if (!patched.includes('s.style.display="none",s.style.visibility="hidden"')) {
+            patched = patched.replace('s.style.display="none"', 's.style.display="none",s.style.visibility="hidden"')
+          }
+          return patched
+        })()
+      : moduleCode,
+  )
 
 /**
  * Recursively collects documentation source files that may contain `?snippet` imports.
@@ -330,22 +892,28 @@ const collectSnippetEntries = (
  * Dynamically loads the Expressive Code/Twoslash renderer using the docs configuration.
  * This keeps the CLI aligned with the runtime renderer without duplicating config state.
  */
-const loadEcRenderer = (paths: TwoslashProjectPaths): Effect.Effect<TExpressiveRenderer, SnippetBuildError> =>
+const loadEcRenderer = (
+  paths: TwoslashProjectPaths,
+  runtimeOptions: TwoslashRuntimeOptions,
+): Effect.Effect<{ renderer: TExpressiveRenderer; configHash: string }, SnippetBuildError> =>
   Effect.tryPromise({
     try: async () => {
-      const configModule = await import(paths.ecConfigPath)
-      const config = configModule.default
-      const astroExpressiveCodeModule = await import(
-        path.join(paths.projectRoot, 'node_modules/astro-expressive-code/dist/index.js')
-      )
+      const { config, fingerprintHash } = createExpressiveCodeConfig(paths, runtimeOptions)
+      const astroExpressiveCodeModule = await import('astro-expressive-code')
       const renderer = await astroExpressiveCodeModule.createRenderer(config)
-      return renderer as TExpressiveRenderer
+      const typedRenderer = renderer as TExpressiveRenderer
+      return {
+        renderer: {
+          ...typedRenderer,
+          jsModules: patchJsModules(typedRenderer.jsModules),
+        },
+        configHash: fingerprintHash,
+      }
     },
     catch: (cause) => new SnippetBuildError({ message: 'Unable to load Expressive Code renderer', cause }),
   })
 
 type TRenderedSnippet = {
-  filename: string
   html: string | null
   language: string
   meta: string
@@ -359,13 +927,16 @@ type TSnippetArtifact = {
   mainFilename: string
   bundleHash: string
   generatedAt: string
-  files: readonly {
-    filename: string
-    content: string
-    isMain: boolean
-    hash: string
-  }[]
-  rendered: readonly TRenderedSnippet[]
+  fileOrder: readonly string[]
+  files: Record<
+    string,
+    {
+      content: string
+      isMain: boolean
+      hash: string
+    }
+  >
+  rendered: Record<string, TRenderedSnippet>
 }
 
 type TSnippetManifest = {
@@ -394,33 +965,23 @@ const renderSnippet = (
 ): Effect.Effect<TRenderedSnippet, SnippetBuildError> =>
   Effect.tryPromise({
     try: async () => {
-      const virtualFiles = bundle.files.map((file) => {
-        const virtualPath =
-          file.relativePath.length > 0 ? `./${file.relativePath}` : path.posix.basename(file.relativePath)
-        const normalizedVirtual = virtualPath.length > 0 ? virtualPath : './index.ts'
-        const sanitizedContent = file.content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
-        return {
-          ...file,
-          content: sanitizedContent,
-          virtualPath: normalizedVirtual,
-        }
-      })
+      const canonicalFiles = createVirtualFiles(bundle.files, bundle.fileOrder)
+      const focusRecord = canonicalFiles.find((file) => file.relativePath === focusFilename)
+      const virtualFiles = remapVirtualPathsForFocus(canonicalFiles, focusFilename)
+      const focusVirtualPath = resolveFocusVirtualPath(virtualFiles, focusFilename)
 
-      const focusVirtualPath =
-        virtualFiles.find((file) => file.relativePath === focusFilename)?.virtualPath ??
-        virtualFiles[0]?.virtualPath ??
-        focusFilename
-
-      const snippet = assembleSnippet(
-        virtualFiles.map((file) => ({ virtualPath: file.virtualPath, content: file.content })),
-        focusVirtualPath,
-      )
+      const snippetFiles = virtualFiles.map((file) => ({
+        virtualPath: file.virtualPath,
+        content: file.content,
+      }))
+      const assembled = assembleSnippet(snippetFiles, focusVirtualPath)
       const language = guessLanguage(focusFilename)
       let html: string | null = null
       let styles: string[] = []
+      let diagnostics: string[] = []
       let renderResult: THastRendererResult
       try {
-        renderResult = await renderer.ec.render({ code: snippet, language, meta: 'twoslash' })
+        renderResult = await renderer.ec.render({ code: assembled.code, language, meta: 'twoslash' })
       } catch (cause) {
         const failure = cause as { message?: string; cause?: unknown }
         const nested = failure?.cause as { recommendation?: string; message?: string } | undefined
@@ -436,15 +997,17 @@ const renderSnippet = (
         })
       }
 
-      const trimmedAst = trimRenderedAst(renderResult.renderedGroupAst, focusVirtualPath)
-      html = toHtml(trimmedAst)
+      const trimmedAst = trimRenderedAst(renderResult.renderedGroupAst, focusVirtualPath, assembled)
+      const restoredAst = restoreFocusSpecifiers(trimmedAst, focusRecord?.relativeImports ?? [])
+      diagnostics = collectDiagnostics(restoredAst)
+      html = sanitizeRenderedHtml(toHtml(restoredAst))
+      html = stripSentinelsFromDataCodeAttributes(html)
       styles = Array.from(renderResult.styles)
       return {
-        filename: focusFilename,
         html,
         language,
         meta: 'twoslash',
-        diagnostics: [],
+        diagnostics,
         styles,
       } satisfies TRenderedSnippet
     },
@@ -456,24 +1019,24 @@ const renderSnippet = (
             cause,
             entry: bundle.entryFilePath,
           }),
-  })
+  }).pipe(Effect.withSpan(`renderSnippet:${focusFilename}`, { attributes: { filename: focusFilename } }))
 
 export type BuildSnippetsOptions = {
   projectRoot?: string
-  rebuildCommand?: string
+  runtime?: TwoslashRuntimeOptions
 }
 
 type ResolvedBuildOptions = {
   paths: TwoslashProjectPaths
-  rebuildCommand: string
+  runtimeOptions: TwoslashRuntimeOptions
 }
 
 const resolveOptions = (options: BuildSnippetsOptions = {}): ResolvedBuildOptions => {
   const projectRoot = options.projectRoot ? path.resolve(options.projectRoot) : process.cwd()
-  const rebuildCommand = options.rebuildCommand ?? defaultRebuildCommand
+  const runtimeOptions = normalizeRuntimeOptions(options.runtime)
   return {
     paths: resolveProjectPaths(projectRoot),
-    rebuildCommand,
+    runtimeOptions,
   }
 }
 
@@ -481,7 +1044,7 @@ const resolveOptions = (options: BuildSnippetsOptions = {}): ResolvedBuildOption
  * CLI entry-point that pre-renders all snippet bundles and emits artefacts + manifest.
  * This command runs before `mono docs build` to guarantee cached HTML is available during Astro builds.
  */
-const buildSnippetsInternal = ({ paths }: ResolvedBuildOptions) =>
+const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
@@ -503,79 +1066,112 @@ const buildSnippetsInternal = ({ paths }: ResolvedBuildOptions) =>
       return
     }
 
-    const renderer = yield* loadEcRenderer(paths)
+    const { renderer, configHash } = yield* loadEcRenderer(paths, runtimeOptions)
 
     const artifactEntries: Array<TSnippetManifest['entries'][number]> = []
 
-    for (const entry of snippetEntries) {
-      const bundle = buildSnippetBundle({ entryFilePath: entry.entryPath, baseDir: paths.snippetAssetsRoot })
+    yield* Effect.log(`Rendering ${snippetEntries.length} snippet bundles`)
 
-      const filesWithHash = bundle.files.map((file, index) => ({
-        filename: file.relativePath,
-        content: file.content,
-        isMain: index === 0,
-        hash: hashString(file.content),
-      }))
+    const buildSnippet = (entry: TSnippetEntry) =>
+      Effect.gen(function* () {
+        yield* Effect.log(`Rendering snippet bundle for ${entry.entryPath}`)
 
-      const renderedSnippets: TRenderedSnippet[] = []
-      for (const file of bundle.files) {
-        const rendered = yield* renderSnippet(renderer, bundle, file.relativePath)
-        if (rendered.html === null && rendered.diagnostics.length > 0) {
-          yield* Effect.logWarning(`Twoslash pre-rendering skipped for ${entry.entryPath}: ${rendered.diagnostics[0]}`)
+        const bundle = buildSnippetBundle({ entryFilePath: entry.entryPath, baseDir: paths.snippetAssetsRoot })
+
+        const filesWithHash = bundle.fileOrder.map((filename, index) => {
+          const file = bundle.files[filename]
+          if (!file) {
+            throw new SnippetBuildError({
+              message: `Snippet bundle missing file record for ${filename}`,
+              entry: entry.entryPath,
+            })
+          }
+          return {
+            filename,
+            content: file.content,
+            isMain: index === 0,
+            hash: hashString(file.content),
+          }
+        })
+
+        const renderedSnippets: Record<string, TRenderedSnippet> = {}
+        for (const filename of bundle.fileOrder) {
+          const rendered = yield* renderSnippet(renderer, bundle, filename)
+          if (rendered.html === null && rendered.diagnostics.length > 0) {
+            yield* Effect.logWarning(
+              `Twoslash pre-rendering skipped for ${entry.entryPath}: ${rendered.diagnostics[0]}`,
+            )
+          }
+          renderedSnippets[filename] = rendered
         }
-        renderedSnippets.push(rendered)
-      }
 
-      const bundleHash = hashString(
-        JSON.stringify({
-          files: filesWithHash.map((file) => ({ filename: file.filename, hash: file.hash })),
-          meta: 'twoslash',
-        }),
-      )
-
-      const artifact: TSnippetArtifact = {
-        version: 1,
-        entryFile: path.relative(paths.snippetAssetsRoot, bundle.entryFilePath).replace(/\\/g, '/'),
-        mainFilename: bundle.mainFileRelativePath,
-        bundleHash,
-        generatedAt: new Date().toISOString(),
-        files: filesWithHash,
-        rendered: renderedSnippets,
-      }
-
-      const artifactPath = path.join(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
-      yield* fs
-        .makeDirectory(path.dirname(artifactPath), { recursive: true })
-        .pipe(
-          Effect.mapError(
-            (cause) => new SnippetBuildError({ message: `Failed to create cache path for ${artifactPath}`, cause }),
-          ),
+        const bundleHash = hashString(
+          JSON.stringify({
+            files: filesWithHash.map((file) => ({ filename: file.filename, hash: file.hash })),
+            meta: 'twoslash',
+          }),
         )
 
-      yield* fs
-        .writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`)
-        .pipe(
-          Effect.mapError(
-            (cause) => new SnippetBuildError({ message: `Unable to write artifact ${artifactPath}`, cause }),
-          ),
-        )
+        const artifact: TSnippetArtifact = {
+          version: 1,
+          entryFile: path.relative(paths.snippetAssetsRoot, bundle.entryFilePath).replace(/\\/g, '/'),
+          mainFilename: bundle.mainFileRelativePath,
+          bundleHash,
+          generatedAt: new Date().toISOString(),
+          fileOrder: bundle.fileOrder,
+          files: filesWithHash.reduce<
+            Record<
+              string,
+              {
+                content: string
+                isMain: boolean
+                hash: string
+              }
+            >
+          >((acc, file) => {
+            acc[file.filename] = {
+              content: file.content,
+              isMain: file.isMain,
+              hash: file.hash,
+            }
+            return acc
+          }, {}),
+          rendered: renderedSnippets,
+        }
 
-      artifactEntries.push({
-        entryFile: artifact.entryFile,
-        mainFilename: artifact.mainFilename,
-        artifactPath: path.relative(paths.cacheRoot, artifactPath).replace(/\\/g, '/'),
-        bundleHash: artifact.bundleHash,
-      })
-    }
+        const artifactPath = path.join(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
+        yield* fs
+          .makeDirectory(path.dirname(artifactPath), { recursive: true })
+          .pipe(
+            Effect.mapError(
+              (cause) => new SnippetBuildError({ message: `Failed to create cache path for ${artifactPath}`, cause }),
+            ),
+          )
 
-    const ecConfigSource = yield* fs
-      .readFileString(paths.ecConfigPath)
-      .pipe(Effect.mapError((cause) => new SnippetBuildError({ message: 'Failed to read ec.config.mjs', cause })))
+        yield* fs
+          .writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`)
+          .pipe(
+            Effect.mapError(
+              (cause) => new SnippetBuildError({ message: `Unable to write artifact ${artifactPath}`, cause }),
+            ),
+          )
+
+        artifactEntries.push({
+          entryFile: artifact.entryFile,
+          mainFilename: artifact.mainFilename,
+          artifactPath: path.relative(paths.cacheRoot, artifactPath).replace(/\\/g, '/'),
+          bundleHash: artifact.bundleHash,
+        })
+      }).pipe(Effect.withSpan(`buildSnippet:${entry.entryPath}`, { attributes: { entryPath: entry.entryPath } }))
+
+    // Unfortunatelly running this concurrently won't help as we're bottlenecked by TS CPU
+    // We'd need to run this in a worker pool to make it faster
+    yield* Effect.forEach(snippetEntries, buildSnippet)
 
     const manifest: TSnippetManifest = {
       version: 1,
       generatedAt: new Date().toISOString(),
-      configHash: hashString(ecConfigSource),
+      configHash,
       baseStyles: renderer.baseStyles,
       themeStyles: renderer.themeStyles,
       jsModules: renderer.jsModules,
@@ -594,8 +1190,8 @@ const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOpti
   if (options.projectRoot !== undefined) {
     normalized.projectRoot = options.projectRoot
   }
-  if (options.rebuildCommand !== undefined) {
-    normalized.rebuildCommand = options.rebuildCommand
+  if (options.runtime !== undefined) {
+    normalized.runtime = normalizeRuntimeOptions(options.runtime)
   }
   return normalized
 }
@@ -611,13 +1207,13 @@ export type CreateSnippetsCommandOptions = BuildSnippetsOptions & {
 
 export const createSnippetsCommand = ({
   projectRoot,
-  rebuildCommand,
+  runtime,
   commandName = 'snippets',
 }: CreateSnippetsCommandOptions = {}) => {
   const resolved = resolveOptions(
     normalizeOptions({
       ...(projectRoot !== undefined ? { projectRoot } : {}),
-      ...(rebuildCommand !== undefined ? { rebuildCommand } : {}),
+      ...(runtime !== undefined ? { runtime } : {}),
     }),
   )
 
@@ -626,4 +1222,16 @@ export const createSnippetsCommand = ({
   const buildCommand = Cli.Command.make('build', {}, () => buildHandler)
 
   return Cli.Command.make(commandName).pipe(Cli.Command.withSubcommands([buildCommand]))
+}
+
+export const __internal = {
+  assembleSnippet,
+  createVirtualFiles,
+  resolveFocusVirtualPath,
+  sanitizeSnippetContent,
+  guessLanguage,
+  trimRenderedAst,
+  extractCanonicalOwner,
+  renderSnippet,
+  loadEcRenderer,
 }

@@ -38,7 +38,7 @@ const site = `https://${domain}`
 export default defineConfig({
   site,
   output: 'static',
-  server: { port },
+  server: { port, host: '0.0.0.0' },
   adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
@@ -53,7 +53,7 @@ export default defineConfig({
     },
   },
   integrations: [
-    createAstroTwoslashCodeIntegration({ rebuildCommand: 'mono docs snippets build' }),
+    createAstroTwoslashCodeIntegration(),
     react(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
@@ -337,6 +337,8 @@ export default defineConfig({
         // Needed to load the CHANGELOG.md file which is outside this package
         strict: false,
       },
+      // Allow to be accessed via Tailscale
+      allowedHosts: [os.hostname()],
     },
     optimizeDeps: {
       // Avoid pre-bundling the minimum RN/Expo modules that break esbuild.

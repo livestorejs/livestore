@@ -13,8 +13,12 @@
   },
   "dependencies": {
     "@livestore/utils": "workspace:*",
+    "astro-expressive-code": "0.41.3",
+    "expressive-code": "0.41.3",
+    "expressive-code-twoslash": "0.5.3",
     "hast": "1.0.0",
-    "hast-util-to-html": "9.0.5"
+    "hast-util-to-html": "9.0.5",
+    "typescript": "catalog:"
   },
   "devDependencies": {
     "@astrojs/starlight": "^0.35.2",
@@ -25,8 +29,6 @@
   },
   "peerDependencies": {
     "@astrojs/starlight": "^0.35.0",
-    "astro": "^5.0.0",
-    "astro-expressive-code": "^0.41.0",
-    "expressive-code-twoslash": "^0.5.0"
+    "astro": "^5.0.0"
   }
 }

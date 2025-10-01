@@ -116,7 +116,7 @@
   }
 }
 
-/* Hide Twoslash popup container on load */
+/* Hide Twoslash popup container on initial load (still works on hover) */
 .expressive-code .twoslash-popup-container {
   display: none;
 }
