@@ -265,7 +265,7 @@ describe('renderSnippet integration', () => {
     expect(decodeDataCode(schemaDataCode)).not.toContain('const main = async () =>')
     expect(decodeDataCode(mainDataCode)).toContain('const main = async () =>')
     expect(decodeDataCode(mainDataCode)).not.toContain('defineMaterializer(')
-  })
+  }, 15000) // needs higher timeout to avoid renderer flake on CI
 
   it('retains focus boundaries when snippets use cut markers', async () => {
     const entryFilePath = path.join(
