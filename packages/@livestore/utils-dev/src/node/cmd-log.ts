@@ -10,8 +10,6 @@ export type TCmdLoggingOptions = {
   readonly logRetention?: number
 }
 
-const shellEscape = (s: string): string => (/[A-Za-z0-9_./:=+@-]+/.test(s) ? s : `'${s.replaceAll("'", `'"'"'`)}'`)
-
 /**
  * Prepares logging directories, archives previous canonical log and prunes archives.
  * Returns the canonical current log path if logging is enabled, otherwise undefined.
@@ -85,16 +83,10 @@ export const applyLoggingToCommand: (
   const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
 
   const logPath = yield* prepareCmdLogging(options)
-  if (!logPath) {
-    return {
-      input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
-      subshell: false,
-    }
+
+  return {
+    input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
+    subshell: false,
+    ...(logPath ? { logPath } : {}),
   }
-
-  const input = asArray
-    ? [...((parts as string[]) ?? []), '2>&1', '|', 'tee', logPath]
-    : `${commandInput as string} 2>&1 | tee ${shellEscape(logPath)}`
-
-  return { input, subshell: true, logPath }
 })

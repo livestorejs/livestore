@@ -41,6 +41,20 @@ test.describe('docs contextual menu', () => {
     const slugs = data.slugs.filter((slug) => slug !== 'index')
     expect(slugs.length).toBeGreaterThanOrEqual(DOC_SAMPLE_SIZE)
 
+    const fixtureResponse = await request.get('/playwright-fixtures/multi-code/index.md')
+    expect(fixtureResponse.ok()).toBeTruthy()
+
+    const fixtureMarkdown = await fixtureResponse.text()
+    const fenceMatches = [...fixtureMarkdown.matchAll(/```[^\n]* filename="([^"]+)"/g)]
+
+    expect.soft(fenceMatches.length).toBeGreaterThanOrEqual(2)
+
+    const filenames = fenceMatches.map((match) => match[1])
+    expect.soft(filenames.some((name) => name.endsWith('main.ts'))).toBeTruthy()
+    expect.soft(filenames.some((name) => name.endsWith('utils.ts'))).toBeTruthy()
+    expect.soft(fixtureMarkdown).not.toContain('<script')
+    expect.soft(fixtureMarkdown).not.toContain('data-ls-multi-code')
+
     let validated = 0
     for (const slug of shuffle(slugs)) {
       if (validated >= DOC_SAMPLE_SIZE) {
