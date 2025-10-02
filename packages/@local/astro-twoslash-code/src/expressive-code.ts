@@ -3,11 +3,139 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { defineEcConfig } from 'astro-expressive-code'
-import type { ExpressiveCodePlugin } from 'expressive-code'
+import { definePlugin, type ExpressiveCodeBlock, type ExpressiveCodePlugin } from 'expressive-code'
 import ecTwoslash from 'expressive-code-twoslash'
+import type { Properties as HastProperties } from 'hast'
 import * as ts from 'typescript'
 
 import type { TwoslashProjectPaths } from './project-paths.ts'
+
+export type LineOwnerMarker = 'start' | 'end'
+
+export type LineOwnerMetadata = {
+  owner: string | null
+  marker: LineOwnerMarker | null
+}
+
+declare module 'expressive-code' {
+  interface ExpressiveCodeBlockProps {
+    /**
+     * Livestore internal metadata describing who owns each rendered line.
+     * The trimming stage uses this to drop supporting files and sentinels.
+     */
+    lsLineOwners?: readonly LineOwnerMetadata[]
+  }
+}
+
+const lineMetadataByBlock = new WeakMap<ExpressiveCodeBlock, Array<LineOwnerMetadata | null>>()
+
+const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
+  definePlugin({
+    name: 'livestore-line-owner',
+    hooks: {
+      preprocessCode: ({ codeBlock }) => {
+        const metadata = codeBlock.props.lsLineOwners
+        if (!metadata || metadata.length === 0) {
+          return
+        }
+
+        const lines = codeBlock.getLines()
+        if (lines.length === 0 || metadata.length === 0) {
+          return
+        }
+
+        const resolved: Array<LineOwnerMetadata | null> = []
+        let pointer = 0
+        const takeNextMatching = (predicate: (entry: LineOwnerMetadata) => boolean): LineOwnerMetadata | null => {
+          while (pointer < metadata.length) {
+            const candidate = metadata[pointer]!
+            pointer += 1
+            if (predicate(candidate)) {
+              return candidate
+            }
+          }
+          return null
+        }
+
+        for (const line of lines) {
+          const trimmed = line.text.trim()
+
+          if (trimmed.startsWith('// @filename:')) {
+            takeNextMatching((entry) => entry.owner === null && entry.marker === null)
+            resolved.push(null)
+            continue
+          }
+
+          if (trimmed.startsWith('// __LS_FILE_START__')) {
+            const entry = takeNextMatching((candidate) => candidate.marker === 'start')
+            resolved.push(entry)
+            continue
+          }
+
+          if (trimmed.startsWith('// __LS_FILE_END__')) {
+            const entry = takeNextMatching((candidate) => candidate.marker === 'end')
+            resolved.push(entry)
+            continue
+          }
+
+          const entry = takeNextMatching((candidate) => candidate.owner !== null)
+          resolved.push(entry)
+          if (entry === null) {
+            break
+          }
+        }
+
+        lineMetadataByBlock.set(codeBlock, resolved)
+      },
+      postprocessRenderedLine: ({ codeBlock, lineIndex, renderData }) => {
+        const entries = lineMetadataByBlock.get(codeBlock as ExpressiveCodeBlock)
+        if (!entries) {
+          return
+        }
+
+        const metadata = entries[lineIndex] ?? null
+        const lineAst = renderData.lineAst
+        const properties = (lineAst.properties ?? {}) as Record<string, unknown>
+
+        if (!metadata) {
+          delete properties['data-ls-owner']
+          delete properties['data-ls-marker']
+          if (Object.keys(properties).length === 0) {
+            lineAst.properties = {} as HastProperties
+          } else {
+            lineAst.properties = properties as HastProperties
+          }
+          return
+        }
+
+        if (metadata.marker !== null) {
+          properties['data-ls-marker'] = metadata.marker
+        } else {
+          delete properties['data-ls-marker']
+        }
+
+        if (metadata.owner !== null) {
+          if (metadata.owner.length > 0) {
+            properties['data-ls-owner'] = metadata.owner
+          } else if (metadata.marker === null) {
+            properties['data-ls-owner'] = ''
+          }
+        } else if (metadata.marker === null) {
+          properties['data-ls-owner'] = ''
+        } else {
+          delete properties['data-ls-owner']
+        }
+
+        if (Object.keys(properties).length === 0) {
+          lineAst.properties = {} as HastProperties
+        } else {
+          lineAst.properties = properties as HastProperties
+        }
+      },
+    },
+  })
+
+const LINE_OWNER_PLUGIN_SIGNATURE = 'livestore-line-owner@1'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
@@ -120,6 +248,7 @@ export const createExpressiveCodeConfig = (
 
   const additionalPlugins = options.extraPlugins ?? []
   const pluginInstances: ExpressiveCodePlugin[] = [
+    createLineOwnerPlugin(),
     ecTwoslash({
       twoslashOptions: {
         vfsRoot: snippetRoot,
@@ -139,6 +268,7 @@ export const createExpressiveCodeConfig = (
     snippetTsconfigPath,
     snippetTsconfigHash: hashString(tsconfigSource),
     compilerOptions,
+    builtinPluginSignatures: [LINE_OWNER_PLUGIN_SIGNATURE],
     pluginSignatures: additionalPlugins.map((descriptor) => descriptor.signature),
     typescriptVersion: ts.version,
   }

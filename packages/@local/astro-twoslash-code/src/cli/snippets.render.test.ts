@@ -232,6 +232,41 @@ describe('renderSnippet integration', () => {
     expect(moduleCode).toContain('s.style.position="absolute"')
   })
 
+  it('renders the docs minimal example without leaking sentinel metadata', async () => {
+    const entryFilePath = path.join(docsPaths.snippetAssetsRoot, 'getting-started/node/minimal-example.ts')
+    const bundle = buildSnippetBundle({ entryFilePath, baseDir: docsPaths.snippetAssetsRoot })
+
+    const renderFile = async (filename: string) =>
+      Effect.runPromise(__internal.renderSnippet(docsRenderer, bundle, filename))
+
+    const renderedMain = await renderFile('getting-started/node/minimal-example.ts')
+    const renderedSchema = await renderFile('getting-started/node/livestore/schema.ts')
+
+    const mainHtml = renderedMain.html ?? ''
+    const schemaHtml = renderedSchema.html ?? ''
+
+    expect(mainHtml).not.toMatch(/__LS_FILE_(START|END)__/)
+    expect(schemaHtml).not.toMatch(/__LS_FILE_(START|END)__/)
+    expect(schemaHtml).not.toContain('// @filename:')
+    expect(schemaHtml).not.toContain('data-ls-owner')
+    expect(schemaHtml).not.toContain('data-ls-marker')
+    expect(schemaHtml).toContain('defineMaterializer(')
+    expect(schemaHtml).toContain('export const schema = makeSchema({ events, state })')
+    expect(schemaHtml).not.toContain('const main = async () =>')
+
+    const mainDataCode = mainHtml.match(/data-code="([^"]*)"/)?.[1] ?? ''
+    const schemaDataCode = schemaHtml.match(/data-code="([^"]*)"/)?.[1] ?? ''
+    const decodeDataCode = (value: string): string => value.replace(/\u007f/g, '\n')
+
+    expect(mainDataCode).not.toMatch(/__LS_FILE_(START|END)__/)
+    expect(schemaDataCode).not.toMatch(/__LS_FILE_(START|END)__/)
+    expect(decodeDataCode(schemaDataCode)).toContain('defineMaterializer(events.todoCreated')
+    expect(decodeDataCode(schemaDataCode)).not.toContain('__LS_FILE')
+    expect(decodeDataCode(schemaDataCode)).not.toContain('const main = async () =>')
+    expect(decodeDataCode(mainDataCode)).toContain('const main = async () =>')
+    expect(decodeDataCode(mainDataCode)).not.toContain('defineMaterializer(')
+  })
+
   it('retains focus boundaries when snippets use cut markers', async () => {
     const entryFilePath = path.join(
       docsPaths.snippetAssetsRoot,

@@ -43,11 +43,16 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  *     Twoslash compilation (`focusTwoslashContent`).  Supporting files retain their canonical
  *     source unchanged, ensuring a stable view of the module graph.
  *   - `assembleSnippet` prefixes every virtual file with ownership sentinels (`// __LS_FILE_START__` /
- *     `// __LS_FILE_END__`).  The focus file is concatenated after the supporting files so the
- *     markers always appear, even when Expressive Code reorders blocks during rendering.
- *   - After Twoslash finishes, we trim the rendered AST to the focus segment, strip all sentinel
- *     lines from the HTML and copy payloads, and `restoreFocusSpecifiers` walks the AST to swap the
- *     canonical strings back to the author-written forms so the docs match the prose.
+ *     `// __LS_FILE_END__`) and records the owning virtual path for each line.  The focus file is
+ *     concatenated after the supporting files so the markers always appear, even when Expressive
+ *     Code reorders blocks during rendering.
+ *   - A custom Expressive Code plugin (`livestore-line-owner`) mirrors the recorded ownership onto
+ *     the rendered AST via `data-ls-owner` / `data-ls-marker` attributes.  After Twoslash finishes,
+ *     `trimRenderedAst` uses that structured metadata to keep only focus-owned rows, scrub the
+ *     helper attributes, remove any remaining sentinel artefacts (including inside tooltips), and
+ *     rebuild the copy payload without touching support files.  `restoreFocusSpecifiers` then walks
+ *     the AST to swap the canonical strings back to the author-written forms so the docs match the
+ *     prose.
  *
  * Artefact manifest contract
  * --------------------------
@@ -93,15 +98,17 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
 
 import { type Duration, Effect, FileSystem, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
+import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
   ElementContent as THastElementContent,
   Parent as THastParent,
+  Properties as THastProperties,
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
-
-import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
+import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
+import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
 import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
@@ -163,9 +170,8 @@ const guessLanguage = (filename: string, fallback: string | undefined = undefine
  * heuristics from the rendered HTML.
  */
 
-type SnippetLine = {
+type SnippetLine = LineOwnerMetadata & {
   content: string
-  owner: string | null
 }
 
 type AssembledSnippet = {
@@ -185,44 +191,44 @@ const assembleSnippet = (
     const parts = normalized.split('\n')
     for (let index = 0; index < parts.length; index += 1) {
       const part = parts[index]!
-      target.push({ content: part, owner })
+      target.push({ content: part, owner, marker: null })
       onAfterPush?.(part)
     }
   }
 
   const appendBlankLine = (target: SnippetLine[]) => {
-    target.push({ content: '', owner: null })
+    target.push({ content: '', owner: null, marker: null })
   }
 
   for (const file of files) {
     const owner = file.virtualPath
     if (owner === focusVirtualPath) {
       const insertStartSentinel = () => {
-        focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+        focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null, marker: 'start' })
       }
-      focusLines.push({ content: `// @filename: ${owner}`, owner: null })
+      focusLines.push({ content: `// @filename: ${owner}`, owner: null, marker: null })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
         if (line.trimStart().startsWith('// ---cut')) {
           insertStartSentinel()
         }
       })
-      focusLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
+      focusLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null, marker: 'end' })
       appendBlankLine(focusLines)
       continue
     }
 
     const insertSupportStartSentinel = () => {
-      supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null })
+      supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null, marker: 'start' })
     }
-    supportLines.push({ content: `// @filename: ${owner}`, owner: null })
+    supportLines.push({ content: `// @filename: ${owner}`, owner: null, marker: null })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
       if (line.trimStart().startsWith('// ---cut')) {
         insertSupportStartSentinel()
       }
     })
-    supportLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null })
+    supportLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null, marker: 'end' })
     appendBlankLine(supportLines)
   }
 
@@ -579,54 +585,146 @@ const extractCanonicalOwner = (raw: string | null | undefined): string | null =>
   return normalizeSnippetPath(token)
 }
 
+type LineOwnershipAttributes = {
+  wrapper: THastElement | null
+  owner: string | null
+  marker: LineOwnerMarker | null
+}
+
+const isSentinelText = (text: string): boolean => {
+  if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) {
+    return true
+  }
+  const trimmed = text.trim()
+  if (trimmed.startsWith('// @filename:')) {
+    return true
+  }
+  return false
+}
+
+const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
+  if (!current) return
+  if (current.type === 'text') {
+    if (isSentinelText(current.value ?? '')) {
+      current.value = ''
+    }
+    return
+  }
+  if (!isElementNode(current)) return
+
+  const element = current as THastElement & THastParent
+  if (!Array.isArray(element.children)) return
+
+  const retained: Array<THastElementContent> = []
+  for (const child of element.children) {
+    if (isElementNode(child)) {
+      if (isSentinelText(extractText(child))) {
+        continue
+      }
+      removeSentinelNodes(child as THastElementContent)
+      retained.push(child as THastElementContent)
+      continue
+    }
+    if (child.type === 'text' && isSentinelText(child.value ?? '')) {
+      continue
+    }
+    removeSentinelNodes(child as THastElementContent)
+    retained.push(child as THastElementContent)
+  }
+  element.children = retained
+}
+
+const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttributes => {
+  const properties = (line.properties ?? {}) as Record<string, unknown>
+  const ownerRaw = typeof properties['data-ls-owner'] === 'string' ? properties['data-ls-owner'].trim() : null
+  const markerRaw = typeof properties['data-ls-marker'] === 'string' ? properties['data-ls-marker'].trim() : null
+  const marker = markerRaw === 'start' || markerRaw === 'end' ? (markerRaw as LineOwnerMarker) : null
+  const owner = ownerRaw && ownerRaw.length > 0 ? ownerRaw : null
+  if (owner !== null || marker !== null || ownerRaw === '') {
+    return { wrapper: line, owner, marker }
+  }
+
+  if (!Array.isArray((line as THastParent).children)) {
+    return { wrapper: null, owner: null, marker: null }
+  }
+
+  for (const child of (line as THastParent).children) {
+    if (!isElementNode(child)) {
+      continue
+    }
+    const element = child as THastElement
+    const childProps = (element.properties ?? {}) as Record<string, unknown>
+    const childOwnerRaw = typeof childProps['data-ls-owner'] === 'string' ? childProps['data-ls-owner'].trim() : null
+    const childMarkerRaw = typeof childProps['data-ls-marker'] === 'string' ? childProps['data-ls-marker'].trim() : null
+    const childMarker =
+      childMarkerRaw === 'start' || childMarkerRaw === 'end' ? (childMarkerRaw as LineOwnerMarker) : null
+    const childOwner = childOwnerRaw && childOwnerRaw.length > 0 ? childOwnerRaw : null
+    if (childOwner !== null || childMarker !== null || childOwnerRaw === '') {
+      return { wrapper: element, owner: childOwner, marker: childMarker }
+    }
+  }
+
+  return { wrapper: line, owner: null, marker: null }
+}
+
 const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled: AssembledSnippet): THastElement => {
   const figure = findChildByTag(root as THastParent, 'figure')
   const pre = findChildByTag(figure, 'pre')
   const code = findChildByTag(pre, 'code')
   if (!code || !Array.isArray(code.children)) return root
 
-  const canonicalFocus = extractCanonicalOwner(focusVirtualPath) ?? normalizeSnippetPath(focusVirtualPath)
-  const focusName = path.posix.basename(canonicalFocus)
-  const focusMarkers = new Set<string>([canonicalFocus, normalizeSnippetPath(focusName), focusName])
+  const canonicalFocus = extractCanonicalOwner(focusVirtualPath)
+  if (canonicalFocus === null) {
+    return root
+  }
 
   const filtered: THastElement[] = []
-  let includeFocus = false
 
-  // Preserve blank lines inside the focus file while we iterate; we'll drop trailing empties afterwards.
   for (const child of code.children) {
-    if (!isElementNode(child)) continue
-    if ((child as THastElement).tagName !== 'div') continue
-
-    const rawText = extractText(child as THastElementContent)
-    const text = rawText.trim()
-    if (text.length === 0) {
-      if (!includeFocus) continue
-      filtered.push(child as THastElement)
+    if (!isElementNode(child)) {
       continue
     }
-    const startMatch = text.match(/__LS_FILE_START__:(.+)$/)
-    if (startMatch) {
-      const owner = extractCanonicalOwner(startMatch[1])
-      includeFocus = owner !== null && focusMarkers.has(owner)
+    if ((child as THastElement).tagName !== 'div') {
       continue
     }
 
-    const endMatch = text.match(/__LS_FILE_END__:(.+)$/)
-    if (endMatch) {
-      const owner = extractCanonicalOwner(endMatch[1])
-      if (owner !== null && focusMarkers.has(owner)) {
-        includeFocus = false
+    const lineElement = child as THastElement
+    const { wrapper, owner, marker } = extractLineOwnershipAttributes(lineElement)
+
+    if (marker !== null) {
+      continue
+    }
+
+    if (owner === null) {
+      continue
+    }
+
+    const canonicalOwner = extractCanonicalOwner(owner)
+    if (canonicalOwner === null || canonicalOwner !== canonicalFocus) {
+      continue
+    }
+
+    const textContent = extractText(lineElement)
+    const trimmedText = textContent.trim()
+    if (trimmedText.startsWith('// @filename:')) {
+      continue
+    }
+    if (trimmedText.startsWith('// ---cut---')) {
+      continue
+    }
+
+    if (wrapper) {
+      const wrapperProperties = (wrapper.properties ?? {}) as Record<string, unknown>
+      delete wrapperProperties['data-ls-owner']
+      delete wrapperProperties['data-ls-marker']
+      if (Object.keys(wrapperProperties).length === 0) {
+        wrapper.properties = {} as THastProperties
+      } else {
+        wrapper.properties = wrapperProperties as THastProperties
       }
-      continue
     }
 
-    if (text.startsWith('// @filename:')) continue
-    if (text.startsWith('// ---cut---')) continue
-    if (text.startsWith('/// <reference') || text.startsWith('/// &lt;reference')) continue
-    if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) continue
-    if (!includeFocus) continue
-
-    filtered.push(child as THastElement)
+    filtered.push(lineElement)
   }
 
   while (filtered.length > 0) {
@@ -664,7 +762,18 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
       if (node.tagName !== 'button') continue
       const properties = node.properties ?? {}
       const trimmedSource = assembled.lines
-        .filter((line) => line.owner === canonicalFocus)
+        .filter((line) => {
+          if (line.owner === null) return false
+          const canonicalOwner = extractCanonicalOwner(line.owner)
+          if (canonicalOwner === null || canonicalOwner !== canonicalFocus) {
+            return false
+          }
+          const trimmed = line.content.trimStart()
+          if (trimmed.startsWith('// ---cut')) {
+            return false
+          }
+          return true
+        })
         .map((line) => line.content)
         .join('\n')
       const sanitizedDataCode = stripSnippetSentinels(trimmedSource)
@@ -680,6 +789,10 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
       retainedChildren.push(copyElement as THastElementContent)
     }
     ;(figure as THastParent).children = retainedChildren
+  }
+
+  if (figure) {
+    removeSentinelNodes(figure as unknown as THastElementContent)
   }
 
   return root
@@ -1012,8 +1125,20 @@ const renderSnippet = (
       let styles: string[] = []
       let diagnostics: string[] = []
       let renderResult: THastRendererResult
+      const lineOwners = assembled.lines.map<LineOwnerMetadata>((line) => ({
+        owner: line.owner,
+        marker: line.marker,
+      }))
+      const renderOptions = {
+        code: assembled.code,
+        language,
+        meta: 'twoslash',
+        props: {
+          lsLineOwners: lineOwners,
+        },
+      } satisfies ExpressiveCodeBlockOptions
       try {
-        renderResult = await renderer.ec.render({ code: assembled.code, language, meta: 'twoslash' })
+        renderResult = await renderer.ec.render(renderOptions)
       } catch (cause) {
         const failure = cause as { message?: string; cause?: unknown }
         const nested = failure?.cause as { recommendation?: string; message?: string } | undefined

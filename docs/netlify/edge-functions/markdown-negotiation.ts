@@ -66,7 +66,12 @@ const matchesRange = (range: MediaRange, type: string, subtype: string): number 
   return null
 }
 
-const qualityFor = (
+/**
+ * Computes the best match for a target media type given a parsed Accept list.
+ * Higher `specificity` reflects an exact match over wildcards; ties fall back
+ * to the highest quality (`q`) and finally the earliest match in the header.
+ */
+const scoreForMediaType = (
   ranges: MediaRange[],
   type: string,
   subtype: string,
@@ -92,35 +97,25 @@ const qualityFor = (
  * wildcard) and does not prefer HTML over it.
  */
 const preferredMarkdown = (accept: string | null): boolean => {
+  if (!accept) {
+    return true
+  }
+
   const ranges = parseAcceptHeader(accept)
   if (ranges.length === 0) {
+    return true
+  }
+
+  const explicitlyAllowsHtml = ranges.some((range) => range.q > 0 && range.type === 'text' && range.subtype === 'html')
+  if (explicitlyAllowsHtml) {
     return false
   }
 
-  const markdownCandidates: Array<{ type: string; subtype: string }> = [
-    { type: 'text', subtype: 'markdown' },
-    { type: 'text', subtype: 'x-markdown' },
-    { type: 'application', subtype: 'markdown' },
-    { type: 'text', subtype: '*' },
-  ]
+  const markdownQuality = scoreForMediaType(ranges, 'text', 'markdown')
+  const altMarkdownQuality = scoreForMediaType(ranges, 'text', 'x-markdown')
+  const appMarkdownQuality = scoreForMediaType(ranges, 'application', 'markdown')
 
-  let bestMarkdownQuality = { q: 0, specificity: -1, order: Number.POSITIVE_INFINITY }
-  for (const candidate of markdownCandidates) {
-    const quality = qualityFor(ranges, candidate.type, candidate.subtype)
-    if (
-      quality.specificity > bestMarkdownQuality.specificity ||
-      (quality.specificity === bestMarkdownQuality.specificity && quality.q > bestMarkdownQuality.q) ||
-      (quality.specificity === bestMarkdownQuality.specificity &&
-        quality.q === bestMarkdownQuality.q &&
-        quality.order < bestMarkdownQuality.order)
-    ) {
-      bestMarkdownQuality = quality
-    }
-  }
-
-  const htmlQuality = qualityFor(ranges, 'text', 'html')
-
-  return bestMarkdownQuality.q > 0 && bestMarkdownQuality.q >= htmlQuality.q
+  return markdownQuality.q > 0 || altMarkdownQuality.q > 0 || appMarkdownQuality.q > 0
 }
 
 /**
@@ -157,7 +152,10 @@ const appendVary = (response: Response, headerValue: string): void => {
 }
 
 export default async function handler(request: Request, context: Context): Promise<Response> {
-  if (request.method !== 'GET') {
+  const method = request.method.toUpperCase()
+  const isHeadRequest = method === 'HEAD'
+
+  if (method !== 'GET' && !isHeadRequest) {
     return context.next()
   }
 
@@ -171,7 +169,10 @@ export default async function handler(request: Request, context: Context): Promi
   }
 
   const markdownUrl = buildMarkdownUrl(url)
-  const markdownRequest = new Request(markdownUrl, request)
+  const markdownRequest = new Request(markdownUrl, {
+    method: 'GET',
+    headers: new Headers(request.headers),
+  })
 
   const markdownResponse = await fetch(markdownRequest)
   if (!markdownResponse.ok) {
@@ -180,10 +181,9 @@ export default async function handler(request: Request, context: Context): Promi
 
   const headers = new Headers(markdownResponse.headers)
   headers.set('Content-Type', 'text/markdown; charset=utf-8')
-  const response = new Response(markdownResponse.body, {
-    status: markdownResponse.status,
-    headers,
-  })
+  const response = isHeadRequest
+    ? new Response(null, { status: markdownResponse.status, headers })
+    : new Response(markdownResponse.body, { status: markdownResponse.status, headers })
   appendVary(response, 'Accept')
   return response
 }

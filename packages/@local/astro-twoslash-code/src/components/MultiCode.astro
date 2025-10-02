@@ -202,9 +202,7 @@ if (shouldRenderClientScript) {
     </div>
 
     {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
-    {shouldRenderClientScript && clientModuleSource && (
-      <script type="module" is:inline set:html={clientModuleSource}></script>
-    )}
+    {shouldRenderClientScript && clientModuleSource && <script type="module" is:inline set:html={clientModuleSource} />}
   </div>
 </div>
 
@@ -313,13 +311,14 @@ if (shouldRenderClientScript) {
   .ls-multi-code__panels {
     position: relative;
     background: var(--ec-frm-edBg, var(--ec-codeBg, #1e1e1e));
-    margin: 0 !important;
+    margin: 0 !important; /* prevent starlight content margins */
     border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
   }
 
   .ls-multi-code__panel {
     display: block;
+    margin: 0 !important; /* prevent starlight content margins */
   }
 
   .ls-multi-code__panel[hidden] {
@@ -369,8 +368,7 @@ if (shouldRenderClientScript) {
     background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
     border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
     border-radius: 4px;
-    box-shadow: 0 16px 32px
-      color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%, transparent);
+    box-shadow: 0 16px 32px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%, transparent);
     color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
     font-size: 0.9em;
     margin-top: 0.5rem;
