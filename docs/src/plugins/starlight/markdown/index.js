@@ -20,11 +20,11 @@ export function starlightMarkdownIntegration() {
 
         injectRoute({
           pattern: '/index.md',
-          entrypoint: 'src/plugins/starlight/markdown/markdown.js',
+          entrypoint: 'src/plugins/starlight/markdown/markdown.ts',
         })
         injectRoute({
           pattern: '/[...path]/index.md',
-          entrypoint: 'src/plugins/starlight/markdown/markdown.js',
+          entrypoint: 'src/plugins/starlight/markdown/markdown.ts',
         })
 
         routesInjected = true

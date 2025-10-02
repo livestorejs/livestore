@@ -1,13 +1,6 @@
-import { getCollection } from 'astro:content'
 import type { APIRoute } from 'astro'
+import { loadLlmsDocs, replaceLlmsShortPlaceholders } from '../utils/llms.ts'
 import { transformMultiCodeDocument } from '../utils/multi-code-markdown.js'
-
-const docs = await getCollection(
-  'docs',
-  (entry) =>
-    // For now we're excluding the generated API docs
-    !entry.id.includes('api/'),
-)
 
 const stripLeadingImports = (body: string): string =>
   body
@@ -16,6 +9,7 @@ const stripLeadingImports = (body: string): string =>
     .replace(/\n{3,}/g, '\n\n')
 
 export const GET: APIRoute = async ({ site }) => {
+  const docs = await loadLlmsDocs()
   const transformedDocs = await Promise.all(
     docs.map(async (doc) => {
       const content = await transformMultiCodeDocument({
@@ -50,6 +44,8 @@ export const GET: APIRoute = async ({ site }) => {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
+  const withLlmsEmbeds = replaceLlmsShortPlaceholders({ markdown: dedupedSections, docs, site: site ?? null })
+
   return new Response(
     `<SYSTEM>This is the full developer documentation for LiveStore.</SYSTEM>
 
@@ -59,7 +55,7 @@ export const GET: APIRoute = async ({ site }) => {
 
 # Start of LiveStore documentation
 
-${dedupedSections}
+${withLlmsEmbeds}
 `,
     { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
   )

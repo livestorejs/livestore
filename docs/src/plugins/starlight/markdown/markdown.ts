@@ -11,24 +11,29 @@
  * the contextual menu imports it directly before our Vite aliases apply.
  */
 
+import type { CollectionEntry } from 'astro:content'
 import { getCollection, getEntry } from 'astro:content'
+import type { APIContext } from 'astro'
+import { replaceLlmsShortPlaceholders } from '../../../utils/llms.ts'
 import { transformMultiCodeDocument } from '../../../utils/multi-code-markdown.js'
 
-const normalizeDocPath = (p) => {
-  if (!p) return 'index'
-  let pathValue = String(p)
-  pathValue = pathValue.replace(/^docs\//, '')
-  pathValue = pathValue.replace(/\/index$/, '')
-  pathValue = pathValue.replace(/\.(md|mdx)$/i, '')
+type TDoc = CollectionEntry<'docs'>
+
+const normalizeDocPath = (value: unknown): string => {
+  if (!value) return 'index'
+  let pathValue = String(value)
+  pathValue = pathValue.replace(/^docs\//u, '')
+  pathValue = pathValue.replace(/\/index$/u, '')
+  pathValue = pathValue.replace(/\.(md|mdx)$/iu, '')
   return pathValue === '' ? 'index' : pathValue
 }
 
-const staticPathFromDoc = (doc) => {
-  const slug = typeof doc.slug === 'string' ? doc.slug.replace(/^\//, '') : undefined
+const staticPathFromDoc = (doc: TDoc): string => {
+  const slug = typeof doc.slug === 'string' ? doc.slug.replace(/^\//u, '') : undefined
   return slug && slug !== '' ? slug : normalizeDocPath(doc.id)
 }
 
-const transformBody = async (doc) =>
+const transformBody = async (doc: TDoc): Promise<string> =>
   transformMultiCodeDocument({
     id: doc.id,
     collection: doc.collection,
@@ -36,7 +41,14 @@ const transformBody = async (doc) =>
     debug: process.env.LS_DEBUG_MARKDOWN === '1',
   })
 
-export async function GET({ params }) {
+const buildResponse = (markdown: string): Response =>
+  new Response(markdown, {
+    headers: {
+      'content-type': 'text/markdown; charset=utf-8',
+    },
+  })
+
+export async function GET({ params }: APIContext): Promise<Response> {
   const key = normalizeDocPath(params?.path)
 
   const docs = await getCollection('docs')
@@ -65,23 +77,29 @@ export async function GET({ params }) {
           doc = entry
           break
         }
-      } catch (_) {}
+      } catch (_error) {
+        // ignore lookup failures and continue probing potential filenames
+      }
     }
   }
 
   if (!doc) {
-    return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    })
   }
 
   const title = doc.data?.title ?? doc.slug ?? key
   const transformedBody = await transformBody(doc)
-  const markdown = `# ${title}\n\n${transformedBody}`
+  /**
+   * Substitute the MDX-only `<LlmsShort />` marker so markdown fetches mirror
+   * the rendered homepage for crawlers and CLI tooling.
+   */
+  const markdownWithLlms = replaceLlmsShortPlaceholders({ markdown: transformedBody, docs, site: null })
+  const markdown = `# ${title}\n\n${markdownWithLlms}`
 
-  return new Response(markdown, {
-    headers: {
-      'content-type': 'text/markdown; charset=utf-8',
-    },
-  })
+  return buildResponse(markdown)
 }
 
 export async function getStaticPaths() {

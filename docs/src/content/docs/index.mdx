@@ -6,6 +6,7 @@ import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 import { officeHours } from '../../data/data.ts'
 import { liveStoreVersion } from '@livestore/common'
 import NpmLink from '../../components/NpmLink.astro'
+import LlmsShort from '../../components/LlmsShort.astro'
 
 <CardGrid>
   <LinkCard
@@ -50,8 +51,7 @@ We support the [llms.txt](https://llmstxt.org/) convention for making documentat
 
 Currently, we have the following root-level files:
 
-- [/llms.txt](/llms.txt) — a listing of the available files
-- [/llms-full.txt](/llms-full.txt) — complete documentation for LiveStore
+<LlmsShort showHeading={false} />
 
 ### NPM packages
 
