@@ -60,7 +60,6 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         Effect.gen(function* () {
           yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             cwd: docsPath,
-            shell: true,
             logDir: `${docsPath}/logs`,
           })
         }),
