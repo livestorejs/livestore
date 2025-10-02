@@ -15,7 +15,7 @@ To define a store, you provide:
 - A schema that describes the data structure.
 - An adapter for persistence and synchronization.
 
-A store definition can then be used to create multiple store instances, each identified by a unique `storeId`. `storeId` can be optionally provided when creating a store instance; if not provided, it defaults to the store definition name. The `storeId` must be globally unique to avoid collisions with other store instances.
+A store definition can then be used to create multiple store instances, each identified by a unique `storeId`. Callers must provide a `storeId` whenever they create or access a store instance, and it must be globally unique to avoid collisions with other store instances.
 
 ```tsx
 // src/stores/workspace/index.ts
@@ -88,7 +88,10 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
 }
 
 type CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> = {
-  storeId?: string
+  /**
+   * Globally unique identifier for this particular store instance.
+   */
+  storeId: string
   /**
    * Payload that will be passed to the sync backend when connecting
    *
@@ -162,7 +165,7 @@ function IssueView({ issueId }: { issueId: string }) {
 ```ts
 type UseStoreOptions<TSchema extends LiveStoreSchema> = {
   storeDef: StoreDefinition<TSchema>
-  storeId?: string
+  storeId: string
 }
 
 type UseStoreHook = <TSchema extends LiveStoreSchema>(
@@ -203,7 +206,7 @@ function ShowIssueDetailsButton({ issueId }: { issueId: string }) {
 ```ts
 type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
   storeDef: StoreDefinition<TSchema>
-  storeId?: string
+  storeId: string
 }
 
 type PreloadStore = <TSchema extends LiveStoreSchema>(
@@ -269,7 +272,7 @@ function MainContent() {
 }
 
 function WorkspaceView() {
-  const workspaceStore = useStore({ storeDef: workspaceStoreDef }) // No storeId provided, uses store definition name as default
+  const workspaceStore = useStore({ storeDef: workspaceStoreDef, storeId: 'workspace-root' })
   const workspace = workspaceStore.useQuery(workspaceQuery)
   return <div>Workspace: {workspace.name}</div>
 }
@@ -303,7 +306,7 @@ function MainContent() {
 }
 
 function WorkspaceView() {
-  const workspaceStore = useStore({ storeDef: workspaceStoreDef })
+  const workspaceStore = useStore({ storeDef: workspaceStoreDef, storeId: 'workspace-root' })
   const workspace = workspaceStore.useQuery(workspaceQuery)
 
   return (
@@ -417,10 +420,9 @@ export class StoreRegistry {
 
   async get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
-    options: CreateStoreOptions<TSchema> = {},
+    options: CreateStoreOptions<TSchema>,
   ): Promise<Store<TSchema>> {
-    const storeId = options.storeId ?? def.name
-    // Defaulting to the definition name keeps single-instance cases ergonomic.
+    const storeId = options.storeId
 
     const owner = this.owners.get(storeId)
     if (owner && owner !== def) {
