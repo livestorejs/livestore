@@ -340,7 +340,7 @@ export default defineConfig({
         strict: false,
       },
       // Allow to be accessed via Tailscale
-      allowedHosts: [os.hostname()],
+      allowedHosts: [os.hostname(), process.env.DEVSERVER_HOSTNAME ?? ''],
     },
     optimizeDeps: {
       // Avoid pre-bundling the minimum RN/Expo modules that break esbuild.

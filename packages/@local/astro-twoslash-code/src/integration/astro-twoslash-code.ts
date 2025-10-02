@@ -1,10 +1,10 @@
 import { fileURLToPath } from 'node:url'
 
-import { Effect } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Effect, Fiber } from '@livestore/utils/effect'
+import { NodeRecursiveWatchLayer, PlatformNode } from '@livestore/utils/node'
 import type { AstroIntegration } from 'astro'
 
-import { type BuildSnippetsOptions, buildSnippets } from '../cli/snippets.ts'
+import { type BuildSnippetsOptions, buildSnippets, watchSnippets } from '../cli/snippets.ts'
 import type { TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createTwoslashSnippetPlugin } from '../vite/vite-plugin-snippet.ts'
 
@@ -22,11 +22,15 @@ type BuildStartContext = Parameters<NonNullable<AstroIntegration['hooks']['astro
 const provideNodeFileSystem = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
   effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
 
+const provideNodeRecursiveWatch = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
+  effect.pipe(Effect.provide(NodeRecursiveWatchLayer))
+
 const shouldSkipAutoBuild = () => process.env.LS_TWOSLASH_SKIP_AUTO_BUILD === '1'
 
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildSnippetsOptions | undefined
+  let watchFiber: Fiber.RuntimeFiber<void, never> | null = null
 
   const runSnippetBuild = () => {
     if (!resolvedBuildOptions) {
@@ -69,6 +73,11 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         }
 
         await runSnippetBuild()
+
+        if (resolvedBuildOptions && watchFiber === null) {
+          const watchEffect = watchSnippets(resolvedBuildOptions)
+          watchFiber = Effect.runFork(provideNodeRecursiveWatch(watchEffect))
+        }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
         if (!autoBuild || shouldSkipAutoBuild()) {
@@ -76,6 +85,12 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         }
 
         await runSnippetBuild()
+      },
+      'astro:server:done': async () => {
+        if (watchFiber !== null) {
+          await Effect.runPromise(Fiber.interrupt(watchFiber))
+          watchFiber = null
+        }
       },
     },
   }

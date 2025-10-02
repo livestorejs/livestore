@@ -91,8 +91,8 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * Twoslash in the browser.
  */
 
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
-import { Cli } from '@livestore/utils/node'
+import { type Duration, Effect, FileSystem, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
 import type {
   Element as THastElement,
   ElementContent as THastElementContent,
@@ -1115,12 +1115,91 @@ type ResolvedBuildOptions = {
   runtimeOptions: TwoslashRuntimeOptions
 }
 
+type NormalizedWatchOptions = {
+  debounce: Duration.DurationInput
+  onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+}
+
+const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '150 millis'
+
+type WatchScope = 'snippet' | 'source'
+
+type WatchEventSummary = {
+  absolutePath: string
+  relativePath: string
+  scope: WatchScope
+  kind: FileSystem.WatchEvent['_tag']
+}
+
+export type WatchSnippetsRebuildInfo = {
+  reason: 'initial' | 'watch'
+  event: WatchEventSummary | null
+  renderedCount: number
+  durationMs: number
+}
+
+export type WatchSnippetsOptions = BuildSnippetsOptions & {
+  debounce?: Duration.DurationInput
+  onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+}
+
 const resolveOptions = (options: BuildSnippetsOptions = {}): ResolvedBuildOptions => {
   const projectRoot = options.projectRoot ? path.resolve(options.projectRoot) : process.cwd()
   const runtimeOptions = normalizeRuntimeOptions(options.runtime)
   return {
     paths: resolveProjectPaths(projectRoot),
     runtimeOptions,
+  }
+}
+
+const normalizeWatchOptions = (
+  options: Partial<Pick<WatchSnippetsOptions, 'debounce' | 'onRebuild'>> = {},
+): NormalizedWatchOptions => ({
+  debounce: options.debounce ?? DEFAULT_WATCH_DEBOUNCE,
+  onRebuild: options.onRebuild ?? (() => Effect.void),
+})
+
+const toPosix = (value: string): string => value.replace(/\\/g, '/')
+
+const isWithinDirectory = (candidate: string, directory: string): boolean => {
+  const normalizedDirectory = path.resolve(directory)
+  const normalizedCandidate = path.resolve(candidate)
+  return (
+    normalizedCandidate === normalizedDirectory || normalizedCandidate.startsWith(`${normalizedDirectory}${path.sep}`)
+  )
+}
+
+const summarizeWatchEvent = (
+  scope: WatchScope,
+  root: string,
+  cacheRoot: string,
+  event: FileSystem.WatchEvent,
+): WatchEventSummary | null => {
+  const rootAbsolute = path.resolve(root)
+  const rawPath = event.path
+  const absolutePath = path.resolve(path.isAbsolute(rawPath) ? rawPath : path.join(rootAbsolute, rawPath))
+
+  if (scope === 'snippet' && isWithinDirectory(absolutePath, cacheRoot)) {
+    return null
+  }
+
+  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+    return null
+  }
+
+  const extension = path.extname(absolutePath).toLowerCase()
+  if (scope === 'source' && extension.length > 0 && !SUPPORTED_SOURCE_EXTENSIONS.has(extension as typeof extension)) {
+    return null
+  }
+
+  const relativeRaw = path.relative(rootAbsolute, absolutePath)
+  const relativePath = relativeRaw.length === 0 ? '.' : toPosix(relativeRaw)
+
+  return {
+    absolutePath,
+    relativePath,
+    scope,
+    kind: event._tag,
   }
 }
 
@@ -1290,6 +1369,99 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
     return renderedCount
   })
 
+const createWatchStream = (
+  fs: FileSystem.FileSystem,
+  scope: WatchScope,
+  root: string,
+  cacheRoot: string,
+): Stream.Stream<WatchEventSummary, unknown, never> =>
+  fs
+    .watch(root)
+    .pipe(Stream.map((event) => summarizeWatchEvent(scope, root, cacheRoot, event)))
+    .pipe(Stream.filter((summary): summary is WatchEventSummary => summary !== null))
+
+const watchSnippetsInternal = (
+  resolved: ResolvedBuildOptions,
+  options: NormalizedWatchOptions,
+): Effect.Effect<void, never, FileSystem.FileSystem> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const { paths } = resolved
+
+      const snippetRootExists = yield* fs
+        .exists(paths.snippetAssetsRoot)
+        .pipe(Effect.catchAll(() => Effect.succeed(false)))
+      const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+
+      const watchStreams: Array<Stream.Stream<WatchEventSummary, unknown, never>> = []
+      if (snippetRootExists) {
+        watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
+      }
+      if (sourceRootExists) {
+        watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
+      }
+
+      const notify = (info: WatchSnippetsRebuildInfo) => options.onRebuild(info)
+
+      const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
+        Effect.gen(function* () {
+          const startedAt = Date.now()
+          if (event) {
+            yield* Effect.log(
+              `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
+            )
+          } else {
+            yield* Effect.log('Snippets watch: running initial build')
+          }
+
+          const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
+          const durationMs = Date.now() - startedAt
+
+          if (result._tag === 'Left') {
+            const error = result.left
+            yield* Effect.logError(
+              `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+            )
+            yield* notify({ reason, event, renderedCount: -1, durationMs })
+            return
+          }
+
+          const renderedCount = result.right ?? 0
+          yield* Effect.log(
+            `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
+          )
+          yield* notify({ reason, event, renderedCount, durationMs })
+        })
+
+      yield* runRebuild('initial', null)
+
+      if (watchStreams.length === 0) {
+        yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
+        yield* Effect.never
+        return
+      }
+
+      const merged =
+        watchStreams.length === 1
+          ? watchStreams[0]!
+          : Stream.mergeAll(watchStreams, { concurrency: watchStreams.length })
+
+      const debounced = Stream.debounce(options.debounce)(merged)
+
+      const streamEffect = debounced.pipe(
+        Stream.mapEffect((event) => runRebuild('watch', event), { concurrency: 1 }),
+        Stream.runDrain,
+      )
+
+      yield* streamEffect.pipe(
+        Effect.catchAll((cause) =>
+          Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+        ),
+      )
+    }),
+  )
+
 const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOptions => {
   const normalized: BuildSnippetsOptions = {}
   if (options.projectRoot !== undefined) {
@@ -1304,6 +1476,16 @@ const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOpti
 export const buildSnippets = (options: BuildSnippetsOptions = {}) => {
   const resolved = resolveOptions(normalizeOptions(options))
   return Effect.withSpan('astro-twoslash-code/build-snippets')(buildSnippetsInternal(resolved))
+}
+
+export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
+  const { debounce, onRebuild, ...baseOptions } = options
+  const resolved = resolveOptions(normalizeOptions(baseOptions))
+  const normalizedWatch = normalizeWatchOptions({
+    ...(debounce !== undefined ? { debounce } : {}),
+    ...(onRebuild !== undefined ? { onRebuild } : {}),
+  })
+  return Effect.withSpan('astro-twoslash-code/watch-snippets')(watchSnippetsInternal(resolved, normalizedWatch))
 }
 
 export type CreateSnippetsCommandOptions = BuildSnippetsOptions & {
@@ -1326,9 +1508,15 @@ export const createSnippetsCommand = ({
     Effect.asVoid,
   )
 
-  const buildCommand = Cli.Command.make('build', {}, () => buildHandler)
+  const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
+    Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
+    Effect.asVoid,
+  )
 
-  return Cli.Command.make(commandName).pipe(Cli.Command.withSubcommands([buildCommand]))
+  const buildCommand = Cli.Command.make('build', {}, () => buildHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
+  const watchCommand = Cli.Command.make('watch', {}, () => watchHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
+
+  return Cli.Command.make(commandName).pipe(Cli.Command.withSubcommands([buildCommand, watchCommand]))
 }
 
 export const __internal = {
