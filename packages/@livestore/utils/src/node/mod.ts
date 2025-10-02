@@ -1,7 +1,7 @@
 import * as http from 'node:http'
-
+import * as PlatformNode from '@effect/platform-node'
+import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
-
 import { OtelTracer, UnknownError } from '../effect/index.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
@@ -51,3 +51,10 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 
   return TracingLive
 })
+
+/**
+ * Layer that enables recursive file watching by combining the Node filesystem implementation with
+ * the Parcel-based watch backend. Mirrored from Effect’s platform-node Parcel watcher layer:
+ * https://github.com/Effect-TS/effect/blob/main/packages/platform-node/src/NodeFileSystem/ParcelWatcher.ts
+ */
+export const NodeRecursiveWatchLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, ParcelWatcherLayer)

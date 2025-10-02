@@ -17,6 +17,10 @@
   },
   "packageManager": "pnpm@10.17.1",
   "pnpm": {
+    "patchedDependencies": {
+      "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
+      "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
+    },
     "onlyBuiltDependencies": [
       "@mixedbread/cli",
       "@parcel/watcher",

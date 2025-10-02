@@ -7,3 +7,7 @@
 # This is needed for example screenshots to display properly in production
 # The domain is double-escaped as required by Netlify's regex configuration
 remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
+
+[[edge_functions]]
+function = "markdown-negotiation"
+path = "/*"

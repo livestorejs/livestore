@@ -1,0 +1,71 @@
+---
+title: Reactivity System
+sidebar:
+  order: 2
+---
+
+import ComputedSnippet from '../../_assets/code/reference/reactivity-system/computed.ts?snippet'
+import DepsQuerySnippet from '../../_assets/code/reference/reactivity-system/deps-query.tsx?snippet'
+import QueryDbSnippet from '../../_assets/code/reference/reactivity-system/query-db.ts?snippet'
+import ReactComponentSnippet from '../../_assets/code/reference/reactivity-system/react-component.tsx?snippet'
+import SignalsSnippet from '../../_assets/code/reference/reactivity-system/signals.ts?snippet'
+import SolidComponentSnippet from '../../_assets/code/reference/reactivity-system/solid-component.tsx?snippet'
+import StoreAccessSnippet from '../../_assets/code/reference/reactivity-system/store-access.ts?snippet'
+
+LiveStore has a high-performance, fine-grained reactivity system built in which is similar to Signals (e.g. in [SolidJS](https://docs.solidjs.com/concepts/signals)).
+
+## Defining reactive state
+
+LiveStore provides 3 types of reactive state:
+- Reactive SQL queries on top of SQLite state (`queryDb()`)
+- Reactive state values (`signal()`)
+- Reactive computed values (`computed()`)
+
+Reactive state variables end on a `$` by convention (e.g. `todos$`). The `label` option is optional but can be used to identify the reactive state variable in the devtools.
+
+### Reactive SQL queries
+
+<QueryDbSnippet />
+
+### Signals
+
+Signals are reactive state values that can be set and get. This can be useful for state that is not materialized from events into SQLite tables.
+
+<SignalsSnippet />
+
+### Computed values
+
+<ComputedSnippet />
+
+## Accessing reactive state
+
+Reactive state is always bound to a `Store` instance. You can access the current value of reactive state the following ways:
+
+### Using the `Store` instance
+
+<StoreAccessSnippet />
+
+### Via framework integrations
+
+#### React
+
+<ReactComponentSnippet />
+
+#### Solid
+
+<SolidComponentSnippet />
+
+### Reacting to changing variables passed to queries
+
+If your query depends on a variable passed in by the component, use the deps array to react to changes in this variable.
+
+<DepsQuerySnippet />
+
+## Further reading
+
+- [Riffle](https://riffle.systems/essays/prelude/): Building data-centric apps with a reactive relational database
+- [Adapton](http://adapton.org/) / [miniAdapton](https://arxiv.org/pdf/1609.05337)
+
+## Related technologies
+
+- [Signia](https://signia.tldraw.dev/): Signia is a minimal, fast, and scalable signals library for TypeScript developed by TLDraw.

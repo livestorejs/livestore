@@ -1,5 +1,5 @@
 {
-  "name": "docs",
+  "name": "@local/docs",
   "version": "0.1.1",
   "type": "module",
   "private": true,
@@ -19,6 +19,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@local/astro-twoslash-code": "workspace:*",
     "@local/shared": "workspace:*",
     "@mixedbread/cli": "1.2.1",
     "@mixedbread/sdk": "0.28.1",
@@ -48,6 +49,8 @@
     "typescript": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/hast": "^3.0.4",
     "@types/react-dom": "catalog:"
   },
   "scripts": {

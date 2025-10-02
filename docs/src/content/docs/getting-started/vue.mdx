@@ -9,12 +9,12 @@ sidebar:
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
-import schemaCode from '../../_assets/code/getting-started/vue/livestore/schema.ts?snippet'
-import workerCode from '../../_assets/code/getting-started/vue/livestore/livestore.worker.ts?snippet'
+import SchemaSnippet from '../../_assets/code/getting-started/vue/livestore/schema.ts?snippet'
+import WorkerSnippet from '../../_assets/code/getting-started/vue/livestore/livestore.worker.ts?snippet'
 
-export const CODE = {
-  schema: schemaCode,
-  worker: workerCode,
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  worker: WorkerSnippet,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -90,13 +90,13 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" meta="twoslash" title="src/livestore/schema.ts" />
+<SNIPPETS.schema />
 
 ### Create the LiveStore Worker
 
 Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-<Code code={CODE.worker} lang="ts" meta="twoslash" title="src/livestore/livestore.worker.ts" />
+<SNIPPETS.worker />
 
 ### Add the LiveStore Provider
 

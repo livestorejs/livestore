@@ -13,16 +13,26 @@ in
   };
 
   # Provide Node 24 alongside Corepack
-  packages = [
-    pkgs.nodejs_24
-    pkgs.caddy
-    pkgs.jq
-    pkgs.bun
-    pkgs.deno
-  ] ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
+  packages =
+    [
+      pkgs.nodejs_24
+      pkgs.caddy
+      pkgs.jq
+      pkgs.bun
+      pkgs.deno
+    ]
+    # Parcel watcher (used by the docs snippet watcher) needs libstdc++ on Linux hosts
+    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib ]
+    ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
   # Environment variables
-  env.PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
+  env =
+    {
+      PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
+    }
+    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
+      LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+    };
 
   # Shell initialization (dynamic values and PATH wiring)
   enterShell = ''

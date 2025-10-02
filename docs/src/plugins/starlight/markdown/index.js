@@ -1,21 +1,33 @@
-// Local drop-in for starlight-markdown until upstream fix lands.
-// Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
-// Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
-// Local tracking issue: https://github.com/livestorejs/livestore/issues/699
-// TODO: Delete this local integration and the alias in astro.config.mjs once upstream is fixed.
+/**
+ * LiveStore-owned replacement for the upstream `starlight-markdown` integration.
+ *
+ * The contextual menu plugin still eagerly imports `starlight-markdown` and expects
+ * the same integration surface (two markdown routes plus an integration wrapper).
+ * We keep this module under our control so we can normalise slugs and prevent Astro
+ * from serving HTML fallbacks when the contextual menu fetches `*.md` routes.
+ *
+ * Any changes here need to remain API-compatible with the upstream package because
+ * `starlight-contextual-menu` imports it before Astro applies our aliases.
+ */
+let routesInjected = false
+
 export function starlightMarkdownIntegration() {
   return {
     name: 'starlight-markdown',
     hooks: {
       'astro:config:setup': async ({ injectRoute }) => {
+        if (routesInjected) return
+
         injectRoute({
           pattern: '/index.md',
-          entrypoint: '@local/starlight-markdown/markdown.js',
+          entrypoint: 'src/plugins/starlight/markdown/markdown.ts',
         })
         injectRoute({
           pattern: '/[...path]/index.md',
-          entrypoint: '@local/starlight-markdown/markdown.js',
+          entrypoint: 'src/plugins/starlight/markdown/markdown.ts',
         })
+
+        routesInjected = true
       },
     },
   }

@@ -10,18 +10,21 @@ import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import babelConfigCode from '../../../../../examples/expo-todomvc-sync-cf/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/expo-todomvc-sync-cf/metro.config.js?raw'
-import schemaCode from '../../_assets/code/getting-started/expo/livestore/schema.ts?snippet'
-import rootCode from '../../_assets/code/getting-started/expo/Root.tsx?snippet'
-import headerCode from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
-import mainSectionCode from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
+import SchemaSnippet from '../../_assets/code/getting-started/expo/livestore/schema.ts?snippet'
+import RootSnippet from '../../_assets/code/getting-started/expo/Root.tsx?snippet'
+import HeaderSnippet from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
+import MainSectionSnippet from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
 
 export const CODE = {
   babelConfig: babelConfigCode,
   metroConfig: metroConfigCode,
-  schema: schemaCode,
-  root: rootCode,
-  header: headerCode,
-  mainSection: mainSectionCode,
+}
+
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  root: RootSnippet,
+  header: HeaderSnippet,
+  mainSection: MainSectionSnippet,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -203,7 +206,7 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" meta="twoslash" title="src/livestore/schema.ts" />
+<SNIPPETS.schema />
 
 ## Add the LiveStore Provider
 
@@ -211,7 +214,7 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-<Code code={CODE.root} lang="tsx" meta="twoslash" title="src/Root.tsx" />
+<SNIPPETS.root />
 
 ### Commit events
 
@@ -219,7 +222,7 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-<Code code={CODE.header} lang="tsx" meta="twoslash" title="src/components/NewTodo.tsx" />
+<SNIPPETS.header />
 
 ## Queries
 
@@ -229,7 +232,7 @@ Consider abstracting queries into a separate file to keep your code organized, t
 
 Here's an example:
 
-<Code code={CODE.mainSection} lang="tsx" meta="twoslash" title="src/components/ListTodos.tsx" />
+<SNIPPETS.mainSection />
 
 ## Devtools
 
