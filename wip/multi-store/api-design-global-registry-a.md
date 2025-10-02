@@ -1,4 +1,4 @@
-# Multi-Store Design Proposal (Global Registry + React Bindings)
+# Multi-Store Design Proposal (Global Registry)
 
 This document proposes the API design for supporting multiple LiveStore instances in React applications. The design prioritizes simplicity, type safety, and React best practices while enabling both simple and complex use cases.
 
@@ -32,7 +32,7 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const workspaceStore = defineStore({
+export const workspaceStoreDef = defineStore({
   name: 'workspace',
   schema: workspaceSchema,
   adapter,
@@ -53,7 +53,7 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const issueStore = defineStore({
+export const issueStoreDef = defineStore({
   name: 'issue',
   schema: issueSchema,
   adapter,
@@ -63,21 +63,52 @@ export const issueStore = defineStore({
 #### Types
 
 ```ts
-type CreateStoreParams = {
-  storeId?: string
+type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
+  /**
+   * Unique name for the store type (e.g., "workspace", "issue").
+   * This is used in telemetry and devtools.
+   */
+  name: string
+  schema: TSchema
+  adapter: Adapter
+  batchUpdates?: (callback: () => void) => void
+  /**
+   * Whether to disable LiveStore Devtools.
+   *
+   * @default 'auto'
+   */
+  disableDevtools?: boolean | 'auto'
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
   syncPayload?: Schema.JsonValue
+  otelOptions?: Partial<OtelOptions>
+}
+
+type CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> = {
+  storeId?: string
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
+  batchUpdates?: (callback: () => void) => void
+  syncPayload?: Schema.JsonValue
+  otelOptions?: Partial<OtelOptions>
 }
 
 type StoreDefinition<TSchema extends LiveStoreSchema> = {
   name: string
   schema: TSchema
-  create(params: CreateStoreParams): Promise<Store<TSchema>>
+  create(options: CreateStoreOptions): Promise<Store<TSchema>>
 }
 ```
 
-### React Bindings
 
-#### Store Registry
+
+### Store Registry
 
 One registry for the entire app to manage all store instances of any type.
 
@@ -97,54 +128,88 @@ export default function App() {
   )
 }
 ```
+### Using Stores
 
-#### Store Bindings
+#### Hooks
 
-```ts
-// src/stores/workspace/index.ts
-import { createStoreBindings } from '@livestore/react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+- `useStore()` gets the store instance from the registry for the given store definition and storeId. If the store instance is not yet loaded, it will be created and loaded automatically. The hook will suspend the component until the store is ready.
 
-// ... store definition code from above ...
+- `useStoreRegistry()` returns the current store registry instance from context. It's useful for advanced use cases where you need direct access to the registry.
 
-export const {
-  useStore: useWorkspaceStore,
-  preloadStore: preloadWorkspace
-} = createStoreBindings(workspaceStore, { batchUpdates })
+```tsx
+function IssueView({ issueId }: { issueId: string }) {
+  const issueStore = useStore({
+    storeDef: issueStoreDef,
+    storeId: issueId
+  })
+  const issue = issueStore.useQuery(issueQuery(issueId))
+  
+  function handleUpdateTitle(newTitle: string) {
+    issueStore.commit(issueEvents.issueTitleUpdated({ issueId, newTitle }))
+  }
+  
+  return (
+    <div>
+      <h2>Issue: {issue.title}</h2>
+      <button onClick={() => handleUpdateTitle('New Title')}>Update Title</button>
+    </div>
+  )
+}
 ```
-
-```ts
-// src/stores/issue/index.ts
-import { createStoreBindings } from '@livestore/react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-
-// ... store definition code from above ...
-
-export const {
-  useStore: useIssueStore,
-  preloadStore: preloadIssue
-} = createStoreBindings(issueStore, { batchUpdates })
-```
-
 
 ##### Types
 
 ```ts
-type CreateStoreBindingsReturn<TSchema extends LiveStoreSchema> = {
-  useStore: (params?: CreateStoreParams) => Store<TSchema>
-  preloadStore: (
-    params?: CreateStoreParams,
-    registryOverride?: StoreRegistry
-  ) => Promise<Store<TSchema>>
+type UseStoreOptions<TSchema extends LiveStoreSchema> = {
+  storeDef: StoreDefinition<TSchema>
+  storeId?: string
 }
 
-type CreateStoreBindings = <TSchema extends LiveStoreSchema>(
-  def: StoreDefinition<TSchema>,
-  options?: { batchUpdates?: (callback: () => void) => void }
-) => CreateStoreBindingsReturn<TSchema>
+type UseStoreHook = <TSchema extends LiveStoreSchema>(
+  options: UseStoreOptions<TSchema>
+) => Store<TSchema>
+
+type UseStoreRegistryHook = (
+  /** Use this to use a custom StoreRegistry. Otherwise, the one from the nearest context will be used. */
+  storeRegistry?: StoreRegistry
+) => StoreRegistry
 ```
 
-## Usage Examples
+#### Preloading
+
+`registry.preloadStore()` preloads the store instance for the given store definition and storeId. This is useful for preloading stores in route loaders or in event handlers. It does not suspend the component, but ensures the store is loaded and cached in the registry. It returns a promise that will either immediately resolve if the store is already loaded, or resolve once the store it is.
+
+```tsx
+function ShowIssueDetailsButton({ issueId }: { issueId: string }) {
+  const registry = useStoreRegistry()
+
+  const prefetch = () => {
+    registry.preloadStore({
+      storeDef: issueStoreDef,
+      storeId: issueId,
+    })
+  }
+
+  return (
+    <button onMouseEnter={prefetch} onFocus={prefetch} onClick={...}>
+      Show Details
+    </button>
+  )
+}
+```
+
+##### Types
+
+```ts
+type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
+  storeDef: StoreDefinition<TSchema>
+  storeId?: string
+}
+
+type PreloadStore = <TSchema extends LiveStoreSchema>(
+  options: PreloadStoreOptions<TSchema>,
+) => Promise<void>
+```
 
 ### Single Store Instance
 
@@ -204,13 +269,13 @@ function MainContent() {
 }
 
 function WorkspaceView() {
-  const workspaceStore = useWorkspaceStore() // No storeId provided, uses store definition name as default
+  const workspaceStore = useStore({ storeDef: workspaceStoreDef }) // No storeId provided, uses store definition name as default
   const workspace = workspaceStore.useQuery(workspaceQuery)
   return <div>Workspace: {workspace.name}</div>
 }
 
 function IssueView({ issueId }: { issueId: string }) {
-  const issueStore = useIssueStore({ storeId: issueId })
+  const issueStore = useStore({ storeDef: issueStoreDef, storeId: issueId })
   const issue = issueStore.useQuery(issueQuery(issueId))
   return <div>Issue: {issue.title}</div>
 }
@@ -238,7 +303,7 @@ function MainContent() {
 }
 
 function WorkspaceView() {
-  const workspaceStore = useWorkspaceStore()
+  const workspaceStore = useStore({ storeDef: workspaceStoreDef })
   const workspace = workspaceStore.useQuery(workspaceQuery)
 
   return (
@@ -256,7 +321,7 @@ function WorkspaceView() {
 }
 
 function IssueView({ issueId }: { issueId: string }) {
-  const issueStore = useIssueStore({ storeId: issueId })
+  const issueStore = useStore({ storeDef: issueStoreDef, storeId: issueId })
   const issue = issueStore.useQuery(issueQuery(issueId))
 
   return (
@@ -277,54 +342,64 @@ function IssueView({ issueId }: { issueId: string }) {
 }
 ```
 
-### Store Preloading
+### User-Land Helpers
 
-```tsx
-// app/storeRegistry.ts
-import { StoreRegistry } from '@livestore/react'
+```ts
+// src/stores/workspace/index.ts
+import { useStore } from '@livestore/react'
+import { useAuth, getAuth } from '../../auth.ts'
 
-export const registry = new StoreRegistry()
+// Store definition as before...
 
-// routes/workspaces.$workspaceId.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { createStoreBindings } from '@livestore/react'
-import { workspaceStore } from '../stores/workspace'
-import { registry } from '../app/storeRegistry'
-
-export const {
-  useStore: useWorkspaceStore,
-  preloadStore: preloadWorkspaceStore,
-} = createStoreBindings(workspaceStore)
-
-export const Route = createFileRoute('/workspaces/$workspaceId')({
-  loader: async ({ params }) => {
-    await preloadWorkspaceStore({ storeId: params.workspaceId }, registry)
-    return null
-  },
-  component: WorkspaceRouteComponent,
-})
-
-function WorkspaceRouteComponent() {
-  const { workspaceId } = Route.useParams()
-  const store = useWorkspaceStore({ storeId: workspaceId })
-  const workspace = store.useQuery(workspaceQuery(workspaceId))
-  return <div>{workspace.name}</div>
+// Our app by design has a single workspace per auth session
+export function useCurrentWorkspaceStore() {
+  const { orgId } = useAuth() // This can come from an auth context
+  
+  // We have a single workspace per org, so we can use the orgId as part of the storeId
+  const storeId = `workspace-org_${orgId}`
+  
+  return useStore({ storeDef: workspaceStoreDef, storeId: storeId })
 }
 
-// app/App.tsx
-import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { StoreRegistryProvider } from '@livestore/react'
-import { routeTree } from './routeTree'
-import { registry } from './storeRegistry'
+// We can also create a custom preload function
+export async function preloadCurrentWorkspaceStore() {
+  const { orgId } = await getAuth()
+  const storeId = `workspace-org_${orgId}`
+  await registry.preloadStore({ storeDef: workspaceStoreDef, storeId })
+}
+```
 
-const router = createRouter({ routeTree })
+```tsx
+// src/stores/issue/index.ts
+import { createContext, use } from 'react'
+import { useStore } from '@livestore/react'
+import { useRouteParams } from 'my-router'
 
-export default function App() {
-  return (
-    <StoreRegistryProvider registry={registry}>
-      <RouterProvider router={router} />
-    </StoreRegistryProvider>
-  )
+
+// Store definition as before...
+
+
+// Having to pass an issueId prop through multiple layers.
+// We can have a context to avoid that.
+const IssueStoreContext = createContext<Store | null>(null)
+
+// This component will suspend while the store is being created
+export function IssueStoreProvider({ issueId, children }: { issueId: string, children: React.ReactNode }) {
+  const store = useStore({ storeDef: issueStoreDef, storeId: issueId })
+  return <IssueStoreContext.Provider value={store}>{children}</IssueStoreContext.Provider>
+}
+
+export function useIssueStore() {
+  const store = React.use(IssueStoreContext)
+  if (!store) throw new Error('useIssueStore must be used within an <IssueStoreProvider>')
+  return store
+}
+
+// Or even better, if we're able to get the issueId from the route params
+export function useIssueStoreFromRoute() {
+  const { issueId } = useRouteParams()
+  if (!issueId) throw new Error('useIssueStoreFromParams must be used within a route with an :issueId param')
+  return useStore({ storeDef: issueStoreDef, storeId: issueId })
 }
 ```
 
@@ -332,19 +407,6 @@ export default function App() {
 
 
 ```tsx
-// --- New Types ---
-type CreateStoreParams = {
-  storeId?: string
-  syncPayload?: Schema.JsonValue
-}
-
-type StoreDefinition<TSchema extends LiveStoreSchema> = {
-  name: string
-  schema: TSchema
-  create(params: CreateStoreParams): Promise<Store<TSchema>>
-}
-
-
 // --- Registry caches create() results as Thenables (suspense-friendly) ---
 export class StoreRegistry {
   private storePromises = new Map<string, Promise<Store>>()
@@ -353,11 +415,11 @@ export class StoreRegistry {
 
   get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
-    params: CreateStoreParams = {}
+    options: CreateStoreOptions = {}
   ): Promise<Store<TSchema>> {
     // Use store definition name as default storeId if not provided
     // This allows simple use cases to avoid specifying storeId
-    const storeId = params.storeId ?? def.name
+    const storeId = options.storeId ?? def.name
     
     // Ensure the storeId is owned by the same store definition
     // This prevents accidental collisions between different store types
@@ -373,7 +435,7 @@ export class StoreRegistry {
     
     // Create the store instance if it doesn't exist
     if (!storePromise) {
-      storePromise = def.create({ ...params, storeId })
+      storePromise = def.create({ ...options, storeId })
         .then((store) => {
           // Cache the fully created store instance for future reference
           this.storeInstances.set(storeId, store)
@@ -434,18 +496,17 @@ function useStoreRegistry() {
 // --- Per-type bindings: hook + preload ---
 function createStoreBindings<TSchema extends LiveStoreSchema>(
   def: StoreDefinition<TSchema>,
-  options?: { batchUpdates?: (callback: () => void) => void }
 ) {
-  function useStore(params?: CreateStoreParams): Store<TSchema> {
+  function useStore(options?: CreateStoreOptions): Store<TSchema> {
     const storeRegistry = useStoreRegistry()
     
-    const promise = storeRegistry.get(def, params)
+    const promise = storeRegistry.get(def, options)
     
     return React.use(promise) // This will make the calling component suspend while the store is being created
   }
 
   async function preloadStore(
-    params?: CreateStoreParams,
+    params?: CreateStoreOptions,
     registryOverride?: StoreRegistry
   ): Promise<void> {
     const registry = registryOverride ?? defaultRegistry
