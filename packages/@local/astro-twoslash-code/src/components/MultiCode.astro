@@ -1,6 +1,6 @@
 ---
 import { type MultiCodeProps, prepareMultiCodeData } from './multi-code.ts'
-import clientModuleUrl from './multi-code-client.ts?url'
+import { loadMultiCodeClientModule } from './multi-code-client-inline.ts'
 
 /**
  * Server component that renders the multi-file code block shell.
@@ -28,6 +28,17 @@ const globalThemeStyles = prepared.globals.themeStyles
 // Snippet manifest generation patches `setupTooltip`, so the runtime modules can be
 // forwarded as-is here.
 const globalJsModules = prepared.globals.jsModules
+
+/** Inline the transpiled client runtime exactly once per page render.
+ *
+ * The previous `?url` delivery shipped raw TypeScript in production. We now
+ * transform the module server-side and cache the result in `Astro.locals`,
+ * preventing duplicate `<script>` tags when multiple multi-code blocks are
+ * present.
+ */
+const clientScriptRegistryKey = '__lsTwoslashClientScript'
+let shouldRenderClientScript = true
+let clientModuleSource: string | null = null
 
 type TwoslashGlobalsRegistry = {
   base: Set<string>
@@ -76,6 +87,16 @@ if (localsRecord) {
       return true
     })
   }
+
+  if (localsRecord[clientScriptRegistryKey] === true) {
+    shouldRenderClientScript = false
+  } else {
+    localsRecord[clientScriptRegistryKey] = true
+  }
+}
+
+if (shouldRenderClientScript) {
+  clientModuleSource = await loadMultiCodeClientModule()
 }
 ---
 
@@ -181,7 +202,9 @@ if (localsRecord) {
     </div>
 
     {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
-    <script type="module" src={clientModuleUrl}></script>
+    {shouldRenderClientScript && clientModuleSource && (
+      <script type="module" is:inline set:html={clientModuleSource}></script>
+    )}
   </div>
 </div>
 

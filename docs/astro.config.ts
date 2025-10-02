@@ -13,11 +13,11 @@ import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightContextualMenu from 'starlight-contextual-menu'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
-import starlightMarkdown from 'starlight-markdown'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
+import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 
 const port = 5252
@@ -324,14 +324,10 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: {
-        // Use local fixed implementation for starlight-markdown to keep prod builds working.
-        // Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
-        // Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
-        // Local tracking issue: https://github.com/livestorejs/livestore/issues/699
-        // TODO: Remove this alias once the upstream fix is released and close the tracking issue.
+        // Keep third-party integrations (e.g. starlight-contextual-menu) pointed at our implementation.
+        // They still import `starlight-markdown` by name before aliases apply, so this mapping must exist
+        // as long as we own the markdown route handler.
         'starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/index.js', import.meta.url)),
-        // Internal entrypoint used by our local integration when injecting routes
-        '@local/starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/', import.meta.url)),
       },
     },
     server: {

@@ -49,6 +49,7 @@
     "typescript": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@types/hast": "^3.0.4",
     "@types/react-dom": "catalog:"
   },

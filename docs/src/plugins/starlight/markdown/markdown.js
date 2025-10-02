@@ -1,8 +1,15 @@
-// Local fixed implementation for starlight-markdown route handler.
-// Upstream issue: https://github.com/reynaldichernando/starlight-markdown/issues/1
-// Upstream PR: https://github.com/reynaldichernando/starlight-markdown/pull/2
-// Local tracking issue: https://github.com/livestorejs/livestore/issues/699
-// TODO: Remove this file once the upstream plugin normalizes paths consistently.
+/**
+ * Runtime for the LiveStore markdown routes consumed by the contextual menu.
+ *
+ * Responsibilities:
+ * - expose `/index.md` and `/[...path]/index.md` so copy/view actions can fetch
+ *   raw markdown even when the docs page was authored in MDX.
+ * - normalise `astro:content` entries to slugs that match the public docs URLs
+ *   (the upstream package returns `doc.id` which breaks nested routes).
+ *
+ * Keep behaviour aligned with the `starlight-markdown` package signature because
+ * the contextual menu imports it directly before our Vite aliases apply.
+ */
 import { getCollection, getEntry } from 'astro:content'
 
 const normalizeDocPath = (path) => {
@@ -17,6 +24,11 @@ const normalizeDocPath = (path) => {
   return p === '' ? 'index' : p
 }
 
+const staticPathFromDoc = (doc) => {
+  const slug = typeof doc.slug === 'string' ? doc.slug.replace(/^\//, '') : undefined
+  return slug && slug !== '' ? slug : normalizeDocPath(doc.id)
+}
+
 export async function GET({ params }) {
   const key = normalizeDocPath(params?.path)
 
@@ -26,10 +38,13 @@ export async function GET({ params }) {
   const findMatch = () => {
     for (const doc of docs) {
       const idNorm = normalizeDocPath(doc.id)
+      const slugNorm = staticPathFromDoc(doc)
       if (idNorm === key || doc.slug === key) return doc
       // Accept `/foo` mapping to `/foo/index`
       if (idNorm === `${key}/index`) return doc
       if (`${idNorm}/index` === key) return doc
+      if (slugNorm === key) return doc
+      if (slugNorm === `${key}/index`) return doc
     }
     return undefined
   }
@@ -70,7 +85,7 @@ export async function GET({ params }) {
 export async function getStaticPaths() {
   const docs = await getCollection('docs')
   const paths = docs
-    .map((doc) => normalizeDocPath(doc.id))
+    .map((doc) => staticPathFromDoc(doc))
     // Exclude the root index from the dynamic route since we have a dedicated /index.md
     .filter((p) => p !== 'index')
     .map((p) => ({ params: { path: p } }))

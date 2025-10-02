@@ -122,6 +122,7 @@ export {
   Runtime,
   RuntimeFlags,
   Scope,
+  Sink,
   SortedMap,
   STM,
   SynchronizedRef,
