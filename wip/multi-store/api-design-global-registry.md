@@ -407,60 +407,67 @@ export function useIssueStoreFromRoute() {
 
 
 ```tsx
+import * as React from 'react'
+
 // --- Registry caches create() results as Thenables (suspense-friendly) ---
 export class StoreRegistry {
-  private storePromises = new Map<string, Promise<Store>>()
-  private storeInstances = new Map<string, Store>()
+  private storePromises = new Map<string, Promise<Store<any>>>()
+  private storeInstances = new Map<string, Store<any>>()
   private owners = new Map<string, StoreDefinition<any>>()
 
-  get<TSchema extends LiveStoreSchema>(
+  async get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
-    options: CreateStoreOptions = {}
+    options: CreateStoreOptions<TSchema> = {},
   ): Promise<Store<TSchema>> {
-    // Use store definition name as default storeId if not provided
-    // This allows simple use cases to avoid specifying storeId
     const storeId = options.storeId ?? def.name
-    
-    // Ensure the storeId is owned by the same store definition
-    // This prevents accidental collisions between different store types
-    // e.g., "workspace" storeId used for an "issue" store definition
+    // Defaulting to the definition name keeps single-instance cases ergonomic.
+
     const owner = this.owners.get(storeId)
     if (owner && owner !== def) {
       throw new Error(
-        `storeId "${storeId}" already belongs to "${owner.name}", not "${def.name}".`
+        `storeId "${storeId}" already belongs to "${owner.name}", not "${def.name}".`,
       )
     }
-    
+    // At this point the storeId is either unused or already registered to the same definition.
+
     let storePromise = this.storePromises.get(storeId)
-    
-    // Create the store instance if it doesn't exist
     if (!storePromise) {
-      storePromise = def.create({ ...options, storeId })
-        .then((store) => {
-          // Cache the fully created store instance for future reference
-          this.storeInstances.set(storeId, store)
-          return store
-        })
+      // Lazily create the store the first time it is requested.
+      storePromise = def.create({ ...options, storeId }).then((store) => {
+        // Cache the resolved instance to enable imperative access (e.g. destroy calls).
+        this.storeInstances.set(storeId, store)
+        return store
+      })
+
       this.storePromises.set(storeId, storePromise)
       this.owners.set(storeId, def)
     }
-    
+
     return storePromise
   }
 
-  has = (id: string) => this.storePromises.has(id)
-  
-  drop = (id: string) => {
-    const instance = this.storeInstances.get(id)
-    instance?.destroy()
-    this.storeInstances.delete(id)
-    this.storePromises.delete(id)
-    this.owners.delete(id)
+  async preloadStore<TSchema extends LiveStoreSchema>(
+    options: PreloadStoreOptions<TSchema>,
+  ): Promise<void> {
+    const { storeDef, ...createOptions } = options
+    // Reuse the main get() path so preload has identical caching semantics.
+    await this.get(storeDef, createOptions)
   }
-  
+
+  has = (storeId: string) => this.storePromises.has(storeId)
+
+  drop = (storeId: string) => {
+    // Destroying the cached instance also evicts associated promises and ownership metadata.
+    this.storeInstances.get(storeId)?.destroy()
+    this.storeInstances.delete(storeId)
+    this.storePromises.delete(storeId)
+    this.owners.delete(storeId)
+  }
+
   clear = () => {
-    for (const instance of this.storeInstances.values()) {
-      instance.destroy()
+    for (const store of this.storeInstances.values()) {
+      // Ensure stores perform their own cleanup before we forget them.
+      store.destroy()
     }
 
     this.storeInstances.clear()
@@ -469,9 +476,8 @@ export class StoreRegistry {
   }
 }
 
-
 // --- Top-level provider giving access to the registry ---
-const StoreRegistryContext = createContext<StoreRegistry | null>(null)
+const StoreRegistryContext = React.createContext<StoreRegistry | null>(null)
 const defaultRegistry = new StoreRegistry()
 
 type StoreRegistryProviderProps = {
@@ -480,39 +486,35 @@ type StoreRegistryProviderProps = {
 }
 
 export function StoreRegistryProvider({ children, registry }: StoreRegistryProviderProps) {
+  // Allow callers to supply a scoped registry while falling back to the shared singleton.
   const value = React.useMemo(() => registry ?? defaultRegistry, [registry])
   return <StoreRegistryContext value={value}>{children}</StoreRegistryContext>
 }
 
-function useStoreRegistry() {
+export function useStoreRegistry(override?: StoreRegistry): StoreRegistry {
+  // Let advanced users inject a registry without having to remount providers.
+  if (override) return override
+
   const registry = React.use(StoreRegistryContext)
   if (!registry) {
     throw new Error('useStoreRegistry must be used within a <StoreRegistryProvider>')
   }
+
   return registry
 }
 
+type UseStoreOptions<TSchema extends LiveStoreSchema> = CreateStoreOptions<TSchema> & {
+  storeDef: StoreDefinition<TSchema>
+}
 
-// --- Per-type bindings: hook + preload ---
-function createStoreBindings<TSchema extends LiveStoreSchema>(
-  def: StoreDefinition<TSchema>,
-) {
-  function useStore(options?: CreateStoreOptions): Store<TSchema> {
-    const storeRegistry = useStoreRegistry()
-    
-    const promise = storeRegistry.get(def, options)
-    
-    return React.use(promise) // This will make the calling component suspend while the store is being created
-  }
+export function useStore<TSchema extends LiveStoreSchema>(
+  options: UseStoreOptions<TSchema>,
+): Store<TSchema> {
+  const { storeDef, ...createOptions } = options
+  const registry = useStoreRegistry()
+  // Suspense integration: React.use awaits the promise returned by the registry.
+  const storePromise = registry.get(storeDef, createOptions)
 
-  async function preloadStore(
-    params?: CreateStoreOptions,
-    registryOverride?: StoreRegistry
-  ): Promise<void> {
-    const registry = registryOverride ?? defaultRegistry
-    await registry.get(def, params)
-  }
-
-  return { useStore, preloadStore }
+  return React.use(storePromise)
 }
 ```
