@@ -147,12 +147,12 @@ One registry for the entire app to manage all store instances of any type.
 
 ```tsx
 // src/App.tsx
-import { Suspense, useMemo } from 'react'
+import { Suspense, useState } from 'react'
 import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import MainContent from './MainContent.tsx'
 
 export default function App() {
-  const registry = useMemo(() => new StoreRegistry(), [])
+  const [registry] = useState(() => new StoreRegistry())
   return (
     <StoreRegistryProvider registry={registry}>
       <Suspense fallback={<div>Loading...</div>}>
