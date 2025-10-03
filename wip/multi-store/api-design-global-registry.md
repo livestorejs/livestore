@@ -138,22 +138,23 @@ One registry for the entire app to manage all store instances of any type.
   instance unless a new observer arrives. Passing `gcTime: Infinity` disables the timer.
 - Store definitions and providers can override the inactivity timeout so teams can tune memory
   pressure per store type.
-- During SSR we always create a fresh `StoreRegistry`, mirroring how TanStack Query isolates caches
-  per request. On the client a shared singleton keeps the registry stable unless you supply your
-  own instance.
+- During SSR create a fresh `StoreRegistry` per request (like `new QueryClient()` in TanStack
+  Query) and pass it to the provider. On the client you can memoize a single registry for the tree
+  or scope multiple registries as needed.
 - If multiple observers provide different `gcTime` overrides, the registry keeps the longest
   duration active so late subscribers can opt in to longer retention without being pruned by
   shorter-lived peers.
 
 ```tsx
 // src/App.tsx
-import { Suspense } from 'react'
-import { StoreRegistryProvider } from '@livestore/react'
+import { Suspense, useMemo } from 'react'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import MainContent from './MainContent.tsx'
 
 export default function App() {
+  const registry = useMemo(() => new StoreRegistry(), [])
   return (
-    <StoreRegistryProvider>
+    <StoreRegistryProvider registry={registry}>
       <Suspense fallback={<div>Loading...</div>}>
         <MainContent />
       </Suspense>
@@ -698,30 +699,16 @@ export class StoreRegistry {
   }
 }
 
-// --- Top-level provider giving access to (and configuring) the registry ---
+// --- Top-level provider giving access to the registry instance ---
 const StoreRegistryContext = React.createContext<StoreRegistry | null>(null)
-const defaultBrowserRegistry = typeof window !== 'undefined' ? new StoreRegistry() : null
 
 type StoreRegistryProviderProps = {
   children: React.ReactNode
-  registry?: StoreRegistry
-  gcTime?: number
+  registry: StoreRegistry
 }
 
-export function StoreRegistryProvider({ children, registry, gcTime }: StoreRegistryProviderProps) {
-  // Allow callers to supply a scoped registry while falling back to a shared singleton.
-  const value = React.useMemo(() => {
-    if (registry) return registry
-    if (typeof window === 'undefined') {
-      return new StoreRegistry({ gcTime })
-    }
-    if (gcTime !== undefined) {
-      return new StoreRegistry({ gcTime })
-    }
-    return defaultBrowserRegistry ?? new StoreRegistry()
-  }, [registry, gcTime])
-
-  return <StoreRegistryContext value={value}>{children}</StoreRegistryContext>
+export function StoreRegistryProvider({ children, registry }: StoreRegistryProviderProps) {
+  return <StoreRegistryContext value={registry}>{children}</StoreRegistryContext>
 }
 
 export function useStoreRegistry(override?: StoreRegistry): StoreRegistry {
