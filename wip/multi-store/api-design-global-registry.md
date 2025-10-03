@@ -136,9 +136,7 @@ One registry for the entire app to manage all store instances of any type.
 - When the observer count drops to zero, a garbage-collection timer starts. After `gcTime`
   milliseconds (defaults to 60s in the browser, infinity on the server) the registry destroys the
   instance unless a new observer arrives. Passing `gcTime: Infinity` disables the timer.
-- Store definitions and providers can override the inactivity timeout so teams can tune memory
-  pressure per store type.
-- If multiple observers provide different `gcTime` overrides, the registry keeps the longest
+- If multiple observers (`useStore()` calls) provide different `gcTime` overrides, the registry keeps the longest
   duration active so late subscribers can opt in to longer retention without being pruned by
   shorter-lived peers.
 
@@ -206,9 +204,18 @@ type UseStoreRegistryHook = (
 ) => StoreRegistry
 ```
 
+`UseStoreOptions` intentionally mirrors `CreateStoreOptions` so the same shape works everywhere:
+route-level preloads, imperative registry calls, and the React hook all accept identical inputs. The
+only extra field is `storeDef`, which tells the registry which blueprint to instantiate.
+
 #### Preloading
 
 `registry.preloadStore()` preloads the store instance for the given store definition and storeId. This is useful for preloading stores in route loaders or in event handlers. It does not suspend the component, but ensures the store is loaded and cached in the registry. It returns a promise that will either immediately resolve if the store is already loaded, or resolve once the store is. If no component mounts a `useStore()` observer after preloading, the instance will still be evicted once it sits idle for `gcTime` milliseconds (default 60 seconds in the browser).
+
+Because preloading and rendering boil down to the same registry API (`get` + `retain`), we get
+identical behaviour regardless of where the call originates—React component, router, or background
+task. Preloads simply skip the `retain` step, so the cache will eventually GC unless a component
+subscribes.
 
 ```tsx
 function ShowIssueDetailsButton({ issueId }: { issueId: string }) {
@@ -240,6 +247,8 @@ type PreloadStore = <TSchema extends LiveStoreSchema>(
   options: PreloadStoreOptions<TSchema>,
 ) => Promise<void>
 ```
+
+## Usage Examples
 
 ### Single Store Instance
 
@@ -444,6 +453,10 @@ export function useIssueStoreFromRoute() {
 ## Implementation
 
 
+The goal is to keep store instance caching and lifecycle completely framework-agnostic. The class below owns store creation, caching,
+ref-counting, and GC timers. React-specific wiring (Suspense integration, context providers) lives
+outside so other frameworks can reuse the exact same registry.
+
 ```tsx
 import * as React from 'react'
 
@@ -466,11 +479,16 @@ type StoreEntry = {
   abortController: AbortController | null
 }
 
+// Each entry represents the lifecycle of a single storeId. We keep both the current instance and
+// any pending creation work so Suspense, preloading, and imperative callers all converge on the same
+// promise.
+
 export class StoreRegistry {
   private readonly options: StoreRegistryOptions
   private readonly entries = new Map<string, StoreEntry>()
 
   constructor(options: StoreRegistryOptions = {}) {
+    // Apps can pass a different default GC window (e.g. unit tests might want instant cleanup).
     this.options = options
   }
 
@@ -488,6 +506,8 @@ export class StoreRegistry {
   }
 
   private scheduleDrop(storeId: string, delay: number) {
+    // GC timers are intentionally lazy; we always re-check observer counts to avoid destroying a
+    // store that was revived while the timer was pending.
     return setTimeout(() => {
       const latest = this.entries.get(storeId)
       if (!latest || latest.observers > 0) return
@@ -522,6 +542,8 @@ export class StoreRegistry {
     let entry = this.entries.get(storeId)
 
     if (entry?.gcTimer) {
+      // Any new interest resets the pending GC timer. If no observer re-attaches we’ll reschedule
+      // below using the latest TTL.
       clearTimeout(entry.gcTimer)
       entry.gcTimer = undefined
     }
@@ -683,6 +705,8 @@ export class StoreRegistry {
     } catch {
       // Ignore destroy failures; the registry cleanup should still proceed.
     } finally {
+      // Manual drops are “force evict” operations—callers should ensure they are not holding onto
+      // the store elsewhere. We still delete the table entry to avoid dangling references.
       this.entries.delete(storeId)
     }
   }
@@ -775,6 +799,7 @@ export function useStore<TSchema extends LiveStoreSchema>(
 
   // Track observer count so the registry can evict inactive stores after gcTime.
   React.useEffect(() => {
+    // retain() hands back a disposer so we always release—even through Strict Mode double-mounts.
     const dispose = registry.retain(storeDef, storeId, gcTime)
     return () => dispose()
   }, [registry, storeDef, storeId, gcTime])
