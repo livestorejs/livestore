@@ -37,15 +37,36 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
       }
 
       const storeId = getStoreId(from)
-      const storage = makeStorage(doSelf.ctx, doSelf.env, storeId)
+      // Resolve storage engine
+      const makeEngine = Effect.gen(function* () {
+        const opt = doOptions?.storage
+        if (opt?._tag === 'd1') {
+          const db = (doSelf.env as any)[opt.binding]
+          if (!db) {
+            return yield* UnexpectedError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
+          }
+          return { _tag: 'd1' as const, db }
+        } else if (opt?._tag === 'do-sqlite' || opt === undefined) {
+          return { _tag: 'do-sqlite' as const }
+        } else return shouldNeverHappen(`Invalid storage engine`, opt)
+      })
+
+      const engine = yield* makeEngine
+
+      const storage = makeStorage(doSelf.ctx, storeId, engine)
 
       // Initialize database tables
       {
         const colSpec = State.SQLite.makeColumnSpec(eventlogTable.sqliteDef.ast)
-        // D1 database is async, so we need to use a promise
-        yield* Effect.promise(() =>
-          doSelf.env.DB.exec(`CREATE TABLE IF NOT EXISTS "${storage.dbName}" (${colSpec}) strict`),
-        )
+        if (engine._tag === 'd1') {
+          // D1 database is async, so we need to use a promise
+          yield* Effect.promise(() =>
+            engine.db.exec(`CREATE TABLE IF NOT EXISTS "${storage.dbName}" (${colSpec}) strict`),
+          )
+        } else {
+          // DO SQLite table lives in Durable Object storage
+          doSelf.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS "${storage.dbName}" (${colSpec}) strict`)
+        }
       }
       {
         const colSpec = State.SQLite.makeColumnSpec(contextTable.sqliteDef.ast)

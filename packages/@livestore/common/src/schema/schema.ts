@@ -32,6 +32,30 @@ export namespace LiveStoreSchema {
   export type Any = LiveStoreSchema<any, any>
 }
 
+/**
+ * Runtime type guard for LiveStoreSchema.
+ *
+ * The guard intentionally performs lightweight structural checks that are
+ * stable across implementations. It verifies the identifying symbol marker
+ * and the presence of core maps/state used at runtime.
+ */
+export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any, any> => {
+  if (typeof value !== 'object' || value === null) return false
+
+  const v: any = value
+
+  // Identity marker must match exactly
+  if (v.LiveStoreSchemaSymbol !== LiveStoreSchemaSymbol) return false
+
+  // Core structures used at runtime
+  const hasEventsMap = v.eventsDefsMap instanceof Map
+  const hasStateSqliteTables = v.state?.sqlite?.tables instanceof Map
+  const hasStateMaterializers = v.state?.materializers instanceof Map
+  const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
+
+  return hasEventsMap && hasStateSqliteTables && hasStateMaterializers && hasDevtoolsAlias
+}
+
 // TODO abstract this further away from sqlite/tables
 export interface InternalState {
   readonly sqlite: {

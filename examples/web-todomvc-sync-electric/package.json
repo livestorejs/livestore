@@ -4,13 +4,13 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.8",
-    "@livestore/common": "0.4.0-dev.8",
-    "@livestore/livestore": "0.4.0-dev.8",
-    "@livestore/peer-deps": "0.4.0-dev.8",
-    "@livestore/react": "0.4.0-dev.8",
-    "@livestore/sync-electric": "0.4.0-dev.8",
-    "@livestore/wa-sqlite": "0.4.0-dev.8",
+    "@livestore/adapter-web": "0.4.0-dev.9",
+    "@livestore/common": "0.4.0-dev.9",
+    "@livestore/livestore": "0.4.0-dev.9",
+    "@livestore/peer-deps": "0.4.0-dev.9",
+    "@livestore/react": "0.4.0-dev.9",
+    "@livestore/sync-electric": "0.4.0-dev.9",
+    "@livestore/wa-sqlite": "0.4.0-dev.9",
     "@overengineering/fps-meter": "0.2.1",
     "@tanstack/react-start": "1.130.15",
     "react": "19.1.1",
@@ -19,7 +19,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.8",
+    "@livestore/devtools-vite": "0.4.0-dev.9",
     "@tanstack/react-router": "^1.131.28",
     "@tanstack/router-devtools": "^1.130.13",
     "@tanstack/router-plugin": "^1.131.28",
@@ -33,7 +33,7 @@
     "vite": "^7.1.7"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",

@@ -122,6 +122,7 @@ export {
   Runtime,
   RuntimeFlags,
   Scope,
+  Sink,
   SortedMap,
   STM,
   SynchronizedRef,
@@ -133,6 +134,7 @@ export {
 } from 'effect'
 export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
+export * as Graph from 'effect/Graph'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'

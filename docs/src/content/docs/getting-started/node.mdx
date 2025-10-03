@@ -6,24 +6,12 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import { makeTiged } from '../../../../data.js'
+import { makeTiged } from '../../../data/data.ts'
+import NodeMinimalExampleSnippet from '../../_assets/code/getting-started/node/minimal-example.ts?snippet'
 
 ## Minimal example
 
-```ts
-import { makeAdapter } from '@livestore/adapter-node'
-import { createStorePromise } from '@livestore/livestore'
-import { tables, schema } from './livestore/schema.js'
-
-const adapter = makeAdapter({
-  storage: { type: 'fs' },
-  // sync: { backend: makeWsSync({ url: '...' }) },
-})
-
-const store = await createStorePromise({ adapter, schema })
-
-const todos = store.query(tables.todos)
-```
+<NodeMinimalExampleSnippet />
 
 ### Option A: Quick start
 

@@ -4,19 +4,19 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.8",
-    "@livestore/livestore": "0.4.0-dev.8",
-    "@livestore/peer-deps": "0.4.0-dev.8",
-    "@livestore/react": "0.4.0-dev.8",
-    "@livestore/sync-cf": "0.4.0-dev.8",
-    "@livestore/wa-sqlite": "0.4.0-dev.8",
+    "@livestore/adapter-web": "0.4.0-dev.9",
+    "@livestore/livestore": "0.4.0-dev.9",
+    "@livestore/peer-deps": "0.4.0-dev.9",
+    "@livestore/react": "0.4.0-dev.9",
+    "@livestore/sync-cf": "0.4.0-dev.9",
+    "@livestore/wa-sqlite": "0.4.0-dev.9",
     "@overengineering/fps-meter": "0.2.1",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.8",
+    "@livestore/devtools-vite": "0.4.0-dev.9",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
@@ -25,7 +25,7 @@
     "wrangler": "^4.38.0"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",

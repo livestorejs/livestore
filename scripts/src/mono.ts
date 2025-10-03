@@ -1,145 +1,20 @@
 import fs from 'node:fs'
 
-import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
+import { docsCommand } from './commands/docs.ts'
+import { githubCommand } from './commands/github.ts'
 import { lintCommand } from './commands/lint.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
-import { deployToNetlify } from './shared/netlify.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
-const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
-const docsPath = `${cwd}/docs`
-
-const docsBuildCommand = Cli.Command.make(
-  'build',
-  {
-    apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
-    clean: Cli.Options.boolean('clean').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Remove docs build artifacts before compilation'),
-    ),
-  },
-  Effect.fn(function* ({ apiDocs, clean }) {
-    if (clean) {
-      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { cwd: docsPath, shell: true })
-    }
-
-    yield* cmd('pnpm astro build', {
-      cwd: docsPath,
-      env: {
-        STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
-        // Building the docs sometimes runs out of memory, so we give it more
-        NODE_OPTIONS: '--max_old_space_size=4096',
-      },
-    })
-  }),
-)
-
-const docsCommand = Cli.Command.make('docs').pipe(
-  Cli.Command.withSubcommands([
-    Cli.Command.make(
-      'dev',
-      {
-        open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
-      },
-      ({ open }) =>
-        Effect.gen(function* () {
-          const logPath = `${docsPath}/logs/${new Date().toISOString()}.log`
-          fs.mkdirSync(`${docsPath}/logs`, { recursive: true })
-
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined, '2>&1', '|', 'tee', logPath], {
-            cwd: docsPath,
-            shell: true,
-          })
-        }),
-    ),
-    docsBuildCommand,
-    Cli.Command.make(
-      'deploy',
-      {
-        // TODO clean up when Effect CLI boolean flag is fixed
-        prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
-        alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
-        site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
-      },
-      Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
-          if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false })
-          }
-
-          const branchName = yield* Effect.gen(function* () {
-            if (isGithubAction) {
-              const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
-              if (branchFromEnv !== undefined && branchFromEnv !== '') {
-                return branchFromEnv
-              }
-              yield* Effect.logWarning(
-                'Could not determine branch name from GITHUB_HEAD_REF or GITHUB_REF_NAME in GitHub Actions. Falling back to git command.',
-              )
-            }
-            return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
-          })
-
-          yield* Effect.log(`Branch name: "${branchName}"`)
-
-          const devBranchName = 'dev'
-
-          const site =
-            siteOption._tag === 'Some'
-              ? siteOption.value
-              : branchName === 'main'
-                ? 'livestore-docs' // Prod site
-                : 'livestore-docs-dev' // Dev site
-
-          yield* Effect.log(`Deploying to "${site}" for draft URL`)
-
-          yield* deployToNetlify({
-            site,
-            dir: `${docsPath}/dist`,
-            target: { _tag: 'draft' },
-            cwd: docsPath,
-            filter: 'docs',
-          })
-
-          const alias =
-            aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
-
-          const prod =
-            prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
-              ? prodOption.value
-              : branchName === 'main' || branchName === devBranchName
-
-          if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
-            return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
-          }
-
-          yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
-
-          yield* deployToNetlify({
-            site,
-            dir: `${docsPath}/dist`,
-            target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
-            cwd: docsPath,
-          })
-        },
-        Effect.catchIf(
-          (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
-          () => Effect.logWarning('::warning Not logged in to Netlify'),
-        ),
-      ),
-    ),
-  ]),
-)
 
 const tsCommand = Cli.Command.make(
   'ts',
@@ -246,6 +121,7 @@ const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([
     examplesCommand,
     lintCommand,
+    githubCommand,
     testCommand,
     tsCommand,
     circularCommand,

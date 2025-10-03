@@ -26,7 +26,9 @@ const CONSTANTS = {
 }
 
 export function isMacOS(): boolean {
-  return navigator?.platform.toUpperCase().includes('MAC')
+  if (typeof navigator === 'undefined') return false
+  const platform = navigator.platform ?? ''
+  return /(Mac|iPhone|iPod|iPad)/i.test(platform)
 }
 
 export function Search() {
@@ -36,13 +38,12 @@ export function Search() {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isMac, setIsMac] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const focusableLinksRef = useRef<HTMLAnchorElement[]>([])
-
-  const isMac = isMacOS()
 
   const trimmedQuery = searchQuery.trim()
   const showClearButton = trimmedQuery.length > 0
@@ -81,6 +82,11 @@ export function Search() {
   const { searchWithDeduplication, clearActiveRequests } = useDedupeSearch({
     onStateChange: handleSearchStateChange,
   })
+
+  useEffect(() => {
+    if (!isMacOS()) return
+    setIsMac(true)
+  }, [])
 
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value)

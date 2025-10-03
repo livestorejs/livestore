@@ -1,13 +1,12 @@
-import type { HelperTypes } from '@livestore/common-cf'
+import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import { Effect, Logger, LogLevel, Scope } from '@livestore/utils/effect'
-import type * as CfWorker from './cf-types.ts'
 import { makeAdapter } from './make-adapter.ts'
 
 export type Env = {
-  SYNC_BACKEND_DO: CfWorker.DurableObjectNamespace<CfSyncBackend.SyncBackendRpcInterface>
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<CfSyncBackend.SyncBackendRpcInterface>
 }
 
 export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> = {
@@ -29,7 +28,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
     bindingName: HelperTypes.ExtractDurableObjectKeys<NoInfer<TEnv>>
   }
   /** RPC stub pointing at the sync backend Durable Object used for replication. */
-  syncBackendStub: CfWorker.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
+  syncBackendStub: CfTypes.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
   /**
    * Enables live pull mode to receive sync updates via Durable Object RPC callbacks.
    *
@@ -48,7 +47,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
 export const createStoreDo = <
   TSchema extends LiveStoreSchema,
   TEnv,
-  TState extends CfWorker.DurableObjectState = CfWorker.DurableObjectState,
+  TState extends CfTypes.DurableObjectState = CfTypes.DurableObjectState,
 >({
   schema,
   storeId,
@@ -86,7 +85,7 @@ export const createStoreDo = <
 export const createStoreDoPromise = <
   TSchema extends LiveStoreSchema,
   TEnv,
-  TState extends CfWorker.DurableObjectState = CfWorker.DurableObjectState,
+  TState extends CfTypes.DurableObjectState = CfTypes.DurableObjectState,
 >(
   options: CreateStoreDoOptions<TSchema, TEnv, TState>,
 ) =>

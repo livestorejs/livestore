@@ -4,6 +4,13 @@
 
 This repository uses [`direnv`](https://direnv.net) for automatic environment setup. Run `direnv allow` once, then direnv automatically runs the setup script which installs dependencies and builds TypeScript.
 
+## Zellij (mandatory when working in a zellij session)
+
+- Always check if you are in a zellij session by checking if `$ZELLIJ` is set to any non-empty value.
+- Keeping the active tab name accurate is required for every agent session when a zellij session is open; run `zellij action rename-tab "<new-name>"` as soon as you start the task and whenever the focus changes.
+- Tab names must stay short, descriptive, and in kebab-case (< 30 characters, abbreviations allowed).
+- Describe the current problem/goal and keep names unambiguous within the session; avoid repeating the session name.
+
 ## Tooling
 
 - When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)
@@ -29,6 +36,8 @@ Use the `mono` CLI for common workflows:
 
 - Avoid `as any`, force-casting etc as much as possible.
 - When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
+- When refactoring code you don't need to consider backwards compatibility unless specifically asked for.
+- Add helper functions at the end of the file.
 
 ## Task-based Approach
 
@@ -41,6 +50,7 @@ Use the `mono` CLI for common workflows:
 - Search external resources if relevant.
 - Begin by asking follow-up questions to set the research direction. Avoid trivial questions that you can look up yourself. Already do some preliminary research first to only ask questions that are ambiguous or strategically important.
 - Document findings in the `research.md` file.
+- When working on a bug/problem, create a separate `problem.md` to document the problem with a detailed description of the problem, the expected behavior, and the actual behavior including clear reproduction steps and evidence (e.g. logs, screenshots, CLI output, etc.).
 
 ### 2. Planning
 - Review `research.md` in `tasks/<task-id>`.
@@ -71,7 +81,8 @@ Use the `mono` CLI for common workflows:
 
 ### Issues
 
-When asked to create a GitHub issue, use the GitHub CLI to do so.
+- When asked to create a GitHub issue, use the GitHub CLI to do so.
+- Add appropriate labels to the issue. Only use existing labels, don't create new ones.
 
 ### Pull Requests
 

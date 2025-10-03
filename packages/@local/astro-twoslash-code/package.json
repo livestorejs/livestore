@@ -1,0 +1,35 @@
+{
+  "name": "@local/astro-twoslash-code",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./cli": "./src/cli/snippets.ts",
+    "./integration": "./src/integration/astro-twoslash-code.ts",
+    "./vite": "./src/vite/vite-plugin-snippet.ts",
+    "./components/multi-code": "./src/components/multi-code.ts",
+    "./components/MultiCode.astro": "./src/components/MultiCode.astro"
+  },
+  "dependencies": {
+    "@effect/platform-node": "0.98.0",
+    "@livestore/utils": "workspace:*",
+    "astro-expressive-code": "0.41.3",
+    "expressive-code": "0.41.3",
+    "expressive-code-twoslash": "0.5.3",
+    "hast": "1.0.0",
+    "hast-util-to-html": "9.0.5",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "^0.35.2",
+    "@types/hast": "^3.0.4",
+    "@types/node": "catalog:",
+    "astro": "^5.13.4",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@astrojs/starlight": "^0.35.0",
+    "astro": "^5.0.0"
+  }
+}

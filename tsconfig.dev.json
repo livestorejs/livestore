@@ -4,6 +4,7 @@
   "include": [],
   "references": [
     { "path": "./docs" },
+    { "path": "./docs/src/content/_assets/code" },
     { "path": "./scripts" },
     { "path": "./tests/integration" },
     { "path": "./tests/package-common" },

@@ -1,0 +1,24 @@
+{
+  "name": "docs-code-snippets",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@effect-atom/atom": "0.3.0",
+    "@effect-atom/atom-livestore": "0.3.0",
+    "@effect-atom/atom-react": "0.3.0",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@types/node": "catalog:",
+    "effect": "catalog:",
+    "expo-status-bar": "3.0.8",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native": "0.81.4",
+    "solid-js": "1.9.9"
+  }
+}

@@ -1,51 +1,51 @@
 name: Set up environment
-description: Set up the environment with Nix and direnv.
+description: Minimal setup using Nix + devenv (GitHub Actions integration).
 runs:
   using: composite
   steps:
-    - name: Install Determinate Nix
-      uses: DeterminateSystems/determinate-nix-action@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
 
-    - name: Use FlakeHub Cache for Nix binaries
-      # flakehub-cache-action supersedes and is faster than magic-nix-cache-action.
-      uses: DeterminateSystems/flakehub-cache-action@main
+    - name: Enable devenv Cachix cache
+      if: ${{ env.CACHIX_AUTH_TOKEN != '' }}
+      uses: cachix/cachix-action@v16
+      with:
+        # https://app.cachix.org/cache/livestore (requires auth)
+        name: livestore
+        authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile add nixpkgs#devenv
+    
+    - name: Warmup devenv (skip setup)
+      shell: bash
+      run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
 
     - name: Get pnpm store directory
       # This is needed because pnpm's store path is not fixed and can vary based on the environment.
       id: pnpm-store
       shell: bash
-      # We use `nix develop --command` because the `pnpm` CLI is installed via Nix.
-      run: echo "DIR_PATH=$(nix develop ./nix --command pnpm store path --silent)" >> $GITHUB_OUTPUT
+      # We use `devenv shell` because the `pnpm` CLI is installed via Nix.
+      # But we still skip the setup step as it would call `pnpm install` which we don't want to do here yet.
+      # Write to $GITHUB_ENV so subsequent steps can read it as env
+      run: |
+        PNPM_STORE_PATH=$(DEVENV_SKIP_SETUP=1 devenv shell --quiet pnpm store path --silent 2>/dev/null | tail -n 1 | tr -d '\r')
+        echo "PNPM_STORE_PATH=${PNPM_STORE_PATH}" >> "$GITHUB_ENV"
 
     - name: Cache pnpm store
       uses: actions/cache@v4
       with:
        # We only should cache the pnpm store, and not the node_modules directory. Caching it duplicates effort since the
        # pnpm store already covers the package contents, and leads to issues with package resolution.
-       path: ${{ steps.pnpm-store.outputs.DIR_PATH }}
+       path: ${{ env.PNPM_STORE_PATH }}
        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
        restore-keys: ${{ runner.os }}-pnpm-store-
-
-    - name: Cache direnv setup
-      uses: actions/cache@v4
-      with:
-        path: |
-          .direnv
-        key: direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/standalone/setup.ts') }}-${{ github.sha }}
-        restore-keys: |
-          direnv-${{ runner.os }}-${{ hashFiles('.envrc', 'nix/**', 'flake.nix', 'flake.lock', 'scripts/standalone/setup.ts') }}-
-
-    - name: Install direnv
+    
+    # Calls `pnpm install` and other setup steps.
+    - name: Run devenv setup script
       shell: bash
-      run: nix profile add nixpkgs#direnv
-
-    - name: Load environment with direnv
-      # See https://github.com/direnv/direnv/wiki/GitHubActions for more details
-      shell: bash
-      run: |
-        direnv allow
-        direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
-        direnv export gha >> "$GITHUB_ENV"
+      run: devenv shell --verbose env
 
     - name: Collect and log runner machine info
       shell: bash

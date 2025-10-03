@@ -1,5 +1,4 @@
 import { notYetImplemented } from '@livestore/utils'
-
 import type {
   EventDefFactInput,
   EventDefFacts,
@@ -8,7 +7,6 @@ import type {
   FactsCallback,
 } from '../../schema/EventDef.ts'
 import type * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
-import { graphologyDag } from './graphology_.ts'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.ts'
 
 export const factsSnapshotForEvents = (
@@ -34,7 +32,7 @@ export const factsSnapshotForDag = (
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
-  const orderedEventSequenceNumberStrs = graphologyDag.topologicalSort(dag)
+  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds()
 
   for (let i = 0; i < orderedEventSequenceNumberStrs.length; i++) {
     const event = dag.getNodeAttributes(orderedEventSequenceNumberStrs[i]!)

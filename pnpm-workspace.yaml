@@ -1,8 +1,10 @@
 packages:
   - scripts
   - docs
+  - docs/src/content/_assets/code
   - packages/@livestore/*
   - packages/@local/*
+  - packages/@local/astro-twoslash-code/example
   - examples/*
   - tests/*
 
@@ -29,11 +31,11 @@ catalog:
   "react-dom": 19.1.1
 
   # Testing
-  "@playwright/test": 1.55.0
+  "@playwright/test": 1.55.1-beta-1758616458000
 
   # Effect/OpenTelemetry
-  effect: 3.17.14
-  "@effect/opentelemetry": 0.57.0
+  effect: 3.18.0
+  "@effect/opentelemetry": 0.58.0
   "@opentelemetry/api": 1.9.0
 
   # Common utilities

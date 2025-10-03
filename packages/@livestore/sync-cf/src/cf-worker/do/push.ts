@@ -5,19 +5,13 @@ import {
   SyncBackend,
   UnexpectedError,
 } from '@livestore/common'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
-import {
-  type Env,
-  MAX_PULL_EVENTS_PER_MESSAGE,
-  MAX_WS_MESSAGE_BYTES,
-  type MakeDurableObjectClassOptions,
-  type StoreId,
-  WebSocketAttachmentSchema,
-} from '../shared.ts'
+import { type Env, type MakeDurableObjectClassOptions, type StoreId, WebSocketAttachmentSchema } from '../shared.ts'
 import { DoCtx } from './layer.ts'
-import { splitChunkBySize } from './ws-chunking.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
@@ -87,9 +81,9 @@ export const makePush =
         const connectedClients = ctx.getWebSockets()
 
         // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
-        const responses = Chunk.fromIterable(pushRequest.batch).pipe(
+        const responses = yield* Chunk.fromIterable(pushRequest.batch).pipe(
           splitChunkBySize({
-            maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_WS_MESSAGE_BYTES,
             encode: (items) =>
               encodePullResponse(
@@ -105,23 +99,25 @@ export const makePush =
                 }),
               ),
           }),
-          Chunk.map((eventsChunk) => {
-            const batchWithMetadata = Chunk.toReadonlyArray(eventsChunk).map((eventEncoded) => ({
-              eventEncoded,
-              metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-            }))
+          Effect.map(
+            Chunk.map((eventsChunk) => {
+              const batchWithMetadata = Chunk.toReadonlyArray(eventsChunk).map((eventEncoded) => ({
+                eventEncoded,
+                metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+              }))
 
-            const response = SyncMessage.PullResponse.make({
-              batch: batchWithMetadata,
-              pageInfo: SyncBackend.pageInfoNoMore,
-              backendId,
-            })
+              const response = SyncMessage.PullResponse.make({
+                batch: batchWithMetadata,
+                pageInfo: SyncBackend.pageInfoNoMore,
+                backendId,
+              })
 
-            return {
-              response,
-              encoded: Schema.encodeSync(SyncMessage.PullResponse)(response),
-            }
-          }),
+              return {
+                response,
+                encoded: Schema.encodeSync(SyncMessage.PullResponse)(response),
+              }
+            }),
+          ),
         )
 
         // Dual broadcasting: WebSocket + RPC clients

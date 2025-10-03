@@ -1,9 +1,8 @@
-/// <reference path="./types.d.ts" />
+/// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
-import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import type { Env } from './env.ts'
 import { schema, tables } from './schema.ts'
@@ -23,7 +22,8 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
   private readonly todosQuery = tables.todos.select()
 
   async fetch(request: Request): Promise<Response> {
-    this.storeId = storeIdFromRequest(request as unknown as CfTypes.Request)
+    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
+    this.storeId = storeIdFromRequest(request)
 
     const store = await this.getStore()
     await this.subscribeToStore()
@@ -47,7 +47,8 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       clientId: 'client-do',
       sessionId: nanoid(),
       durableObject: {
-        ctx: this.ctx as CfTypes.DurableObjectState,
+        // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
+        ctx: this.ctx,
         env: this.env,
         bindingName: 'CLIENT_DO',
       },

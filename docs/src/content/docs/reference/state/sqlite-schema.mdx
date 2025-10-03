@@ -4,8 +4,12 @@ sidebar:
   order: 2
 ---
 
-import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
-import schemaCode from '../../../../../../examples/web-todomvc/src/livestore/schema.ts?raw'
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import SchemaSnippet from '../../../../../../examples/web-todomvc/src/livestore/schema.ts?snippet'
+import ClientDocumentBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-basic.tsx?snippet'
+import ClientDocumentKvSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-kv.tsx?snippet'
+import JsonStructSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/json-struct.ts?snippet'
+import TableBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/table-basic.ts?snippet'
 
 LiveStore provides a schema definition language for defining your database tables and mutation definitions using explicit column configurations. LiveStore automatically migrates your database schema when you change your schema definitions.
 
@@ -15,7 +19,7 @@ LiveStore provides a schema definition language for defining your database table
 
 <Tabs syncKey="package-manager">
   <TabItem label="schema.ts">
-    <Code lang="ts" code={schemaCode} />
+    <SchemaSnippet />
   </TabItem>
 </Tabs>
 
@@ -23,19 +27,9 @@ LiveStore provides a schema definition language for defining your database table
 
 Define SQLite tables using explicit column definitions:
 
-```ts
-export const userTable = State.SQLite.table({
-  name: 'users',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }),
-    email: State.SQLite.text({ unique: true }),
-    name: State.SQLite.text(),
-    age: State.SQLite.integer({ default: 0 }),
-    isActive: State.SQLite.boolean({ default: true }),
-    metadata: State.SQLite.json({ nullable: true }),
-  }
-})
-```
+<TableBasicSnippet />
+
+Use the optional `indexes` array to declare secondary indexes or enforce uniqueness (set `isUnique: true`).
 
 ## Column Types
 
@@ -61,23 +55,7 @@ You can also provide a custom schema for a column which is used to automatically
 
 ### Example: JSON-encoded struct
 
-```ts
-import { State, Schema } from '@livestore/livestore'
-
-export const UserMetadata = Schema.Struct({ 
-  petName: Schema.String,
-  favoriteColor: Schema.Literal('red', 'blue', 'green'),
- })
-
-export const userTable = State.SQLite.table({
-  name: 'user',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }),
-    name: State.SQLite.text(),
-    metadata: State.SQLite.json({ schema: UserMetadata }),
-  }
-})
-```
+<JsonStructSnippet />
 
 ### Schema migrations
 
@@ -99,60 +77,13 @@ Migration strategies:
 
 ### Basic usage
 
-```ts
-import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
-
-// Define a client document for simple UI state
-export const uiState = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    newTodoText: Schema.String,
-    filter: Schema.Literal('all', 'active', 'completed'),
-  }),
-  // Using a default id lets you omit the id in get/set calls
-  default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
-})
-
-// Get value (uses default id)
-const value = store.query(uiState.get())
-
-// Update value (partial updates are merged for Struct schemas by default)
-store.commit(uiState.set({ newTodoText: 'Buy milk' }))
-
-// In React
-const [state, setState] = store.useClientDocument(uiState)
-setState({ filter: 'active' })
-```
+<ClientDocumentBasicSnippet />
 
 ### KV-style client document
 
 Sometimes you want a simple key-value store for arbitrary values without partial merging. You can model this by using `Schema.Any` as the value schema. With `Schema.Any`, updates fully replace the stored value (no partial merge semantics).
 
-```ts
-import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
-
-export const kv = State.SQLite.clientDocument({
-  name: 'Kv',
-  // Any JSON-serializable value; updates will fully replace the value
-  schema: Schema.Any,
-  // Choose an appropriate default value
-  default: { value: null },
-})
-
-// Usage with the store API
-
-// Get value
-const value = store.query(kv.get('some-id'))
-
-// Set value
-store.commit(kv.set({ some: 'payload' }, 'some-id'))
-store.commit(kv.set(123, 'some-id'))
-
-// Usage with React
-const [value, setValue] = store.useClientDocument(kv, 'some-id')
-setValue('hello')
-setValue({ b: 2 }) // replaces the previous value
-```
+<ClientDocumentKvSnippet />
 
 ## Column Types
 
@@ -178,23 +109,7 @@ You can also provide a custom schema for a column which is used to automatically
 
 #### Example: JSON-encoded struct
 
-```ts
-import { State, Schema } from '@livestore/livestore'
-
-export const UserMetadata = Schema.Struct({ 
-  petName: Schema.String,
-  favoriteColor: Schema.Literal('red', 'blue', 'green'),
- })
-
-export const userTable = State.SQLite.table({
-  name: 'user',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }),
-    name: State.SQLite.text(),
-    metadata: State.SQLite.json({ schema: UserMetadata }),
-  }
-})
-```
+<JsonStructSnippet />
 
 ## Best Practices
 
@@ -204,7 +119,7 @@ export const userTable = State.SQLite.table({
 - Set `primaryKey: true` for primary key columns
 - Use `nullable: true` for columns that can contain NULL values
 - Provide meaningful `default` values where appropriate
-- Use `unique: true` for columns that should have unique constraints
+- Add unique constraints via table `indexes` using `isUnique: true`
 
 ### Schema Design
 

@@ -153,7 +153,7 @@
     {
       "label": "lint",
       "type": "shell",
-      "command": "direnv exec . biome check",
+      "command": "direnv exec . mono lint",
       // TODO add biome problem matcher once available https://github.com/biomejs/biome-vscode/discussions/121
       // "problemMatcher": [],
       "problemMatcher": {
@@ -176,6 +176,19 @@
       },
       "presentation": {
         "focus": false,
+        "panel": "shared",
+        "group": "dev:lint",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "lint:fix",
+      "type": "shell",
+      "command": "direnv exec . mono lint --fix",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
         "panel": "shared",
         "group": "dev:lint",
         "showReuseMessage": false,

@@ -429,7 +429,12 @@ const backgroundApplyLocalPushes = ({
       // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
       const [newEvents, deferreds] = pipe(
         batchItems,
-        ReadonlyArray.filter(([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration === currentRebaseGeneration),
+        ReadonlyArray.filter(
+          ([eventEncoded]) =>
+            // Keep events that match the current generation or newer. Older generations will
+            // be rejected below when their sequence numbers no longer advance the local head.
+            eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
+        ),
         ReadonlyArray.unzip,
       )
 
@@ -982,6 +987,11 @@ const makePullQueueSet = Effect.gen(function* () {
   }
 })
 
+/**
+ * Validate a client-provided batch before it is admitted to the leader queue.
+ * Ensures the numbers form a strictly increasing chain and that the first
+ * event sits ahead of the current push head.
+ */
 const validatePushBatch = (
   batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
   pushHead: EventSequenceNumber.EventSequenceNumber,
@@ -991,12 +1001,16 @@ const validatePushBatch = (
       return
     }
 
-    // Make sure batch is monotonically increasing
+    // Example: session A already enqueued e1…e6 while session B (same client, different
+    // session) still believes the head is e1 and submits [e2, e7, e8]. The numbers look
+    // monotonic from B’s perspective, but we must reject and force B to rebase locally
+    // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
-        shouldNeverHappen(
-          `Events must be ordered in monotonically ascending order by eventNum. Received: [${batch.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-        )
+        return yield* LeaderAheadError.make({
+          minimumExpectedNum: batch[i - 1]!.seqNum,
+          providedNum: batch[i]!.seqNum,
+        })
       }
     }
 

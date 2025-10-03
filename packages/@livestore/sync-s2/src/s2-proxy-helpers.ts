@@ -5,6 +5,7 @@
 
 import type { LiveStoreEvent } from '@livestore/livestore'
 import type { PullArgs } from './api-schema.ts'
+import { chunkEventsForS2 } from './limits.ts'
 import { makeS2StreamName } from './make-s2-url.ts'
 
 /** Configuration for S2 connections */
@@ -31,7 +32,7 @@ export const getAccountUrl = (config: S2Config, path: string): string => {
 export const getStreamRecordsUrl = (
   config: S2Config,
   stream: string,
-  params?: { seq_num?: number; count?: number; clamp?: boolean },
+  params?: { seq_num?: number; count?: number; clamp?: boolean; wait?: number },
 ): string => {
   const base = getBasinUrl(config, `/streams/${encodeURIComponent(stream)}/records`)
   if (!params) return base
@@ -43,6 +44,8 @@ export const getStreamRecordsUrl = (
   if (params.count !== undefined) searchParams.append('count', params.count.toString())
   /** clamp - Whether to clamp the response to the requested count. See: https://docs.s2.dev/api#clamp */
   if (params.clamp !== undefined) searchParams.append('clamp', params.clamp.toString())
+  /** wait - How long to wait for new records before returning. See: https://docs.s2.dev/api#wait */
+  if (params.wait !== undefined) searchParams.append('wait', params.wait.toString())
 
   return searchParams.toString() ? `${base}?${searchParams}` : base
 }
@@ -115,16 +118,28 @@ export const buildPullRequest = ({
     const url = getStreamRecordsUrl(config, streamName, { seq_num, clamp: true })
     return { url, headers: getSSEHeaders(config.token) }
   } else {
-    // Non-live pulls also stream over SSE: we request a very large `count` and
-    // rely on S2 closing the stream once the page tail is reached. This keeps
-    // both live and paged reads on the same transport while still giving us a
-    // natural end-of-stream signal.
-    const url = getStreamRecordsUrl(config, streamName, { seq_num, count: Number.MAX_SAFE_INTEGER, clamp: true })
+    // Non-live pulls also stream over SSE. We ask S2 to return immediately when
+    // the tail is reached by setting wait=0 which gives us an explicit
+    // end-of-stream without requesting an arbitrarily large page size.
+    const url = getStreamRecordsUrl(config, streamName, { seq_num, wait: 0, clamp: true })
     return { url, headers: getSSEHeaders(config.token) }
   }
 }
 
-export const buildPushRequest = ({
+export interface S2PushRequest {
+  readonly url: string
+  readonly method: 'POST'
+  readonly headers: Record<string, string>
+  readonly body: string
+}
+
+/**
+ * Builds one or more append requests against S2. The helper applies the
+ * documented 1 MiB / 1000-record limits via `chunkEventsForS2`, so callers
+ * receive a request per compliant chunk instead of hitting 413 responses at
+ * runtime.
+ */
+export const buildPushRequests = ({
   config,
   storeId,
   batch,
@@ -132,21 +147,17 @@ export const buildPushRequest = ({
   config: S2Config
   storeId: string
   batch: readonly LiveStoreEvent.AnyEncodedGlobal[]
-}): {
-  url: string
-  method: 'POST'
-  headers: Record<string, string>
-  /** JSON-encoded batch */
-  body: string
-} => {
+}): ReadonlyArray<S2PushRequest> => {
   const streamName = makeS2StreamName(storeId)
   const url = getBasinUrl(config, `/streams/${encodeURIComponent(streamName)}/records`)
-  return {
+  const chunks = chunkEventsForS2(batch)
+
+  return chunks.map((chunk) => ({
     url,
-    method: 'POST',
+    method: 'POST' as const,
     headers: getPushHeaders(config.token),
-    body: JSON.stringify(formatBatchForS2(batch)),
-  }
+    body: JSON.stringify({ records: chunk.records }),
+  }))
 }
 
 // Response helpers
@@ -175,22 +186,4 @@ export const errorResponse = (message: string, status = 500): Response => {
     status,
     headers: { 'content-type': 'application/json' },
   })
-}
-
-// Batch formatting helper
-export const formatBatchForS2 = (
-  batch: readonly LiveStoreEvent.AnyEncodedGlobal[],
-): { records: { body: string }[] } => {
-  return {
-    records: batch.map((ev) => ({ body: JSON.stringify(ev) })),
-  }
-}
-
-export const asCurl = (request: { url: string; method: string; headers: Record<string, string>; body?: string }) => {
-  const url = request.url
-  const method = request.method
-  const headers = Object.entries(request.headers).map(([key, value]) => `-H "${key}: ${value}"`)
-  const body = request.body
-  const headersStr = headers.join(' ')
-  return `curl -X ${method} ${url} ${headersStr} ${body ? `-d '${body}'` : ''}`
 }

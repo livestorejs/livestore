@@ -30,11 +30,11 @@ export default {
     }
 
     if (url.pathname === '/') {
-      // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+      // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
       return new Response('LiveChat App with CF DO Bot') as CfTypes.Response
     }
 
-    // @ts-expect-error TODO remove casts once CF types are fixed in `@cloudflare/workers-types`
+    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     return new Response('Not found', { status: 404 }) as CfTypes.Response
   },
 } satisfies CfTypes.ExportedHandler<Env>

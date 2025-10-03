@@ -50,6 +50,7 @@ import {
 import * as ApiSchema from './api-schema.ts'
 import { decodeReadBatch } from './decode.ts'
 import * as HttpClientGenerated from './http-client-generated.ts'
+import { chunkEventsForS2, S2LimitExceededError } from './limits.ts'
 import type { SyncMetadata } from './types.ts'
 
 export interface SyncS2Options {
@@ -247,15 +248,53 @@ export const makeSyncBackend =
           }
         },
         push: (batch) =>
-          HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(HttpClientRequest.post(pushEndpoint), {
-            storeId,
-            batch,
-          }).pipe(
-            Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
-            Effect.andThen(HttpClientResponse.schemaBodyJson(ApiSchema.PushResponse)),
-            Effect.mapError((cause) => InvalidPushError.make({ cause: UnexpectedError.make({ cause }) })),
-            Effect.retry(retry?.push ?? defaultRetry),
-          ),
+          Effect.gen(function* () {
+            const makeInvalidPushError = (cause: unknown): InvalidPushError => {
+              if (cause instanceof InvalidPushError) {
+                return cause
+              }
+
+              if (cause instanceof UnexpectedError) {
+                return new InvalidPushError({ cause })
+              }
+
+              if (cause instanceof S2LimitExceededError) {
+                const note =
+                  cause.limitType === 'record-metered-bytes'
+                    ? `S2 record exceeded ${cause.max} metered bytes (actual: ${cause.actual})`
+                    : `S2 batch exceeded ${cause.max} (type: ${cause.limitType}, actual: ${cause.actual})`
+
+                return new InvalidPushError({
+                  cause: new UnexpectedError({
+                    cause,
+                    note,
+                    payload: {
+                      limitType: cause.limitType,
+                      max: cause.max,
+                      actual: cause.actual,
+                      recordIndex: cause.recordIndex,
+                    },
+                  }),
+                })
+              }
+
+              return new InvalidPushError({ cause: new UnexpectedError({ cause }) })
+            }
+
+            const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(makeInvalidPushError))
+
+            for (const chunk of chunks) {
+              yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(HttpClientRequest.post(pushEndpoint), {
+                storeId,
+                batch: chunk.events,
+              }).pipe(
+                Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+                Effect.andThen(HttpClientResponse.schemaBodyJson(ApiSchema.PushResponse)),
+                Effect.mapError(makeInvalidPushError),
+                Effect.retry(retry?.push ?? defaultRetry),
+              )
+            }
+          }),
         ping,
         isConnected,
         metadata: {

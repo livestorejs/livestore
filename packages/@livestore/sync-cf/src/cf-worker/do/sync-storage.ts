@@ -3,7 +3,7 @@ import type { LiveStoreEvent } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { SyncMetadata } from '../../common/sync-message-types.ts'
-import { type Env, PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
+import { PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
 import { eventlogTable } from './sqlite.ts'
 
 export type SyncStorage = {
@@ -25,12 +25,16 @@ export type SyncStorage = {
   resetStore: Effect.Effect<void, UnexpectedError>
 }
 
-export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: StoreId): SyncStorage => {
+export const makeStorage = (
+  ctx: CfTypes.DurableObjectState,
+  storeId: StoreId,
+  engine: { _tag: 'd1'; db: CfTypes.D1Database } | { _tag: 'do-sqlite' },
+): SyncStorage => {
   const dbName = `eventlog_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
 
   const execDb = <T>(cb: (db: CfTypes.D1Database) => Promise<CfTypes.D1Result<T>>) =>
     Effect.tryPromise({
-      try: () => cb(env.DB),
+      try: () => cb(engine._tag === 'd1' ? engine.db : (undefined as never)),
       catch: (error) => new UnexpectedError({ cause: error, payload: { dbName } }),
     }).pipe(
       Effect.map((_) => _.results),
@@ -66,7 +70,7 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
     return limit
   }
 
-  const getEvents = (
+  const getEventsD1 = (
     cursor: number | undefined,
   ): Effect.Effect<
     {
@@ -144,10 +148,12 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
       return { total, stream }
     }).pipe(
       UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', { attributes: { dbName, cursor } }),
+      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
+        attributes: { dbName, cursor, engine: engine._tag },
+      }),
     )
 
-  const appendEvents: SyncStorage['appendEvents'] = (batch, createdAt) =>
+  const appendEventsD1: SyncStorage['appendEvents'] = (batch, createdAt) =>
     Effect.gen(function* () {
       // If there are no events, do nothing.
       if (batch.length === 0) return
@@ -184,7 +190,7 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
     }).pipe(
       UnexpectedError.mapToUnexpectedError,
       Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
-        attributes: { dbName, batchLength: batch.length },
+        attributes: { dbName, batchLength: batch.length, engine: engine._tag },
       }),
     )
 
@@ -193,13 +199,123 @@ export const makeStorage = (ctx: CfTypes.DurableObjectState, env: Env, storeId: 
     Effect.withSpan('@livestore/sync-cf:durable-object:resetStore'),
   )
 
-  return {
-    dbName,
-    // getHead,
-    getEvents,
-    appendEvents,
-    resetStore,
+  // DO SQLite engine implementation
+  const getEventsDoSqlite = (
+    cursor: number | undefined,
+  ): Effect.Effect<
+    {
+      total: number
+      stream: Stream.Stream<
+        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
+        UnexpectedError
+      >
+    },
+    UnexpectedError
+  > =>
+    Effect.gen(function* () {
+      const selectCountSql =
+        cursor === undefined
+          ? `SELECT COUNT(*) as total FROM "${dbName}"`
+          : `SELECT COUNT(*) as total FROM "${dbName}" WHERE seqNum > ?`
+
+      let total = 0
+      try {
+        const cursorIter =
+          cursor === undefined ? ctx.storage.sql.exec(selectCountSql) : ctx.storage.sql.exec(selectCountSql, cursor)
+        for (const row of cursorIter) {
+          total = Number((row as any).total ?? 0)
+        }
+      } catch (error) {
+        return yield* Effect.fail(new UnexpectedError({ cause: error, payload: { dbName, stage: 'count' } }))
+      }
+
+      type State = { cursor: number | undefined }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
+
+      const DO_PAGE_SIZE = 256
+      const initialState: State = { cursor }
+
+      const fetchPage = (
+        state: State,
+      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnexpectedError> =>
+        Effect.try({
+          try: () => {
+            const sql =
+              state.cursor === undefined
+                ? `SELECT * FROM "${dbName}" ORDER BY seqNum ASC LIMIT ?`
+                : `SELECT * FROM "${dbName}" WHERE seqNum > ? ORDER BY seqNum ASC LIMIT ?`
+
+            const iter =
+              state.cursor === undefined
+                ? ctx.storage.sql.exec(sql, DO_PAGE_SIZE)
+                : ctx.storage.sql.exec(sql, state.cursor, DO_PAGE_SIZE)
+
+            const rows: any[] = []
+            for (const row of iter) rows.push(row)
+
+            if (rows.length === 0) {
+              return Option.none()
+            }
+
+            const decodedRows = Chunk.fromIterable(decodeEventlogRows(rows))
+            const eventsChunk = Chunk.map(decodedRows, ({ createdAt, ...eventEncoded }) => ({
+              eventEncoded,
+              metadata: Option.some(SyncMetadata.make({ createdAt })),
+            }))
+
+            const lastSeqNum = Chunk.unsafeLast(decodedRows).seqNum
+            const nextState: State = { cursor: lastSeqNum }
+
+            return Option.some([eventsChunk, nextState] as const)
+          },
+          catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'select' } }),
+        })
+
+      const stream = Stream.unfoldChunkEffect(initialState, fetchPage)
+
+      return { total, stream }
+    }).pipe(
+      UnexpectedError.mapToUnexpectedError,
+      Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
+        attributes: { dbName, cursor, engine: engine._tag },
+      }),
+    )
+
+  const appendEventsDoSqlite: SyncStorage['appendEvents'] = (batch, createdAt) =>
+    Effect.try({
+      try: () => {
+        if (batch.length === 0) return
+        // Keep params per statement within conservative limits (align with D1 bound params ~100)
+        const CHUNK_SIZE = 14
+        for (let i = 0; i < batch.length; i += CHUNK_SIZE) {
+          const chunk = batch.slice(i, i + CHUNK_SIZE)
+          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')
+          const sql = `INSERT INTO "${dbName}" (seqNum, parentSeqNum, args, name, createdAt, clientId, sessionId) VALUES ${placeholders}`
+          const params = chunk.flatMap((event) => [
+            event.seqNum,
+            event.parentSeqNum,
+            event.args === undefined ? null : JSON.stringify(event.args),
+            event.name,
+            createdAt,
+            event.clientId,
+            event.sessionId,
+          ])
+          ctx.storage.sql.exec(sql, ...params)
+        }
+      },
+      catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'insert' } }),
+    }).pipe(
+      Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
+        attributes: { dbName, batchLength: batch.length, engine: engine._tag },
+      }),
+      UnexpectedError.mapToUnexpectedError,
+    )
+
+  if (engine._tag === 'd1') {
+    return { dbName, getEvents: getEventsD1, appendEvents: appendEventsD1, resetStore }
   }
+
+  return { dbName, getEvents: getEventsDoSqlite, appendEvents: appendEventsDoSqlite, resetStore }
 }
 
 const toValidTableName = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_')

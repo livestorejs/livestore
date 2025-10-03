@@ -1,12 +1,11 @@
 import type { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
 export interface Env {
-  /** Eventlog database */
-  DB: CfTypes.D1Database
   ADMIN_SECRET: string
 }
 
@@ -21,7 +20,19 @@ export type MakeDurableObjectClassOptions = {
     context: { storeId: StoreId; payload?: Schema.JsonValue },
   ) => Effect.SyncOrPromiseOrEffect<void>
   onPullRes?: (message: SyncMessage.PullResponse | InvalidPullError) => Effect.SyncOrPromiseOrEffect<void>
-  // TODO make storage configurable: D1, DO SQLite, later: external SQLite
+  /**
+   * Storage engine for event persistence.
+   * - Default: `{ _tag: 'do-sqlite' }` (Durable Object SQLite)
+   * - D1: `{ _tag: 'd1', binding: string }` where `binding` is the D1 binding name in wrangler.toml.
+   *
+   * If omitted, the runtime defaults to DO SQLite. For backwards-compatibility, if an env binding named
+   * `DB` exists and looks like a D1Database, D1 will be used.
+   *
+   * Trade-offs:
+   * - DO SQLite: simpler deploy, data co-located with DO, not externally queryable
+   * - D1: centralized DB, inspectable with DB tools, extra network hop and JSON size limits
+   */
+  storage?: { _tag: 'do-sqlite' } | { _tag: 'd1'; binding: string }
 
   /**
    * Enabled transports for sync backend
@@ -68,13 +79,6 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
 
   return paramsResult.value
 }
-
-export const MAX_PULL_EVENTS_PER_MESSAGE = 100
-
-// Cloudflare hibernated WebSocket frames begin failing just below 1MB. Keep our
-// payloads comfortably beneath that ceiling so we don't rely on implementation
-// quirks of local dev servers.
-export const MAX_WS_MESSAGE_BYTES = 900_000
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {

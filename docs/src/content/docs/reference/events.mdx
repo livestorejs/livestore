@@ -4,6 +4,9 @@ sidebar:
   order: 4
 ---
 
+import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
+import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
+
 ## Event definitions
 
 There are two types of events:
@@ -17,21 +20,7 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 ### Example
 
-```ts
-// livestore/schema.ts
-import { Events, Schema, sql } from '@livestore/livestore'
-
-export const events = {
-  todoCreated: Events.synced({
-    name: 'v1.TodoCreated',
-    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-  }),
-  todoCompleted: Events.synced({
-    name: 'v1.TodoCompleted',
-    schema: Schema.Struct({ id: Schema.String }),
-  }),
-}
-```
+<EventSchemaSnippet />
 
 ### Best Practices
 
@@ -54,14 +43,7 @@ export const events = {
 
 ## Commiting events
 
-```ts
-// somewhere in your app
-import { events } from './livestore/schema.js'
-
-store.commit(
-	events.todoCreated({ id: '1', text: 'Buy milk' })
-)
-```
+<CommitEventSnippet />
 
 ## Eventlog
 

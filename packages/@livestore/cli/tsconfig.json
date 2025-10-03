@@ -3,8 +3,19 @@
   "compilerOptions": {
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@livestore/livestore": ["../livestore/src/mod.ts"],
+      "@livestore/adapter-node": ["../adapter-node/src/index.ts"],
+      "@livestore/sync-cf/client": ["../sync-cf/src/client/mod.ts"]
+    }
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../common" }, { "path": "../utils" }]
+  "references": [
+    { "path": "../common" },
+    { "path": "../utils" },
+    { "path": "../livestore" },
+    { "path": "../adapter-node" },
+    { "path": "../sync-cf" }
+  ]
 }
