@@ -138,9 +138,6 @@ One registry for the entire app to manage all store instances of any type.
   instance unless a new observer arrives. Passing `gcTime: Infinity` disables the timer.
 - Store definitions and providers can override the inactivity timeout so teams can tune memory
   pressure per store type.
-- During SSR create a fresh `StoreRegistry` per request (like `new QueryClient()` in TanStack
-  Query) and pass it to the provider. On the client you can memoize a single registry for the tree
-  or scope multiple registries as needed.
 - If multiple observers provide different `gcTime` overrides, the registry keeps the longest
   duration active so late subscribers can opt in to longer retention without being pruned by
   shorter-lived peers.
@@ -148,17 +145,18 @@ One registry for the entire app to manage all store instances of any type.
 ```tsx
 // src/App.tsx
 import { Suspense, useState } from 'react'
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { LiveStoreProvider, StoreRegistry } from '@livestore/react'
 import MainContent from './MainContent.tsx'
 
 export default function App() {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
+  
   return (
-    <StoreRegistryProvider registry={registry}>
+    <LiveStoreProvider storeRegistry={storeRegistry}>
       <Suspense fallback={<div>Loading...</div>}>
         <MainContent />
       </Suspense>
-    </StoreRegistryProvider>
+    </LiveStoreProvider>
   )
 }
 ```
@@ -275,10 +273,14 @@ function MainContent() {
 
 ```tsx
 function App() {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+
   return (
-    <StoreRegistryProvider>
+    <LiveStoreProvider
+      storeRegistry={storeRegistry}
+    >
       <MainContent />
-    </StoreRegistryProvider>
+    </LiveStoreProvider>
   )
 }
 
@@ -317,10 +319,14 @@ function IssueView({ issueId }: { issueId: string }) {
 
 ```tsx
 function App() {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+
   return (
-    <StoreRegistryProvider>
+    <LiveStoreProvider
+      storeRegistry={storeRegistry}
+    >
       <MainContent/>
-    </StoreRegistryProvider>
+    </LiveStoreProvider>
   )
 }
 
@@ -699,25 +705,56 @@ export class StoreRegistry {
   }
 }
 
-// --- Top-level provider giving access to the registry instance ---
+// --- LiveStoreProvider now passes through the registry instance ---
 const StoreRegistryContext = React.createContext<StoreRegistry | null>(null)
 
-type StoreRegistryProviderProps = {
+type LiveStoreProviderBaseProps = {
   children: React.ReactNode
-  registry: StoreRegistry
+  // ...existing LiveStoreProvider props (unchanged)
 }
 
-export function StoreRegistryProvider({ children, registry }: StoreRegistryProviderProps) {
-  return <StoreRegistryContext value={registry}>{children}</StoreRegistryContext>
+type MultiStoreLiveStoreProviderProps = LiveStoreProviderBaseProps & {
+  storeRegistry: StoreRegistry
+}
+
+type SingleStoreLiveStoreProviderProps = LiveStoreProviderBaseProps & {
+  schema: LiveStoreSchema
+  adapter: Adapter
+  batchUpdates?: (callback: () => void) => void
+}
+
+type LiveStoreProviderProps =
+  | MultiStoreLiveStoreProviderProps
+  | SingleStoreLiveStoreProviderProps
+
+export function LiveStoreProvider(props: LiveStoreProviderProps) {
+  if ('storeRegistry' in props) {
+    const { storeRegistry, ...rest } = props
+    return (
+      <StoreRegistryContext value={storeRegistry}>
+        <BaseLiveStoreProvider {...rest} />
+      </StoreRegistryContext>
+    )
+  }
+
+  const { schema, adapter, batchUpdates, ...rest } = props
+
+  return (
+    <BaseLiveStoreProvider
+      schema={schema}
+      adapter={adapter}
+      batchUpdates={batchUpdates}
+      {...rest}
+    />
+  )
 }
 
 export function useStoreRegistry(override?: StoreRegistry): StoreRegistry {
-  // Let advanced users inject a registry without having to remount providers.
   if (override) return override
 
   const registry = React.use(StoreRegistryContext)
   if (!registry) {
-    throw new Error('useStoreRegistry must be used within a <StoreRegistryProvider>')
+    throw new Error('useStoreRegistry must be used within a <LiveStoreProvider storeRegistry={...}>')
   }
 
   return registry
