@@ -73,6 +73,10 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
   adapter: Adapter
   batchUpdates?: (callback: () => void) => void
   /**
+   * Overrides the registry-level gcTime for stores created from this definition.
+   */
+  gcTime?: number
+  /**
    * Whether to disable LiveStore Devtools.
    *
    * @default 'auto'
@@ -93,6 +97,15 @@ type CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> = {
    */
   storeId: string
   /**
+   * Per-call override for the inactivity timeout (milliseconds).
+   */
+  gcTime?: number
+  /**
+   * Optional signal allowing adapters to cancel long-running setup if the store is dropped before
+   * creation finishes.
+   */
+  signal?: AbortSignal
+  /**
    * Payload that will be passed to the sync backend when connecting
    *
    * @default undefined
@@ -105,8 +118,12 @@ type CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> = {
 type StoreDefinition<TSchema extends LiveStoreSchema> = {
   name: string
   schema: TSchema
+  gcTime?: number
   create(options: CreateStoreOptions): Promise<Store<TSchema>>
 }
+
+// Unless overridden on the provider or per-call, gcTime defaults to 60 seconds in the browser
+// and Infinity during SSR to avoid tearing down stores while generating HTML.
 ```
 
 
@@ -114,6 +131,19 @@ type StoreDefinition<TSchema extends LiveStoreSchema> = {
 ### Store Registry
 
 One registry for the entire app to manage all store instances of any type.
+
+- Instances stay alive while they have at least one observer (e.g. via `useStore`).
+- When the observer count drops to zero, a garbage-collection timer starts. After `gcTime`
+  milliseconds (defaults to 60s in the browser, infinity on the server) the registry destroys the
+  instance unless a new observer arrives. Passing `gcTime: Infinity` disables the timer.
+- Store definitions and providers can override the inactivity timeout so teams can tune memory
+  pressure per store type.
+- During SSR we always create a fresh `StoreRegistry`, mirroring how TanStack Query isolates caches
+  per request. On the client a shared singleton keeps the registry stable unless you supply your
+  own instance.
+- If multiple observers provide different `gcTime` overrides, the registry keeps the longest
+  duration active so late subscribers can opt in to longer retention without being pruned by
+  shorter-lived peers.
 
 ```tsx
 // src/App.tsx
@@ -163,9 +193,8 @@ function IssueView({ issueId }: { issueId: string }) {
 ##### Types
 
 ```ts
-type UseStoreOptions<TSchema extends LiveStoreSchema> = {
+type UseStoreOptions<TSchema extends LiveStoreSchema> = CreateStoreOptions<TSchema> & {
   storeDef: StoreDefinition<TSchema>
-  storeId: string
 }
 
 type UseStoreHook = <TSchema extends LiveStoreSchema>(
@@ -180,7 +209,7 @@ type UseStoreRegistryHook = (
 
 #### Preloading
 
-`registry.preloadStore()` preloads the store instance for the given store definition and storeId. This is useful for preloading stores in route loaders or in event handlers. It does not suspend the component, but ensures the store is loaded and cached in the registry. It returns a promise that will either immediately resolve if the store is already loaded, or resolve once the store it is.
+`registry.preloadStore()` preloads the store instance for the given store definition and storeId. This is useful for preloading stores in route loaders or in event handlers. It does not suspend the component, but ensures the store is loaded and cached in the registry. It returns a promise that will either immediately resolve if the store is already loaded, or resolve once the store is. If no component mounts a `useStore()` observer after preloading, the instance will still be evicted once it sits idle for `gcTime` milliseconds (default 60 seconds in the browser).
 
 ```tsx
 function ShowIssueDetailsButton({ issueId }: { issueId: string }) {
@@ -204,9 +233,8 @@ function ShowIssueDetailsButton({ issueId }: { issueId: string }) {
 ##### Types
 
 ```ts
-type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
+type PreloadStoreOptions<TSchema extends LiveStoreSchema> = CreateStoreOptions<TSchema> & {
   storeDef: StoreDefinition<TSchema>
-  storeId: string
 }
 
 type PreloadStore = <TSchema extends LiveStoreSchema>(
@@ -345,7 +373,7 @@ function IssueView({ issueId }: { issueId: string }) {
 }
 ```
 
-### User-Land Helpers
+### User-Space Helpers
 
 ```ts
 // src/stores/workspace/index.ts
@@ -412,84 +440,287 @@ export function useIssueStoreFromRoute() {
 ```tsx
 import * as React from 'react'
 
-// --- Registry caches create() results as Thenables (suspense-friendly) ---
+// --- Registry caches create() results and retires inactive stores after gcTime ---
+const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+
+type StoreRegistryOptions = {
+  gcTime?: number
+}
+
+type StoreEntry = {
+  promise: Promise<Store<any>>
+  instance?: Store<any>
+  observers: number
+  gcTimer?: ReturnType<typeof setTimeout>
+  gcTime: number
+  baseGcTime: number
+  observerGcTimes: Map<number, number>
+  storeDef: StoreDefinition<any>
+  abortController: AbortController | null
+}
+
 export class StoreRegistry {
-  private storePromises = new Map<string, Promise<Store<any>>>()
-  private storeInstances = new Map<string, Store<any>>()
-  private owners = new Map<string, StoreDefinition<any>>()
+  private readonly options: StoreRegistryOptions
+  private readonly entries = new Map<string, StoreEntry>()
+
+  constructor(options: StoreRegistryOptions = {}) {
+    this.options = options
+  }
+
+  private resolveGcTime<TSchema extends LiveStoreSchema>(
+    def: StoreDefinition<TSchema>,
+    override?: number,
+  ): number {
+    if (override === Infinity) return Infinity
+    if (typeof override === 'number') return override
+    if (def.gcTime === Infinity) return Infinity
+    if (typeof def.gcTime === 'number') return def.gcTime
+    if (this.options.gcTime === Infinity) return Infinity
+    if (typeof this.options.gcTime === 'number') return this.options.gcTime
+    return DEFAULT_GC_TIME
+  }
+
+  private scheduleDrop(storeId: string, delay: number) {
+    return setTimeout(() => {
+      const latest = this.entries.get(storeId)
+      if (!latest || latest.observers > 0) return
+      this.drop(storeId)
+    }, delay)
+  }
+
+  private updateEntryGcTime(entry: StoreEntry) {
+    let max = entry.baseGcTime
+    for (const gc of entry.observerGcTimes.keys()) {
+      if (gc === Infinity) {
+        max = Infinity
+        break
+      }
+      if (gc > max) max = gc
+    }
+    entry.gcTime = max
+  }
 
   async get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     options: CreateStoreOptions<TSchema>,
   ): Promise<Store<TSchema>> {
-    const storeId = options.storeId
-
-    const owner = this.owners.get(storeId)
+    const { storeId, gcTime: gcOverride, signal, ...rest } = options
+    const owner = this.entries.get(storeId)?.storeDef
     if (owner && owner !== def) {
       throw new Error(
         `storeId "${storeId}" already belongs to "${owner.name}", not "${def.name}".`,
       )
     }
-    // At this point the storeId is either unused or already registered to the same definition.
 
-    let storePromise = this.storePromises.get(storeId)
-    if (!storePromise) {
-      // Lazily create the store the first time it is requested.
-      storePromise = def.create({ ...options, storeId }).then((store) => {
-        // Cache the resolved instance to enable imperative access (e.g. destroy calls).
-        this.storeInstances.set(storeId, store)
-        return store
-      })
+    let entry = this.entries.get(storeId)
 
-      this.storePromises.set(storeId, storePromise)
-      this.owners.set(storeId, def)
+    if (entry?.gcTimer) {
+      clearTimeout(entry.gcTimer)
+      entry.gcTimer = undefined
     }
 
-    return storePromise
+    if (!entry) {
+      const computedGcTime = this.resolveGcTime(def, gcOverride)
+      const abortController = typeof AbortController === 'undefined' ? null : new AbortController()
+      const controllerSignal = signal ?? abortController?.signal
+
+      const entryPlaceholder: StoreEntry = {
+        promise: Promise.resolve(),
+        instance: undefined,
+        observers: 0,
+        gcTimer: undefined,
+        gcTime: computedGcTime,
+        baseGcTime: computedGcTime,
+        observerGcTimes: new Map(),
+        storeDef: def,
+        abortController,
+      }
+
+      const promise = Promise.resolve()
+        .then(() => def.create({ storeId, gcTime: computedGcTime, signal: controllerSignal, ...rest }))
+        .then((store) => {
+          const current = this.entries.get(storeId)
+          if (!current || current !== entryPlaceholder) {
+            try {
+              store.destroy?.()
+            } catch {
+              // Ignore destroy failures when the entry was already removed.
+            }
+            return store
+          }
+
+          entryPlaceholder.instance = store
+
+          if (entryPlaceholder.observers === 0 && entryPlaceholder.gcTime !== Infinity && !entryPlaceholder.gcTimer) {
+            entryPlaceholder.gcTimer = this.scheduleDrop(storeId, entryPlaceholder.gcTime)
+          }
+
+          return store
+        })
+        .catch((error) => {
+          if (this.entries.get(storeId) === entryPlaceholder) {
+            this.entries.delete(storeId)
+          }
+          throw error
+        })
+        .finally(() => {
+          entryPlaceholder.abortController = null
+        })
+
+      entryPlaceholder.promise = promise
+      entry = entryPlaceholder
+
+      this.entries.set(storeId, entry)
+    } else if (gcOverride !== undefined) {
+      const newBase = this.resolveGcTime(def, gcOverride)
+      if (entry.baseGcTime !== newBase) {
+        entry.baseGcTime = newBase
+        this.updateEntryGcTime(entry)
+      }
+    }
+
+    if (entry.instance && entry.observers === 0 && entry.gcTime !== Infinity) {
+      entry.gcTimer = this.scheduleDrop(storeId, entry.gcTime)
+    }
+
+    return entry.promise
+  }
+
+  retain<TSchema extends LiveStoreSchema>(
+    def: StoreDefinition<TSchema>,
+    storeId: string,
+    gcOverride?: number,
+  ) {
+    const entry = this.entries.get(storeId)
+    if (!entry) {
+      throw new Error(`StoreRegistry.retain called before store "${storeId}" was created.`)
+    }
+
+    if (entry.storeDef !== def) {
+      throw new Error(
+        `storeId "${storeId}" already belongs to "${entry.storeDef.name}", not "${def.name}".`,
+      )
+    }
+
+    entry.observers += 1
+    if (entry.gcTimer) {
+      clearTimeout(entry.gcTimer)
+      entry.gcTimer = undefined
+    }
+
+    let observerGc: number | undefined
+    if (gcOverride !== undefined) {
+      observerGc = this.resolveGcTime(def, gcOverride)
+      const count = entry.observerGcTimes.get(observerGc) ?? 0
+      entry.observerGcTimes.set(observerGc, count + 1)
+    }
+
+    this.updateEntryGcTime(entry)
+
+    // Return a disposer so callers can release automatically via useEffect cleanup.
+    return () => this.release(def, storeId, observerGc)
+  }
+
+  release<TSchema extends LiveStoreSchema>(
+    def: StoreDefinition<TSchema>,
+    storeId: string,
+    observerGc?: number,
+  ) {
+    const entry = this.entries.get(storeId)
+    if (!entry || entry.storeDef !== def) return
+
+    entry.observers = Math.max(0, entry.observers - 1)
+
+    if (observerGc !== undefined) {
+      const count = entry.observerGcTimes.get(observerGc)
+      if (count !== undefined) {
+        if (count <= 1) {
+          entry.observerGcTimes.delete(observerGc)
+        } else {
+          entry.observerGcTimes.set(observerGc, count - 1)
+        }
+      }
+    }
+
+    this.updateEntryGcTime(entry)
+
+    if (entry.observers === 0 && entry.gcTime !== Infinity && !entry.gcTimer) {
+      entry.gcTimer = this.scheduleDrop(storeId, entry.gcTime)
+    }
   }
 
   async preloadStore<TSchema extends LiveStoreSchema>(
     options: PreloadStoreOptions<TSchema>,
   ): Promise<void> {
     const { storeDef, ...createOptions } = options
-    // Reuse the main get() path so preload has identical caching semantics.
+    // Reuse the main get() path so preloads share caching and GC rules with suspense callers.
     await this.get(storeDef, createOptions)
   }
 
-  has = (storeId: string) => this.storePromises.has(storeId)
+  has = (storeId: string) => this.entries.has(storeId)
 
   drop = (storeId: string) => {
-    // Destroying the cached instance also evicts associated promises and ownership metadata.
-    this.storeInstances.get(storeId)?.destroy()
-    this.storeInstances.delete(storeId)
-    this.storePromises.delete(storeId)
-    this.owners.delete(storeId)
+    const entry = this.entries.get(storeId)
+    if (!entry) return
+
+    if (entry.gcTimer) {
+      clearTimeout(entry.gcTimer)
+    }
+
+    if (entry.abortController) {
+      entry.abortController.abort()
+      entry.abortController = null
+    }
+    try {
+      entry.instance?.destroy()
+    } catch {
+      // Ignore destroy failures; the registry cleanup should still proceed.
+    } finally {
+      this.entries.delete(storeId)
+    }
   }
 
   clear = () => {
-    for (const store of this.storeInstances.values()) {
-      // Ensure stores perform their own cleanup before we forget them.
-      store.destroy()
+    for (const entry of this.entries.values()) {
+      if (entry.gcTimer) clearTimeout(entry.gcTimer)
+      if (entry.abortController) {
+        entry.abortController.abort()
+        entry.abortController = null
+      }
+      try {
+        entry.instance?.destroy()
+      } catch {
+        // Ignore destroy failures during bulk cleanup.
+      }
     }
 
-    this.storeInstances.clear()
-    this.storePromises.clear()
-    this.owners.clear()
+    this.entries.clear()
   }
 }
 
-// --- Top-level provider giving access to the registry ---
+// --- Top-level provider giving access to (and configuring) the registry ---
 const StoreRegistryContext = React.createContext<StoreRegistry | null>(null)
-const defaultRegistry = new StoreRegistry()
+const defaultBrowserRegistry = typeof window !== 'undefined' ? new StoreRegistry() : null
 
 type StoreRegistryProviderProps = {
   children: React.ReactNode
   registry?: StoreRegistry
+  gcTime?: number
 }
 
-export function StoreRegistryProvider({ children, registry }: StoreRegistryProviderProps) {
-  // Allow callers to supply a scoped registry while falling back to the shared singleton.
-  const value = React.useMemo(() => registry ?? defaultRegistry, [registry])
+export function StoreRegistryProvider({ children, registry, gcTime }: StoreRegistryProviderProps) {
+  // Allow callers to supply a scoped registry while falling back to a shared singleton.
+  const value = React.useMemo(() => {
+    if (registry) return registry
+    if (typeof window === 'undefined') {
+      return new StoreRegistry({ gcTime })
+    }
+    if (gcTime !== undefined) {
+      return new StoreRegistry({ gcTime })
+    }
+    return defaultBrowserRegistry ?? new StoreRegistry()
+  }, [registry, gcTime])
+
   return <StoreRegistryContext value={value}>{children}</StoreRegistryContext>
 }
 
@@ -512,11 +743,18 @@ type UseStoreOptions<TSchema extends LiveStoreSchema> = CreateStoreOptions<TSche
 export function useStore<TSchema extends LiveStoreSchema>(
   options: UseStoreOptions<TSchema>,
 ): Store<TSchema> {
-  const { storeDef, ...createOptions } = options
+  const { storeDef, storeId, gcTime, ...createOptions } = options
   const registry = useStoreRegistry()
   // Suspense integration: React.use awaits the promise returned by the registry.
-  const storePromise = registry.get(storeDef, createOptions)
+  const storePromise = registry.get(storeDef, { storeId, gcTime, ...createOptions })
+  const store = React.use(storePromise)
 
-  return React.use(storePromise)
+  // Track observer count so the registry can evict inactive stores after gcTime.
+  React.useEffect(() => {
+    const dispose = registry.retain(storeDef, storeId, gcTime)
+    return () => dispose()
+  }, [registry, storeDef, storeId, gcTime])
+
+  return store
 }
 ```
