@@ -14,6 +14,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './data.js'
+import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { vitePluginSnippet } from './src/vite-plugin-snippet.js'
 
@@ -322,6 +323,7 @@ export default defineConfig({
       excludeLangs: ['mermaid', 'math'],
     },
     remarkPlugins: [
+      remarkGithubIssueLinks(),
       // MD: {#custom-id}
       // MDX: \{#custom-id\}
       remarkCustomHeaderId,
