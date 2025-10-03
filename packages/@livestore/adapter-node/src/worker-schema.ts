@@ -1,4 +1,12 @@
-import { BootStatus, Devtools, LeaderAheadError, MigrationsReport, SyncState, UnexpectedError } from '@livestore/common'
+import {
+  BootStatus,
+  Devtools,
+  LeaderAheadError,
+  MigrationsReport,
+  SyncBackend,
+  SyncState,
+  UnexpectedError,
+} from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -159,6 +167,24 @@ export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<Le
   },
 ) {}
 
+export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
+  'GetNetworkStatus',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerNetworkStatusStream>()(
+  'NetworkStatusStream',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
 export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
   payload: {},
   success: Schema.Void,
@@ -186,6 +212,8 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerExportEventlog,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
 )

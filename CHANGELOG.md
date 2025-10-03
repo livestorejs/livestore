@@ -196,6 +196,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 
 #### API & DX
 
+- **Store:** `store.networkStatus` now surfaces sync backend connectivity so apps can read the latest status or subscribe directly; the signal is no longer re-exposed on client sessions (livestorejs/livestore#394).
 - `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
 - Store operations after shutdown are rejected with a descriptive `UnexpectedError`. Shutdown now returns an Effect (see breaking changes).
