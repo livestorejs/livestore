@@ -16,10 +16,10 @@ import {
 import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, UnexpectedError } from '../adapter-types.ts'
-import { MaterializeError } from '../errors.ts'
+import type { MaterializeError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
-import { type LiveStoreSchema, resolveEventDef } from '../schema/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /**
@@ -52,7 +52,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventDecoded: LiveStoreEvent.AnyDecoded,
+    eventEncoded: LiveStoreEvent.EncodedWithMeta,
     options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
@@ -159,23 +159,11 @@ export const makeClientSessionSyncProcessor = ({
     // Materialize events to state
     const writeTables = new Set<string>()
     for (const event of mergeResult.newEvents) {
-      // TODO avoid encoding and decoding here again
-      const resolution = yield* resolveEventDef(schema, {
-        operation: '@livestore/common:ClientSessionSyncProcessor:push:materialize',
-        event,
-      }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
-
-      if (resolution._tag === 'unknown') {
-        // Materializer missing/unknown event: state already reflects the best
-        // knowledge of this client, so skip while keeping the eventlog intact.
-        continue
-      }
-      const decodedEventDef = Schema.decodeSync(eventSchema)(event)
       const {
         writeTables: newWriteTables,
         sessionChangeset,
         materializerHash,
-      } = yield* materializeEvent(decodedEventDef, {
+      } = yield* materializeEvent(event, {
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
@@ -319,23 +307,11 @@ export const makeClientSessionSyncProcessor = ({
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
-            // TODO apply changeset if available (will require tracking of write tables as well)
-            const resolution = yield* resolveEventDef(schema, {
-              operation: '@livestore/common:ClientSessionSyncProcessor:pull:materialize',
-              event,
-            }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
-
-            if (resolution._tag === 'unknown') {
-              // Unknown upstream event is treated the same as skip-on-push: the
-              // local snapshot remains unchanged until the schema catches up.
-              continue
-            }
-            const decodedEventDef = Schema.decodeSync(eventSchema)(event)
             const {
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
-            } = yield* materializeEvent(decodedEventDef, {
+            } = yield* materializeEvent(event, {
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })

@@ -2,6 +2,7 @@ import { makeAdapter } from '@livestore/adapter-node'
 import type { MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
+  type ClientSession,
   type ClientSessionLeaderThreadProxy,
   makeMockSyncBackend,
   SyncState,
@@ -10,14 +11,16 @@ import {
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { makeClientSessionSyncProcessor } from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
-import { omitUndefineds } from '@livestore/utils'
-import type { OtelTracer, Scope } from '@livestore/utils/effect'
+import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
+import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Context,
+  Deferred,
   Effect,
   FetchHttpClient,
   Layer,
@@ -26,7 +29,9 @@ import {
   Option,
   Queue,
   Schema,
+  type Scope,
   Stream,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
@@ -383,6 +388,97 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
       expect(error._tag).toEqual('LiveStore.MaterializeError')
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive('unknown upstream events still invoke materializeEvent', (test) =>
+    Effect.gen(function* () {
+      const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
+      const materializedEvents: LiveStoreEvent.EncodedWithMeta[] = []
+      const materialized = yield* Deferred.make<void>()
+      const runtime = yield* Effect.runtime<Scope.Scope>()
+      const span = makeNoopSpan()
+      const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
+
+      const materializeEvent = Effect.fn('test:materialize-event')(
+        (
+          event: LiveStoreEvent.EncodedWithMeta,
+          _options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
+        ) =>
+          Effect.gen(function* () {
+            materializedEvents.push(event)
+            yield* Deferred.succeed(materialized, void 0)
+            return {
+              writeTables: new Set<string>(),
+              sessionChangeset: { _tag: 'no-op' as const },
+              materializerHash: Option.none<number>(),
+            }
+          }),
+      )
+
+      const clientSession = {
+        sqliteDb: {} as ClientSession['sqliteDb'],
+        devtools: { enabled: false } as ClientSession['devtools'],
+        clientId: 'client-test',
+        sessionId: 'session-test',
+        lockStatus,
+        shutdown: () => Effect.void,
+        leaderThread: {
+          initialState: {
+            leaderHead: EventSequenceNumber.ROOT,
+            migrationsReport: { migrations: [] },
+          },
+          events: {
+            push: () => Effect.void,
+            pull: () =>
+              Stream.fromQueue(upstreamQueue).pipe(
+                Stream.map((event) => ({
+                  payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
+                })),
+              ),
+          },
+          export: Effect.dieMessage('not used'),
+          getEventlogData: Effect.dieMessage('not used'),
+          getSyncState: Effect.dieMessage('not used'),
+          sendDevtoolsMessage: () => Effect.dieMessage('not used'),
+        },
+        debugInstanceId: 'test-instance',
+      } satisfies ClientSession
+
+      const syncProcessor = makeClientSessionSyncProcessor({
+        schema: schema as LiveStoreSchema,
+        clientSession,
+        runtime,
+        materializeEvent,
+        rollback: () => undefined,
+        refreshTables: () => undefined,
+        span,
+        params: { leaderPushBatchSize: 10 },
+        confirmUnsavedChanges: false,
+      })
+
+      const unknownEvent = LiveStoreEvent.EncodedWithMeta.make({
+        name: 'unknown_event_test',
+        args: { foo: 'bar' },
+        seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
+        parentSeqNum: EventSequenceNumber.ROOT,
+        clientId: 'remote-client',
+        sessionId: 'remote-session',
+      })
+
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          yield* syncProcessor.boot
+          yield* Queue.offer(upstreamQueue, unknownEvent)
+          yield* Deferred.await(materialized)
+        }),
+      )
+
+      span.end()
+
+      expect(materializedEvents).toHaveLength(1)
+      expect(materializedEvents[0]?.name).toEqual('unknown_event_test')
+      expect(materializedEvents[0]?.meta.sessionChangeset._tag).toEqual('no-op')
     }).pipe(withTestCtx(test)),
   )
 
