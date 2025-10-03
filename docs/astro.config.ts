@@ -358,7 +358,7 @@ export default defineConfig({
       excludeLangs: ['mermaid', 'math'],
     },
     remarkPlugins: [
-      remarkGithubIssueLinks(),
+      remarkGithubIssueLinks,
       // MD: {#custom-id}
       // MDX: \{#custom-id\}
       remarkCustomHeaderId,

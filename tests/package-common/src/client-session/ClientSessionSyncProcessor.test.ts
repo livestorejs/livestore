@@ -11,7 +11,7 @@ import {
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
-import { makeClientSessionSyncProcessor } from '@livestore/common/sync'
+import { makeClientSessionSyncProcessor, type SyncBackend } from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
@@ -31,6 +31,7 @@ import {
   Schema,
   type Scope,
   Stream,
+  Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -400,6 +401,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const span = makeNoopSpan()
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
+      const networkStatus = Subscribable.make<SyncBackend.NetworkStatus, never, never>({
+        get: Effect.succeed({
+          isConnected: true,
+          timestampMs: 0,
+          devtools: { latchClosed: false },
+        }),
+        changes: Stream.fromIterable([] as ReadonlyArray<SyncBackend.NetworkStatus>),
+      })
+
       const materializeEvent = Effect.fn('test:materialize-event')(
         (
           event: LiveStoreEvent.EncodedWithMeta,
@@ -441,6 +451,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           getEventlogData: Effect.dieMessage('not used'),
           getSyncState: Effect.dieMessage('not used'),
           sendDevtoolsMessage: () => Effect.dieMessage('not used'),
+          networkStatus,
         },
         debugInstanceId: 'test-instance',
       } satisfies ClientSession
