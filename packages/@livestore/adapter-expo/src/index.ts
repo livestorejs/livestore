@@ -230,6 +230,7 @@ const makeLeaderThread = ({
         extraIncomingMessagesQueue,
         initialState,
         bootStatusQueue,
+        networkStatus,
       } = yield* LeaderThreadCtx
 
       const bootStatusFiber = yield* Queue.takeBetween(bootStatusQueue, 1, 1000).pipe(
@@ -263,6 +264,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        networkStatus,
       })
 
       const initialSnapshot = db.export()

@@ -26,6 +26,7 @@ import {
   Queue,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   WebLock,
   Worker,
@@ -472,6 +473,10 @@ export const makePersistedAdapter =
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
       }
 
       const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
