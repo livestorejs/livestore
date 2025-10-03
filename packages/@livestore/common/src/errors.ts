@@ -1,5 +1,7 @@
 import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
 
+import * as LiveStoreEvent from './schema/LiveStoreEvent.ts'
+
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
@@ -63,7 +65,14 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
   note: Schema.optional(Schema.String),
 }) {}
 
+export class UnknownEventError extends Schema.TaggedError<UnknownEventError>()('LiveStore.UnknownEventError', {
+  event: LiveStoreEvent.AnyEncoded.pipe(Schema.pick('name', 'args', 'seqNum', 'clientId', 'sessionId')),
+  reason: Schema.Literal('event-definition-missing', 'materializer-missing'),
+  operation: Schema.String,
+  note: Schema.optional(Schema.String),
+}) {}
+
 export class MaterializeError extends Schema.TaggedError<MaterializeError>()('LiveStore.MaterializeError', {
-  cause: Schema.Union(MaterializerHashMismatchError, SqliteError),
+  cause: Schema.Union(MaterializerHashMismatchError, SqliteError, UnknownEventError),
   note: Schema.optional(Schema.String),
 }) {}

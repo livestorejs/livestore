@@ -20,14 +20,10 @@
 ### Highlights
 
 - **New Cloudflare adapter:** Added the Workers/Durable Object adapter and rewrote the sync provider so LiveStore ships WebSocket, HTTP, and Durable Object RPC transports as first-party Cloudflare options (#528, #591).
+- **S2 sync backend:** Map LiveStore's event log onto S2's durable stream store via `@livestore/sync-s2`, unlocking scalable basins/streams, SSE live tails, and transport-safe batching for large sync workloads (#292, #709).
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
-- **Materializer hash checks:** Development builds now hash materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they affect replay (26301e51, #503).
 - **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 - **MCP support:** LiveStore now ships a CLI with a first-class MCP server so automation flows can connect to instances, query data, and commit events using the bundled tools (#705).
-
-### Fixes
-
-- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`). (#694)
 
 ### Breaking Changes
 
@@ -151,7 +147,19 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Reliability: Retry and backoff on push errors, restart push on advance, and add regression tests (#639).
 - Resilience: Improve sync provider robustness and align test helpers for CI and local development (#682, #646).
 
+##### S2 sync backend
+
+LiveStore now ships `@livestore/sync-s2`, a first-party integration with S2—the stream store that exposes basins and append-only streams over HTTP and SSE. LiveStore maps each `storeId` onto its own S2 stream while keeping LiveStore's logical sequencing inside the payload, so teams gain provider-managed durability, retention policies, and elastic fan-out without retooling their event model (#292). The provider still expects an authenticated proxy that provisions basins/streams, forwards LiveStore pushes and pulls, and translates S2 cursors back into LiveStore metadata.
+
+- **Stream primitives:** Helper utilities (`ensureBasin()`, `ensureStream()`, `makeS2StreamName()`) manage S2 provisioning and naming so apps can wire up a single `/api/s2` entry point without manual HTTP plumbing (#292).
+- **Live pull over SSE:** The client understands S2's `batch`, `ping`, and `error` SSE events, keeping live cursors in sync while avoiding dropped connections and manual tail loops (#292).
+- **Transport-safe batching:** Append helpers respect S2's 1 MiB / 1000-record limits, preventing 413 responses while you stream large batches into managed storage (#709).
+
+See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing/sync-provider/s2/) for full deployment guidance and operational notes.
+
 #### Core Runtime & Storage
+
+- **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
 
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
 
@@ -224,7 +232,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
-- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups.
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
 
 ##### Concurrency & Lifecycle
 

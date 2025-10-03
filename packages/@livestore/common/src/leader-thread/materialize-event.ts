@@ -4,7 +4,7 @@ import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.ts'
+import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
 import { sql } from '../util.ts'
 import { execSql, execSqlPrepared } from './connection.ts'
@@ -33,8 +33,34 @@ export const makeMaterializeEvent = ({
       Effect.gen(function* () {
         const skipEventlog = options?.skipEventlog ?? false
 
-        const eventName = eventEncoded.name
-        const { eventDef, materializer } = getEventDef(schema, eventName)
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:leader-thread:materializeEvent',
+          event: eventEncoded,
+        })
+
+        if (resolution._tag === 'unknown') {
+          // Unknown events still enter the eventlog so newer clients can replay
+          // them once they learn the schema. We skip materialization to keep the
+          // local state consistent with the knowledge of the current client.
+          if (skipEventlog === false) {
+            yield* Eventlog.insertIntoEventlog(
+              eventEncoded,
+              dbEventlog,
+              UNKNOWN_EVENT_SCHEMA_HASH,
+              eventEncoded.clientId,
+              eventEncoded.sessionId,
+            )
+          }
+
+          dbState.debug.head = eventEncoded.seqNum
+
+          return {
+            sessionChangeset: { _tag: 'no-op' as const },
+            hash: Option.none(),
+          }
+        }
+
+        const { eventDef, materializer } = resolution
 
         const execArgsArr = getExecStatementsFromMaterializer({
           eventDef,
