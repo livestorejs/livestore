@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-import { Cli } from '@livestore/utils/node'
+import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
@@ -83,7 +83,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipSnippets: false })
         }
 
-        const portArg = portOption._tag === 'Some' ? portOption.value : undefined
+        const requestedPort = portOption._tag === 'Some' ? Number.parseInt(portOption.value, 10) : undefined
+        const previewTargetPort = yield* getFreePort
 
         const distPath = `${docsPath}/dist`
         if (!fs.existsSync(distPath)) {
@@ -92,24 +93,33 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           )
         }
 
-        yield* cmd(
-          [
-            'bunx',
-            'netlify-cli',
-            'dev',
-            '--context',
-            'production',
-            '--dir=dist',
-            portArg !== undefined ? `--port=${portArg}` : undefined,
-          ],
-          {
-            cwd: docsPath,
-            logDir: `${docsPath}/logs`,
-            env: {
-              NODE_ENV: 'production',
-            },
+        const previewScript = `${docsPath}/scripts/preview-server.ts`
+        // Netlify Dev requires a target application server; we launch the Bun
+        // preview server so the edge runtime can proxy to `dist/` just like it
+        // does in production.
+        const netlifyArgs: string[] = [
+          'netlify-cli',
+          'dev',
+          '--context',
+          'production',
+          '--command',
+          `bun ${previewScript} --host=127.0.0.1 --port ${previewTargetPort}`,
+          '--target-port',
+          String(previewTargetPort),
+          '--no-open',
+        ]
+
+        if (requestedPort !== undefined && !Number.isNaN(requestedPort)) {
+          netlifyArgs.push('--port', String(requestedPort))
+        }
+
+        yield* cmd(['bunx', ...netlifyArgs], {
+          cwd: docsPath,
+          logDir: `${docsPath}/logs`,
+          env: {
+            NODE_ENV: 'production',
           },
-        )
+        })
       }),
     ),
     Cli.Command.make(
