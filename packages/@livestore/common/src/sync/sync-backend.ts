@@ -92,6 +92,23 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 }
 
 /**
+ * Connectivity metadata emitted by sync backends.
+ */
+export const NetworkStatus = Schema.Struct({
+  /** True when the upstream sync backend is reachable and responding to health checks. */
+  isConnected: Schema.Boolean,
+  /** Unix epoch timestamp (ms) of the latest connectivity state transition. */
+  timestampMs: Schema.Number,
+  /** Devtools specific metadata describing simulator overrides. */
+  devtools: Schema.Struct({
+    /** Indicates whether the devtools latch forced the client into an offline state. */
+    latchClosed: Schema.Boolean,
+  }),
+}).annotations({ title: 'NetworkStatus' })
+
+export type NetworkStatus = typeof NetworkStatus.Type
+
+/**
  * Runtime type guard for SyncBackend objects.
  * Performs lightweight structural checks on the object shape.
  */

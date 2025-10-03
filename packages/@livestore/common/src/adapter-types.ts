@@ -20,6 +20,11 @@ export * from './defs.ts'
 export * from './errors.ts'
 export * from './sqlite-types.ts'
 
+/**
+ * Runtime handle to an active LiveStore client session within the current process.
+ * Provides direct access to the embedded SQLite database, leader thread bridge,
+ * and lifecycle controls useful for application-level coordination.
+ */
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb

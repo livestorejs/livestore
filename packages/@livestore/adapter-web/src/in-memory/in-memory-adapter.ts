@@ -204,7 +204,8 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -222,6 +223,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        networkStatus,
       })
 
       const initialSnapshot = dbState.export()

@@ -32,6 +32,7 @@ import {
   Schedule,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   Worker,
   WorkerError,
@@ -320,7 +321,8 @@ const makeLocalLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -339,6 +341,7 @@ const makeLocalLeaderThread = ({
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           getSyncState: syncProcessor.syncState,
           sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
       )
@@ -492,6 +495,10 @@ const makeWorkerLeaderThread = ({
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
       },
       {
         ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }),

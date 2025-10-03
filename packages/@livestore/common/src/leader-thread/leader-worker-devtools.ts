@@ -319,7 +319,11 @@ const listenToDevtools = ({
                   Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(
                       Devtools.Leader.NetworkStatusRes.make({
-                        networkStatus: { isConnected, timestampMs: Date.now(), latchClosed },
+                        networkStatus: {
+                          isConnected,
+                          timestampMs: Date.now(),
+                          devtools: { latchClosed },
+                        },
                         subscriptionId,
                         ...reqPayload,
                         requestId: nanoid(10),

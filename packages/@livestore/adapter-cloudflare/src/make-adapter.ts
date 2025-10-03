@@ -90,7 +90,8 @@ export const makeAdapter =
       )
 
       const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {
-        const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+        const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+          yield* LeaderThreadCtx
 
         const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
         // const initialLeaderHead = EventSequenceNumber.ROOT
@@ -110,6 +111,7 @@ export const makeAdapter =
             getEventlogData: Effect.sync(() => dbEventlog.export()),
             getSyncState: syncProcessor.syncState,
             sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+            networkStatus,
           },
           {
             // overrides: testing?.overrides?.clientSession?.leaderThreadProxy

@@ -75,6 +75,24 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   context: TContext
   otel: StoreOtel
   /**
+   * Reactive connectivity updates emitted by the backing sync backend.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Stream } from 'effect'
+   *
+   * const status = await store.networkStatus.pipe(Effect.runPromise)
+   *
+   * await store.networkStatus.changes.pipe(
+   *   Stream.tap((next) => console.log('network status update', next)),
+   *   Stream.runDrain,
+   *   Effect.scoped,
+   *   Effect.runPromise,
+   * )
+   * ```
+   */
+  readonly networkStatus: ClientSession['leaderThread']['networkStatus']
+  /**
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
@@ -118,6 +136,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
 
