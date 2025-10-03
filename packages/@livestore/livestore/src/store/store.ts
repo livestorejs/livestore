@@ -20,7 +20,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
+import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -133,7 +133,22 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         (eventDecoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen(this, function* () {
-            const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
+            const resolution = yield* resolveEventDef(schema, {
+              operation: '@livestore/livestore:store:materializeEvent',
+              event: eventDecoded,
+            })
+
+            if (resolution._tag === 'unknown') {
+              // Runtime schema doesn't know this event yet; skip materialization but
+              // keep the log entry so upgraded clients can replay it later.
+              return {
+                writeTables: new Set<string>(),
+                sessionChangeset: { _tag: 'no-op' as const },
+                materializerHash: Option.none(),
+              }
+            }
+
+            const { eventDef, materializer } = resolution
 
             const execArgsArr = getExecStatementsFromMaterializer({
               eventDef,

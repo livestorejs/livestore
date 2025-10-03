@@ -91,7 +91,7 @@ Describe the pull request in terms of the problem it addresses and the approach 
 Checklist:
 - State the problem, solution, and validation steps in the PR body using the template sections.
 - Mention any trade-offs or follow-up work the reviewer should know about.
-- Link the relevant issue (or explicitly call out "n/a").
+- Research relevant issues and link them to the PR.
 - Note which tests were run (or why none were needed).
 - Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
 - Keep CHANGELOG.md up to date with the changes in the PR according to `contributor-docs/changelog-guide.md`.

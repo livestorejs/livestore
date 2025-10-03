@@ -6,9 +6,13 @@ import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.t
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
 import { stateSystemTables } from './state/sqlite/system-tables.ts'
 import type { TableDef } from './state/sqlite/table-def.ts'
+import type { UnknownEvents } from './unknown-events.ts'
+import { normalizeUnknownEventHandling } from './unknown-events.ts'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
+
+export const UNKNOWN_EVENT_SCHEMA_HASH = -1
 
 export interface LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
@@ -22,6 +26,7 @@ export interface LiveStoreSchema<
 
   readonly state: InternalState
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
+  readonly unknownEventHandling: UnknownEvents.HandlingConfig
   readonly devtools: {
     /** @default 'default' */
     readonly alias: string
@@ -79,6 +84,10 @@ export interface InputSchema {
      */
     readonly alias?: string
   }
+  /**
+   * Configures how unknown events should be handled. Defaults to `{ strategy: 'warn' }`.
+   */
+  readonly unknownEventHandling?: UnknownEvents.HandlingConfig
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -113,12 +122,15 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
+  const unknownEventHandling = normalizeUnknownEventHandling(inputSchema.unknownEventHandling)
+
   return {
     LiveStoreSchemaSymbol,
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
     state,
     eventsDefsMap,
+    unknownEventHandling,
     devtools: {
       alias: inputSchema.devtools?.alias ?? 'default',
     },

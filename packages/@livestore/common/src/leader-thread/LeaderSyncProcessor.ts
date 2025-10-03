@@ -28,7 +28,7 @@ import {
 } from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -122,10 +122,8 @@ export const makeLeaderSyncProcessor = ({
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
-      const { eventDef } = getEventDef(schema, eventEncoded.name)
-      return eventDef.options.clientOnly
-    }
+    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+      schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
 
@@ -199,14 +197,32 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const { eventDef } = getEventDef(schema, name)
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
+          event: {
+            name,
+            args,
+            clientId,
+            sessionId,
+            seqNum: syncState.localHead,
+          },
+        }).pipe(UnexpectedError.mapToUnexpectedError)
+
+        if (resolution._tag === 'unknown') {
+          // Ignore partial pushes for unrecognised events – they are still
+          // persisted server-side once a schema update ships.
+          return
+        }
 
         const eventEncoded = new LiveStoreEvent.EncodedWithMeta({
           name,
           args,
           clientId,
           sessionId,
-          ...EventSequenceNumber.nextPair({ seqNum: syncState.localHead, isClient: eventDef.options.clientOnly }),
+          ...EventSequenceNumber.nextPair({
+            seqNum: syncState.localHead,
+            isClient: resolution.eventDef.options.clientOnly,
+          }),
         })
 
         yield* push([eventEncoded])
@@ -234,8 +250,8 @@ export const makeLeaderSyncProcessor = ({
         const globalPendingEvents = initialSyncState.pending
           // Don't sync clientOnly events
           .filter((eventEncoded) => {
-            const { eventDef } = getEventDef(schema, eventEncoded.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
 
         if (globalPendingEvents.length > 0) {
@@ -529,8 +545,8 @@ const backgroundApplyLocalPushes = ({
 
       // Don't sync clientOnly events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-        const { eventDef } = getEventDef(schema, eventEncoded.name)
-        return eventDef.options.clientOnly === false
+        const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+        return eventDef === undefined ? true : eventDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -673,8 +689,8 @@ const backgroundBackendPulling = ({
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const { eventDef } = getEventDef(schema, event.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -698,8 +714,8 @@ const backgroundBackendPulling = ({
 
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
           const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const { eventDef } = getEventDef(schema, event.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalPendingEvents)
 

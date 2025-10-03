@@ -25,10 +25,6 @@
 - **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 - **MCP support:** LiveStore now ships a CLI with a first-class MCP server so automation flows can connect to instances, query data, and commit events using the bundled tools (#705).
 
-### Fixes
-
-- `@livestore/sqlite-wasm` now aborts imports of WAL-mode snapshots with an explicit `LiveStore.SqliteError` instead of silently proceeding. Snapshot imports therefore fail fast when provided in WAL journal mode (`PRAGMA journal_mode=WAL`). (#694)
-
 ### Breaking Changes
 
 - **`store.shutdown` API:** The shutdown method now returns an Effect instead of a Promise. Use `yield* store.shutdown()` inside Effects or `await store.shutdownPromise()` when a Promise is needed.
@@ -153,6 +149,8 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 
 #### Core Runtime & Storage
 
+- **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
+
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
 
   ```typescript
@@ -223,7 +221,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
-- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups.
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
 
 ##### Concurrency & Lifecycle
 
