@@ -1,5 +1,5 @@
-import { join } from 'node:path'
 import os from 'node:os'
+import { join } from 'node:path'
 
 import { Effect, FileSystem, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
 import { cmdText } from '@livestore/utils-dev/node'
@@ -98,7 +98,10 @@ export const deployToNetlify = ({
     const result = yield* deployCommand.pipe(
       Effect.tap((result) => Effect.logDebug(`[deploy-to-netlify] Deploy result for ${site}: ${result}`)),
       Effect.andThen(Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))),
-      Effect.mapError((error) => new NetlifyError({ message: 'Failed to decode Netlify deploy result', reason: 'unknown', cause: error })),
+      Effect.mapError(
+        (error) =>
+          new NetlifyError({ message: 'Failed to decode Netlify deploy result', reason: 'unknown', cause: error }),
+      ),
     )
 
     return result
@@ -121,29 +124,31 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   const configPath = join(homeDirectory, '.config', 'netlify', 'config.json')
   const fileSystem = yield* FileSystem.FileSystem
   const configContent = yield* fileSystem.readFileString(configPath).pipe(
-    Effect.mapError((error) =>
-      new NetlifyError({
-        message: `Failed to read Netlify CLI config at ${configPath}`,
-        reason: 'auth',
-        cause: error,
-      }),
+    Effect.mapError(
+      (error) =>
+        new NetlifyError({
+          message: `Failed to read Netlify CLI config at ${configPath}`,
+          reason: 'auth',
+          cause: error,
+        }),
     ),
   )
 
   const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
-    Effect.mapError((error) =>
-      new NetlifyError({
-        message: `Failed to parse Netlify CLI config at ${configPath}`,
-        reason: 'auth',
-        cause: error,
-      }),
+    Effect.mapError(
+      (error) =>
+        new NetlifyError({
+          message: `Failed to parse Netlify CLI config at ${configPath}`,
+          reason: 'auth',
+          cause: error,
+        }),
     ),
   )
 
   const resolvedToken = config.users
-    ? Object.values(config.users).map((user) => user.auth?.token).find((candidate): candidate is string =>
-        typeof candidate === 'string' && candidate.length > 0,
-      )
+    ? Object.values(config.users)
+        .map((user) => user.auth?.token)
+        .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
     : undefined
 
   if (!resolvedToken) {
@@ -171,21 +176,20 @@ export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlu
     const httpClient = yield* HttpClient.HttpClient
 
     yield* HttpClientRequest.schemaBodyJson(NetlifyPurgeRequestSchema)(
-      HttpClientRequest.post(NETLIFY_API_URL).pipe(
-        HttpClientRequest.setHeader('authorization', `Bearer ${token}`),
-      ),
+      HttpClientRequest.post(NETLIFY_API_URL).pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`)),
       {
         site_id: siteId,
         site_slug: siteSlug,
       },
     ).pipe(
       Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
-      Effect.mapError((error) =>
-        new NetlifyError({
-          message: 'Failed to purge Netlify CDN cache',
-          reason: 'unknown',
-          cause: error,
-        }),
+      Effect.mapError(
+        (error) =>
+          new NetlifyError({
+            message: 'Failed to purge Netlify CDN cache',
+            reason: 'unknown',
+            cause: error,
+          }),
       ),
     )
 
