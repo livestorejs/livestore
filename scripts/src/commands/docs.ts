@@ -7,7 +7,7 @@ import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
-import { deployToNetlify } from '../shared/netlify.ts'
+import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 
 const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -130,9 +130,12 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
         build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
+        purgeCdn: Cli.Options.boolean('purge-cdn')
+          .pipe(Cli.Options.withDefault(false))
+          .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild, purgeCdn }) {
           if (shouldBuild) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
           }
@@ -163,7 +166,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
-          yield* deployToNetlify({
+          const draftDeploy = yield* deployToNetlify({
             site,
             dir: `${docsPath}/dist`,
             target: { _tag: 'draft' },
@@ -185,12 +188,17 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
-          yield* deployToNetlify({
+          const finalDeploy = yield* deployToNetlify({
             site,
             dir: `${docsPath}/dist`,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
           })
+
+          if (purgeCdn) {
+            const purgeSiteId = finalDeploy.site_id ?? draftDeploy.site_id
+            yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
+          }
         },
         Effect.catchIf(
           (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
