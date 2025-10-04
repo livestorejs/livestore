@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
-import { Effect, FileSystem, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
 import { cmdText } from '@livestore/utils-dev/node'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
@@ -121,18 +122,41 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     })
   }
 
-  const configPath = join(homeDirectory, '.config', 'netlify', 'config.json')
-  const fileSystem = yield* FileSystem.FileSystem
-  const configContent = yield* fileSystem.readFileString(configPath).pipe(
-    Effect.mapError(
-      (error) =>
-        new NetlifyError({
-          message: `Failed to read Netlify CLI config at ${configPath}`,
-          reason: 'auth',
-          cause: error,
-        }),
-    ),
-  )
+  const configCandidates = determineNetlifyConfigCandidates(homeDirectory)
+
+  let configPath: string | undefined
+  let configContent: string | undefined
+
+  for (const candidate of configCandidates) {
+    const readResult = yield* Effect.try({
+      try: () => readFileSync(candidate, 'utf8'),
+      catch: (error) => error as NodeJS.ErrnoException,
+    }).pipe(Effect.either)
+
+    if (readResult._tag === 'Right') {
+      configContent = readResult.right
+      configPath = candidate
+      break
+    }
+
+    const readError = readResult.left
+    if (isFileMissingError(readError)) {
+      continue
+    }
+
+    return yield* new NetlifyError({
+      message: `Failed to read Netlify CLI config at ${candidate}`,
+      reason: 'auth',
+      cause: readError,
+    })
+  }
+
+  if (!configContent || !configPath) {
+    return yield* new NetlifyError({
+      message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
+      reason: 'auth',
+    })
+  }
 
   const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
     Effect.mapError(
@@ -195,3 +219,43 @@ export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlu
 
     yield* Effect.log(`Requested Netlify CDN purge for ${siteSlug ?? siteId ?? 'site'}`)
   })
+
+const determineNetlifyConfigCandidates = (homeDirectory: string): readonly string[] => {
+  const configPaths = [] as string[]
+
+  const primaryDirectory = resolveOsConfigDirectory(homeDirectory)
+  configPaths.push(join(primaryDirectory, 'config.json'))
+  configPaths.push(join(homeDirectory, '.netlify', 'config.json'))
+
+  return configPaths
+}
+
+const resolveOsConfigDirectory = (homeDirectory: string): string => {
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA
+    if (appData && appData !== '') {
+      return join(appData, 'netlify')
+    }
+    return join(homeDirectory, 'AppData', 'Roaming', 'netlify')
+  }
+
+  if (process.platform === 'darwin') {
+    return join(homeDirectory, 'Library', 'Preferences', 'netlify')
+  }
+
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME
+  if (xdgConfigHome && xdgConfigHome !== '') {
+    return join(xdgConfigHome, 'netlify')
+  }
+
+  return join(homeDirectory, '.config', 'netlify')
+}
+
+const isFileMissingError = (error: unknown): error is NodeJS.ErrnoException => {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+
+  const maybeError = error as NodeJS.ErrnoException
+  return maybeError.code === 'ENOENT' || maybeError.code === 'ENOTDIR'
+}
