@@ -1,7 +1,7 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config')
 const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
-const path = require('path')
+const path = require('node:path')
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname)
