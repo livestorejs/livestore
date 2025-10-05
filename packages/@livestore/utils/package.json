@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.4.0-dev.9",
+  "version": "0.4.0-dev.10",
   "type": "module",
   "sideEffects": [
     "./src/global.ts",
