@@ -14,7 +14,6 @@
   },
   "devDependencies": {
     "expo-application": "^7.0.7",
-    "expo-file-system": "^19.0.15",
     "expo-sqlite": "^16.0.8",
     "react-native": "^0.81.4"
   },
@@ -26,7 +25,6 @@
   "license": "Apache-2.0",
   "peerDependencies": {
     "expo-application": "^7.0.7",
-    "expo-file-system": "^19.0.15",
     "expo-sqlite": "^16.0.8"
   },
   "publishConfig": {
