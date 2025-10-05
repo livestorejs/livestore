@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Expo",
-
   "compilerOptions": {
     "allowJs": true,
     "esModuleInterop": true,
@@ -22,6 +21,7 @@
       "@/*": ["./src/*"]
     }
   },
-
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"],
+  "extends": "expo/tsconfig.base",
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
