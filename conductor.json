@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "setup": "git fetch; direnv allow; eval $(\"direnv hook zsh\")"
+    "setup": "git fetch && direnv allow"
   }
 }
