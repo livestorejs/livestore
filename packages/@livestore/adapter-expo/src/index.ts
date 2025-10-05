@@ -62,11 +62,14 @@ export type MakeDbOptions = {
   resetPersistence?: boolean
 }
 
-declare global {
-  var RN$Bridgeless: boolean | undefined
-}
 
-const IS_NEW_ARCH = globalThis.RN$Bridgeless === true
+// Expo Go with the New Architecture enables Fabric and TurboModules, but may not run in "bridgeless" mode.
+// Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
+const IS_NEW_ARCH =
+  // Fabric global – set when the new renderer is enabled
+  Boolean((globalThis as any).nativeFabricUIManager) ||
+  // TurboModule proxy – indicates new arch TurboModules
+  Boolean((globalThis as any).__turboModuleProxy)
 
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
@@ -114,7 +117,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = getDevtoolsUrl().toString()
+      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
