@@ -5,10 +5,7 @@
     "allowJs": true,
     "esModuleInterop": true,
     "jsx": "react-native",
-    "lib": [
-      "DOM",
-      "ESNext"
-    ],
+    "lib": ["DOM", "ESNext"],
     "moduleResolution": "Bundler",
     "module": "ES2020",
     "noEmit": true,
@@ -21,22 +18,10 @@
     "target": "ESNext",
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "jest.config.js"
-  ],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"],
   "extends": "expo/tsconfig.base",
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
