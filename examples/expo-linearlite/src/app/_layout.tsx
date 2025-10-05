@@ -1,5 +1,5 @@
-import '../polyfill.ts'
 import 'react-native-reanimated'
+import '../polyfill.ts'
 
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import type { Store } from '@livestore/livestore'
