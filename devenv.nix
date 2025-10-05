@@ -20,6 +20,7 @@ in
       pkgs.jq
       pkgs.bun
       pkgs.deno
+      pkgs.watchman
     ]
     # Parcel watcher (used by the docs snippet watcher) needs libstdc++ on Linux hosts
     ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib ]
@@ -36,7 +37,9 @@ in
 
   # Shell initialization (dynamic values and PATH wiring)
   enterShell = ''
-    export WORKSPACE_ROOT="$PWD"
+    # Prefer outer monorepo root when used as a submodule; else keep existing; else PWD
+    sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
+    export WORKSPACE_ROOT="''${WORKSPACE_ROOT:-''${sp:-$PWD}}"
 
     export DEV_SSL_KEY="$WORKSPACE_ROOT/certs/key.pem"
     export DEV_SSL_CERT="$WORKSPACE_ROOT/certs/cert.pem"
@@ -46,8 +49,9 @@ in
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
     export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
 
-    export GRAFANA_ENDPOINT="http://localhost:30003"
-    export VITE_GRAFANA_ENDPOINT="$GRAFANA_ENDPOINT"
+    # Keep existing Grafana endpoints if set; else default
+    export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-http://localhost:30003}"
+    export VITE_GRAFANA_ENDPOINT="''${VITE_GRAFANA_ENDPOINT:-''${GRAFANA_ENDPOINT}}"
 
     # Needed until newest corepack version ships in nixpkgs
     export COREPACK_INTEGRITY_KEYS=0
