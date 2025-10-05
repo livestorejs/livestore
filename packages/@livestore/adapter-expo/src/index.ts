@@ -62,7 +62,6 @@ export type MakeDbOptions = {
   resetPersistence?: boolean
 }
 
-
 // Expo Go with the New Architecture enables Fabric and TurboModules, but may not run in "bridgeless" mode.
 // Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
 const IS_NEW_ARCH =
