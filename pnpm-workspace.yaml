@@ -27,8 +27,8 @@ catalog:
   "@tailwindcss/vite": 4.1.13
 
   # React ecosystem
-  react: 19.1.1
-  "react-dom": 19.1.1
+  react: 19.1.0
+  "react-dom": 19.1.0
 
   # Testing
   "@playwright/test": 1.55.1-beta-1758616458000
