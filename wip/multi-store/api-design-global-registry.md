@@ -445,13 +445,12 @@ export function useIssueStoreFromRoute() {
 
 ```tsx
 import * as React from 'react'
-import { StoreOptions } from "./store-types";
 
 // --- Single Store ---
 
-const DefaultStoreContext = React.createContext<Promise<Store> | null>(null);
+const DefaultStoreContext = React.createContext<Promise<Store> | null>(null)
 
-type StoreOptions = {
+type LiveStoreProviderProps<TSchema extends LiveStoreSchema> = React.PropsWithChildren<{
   schema: TSchema
   adapter: Adapter
   storeId?: string // defaults to "default"
@@ -463,10 +462,10 @@ type StoreOptions = {
     store: Store<TSchema>,
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
-}
+}>
 
 /** Single-store provider: no store registry; provides a single default store */
-export function LiveStoreProvider<Store>({
+export function LiveStoreProvider<TSchema extends LiveStoreSchema>({
   schema,
   adapter,
   storeId = 'default',
@@ -475,13 +474,28 @@ export function LiveStoreProvider<Store>({
   abortSignal,
   otelOptions,
   boot,
-}: PropsWithChildren<StoreOptions>) {
-  const storePromise = useMemo(() => createStorePromise(storeOptions), [props.storeOptions]);
+  children,
+}: LiveStoreProviderProps<TSchema>) {
+  const storePromise = React.useMemo(
+    () =>
+      createStorePromise({
+        schema,
+        adapter,
+        storeId,
+        batchUpdates,
+        syncPayload,
+        abortSignal,
+        otelOptions,
+        boot,
+      }),
+    [schema, adapter, storeId, batchUpdates, syncPayload, abortSignal, otelOptions, boot],
+  )
+
   return (
     <DefaultStoreContext.Provider value={storePromise}>
-      {props.children}
+      {children}
     </DefaultStoreContext.Provider>
-  );
+  )
 }
 
 // --- Multi Store ---
@@ -520,11 +534,22 @@ type StoreEntry = {
 }
 
 export class StoreRegistry {
-  private readonly defaultStoreOptions: StoreDefaultOptions
+  private defaultStoreOptions: StoreDefaultOptions
   private readonly entries = new Map<string, StoreEntry>()
 
   constructor(defaultStoreOptions: StoreDefaultOptions = {}) {
-    this.defaultStoreOptions = defaultStoreOptions
+    this.defaultStoreOptions = {...defaultStoreOptions}
+  }
+
+  updateDefaultOptions(defaultStoreOptions: StoreDefaultOptions = {}) {
+    this.defaultStoreOptions = {...defaultStoreOptions}
+  }
+
+  private makeKey<TSchema extends LiveStoreSchema>(
+    def: StoreDefinition<TSchema>,
+    storeId: string,
+  ): string {
+    return `${def.name}\0${storeId}`
   }
 
   private resolveGcTime<TSchema extends LiveStoreSchema>(
@@ -537,13 +562,13 @@ export class StoreRegistry {
     return DEFAULT_GC_TIME
   }
 
-  private scheduleDrop(storeId: string, delay: number) {
+  private scheduleDrop(key: string, delay: number) {
     // GC timers are intentionally lazy; we always re-check observer counts to avoid destroying a
     // store that was revived while the timer was pending.
     return setTimeout(() => {
-      const latest = this.entries.get(storeId)
+      const latest = this.entries.get(key)
       if (!latest || latest.observers > 0) return
-      this.drop(storeId)
+      this.dropByKey(key)
     }, delay)
   }
 
@@ -564,14 +589,9 @@ export class StoreRegistry {
     options: CreateStoreOptions<TSchema>,
   ): Promise<Store<TSchema>> {
     const {storeId, gcTime: gcOverride, signal, ...rest} = options
-    const owner = this.entries.get(storeId)?.storeDef
-    if (owner && owner !== def) {
-      throw new Error(
-        `storeId "${storeId}" already belongs to "${owner.name}", not "${def.name}".`,
-      )
-    }
+    const key = this.makeKey(def, storeId)
 
-    let entry = this.entries.get(storeId)
+    let entry = this.entries.get(key)
 
     if (entry?.gcTimer) {
       // Any new interest resets the pending GC timer. If no observer re-attaches we’ll reschedule
@@ -584,6 +604,13 @@ export class StoreRegistry {
       const computedGcTime = this.resolveGcTime(def, gcOverride)
       const abortController = typeof AbortController === 'undefined' ? null : new AbortController()
       const controllerSignal = signal ?? abortController?.signal
+      const createInput: CreateStoreOptions<TSchema> = {
+        ...this.defaultStoreOptions,
+        ...rest,
+        storeId,
+        gcTime: computedGcTime,
+        signal: controllerSignal,
+      }
 
       const entryPlaceholder: StoreEntry = {
         promise: Promise.resolve(),
@@ -598,40 +625,40 @@ export class StoreRegistry {
       }
 
       const promise = Promise.resolve()
-      .then(() => def.create({storeId, gcTime: computedGcTime, signal: controllerSignal, ...rest}))
-      .then((store) => {
-        const current = this.entries.get(storeId)
-        if (!current || current !== entryPlaceholder) {
-          try {
-            store.destroy?.()
-          } catch {
-            // Ignore destroy failures when the entry was already removed.
+        .then(() => def.create(createInput))
+        .then((store) => {
+          const current = this.entries.get(key)
+          if (!current || current !== entryPlaceholder) {
+            try {
+              store.destroy?.()
+            } catch {
+              // Ignore destroy failures when the entry was already removed.
+            }
+            return store
           }
+
+          entryPlaceholder.instance = store
+
+          if (entryPlaceholder.observers === 0 && entryPlaceholder.gcTime !== Infinity && !entryPlaceholder.gcTimer) {
+            entryPlaceholder.gcTimer = this.scheduleDrop(key, entryPlaceholder.gcTime)
+          }
+
           return store
-        }
-
-        entryPlaceholder.instance = store
-
-        if (entryPlaceholder.observers === 0 && entryPlaceholder.gcTime !== Infinity && !entryPlaceholder.gcTimer) {
-          entryPlaceholder.gcTimer = this.scheduleDrop(storeId, entryPlaceholder.gcTime)
-        }
-
-        return store
-      })
-      .catch((error) => {
-        if (this.entries.get(storeId) === entryPlaceholder) {
-          this.entries.delete(storeId)
-        }
-        throw error
-      })
-      .finally(() => {
-        entryPlaceholder.abortController = null
-      })
+        })
+        .catch((error) => {
+          if (this.entries.get(key) === entryPlaceholder) {
+            this.entries.delete(key)
+          }
+          throw error
+        })
+        .finally(() => {
+          entryPlaceholder.abortController = null
+        })
 
       entryPlaceholder.promise = promise
       entry = entryPlaceholder
 
-      this.entries.set(storeId, entry)
+      this.entries.set(key, entry)
     } else if (gcOverride !== undefined) {
       const newBase = this.resolveGcTime(def, gcOverride)
       if (entry.baseGcTime !== newBase) {
@@ -641,7 +668,7 @@ export class StoreRegistry {
     }
 
     if (entry.instance && entry.observers === 0 && entry.gcTime !== Infinity) {
-      entry.gcTimer = this.scheduleDrop(storeId, entry.gcTime)
+      entry.gcTimer = this.scheduleDrop(key, entry.gcTime)
     }
 
     return entry.promise
@@ -652,15 +679,10 @@ export class StoreRegistry {
     storeId: string,
     gcOverride?: number,
   ) {
-    const entry = this.entries.get(storeId)
+    const key = this.makeKey(def, storeId)
+    const entry = this.entries.get(key)
     if (!entry) {
-      throw new Error(`StoreRegistry.retain called before store "${storeId}" was created.`)
-    }
-
-    if (entry.storeDef !== def) {
-      throw new Error(
-        `storeId "${storeId}" already belongs to "${entry.storeDef.name}", not "${def.name}".`,
-      )
+      throw new Error(`StoreRegistry.retain called before store "${storeId}" for "${def.name}" was created.`)
     }
 
     entry.observers += 1
@@ -687,7 +709,8 @@ export class StoreRegistry {
     storeId: string,
     observerGc?: number,
   ) {
-    const entry = this.entries.get(storeId)
+    const key = this.makeKey(def, storeId)
+    const entry = this.entries.get(key)
     if (!entry || entry.storeDef !== def) return
 
     entry.observers = Math.max(0, entry.observers - 1)
@@ -706,7 +729,7 @@ export class StoreRegistry {
     this.updateEntryGcTime(entry)
 
     if (entry.observers === 0 && entry.gcTime !== Infinity && !entry.gcTimer) {
-      entry.gcTimer = this.scheduleDrop(storeId, entry.gcTime)
+      entry.gcTimer = this.scheduleDrop(key, entry.gcTime)
     }
   }
 
@@ -718,10 +741,16 @@ export class StoreRegistry {
     await this.get(storeDef, createOptions)
   }
 
-  has = (storeId: string) => this.entries.has(storeId)
+  has = <TSchema extends LiveStoreSchema>(storeDef: StoreDefinition<TSchema>, storeId: string) =>
+    this.entries.has(this.makeKey(storeDef, storeId))
 
-  drop = (storeId: string) => {
-    const entry = this.entries.get(storeId)
+  drop = <TSchema extends LiveStoreSchema>(storeDef: StoreDefinition<TSchema>, storeId: string) => {
+    const key = this.makeKey(storeDef, storeId)
+    this.dropByKey(key)
+  }
+
+  private dropByKey(key: string) {
+    const entry = this.entries.get(key)
     if (!entry) return
 
     if (entry.gcTimer) {
@@ -739,7 +768,7 @@ export class StoreRegistry {
     } finally {
       // Manual drops are “force evict” operations—callers should ensure they are not holding onto
       // the store elsewhere. We still delete the table entry to avoid dangling references.
-      this.entries.delete(storeId)
+      this.entries.delete(key)
     }
   }
 
@@ -768,18 +797,23 @@ export function MultiStoreProvider(props: {
   defaultStoreOptions: StoreDefaultOptions;
   children: React.ReactNode;
 }) {
-  const registry = React.useMemo(
-    () => new StoreRegistry(props.defaultStoreOptions),
-    [props.defaultStoreOptions],
-  )
+  const registryRef = React.useRef<StoreRegistry | null>(null)
+
+  if (registryRef.current === null) {
+    registryRef.current = new StoreRegistry(props.defaultStoreOptions)
+  } else {
+    registryRef.current.updateDefaultOptions(props.defaultStoreOptions)
+  }
+
+  const registry = registryRef.current
 
   React.useEffect(() => {
     return () => {
-      registry.clear()
+      registry?.clear()
     }
   }, [registry])
 
-  return <StoreRegistryContext.Provider value={registry}>{props.children}</StoreRegistryContext.Provider>;
+  return <StoreRegistryContext.Provider value={registry!}>{props.children}</StoreRegistryContext.Provider>;
 }
 
 
@@ -813,7 +847,7 @@ export function useStore<TSchema extends LiveStoreSchema>(options?: UseStoreOpti
     const defaultStorePromise = useContext(DefaultStoreContext);
     if (!defaultStorePromise) {
       throw new Error(
-        'useStore() without params must be used within <LiveStoreProvider>. For multi-store usage, use useStore({ storeDef, storeId }) within <LiveStoreRegistryProvider>.'
+        'useStore() without params must be used within <LiveStoreProvider>. For multi-store usage, use useStore({ storeDef, storeId }) within <MultiStoreProvider>.'
       );
     }
     return use(defaultStorePromise); // Suspends the calling component until the promise resolves.
@@ -823,11 +857,12 @@ export function useStore<TSchema extends LiveStoreSchema>(options?: UseStoreOpti
   const registry = useContext(StoreRegistryContext);
   if (!registry) {
     throw new Error(
-      'useStore({ storeDef, storeId }) must be used within <LiveStoreRegistryProvider>. For single-store usage, use useStore() without params within <LiveStoreProvider>.',
+      'useStore({ storeDef, storeId }) must be used within <MultiStoreProvider>. For single-store usage, use useStore() without params within <LiveStoreProvider>.',
     );
   }
 
-  const storePromise = registry.get(storeDef, {storeId, gcTime, ...createOptions})
+  const { storeDef, storeId, gcTime, ...restOptions } = options
+  const storePromise = registry.get(storeDef, { storeId, gcTime, ...restOptions })
   const store = use(storePromise) // Suspends the calling component until the promise resolves.
 
   // Track observer count so the registry can evict inactive stores after gcTime.
@@ -840,3 +875,5 @@ export function useStore<TSchema extends LiveStoreSchema>(options?: UseStoreOpti
   return store
 }
 ```
+
+`<MultiStoreProvider>` keeps a single `StoreRegistry` instance alive across renders and reconciles `defaultStoreOptions` internally, so callers can inline configuration objects without accidentally resetting cached stores.
