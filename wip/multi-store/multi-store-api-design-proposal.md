@@ -1,3 +1,4 @@
+
 # Multi-Store API Design Proposal
 
 ## Context
@@ -38,25 +39,17 @@ Several product scenarios require **multiple independent store instances**:
 #### 1. Multi-Tenant/Workspace/Organization Applications
 
 Many apps allow users to belong to multiple isolated workspaces, organizations, or tenants. Each workspace represents a completely independent data domain. For example:
-  - Slack: Each workspace has independent data that shouldn't be mixed
-  - Notion: Each workspace has different pages, databases, and permissions
-  - Linear: Each organization has separate projects and issues
+- Slack: Each workspace has independent data that shouldn't be mixed
+- Notion: Each workspace has different pages, databases, and permissions
+- Linear: Each organization has separate projects and issues
 
 #### 2. Partial Data Synchronization
- 
+
 Many applications need to selectively synchronize subsets of data rather than syncing an entire monolithic dataset. This is critical for:
-   - Bandwidth Optimization: Don't sync data the user isn't viewing
-   - Storage Limits: Mobile devices have limited storage
-   - Privacy: Only sync data the user has permission to access
-   - Performance: Faster initial load by deferring non-critical data
-
-### Technical Constraints
-
-1. **Memory Management**: We can't keep all store instances in memory indefinitely
-2. **Type Safety**: Must maintain full TypeScript inference across store boundaries
-3. **React Patterns**: Should leverage Suspense, Error Boundaries, and hooks naturally
-4. **Backward Compatibility**: Existing single-store applications must continue to work unchanged
-5. **Performance**: Store lookup and lifecycle management must be O(1)
+- Bandwidth Optimization: Don't sync data the user isn't viewing
+- Storage Limits: Mobile devices have limited storage
+- Privacy: Only sync data the user has permission to access
+- Performance: Faster initial load by deferring non-critical data
 
 ---
 
@@ -150,7 +143,7 @@ The multi-store architecture introduces three key concepts:
 ┌─────────────────────────────────────────────────────────────┐
 │                     <MultiStoreProvider>                    │
 │  • Provides StoreRegistry                                   │
-│  • Passes default store options (gcTime, syncPayload, etc.) |
+│  • Passes default store options (gcTime, syncPayload, etc.) │
 │  • Lives at application root                                │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -188,16 +181,16 @@ The multi-store architecture introduces three key concepts:
   - Instances are created on first access
   - Cached for subsequent access
   - Ref-counted via observers (components using `useStore()`)
-  - Auto-disposed after `gcTime` when observers drop to zero
+  - Auto-disposed after `gcTime` when observers drop to zero (see [Automatic Garbage Collection with gcTime](#d-gctime-auto))
 
 3. **Configuration Cascade**
   - Provider defaults → Definition defaults → Call-site overrides
   - Later layers override earlier ones
-  - Allows global policy with local control
+  - Allows global policy with local control (see [Configuration Cascade](#d-cascade))
 
 4. **Framework Agnostic Core**
   - `StoreRegistry` doesn't depend on React
-  - React bindings are a thin wrapper
+  - React bindings are a thin wrapper (see [Generic useStore() Hook vs. Per-Definition Hooks](#d-generic-hook))
 
 ### API Surface Summary
 
@@ -389,6 +382,9 @@ The consumption API provides **React components and hooks** for accessing store 
 
 Provides a `StoreRegistry` to the component tree and configures default options for all stores.
 
+-  Rationale and separation from `<LiveStoreProvider>` (see [Different Provider for Multi-Store](#d-provider-kind))
+-  Naming rationale (see [Name it MultiStoreProvider vs. Alternatives](#d-name-provider))
+
 **Props:**
 
 ```ts
@@ -477,11 +473,11 @@ export default function App() {
 └──────────────────────────────────────────────────────────┘
 ```
 
-Later layers **replace** earlier ones for scalar values (gcTime), but **merge** for objects (otelOptions, syncPayload).
+Later layers replace earlier ones for scalar values (gcTime), but merge for objects (otelOptions, syncPayload). See [Configuration Cascade](#d-cascade).
 
 #### `useStore()`
 
-Hook to access a store instance. Suspends the component until the store is ready.
+Hook to access a store instance. Suspends the component until the store is ready (see [Suspend on useStore Instead of Render Prop](#d-suspense)). It is a single generic hook (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#d-generic-hook)).
 
 **Signatures:**
 
@@ -612,7 +608,7 @@ function MainContent() {
 
 #### `useStoreRegistry()`
 
-Hook to access the `StoreRegistry` instance for advanced operations like preloading.
+Hook to access the `StoreRegistry` instance for advanced operations like preloading (see [Introduce Registry for Multi-Store Support](#d-registry)).
 
 **Signature:**
 
@@ -912,7 +908,7 @@ issueId  // What if issueId === workspaceId?
 
 ### User-Space Helpers
 
-While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. Here are recommended patterns for building user-space helpers.
+While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. These helpers build on the generic hook approach (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#d-generic-hook)).
 
 #### Pattern 1: Singleton Store Hooks
 
@@ -1193,7 +1189,7 @@ function IssueView({ issueId }: { issueId: string }) {
 
 ### Store Instance Lifecycle and GC
 
-Understanding the store lifecycle is critical for reasoning about memory usage and performance.
+Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#d-gctime-auto)).
 
 #### Instance States
 
@@ -1293,7 +1289,7 @@ t=90s  : GC timer fires, observers still 0 → store.destroy() → removed from 
 
 #### GC Time Configuration Layers
 
-Multiple layers can specify `gcTime`. The **effective value** is determined by precedence:
+Multiple layers can specify `gcTime`. The effective value is determined by precedence (see [Configuration Cascade](#d-cascade)):
 
 ```tsx
 // Layer 1: Provider default (lowest priority)
@@ -1319,7 +1315,7 @@ useStore({
 
 **Observer-Specific GC Times:**
 
-If multiple observers specify different `gcTime` values, the **longest duration wins**:
+If multiple observers specify different `gcTime` values, the longest duration wins (see [Longest `gcTime` Wins When Multiple Observers](#d-gctime-longest)):
 
 ```tsx
 // Component A
@@ -1356,6 +1352,8 @@ const DEFAULT_GC_TIME = typeof window === 'undefined'
 - Setting `gcTime: Infinity` prevents premature disposal during HTML generation
 - Streaming SSR: Suspense boundaries may resume after initial render
 - Component lifecycle timing is less predictable on server
+
+See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#d-gctime-default).
 
 ---
 
@@ -1546,10 +1544,13 @@ function IssueView({ issueId }) {
 }
 ```
 
+---
+
 ## Decisions
 
 This section documents key design decisions and their rationale.
 
+<a id="d-registry"></a>
 ### ✅ Decision: Introduce Registry for Multi-Store Support
 
 **Alternatives Considered:**
@@ -1620,8 +1621,7 @@ const store = useStoreInstance(storeDef, storeId)
 - No preloading capability
 - Memory leaks likely (no ref-counting)
 
----
-
+<a id="d-provider-kind"></a>
 ### ✅ Decision: Different Provider for Multi-Store (`<MultiStoreProvider>`)
 
 **Alternatives Considered:**
@@ -1709,8 +1709,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ✅ Easier to document
 - ⚠️ Two providers to learn (acceptable given clear use case distinction)
 
----
-
+<a id="d-name-provider"></a>
 ### ✅ Decision: Name it `MultiStoreProvider` vs. Alternatives
 
 **Alternatives Considered:**
@@ -1741,8 +1740,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ✅ Room for future features
 - ⚠️ Hides implementation detail (registry) — acceptable since it's an implementation detail
 
----
-
+<a id="d-gctime-auto"></a>
 ### ✅ Decision: Automatic Garbage Collection with `gcTime`
 
 **Alternatives Considered:**
@@ -1764,8 +1762,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ GC timing is approximate (setTimeout delays)
 - ⚠️ Users must understand gcTime for tuning
 
----
-
+<a id="d-gctime-default"></a>
 ### ✅ Decision: Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
@@ -1790,16 +1787,7 @@ const store = useStoreInstance(storeDef, storeId)
 - **TanStack Query**: `gcTime: 5 minutes` (cache time for query data)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds`
 
-I'll add this decision to the Decision Log. Here it is:
-
----
-
-## Decision Log
-
-_[Add this after the "Single `useStore()` Hook for Both Single and Multi-Store" decision]_
-
----
-
+<a id="d-generic-hook"></a>
 ### ✅ Decision: Generic `useStore()` Hook vs. Per-Definition Hooks
 
 **Alternatives Considered:**
@@ -1856,8 +1844,7 @@ const store = useWorkspaceStore('ws-1')
 - Not significantly better than user-space wrappers
 - Adds ceremony for little benefit
 
----
-
+<a id="d-suspense"></a>
 ### ✅ Decision: Suspend on `useStore()` Instead of Render Prop
 
 **Alternatives Considered:**
@@ -1880,8 +1867,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Learning curve for users unfamiliar with Suspense
 - ⚠️ Differs from existing loading pattern
 
----
-
+<a id="d-cascade"></a>
 ### ✅ Decision: Configuration Cascade (Provider → Definition → Call-Site)
 
 **Alternatives Considered:**
@@ -1902,8 +1888,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ More complexity to document
 - ⚠️ Potential confusion about which layer wins
 
----
-
+<a id="d-gctime-longest"></a>
 ### ✅ Decision: Longest `gcTime` Wins When Multiple Observers
 
 **Alternatives Considered:**
@@ -2024,40 +2009,40 @@ type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
 
 class StoreRegistry {
   constructor(defaultOptions?: StoreDefaultOptions)
-  
+
   updateDefaultOptions(options: StoreDefaultOptions): void
-  
+
   get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     options: LoadStoreOptions<TSchema>
   ): Promise<Store<TSchema>>
-  
+
   preloadStore<TSchema extends LiveStoreSchema>(
     options: PreloadStoreOptions<TSchema>
   ): Promise<void>
-  
+
   retain<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     storeId: string,
     gcTime?: number
   ): () => void
-  
+
   release<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     storeId: string,
     gcOverride?: number
   ): void
-  
+
   has<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     storeId: string
   ): boolean
-  
+
   drop<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
     storeId: string
   ): void
-  
+
   clear(): void
 }
 ```
@@ -2536,31 +2521,31 @@ describe('StoreRegistry', () => {
   it('should cache store instances', async () => {
     const store1 = await registry.get(testStoreDef, { storeId: 'test-1' })
     const store2 = await registry.get(testStoreDef, { storeId: 'test-1' })
-    
+
     expect(store1).toBe(store2)
   })
 
   it('should garbage collect after gcTime', async () => {
     const store = await registry.get(testStoreDef, { storeId: 'test-1' })
-    
+
     // No observers, should GC after 100ms
     await new Promise((r) => setTimeout(r, 150))
-    
+
     expect(registry.has(testStoreDef, 'test-1')).toBe(false)
   })
 
   it('should cancel GC if observer attaches', async () => {
     await registry.get(testStoreDef, { storeId: 'test-1' })
-    
+
     // Wait 50ms (halfway to GC)
     await new Promise((r) => setTimeout(r, 50))
-    
+
     // Attach observer
     registry.retain(testStoreDef, 'test-1')
-    
+
     // Wait past GC time
     await new Promise((r) => setTimeout(r, 100))
-    
+
     // Should still exist
     expect(registry.has(testStoreDef, 'test-1')).toBe(true)
   })
@@ -2582,11 +2567,10 @@ describe('useStore', () => {
     )
 
     expect(queryByText('Loading...')).toBeInTheDocument()
-    
+
     await waitFor(() => {
       expect(queryByText('Loaded')).toBeInTheDocument()
     })
   })
 })
 ```
-
