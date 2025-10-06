@@ -44,7 +44,7 @@ const InboxScreen = () => {
 
   const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
     const startTime = performance.now()
-    
+
     // Calculate estimated totals
     const totalIssues = numUsers * numIssuesPerUser
     const estimatedComments = totalIssues * (COMMENTS_PER_ISSUE / 2) // Average
@@ -52,7 +52,7 @@ const InboxScreen = () => {
     const totalItems = numUsers + totalIssues + estimatedComments + estimatedReactions
 
     const totalObjects = Math.round(totalItems)
-    
+
     setLoadingMessage({
       operation: 'Generating Random Data',
       items: [
@@ -71,8 +71,8 @@ const InboxScreen = () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       const generationStart = performance.now()
-      console.log('🏗️ Starting data generation at', generationStart.toFixed(0) + 'ms')
-      
+      console.log('🏗️ Starting data generation at', `${generationStart.toFixed(0)}ms`)
+
       const users: User[] = []
       const issues: Issue[] = []
       const comments: Comment[] = []
@@ -123,7 +123,19 @@ const InboxScreen = () => {
       }
 
       const generationTime = performance.now() - generationStart
-      console.log('✅ Generation finished in', generationTime.toFixed(0) + 'ms', '| Created', users.length, 'users,', issues.length, 'issues,', comments.length, 'comments,', reactions.length, 'reactions')
+      console.log(
+        '✅ Generation finished in',
+        `${generationTime.toFixed(0)}ms`,
+        '| Created',
+        users.length,
+        'users,',
+        issues.length,
+        'issues,',
+        comments.length,
+        'comments,',
+        reactions.length,
+        'reactions',
+      )
 
       // Update to show we're committing
       const actualTotal = users.length + issues.length + comments.length + reactions.length
@@ -140,19 +152,19 @@ const InboxScreen = () => {
 
       // Commit all data in a SINGLE transaction to avoid multiple React re-renders
       const commitStart = performance.now()
-      console.log('⏱️ Starting commit of', actualTotal, 'items at', commitStart.toFixed(0) + 'ms')
-      
+      console.log('⏱️ Starting commit of', actualTotal, 'items at', `${commitStart.toFixed(0)}ms`)
+
       store.commit(
         ...users.map((user) => events.userCreated(user)),
         ...issues.map((issue) => events.issueCreated(issue)),
         ...comments.map((comment) => events.commentCreated(comment)),
         ...reactions.map((reaction) => events.reactionCreated(reaction)),
       )
-      
+
       const commitTime = performance.now() - commitStart
-      console.log('✅ Commit finished in', commitTime.toFixed(0) + 'ms')
-      console.log('⏱️ Yielding for React updates at', (performance.now() - startTime).toFixed(0) + 'ms')
-      
+      console.log('✅ Commit finished in', `${commitTime.toFixed(0)}ms`)
+      console.log('⏱️ Yielding for React updates at', `${(performance.now() - startTime).toFixed(0)}ms`)
+
       // Create breakdown for display (even though we committed as one batch)
       const breakdown: { label: string; count: number; time: number }[] = [
         { label: 'Users', count: users.length, time: 0 },
@@ -160,12 +172,17 @@ const InboxScreen = () => {
         { label: 'Comments', count: comments.length, time: 0 },
         { label: 'Reactions', count: reactions.length, time: 0 },
       ]
-      
+
       // Yield to let React process store updates and measure the overhead
       await new Promise((resolve) => setTimeout(resolve, 0))
-      
+
       const totalTime = performance.now() - startTime
-      console.log('🏁 Total time:', totalTime.toFixed(0) + 'ms', '| React overhead:', (totalTime - commitTime - generationTime).toFixed(0) + 'ms')
+      console.log(
+        '🏁 Total time:',
+        `${totalTime.toFixed(0)}ms`,
+        '| React overhead:',
+        `${(totalTime - commitTime - generationTime).toFixed(0)}ms`,
+      )
 
       // Show timing results
       setTimingResults({
@@ -184,7 +201,7 @@ const InboxScreen = () => {
 
   const generateIssuesForCurrentUser = async (numberOfIssues: number) => {
     const startTime = performance.now()
-    
+
     // Calculate estimated totals
     const estimatedComments = numberOfIssues * (COMMENTS_PER_ISSUE / 2) // Average
     const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
@@ -265,25 +282,25 @@ const InboxScreen = () => {
 
       // Commit all data in a SINGLE transaction to avoid multiple React re-renders
       const commitStart = performance.now()
-      
+
       store.commit(
         ...issues.map((issue) => events.issueCreated(issue)),
         ...comments.map((comment) => events.commentCreated(comment)),
         ...reactions.map((reaction) => events.reactionCreated(reaction)),
       )
-      
+
       const commitTime = performance.now() - commitStart
-      
+
       // Create breakdown for display (even though we committed as one batch)
       const breakdown: { label: string; count: number; time: number }[] = [
         { label: 'Issues', count: issues.length, time: 0 },
         { label: 'Comments', count: comments.length, time: 0 },
         { label: 'Reactions', count: reactions.length, time: 0 },
       ]
-      
+
       // Yield to let React process store updates and measure the overhead
       await new Promise((resolve) => setTimeout(resolve, 0))
-      
+
       const totalTime = performance.now() - startTime
 
       // Show timing results
@@ -395,8 +412,8 @@ const InboxScreen = () => {
             </ThemedText>
 
             <View style={styles.calculationBox}>
-              {loadingMessage.items.map((item, index) => (
-                <View key={index} style={styles.calculationRow}>
+              {loadingMessage.items.map((item) => (
+                <View key={item.label} style={styles.calculationRow}>
                   <ThemedText style={styles.calculationLabel}>{item.label}</ThemedText>
                   <ThemedText type="defaultSemiBold" style={styles.calculationValue}>
                     {item.count > 0 ? item.count.toLocaleString() : '—'}
@@ -460,14 +477,14 @@ const InboxScreen = () => {
               <ThemedText type="subtitle" style={styles.timingTitle}>
                 Performance Breakdown
               </ThemedText>
-              
+
               <View style={styles.timingPhaseRow}>
                 <ThemedText style={styles.timingLabel}>1. Data Generation:</ThemedText>
                 <ThemedText type="defaultSemiBold" style={styles.timingValue}>
                   {timingResults.generationTime.toFixed(0)}ms
                 </ThemedText>
               </View>
-              
+
               <View style={styles.timingPhaseRow}>
                 <ThemedText style={styles.timingLabel}>2. Database Commit:</ThemedText>
                 <ThemedText type="defaultSemiBold" style={styles.timingValueHighlight}>
@@ -485,8 +502,8 @@ const InboxScreen = () => {
               <View style={styles.divider} />
 
               <ThemedText style={styles.breakdownTitle}>Items Committed:</ThemedText>
-              {timingResults.breakdown.map((item, index) => (
-                <View key={index} style={styles.breakdownRow}>
+              {timingResults.breakdown.map((item) => (
+                <View key={item.label} style={styles.breakdownRow}>
                   <ThemedText style={styles.breakdownLabel}>{item.label}:</ThemedText>
                   <ThemedText type="defaultSemiBold" style={styles.breakdownCount}>
                     {item.count.toLocaleString()}
