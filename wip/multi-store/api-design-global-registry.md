@@ -6,14 +6,14 @@ This document proposes the API design for supporting multiple LiveStore instance
 
 ### Store Definition
 
-We introduce a `defineStore` function to create store definitions. A store definition is a blueprint for creating store instances of a specific schema.
+We introduce a `defineStore` function to create store definitions. A store definition is a blueprint for loading store instances of a specific schema.
 
 To define a store, you provide:
 - A unique name for the store type (e.g., "workspace", "issue").
 - A schema that describes the data structure.
 - An adapter for persistence and synchronization.
 
-A store definition can then be used to create multiple store instances, each identified by a unique `storeId`. Callers must provide a `storeId` whenever they create or access a store instance, and it must be globally unique to avoid collisions with other store instances.
+A store definition can then be used to load multiple store instances, each identified by a unique `storeId`. Callers must provide a `storeId` whenever they load or access a store instance, and it must be globally unique to avoid collisions with other store instances.
 
 ```tsx
 // src/stores/workspace/index.ts
@@ -56,6 +56,7 @@ export const issueStoreDef = defineStore({
   schema: issueSchema,
   adapter,
 })
+// issueStoreDef.definitionId is unique even if another definition reuses the "issue" name
 ```
 
 #### Types
@@ -71,7 +72,7 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
   schema: TSchema
   adapter: Adapter
   /**
-   * Overrides the global-level gcTime for stores created from this definition.
+   * Overrides the global-level gcTime for stores loaded from this definition.
    * 
    * @defaultValue 60 seconds in the browser, Infinity during SSR (to prevent stores getting disposed before HTML generation completes)
    */
@@ -85,7 +86,14 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
 
 ### MultiStoreProvider
 
-`<MultiStoreProvider>` internally provides a registry (`StoreRegistry`) and accepts default options (`defaultStoreOptions`) that apply to all stores created within its context.
+`<MultiStoreProvider>` internally provides a registry (`StoreRegistry`) and accepts default options (`defaultStoreOptions`) that apply to all stores loaded within its context.
+
+Configuration precedence is:
+1. Call-site overrides (`useStore({ … })`, `preloadStore({ … })`).
+2. Per-definition defaults (`defineStore({ gcTime, boot, … })`).
+3. Provider-level defaults passed to `<MultiStoreProvider>`.
+
+Later layers merge on top of earlier ones; for example, a call-site `gcTime` replaces both definition and provider values, whereas a provider-level `syncPayload` fills in when neither the definition nor caller supplies one.
 
 `StoreRegistry` is an internal class that manages store instance caching, ref-counting, and garbage collection. It is framework-agnostic and can be used outside of React if needed. Its garbage collection strategy is as follows:
 
@@ -124,13 +132,13 @@ export default function App() {
 #### Types
 
 ```ts
-/** Default options that apply to all stores created when using MultiStoreProvider */
+/** Default options that apply to all stores loaded when using MultiStoreProvider */
 type StoreDefaultOptions = {
   batchUpdates?: (callback: () => void) => void
   syncPayload?: Schema.JsonValue
   otelOptions?: Partial<OtelOptions>
   /**
-   * Overrides the global-level gcTime for all stores created within this provider.
+   * Overrides the global-level gcTime for all stores loaded within this provider.
    *
    * @defaultValue 60 seconds in the browser, Infinity during SSR (to prevent stores getting disposed before HTML generation completes)
    */
@@ -142,7 +150,7 @@ type StoreDefaultOptions = {
 
 #### Hooks
 
-- `useStore()` gets the store instance from the registry for the given store definition and storeId. If the store instance is not yet loaded, it will be created and loaded automatically. The hook will suspend the component until the store is ready.
+- `useStore()` gets the store instance from the registry for the given store definition and storeId. If the store instance is not yet loaded, it will be loaded automatically. The hook will suspend the component until the store is ready.
 
 - `useStoreRegistry()` returns the current store registry instance from context. It's useful for advanced use cases where you need direct access to the registry (e.g. for preloading stores).
 
@@ -230,6 +238,14 @@ type PreloadStore = <TSchema extends LiveStoreSchema>(
   options: PreloadStoreOptions<TSchema>,
 ) => Promise<void>
 ```
+
+#### Choosing storeIds
+
+- Derive identifiers from stable domain concepts (for example, tenant + entity IDs) so the same logical resource always resolves to the same cache entry.
+- Include a namespace prefix when an entity type can surface in multiple contexts (`workspace:${orgId}`) to avoid cross-feature collisions.
+- When multiple parameters participate (such as `projectId` and `userId`), hash or serialize them in registration order to keep strings deterministic.
+- Keep IDs short—ideally under ~120 characters—because they flow into adapter keys, telemetry payloads, and devtools labels.
+- Reserve special IDs like `default` or `root` for application-wide singletons and document those conventions alongside the store definition.
 
 ## Usage Examples
 
@@ -421,7 +437,7 @@ import { useRouteParams } from 'my-router'
 // It can be tedious to always pass issueId/storeId around, so we can create a context provider
 const IssueStoreContext = createContext<Store | null>(null)
 
-// This component will suspend while the store is being created
+// This component will suspend while the store is loading
 export function IssueStoreProvider({ issueId, children }: { issueId: string, children: React.ReactNode }) {
   const store = useStore({ storeDef: issueStoreDef, storeId: issueId })
   return <IssueStoreContext.Provider value={store}>{children}</IssueStoreContext.Provider>
@@ -478,7 +494,7 @@ export function LiveStoreProvider<TSchema extends LiveStoreSchema>({
 }: LiveStoreProviderProps<TSchema>) {
   const storePromise = React.useMemo(
     () =>
-      createStorePromise({
+      loadStore({
         schema,
         adapter,
         storeId,
@@ -508,17 +524,26 @@ export function LiveStoreProvider<TSchema extends LiveStoreSchema>({
  */
 const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
-/** Default options that apply to all stores created when using MultiStoreProvider */
+/** Default options that apply to all stores loaded when using MultiStoreProvider */
 type StoreDefaultOptions = {
   batchUpdates?: (callback: () => void) => void
   syncPayload?: Schema.JsonValue
   otelOptions?: Partial<OtelOptions>
   /**
-   * Overrides the global-level gcTime for all stores created within this provider.
+   * Overrides the global-level gcTime for all stores loaded within this provider.
    *
    * @defaultValue 60 seconds in the browser, Infinity during SSR (to prevent stores getting disposed before HTML generation completes)
    */
   gcTime?: number
+}
+
+type LoadStoreOptions<TSchema extends LiveStoreSchema> = CreateStoreOptions<TSchema>
+
+/** We alias to use load semantics which better reflect the async nature of the operation. */
+function loadStore<TSchema extends LiveStoreSchema>(
+  options: LoadStoreOptions<TSchema>,
+): Promise<Store<TSchema>> {
+  return createStorePromise(options)
 }
 
 type StoreEntry = {
@@ -586,7 +611,7 @@ export class StoreRegistry {
 
   async get<TSchema extends LiveStoreSchema>(
     def: StoreDefinition<TSchema>,
-    options: CreateStoreOptions<TSchema>,
+    options: LoadStoreOptions<TSchema>,
   ): Promise<Store<TSchema>> {
     const {storeId, gcTime: gcOverride, signal, ...rest} = options
     const key = this.makeKey(def, storeId)
@@ -604,7 +629,7 @@ export class StoreRegistry {
       const computedGcTime = this.resolveGcTime(def, gcOverride)
       const abortController = typeof AbortController === 'undefined' ? null : new AbortController()
       const controllerSignal = signal ?? abortController?.signal
-      const createInput: CreateStoreOptions<TSchema> = {
+      const loadInput: LoadStoreOptions<TSchema> = {
         ...this.defaultStoreOptions,
         ...rest,
         storeId,
@@ -625,7 +650,7 @@ export class StoreRegistry {
       }
 
       const promise = Promise.resolve()
-        .then(() => def.create(createInput))
+        .then(() => loadStore(loadInput))
         .then((store) => {
           const current = this.entries.get(key)
           if (!current || current !== entryPlaceholder) {
@@ -682,7 +707,7 @@ export class StoreRegistry {
     const key = this.makeKey(def, storeId)
     const entry = this.entries.get(key)
     if (!entry) {
-      throw new Error(`StoreRegistry.retain called before store "${storeId}" for "${def.name}" was created.`)
+      throw new Error(`StoreRegistry.retain called before store "${storeId}" for "${def.name}" was loaded.`)
     }
 
     entry.observers += 1
@@ -736,9 +761,9 @@ export class StoreRegistry {
   async preloadStore<TSchema extends LiveStoreSchema>(
     options: PreloadStoreOptions<TSchema>,
   ): Promise<void> {
-    const {storeDef, ...createOptions} = options
+    const {storeDef, ...loadOptions} = options
     // Reuse the main get() path so preloads share caching and GC rules with suspense callers.
-    await this.get(storeDef, createOptions)
+    await this.get(storeDef, loadOptions)
   }
 
   has = <TSchema extends LiveStoreSchema>(storeDef: StoreDefinition<TSchema>, storeId: string) =>
