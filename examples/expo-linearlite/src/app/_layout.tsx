@@ -32,49 +32,82 @@ import { events, schema, tables } from '../livestore/schema.ts'
 
 LogBox.ignoreAllLogs()
 
+// Create adapter outside component to prevent recreation on every render
+const adapter = makePersistedAdapter()
+
 const RootLayout = () => {
-  const adapter = makePersistedAdapter()
   const [, rerender] = React.useState({})
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: isDark ? darkBackground : 'white',
-    },
-    text: {
-      color: isDark ? darkText : nordicGray,
-    },
-  })
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: isDark ? darkBackground : 'white',
+        },
+        text: {
+          color: isDark ? darkText : nordicGray,
+        },
+      }),
+    [isDark],
+  )
+
+  // Memoize boot function to prevent recreation
+  const bootFunction = React.useCallback((store: Store) => {
+    if (store.query(tables.users.count()) === 0) {
+      store.commit(
+        events.userCreated({
+          id: nanoid(),
+          name: 'Beto',
+          email: 'beto@expo.io',
+          photoUrl: 'https://avatars.githubusercontent.com/u/43630417?v=4',
+        }),
+      )
+    }
+  }, [])
+
+  // Memoize render functions to prevent recreation
+  const renderLoading = React.useCallback(
+    (_: any) => <LoadingLiveStore stage={_.stage} />,
+    [],
+  )
+
+  const renderError = React.useCallback(
+    (error: any) => (
+      <View style={styles.container}>
+        <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
+      </View>
+    ),
+    [styles],
+  )
+
+  const renderShutdown = React.useCallback(() => {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.text}>LiveStore Shutdown</Text>
+        <Button title="Reload" onPress={() => rerender({})} />
+      </View>
+    )
+  }, [styles])
 
   return (
     <LiveStoreProvider
       schema={schema}
-      renderLoading={(_) => <LoadingLiveStore stage={_.stage} />}
-      // disableDevtools={true}
-      renderError={(error: any) => (
-        <View style={styles.container}>
-          <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
-        </View>
-      )}
-      renderShutdown={() => {
-        return (
-          <View style={styles.container}>
-            <Text style={styles.text}>LiveStore Shutdown</Text>
-            <Button title="Reload" onPress={() => rerender({})} />
-          </View>
-        )
-      }}
-      boot={boot}
       adapter={adapter}
+      boot={bootFunction}
+      renderLoading={renderLoading}
+      renderError={renderError}
+      renderShutdown={renderShutdown}
       batchUpdates={batchUpdates}
+      // disableDevtools={true}
     >
-      <NavigationHistoryTracker />
+      {/* <NavigationHistoryTracker /> */}
       <ThemeProvider>
-        <Stack screenOptions={{ freezeOnBlur: false }}>
+        <Stack screenOptions={{ freezeOnBlur: true }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="filter-settings"
@@ -98,22 +131,6 @@ const RootLayout = () => {
       </ThemeProvider>
     </LiveStoreProvider>
   )
-}
-/**
- * This function is called when the app is booted.
- * It is used to initialize the database with some data.
- */
-const boot = (store: Store) => {
-  if (store.query(tables.users.count()) === 0) {
-    store.commit(
-      events.userCreated({
-        id: nanoid(),
-        name: 'Beto',
-        email: 'beto@expo.io',
-        photoUrl: 'https://avatars.githubusercontent.com/u/43630417?v=4',
-      }),
-    )
-  }
 }
 
 export default RootLayout
