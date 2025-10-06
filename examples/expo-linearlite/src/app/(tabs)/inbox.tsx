@@ -645,7 +645,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef3c7',
     borderRadius: 10,
     padding: 16,
-    gap: 10,
   },
   timingTitle: {
     fontSize: 16,
@@ -684,7 +683,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
   },
   breakdownLabel: {
     fontSize: 13,
