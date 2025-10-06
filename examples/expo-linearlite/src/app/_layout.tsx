@@ -20,22 +20,14 @@ import {
 
 import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
 import { darkBackground, darkText, nordicGray } from '@/constants/Colors.ts'
-import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
 import ThemeProvider from '@/context/ThemeProvider.tsx'
 
 import { events, schema, tables } from '../livestore/schema.ts'
 
-// export const unstable_settings = {
-//   // Ensure any route can link back to `/`
-//   initialRouteName: '/',
-// };
-
 LogBox.ignoreAllLogs()
 
-// Create adapter outside component to prevent recreation on every render
 const adapter = makePersistedAdapter()
 
-// Boot function in outer scope since it has no dependencies
 const boot = (store: Store) => {
   if (store.query(tables.users.count()) === 0) {
     store.commit(
@@ -70,22 +62,17 @@ const RootLayout = () => {
     [isDark],
   )
 
-  const renderError = React.useCallback(
-    (error: any) => (
-      <View style={styles.container}>
-        <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
-      </View>
-    ),
-    [styles],
-  )
-
   return (
     <LiveStoreProvider
       schema={schema}
       adapter={adapter}
       boot={boot}
       renderLoading={(_) => <LoadingLiveStore stage={_.stage} />}
-      renderError={renderError}
+      renderError={(error) => (
+        <View style={styles.container}>
+          <Text style={styles.text}>Error: {JSON.stringify(error, null, 2)}</Text>
+        </View>
+      )}
       renderShutdown={() => (
         <View style={styles.container}>
           <Text style={styles.text}>LiveStore Shutdown</Text>
@@ -95,7 +82,6 @@ const RootLayout = () => {
       batchUpdates={batchUpdates}
       // disableDevtools={true}
     >
-      {/* <NavigationHistoryTracker /> */}
       <ThemeProvider>
         <Stack screenOptions={{ freezeOnBlur: true }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
