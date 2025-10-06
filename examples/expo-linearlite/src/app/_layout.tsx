@@ -35,6 +35,20 @@ LogBox.ignoreAllLogs()
 // Create adapter outside component to prevent recreation on every render
 const adapter = makePersistedAdapter()
 
+// Boot function in outer scope since it has no dependencies
+const boot = (store: Store) => {
+  if (store.query(tables.users.count()) === 0) {
+    store.commit(
+      events.userCreated({
+        id: nanoid(),
+        name: 'Beto',
+        email: 'beto@expo.io',
+        photoUrl: 'https://avatars.githubusercontent.com/u/43630417?v=4',
+      }),
+    )
+  }
+}
+
 const RootLayout = () => {
   const [, rerender] = React.useState({})
   const colorScheme = useColorScheme()
@@ -56,26 +70,6 @@ const RootLayout = () => {
     [isDark],
   )
 
-  // Memoize boot function to prevent recreation
-  const bootFunction = React.useCallback((store: Store) => {
-    if (store.query(tables.users.count()) === 0) {
-      store.commit(
-        events.userCreated({
-          id: nanoid(),
-          name: 'Beto',
-          email: 'beto@expo.io',
-          photoUrl: 'https://avatars.githubusercontent.com/u/43630417?v=4',
-        }),
-      )
-    }
-  }, [])
-
-  // Memoize render functions to prevent recreation
-  const renderLoading = React.useCallback(
-    (_: any) => <LoadingLiveStore stage={_.stage} />,
-    [],
-  )
-
   const renderError = React.useCallback(
     (error: any) => (
       <View style={styles.container}>
@@ -85,23 +79,19 @@ const RootLayout = () => {
     [styles],
   )
 
-  const renderShutdown = React.useCallback(() => {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>LiveStore Shutdown</Text>
-        <Button title="Reload" onPress={() => rerender({})} />
-      </View>
-    )
-  }, [styles])
-
   return (
     <LiveStoreProvider
       schema={schema}
       adapter={adapter}
-      boot={bootFunction}
-      renderLoading={renderLoading}
+      boot={boot}
+      renderLoading={(_) => <LoadingLiveStore stage={_.stage} />}
       renderError={renderError}
-      renderShutdown={renderShutdown}
+      renderShutdown={() => (
+        <View style={styles.container}>
+          <Text style={styles.text}>LiveStore Shutdown</Text>
+          <Button title="Reload" onPress={() => rerender({})} />
+        </View>
+      )}
       batchUpdates={batchUpdates}
       // disableDevtools={true}
     >
