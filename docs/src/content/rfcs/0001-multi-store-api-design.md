@@ -172,21 +172,21 @@ The multi-store architecture introduces three key concepts:
 
 #### Authoring
 
-| API | Purpose | Example |
-|:----|:--------|:--------|
+| API             | Purpose                               | Example                                           |
+|:----------------|:--------------------------------------|:--------------------------------------------------|
 | `defineStore()` | Create a store definition (blueprint) | `defineStore({ name: 'issue', schema, adapter })` |
 
 #### Consumption
 
-| API | Purpose | Context Required       |
-|:----|:--------|:-----------------------|
-| `<LiveStoreProvider>` | Single-store provider (backward compatible) | None                   |
-| `<MultiStoreProvider>` | Multi-store provider with registry | None                   |
-| `useStore()` | Get store instance (suspends until ready) | Either provider        |
-| `useStoreRegistry()` | Get registry for advanced operations | `<MultiStoreProvider>` |
-| `registry.preloadStore()` | Preload store without suspending | `<MultiStoreProvider>` |
-| `registry.drop()` | Manually evict store instance | `<MultiStoreProvider>` |
-| `registry.clear()` | Evict all store instances | `<MultiStoreProvider>` |
+| API                       | Purpose                                     | Context Required       |
+|:--------------------------|:--------------------------------------------|:-----------------------|
+| `<LiveStoreProvider>`     | Single-store provider (backward compatible) | None                   |
+| `<MultiStoreProvider>`    | Multi-store provider with registry          | None                   |
+| `useStore()`              | Get store instance (suspends until ready)   | Either provider        |
+| `useStoreRegistry()`      | Get registry for advanced operations        | `<MultiStoreProvider>` |
+| `registry.preloadStore()` | Preload store without suspending            | `<MultiStoreProvider>` |
+| `registry.drop()`         | Manually evict store instance               | `<MultiStoreProvider>` |
+| `registry.clear()`        | Evict all store instances                   | `<MultiStoreProvider>` |
 
 ### Authoring API
 
@@ -868,13 +868,13 @@ issueId  // What if issueId === workspaceId?
 
 **Decision Matrix:**
 
-| Scenario | Pattern | Example |
-|:---------|:--------|:--------|
-| Single entity | `type:id` | `issue:abc-123` |
-| Multi-part key | `type:id1:id2` | `project:p1:issue:i1` |
-| Singleton | `type-singleton` | `workspace-root` |
-| User-scoped | `user:userId:type:id` | `user:u1:settings` |
-| Tenant-scoped | `org:orgId:type:id` | `org:acme:workspace` |
+| Scenario       | Pattern               | Example               |
+|:---------------|:----------------------|:----------------------|
+| Single entity  | `type:id`             | `issue:abc-123`       |
+| Multi-part key | `type:id1:id2`        | `project:p1:issue:i1` |
+| Singleton      | `type-singleton`      | `workspace-root`      |
+| User-scoped    | `user:userId:type:id` | `user:u1:settings`    |
+| Tenant-scoped  | `org:orgId:type:id`   | `org:acme:workspace`  |
 
 ### User-Space Helpers
 
@@ -1299,11 +1299,11 @@ useStore({ storeDef, storeId: 'issue-1', gcTime: 120_000 }) // 120s
 
 #### Special GC Values
 
-| Value | Behavior | Use Case |
-|:------|:---------|:---------|
-| `Infinity` | Never auto-dispose | Singleton stores, critical app data |
-| `60_000` (default) | 60 seconds | Standard UI data |
-| `0` | Dispose immediately | Not recommended (causes thrashing) |
+| Value              | Behavior            | Use Case                            |
+|:-------------------|:--------------------|:------------------------------------|
+| `Infinity`         | Never auto-dispose  | Singleton stores, critical app data |
+| `60_000` (default) | 60 seconds          | Standard UI data                    |
+| `0`                | Dispose immediately | Not recommended (causes thrashing)  |
 
 #### SSR Considerations
 
@@ -1684,13 +1684,13 @@ const store = useStoreInstance(storeDef, storeId)
 
 **Rationale:**
 
-| Name | Pros | Cons |
-|:-----|:-----|:-----|
-| `MultiStoreProvider` ✅ | • Clearly communicates "multiple stores"<br>• Parallel to `LiveStoreProvider` (single)<br>• Concise | • Doesn't mention "registry" |
-| `StoreRegistryProvider` | • Names the implementation detail<br>• Technical accuracy | • Less clear about use case<br>• Users don't care about "registry"<br>• Too implementation-focused |
-| `LiveStoreRegistryProvider` | • Consistent with `LiveStoreProvider`<br>• Mentions registry | • Too verbose<br>• "LiveStore" is brand name, not a descriptor |
-| `LiveStoresProvider` | • Plural indicates multiple | • Awkward plural<br>• Doesn't clearly convey difference from single-store |
-| `StoreProvider` | • Simple and generic | • Too generic<br>• Conflicts with common naming patterns<br>• Doesn't distinguish from single-store |
+| Name                        | Pros                                                                                                | Cons                                                                                                |
+|:----------------------------|:----------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------|
+| `MultiStoreProvider` ✅      | • Clearly communicates "multiple stores"<br>• Parallel to `LiveStoreProvider` (single)<br>• Concise | • Doesn't mention "registry"                                                                        |
+| `StoreRegistryProvider`     | • Names the implementation detail<br>• Technical accuracy                                           | • Less clear about use case<br>• Users don't care about "registry"<br>• Too implementation-focused  |
+| `LiveStoreRegistryProvider` | • Consistent with `LiveStoreProvider`<br>• Mentions registry                                        | • Too verbose<br>• "LiveStore" is brand name, not a descriptor                                      |
+| `LiveStoresProvider`        | • Plural indicates multiple                                                                         | • Awkward plural<br>• Doesn't clearly convey difference from single-store                           |
+| `StoreProvider`             | • Simple and generic                                                                                | • Too generic<br>• Conflicts with common naming patterns<br>• Doesn't distinguish from single-store |
 
 **Additional Considerations:**
 - Future extensibility: Name should accommodate potential features beyond just providing a registry (e.g., store orchestration, cross-store events)
