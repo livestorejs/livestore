@@ -76,7 +76,6 @@ function App() {
 
 **Issues:**
 - Can't control which provider's store `useStore()` returns
-- No way to have multiple instances of the same schema
 - Provider nesting becomes deeply nested and unmanageable
 - No centralized lifecycle management
 
@@ -84,8 +83,8 @@ function App() {
 
 ```tsx
 // ❌ Problematic: Manual instance management
-const issueStore1 = await createStore({ ... })
-const issueStore2 = await createStore({ ... })
+const issueStore1 = await createStorePromise({ ... })
+const issueStore2 = await createStorePromise({ ... })
 
 // Pass via props (verbose) or module state (memory leaks)
 ```
