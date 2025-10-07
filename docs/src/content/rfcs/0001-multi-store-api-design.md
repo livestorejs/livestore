@@ -157,16 +157,16 @@ The multi-store architecture introduces three key concepts:
   - Instances are created on first access
   - Cached for subsequent access
   - Ref-counted via observers (components using `useStore()`)
-  - Auto-disposed after `gcTime` when observers drop to zero (see [Automatic Garbage Collection with gcTime](#-automatic-garbage-collection-with-gctime))
+  - Auto-disposed after `gcTime` when observers drop to zero (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime))
 
 3. **Configuration Cascade**
   - Provider defaults → Definition defaults → Call-site overrides
   - Later layers override earlier ones
-  - Allows global policy with local control (see [Configuration Cascade](#-configuration-cascade-provider--definition--call-site))
+  - Allows global policy with local control (see [Configuration Cascade](#configuration-cascade-provider--definition--call-site))
 
 4. **Framework Agnostic Core**
   - `StoreRegistry` doesn't depend on React
-  - React bindings are a thin wrapper (see [Generic useStore() Hook vs. Per-Definition Hooks](#-generic-usestore-hook-vs-per-definition-hooks))
+  - React bindings are a thin wrapper (see [Generic useStore() Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks))
 
 ### API Surface Summary
 
@@ -354,8 +354,8 @@ The consumption API provides **React components and hooks** for accessing store 
 
 Provides a `StoreRegistry` to the component tree and configures default options for all stores.
 
--  Rationale and separation from `<LiveStoreProvider>` (see [Different Provider for Multi-Store](#-different-provider-for-multi-store-multistoreprovider))
--  Naming rationale (see [Name it MultiStoreProvider vs. Alternatives](#-name-it-multistoreprovider-vs-alternatives))
+-  Rationale and separation from `<LiveStoreProvider>` (see [Different Provider for Multi-Store](#different-provider-for-multi-store-multistoreprovider))
+-  Naming rationale (see [Name it MultiStoreProvider vs. Alternatives](#name-it-multistoreprovider-vs-alternatives))
 
 **Props:**
 
@@ -445,11 +445,11 @@ export default function App() {
 └──────────────────────────────────────────────────────────┘
 ```
 
-Later layers replace earlier ones for scalar values (gcTime), but merge for objects (otelOptions, syncPayload). See [Configuration Cascade](#-configuration-cascade-provider--definition--call-site).
+Later layers replace earlier ones for scalar values (gcTime), but merge for objects (otelOptions, syncPayload). See [Configuration Cascade](#configuration-cascade-provider--definition--call-site).
 
 #### `useStore()`
 
-Hook to access a store instance. Suspends the component until the store is ready (see [Suspend on useStore Instead of Render Prop](#-suspend-on-usestore-instead-of-render-prop)). It is a single generic hook (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#-generic-usestore-hook-vs-per-definition-hooks)).
+Hook to access a store instance. Suspends the component until the store is ready (see [Suspend on useStore Instead of Render Prop](#suspend-on-usestore-instead-of-render-prop)). It is a single generic hook (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks)).
 
 **Signatures:**
 
@@ -580,7 +580,7 @@ function MainContent() {
 
 #### `useStoreRegistry()`
 
-Hook to access the `StoreRegistry` instance for advanced operations like preloading (see [Introduce Registry for Multi-Store Support](#-introduce-registry-for-multi-store-support)).
+Hook to access the `StoreRegistry` instance for advanced operations like preloading (see [Introduce Registry for Multi-Store Support](#introduce-registry-for-multi-store-support)).
 
 **Signature:**
 
@@ -878,7 +878,7 @@ issueId  // What if issueId === workspaceId?
 
 ### User-Space Helpers
 
-While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. These helpers build on the generic hook approach (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#-generic-usestore-hook-vs-per-definition-hooks)).
+While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. These helpers build on the generic hook approach (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks)).
 
 #### Pattern 1: Singleton Store Hooks
 
@@ -1157,7 +1157,7 @@ function IssueView({ issueId }: { issueId: string }) {
 
 ### Store Instance Lifecycle and GC
 
-Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#-automatic-garbage-collection-with-gctime)).
+Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime)).
 
 #### Instance States
 
@@ -1257,7 +1257,7 @@ t=90s  : GC timer fires, observers still 0 → store.destroy() → removed from 
 
 #### GC Time Configuration Layers
 
-Multiple layers can specify `gcTime`. The effective value is determined by precedence (see [Configuration Cascade](#-configuration-cascade-provider--definition--call-site)):
+Multiple layers can specify `gcTime`. The effective value is determined by precedence (see [Configuration Cascade](#configuration-cascade-provider--definition--call-site)):
 
 ```tsx
 // Layer 1: Provider default (lowest priority)
@@ -1283,7 +1283,7 @@ useStore({
 
 **Observer-Specific GC Times:**
 
-If multiple observers specify different `gcTime` values, the longest duration wins (see [Longest `gcTime` Wins When Multiple Observers](#-longest-gctime-wins-when-multiple-observers)):
+If multiple observers specify different `gcTime` values, the longest duration wins (see [Longest `gcTime` Wins When Multiple Observers](#longest-gctime-wins-when-multiple-observers)):
 
 ```tsx
 // Component A
@@ -1321,7 +1321,7 @@ const DEFAULT_GC_TIME = typeof window === 'undefined'
 - Streaming SSR: Suspense boundaries may resume after initial render
 - Component lifecycle timing is less predictable on server
 
-See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#-default-gctime-of-60-seconds-browser--infinity-ssr).
+See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-gctime-of-60-seconds-browser--infinity-ssr).
 
 ### Edge Cases & Limitations
 
@@ -1514,7 +1514,7 @@ function IssueView({ issueId }) {
 
 This section documents key design choices and their rationale. **Feedback and alternative perspectives are welcome.**
 
-### ✅ Introduce Registry for Multi-Store Support
+### Introduce Registry for Multi-Store Support
 
 **Alternatives Considered:**
 1. **Registry pattern** (chosen)
@@ -1584,7 +1584,7 @@ const store = useStoreInstance(storeDef, storeId)
 - No preloading capability
 - Memory leaks likely (no ref-counting)
 
-### ✅ Different Provider for Multi-Store (`<MultiStoreProvider>`)
+### Different Provider for Multi-Store (`<MultiStoreProvider>`)
 
 **Alternatives Considered:**
 1. **Different Provider**: Introduce `<MultiStoreProvider>` alongside `<LiveStoreProvider>` (chosen)
@@ -1671,7 +1671,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ✅ Easier to document
 - ⚠️ Two providers to learn (acceptable given clear use case distinction)
 
-### ✅ Name it `MultiStoreProvider` vs. Alternatives
+### Name it `MultiStoreProvider` vs. Alternatives
 
 **Alternatives Considered:**
 1. **`<MultiStoreProvider>`** (chosen)
@@ -1701,7 +1701,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ✅ Room for future features
 - ⚠️ Hides implementation detail (registry) — acceptable since it's an implementation detail
 
-### ✅ Automatic Garbage Collection with `gcTime`
+### Automatic Garbage Collection with `gcTime`
 
 **Alternatives Considered:**
 1. **Manual disposal**: User calls `store.destroy()` explicitly
@@ -1722,7 +1722,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ GC timing is approximate (setTimeout delays)
 - ⚠️ Users must understand gcTime for tuning
 
-### ✅ Longest `gcTime` Wins When Multiple Observers
+### Longest `gcTime` Wins When Multiple Observers
 
 **Alternatives Considered:**
 1. **First observer's gcTime**
@@ -1742,7 +1742,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ✅ Predictable behavior (store stays alive longer than shortest)
 - ⚠️ Potentially keeps stores in memory longer than some observers expect
 
-### ✅ Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
+### Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
 1. **30 seconds** (aggressive eviction)
@@ -1766,7 +1766,7 @@ const store = useStoreInstance(storeDef, storeId)
 - **TanStack Query**: `gcTime: 5 minutes` (cache time for query data)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds`
 
-### ✅ Generic `useStore()` Hook vs. Per-Definition Hooks
+### Generic `useStore()` Hook vs. Per-Definition Hooks
 
 **Alternatives Considered:**
 1. **Single generic `useStore()` hook** (chosen)
@@ -1822,7 +1822,7 @@ const store = useWorkspaceStore('ws-1')
 - Not significantly better than user-space wrappers
 - Adds ceremony for little benefit
 
-### ✅ Suspend on `useStore()` Instead of Render Prop
+### Suspend on `useStore()` Instead of Render Prop
 
 **Alternatives Considered:**
 1. **Render props**: `<StoreLoader render={(store) => ...} />`
@@ -1844,7 +1844,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Learning curve for users unfamiliar with Suspense
 - ⚠️ Differs from existing loading pattern
 
-### ✅ Configuration Cascade (Provider → Definition → Call-Site)
+### Configuration Cascade (Provider → Definition → Call-Site)
 
 **Alternatives Considered:**
 1. **Flat**: Only call-site options
