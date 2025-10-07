@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { IssueStoreProvider } from '../stores/issue/context.ts'
+import { IssueStoreProvider } from '../stores/issue/index.ts'
 import { IssueView } from './IssueView.tsx'
 
 export function RecursiveDemo() {
@@ -14,7 +14,7 @@ export function RecursiveDemo() {
 
       <div className="grid">
         <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
-          <IssueStoreProvider>
+          <IssueStoreProvider issueId="root-issue">
             <IssueView />
           </IssueStoreProvider>
         </Suspense>

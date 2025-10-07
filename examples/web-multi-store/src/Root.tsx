@@ -1,4 +1,6 @@
+import { MultiStoreProvider } from '@livestore/react'
 import { useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ChainedDemo } from './components/ChainedDemo.tsx'
 import { IndependentDemo } from './components/IndependentDemo.tsx'
@@ -50,10 +52,16 @@ export function App() {
       </div>
 
       <ErrorBoundary FallbackComponent={ErrorFallback} resetKeys={[activeTab]}>
-        {activeTab === 'independent' && <IndependentDemo />}
-        {activeTab === 'multiInstance' && <MultiInstanceDemo />}
-        {activeTab === 'chained' && <ChainedDemo />}
-        {activeTab === 'recursive' && <RecursiveDemo />}
+        <MultiStoreProvider
+          defaultStoreOptions={{
+            batchUpdates,
+          }}
+        >
+          {activeTab === 'independent' && <IndependentDemo />}
+          {activeTab === 'multiInstance' && <MultiInstanceDemo />}
+          {activeTab === 'chained' && <ChainedDemo />}
+          {activeTab === 'recursive' && <RecursiveDemo />}
+        </MultiStoreProvider>
       </ErrorBoundary>
 
       <div className="container" style={{ marginTop: 40 }}>

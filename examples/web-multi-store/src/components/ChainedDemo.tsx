@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { WorkspaceStoreProvider } from '../stores/workspace/context.ts'
 import { WorkspaceView } from './WorkspaceView.tsx'
 
 export function ChainedDemo() {
@@ -14,9 +13,7 @@ export function ChainedDemo() {
 
       <div className="grid">
         <Suspense fallback={<div className="loading">Loading workspace store...</div>}>
-          <WorkspaceStoreProvider>
-            <WorkspaceView />
-          </WorkspaceStoreProvider>
+          <WorkspaceView />
         </Suspense>
       </div>
     </div>
