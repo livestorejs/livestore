@@ -238,7 +238,7 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
   gcTime?: number
 
   /**
-   * Bootstrap function called once per instance after loading completes.
+   * Function called once per instance after loading completes.
    */
   onLoad?: (
     store: Store<TSchema>,
@@ -297,10 +297,8 @@ export const workspaceStoreDef = defineStore({
   name: 'workspace',
   schema: workspaceSchema,
   adapter,
-  gcTime: Infinity, // Never evict the main workspace store
   onLoad: async (store, { migrationsReport, parentSpan }) => {
-    // Initialize workspace-specific subscriptions
-    console.log('Workspace store booted', { migrationsReport })
+    console.log('Workspace store loaded', { migrationsReport })
   },
 })
 
