@@ -80,36 +80,34 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       const allMessagesQuery = tables.messages.where({})
-      const unsubscribe = store.subscribe(allMessagesQuery, {
-        onUpdate: (messages) => {
-          const processedMessageIds = new Set(
-            store.query(tables.botProcessedMessages.where({})).map((processed) => processed.messageId),
+      const unsubscribe = store.subscribe(allMessagesQuery, (messages) => {
+        const processedMessageIds = new Set(
+          store.query(tables.botProcessedMessages.where({})).map((processed) => processed.messageId),
+        )
+        const newUserMessages = messages.filter(
+          (message) => !message.isBot && message.userId !== 'bot' && !processedMessageIds.has(message.id),
+        )
+
+        for (const message of newUserMessages) {
+          console.log(`Bot: Reacting to new message ${message.id} from ${message.username}`)
+
+          store.commit(
+            events.reactionAdded({
+              id: `bot-reaction-${message.id}`,
+              messageId: message.id,
+              emoji: '🤖',
+              userId: 'bot',
+              username: 'ChatBot',
+            }),
           )
-          const newUserMessages = messages.filter(
-            (message) => !message.isBot && message.userId !== 'bot' && !processedMessageIds.has(message.id),
+
+          store.commit(
+            events.botProcessedMessage({
+              messageId: message.id,
+              processedAt: new Date(),
+            }),
           )
-
-          for (const message of newUserMessages) {
-            console.log(`Bot: Reacting to new message ${message.id} from ${message.username}`)
-
-            store.commit(
-              events.reactionAdded({
-                id: `bot-reaction-${message.id}`,
-                messageId: message.id,
-                emoji: '🤖',
-                userId: 'bot',
-                username: 'ChatBot',
-              }),
-            )
-
-            store.commit(
-              events.botProcessedMessage({
-                messageId: message.id,
-                processedAt: new Date(),
-              }),
-            )
-          }
-        },
+        }
       })
 
       this.storeSubscription = unsubscribe

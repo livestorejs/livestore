@@ -57,10 +57,8 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     const store = await this.getStore()
 
     if (this.storeSubscription === undefined) {
-      this.storeSubscription = store.subscribe(tables.todos, {
-        onUpdate: (todos) => {
-          console.log(`todos for store (${this.storeId})`, todos)
-        },
+      this.storeSubscription = store.subscribe(tables.todos, (todos) => {
+        console.log(`todos for store (${this.storeId})`, todos)
       })
     }
 

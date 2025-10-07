@@ -204,10 +204,8 @@ Vitest.describe('otel', () => {
         .where({ completed: false })
         .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
-      const unsubscribe = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults.push(result)
-        },
+      const unsubscribe = store.subscribe(queryBuilder, (result) => {
+        callbackResults.push(result)
       })
 
       expect(callbackResults).toHaveLength(1)
@@ -251,16 +249,12 @@ Vitest.describe('otel', () => {
         .where({ completed: false })
         .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
-      const unsubscribe1 = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults1.push(result)
-        },
+      const unsubscribe1 = store.subscribe(queryBuilder, (result) => {
+        callbackResults1.push(result)
       })
 
-      const unsubscribe2 = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults2.push(result)
-        },
+      const unsubscribe2 = store.subscribe(queryBuilder, (result) => {
+        callbackResults2.push(result)
       })
 
       expect(callbackResults1).toHaveLength(1)
@@ -301,10 +295,8 @@ Vitest.describe('otel', () => {
 
       const callbackResults: any[] = []
 
-      const unsubscribe = store.subscribe(tables.todos, {
-        onUpdate: (result) => {
-          callbackResults.push(result)
-        },
+      const unsubscribe = store.subscribe(tables.todos, (result) => {
+        callbackResults.push(result)
       })
 
       expect(callbackResults).toHaveLength(1)

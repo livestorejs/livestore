@@ -172,18 +172,14 @@ class TodoList extends HTMLElement {
 
     // NOTE: can we get an AsyncIterator for newValues as well?
     // TODO unsubscribe
-    store.subscribe(todos$, {
-      onUpdate: (newValue) => {
-        this.#todos = newValue
-        this.updateTodoItems()
-      },
+    store.subscribe(todos$, (newValue) => {
+      this.#todos = newValue
+      this.updateTodoItems()
     })
 
     // TODO unsubscribe
-    store.subscribe(appState$, {
-      onUpdate: (newValue) => {
-        input.value = newValue.newTodoText
-      },
+    store.subscribe(appState$, (newValue) => {
+      input.value = newValue.newTodoText
     })
   }
 
