@@ -7,6 +7,7 @@ import { SeedInput } from '@/components/layout/toolbar/seed-input'
 import { ShareButton } from '@/components/layout/toolbar/share-button'
 import { UserInput } from '@/components/layout/toolbar/user-input'
 import { DevtoolsButton } from './devtools-button.tsx'
+import { SyncPendingIndicator } from './sync-pending-indicator.tsx'
 import { SyncToggle } from './sync-toggle.tsx'
 
 export const Toolbar = () => {
@@ -22,6 +23,7 @@ export const Toolbar = () => {
           <span>LiveStore</span>
         </Link>
         <SyncToggle />
+        <SyncPendingIndicator />
       </div>
       <div className="hidden lg:flex items-center gap-1">
         <UserInput />

@@ -27,6 +27,8 @@ const adapter = makePersistedAdapter({
   resetPersistence,
 })
 
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
+
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const { storeId: routeStoreId } = useParams()
@@ -61,7 +63,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       renderLoading={renderBootStatus}
       batchUpdates={batchUpdates}
       storeId={storeId}
-      syncPayload={{ authToken: 'insecure-token-change-me' }}
+      syncPayload={syncPayload}
     >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
         <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>

@@ -728,6 +728,9 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../packages/@livestore/sync-cf
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: workspace:*
         version: link:../../packages/@livestore/wa-sqlite
