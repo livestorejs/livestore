@@ -41,6 +41,8 @@ There are many ways to contribute to LiveStore.
 - Monorepo setup changes
 - Changes to the docs site/setup
 
+**Note:** For significant changes to public APIs or core architecture, consider writing an [RFC (Request for Comments)](/rfcs/) first to gather feedback before implementation.
+
 ### Out of scope (for now)
 
 - Changes to the landing page
