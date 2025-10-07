@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
 import { IssueStoreProvider } from '../stores/issue/context.ts'
-import { WorkspaceStoreProvider } from '../stores/workspace/context.ts'
 import { IssueView } from './IssueView.tsx'
 import { WorkspaceView } from './WorkspaceView.tsx'
 
@@ -16,9 +15,7 @@ export function IndependentDemo() {
 
       <div className="grid">
         <Suspense fallback={<div className="loading">Loading workspace...</div>}>
-          <WorkspaceStoreProvider>
-            <WorkspaceView />
-          </WorkspaceStoreProvider>
+          <WorkspaceView />
         </Suspense>
 
         <Suspense fallback={<div className="loading">Loading issue...</div>}>
