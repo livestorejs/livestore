@@ -331,19 +331,6 @@ export const issueStoreDef = defineStore({
 // issueStoreDef.definitionId will be unique
 ```
 
-#### Store Definition Best Practices
-
-**✅ DO:**
-- Define store definitions at module level (they're singletons)
-- Export definitions for reuse across components
-- Use descriptive names that match your domain model
-- Optionally, set appropriate `gcTime` based on data access patterns
-
-**❌ DON'T:**
-- Create definitions dynamically in components (causes re-renders)
-- Include user-specific data in the definition (use `storeId` in `useStore()` instead)
-- Set `gcTime: 0` (instances would be disposed immediately)
-
 ### Consumption API
 
 The consumption API provides **React components and hooks** for accessing store instances.
