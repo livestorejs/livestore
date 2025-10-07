@@ -398,8 +398,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         const label = `subscribe:${options?.label}`
         const effect = this.reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) =>
-            onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
           { label },
         )
 
