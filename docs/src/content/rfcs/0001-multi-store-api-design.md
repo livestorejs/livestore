@@ -1545,12 +1545,12 @@ function IssueView({ issueId }) {
 
 ---
 
-## Decisions
+## Design Rationale
 
-This section documents key design decisions and their rationale.
+This section documents key design choices and their rationale. **These are proposed approaches—feedback and alternative perspectives are welcome.**
 
 <a id="d-registry"></a>
-### ✅ Decision: Introduce Registry for Multi-Store Support
+### ✅ Proposed: Introduce Registry for Multi-Store Support
 
 **Alternatives Considered:**
 1. **Registry pattern** (chosen)
@@ -1621,7 +1621,7 @@ const store = useStoreInstance(storeDef, storeId)
 - Memory leaks likely (no ref-counting)
 
 <a id="d-provider-kind"></a>
-### ✅ Decision: Different Provider for Multi-Store (`<MultiStoreProvider>`)
+### ✅ Proposed: Different Provider for Multi-Store (`<MultiStoreProvider>`)
 
 **Alternatives Considered:**
 1. **Different Provider**: Introduce `<MultiStoreProvider>` alongside `<LiveStoreProvider>` (chosen)
@@ -1709,7 +1709,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Two providers to learn (acceptable given clear use case distinction)
 
 <a id="d-name-provider"></a>
-### ✅ Decision: Name it `MultiStoreProvider` vs. Alternatives
+### ✅ Proposed: Name it `MultiStoreProvider` vs. Alternatives
 
 **Alternatives Considered:**
 1. **`<MultiStoreProvider>`** (chosen)
@@ -1740,7 +1740,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Hides implementation detail (registry) — acceptable since it's an implementation detail
 
 <a id="d-gctime-auto"></a>
-### ✅ Decision: Automatic Garbage Collection with `gcTime`
+### ✅ Proposed: Automatic Garbage Collection with `gcTime`
 
 **Alternatives Considered:**
 1. **Manual disposal**: User calls `store.destroy()` explicitly
@@ -1762,7 +1762,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Users must understand gcTime for tuning
 
 <a id="d-gctime-default"></a>
-### ✅ Decision: Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
+### ✅ Proposed: Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
 1. **30 seconds** (aggressive eviction)
@@ -1787,7 +1787,7 @@ const store = useStoreInstance(storeDef, storeId)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds`
 
 <a id="d-generic-hook"></a>
-### ✅ Decision: Generic `useStore()` Hook vs. Per-Definition Hooks
+### ✅ Proposed: Generic `useStore()` Hook vs. Per-Definition Hooks
 
 **Alternatives Considered:**
 1. **Single generic `useStore()` hook** (chosen)
@@ -1844,7 +1844,7 @@ const store = useWorkspaceStore('ws-1')
 - Adds ceremony for little benefit
 
 <a id="d-suspense"></a>
-### ✅ Decision: Suspend on `useStore()` Instead of Render Prop
+### ✅ Proposed: Suspend on `useStore()` Instead of Render Prop
 
 **Alternatives Considered:**
 1. **Render props**: `<StoreLoader render={(store) => ...} />`
@@ -1867,7 +1867,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Differs from existing loading pattern
 
 <a id="d-cascade"></a>
-### ✅ Decision: Configuration Cascade (Provider → Definition → Call-Site)
+### ✅ Proposed: Configuration Cascade (Provider → Definition → Call-Site)
 
 **Alternatives Considered:**
 1. **Flat**: Only call-site options
@@ -1888,7 +1888,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Potential confusion about which layer wins
 
 <a id="d-gctime-longest"></a>
-### ✅ Decision: Longest `gcTime` Wins When Multiple Observers
+### ✅ Proposed: Longest `gcTime` Wins When Multiple Observers
 
 **Alternatives Considered:**
 1. **First observer's gcTime**
@@ -1967,7 +1967,7 @@ type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
   schema: TSchema
   adapter: Adapter
   gcTime?: number
-  boot?: (
+  onLoad?: (
     store: Store<TSchema>,
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span }
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
