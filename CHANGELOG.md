@@ -40,6 +40,8 @@
   await store.shutdownPromise()
   ```
 
+- **`store.subscribe` callback signature:** The subscription callback is now passed as the second argument, with subscription options moved to an optional third argument object. Replace usages like `store.subscribe(query$, { onUpdate })` with `store.subscribe(query$, onUpdate, options)`.
+
 - **`QueryBuilder.first()` behaviour:** `table.query.first()` now returns `undefined` when no rows match. To keep the old behaviour, pass `{ behaviour: "error" }`, or supply a fallback.
 
   ```typescript

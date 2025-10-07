@@ -132,8 +132,9 @@ Stack trace:
     // so we're also updating the span name here.
     span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${query$.label}`)
 
-    return store.subscribe(query$, {
-      onUpdate: (newValue) => {
+    return store.subscribe(
+      query$,
+      (newValue) => {
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
         // there may be weird reactivity bugs.
@@ -141,12 +142,14 @@ Stack trace:
           setValue(newValue)
         }
       },
-      onUnsubsubscribe: () => {
-        query$.activeSubscriptions.delete(stackInfo)
+      {
+        onUnsubsubscribe: () => {
+          query$.activeSubscriptions.delete(stackInfo)
+        },
+        label: query$.label,
+        otelContext,
       },
-      label: query$.label,
-      otelContext,
-    })
+    )
   }, [stackInfo, query$, setValue, store, valueRef, otelContext, span, options?.otelSpanName])
 
   useRcResource(
