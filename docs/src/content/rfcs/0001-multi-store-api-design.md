@@ -45,10 +45,11 @@ Many apps allow users to belong to multiple isolated workspaces, organizations, 
 #### 2. Partial Data Synchronization
 
 Many applications need to selectively synchronize subsets of data rather than syncing an entire monolithic dataset. This is critical for:
+- Storage Limits: Browsers have [limited storage](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)
+- Memory Limits: A browser tab can only hold so much data in memory
 - Bandwidth Optimization: Don't sync data the user isn't viewing
-- Storage Limits: Mobile devices have limited storage
-- Privacy: Only sync data the user has permission to access
 - Performance: Faster initial load by deferring non-critical data
+- Privacy: Only sync data the user has permission to access
 
 ---
 
