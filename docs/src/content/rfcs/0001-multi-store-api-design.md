@@ -51,8 +51,6 @@ Many applications need to selectively synchronize subsets of data rather than sy
 - Performance: Faster initial load by deferring non-critical data
 - Privacy: Only sync data the user has permission to access
 
----
-
 ## Problem
 
 ### Problem Statement
@@ -130,8 +128,6 @@ A multi-store solution must:
 7. **✅ React Integration**: Natural use of Suspense, Error Boundaries, hooks
 8. **✅ Framework Agnostic Core**: Core logic reusable outside React (Node.js, CLI, etc.)
 9. **✅ Testability**: Easy to create isolated store instances for tests
-
----
 
 ## Proposed Solution
 
@@ -211,8 +207,6 @@ The multi-store architecture introduces three key concepts:
 | `registry.preloadStore()` | Preload store without suspending | `<MultiStoreProvider>` |
 | `registry.drop()` | Manually evict store instance | `<MultiStoreProvider>` |
 | `registry.clear()` | Evict all store instances | `<MultiStoreProvider>` |
-
----
 
 ### Authoring API
 
@@ -371,8 +365,6 @@ export const issueStoreDef = defineStore({
 - Create definitions dynamically in components (causes re-renders)
 - Include user-specific data in the definition (use `storeId` in `useStore()` instead)
 - Set `gcTime: 0` (instances would be disposed immediately)
-
----
 
 ### Consumption API
 
@@ -904,8 +896,6 @@ issueId  // What if issueId === workspaceId?
 | User-scoped | `user:userId:type:id` | `user:u1:settings` |
 | Tenant-scoped | `org:orgId:type:id` | `org:acme:workspace` |
 
----
-
 ### User-Space Helpers
 
 While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. These helpers build on the generic hook approach (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#d-generic-hook)).
@@ -1185,8 +1175,6 @@ function IssueView({ issueId }: { issueId: string }) {
 }
 ```
 
----
-
 ### Store Instance Lifecycle and GC
 
 Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#d-gctime-auto)).
@@ -1354,8 +1342,6 @@ const DEFAULT_GC_TIME = typeof window === 'undefined'
 - Component lifecycle timing is less predictable on server
 
 See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#d-gctime-default).
-
----
 
 ### Edge Cases & Limitations
 
@@ -1543,8 +1529,6 @@ function IssueView({ issueId }) {
   // ...
 }
 ```
-
----
 
 ## Design Choices
 
@@ -1909,8 +1893,6 @@ const store = useWorkspaceStore('ws-1')
 - ✅ Predictable behavior (store stays alive longer than shortest)
 - ⚠️ Potentially keeps stores in memory longer than some observers expect
 
----
-
 ## Open Questions
 
 ### 1. Should `storeId` Be Optional with a Default in Multi-Store Mode?
@@ -1954,8 +1936,6 @@ Many sync adapters require a `clientId` and `sessionId`:
 In single-store mode, app shutdown is straightforward—destroy the one store instance. With multiple stores, the shutdown sequence becomes more complex.
 
 **Question:** What's the right shutdown strategy for multi-store environments?
-
----
 
 ## Appendix
 
