@@ -7,7 +7,12 @@ import { ActivityIndicator, Button, ScrollView, StyleSheet, useColorScheme, View
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import { createRandomComment, createRandomIssue, createRandomUser, makeNextIssueId } from '@/utils/generate-fake-data.ts'
+import {
+  createRandomComment,
+  createRandomIssue,
+  createRandomUser,
+  makeNextIssueId,
+} from '@/utils/generate-fake-data.ts'
 
 import { events, tables } from '../../livestore/schema.ts'
 
@@ -32,8 +37,6 @@ const InboxScreen = () => {
     totalTime: number
   } | null>(null)
 
-  
-
   const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
     const startTime = performance.now()
 
@@ -50,7 +53,7 @@ const InboxScreen = () => {
         { label: 'Users', count: numUsers },
         { label: 'Issues', count: totalIssues },
         { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        
+
         { label: 'Total Objects', count: totalObjects },
       ],
       progress: { current: 0, total: totalIssues },
@@ -88,8 +91,6 @@ const InboxScreen = () => {
           for (let k = 0; k < numComments; k++) {
             const comment = createRandomComment(issue.id, newUser.id)
             comments.push(comment)
-
-            
           }
 
           // Yield control back to UI every BATCH_SIZE issues
@@ -144,7 +145,7 @@ const InboxScreen = () => {
           id: i.id,
           title: i.title,
           description: i.description ?? '',
-          creator: i.assigneeId ? nameById.get(i.assigneeId) ?? user.name : user.name,
+          creator: i.assigneeId ? (nameById.get(i.assigneeId) ?? user.name) : user.name,
           status: 0,
           priority: 0,
           created: i.createdAt,
@@ -162,11 +163,7 @@ const InboxScreen = () => {
         }),
       )
 
-      store.commit(
-        
-        ...issueEvents,
-        ...commentEvents,
-      )
+      store.commit(...issueEvents, ...commentEvents)
 
       const commitTime = performance.now() - commitStart
       console.log('✅ Commit finished in', `${commitTime.toFixed(0)}ms`)
@@ -177,7 +174,6 @@ const InboxScreen = () => {
         { label: 'Users', count: users.length, time: 0 },
         { label: 'Issues', count: issues.length, time: 0 },
         { label: 'Comments', count: comments.length, time: 0 },
-        
       ]
 
       // Yield to let React process store updates and measure the overhead
@@ -220,7 +216,7 @@ const InboxScreen = () => {
       items: [
         { label: 'Issues', count: numberOfIssues },
         { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        
+
         { label: 'Total Objects', count: totalObjects },
       ],
       progress: { current: 0, total: numberOfIssues },
@@ -248,8 +244,6 @@ const InboxScreen = () => {
         for (let j = 0; j < numComments; j++) {
           const comment = createRandomComment(issue.id, user.id)
           comments.push(comment)
-
-          
         }
 
         // Yield control back to UI every BATCH_SIZE issues
@@ -307,11 +301,7 @@ const InboxScreen = () => {
           created: c.createdAt,
         }),
       )
-      store.commit(
-        
-        ...issueEvents2,
-        ...commentEvents2,
-      )
+      store.commit(...issueEvents2, ...commentEvents2)
 
       const commitTime = performance.now() - commitStart
 
@@ -319,7 +309,6 @@ const InboxScreen = () => {
       const breakdown: { label: string; count: number; time: number }[] = [
         { label: 'Issues', count: issues.length, time: 0 },
         { label: 'Comments', count: comments.length, time: 0 },
-        
       ]
 
       // Yield to let React process store updates and measure the overhead

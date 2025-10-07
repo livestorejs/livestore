@@ -1,7 +1,7 @@
 import { useStore } from '@livestore/react'
 import type { CSSProperties } from 'react'
 import { memo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Avatar } from '@/components/common/avatar'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
@@ -14,6 +14,7 @@ import { getIssueTag } from '@/utils/get-issue-tag'
 
 export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {
   const navigate = useNavigate()
+  const { storeId } = useParams()
   const { store } = useStore()
 
   const handleChangeStatus = (status: Status) =>
@@ -30,11 +31,11 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
       role="button"
       tabIndex={0}
       className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-neutral-200 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 dark:border-neutral-700"
-      onClick={() => navigate(`issue/${issue.id}`)}
+      onClick={() => navigate(`/${storeId}/issue/${issue.id}`)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`issue/${issue.id}`)
+          navigate(`/${storeId}/issue/${issue.id}`)
         }
       }}
       style={style}

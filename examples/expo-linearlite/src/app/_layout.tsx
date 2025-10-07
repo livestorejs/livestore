@@ -48,7 +48,10 @@ const boot = (store: Store) => {
   const currentId = (ui.currentUserId ?? '').trim()
   if (currentName === '' || currentId === '') {
     const name = currentName || randomFunnyName()
-    const id = (currentId || name).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const id = (currentId || name)
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
     store.commit(events.uiStateSet({ currentUserName: name, currentUserId: id }))
   }
 }

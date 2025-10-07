@@ -45,7 +45,7 @@ export const IssueItem = memo(
               {showStatus && <IssueStatusIcon status={issue.status as Status} />}
               <ThemedText style={styles.title}>{issue.title}</ThemedText>
             </View>
-            {showAssignee && (
+            {showAssignee &&
               (() => {
                 const fallback = issue.assigneeName
                   ? `https://ui-avatars.com/api/?name=${encodeURIComponent(issue.assigneeName)}&size=40`
@@ -60,8 +60,7 @@ export const IssueItem = memo(
                     cachePolicy={'memory-disk'}
                   />
                 ) : null
-              })()
-            )}
+              })()}
           </View>
         </Pressable>
       </Link>

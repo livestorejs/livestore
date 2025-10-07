@@ -101,7 +101,6 @@ export const updateDescription = Events.synced({
 
 export const allCleared = Events.synced({ name: 'v1.AllCleared', schema: Schema.Struct({ deletedAt: Schema.Date }) })
 
-
 export const reactionCreated = Events.synced({
   name: 'v1.ReactionCreated',
   schema: Schema.Struct({

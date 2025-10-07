@@ -170,11 +170,8 @@ const materializers = State.SQLite.materializers(events, {
   ],
   'v1.DeleteComment': ({ id }) => comments.delete().where({ id }),
   'v1.DeleteCommentsByIssueId': ({ issueId }) => comments.delete().where({ issueId }),
-
-  
   'v1.ReactionCreated': ({ id, issueId, commentId, userId, emoji }) =>
-    reactions.insert({ id, issueId: String(issueId), commentId, userId, emoji }),
-  'v1.AllCleared': ({ deletedAt }) => issues.update({ deletedAt }).where({ deletedAt: null }),
+    reactions.insert({ id, issueId, commentId, userId, emoji }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

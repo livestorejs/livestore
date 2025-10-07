@@ -1,8 +1,8 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
+import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
-import SegmentedControl from '@react-native-segmented-control/segmented-control'
 
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
@@ -24,8 +24,6 @@ const EditIssueScreen = () => {
       deps: `edit-issue-${issueId}`,
     }),
   )
-
-  
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -101,7 +99,11 @@ const EditIssueScreen = () => {
               selectedIndex={issue.status as number}
               onChange={(e) =>
                 store.commit(
-                  events.updateIssueStatus({ id: issue.id, status: e.nativeEvent.selectedSegmentIndex as Status, modified: new Date() }),
+                  events.updateIssueStatus({
+                    id: issue.id,
+                    status: e.nativeEvent.selectedSegmentIndex as Status,
+                    modified: new Date(),
+                  }),
                 )
               }
             />
@@ -113,7 +115,11 @@ const EditIssueScreen = () => {
               selectedIndex={issue.priority as number}
               onChange={(e) =>
                 store.commit(
-                  events.updateIssuePriority({ id: issue.id, priority: e.nativeEvent.selectedSegmentIndex as Priority, modified: new Date() }),
+                  events.updateIssuePriority({
+                    id: issue.id,
+                    priority: e.nativeEvent.selectedSegmentIndex as Priority,
+                    modified: new Date(),
+                  }),
                 )
               }
             />

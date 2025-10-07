@@ -4,7 +4,7 @@ import { useStore } from '@livestore/react'
 import { Tabs, useRouter } from 'expo-router'
 import { HouseIcon, InboxIcon, SearchIcon, SettingsIcon, SlidersHorizontal, SquarePen } from 'lucide-react-native'
 import React from 'react'
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
 
 import { Modal } from '@/components/Modal.tsx'
 import { useUser } from '@/hooks/useUser.ts'
@@ -37,7 +37,10 @@ const TabLayout = () => {
     const trimmedUser = nextUserName.trim()
     setSwitcherOpen(false)
     if (trimmedUser.length > 0 && trimmedUser !== user.name) {
-      const id = trimmedUser.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      const id = trimmedUser
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
       store.commit(events.uiStateSet({ currentUserName: trimmedUser, currentUserId: id }))
     }
     if (trimmedStore.length > 0 && trimmedStore !== store.storeId) {
@@ -64,7 +67,9 @@ const TabLayout = () => {
             tabBarIcon: ({ color, size }) => <HouseIcon color={color} size={size} />,
             headerTitle: () => (
               <Pressable accessibilityRole="button" onPress={openSwitcher} hitSlop={8}>
-                <Text style={headerTitleStyle}>{store.storeId} · {user.name}</Text>
+                <Text style={headerTitleStyle}>
+                  {store.storeId} · {user.name}
+                </Text>
               </Pressable>
             ),
             headerTitleAlign: 'left',
@@ -117,6 +122,14 @@ const TabLayout = () => {
             placeholder="Enter new store ID"
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={() => {
+              onConfirmSwitch()
+              Keyboard.dismiss()
+            }}
+            onKeyPress={(e) => {
+              if (e.nativeEvent.key === 'Enter') onConfirmSwitch()
+            }}
             autoFocus
             style={[
               styles.input,
@@ -130,6 +143,14 @@ const TabLayout = () => {
             placeholder="Enter display name"
             autoCapitalize="words"
             autoCorrect
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              onConfirmSwitch()
+              Keyboard.dismiss()
+            }}
+            onKeyPress={(e) => {
+              if (e.nativeEvent.key === 'Enter') onConfirmSwitch()
+            }}
             style={[
               styles.input,
               { borderColor: isDark ? '#374151' : '#e5e7eb', color: isDark ? '#e5e7eb' : '#111827' },

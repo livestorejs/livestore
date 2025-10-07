@@ -1,6 +1,6 @@
 import { useStore } from '@livestore/react'
 import { Button } from 'react-aria-components'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Avatar } from '@/components/common/avatar'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
@@ -11,6 +11,7 @@ import { getIssueTag } from '@/utils/get-issue-tag'
 
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
   const navigate = useNavigate()
+  const { storeId } = useParams()
   const { store } = useStore()
 
   const handleChangeStatus = (status: Status) =>
@@ -25,11 +26,11 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() => navigate(`issue/${issue.id}`)}
+      onClick={() => navigate(`/${storeId}/issue/${issue.id}`)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`issue/${issue.id}`)
+          navigate(`/${storeId}/issue/${issue.id}`)
         }
       }}
     >

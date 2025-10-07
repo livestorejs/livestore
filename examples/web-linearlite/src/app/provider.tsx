@@ -30,7 +30,8 @@ const adapter = makePersistedAdapter({
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const { storeId: routeStoreId } = useParams()
-  const storeId = (routeStoreId as string | undefined) ?? (import.meta.env.VITE_LIVESTORE_STORE_ID as string | undefined)
+  const storeId =
+    (routeStoreId as string | undefined) ?? (import.meta.env.VITE_LIVESTORE_STORE_ID as string | undefined)
   const [showMenu, setShowMenu] = React.useState(false)
   const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
 

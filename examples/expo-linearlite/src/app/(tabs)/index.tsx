@@ -239,6 +239,7 @@ const HomeScreen = () => {
     <FlatList
       data={issues}
       renderItem={renderItem}
+      initialNumToRender={30}
       contentContainerStyle={styles.listContent}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}

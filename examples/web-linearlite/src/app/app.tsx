@@ -7,8 +7,7 @@ import { List } from '@/components/layout/list'
 import { Search } from '@/components/layout/search'
 import { Sidebar } from '@/components/layout/sidebar'
 import 'animate.css/animate.min.css'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { Outlet } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 // Compute a default store id from env or a stable local value
 const getDefaultStoreId = () => {
