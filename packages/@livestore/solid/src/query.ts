@@ -13,7 +13,7 @@ export const query = <TQuery extends LiveQueries.LiveQueryDef.Any>(
   const store = storeToExport()
 
   // TODO avoid null-optionality branching
-  const unsubscribe = store?.subscribe(queryDef, { onUpdate: setValue })
+  const unsubscribe = store?.subscribe(queryDef, setValue)
 
   Solid.onCleanup(() => {
     unsubscribe?.()
