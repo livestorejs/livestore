@@ -11,5 +11,8 @@ export default defineConfig({
     fs: { strict: false },
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
-  plugins: [react(), livestoreDevtoolsPlugin({ schemaPath: ['src/store/workspace/schema.ts', 'src/store/issue/schema.ts'] })],
+  plugins: [
+    react(),
+    livestoreDevtoolsPlugin({ schemaPath: ['src/store/workspace/schema.ts', 'src/store/issue/schema.ts'] }),
+  ],
 })
