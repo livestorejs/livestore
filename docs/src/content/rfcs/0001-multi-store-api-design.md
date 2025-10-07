@@ -1,5 +1,4 @@
-
-# Multi-Store API Design Proposal
+# Multi-Store API Design
 
 ## Context
 
@@ -1947,6 +1946,14 @@ Many sync adapters require a `clientId` and `sessionId`:
 
 **Question:** In a multi-store environment, how should these IDs kept consistent across store instances?
 
+### 3. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
+
+**Context:**
+
+In single-store mode, app shutdown is straightforward—destroy the one store instance. With multiple stores, the shutdown sequence becomes more complex.
+
+**Question:** What's the right shutdown strategy for multi-store environments?
+
 ---
 
 ## Appendix
@@ -2076,7 +2083,7 @@ src/
 └── main.tsx                   # ReactDOM.render
 ```
 
-### C. Implementation Reference
+### C. Implementation Draft
 
 ```tsx
 import * as React from 'react'
