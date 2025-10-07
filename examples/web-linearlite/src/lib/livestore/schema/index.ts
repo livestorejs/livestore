@@ -72,6 +72,9 @@ const materializers = State.SQLite.materializers(events, {
     tables.issue.update({ kanbanorder, status, modified }).where({ id }),
   'v1.UpdateIssuePriority': ({ id, priority, modified }) => tables.issue.update({ priority, modified }).where({ id }),
   'v1.UpdateDescription': ({ id, body }) => tables.description.update({ body }).where({ id }),
+  
+  'v1.AllCleared': () => [],
+  'v1.ReactionCreated': () => [],
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

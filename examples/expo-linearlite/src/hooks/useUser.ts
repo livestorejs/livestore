@@ -1,12 +1,11 @@
-import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
+import { uiState$ } from '@/livestore/queries.ts'
 
-import { tables } from '@/livestore/schema.ts'
-
-/**
- * @returns The first user in the users table.
- */
-export const useUser = (userId?: string) =>
-  useQuery(
-    queryDb(tables.users.where({ id: userId }).first({ behaviour: 'error' }), { deps: `useUser-${userId ?? '-'}` }),
-  )
+export const useUser = (userId?: string) => {
+  const ui = useQuery(uiState$)
+  const defaultName = 'Anonymous Sloth'
+  const name = (ui.currentUserName?.trim() ?? '') || defaultName
+  const id =
+    (userId ?? ui.currentUserId)?.trim() || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  return { id, name }
+}

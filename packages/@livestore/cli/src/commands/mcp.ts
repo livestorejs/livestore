@@ -77,9 +77,6 @@ const mcpServerCommand = Cli.Command.make(
   'server',
   {},
   Effect.fn(function* () {
-    yield* Effect.log('🚀 Starting LiveStore MCP Server...')
-
-    // Following Tim Smart's exact pattern from main.ts
     return yield* McpServer.layerStdio({
       name: 'livestore-mcp',
       version: '0.1.0',

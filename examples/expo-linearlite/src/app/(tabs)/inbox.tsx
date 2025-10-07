@@ -7,19 +7,11 @@ import { ActivityIndicator, Button, ScrollView, StyleSheet, useColorScheme, View
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
-import {
-  createRandomComment,
-  createRandomIssue,
-  createRandomReaction,
-  createRandomUser,
-  randomValueFromArray,
-} from '@/utils/generate-fake-data.ts'
+import { createRandomComment, createRandomIssue, createRandomUser, makeNextIssueId } from '@/utils/generate-fake-data.ts'
 
-import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
 import { events, tables } from '../../livestore/schema.ts'
 
 const COMMENTS_PER_ISSUE = 10
-const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
@@ -40,7 +32,7 @@ const InboxScreen = () => {
     totalTime: number
   } | null>(null)
 
-  const users = useQuery(users$)
+  
 
   const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
     const startTime = performance.now()
@@ -48,8 +40,7 @@ const InboxScreen = () => {
     // Calculate estimated totals
     const totalIssues = numUsers * numIssuesPerUser
     const estimatedComments = totalIssues * (COMMENTS_PER_ISSUE / 2) // Average
-    const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
-    const totalItems = numUsers + totalIssues + estimatedComments + estimatedReactions
+    const totalItems = numUsers + totalIssues + estimatedComments
 
     const totalObjects = Math.round(totalItems)
 
@@ -59,7 +50,7 @@ const InboxScreen = () => {
         { label: 'Users', count: numUsers },
         { label: 'Issues', count: totalIssues },
         { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
+        
         { label: 'Total Objects', count: totalObjects },
       ],
       progress: { current: 0, total: totalIssues },
@@ -73,37 +64,32 @@ const InboxScreen = () => {
       const generationStart = performance.now()
       console.log('🏗️ Starting data generation at', `${generationStart.toFixed(0)}ms`)
 
-      const users: User[] = []
-      const issues: Issue[] = []
-      const comments: Comment[] = []
-      const reactions: Reaction[] = []
+      const users: ReturnType<typeof createRandomUser>[] = []
+      const issues: ReturnType<typeof createRandomIssue>[] = []
+      const comments: ReturnType<typeof createRandomComment>[] = []
 
       const BATCH_SIZE = 5 // Yield every 5 issues
       let issuesCreated = 0
 
+      const nextIssueId = makeNextIssueId(store)
       // Generate users in batches
       for (let i = 0; i < numUsers; i++) {
-        const user = createRandomUser()
-        users.push(user)
+        const newUser = createRandomUser()
+        users.push(newUser)
 
         // Generate issues for each user
         for (let j = 0; j < numIssuesPerUser; j++) {
-          const issue = createRandomIssue(user.id)
+          const issue = createRandomIssue(newUser.id, nextIssueId())
           issues.push(issue)
           issuesCreated++
 
           // Generate comments for each issue
           const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
           for (let k = 0; k < numComments; k++) {
-            const comment = createRandomComment(issue.id, user.id)
+            const comment = createRandomComment(issue.id, newUser.id)
             comments.push(comment)
 
-            // Generate reactions for each comment
-            const numReactions = Math.floor(Math.random() * 3)
-            for (let l = 0; l < numReactions; l++) {
-              const reaction = createRandomReaction(issue.id, user.id, comment.id)
-              reactions.push(reaction)
-            }
+            
           }
 
           // Yield control back to UI every BATCH_SIZE issues
@@ -132,13 +118,11 @@ const InboxScreen = () => {
         issues.length,
         'issues,',
         comments.length,
-        'comments,',
-        reactions.length,
-        'reactions',
+        'comments',
       )
 
       // Update to show we're committing
-      const actualTotal = users.length + issues.length + comments.length + reactions.length
+      const actualTotal = users.length + issues.length + comments.length
       setLoadingMessage((prev) =>
         prev
           ? {
@@ -154,11 +138,34 @@ const InboxScreen = () => {
       const commitStart = performance.now()
       console.log('⏱️ Starting commit of', actualTotal, 'items at', `${commitStart.toFixed(0)}ms`)
 
+      const nameById = new Map(users.map((u) => [u.id, u.name] as const))
+      const issueEvents = issues.map((i) =>
+        events.createIssueWithDescription({
+          id: i.id,
+          title: i.title,
+          description: i.description ?? '',
+          creator: i.assigneeId ? nameById.get(i.assigneeId) ?? user.name : user.name,
+          status: 0,
+          priority: 0,
+          created: i.createdAt,
+          modified: i.updatedAt,
+          kanbanorder: 'a1',
+        }),
+      )
+      const commentEvents = comments.map((c) =>
+        events.createComment({
+          id: c.id,
+          body: c.content,
+          issueId: c.issueId,
+          creator: nameById.get(c.userId) ?? user.name,
+          created: c.createdAt,
+        }),
+      )
+
       store.commit(
-        ...users.map((user) => events.userCreated(user)),
-        ...issues.map((issue) => events.issueCreated(issue)),
-        ...comments.map((comment) => events.commentCreated(comment)),
-        ...reactions.map((reaction) => events.reactionCreated(reaction)),
+        
+        ...issueEvents,
+        ...commentEvents,
       )
 
       const commitTime = performance.now() - commitStart
@@ -170,7 +177,7 @@ const InboxScreen = () => {
         { label: 'Users', count: users.length, time: 0 },
         { label: 'Issues', count: issues.length, time: 0 },
         { label: 'Comments', count: comments.length, time: 0 },
-        { label: 'Reactions', count: reactions.length, time: 0 },
+        
       ]
 
       // Yield to let React process store updates and measure the overhead
@@ -204,8 +211,7 @@ const InboxScreen = () => {
 
     // Calculate estimated totals
     const estimatedComments = numberOfIssues * (COMMENTS_PER_ISSUE / 2) // Average
-    const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
-    const totalItems = numberOfIssues + estimatedComments + estimatedReactions
+    const totalItems = numberOfIssues + estimatedComments
 
     const totalObjects = Math.round(totalItems)
 
@@ -214,7 +220,7 @@ const InboxScreen = () => {
       items: [
         { label: 'Issues', count: numberOfIssues },
         { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
+        
         { label: 'Total Objects', count: totalObjects },
       ],
       progress: { current: 0, total: numberOfIssues },
@@ -227,27 +233,23 @@ const InboxScreen = () => {
 
       const generationStart = performance.now()
 
-      const issues: Issue[] = []
-      const comments: Comment[] = []
-      const reactions: Reaction[] = []
+      const issues: ReturnType<typeof createRandomIssue>[] = []
+      const comments: ReturnType<typeof createRandomComment>[] = []
 
       const BATCH_SIZE = 5 // Yield every 5 issues
 
+      const nextIssueId2 = makeNextIssueId(store)
       for (let i = 0; i < numberOfIssues; i++) {
-        const issue = createRandomIssue(user.id)
+        const issue = createRandomIssue(user.id, nextIssueId2())
         issues.push(issue)
 
         // Generate comments using users
         const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
         for (let j = 0; j < numComments; j++) {
-          const comment = createRandomComment(issue.id, randomValueFromArray(users).id)
+          const comment = createRandomComment(issue.id, user.id)
           comments.push(comment)
 
-          const numReactions = Math.floor(Math.random() * 2)
-          for (let k = 0; k < numReactions; k++) {
-            const reaction = createRandomReaction(issue.id, randomValueFromArray(users).id, comment.id)
-            reactions.push(reaction)
-          }
+          
         }
 
         // Yield control back to UI every BATCH_SIZE issues
@@ -268,7 +270,7 @@ const InboxScreen = () => {
       const generationTime = performance.now() - generationStart
 
       // Update to show we're committing
-      const actualTotal = issues.length + comments.length + reactions.length
+      const actualTotal = issues.length + comments.length
       setLoadingMessage((prev) =>
         prev
           ? {
@@ -283,10 +285,32 @@ const InboxScreen = () => {
       // Commit all data in a SINGLE transaction to avoid multiple React re-renders
       const commitStart = performance.now()
 
+      const issueEvents2 = issues.map((i) =>
+        events.createIssueWithDescription({
+          id: i.id,
+          title: i.title,
+          description: i.description ?? '',
+          creator: user.name,
+          status: 0,
+          priority: 0,
+          created: i.createdAt,
+          modified: i.updatedAt,
+          kanbanorder: 'a1',
+        }),
+      )
+      const commentEvents2 = comments.map((c) =>
+        events.createComment({
+          id: c.id,
+          body: c.content,
+          issueId: c.issueId,
+          creator: user.name,
+          created: c.createdAt,
+        }),
+      )
       store.commit(
-        ...issues.map((issue) => events.issueCreated(issue)),
-        ...comments.map((comment) => events.commentCreated(comment)),
-        ...reactions.map((reaction) => events.reactionCreated(reaction)),
+        
+        ...issueEvents2,
+        ...commentEvents2,
       )
 
       const commitTime = performance.now() - commitStart
@@ -295,7 +319,7 @@ const InboxScreen = () => {
       const breakdown: { label: string; count: number; time: number }[] = [
         { label: 'Issues', count: issues.length, time: 0 },
         { label: 'Comments', count: comments.length, time: 0 },
-        { label: 'Reactions', count: reactions.length, time: 0 },
+        
       ]
 
       // Yield to let React process store updates and measure the overhead
@@ -327,7 +351,10 @@ const InboxScreen = () => {
     setIsLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 0))
-      store.commit(events.allCleared({ deletedAt: new Date() }))
+      // Soft-delete all active issues via per-row delete events
+      const ids = store.query(tables.issues.select().where({ deletedAt: null })).map((r) => r.id)
+      const now = new Date()
+      store.commit(...ids.map((id) => events.deleteIssue({ id, deleted: now })))
     } finally {
       setIsLoading(false)
       setLoadingMessage(null)
@@ -346,22 +373,27 @@ const InboxScreen = () => {
 
   return (
     <>
-      <Stack.Screen options={{ headerTitle: 'Control Center' }} />
+      <Stack.Screen
+        options={{
+          title: 'Inbox',
+        }}
+      />
       <ScrollView style={styles.container}>
-        <View style={sectionStyle}>
-          <ThemedText type="subtitle">Stats</ThemedText>
-          <ThemedText type="defaultSemiBold">Total Issues: {issuesCount}</ThemedText>
-          <ThemedText type="defaultSemiBold">Total deleted Issues: {issuesDeletedCount}</ThemedText>
-          <ThemedText type="defaultSemiBold">All time issues: {issuesCount + issuesDeletedCount}</ThemedText>
-          <ThemedText type="defaultSemiBold">Total Users: {users.length}</ThemedText>
-          <ThemedText type="defaultSemiBold">Current User: {user.name}</ThemedText>
+        <View style={styles.statsSection}>
+          <View style={[styles.statsItem, styles.statsItemActive]}>
+            <ThemedText style={styles.statsValue}>{issuesCount}</ThemedText>
+            <ThemedText style={styles.statsLabel}>Active Issues</ThemedText>
+          </View>
+          <View style={[styles.statsItem, styles.statsItemDeleted]}>
+            <ThemedText style={styles.statsValue}>{issuesDeletedCount}</ThemedText>
+            <ThemedText style={styles.statsLabel}>Deleted</ThemedText>
+          </View>
         </View>
 
         <View style={sectionStyle}>
           <ThemedText type="subtitle">🧪 Test Data Generation</ThemedText>
           <ThemedText>
-            Generate sample data to explore the app's functionality. Each issue includes comments and reactions from
-            various users.
+            Generate sample data to explore the app's functionality. Each issue includes comments from various users.
           </ThemedText>
           <View style={styles.buttonGroup}>
             <Button
@@ -399,7 +431,6 @@ const InboxScreen = () => {
           <View style={styles.bulletPoints}>
             <ThemedText>• Random title and description</ThemedText>
             <ThemedText>• {COMMENTS_PER_ISSUE} comments per issue (max)</ThemedText>
-            <ThemedText>• Random reactions from users</ThemedText>
           </View>
         </View>
       </ScrollView>
@@ -525,15 +556,43 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  section: {
-    borderRadius: 12,
-    gap: 8,
-    marginVertical: 16,
-    boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
+  statsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statsItem: {
+    flex: 1,
     padding: 16,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  statsItemActive: {
+    backgroundColor: '#34D399',
+  },
+  statsItemDeleted: {
+    backgroundColor: '#EF4444',
+  },
+  statsValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+  },
+  statsLabel: {
+    fontSize: 14,
+    color: 'white',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  section: {
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   buttonGroup: {
-    gap: 12,
+    gap: 8,
+    marginTop: 8,
   },
   infoSection: {
     marginTop: 8,

@@ -9,6 +9,7 @@
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
     "@livestore/react": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
     "@livestore/wa-sqlite": "0.4.0-dev.10",
     "@overengineering/fps-meter": "0.2.1",
     "@tailwindcss/forms": "0.5.10",
@@ -52,16 +53,19 @@
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vite-plugin-svgr": "^4.3.0"
+    "vite-plugin-svgr": "^4.3.0",
+    "wrangler": "^4.38.0"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",
-    "dev": "vite --force",
+    "dev": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite --force",
     "lint": "biome lint .",
     "preview": "vite preview",
-    "vite": "vite"
+    "vite": "vite",
+    "wrangler:deploy": "wrangler deploy",
+    "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
   }
 }

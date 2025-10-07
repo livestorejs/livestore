@@ -27,7 +27,7 @@ export const Issue = () => {
 
   const close = () => {
     if (window.history.length > 2) navigate(-1)
-    else navigate('/')
+    else navigate('..')
   }
 
   const handleChangeStatus = (status: Status) => {

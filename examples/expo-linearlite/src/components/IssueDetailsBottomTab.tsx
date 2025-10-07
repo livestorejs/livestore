@@ -19,7 +19,7 @@ import { Modal } from './Modal.tsx'
 import { ThemedText } from './ThemedText.tsx'
 
 interface IssueDetailsBottomTabProps {
-  issueId: string
+  issueId: number
 }
 
 export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) => {
@@ -31,7 +31,7 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
   const [visible, setVisible] = React.useState(false)
 
   const handleDelete = () => {
-    store.commit(events.issueDeleted({ id: issueId, deletedAt: new Date() }))
+    store.commit(events.deleteIssue({ id: issueId, deleted: new Date() }))
     setVisible(false)
   }
 
@@ -98,7 +98,17 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
       </Modal>
       <TextInput placeholder="Comment" style={styles.commentInput} />
       <View style={styles.bottomTabContainer}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back()
+            } else {
+              // Fallback when screen was opened via replace or as initial route
+              router.replace({ pathname: '/(tabs)', params: { storeId: store.storeId } })
+            }
+          }}
+          style={styles.iconButton}
+        >
           <MoveLeftIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
         </Pressable>
         <LinkIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />

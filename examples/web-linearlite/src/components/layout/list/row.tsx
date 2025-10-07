@@ -30,11 +30,11 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
       role="button"
       tabIndex={0}
       className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-neutral-200 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 dark:border-neutral-700"
-      onClick={() => navigate(`/issue/${issue.id}`)}
+      onClick={() => navigate(`issue/${issue.id}`)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`/issue/${issue.id}`)
+          navigate(`issue/${issue.id}`)
         }
       }}
       style={style}

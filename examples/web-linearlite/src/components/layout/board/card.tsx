@@ -25,11 +25,11 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() => navigate(`/issue/${issue.id}`)}
+      onClick={() => navigate(`issue/${issue.id}`)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`/issue/${issue.id}`)
+          navigate(`issue/${issue.id}`)
         }
       }}
     >

@@ -98,3 +98,17 @@ export const updateDescription = Events.synced({
   name: 'v1.UpdateDescription',
   schema: Schema.Struct({ id: Schema.Number, body: Schema.String }),
 })
+
+export const allCleared = Events.synced({ name: 'v1.AllCleared', schema: Schema.Struct({ deletedAt: Schema.Date }) })
+
+
+export const reactionCreated = Events.synced({
+  name: 'v1.ReactionCreated',
+  schema: Schema.Struct({
+    id: Schema.String,
+    issueId: Schema.String,
+    commentId: Schema.String,
+    userId: Schema.String,
+    emoji: Schema.String,
+  }),
+})

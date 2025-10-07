@@ -24,71 +24,43 @@ const getOrderingOptions = (
   createdTabGrouping: string,
   createdTabOrdering: string,
 ) => {
-  const grouping = tab === 'assigned' ? assignedTabGrouping : createdTabGrouping
-  const ordering = tab === 'assigned' ? assignedTabOrdering : createdTabOrdering
+  const rawGrouping = tab === 'assigned' ? assignedTabGrouping : createdTabGrouping
+  const rawOrdering = tab === 'assigned' ? assignedTabOrdering : createdTabOrdering
+
+  const grouping = (rawGrouping ?? '').toLowerCase()
+  const ordering = (rawOrdering ?? '').toLowerCase()
 
   let orderClause = 'ORDER BY '
-  const orderFields = []
+  const orderFields: string[] = []
 
-  // Handle grouping
-  if (grouping !== 'NoGrouping') {
+  // Grouping (normalized)
+  if (grouping && grouping !== 'nogrouping') {
     const groupingField =
       grouping === 'assignee'
         ? 'assigneeId ASC'
         : grouping === 'priority'
-          ? `CASE issues.priority
-              WHEN 'urgent' THEN 1
-              WHEN 'high' THEN 2
-              WHEN 'medium' THEN 3
-              WHEN 'low' THEN 4
-              WHEN 'none' THEN 5
-              ELSE 6
-            END ASC`
+          ? 'issues.priority DESC'
           : grouping === 'status'
-            ? `CASE issues.status
-                WHEN 'triage' THEN 1
-                WHEN 'backlog' THEN 2
-                WHEN 'todo' THEN 3
-                WHEN 'in_progress' THEN 4
-                WHEN 'in_review' THEN 5
-                WHEN 'done' THEN 6
-                WHEN 'canceled' THEN 7
-                WHEN 'wont_fix' THEN 8
-                WHEN 'auto_closed' THEN 9
-                ELSE 10
-              END ASC`
+            ? 'issues.status ASC'
             : ''
-    if (groupingField) {
-      orderFields.push(groupingField)
-    }
+    if (groupingField) orderFields.push(groupingField)
   }
 
-  // Handle ordering
+  // Ordering (normalized)
   if (ordering) {
     const orderingField =
       ordering === 'priority'
-        ? `CASE issues.priority
-              WHEN 'urgent' THEN 1
-              WHEN 'high' THEN 2
-              WHEN 'medium' THEN 3
-              WHEN 'low' THEN 4
-              WHEN 'none' THEN 5
-              ELSE 6
-            END ASC`
-        : ordering === 'Last Updated'
+        ? 'issues.priority DESC'
+        : ordering === 'last updated'
           ? 'issues.updatedAt DESC'
-          : ordering === 'Last Created'
+          : ordering === 'last created'
             ? 'issues.createdAt DESC'
             : ''
-    if (orderingField) {
-      orderFields.push(orderingField)
-    }
+    if (orderingField) orderFields.push(orderingField)
   }
 
-  // If no grouping or ordering specified, default to 'createdAt DESC'
-  if (orderFields.length === 0) {
-    orderFields.push('issues.createdAt DESC')
-  }
+  // Default
+  if (orderFields.length === 0) orderFields.push('issues.createdAt DESC')
 
   orderClause += orderFields.join(', ')
   return orderClause
@@ -113,6 +85,23 @@ const HomeScreen = () => {
     [appSettings],
   )
 
+  // Counts for segment labels
+  const allCount = useQuery(
+    queryDb(tables.issues.count().where({ deletedAt: null }), { label: 'home-count-all', deps: ['issues'] }),
+  )
+  const assignedCount = useQuery(
+    queryDb(tables.issues.count().where({ deletedAt: null, assigneeId: user.id }), {
+      label: 'home-count-assigned',
+      deps: ['issues', user.id],
+    }),
+  )
+  const createdCount = useQuery(
+    queryDb(tables.issues.count().where({ deletedAt: null, assigneeId: user.id }), {
+      label: 'home-count-created',
+      deps: ['issues', user.id],
+    }),
+  )
+
   // Memoize display settings separately
   const displaySettings = useMemo(
     () => ({
@@ -130,12 +119,17 @@ const HomeScreen = () => {
     queryDb(
       {
         query: sql`
-            SELECT issues.title, issues.id, issues.assigneeId, issues.status, issues.priority, users.photoUrl as assigneePhotoUrl
+            SELECT issues.title, issues.id, issues.assigneeId, issues.assigneeName, issues.status, issues.priority
             FROM issues 
-            LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.deletedAt IS NULL 
             AND (
-              ${selectedHomeTab === 'assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
+              ${
+                selectedHomeTab === 'assigned'
+                  ? `issues.assigneeId = '${user.id}'`
+                  : selectedHomeTab === 'created'
+                    ? `issues.assigneeId = '${user.id}'`
+                    : `true`
+              }
             )
             ${getOrderingOptions(
               selectedHomeTab,
@@ -147,8 +141,7 @@ const HomeScreen = () => {
             LIMIT 50
           `,
         schema: tables.issues.rowSchema.pipe(
-          Schema.pick('title', 'id', 'assigneeId', 'status', 'priority'),
-          Schema.extend(Schema.Struct({ assigneePhotoUrl: Schema.String })),
+          Schema.pick('title', 'id', 'assigneeId', 'assigneeName', 'status', 'priority'),
           Schema.Array,
         ),
       },
@@ -198,6 +191,17 @@ const HomeScreen = () => {
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
+              store.commit(events.uiStateSet({ selectedHomeTab: 'all' }))
+            }}
+            style={[styles.tabButton, isDark && styles.tabButtonDark, { opacity: selectedHomeTab === 'all' ? 1 : 0.5 }]}
+          >
+            <ThemedText style={styles.tabText} type="defaultSemiBold">
+              All ({allCount})
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPressIn={async () => {
+              await Haptics.selectionAsync()
               store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
             }}
             style={[
@@ -207,7 +211,7 @@ const HomeScreen = () => {
             ]}
           >
             <ThemedText style={styles.tabText} type="defaultSemiBold">
-              Assigned
+              Assigned ({assignedCount})
             </ThemedText>
           </Pressable>
           <Pressable
@@ -222,13 +226,13 @@ const HomeScreen = () => {
             ]}
           >
             <ThemedText style={styles.tabText} type="defaultSemiBold">
-              Created
+              Created ({createdCount})
             </ThemedText>
           </Pressable>
         </View>
       </View>
     ),
-    [selectedHomeTab, store, isDark],
+    [selectedHomeTab, store, isDark, allCount, assignedCount, createdCount],
   )
 
   return (
