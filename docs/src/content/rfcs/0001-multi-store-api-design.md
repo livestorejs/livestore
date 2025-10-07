@@ -2100,7 +2100,7 @@ type LiveStoreProviderProps<TSchema extends LiveStoreSchema> = React.PropsWithCh
   syncPayload?: Schema.JsonValue
   abortSignal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
-  boot?: (
+  onLoad?: (
     store: Store<TSchema>,
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span }
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
@@ -2114,7 +2114,7 @@ export function LiveStoreProvider<TSchema extends LiveStoreSchema>({
   syncPayload,
   abortSignal,
   otelOptions,
-  boot,
+  onLoad,
   children,
 }: LiveStoreProviderProps<TSchema>) {
   const storePromise = React.useMemo(
@@ -2127,9 +2127,9 @@ export function LiveStoreProvider<TSchema extends LiveStoreSchema>({
         syncPayload,
         abortSignal,
         otelOptions,
-        boot,
+        onLoad,
       }),
-    [schema, adapter, storeId, batchUpdates, syncPayload, abortSignal, otelOptions, boot]
+    [schema, adapter, storeId, batchUpdates, syncPayload, abortSignal, otelOptions, onLoad]
   )
 
   return <DefaultStoreContext.Provider value={storePromise}>{children}</DefaultStoreContext.Provider>
