@@ -44,9 +44,7 @@ class TodoListElement extends HTMLElement {
   connectedCallback(): void {
     this.renderTodos(Array.from(store.query(tables.todos.where({ deletedAt: null }))))
 
-    store.subscribe(visibleTodos$, {
-      onUpdate: (todos) => this.renderTodos(todos),
-    })
+    store.subscribe(visibleTodos$, (todos) => this.renderTodos(todos))
   }
 
   private renderTodos(todos: ReadonlyArray<typeof tables.todos.Type>): void {

@@ -36,15 +36,13 @@ store.commit(events.todoCompleted({ id: '1' }))
 const todos = store.query(tables.todos)
 console.table(todos)
 
-store.subscribe(tables.todos, {
-  onUpdate: (todos) => {
-    document.body.innerHTML = `
+store.subscribe(tables.todos, (todos) => {
+  document.body.innerHTML = `
   <h1>Todos</h1>
   <ul>
     ${todos.map((todo) => `<li>${todo.text} ${todo.completed ? '✅' : '❌'}</li>`).join('')}
   </ul>
 `
-  },
 })
 
 let i = 0

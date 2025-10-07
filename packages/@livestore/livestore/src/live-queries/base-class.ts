@@ -166,10 +166,13 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
 
   // subscribe = (
   //   onNewValue: (value: TResult) => void,
-  //   onUnsubsubscribe?: () => void,
-  //   options?: { label?: string; otelContext?: otel.Context } | undefined,
+  //   options?: {
+  //     label?: string
+  //     otelContext?: otel.Context
+  //     onUnsubsubscribe?: () => void
+  //   },
   // ): (() => void) =>
-  //   this.reactivityGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ??
+  //   this.reactivityGraph.context?.store.subscribe(this, onNewValue, options) ??
   //   RG.throwContextNotSetError(this.reactivityGraph)
 }
 

@@ -17,10 +17,8 @@ const count$ = queryDb(tables.todos.count(), { label: 'count$' })
 const count = store.query(count$)
 console.log(count)
 
-const unsubscribe = store.subscribe(count$, {
-  onUpdate: (value) => {
-    console.log(value)
-  },
+const unsubscribe = store.subscribe(count$, (value) => {
+  console.log(value)
 })
 
 unsubscribe()

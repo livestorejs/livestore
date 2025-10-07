@@ -354,14 +354,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * @example
    * ```ts
-   * const unsubscribe = store.subscribe(query$, { onUpdate: (result) => console.log(result) })
+   * const unsubscribe = store.subscribe(query$, (result) => console.log(result))
    * ```
    */
   subscribe = <TResult>(
     query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult> | QueryBuilder<TResult, any, any>,
-    options: {
-      /** Called when the query result has changed */
-      onUpdate: (value: TResult) => void
+    /** Called when the query result has changed */
+    onUpdate: (value: TResult) => void,
+    options?: {
       onSubscribe?: (query$: LiveQuery<TResult>) => void
       /** Gets called after the query subscription has been removed */
       onUnsubsubscribe?: () => void
@@ -399,7 +399,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const label = `subscribe:${options?.label}`
         const effect = this.reactivityGraph.makeEffect(
           (get, _otelContext, debugRefreshReason) =>
-            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+            onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
           { label },
         )
 
@@ -452,10 +452,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query$, {
-              onUpdate: (result) => emit.single(result),
-              ...omitUndefineds({ otelContext, label: options?.label }),
-            }),
+            this.subscribe(
+              query$,
+              (result) => emit.single(result),
+              omitUndefineds({ otelContext, label: options?.label }),
+            ),
           ),
           (unsub) => Effect.sync(() => unsub()),
         )
