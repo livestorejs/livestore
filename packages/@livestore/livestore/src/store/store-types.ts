@@ -14,6 +14,7 @@ import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
+import type { LiveQuery } from '../live-queries/base-class.ts'
 import type { DebugRefreshReasonBase } from '../reactive.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 import type { Store } from './store.ts'
@@ -135,3 +136,12 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
 }
 
 export type Unsubscribe = () => void
+
+export type SubscribeOptions<TResult> = {
+  onSubscribe?: (query$: LiveQuery<TResult>) => void
+  onUnsubsubscribe?: () => void
+  label?: string
+  skipInitialRun?: boolean
+  otelContext?: otel.Context
+  stackInfo?: StackInfo
+}

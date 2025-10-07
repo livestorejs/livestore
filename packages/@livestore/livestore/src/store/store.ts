@@ -52,15 +52,20 @@ import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
-import type { StackInfo } from '../utils/stack-info.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
   StoreEventsOptions,
   StoreOptions,
   StoreOtel,
+  SubscribeOptions,
   Unsubscribe,
 } from './store-types.ts'
+
+type SubscribeQuery<TResult> =
+  | LiveQueryDef<TResult, 'def' | 'signal-def'>
+  | LiveQuery<TResult>
+  | QueryBuilder<TResult, any, any>
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -349,98 +354,125 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   /**
-   * Subscribe to the results of a query
-   * Returns a function to cancel the subscription.
+   * Subscribe to the results of a query.
+   *
+   * - When providing an `onUpdate` callback it returns an {@link Unsubscribe} function.
+   * - Without a callback it returns an {@link AsyncIterable} that yields query results.
    *
    * @example
    * ```ts
    * const unsubscribe = store.subscribe(query$, (result) => console.log(result))
    * ```
+   *
+   * @example
+   * ```ts
+   * for await (const result of store.subscribe(query$)) {
+   *   console.log(result)
+   * }
+   * ```
    */
-  subscribe = <TResult>(
-    query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult> | QueryBuilder<TResult, any, any>,
-    /** Called when the query result has changed */
-    onUpdate: (value: TResult) => void,
-    options?: {
-      onSubscribe?: (query$: LiveQuery<TResult>) => void
-      /** Gets called after the query subscription has been removed */
-      onUnsubsubscribe?: () => void
-      label?: string
-      /**
-       * Skips the initial `onUpdate` callback
-       * @default false
-       */
-      skipInitialRun?: boolean
-      otelContext?: otel.Context
-      /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
-      stackInfo?: StackInfo
-    },
-  ): Unsubscribe => {
+  subscribe: {
+    <TResult>(
+      query: SubscribeQuery<TResult>,
+      onUpdate: (value: TResult) => void,
+      options?: SubscribeOptions<TResult>,
+    ): Unsubscribe
+    <TResult>(query: SubscribeQuery<TResult>, options?: SubscribeOptions<TResult>): AsyncIterableIterator<TResult>
+  } = <TResult>(
+    query: SubscribeQuery<TResult>,
+    onUpdateOrOptions?: ((value: TResult) => void) | SubscribeOptions<TResult>,
+    maybeOptions?: SubscribeOptions<TResult>,
+  ): Unsubscribe | AsyncIterableIterator<TResult> => {
+    if (typeof onUpdateOrOptions === 'function') {
+      const onUpdate = onUpdateOrOptions
+      const options = maybeOptions
+
+      this.checkShutdown('subscribe')
+
+      return this.otel.tracer.startActiveSpan(
+        `LiveStore.subscribe`,
+        { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+        options?.otelContext ?? this.otel.queriesSpanContext,
+        (span) => {
+          // console.debug('store sub', query$.id, query$.label)
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+          const queryRcRef = isQueryBuilder(query)
+            ? queryDb(query).make(this.reactivityGraph.context!)
+            : query._tag === 'def' || query._tag === 'signal-def'
+              ? query.make(this.reactivityGraph.context!)
+              : {
+                  value: query as LiveQuery<TResult>,
+                  deref: () => {},
+                }
+          const query$ = queryRcRef.value
+
+          const label = `subscribe:${options?.label}`
+          const effect = this.reactivityGraph.makeEffect(
+            (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+            { label },
+          )
+
+          if (options?.stackInfo) {
+            query$.activeSubscriptions.add(options.stackInfo)
+          }
+
+          options?.onSubscribe?.(query$)
+
+          this.activeQueries.add(query$ as LiveQuery<TResult>)
+
+          // Running effect right away to get initial value (unless `skipInitialRun` is set)
+          if (options?.skipInitialRun !== true && !query$.isDestroyed) {
+            effect.doEffect(otelContext, {
+              _tag: 'subscribe.initial',
+              label: `subscribe-initial-run:${options?.label}`,
+            })
+          }
+
+          const unsubscribe = () => {
+            // console.debug('store unsub', query$.id, query$.label)
+            try {
+              this.reactivityGraph.destroyNode(effect)
+              this.activeQueries.remove(query$ as LiveQuery<TResult>)
+
+              if (options?.stackInfo) {
+                query$.activeSubscriptions.delete(options.stackInfo)
+              }
+
+              queryRcRef.deref()
+
+              options?.onUnsubsubscribe?.()
+            } finally {
+              span.end()
+            }
+          }
+
+          return unsubscribe
+        },
+      )
+    }
+
+    return this.subscribeAsAsyncIterator(query, onUpdateOrOptions)
+  }
+
+  private subscribeAsAsyncIterator = <TResult>(
+    query: SubscribeQuery<TResult>,
+    options?: SubscribeOptions<TResult>,
+  ): AsyncIterableIterator<TResult> => {
     this.checkShutdown('subscribe')
 
-    return this.otel.tracer.startActiveSpan(
-      `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
-      options?.otelContext ?? this.otel.queriesSpanContext,
-      (span) => {
-        // console.debug('store sub', query$.id, query$.label)
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+    const iterator = Stream.toAsyncIterable(this.subscribeStream(query, options))[Symbol.asyncIterator]()
 
-        const queryRcRef = isQueryBuilder(query)
-          ? queryDb(query).make(this.reactivityGraph.context!)
-          : query._tag === 'def' || query._tag === 'signal-def'
-            ? query.make(this.reactivityGraph.context!)
-            : {
-                value: query as LiveQuery<TResult>,
-                deref: () => {},
-              }
-        const query$ = queryRcRef.value
-
-        const label = `subscribe:${options?.label}`
-        const effect = this.reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
-          { label },
-        )
-
-        if (options?.stackInfo) {
-          query$.activeSubscriptions.add(options.stackInfo)
-        }
-
-        options?.onSubscribe?.(query$)
-
-        this.activeQueries.add(query$ as LiveQuery<TResult>)
-
-        // Running effect right away to get initial value (unless `skipInitialRun` is set)
-        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
-        }
-
-        const unsubscribe = () => {
-          // console.debug('store unsub', query$.id, query$.label)
-          try {
-            this.reactivityGraph.destroyNode(effect)
-            this.activeQueries.remove(query$ as LiveQuery<TResult>)
-
-            if (options?.stackInfo) {
-              query$.activeSubscriptions.delete(options.stackInfo)
-            }
-
-            queryRcRef.deref()
-
-            options?.onUnsubsubscribe?.()
-          } finally {
-            span.end()
-          }
-        }
-
-        return unsubscribe
+    return Object.assign(iterator, {
+      [Symbol.asyncIterator]() {
+        return this
       },
-    )
+    })
   }
 
   subscribeStream = <TResult>(
-    query$: LiveQueryDef<TResult>,
-    options?: { label?: string; skipInitialRun?: boolean } | undefined,
+    query: SubscribeQuery<TResult>,
+    options?: SubscribeOptions<TResult>,
   ): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
@@ -451,11 +483,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(
-              query$,
-              (result) => emit.single(result),
-              omitUndefineds({ otelContext, label: options?.label }),
-            ),
+            this.subscribe(query, (result) => emit.single(result), {
+              ...(options ?? {}),
+              otelContext,
+            }),
           ),
           (unsub) => Effect.sync(() => unsub()),
         )
