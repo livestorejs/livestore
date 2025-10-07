@@ -742,7 +742,7 @@ export async function issueLoader({ params, request }: LoaderFunctionArgs) {
 }
 ```
 
-**Example: Preload Most Recents Issues**
+**Example: Preload Most Recent Issues**
 
 ```tsx
 function WorkspaceView() {
@@ -760,7 +760,7 @@ function WorkspaceView() {
     mostRecentIssueIds.forEach((issueId) => {
       registry.preloadStore({ storeDef: issueStoreDef, storeId: issueId })
     })
-  }, [workspace.issueIds, registry])
+  }, [workspace.recentIssueIds, registry])
 
   return <div>{/* ... */}</div>
 }
@@ -1545,12 +1545,12 @@ function IssueView({ issueId }) {
 
 ---
 
-## Design Rationale
+## Design Choices
 
-This section documents key design choices and their rationale. **These are proposed approaches—feedback and alternative perspectives are welcome.**
+This section documents key design choices and their rationale. **Feedback and alternative perspectives are welcome.**
 
 <a id="d-registry"></a>
-### ✅ Proposed: Introduce Registry for Multi-Store Support
+### ✅ Introduce Registry for Multi-Store Support
 
 **Alternatives Considered:**
 1. **Registry pattern** (chosen)
@@ -1584,7 +1584,7 @@ class StoreRegistry {
 - Additional abstraction layer
 - Slightly more API surface
 
-**Option 2: Context-per-Store (❌ Rejected)**
+**Option 2: Context-per-Store**
 ```tsx
 <WorkspaceStoreProvider storeId="ws-1">
   <IssueStoreProvider storeId="issue-1">
@@ -1604,7 +1604,7 @@ class StoreRegistry {
 - No way to preload without rendering provider
 - Context pollution (one context per store instance)
 
-**Option 3: Hook-Based (❌ Rejected)**
+**Option 3: Hook-Based**
 ```tsx
 const store = useStoreInstance(storeDef, storeId)
 // Each hook manages its own lifecycle
@@ -1621,7 +1621,7 @@ const store = useStoreInstance(storeDef, storeId)
 - Memory leaks likely (no ref-counting)
 
 <a id="d-provider-kind"></a>
-### ✅ Proposed: Different Provider for Multi-Store (`<MultiStoreProvider>`)
+### ✅ Different Provider for Multi-Store (`<MultiStoreProvider>`)
 
 **Alternatives Considered:**
 1. **Different Provider**: Introduce `<MultiStoreProvider>` alongside `<LiveStoreProvider>` (chosen)
@@ -1656,7 +1656,7 @@ const store = useStoreInstance(storeDef, storeId)
 - Two providers to learn
 - Cannot easily mix single-store and multi-store in same app
 
-**Option 2: Reuse Same Provider (❌ Rejected)**
+**Option 2: Reuse Same Provider**
 ```tsx
 // Single store
 <LiveStoreProvider schema={schema} adapter={adapter}>
@@ -1679,7 +1679,7 @@ const store = useStoreInstance(storeDef, storeId)
 - Unclear which mode you're in without reading props carefully
 - Migration path less clear
 
-**Option 3: Add Another Provider (❌ Rejected)**
+**Option 3: Add Another Provider**
 ```tsx
 // Single store
 <LiveStoreProvider schema={schema} adapter={adapter}>
@@ -1709,7 +1709,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Two providers to learn (acceptable given clear use case distinction)
 
 <a id="d-name-provider"></a>
-### ✅ Proposed: Name it `MultiStoreProvider` vs. Alternatives
+### ✅ Name it `MultiStoreProvider` vs. Alternatives
 
 **Alternatives Considered:**
 1. **`<MultiStoreProvider>`** (chosen)
@@ -1740,7 +1740,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Hides implementation detail (registry) — acceptable since it's an implementation detail
 
 <a id="d-gctime-auto"></a>
-### ✅ Proposed: Automatic Garbage Collection with `gcTime`
+### ✅ Automatic Garbage Collection with `gcTime`
 
 **Alternatives Considered:**
 1. **Manual disposal**: User calls `store.destroy()` explicitly
@@ -1762,7 +1762,7 @@ const store = useStoreInstance(storeDef, storeId)
 - ⚠️ Users must understand gcTime for tuning
 
 <a id="d-gctime-default"></a>
-### ✅ Proposed: Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
+### ✅ Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
 1. **30 seconds** (aggressive eviction)
@@ -1787,7 +1787,7 @@ const store = useStoreInstance(storeDef, storeId)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds`
 
 <a id="d-generic-hook"></a>
-### ✅ Proposed: Generic `useStore()` Hook vs. Per-Definition Hooks
+### ✅ Generic `useStore()` Hook vs. Per-Definition Hooks
 
 **Alternatives Considered:**
 1. **Single generic `useStore()` hook** (chosen)
@@ -1821,7 +1821,7 @@ export function useWorkspaceStore(workspaceId: string) {
 - Slightly more verbose at call-sites (must specify storeDef and storeId)
 - Users must create their own helper hooks for convenience
 
-**Option 2: Factory Function (❌ Rejected)**
+**Option 2: Factory Function**
 ```tsx
 const workspaceStoreDef = defineStore({ name: 'workspace', ... })
 const { useStore: useWorkspaceStore } = createStoreHooks(workspaceStoreDef)
@@ -1844,7 +1844,7 @@ const store = useWorkspaceStore('ws-1')
 - Adds ceremony for little benefit
 
 <a id="d-suspense"></a>
-### ✅ Proposed: Suspend on `useStore()` Instead of Render Prop
+### ✅ Suspend on `useStore()` Instead of Render Prop
 
 **Alternatives Considered:**
 1. **Render props**: `<StoreLoader render={(store) => ...} />`
@@ -1867,7 +1867,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Differs from existing loading pattern
 
 <a id="d-cascade"></a>
-### ✅ Proposed: Configuration Cascade (Provider → Definition → Call-Site)
+### ✅ Configuration Cascade (Provider → Definition → Call-Site)
 
 **Alternatives Considered:**
 1. **Flat**: Only call-site options
@@ -1888,7 +1888,7 @@ const store = useWorkspaceStore('ws-1')
 - ⚠️ Potential confusion about which layer wins
 
 <a id="d-gctime-longest"></a>
-### ✅ Proposed: Longest `gcTime` Wins When Multiple Observers
+### ✅ Longest `gcTime` Wins When Multiple Observers
 
 **Alternatives Considered:**
 1. **First observer's gcTime**
