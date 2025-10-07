@@ -57,28 +57,9 @@ Many applications need to selectively synchronize subsets of data rather than sy
 
 **LiveStore currently lacks a first-class API for managing multiple independent store instances within a single application.**
 
-### Current Workarounds and Their Issues
+### Current Workarounds
 
-#### Workaround 1: Merge Everything Into One Store
-
-```tsx
-// ❌ Problematic: All data in one giant store
-const appSchema = {
-  workspaces: { ... },
-  workspace_123_issues: { ... },
-  workspace_456_issues: { ... },
-  // Becomes unmanageable quickly
-}
-```
-
-**Issues:**
-- Schema becomes unwieldy
-- No clear lifecycle boundaries
-- All data loaded even if not needed
-- Migrations affect unrelated domains
-- Difficult to reason about data ownership
-
-#### Workaround 2: Multiple Provider Trees
+#### Workaround 1: Multiple Provider Trees
 
 ```tsx
 // ❌ Problematic: Nested providers
@@ -99,7 +80,7 @@ function App() {
 - Provider nesting becomes deeply nested and unmanageable
 - No centralized lifecycle management
 
-#### Workaround 3: Manual Store Management
+#### Workaround 2: Manual Store Management
 
 ```tsx
 // ❌ Problematic: Manual instance management
