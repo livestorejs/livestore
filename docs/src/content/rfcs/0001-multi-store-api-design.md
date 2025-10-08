@@ -337,7 +337,7 @@ The consumption API provides **React components and hooks** for accessing store 
 
 #### `<MultiStoreProvider>`
 
-Provides a `StoreRegistry` to the component tree and configures default options for all stores.
+Provides a `StoreRegistry` to the component tree and configures default options for all store instances.
 
 -  Rationale and separation from `<LiveStoreProvider>` (see [Different Provider for Multi-Store](#different-provider-for-multi-store-multistoreprovider))
 -  Naming rationale (see [Name it MultiStoreProvider vs. Alternatives](#name-it-multistoreprovider-vs-alternatives))
