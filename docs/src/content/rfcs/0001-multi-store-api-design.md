@@ -1851,7 +1851,31 @@ const store = useWorkspaceStore('ws-1')
 
 ## Open Questions
 
-### 1. How are `clientId` and `sessionId` Managed in Multi-Store?
+### 1. Which Configurations Should Be Available at Each Layer and How Should Values Merge?
+
+**Context:**
+
+The multi-store architecture introduces a three-layer configuration cascade:
+1. **Provider Layer** (`<MultiStoreProvider defaultStoreOptions>`)
+2. **Definition Layer** (`defineStore({ ... })`)
+3. **Call-Site Layer** (`useStore({ ... })`)
+
+| Configuration           | Type               | Provider | Definition | Call-Site | Merging Strategy |
+|:------------------------|:-------------------|:---------|:-----------|:----------|:-----------------|
+| `gcTime`                | number             | ✅        | ✅          | ✅         |                  |
+| `batchUpdates`          | function           | ✅        | ❌          | ❌         |                  |
+| `syncPayload`           | object (data)      | ❓        | ❓          | ❓         |                  |
+| `otelOptions`           | object (instances) | ❓        | ❓          | ❓         |                  |
+| `disableDevtools`       | boolean            | ❓        | ❓          | ❓         |                  |
+| `confirmUnsavedChanges` | boolean            | ❓        | ❓          | ❓         |                  |
+| `debug`                 | object (data)      | ❓        | ❓          | ❓         |                  |
+| `onLoad`                | function           | ❓        | ❓          | ❓         |                  |
+| `schema`                | object             | ❌        | ✅          | ❌         |                  |
+| `adapter`               | object (instance)  | ❌        | ✅          | ❌         |                  |
+| `signal`                | object (instance)  | ❌        | ❌          | ✅         |                  |
+
+
+### 2. How are `clientId` and `sessionId` Managed in Multi-Store?
 
 **Context:**
 
@@ -1861,7 +1885,7 @@ Many sync adapters require a `clientId` and `sessionId`:
 
 **Question:** In a multi-store environment, how should these IDs kept consistent across store instances?
 
-### 2. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
+### 3. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
 
 **Context:**
 
