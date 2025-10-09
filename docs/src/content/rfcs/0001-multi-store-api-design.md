@@ -1851,31 +1851,7 @@ const store = useWorkspaceStore('ws-1')
 
 ## Open Questions
 
-### 1. Should `storeId` Be Optional with a Default in Multi-Store Mode?
-
-**Current:** `storeId` is required.
-
-**Alternative:** Default to `"default"` if omitted.
-
-```tsx
-// Current
-useStore({ storeDef, storeId: 'default' })
-
-// Alternative
-useStore({ storeDef }) // Implicitly storeId: 'default'
-```
-
-**Pros:**
-- Simpler for singleton stores
-- Less boilerplate
-
-**Cons:**
-- Encourages lazy patterns (forgetting to specify storeId)
-- Risk of unintended singleton behavior
-- Hides the fact that multiple instances can exist
-- Less explicit (what is the default?)
-
-### 2. How are `clientId` and `sessionId` Managed in Multi-Store?
+### 1. How are `clientId` and `sessionId` Managed in Multi-Store?
 
 **Context:**
 
@@ -1885,7 +1861,7 @@ Many sync adapters require a `clientId` and `sessionId`:
 
 **Question:** In a multi-store environment, how should these IDs kept consistent across store instances?
 
-### 3. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
+### 2. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
 
 **Context:**
 
