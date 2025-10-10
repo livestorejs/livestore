@@ -26,7 +26,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/wa-sqlite'],
+    exclude: [
+      '@livestore/wa-sqlite',
+      'lightningcss', // Avoid wasm branch looking for missing ../pkg (lightningcss#701)
+    ],
   },
   plugins: [
     tanstackStart({ customViteReactPlugin: true }),

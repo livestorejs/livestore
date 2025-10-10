@@ -8,66 +8,45 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
-import { Route as rootRouteImport } from './routes/__root.tsx'
-import { ServerRoute as ApiElectricServerRouteImport } from './routes/api/electric.ts'
-import { Route as IndexRouteImport } from './routes/index/index.tsx'
-
-const rootServerRouteImport = createServerRootRoute()
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiElectricRouteImport } from './routes/api/electric'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiElectricServerRoute = ApiElectricServerRouteImport.update({
+const ApiElectricRoute = ApiElectricRouteImport.update({
   id: '/api/electric',
   path: '/api/electric',
-  getParentRoute: () => rootServerRouteImport,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/electric': typeof ApiElectricRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/electric': typeof ApiElectricRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/electric': typeof ApiElectricRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/electric'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/electric'
+  id: '__root__' | '/' | '/api/electric'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/electric': typeof ApiElectricServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/electric': typeof ApiElectricServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/electric': typeof ApiElectricServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/electric'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/electric'
-  id: '__root__' | '/api/electric'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiElectricServerRoute: typeof ApiElectricServerRoute
+  ApiElectricRoute: typeof ApiElectricRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -79,27 +58,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
     '/api/electric': {
       id: '/api/electric'
       path: '/api/electric'
       fullPath: '/api/electric'
-      preLoaderRoute: typeof ApiElectricServerRouteImport
-      parentRoute: typeof rootServerRouteImport
+      preLoaderRoute: typeof ApiElectricRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiElectricRoute: ApiElectricRoute,
 }
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiElectricServerRoute: ApiElectricServerRoute,
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.ts'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()
