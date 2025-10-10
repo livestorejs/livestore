@@ -1,5 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
+import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 
@@ -11,7 +12,8 @@ import type { Priority, Status } from '@/types.ts'
 import { events, tables } from '../livestore/schema.ts'
 
 const EditIssueScreen = () => {
-  const issueId = useLocalSearchParams().issueId as string
+  const issueIdParam = useLocalSearchParams().issueId as string
+  const issueId = Number(issueIdParam)
   const { store } = useStore()
   const router = useRouter()
   const textColor = useThemeColor({}, 'text')
@@ -23,22 +25,15 @@ const EditIssueScreen = () => {
     }),
   )
 
-  const assignee = useQuery(
-    queryDb(tables.users.where({ id: issue.assigneeId! }).first({ behaviour: 'error' }), {
-      label: 'assignee',
-      deps: `edit-issue-assignee-${issue.assigneeId}`,
-    }),
-  )
-
   const handleGoBack = () => {
     if (router.canGoBack()) {
       router.back()
     } else {
-      router.replace('/(tabs)')
+      router.replace({ pathname: '/(tabs)', params: { storeId: store.storeId } })
     }
   }
 
-  if (!issueId) {
+  if (!Number.isFinite(issueId)) {
     return <ThemedText>Issue not found</ThemedText>
   }
 
@@ -46,7 +41,7 @@ const EditIssueScreen = () => {
     <>
       <Stack.Screen
         options={{
-          headerTitle: `Issue-${issue.id.slice(0, 4)}`,
+          headerTitle: `Issue-${String(issue.id).slice(0, 4)}`,
           headerLeft: () => (
             <Pressable onPress={handleGoBack}>
               <ThemedText>Back</ThemedText>
@@ -62,16 +57,18 @@ const EditIssueScreen = () => {
       />
       <ScrollView style={styles.container}>
         <View style={styles.contentContainer}>
+          {/* Title */}
           <TextInput
             style={[styles.titleInput, { color: textColor }]}
             value={issue.title}
             multiline
             autoFocus
             onChangeText={(text: string) =>
-              store.commit(events.issueTitleUpdated({ id: issue.id, title: text, updatedAt: new Date() }))
+              store.commit(events.updateIssueTitle({ id: issue.id, title: text, modified: new Date() }))
             }
           />
 
+          {/* Current metadata preview */}
           <View style={styles.metadataContainer}>
             <View style={styles.metadataItem}>
               <IssueStatusIcon status={issue.status as Status} />
@@ -84,9 +81,48 @@ const EditIssueScreen = () => {
             </View>
 
             <View style={styles.metadataItem}>
-              <Image source={{ uri: assignee.photoUrl! }} style={styles.avatar} />
-              <ThemedText style={styles.metadataText}>{assignee.name}</ThemedText>
+              {issue.assigneeName ? (
+                <Image
+                  source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(issue.assigneeName)}&size=40` }}
+                  style={styles.avatar}
+                />
+              ) : null}
+              <ThemedText style={styles.metadataText}>{issue.assigneeName}</ThemedText>
             </View>
+          </View>
+
+          {/* Editable status/priority */}
+          <View style={styles.segmentGroup}>
+            <ThemedText>Status</ThemedText>
+            <SegmentedControl
+              values={['Backlog', 'Todo', 'In Progress', 'In Review', 'Done']}
+              selectedIndex={issue.status as number}
+              onChange={(e) =>
+                store.commit(
+                  events.updateIssueStatus({
+                    id: issue.id,
+                    status: e.nativeEvent.selectedSegmentIndex as Status,
+                    modified: new Date(),
+                  }),
+                )
+              }
+            />
+          </View>
+          <View style={styles.segmentGroup}>
+            <ThemedText>Priority</ThemedText>
+            <SegmentedControl
+              values={['None', 'Low', 'Medium', 'High', 'Urgent']}
+              selectedIndex={issue.priority as number}
+              onChange={(e) =>
+                store.commit(
+                  events.updateIssuePriority({
+                    id: issue.id,
+                    priority: e.nativeEvent.selectedSegmentIndex as Priority,
+                    modified: new Date(),
+                  }),
+                )
+              }
+            />
           </View>
 
           <TextInput
@@ -94,9 +130,7 @@ const EditIssueScreen = () => {
             value={issue.description!}
             placeholder="Description..."
             multiline
-            onChangeText={(text: string) =>
-              store.commit(events.issueDescriptionUpdated({ id: issue.id, description: text, updatedAt: new Date() }))
-            }
+            onChangeText={(text: string) => store.commit(events.updateDescription({ id: issue.id, body: text }))}
           />
         </View>
       </ScrollView>
@@ -125,6 +159,10 @@ const styles = StyleSheet.create({
     padding: 4,
     paddingHorizontal: 8,
     gap: 8,
+  },
+  segmentGroup: {
+    gap: 8,
+    marginVertical: 8,
   },
   metadataItem: {
     flexDirection: 'row',

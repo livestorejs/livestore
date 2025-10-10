@@ -9,7 +9,7 @@ export const ResetButton = ({ className }: { className?: string }) => {
 
   const onClick = () => {
     if (confirm) {
-      navigate('/?reset')
+      navigate('?reset')
       window.location.reload()
     }
     setConfirm(true)

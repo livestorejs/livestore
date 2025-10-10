@@ -3,7 +3,6 @@ import { useStore } from '@livestore/react'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
-import Editor from '@/components/common/editor'
 import { useFrontendState } from '@/lib/livestore/queries'
 import { events } from '@/lib/livestore/schema'
 
@@ -40,11 +39,12 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
       className={`bg-white dark:bg-neutral-800 pb-4 rounded-lg shadow dark:shadow-none border border-transparent dark:border-neutral-700/50 ${className}`}
       {...keyboardProps}
     >
-      <Editor
-        className="px-4 py-1"
+      <textarea
+        className="px-4 py-2 w-full max-w-xl text-sm rounded-md bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-0 focus:border-0 focus:outline-none focus:ring-2 focus:ring-neutral-300 dark:focus:ring-neutral-700 placeholder-neutral-400 dark:placeholder-neutral-500"
         value={commentDraft}
-        onChange={(value) => setCommentDraft(value)}
+        onChange={(e) => setCommentDraft(e.target.value)}
         placeholder="Leave a comment..."
+        rows={3}
       />
       {/* TODO add tooltip for submit shortcut */}
       <Button

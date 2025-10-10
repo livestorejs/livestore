@@ -20,7 +20,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -855,11 +855,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.gen(this, function* () {
         const session = yield* this.syncProcessor.syncState
         yield* Effect.log(
-          `Session sync state: ${session.localHead} (upstream: ${session.upstreamHead})`,
+          `Session sync state: ${EventSequenceNumber.toString(session.localHead)} (upstream: ${EventSequenceNumber.toString(session.upstreamHead)})`,
           session.toJSON(),
         )
         const leader = yield* this.clientSession.leaderThread.getSyncState
-        yield* Effect.log(`Leader sync state: ${leader.localHead} (upstream: ${leader.upstreamHead})`, leader.toJSON())
+        yield* Effect.log(
+          `Leader sync state: ${EventSequenceNumber.toString(leader.localHead)} (upstream: ${EventSequenceNumber.toString(leader.upstreamHead)})`,
+          leader.toJSON(),
+        )
       }).pipe(this.runEffectFork)
     },
 

@@ -1,12 +1,12 @@
-import { queryDb, Schema, sql } from '@livestore/livestore'
+import { nanoid, queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
-import { Undo2Icon } from 'lucide-react-native'
+import React from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
-
 import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
+import { useUser } from '@/hooks/useUser.ts'
 import { events, tables } from '@/livestore/schema.ts'
 import type { Priority, Status } from '@/types.ts'
 
@@ -137,29 +137,21 @@ const styles = StyleSheet.create({
 })
 
 const IssueDetailsScreen = () => {
-  const issueId = useGlobalSearchParams().issueId as string
-  const store = useStore()
+  const rawIssueId = useGlobalSearchParams().issueId as string | string[] | undefined
+  const issueId = (Array.isArray(rawIssueId) ? rawIssueId[rawIssueId.length - 1] : (rawIssueId ?? '')).split('?')[0]
+  const issueIdNum = Number(issueId)
+  const _store = useStore()
   const router = useRouter()
   const theme = useColorScheme()
   const isDark = theme === 'dark'
+  const user = useUser()
+  const [pickerForComment, setPickerForComment] = React.useState<string | null>(null)
 
   const issue = useQuery(
     queryDb(
       {
-        query: sql`
-            SELECT 
-              issues.*,
-              users.name as assigneeName,
-              users.photoUrl as assigneePhotoUrl
-            FROM issues
-            LEFT JOIN users ON issues.assigneeId = users.id
-            WHERE issues.id = '${issueId}'
-          `,
-        schema: tables.issues.rowSchema.pipe(
-          Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
-          Schema.Array,
-          Schema.headOrElse(),
-        ),
+        query: sql`SELECT issues.* FROM issues WHERE issues.id = ${Number.isFinite(issueIdNum) ? issueIdNum : -1}`,
+        schema: tables.issues.rowSchema.pipe(Schema.Array, Schema.headOrElse()),
       },
       { label: 'issue', deps: `issue-details-${issueId}` },
     ),
@@ -171,8 +163,6 @@ const IssueDetailsScreen = () => {
         query: sql`
             SELECT 
               comments.*,
-              users.name as authorName,
-              users.photoUrl as authorPhotoUrl,
               (
                 SELECT COALESCE(
                   json_group_array(json_object(
@@ -184,17 +174,14 @@ const IssueDetailsScreen = () => {
               WHERE reactions.commentId = comments.id
             ) as reactions
             FROM comments
-            LEFT JOIN users ON comments.userId = users.id
             LEFT JOIN reactions ON reactions.commentId = comments.id
-            WHERE comments.issueId = '${issueId}'
+            WHERE comments.issueId = ${Number.isFinite(issueIdNum) ? issueIdNum : -1}
             GROUP BY comments.id
             ORDER BY comments.createdAt DESC
           `,
         schema: tables.comments.rowSchema.pipe(
           Schema.extend(
             Schema.Struct({
-              authorName: Schema.String,
-              authorPhotoUrl: Schema.String,
               reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
             }),
           ),
@@ -205,7 +192,7 @@ const IssueDetailsScreen = () => {
     ),
   )
 
-  if (!issueId) {
+  if (!issueId || !Number.isFinite(issueIdNum)) {
     return <ThemedText>Issue not found</ThemedText>
   }
 
@@ -233,31 +220,37 @@ const IssueDetailsScreen = () => {
                     hour12: true,
                   })}{' '}
                 </ThemedText>
-                <Pressable
-                  onPress={() => store.store.commit(events.issueRestored({ id: issue.id }))}
-                  style={styles.undoButton}
-                >
-                  <Undo2Icon size={18} />
-                  <ThemedText style={styles.undoText}>Undo</ThemedText>
-                </Pressable>
+                {/* Restore not supported in Web-aligned event model */}
               </View>
             ) : null}
-            <Pressable onPress={() => router.push(`/edit-issue?issueId=${issue.id}`)}>
-              <Text style={[styles.title, styles.titleDark]}>{issue.title}</Text>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/edit-issue',
+                  params: { issueId: String(issue.id), storeId: _store.store.storeId },
+                })
+              }
+            >
+              <Text style={[styles.title, isDark && styles.titleDark]}>{issue.title}</Text>
 
-              <View style={[styles.metadataContainer, styles.metadataContainerDark]}>
+              <View style={[styles.metadataContainer, isDark && styles.metadataContainerDark]}>
                 <View style={styles.metadataItem}>
                   <IssueStatusIcon status={issue.status as Status} />
-                  <ThemedText style={styles.metadataText}>{issue.status}</ThemedText>
                 </View>
 
                 <View style={styles.metadataItem}>
                   <PriorityIcon priority={issue.priority as Priority} />
-                  <ThemedText style={styles.metadataText}>{issue.priority}</ThemedText>
                 </View>
 
                 <View style={styles.metadataItem}>
-                  <Image source={{ uri: issue.assigneePhotoUrl! }} style={styles.avatar} />
+                  {issue.assigneeName ? (
+                    <Image
+                      source={{
+                        uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(issue.assigneeName)}&size=40`,
+                      }}
+                      style={styles.avatar}
+                    />
+                  ) : null}
                   <ThemedText style={styles.metadataText}>{issue.assigneeName}</ThemedText>
                 </View>
               </View>
@@ -270,21 +263,56 @@ const IssueDetailsScreen = () => {
               {comments.map((comment) => (
                 <View key={comment.id} style={[styles.commentCard, isDark && styles.commentCardDark]}>
                   <View style={styles.commentHeader}>
-                    <Image source={{ uri: comment.authorPhotoUrl }} style={styles.avatar} />
+                    {comment.authorName ? (
+                      <Image
+                        source={{
+                          uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName)}&size=40`,
+                        }}
+                        style={styles.avatar}
+                      />
+                    ) : null}
                     <ThemedText style={styles.commentAuthor} numberOfLines={1}>
                       {comment.authorName}
                     </ThemedText>
                     <ThemedText style={styles.commentDate}>{new Date(comment.createdAt!).toDateString()}</ThemedText>
                   </View>
                   <ThemedText style={styles.commentContent}>{comment.content}</ThemedText>
-
                   <View style={styles.reactionsContainer}>
                     {comment.reactions.map((reaction) => (
                       <View key={reaction.id} style={[styles.reactionBadge, isDark && styles.reactionBadgeDark]}>
                         <ThemedText style={styles.reactionText}>{reaction.emoji} 1</ThemedText>
                       </View>
                     ))}
+                    <Pressable onPress={() => setPickerForComment((c) => (c === comment.id ? null : comment.id))}>
+                      <ThemedText style={styles.reactionText}>+ Add reaction</ThemedText>
+                    </Pressable>
                   </View>
+
+                  {pickerForComment === comment.id ? (
+                    <View style={[styles.reactionsContainer, { marginTop: 8 }]}>
+                      {['👍', '👎', '💯', '👀', '🤔', '✅', '🔥'].map((emoji) => (
+                        <Pressable
+                          key={emoji}
+                          onPress={() => {
+                            _store.store.commit(
+                              events.reactionCreated({
+                                id: nanoid(),
+                                issueId: String(issue.id),
+                                commentId: comment.id,
+                                userId: user.id,
+                                emoji,
+                              }),
+                            )
+                            setPickerForComment(null)
+                          }}
+                        >
+                          <View style={[styles.reactionBadge, isDark && styles.reactionBadgeDark]}>
+                            <ThemedText style={styles.reactionText}>{emoji}</ThemedText>
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </View>
