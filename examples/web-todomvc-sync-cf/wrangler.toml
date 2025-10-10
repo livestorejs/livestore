@@ -3,6 +3,7 @@ main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-05-08"
 compatibility_flags = [
   "enable_request_signal", # Needed for HTTP RPC streams
+  "nodejs_compat", # needed for @opentelemetry/*
 ]
 
 [[durable_objects.bindings]]
