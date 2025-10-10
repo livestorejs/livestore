@@ -1,6 +1,10 @@
 name = "livestore-cf-adapter-chat"
 main = "src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+  "nodejs_compat", # needed for @opentelemetry/*
+]
 preview_urls = true
 
 [[durable_objects.bindings]]

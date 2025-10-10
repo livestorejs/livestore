@@ -27,6 +27,9 @@ const adapter = makePersistedAdapter({
   resetPersistence,
 })
 
+const storeId = 'linearlite-demo'
+const syncPayload = { authToken: 'insecure-token-change-me' }
+
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = React.useState(false)
@@ -52,7 +55,14 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate])
 
   return (
-    <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} batchUpdates={batchUpdates}>
+    <LiveStoreProvider
+      schema={schema}
+      adapter={adapter}
+      renderLoading={renderBootStatus}
+      batchUpdates={batchUpdates}
+      storeId={storeId}
+      syncPayload={syncPayload}
+    >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
         <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>
           {children}

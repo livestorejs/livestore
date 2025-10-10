@@ -17,6 +17,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
     "@biomejs/biome": "^2.2.4",
     "@livestore/devtools-vite": "0.4.0-dev.10",
     "@playwright/test": "^1.55.1-beta-1758616458000",
@@ -24,21 +25,20 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
-    "concurrently": "^9.0.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "wrangler": "^4.38.0"
+    "wrangler": "^4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-cf-adapter-chat.schickling.workers.dev vite build && wrangler build",
+    "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-cf-adapter-chat.schickling.workers.dev vite build",
     "deploy": "pnpm build && pnpm deploy:cf && pnpm deploy:netlify",
     "deploy:cf": "wrangler deploy",
     "deploy:netlify": "bunx netlify-cli deploy --prod --no-build --dir=dist",
-    "dev": "concurrently \"pnpm wrangler dev\" \"VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev --force\"",
+    "dev": "vite --force",
     "lint": "biome check .",
     "lint:fix": "biome check . --fix",
     "preview": "vite preview",

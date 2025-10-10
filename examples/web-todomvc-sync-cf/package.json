@@ -23,7 +23,7 @@
     "@vitejs/plugin-react": "^5.0.3",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "wrangler": "^4.38.0"
+    "wrangler": "^4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"
