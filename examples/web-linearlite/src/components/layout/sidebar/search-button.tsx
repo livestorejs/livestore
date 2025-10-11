@@ -1,6 +1,6 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
+import { Link } from '@tanstack/react-router'
 import React from 'react'
-import { Link } from 'react-router-dom'
 import { MenuContext } from '@/app/contexts'
 import { useFilterState } from '@/lib/livestore/queries'
 
@@ -11,6 +11,7 @@ export const SearchButton = () => {
   return (
     <Link
       to="/search"
+      search={(prev) => ({ ...prev, issueId: undefined })}
       aria-label="Open search page"
       onClick={() => {
         setFilterState({ query: null })

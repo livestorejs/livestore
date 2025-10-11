@@ -1,6 +1,6 @@
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
+import { Link } from '@tanstack/react-router'
 import React from 'react'
-import { Link } from 'react-router-dom'
 import { MenuContext } from '@/app/contexts'
 import { AboutMenu } from '@/components/layout/sidebar/about-menu'
 import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
@@ -17,13 +17,13 @@ export const Sidebar = ({ className }: { className?: string }) => {
     {
       title: 'List view',
       icon: Bars4Icon,
-      href: '/',
+      to: '/',
       onClick: () => setFilterState({ status: null }),
     },
     {
       title: 'Board view',
       icon: ViewColumnsIcon,
-      href: '/board',
+      to: '/board',
       onClick: () => setFilterState({ status: null }),
     },
   ]
@@ -44,10 +44,11 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, href, onClick }) => (
+          {navItems.map(({ title, icon: Icon, to, onClick }) => (
             <Link
-              key={href}
-              to={href}
+              key={to}
+              to={to}
+              search={(prev) => ({ ...prev, issueId: undefined })}
               onClick={() => {
                 onClick()
                 setShowMenu(false)

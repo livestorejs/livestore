@@ -1,8 +1,8 @@
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
-import { useNavigate, useParams } from 'react-router-dom'
 import { Avatar } from '@/components/common/avatar'
 import { MenuButton } from '@/components/common/menu-button'
 import { PriorityMenu } from '@/components/common/priority-menu'
@@ -19,15 +19,20 @@ import type { Status } from '@/types/status'
 import { formatDate } from '@/utils/format-date'
 import { getIssueTag } from '@/utils/get-issue-tag'
 
-export const Issue = () => {
-  const id = Number(useParams().id ?? 0)
+export const Issue = ({ issueId }: { issueId: number }) => {
   const navigate = useNavigate()
+  const router = useRouter()
   const { store } = useStore()
-  const issue = store.useQuery(queryDb(tables.issue.where({ id }).first({ behaviour: 'error' }), { deps: [id] }))
+  const issue = store.useQuery(
+    queryDb(tables.issue.where({ id: issueId }).first({ behaviour: 'error' }), { deps: [issueId] }),
+  )
 
   const close = () => {
-    if (window.history.length > 2) navigate(-1)
-    else navigate('/')
+    if (window.history.length > 2) {
+      router.history.back()
+    } else {
+      navigate({ to: '/', search: (prev) => ({ ...prev, issueId: undefined }) })
+    }
   }
 
   const handleChangeStatus = (status: Status) => {
@@ -65,10 +70,10 @@ export const Issue = () => {
             Issues
           </Button>
           <ChevronRightIcon className="size-3.5" />
-          <div className="text-neutral-500 dark:text-neutral-400">{getIssueTag(id)}</div>
+          <div className="text-neutral-500 dark:text-neutral-400">{getIssueTag(issueId)}</div>
         </div>
         <div className="flex items-center gap-px">
-          <DeleteButton issueId={id} close={close} className="hidden lg:block" />
+          <DeleteButton issueId={issue.id} close={close} className="hidden lg:block" />
           <BackButton close={close} />
         </div>
       </div>

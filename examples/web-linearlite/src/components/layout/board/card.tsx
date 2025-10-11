@@ -1,6 +1,6 @@
 import { useStore } from '@livestore/react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
-import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/common/avatar'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
@@ -25,11 +25,11 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() => navigate(`/issue/${issue.id}`)}
+      onClick={() => navigate({ to: '/issue', search: (prev) => ({ ...prev, issueId: issue.id.toString() }) })}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`/issue/${issue.id}`)
+          navigate({ to: '/issue', search: (prev) => ({ ...prev, issueId: issue.id.toString() }) })
         }
       }}
     >

@@ -12,9 +12,6 @@
   <body>
     <div id="root"></div>
     <div id="root-modal"></div>
-    <script type="module" src="/src/app/main.tsx"></script>
-    <script type="text/javascript">
-      document.documentElement.classList.toggle('dark', localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches))
-    </script>
+    <script type="module" src="@tanstack/react-start/plugin/default-entry/client.tsx"></script>
   </body>
 </html>

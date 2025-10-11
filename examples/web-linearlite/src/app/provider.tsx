@@ -1,9 +1,9 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
+import { useRouter } from '@tanstack/react-router'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { VersionBadge } from '@/components/VersionBadge'
 import { schema } from '@/lib/livestore/schema'
@@ -11,9 +11,11 @@ import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
 import type { Status } from '@/types/status'
 
-const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+const hasWindow = typeof window !== 'undefined'
+const resetPersistence =
+  hasWindow && import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
-if (resetPersistence) {
+if (resetPersistence && hasWindow) {
   const searchParams = new URLSearchParams(window.location.search)
   searchParams.delete('reset')
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
@@ -27,11 +29,12 @@ const adapter = makePersistedAdapter({
   resetPersistence,
 })
 
-const storeId = 'linearlite-demo'
-const syncPayload = { authToken: 'insecure-token-change-me' }
+const defaultStoreId = 'linearlite-demo' as const
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
 
-export const Provider = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate()
+export const Provider = ({ children, storeId: storeIdOverride }: { children: React.ReactNode; storeId?: string }) => {
+  const router = useRouter()
+  const storeId = storeIdOverride ?? import.meta.env.VITE_LIVESTORE_STORE_ID ?? defaultStoreId
   const [showMenu, setShowMenu] = React.useState(false)
   const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
 
@@ -46,13 +49,13 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
         }
       }
       if (e.key === '/' && e.shiftKey) {
-        navigate('/search')
+        router.navigate({ to: '/search' })
         e.preventDefault()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigate])
+  }, [router])
 
   return (
     <LiveStoreProvider

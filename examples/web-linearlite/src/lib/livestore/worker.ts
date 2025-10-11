@@ -8,7 +8,8 @@ const defaultSyncUrl =
     ? `${globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${globalThis.location.host}`
     : 'ws://localhost:8787'
 
-const syncUrl = import.meta.env.VITE_LIVESTORE_SYNC_URL ?? defaultSyncUrl
+const envSyncUrl = import.meta.env.VITE_LIVESTORE_SYNC_URL
+const syncUrl = envSyncUrl && envSyncUrl.length > 0 ? envSyncUrl : defaultSyncUrl
 
 makeWorker({
   schema,
