@@ -443,23 +443,45 @@ const backgroundApplyLocalPushes = ({
 
       // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
       // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
-      const [newEvents, deferreds] = pipe(
-        batchItems,
-        ReadonlyArray.filter(
-          ([eventEncoded]) =>
-            // Keep events that match the current generation or newer. Older generations will
-            // be rejected below when their sequence numbers no longer advance the local head.
-            eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
-        ),
-        ReadonlyArray.unzip,
-      )
+      const filteredItems: Array<LocalPushQueueItem> = []
+      const droppedItems: Array<LocalPushQueueItem> = []
 
-      if (newEvents.length === 0) {
-        // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
-        // Allow the backend pulling to start
+      for (const item of batchItems) {
+        const [eventEncoded] = item
+        if (eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration) {
+          filteredItems.push(item)
+        } else {
+          droppedItems.push(item)
+        }
+      }
+
+      if (droppedItems.length > 0) {
+        otelSpan?.addEvent(`push:drop-old-generation`, {
+          droppedCount: droppedItems.length,
+          currentRebaseGeneration,
+        })
+
+        yield* Effect.forEach(
+          droppedItems,
+          ([eventEncoded, deferred]) =>
+            deferred === undefined
+              ? Effect.void
+              : Deferred.fail(
+                  deferred,
+                  LeaderAheadError.make({
+                    minimumExpectedNum: syncState.localHead,
+                    providedNum: eventEncoded.seqNum,
+                  }),
+                ),
+        )
+      }
+
+      if (filteredItems.length === 0) {
         yield* pullLatch.open
         continue
       }
+
+      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
       const mergeResult = SyncState.merge({
         syncState,

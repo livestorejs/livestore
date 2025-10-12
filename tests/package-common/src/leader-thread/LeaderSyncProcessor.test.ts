@@ -23,10 +23,13 @@ import {
   Deferred,
   Duration,
   Effect,
+  Exit,
+  Cause,
   FetchHttpClient,
   Layer,
   Logger,
   LogLevel,
+  Fiber,
   Queue,
   type Scope,
   Stream,
@@ -34,7 +37,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -70,7 +73,7 @@ const withTestCtx = (
 
 const makeEventFactory = EventFactory.makeFactory(events)
 
-Vitest.describe.concurrent('LeaderSyncProcessor', () => {
+Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -96,6 +99,65 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
+
+      const baseEvent = testContext.eventFactory.todoCreated.next({
+        id: 'local-old-gen',
+        text: 'y',
+        completed: false,
+      })
+
+      const staleSeq = EventSequenceNumber.make({
+        global: (syncStateBefore.localHead.global + 1) as any,
+        client: EventSequenceNumber.clientDefault,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
+      })
+
+      const staleParent = EventSequenceNumber.make({
+        ...syncStateBefore.localHead,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
+      })
+
+      const staleEvent = LiveStoreEvent.EncodedWithMeta.make({
+        ...LiveStoreEvent.encodedFromGlobal(baseEvent),
+        seqNum: staleSeq,
+        parentSeqNum: staleParent,
+      })
+
+      const waiterFiber = yield* leaderThreadCtx.syncProcessor
+        .push([staleEvent], { waitForProcessing: true })
+        .pipe(Effect.fork)
+
+      yield* Effect.sleep(Duration.millis(200))
+
+      const poll = yield* Fiber.poll(waiterFiber)
+
+      if (poll._tag === 'None') {
+        yield* Fiber.interrupt(waiterFiber)
+      }
+
+      expect(poll._tag).toBe('Some')
+      if (poll._tag !== 'Some') {
+        return
+      }
+
+      const exit = poll.value
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (!Exit.isFailure(exit)) {
+        return
+      }
+
+      const errorOption = Cause.failureOption(exit.cause)
+      assert(errorOption._tag === 'Some')
+      expect(errorOption.value._tag).toBe('LeaderAheadError')
     }).pipe(withTestCtx()(test)),
   )
 
