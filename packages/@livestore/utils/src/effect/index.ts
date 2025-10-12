@@ -72,6 +72,7 @@ export {
   Chunk,
   Config,
   ConfigError,
+  ConfigProvider,
   Console,
   Context,
   Data,

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import process from 'node:process'
 
 import { Effect, Option, Schema } from '@livestore/utils/effect'
@@ -15,35 +16,27 @@ export class CloudflareError extends Schema.TaggedError<CloudflareError>()('Clou
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
-export const resolveCloudflareAccountId: Effect.Effect<string, CloudflareError> = Effect.gen(function* () {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+const readEnv = ({ key, message }: { key: string; message: string }): Effect.Effect<string, CloudflareError> =>
+  Effect.sync(() => process.env[key] ?? '').pipe(
+    Effect.map((value) => value.trim()),
+    Effect.filterOrFail(
+      (value): value is string => value.length > 0,
+      () =>
+        new CloudflareError({
+          reason: 'auth',
+          message,
+        }),
+    ),
+  )
 
-  if (accountId === undefined || accountId.trim() === '') {
-    /**
-     * Keep the error channel structured so callers can surface a helpful message
-     * instead of dealing with a generic string/throw.
-     */
-    return yield* new CloudflareError({
-      reason: 'auth',
-      message:
-        'CLOUDFLARE_ACCOUNT_ID is not set. Export it in .envrc.local or set CLOUDFLARE_ENV specific .env files before deploying.',
-    })
-  }
-
-  return accountId.trim()
+export const resolveCloudflareAccountId: Effect.Effect<string, CloudflareError> = readEnv({
+  key: 'CLOUDFLARE_ACCOUNT_ID',
+  message: 'CLOUDFLARE_ACCOUNT_ID is not set. Export it in your shell before deploying.',
 })
 
-export const resolveCloudflareApiToken: Effect.Effect<string, CloudflareError> = Effect.gen(function* () {
-  const token = process.env.CLOUDFLARE_API_TOKEN
-
-  if (token === undefined || token.trim() === '') {
-    return yield* new CloudflareError({
-      reason: 'auth',
-      message: 'CLOUDFLARE_API_TOKEN is not set. Login with `bunx wrangler login` or export a token in .envrc.local.',
-    })
-  }
-
-  return token.trim()
+export const resolveCloudflareApiToken: Effect.Effect<string, CloudflareError> = readEnv({
+  key: 'CLOUDFLARE_API_TOKEN',
+  message: 'CLOUDFLARE_API_TOKEN is not set. Export a valid token before deploying.',
 })
 
 const CLOUDFLARE_WORKERS_SUBDOMAIN_FALLBACK = 'livestore'
@@ -124,20 +117,58 @@ export const createPreviewAlias = ({
     .slice(0, 40)
 
   if (Option.isSome(explicitAlias)) {
-    return sanitizeWorkerSuffix(explicitAlias.value)
+    return sanitizeLabel(explicitAlias.value).slice(0, 63)
   }
 
-  return sanitizeWorkerSuffix(`branch-${sanitizedBranch}-${shortSha}`)
+  return sanitizeLabel(`branch-${sanitizedBranch}-${shortSha}`).slice(0, 63)
 }
 
-const sanitizeWorkerSuffix = (value: string) =>
+const MAX_WORKER_NAME_LENGTH = 52
+
+const sanitizeLabel = (value: string) =>
   value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/--+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 63)
+
+/**
+ * Cloudflare caps Worker service names at 52 characters and only allows `[a-z0-9-]`.
+ * Preview builds append the branch alias, so we sanitise, clamp, and, when needed,
+ * append an 8-char hash to keep the name unique while staying under the limit.
+ */
+const composeWorkerName = ({ base, suffix }: { base: string; suffix?: string }) => {
+  let sanitizedBase = sanitizeLabel(base)
+  if (sanitizedBase.length > MAX_WORKER_NAME_LENGTH) {
+    sanitizedBase = sanitizedBase.slice(0, MAX_WORKER_NAME_LENGTH)
+  }
+
+  if (suffix === undefined) {
+    return sanitizedBase
+  }
+
+  let sanitizedSuffix = sanitizeLabel(suffix)
+  if (sanitizedSuffix.length === 0) {
+    return sanitizedBase
+  }
+
+  const candidate = sanitizeLabel(`${sanitizedBase}-${sanitizedSuffix}`)
+  if (candidate.length <= MAX_WORKER_NAME_LENGTH) {
+    return candidate
+  }
+
+  const hash = createHash('sha256').update(sanitizedSuffix).digest('hex').slice(0, 8)
+  const availableForSuffix = MAX_WORKER_NAME_LENGTH - sanitizedBase.length - hash.length - 2 // two hyphens
+
+  if (availableForSuffix <= 0) {
+    const baseTrimmed = sanitizedBase.slice(0, Math.max(0, MAX_WORKER_NAME_LENGTH - hash.length - 1))
+    return sanitizeLabel(`${baseTrimmed}-${hash}`).slice(0, MAX_WORKER_NAME_LENGTH)
+  }
+
+  sanitizedSuffix = sanitizedSuffix.slice(0, availableForSuffix)
+  return sanitizeLabel(`${sanitizedBase}-${sanitizedSuffix}-${hash}`).slice(0, MAX_WORKER_NAME_LENGTH)
+}
 
 export const resolveWorkerName = ({
   example,
@@ -152,14 +183,14 @@ export const resolveWorkerName = ({
   worker name with a sanitized suffix.
    */
   if (kind === 'prod') {
-    return example.workerName
+    return composeWorkerName({ base: example.workerName })
   }
 
   if (kind === 'dev') {
-    return sanitizeWorkerSuffix(`${example.workerName}-dev`)
+    return composeWorkerName({ base: example.workerName, suffix: 'dev' })
   }
 
-  return sanitizeWorkerSuffix(`${example.workerName}-${kind.alias}`)
+  return composeWorkerName({ base: example.workerName, suffix: kind.alias })
 }
 
 export const buildCloudflareWorker = ({
