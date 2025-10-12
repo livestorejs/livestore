@@ -23,13 +23,10 @@ import {
   Deferred,
   Duration,
   Effect,
-  Exit,
-  Cause,
   FetchHttpClient,
   Layer,
   Logger,
   LogLevel,
-  Fiber,
   Queue,
   type Scope,
   Stream,
@@ -37,7 +34,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { assert, expect } from 'vitest'
+import { expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -109,6 +106,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
 
+      // Create an event with a stale rebase generation to mimic a client that cached an outdated head.
       const baseEvent = testContext.eventFactory.todoCreated.next({
         id: 'local-old-gen',
         text: 'y',
@@ -126,38 +124,20 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
+      // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
       const staleEvent = LiveStoreEvent.EncodedWithMeta.make({
         ...LiveStoreEvent.encodedFromGlobal(baseEvent),
         seqNum: staleSeq,
         parentSeqNum: staleParent,
       })
 
-      const waiterFiber = yield* leaderThreadCtx.syncProcessor
+      const leaderAheadError = yield* leaderThreadCtx.syncProcessor
         .push([staleEvent], { waitForProcessing: true })
-        .pipe(Effect.fork)
+        .pipe(Effect.flip)
 
-      yield* Effect.sleep(Duration.millis(200))
-
-      const poll = yield* Fiber.poll(waiterFiber)
-
-      if (poll._tag === 'None') {
-        yield* Fiber.interrupt(waiterFiber)
-      }
-
-      expect(poll._tag).toBe('Some')
-      if (poll._tag !== 'Some') {
-        return
-      }
-
-      const exit = poll.value
-      expect(Exit.isFailure(exit)).toBe(true)
-      if (!Exit.isFailure(exit)) {
-        return
-      }
-
-      const errorOption = Cause.failureOption(exit.cause)
-      assert(errorOption._tag === 'Some')
-      expect(errorOption.value._tag).toBe('LeaderAheadError')
+      expect(leaderAheadError._tag).toBe('LeaderAheadError')
+      expect(leaderAheadError.minimumExpectedNum).toEqual(syncStateBefore.localHead)
+      expect(leaderAheadError.providedNum).toEqual(staleSeq)
     }).pipe(withTestCtx()(test)),
   )
 
