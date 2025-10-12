@@ -1,53 +1,40 @@
 import { Option } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
-import { resolveAlias } from './deploy-examples.ts'
+import { createPreviewAlias } from '../shared/cloudflare.ts'
 
 const toOption = (value: string | undefined) => (value ? Option.some(value) : Option.none<string>())
 
-const makeAlias = ({
-  site,
-  alias,
-  normalizedBranch,
-  shortSha,
-}: {
-  site: string
-  alias?: string
-  normalizedBranch: string
-  shortSha: string
-}) =>
-  resolveAlias({
-    site,
-    alias: toOption(alias),
-    normalizedBranch,
+const makeAlias = ({ alias, branch, shortSha }: { alias?: string; branch: string; shortSha: string }) =>
+  createPreviewAlias({
+    branch,
     shortSha,
+    explicitAlias: toOption(alias),
   })
 
-describe('resolveAlias', () => {
-  test('respects DNS label limit when alias is provided', () => {
-    const site = 'example-super-long-web-todomvc-random-dev'
-    const alias = 'Feature/This-Is-A-Very-Long-Branch-Name-That-Should-Be-Clamped-To-Fit'
+describe('createPreviewAlias', () => {
+  test('uses explicit alias when provided, clamping to DNS label length', () => {
+    const resolved = makeAlias({
+      alias: 'Feature/This-Is-A-Very-Long-Branch-Name-That-Should-Be-Clamped-To-Fit',
+      branch: 'feature/very-long-branch',
+      shortSha: 'abc1234',
+    })
 
-    const resolved = makeAlias({ site, alias, normalizedBranch: 'feature/very-long-branch', shortSha: 'abc1234' })
-
-    expect(resolved.length + site.length + 2).toBeLessThanOrEqual(63)
+    expect(resolved.length).toBeLessThanOrEqual(63)
     expect(resolved.endsWith('-')).toBe(false)
+    expect(/^[a-z0-9-]+$/.test(resolved)).toBe(true)
   })
 
-  test('falls back to branch-derived alias when no alias provided', () => {
-    const site = 'example-web-todomvc-dev'
-
-    const resolved = makeAlias({ site, normalizedBranch: 'feature/some-update', shortSha: 'abc1234' })
+  test('falls back to branch-derived alias when none is provided', () => {
+    const resolved = makeAlias({ branch: 'feature/some-update', shortSha: 'abc1234' })
 
     expect(resolved).toMatch(/^branch-feature-some-update-abc1234/)
-    expect(resolved.length + site.length + 2).toBeLessThanOrEqual(63)
+    expect(resolved.length).toBeLessThanOrEqual(63)
   })
 
-  test('sanitizes branch alias when it collapses to minimal value', () => {
-    const site = 'example-web-todomvc-dev'
-    const resolved = makeAlias({ site, normalizedBranch: '---', shortSha: 'abc1234' })
+  test('collapses unsafe values to short SHA', () => {
+    const resolved = makeAlias({ branch: '---', shortSha: 'abc1234' })
 
     expect(resolved).toBe('branch-abc1234')
-    expect(resolved.length + site.length + 2).toBeLessThanOrEqual(63)
   })
 })

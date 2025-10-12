@@ -66,7 +66,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm run build && wrangler deploy -c dist/server/wrangler.json",
+    "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
     "lint": "biome lint .",
     "preview": "vite preview",

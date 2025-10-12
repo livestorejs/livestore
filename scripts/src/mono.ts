@@ -12,6 +12,7 @@ import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 import { copyTodomvcSrc } from './examples/copy-examples.ts'
 import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
+import { syncDnsCommand } from './examples/sync-dns.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -114,7 +115,7 @@ const examplesRunCommand = Cli.Command.make(
 )
 
 const examplesCommand = Cli.Command.make('examples').pipe(
-  Cli.Command.withSubcommands([deployExamplesCommand, copyTodomvcSrc, examplesRunCommand]),
+  Cli.Command.withSubcommands([deployExamplesCommand, syncDnsCommand, copyTodomvcSrc, examplesRunCommand]),
 )
 
 const command = Cli.Command.make('mono').pipe(
