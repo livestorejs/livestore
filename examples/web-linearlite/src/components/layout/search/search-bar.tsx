@@ -2,8 +2,8 @@ import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
-import { MenuButton } from '@/components/common/menu-button'
-import { useFilterState } from '@/lib/livestore/queries'
+import { MenuButton } from '../../common/menu-button.tsx'
+import { useFilterState } from '../../../livestore/queries.ts'
 
 export const SearchBar = () => {
   const [filterState, setFilterState] = useFilterState()

@@ -11,5 +11,5 @@ pnpm --filter examples/web-todomvc-sync-cf dev
 
 The Cloudflare Vite plugin starts both the React front-end and the Durable Object
 sync backend on the same dev server port. The app automatically targets the
-worker running alongside the Vite dev server, so no manual
-`VITE_LIVESTORE_SYNC_URL` configuration is required for local development.
+worker running alongside the Vite dev server, so no additional configuration is
+required for local development.

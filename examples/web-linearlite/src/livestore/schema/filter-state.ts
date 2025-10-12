@@ -1,6 +1,6 @@
 import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
+import { Priority } from '../../types/priority.ts'
+import { Status } from '../../types/status.ts'
 
 const OrderDirection = Schema.Literal('asc', 'desc').annotations({ title: 'OrderDirection' })
 export type OrderDirection = typeof OrderDirection.Type

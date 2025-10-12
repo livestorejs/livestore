@@ -1,10 +1,10 @@
 import { makeSchema, State } from '@livestore/livestore'
-import * as eventsDefs from '@/lib/livestore/events'
-import { type Comment, comment } from '@/lib/livestore/schema/comment'
-import { type Description, description } from '@/lib/livestore/schema/description'
-import { type FilterState, filterState } from '@/lib/livestore/schema/filter-state'
-import { type FrontendState, frontendState } from '@/lib/livestore/schema/frontend-state'
-import { type Issue, issue } from '@/lib/livestore/schema/issue'
+import * as eventsDefs from '../events.ts'
+import { type Comment, comment } from './comment.ts'
+import { type Description, description } from './description.ts'
+import { type FilterState, filterState } from './filter-state.ts'
+import { type FrontendState, frontendState } from './frontend-state.ts'
+import { type Issue, issue } from './issue.ts'
 import { type ScrollState, scrollState } from './scroll-state.ts'
 
 export {

@@ -1,10 +1,15 @@
 name = "web-linearlite-sync"
-main = "./src/cf-worker/index.ts"
+main = "./src/server.ts"
 compatibility_date = "2025-05-08"
 compatibility_flags = [
   "enable_request_signal", # Needed for HTTP RPC streams
   "nodejs_compat", # needed for @opentelemetry/*
 ]
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"

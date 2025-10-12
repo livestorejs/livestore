@@ -1,6 +1,5 @@
 // @ts-check
 
-import path from 'node:path'
 import process from 'node:process'
 import { cloudflare } from '@cloudflare/vite-plugin'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
@@ -21,17 +20,13 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/wa-sqlite'],
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
   plugins: [
+    // https://tanstack.com/start/latest/docs/framework/react/guide/hosting#cloudflare-workers--official-partner
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart(),
-    cloudflare(),
     react(),
     tailwindcss(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/lib/livestore/schema/index.ts' }),
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema/index.ts' }),
     svgr({
       svgrOptions: {
         svgo: true,

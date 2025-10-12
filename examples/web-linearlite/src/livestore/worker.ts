@@ -1,6 +1,7 @@
 import { makeWorker } from '@livestore/adapter-web/worker'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { schema } from './livestore/schema.ts'
+
+import { schema } from './schema/index.ts'
 
 makeWorker({
   schema,

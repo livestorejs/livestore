@@ -1,4 +1,4 @@
-import Editor from '@/components/common/editor'
+import Editor from '../../common/editor.tsx'
 
 export const DescriptionInput = ({
   description,

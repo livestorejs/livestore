@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useClientDocument } from '@livestore/react'
 import React from 'react'
-import { tables } from '@/lib/livestore/schema'
+import { tables } from './schema/index.ts'
 
 export const useFilterState = () => useClientDocument(tables.filterState)
 

@@ -1,8 +1,8 @@
 import React from 'react'
 import { ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
-import { MenuContext } from '@/app/contexts'
-import { Sidebar } from '@/components/layout/sidebar'
-import { useFrontendState } from '@/lib/livestore/queries'
+import { MenuContext } from '../../../app/contexts.ts'
+import { Sidebar } from './index.tsx'
+import { useFrontendState } from '../../../livestore/queries.ts'
 
 export const MobileMenu = () => {
   const { showMenu, setShowMenu } = React.useContext(MenuContext)!

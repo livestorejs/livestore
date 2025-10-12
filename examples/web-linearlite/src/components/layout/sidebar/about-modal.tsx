@@ -1,4 +1,4 @@
-import { Modal } from '@/components/common/modal'
+import { Modal } from '../../common/modal.tsx'
 
 export const AboutModal = ({ show, setShow }: { show: boolean; setShow: (show: boolean) => void }) => {
   return (

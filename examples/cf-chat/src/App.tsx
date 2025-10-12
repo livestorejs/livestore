@@ -18,7 +18,7 @@ export const ChatComponent = () => {
   const chatHook = useChat()
 
   React.useEffect(() => {
-    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/client-do?storeId=${store.storeId}`)
+    fetch(`/client-do?storeId=${store.storeId}`)
       .then((res) => res.json())
       .then((data) => {
         console.log('do state', data)

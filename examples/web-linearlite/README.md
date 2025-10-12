@@ -11,20 +11,15 @@ pnpm install
 pnpm --filter livestore-example-web-linearlite run dev
 ```
 
-The dev server automatically forwards sync calls to the worker bundle and exposes the WebSocket endpoint on the same origin. When you need to target a remote worker instead, set `VITE_LIVESTORE_SYNC_URL`.
+The dev server automatically forwards sync calls to the worker bundle and exposes the WebSocket endpoint on the same origin, so the app always connects to the current host without any extra configuration.
 
-## Cloudflare worker (optional)
+## Deploy
 
-You can still run the Cloudflare worker yourself when you need direct access to the Wrangler inspector or want to point the app at a different backend.
+This example deploys the Cloudflare Worker (sync backend) **and** the Vite frontend together. A single command builds the client into `dist/client`, bundles the Worker, and uploads both to Cloudflare:
 
-- cd examples/web-linearlite
-- pnpm --filter livestore-example-web-linearlite run wrangler:dev
-  - This serves the backend on `http://localhost:8787`
-- Run the app with that backend:
-  - fish-compatible: `env VITE_LIVESTORE_SYNC_URL=http://localhost:8787 pnpm --filter livestore-example-web-linearlite run dev`
-  - Or rely on the dev server plugin that auto-starts Wrangler during `pnpm --filter livestore-example-web-linearlite run dev`
-
-The app passes `syncPayload` with a demo token; adjust validation in `src/cf-worker/index.ts` for real auth.
+```bash
+pnpm --filter livestore-example-web-linearlite run deploy
+```
 
 ## Building / deploying
 

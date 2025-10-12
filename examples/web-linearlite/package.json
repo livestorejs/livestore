@@ -71,7 +71,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "vite": "vite",
-    "wrangler:deploy": "wrangler deploy",
+    "deploy": "pnpm run build && wrangler deploy -c dist/server/wrangler.json",
+    "wrangler:deploy": "wrangler deploy -c dist/server/wrangler.json",
     "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
   }
 }

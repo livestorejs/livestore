@@ -259,7 +259,6 @@ jobs:
       - run: mono examples deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-docs:
     runs-on: ubuntu-latest

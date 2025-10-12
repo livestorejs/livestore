@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Status } from '@/types/status'
+import type { Status } from '../types/status.ts'
 
 interface MenuContextInterface {
   showMenu: boolean

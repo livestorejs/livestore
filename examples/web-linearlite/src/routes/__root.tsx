@@ -1,12 +1,12 @@
-import '@/app/init-theme'
-import '@/app/style.css'
+import '../app/init-theme.ts'
+import '../app/style.css'
 
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type React from 'react'
-import { Provider } from '@/app/provider'
-import { Layout } from '@/components/layout'
-import { NewIssueModal } from '@/components/layout/issue/new-issue-modal'
-import { Sidebar } from '@/components/layout/sidebar'
+import { Provider } from '../app/provider.tsx'
+import { Layout } from '../components/layout/index.tsx'
+import { NewIssueModal } from '../components/layout/issue/new-issue-modal.tsx'
+import { Sidebar } from '../components/layout/sidebar/index.tsx'
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => {
   return (

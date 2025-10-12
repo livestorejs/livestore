@@ -2,8 +2,8 @@ import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { type CSSProperties, memo } from 'react'
 import { areEqual } from 'react-window'
-import { Row } from '@/components/layout/list/row'
-import { tables } from '@/lib/livestore/schema'
+import { Row } from './row.tsx'
+import { tables } from '../../../livestore/schema/index.ts'
 
 export const VirtualRow = memo(
   ({ data, index, style }: { data: readonly number[]; index: number; style: CSSProperties }) => {

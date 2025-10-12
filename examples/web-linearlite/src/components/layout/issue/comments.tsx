@@ -1,9 +1,9 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import ReactMarkdown from 'react-markdown'
-import { Avatar } from '@/components/common/avatar'
-import { tables } from '@/lib/livestore/schema'
-import { formatDate } from '@/utils/format-date'
+import { Avatar } from '../../common/avatar.tsx'
+import { tables } from '../../../livestore/schema/index.ts'
+import { formatDate } from '../../../utils/format-date.ts'
 
 export const Comments = ({ issueId }: { issueId: number }) => {
   const { store } = useStore()

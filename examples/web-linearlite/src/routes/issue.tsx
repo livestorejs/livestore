@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Issue } from '@/components/layout/issue'
+import { Issue } from '../components/layout/issue/index.tsx'
 
 export const Route = createFileRoute('/issue')({
   component: IssueRoute,

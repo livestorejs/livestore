@@ -1,4 +1,4 @@
-import type { IconName } from '@/components/icons'
+import type { IconName } from '../components/icons/index.tsx'
 
 export const priorityOptions: { name: string; icon: IconName; style: string; shortcut: string }[] = [
   {

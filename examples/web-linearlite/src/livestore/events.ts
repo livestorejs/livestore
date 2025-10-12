@@ -1,6 +1,6 @@
 import { Events, Schema } from '@livestore/livestore'
-import { Priority } from '@/types/priority'
-import { Status } from '@/types/status'
+import { Priority } from '../types/priority.ts'
+import { Status } from '../types/status.ts'
 
 export const createIssueWithDescription = Events.synced({
   name: 'v1.CreateIssueWithDescription',

@@ -1,13 +1,13 @@
 import { useStore } from '@livestore/react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
-import { Avatar } from '@/components/common/avatar'
-import { PriorityMenu } from '@/components/common/priority-menu'
-import { StatusMenu } from '@/components/common/status-menu'
-import { events, type Issue } from '@/lib/livestore/schema'
-import type { Priority } from '@/types/priority'
-import type { Status } from '@/types/status'
-import { getIssueTag } from '@/utils/get-issue-tag'
+import { Avatar } from '../../common/avatar.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
+import { events, type Issue } from '../../../livestore/schema/index.ts'
+import type { Priority } from '../../../types/priority.ts'
+import type { Status } from '../../../types/status.ts'
+import { getIssueTag } from '../../../utils/get-issue-tag.ts'
 
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
   const navigate = useNavigate()

@@ -1,13 +1,13 @@
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
 import { Link } from '@tanstack/react-router'
 import React from 'react'
-import { MenuContext } from '@/app/contexts'
-import { AboutMenu } from '@/components/layout/sidebar/about-menu'
-import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
-import { SearchButton } from '@/components/layout/sidebar/search-button'
-import { ThemeButton } from '@/components/layout/sidebar/theme-button'
-import { ToolbarButton } from '@/components/layout/toolbar/toolbar-button'
-import { useFilterState } from '@/lib/livestore/queries'
+import { MenuContext } from '../../../app/contexts.ts'
+import { AboutMenu } from './about-menu.tsx'
+import { NewIssueButton } from './new-issue-button.tsx'
+import { SearchButton } from './search-button.tsx'
+import { ThemeButton } from './theme-button.tsx'
+import { ToolbarButton } from '../toolbar/toolbar-button.tsx'
+import { useFilterState } from '../../../livestore/queries.ts'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()

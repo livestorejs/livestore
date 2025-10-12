@@ -1,5 +1,5 @@
 import type { BootStatus, QueryBuilder } from '@livestore/livestore'
-import { Icon } from '@/components/icons'
+import { Icon } from '../components/icons/index.tsx'
 import type { FilterState, tables } from './schema/index.ts'
 
 export const renderBootStatus = (bootStatus: BootStatus) => {

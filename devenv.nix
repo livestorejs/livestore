@@ -45,8 +45,6 @@ in
     export DEV_SSL_KEY="$WORKSPACE_ROOT/certs/key.pem"
     export DEV_SSL_CERT="$WORKSPACE_ROOT/certs/cert.pem"
 
-    export VITE_LIVESTORE_SYNC_URL="http://localhost:8787"
-
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
     export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
 
