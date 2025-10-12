@@ -10,6 +10,8 @@ import {
   createPreviewAlias,
   deployCloudflareWorker,
   getCloudflareExample,
+  resolveCloudflareAccountId,
+  resolveCloudflareApiToken,
   resolveEnvironmentName,
   resolveWorkerName,
   resolveWorkersSubdomain,
@@ -167,6 +169,11 @@ export const command = Cli.Command.make(
     alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
   },
   Effect.fn(function* ({ alias, exampleFilter, prod }) {
+    // Ensure credentials are present before kicking off parallel builds; wrangler fails with
+    // an opaque message otherwise.
+    yield* resolveCloudflareAccountId
+    yield* resolveCloudflareApiToken
+
     const { branchName, shortSha } = yield* getBranchInfo
     console.log(`Deploy branch: ${branchName}`)
 
