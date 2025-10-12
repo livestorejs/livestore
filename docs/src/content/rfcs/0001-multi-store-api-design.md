@@ -29,7 +29,7 @@ function MainContent() {
 }
 ```
 
-This model works well for applications with a single, unified data domain.
+This model works well for applications with uniform data access patterns and limited data sets.
 
 ### Use Cases Driving Multi-Store Support
 
