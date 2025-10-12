@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.10",
     "@livestore/adapter-node": "0.4.0-dev.10",
+    "@livestore/adapter-web": "0.4.0-dev.10",
     "@livestore/common": "0.4.0-dev.10",
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
