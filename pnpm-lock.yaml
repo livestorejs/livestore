@@ -947,6 +947,12 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.13.12
+        version: 1.13.12(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))(workerd@1.20251008.0)(wrangler@4.42.2)
+      '@cloudflare/workers-types':
+        specifier: 4.20250923.0
+        version: 4.20250923.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.10
         version: 0.4.0-dev.10(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
@@ -962,9 +968,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.3
         version: 5.0.3(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
-      rollup-plugin-visualizer:
-        specifier: ^6.0.3
-        version: 6.0.3(rollup@4.52.0)
       tailwindcss:
         specifier: ^4.1.13
         version: 4.1.13
@@ -974,6 +977,9 @@ importers:
       vite:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
+      wrangler:
+        specifier: ^4.42.2
+        version: 4.42.2(@cloudflare/workers-types@4.20250923.0)
 
   examples/web-todomvc-experimental:
     dependencies:
@@ -1005,6 +1011,12 @@ importers:
         specifier: 2.4.3
         version: 2.4.3
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.13.12
+        version: 1.13.12(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))(workerd@1.20251008.0)(wrangler@4.42.2)
+      '@cloudflare/workers-types':
+        specifier: 4.20250923.0
+        version: 4.20250923.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.10
         version: 0.4.0-dev.10(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
@@ -1017,15 +1029,15 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.3
         version: 5.0.3(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
-      rollup-plugin-visualizer:
-        specifier: ^6.0.3
-        version: 6.0.3(rollup@4.52.0)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
       vite:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
+      wrangler:
+        specifier: ^4.42.2
+        version: 4.42.2(@cloudflare/workers-types@4.20250923.0)
 
   examples/web-todomvc-script:
     dependencies:
@@ -1042,6 +1054,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/wa-sqlite
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.13.12
+        version: 1.13.12(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))(workerd@1.20251008.0)(wrangler@4.42.2)
+      '@cloudflare/workers-types':
+        specifier: 4.20250923.0
+        version: 4.20250923.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.10
         version: 0.4.0-dev.10(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
@@ -1051,6 +1069,9 @@ importers:
       vite:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
+      wrangler:
+        specifier: ^4.42.2
+        version: 4.42.2(@cloudflare/workers-types@4.20250923.0)
 
   examples/web-todomvc-solid:
     dependencies:
@@ -1079,6 +1100,12 @@ importers:
         specifier: 11.1.0
         version: 11.1.0
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.13.12
+        version: 1.13.12(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))(workerd@1.20251008.0)(wrangler@4.42.2)
+      '@cloudflare/workers-types':
+        specifier: 4.20250923.0
+        version: 4.20250923.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.10
         version: 0.4.0-dev.10(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
@@ -1094,6 +1121,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.8
         version: 2.11.8(solid-js@1.9.9)(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
+      wrangler:
+        specifier: ^4.42.2
+        version: 4.42.2(@cloudflare/workers-types@4.20250923.0)
 
   examples/web-todomvc-sync-cf:
     dependencies:
@@ -1131,6 +1161,9 @@ importers:
       '@cloudflare/vite-plugin':
         specifier: ^1.13.12
         version: 1.13.12(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))(workerd@1.20251008.0)(wrangler@4.42.2)
+      '@cloudflare/workers-types':
+        specifier: 4.20250923.0
+        version: 4.20250923.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.10
         version: 0.4.0-dev.10(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
@@ -1222,9 +1255,6 @@ importers:
       postgres:
         specifier: ^3.4.7
         version: 3.4.7
-      rollup-plugin-visualizer:
-        specifier: ^6.0.3
-        version: 6.0.3(rollup@4.52.0)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -1304,9 +1334,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.3
         version: 5.0.3(vite@7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1))
-      rollup-plugin-visualizer:
-        specifier: ^6.0.3
-        version: 6.0.3(rollup@4.52.0)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -12499,19 +12526,6 @@ packages:
 
   robust-predicates@3.0.2:
     resolution: {integrity: sha512-IXgzBWvWQwE6PrDI05OvmXUIruQTcoMDzRsOd5CDvHCVLcLHMTSYvOK5Cm46kWqlV3yAbuSpBZdJ5oP5OUoStg==}
-
-  rollup-plugin-visualizer@6.0.3:
-    resolution: {integrity: sha512-ZU41GwrkDcCpVoffviuM9Clwjy5fcUxlz0oMoTXTYsK+tcIFzbdacnrr2n8TXcHxbGKKXtOdjxM2HUS4HjkwIw==}
-    engines: {node: '>=18'}
-    hasBin: true
-    peerDependencies:
-      rolldown: 1.x || ^1.0.0-beta
-      rollup: 2.x || 3.x || 4.x
-    peerDependenciesMeta:
-      rolldown:
-        optional: true
-      rollup:
-        optional: true
 
   rollup@4.52.0:
     resolution: {integrity: sha512-+IuescNkTJQgX7AkIDtITipZdIGcWF0pnVvZTWStiazUmcGA2ag8dfg0urest2XlXUi9kuhfQ+qmdc5Stc3z7g==}
@@ -27560,15 +27574,6 @@ snapshots:
       glob: 10.4.5
 
   robust-predicates@3.0.2: {}
-
-  rollup-plugin-visualizer@6.0.3(rollup@4.52.0):
-    dependencies:
-      open: 8.4.2
-      picomatch: 4.0.3
-      source-map: 0.7.6
-      yargs: 17.7.2
-    optionalDependencies:
-      rollup: 4.52.0
 
   rollup@4.52.0:
     dependencies:

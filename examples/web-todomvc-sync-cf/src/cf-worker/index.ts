@@ -1,4 +1,5 @@
-import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
+import type { CfTypes, Env as SyncEnv } from '@livestore/sync-cf/cf-worker'
+import { makeDurableObject, makeWorker, matchSyncRequest } from '@livestore/sync-cf/cf-worker'
 
 export class SyncBackendDO extends makeDurableObject({
   onPush: async (message, context) => {
@@ -9,7 +10,16 @@ export class SyncBackendDO extends makeDurableObject({
   },
 }) {}
 
-export default makeWorker({
+interface AssetsBinding {
+  fetch(request: Request): Promise<Response>
+}
+
+type WorkerEnv = SyncEnv & {
+  ASSETS: AssetsBinding
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<typeof SyncBackendDO>
+}
+
+const syncWorker = makeWorker<WorkerEnv>({
   syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: (payload: any, context) => {
     console.log(`Validating connection for store: ${context.storeId}`)
@@ -19,3 +29,18 @@ export default makeWorker({
   },
   enableCORS: true,
 })
+
+export default {
+  async fetch(request: Request, env: WorkerEnv, ctx: CfTypes.ExecutionContext) {
+    if (matchSyncRequest(request) !== undefined || request.method === 'OPTIONS') {
+      return syncWorker.fetch(request, env, ctx)
+    }
+
+    const assetResponse = await env.ASSETS.fetch(request)
+    if (assetResponse.status !== 404) {
+      return assetResponse
+    }
+
+    return new Response('Not Found', { status: 404 })
+  },
+}

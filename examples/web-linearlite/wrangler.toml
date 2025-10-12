@@ -9,7 +9,6 @@ compatibility_flags = [
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"

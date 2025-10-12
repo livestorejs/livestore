@@ -1,11 +1,14 @@
-name = "livestore-cf-adapter-chat"
-main = "src/cf-worker/index.ts"
+name = "example-cf-chat"
+main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
 compatibility_flags = [
-  "enable_request_signal", # Needed for HTTP RPC streams
-  "nodejs_compat", # needed for @opentelemetry/*
+  "enable_request_signal",
+  "nodejs_compat",
 ]
-preview_urls = true
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
@@ -18,6 +21,12 @@ class_name = "LiveStoreClientDO"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.prod]
+name = "example-cf-chat"
+
+[env.dev]
+name = "example-cf-chat-dev"
 
 [observability]
 enabled = true

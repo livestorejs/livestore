@@ -1,0 +1,17 @@
+name = "example-web-todomvc-solid"
+main = "./src/cf-worker/index.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = [
+  "enable_request_signal",
+  "nodejs_compat",
+]
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+
+[env.prod]
+name = "example-web-todomvc-solid"
+
+[env.dev]
+name = "example-web-todomvc-solid-dev"

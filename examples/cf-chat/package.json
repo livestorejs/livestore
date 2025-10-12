@@ -35,9 +35,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm build && pnpm deploy:cf && pnpm deploy:netlify",
-    "deploy:cf": "wrangler deploy",
-    "deploy:netlify": "bunx netlify-cli deploy --prod --no-build --dir=dist",
+    "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
     "lint": "biome check .",
     "lint:fix": "biome check . --fix",

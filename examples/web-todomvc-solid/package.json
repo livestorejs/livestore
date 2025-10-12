@@ -2,6 +2,7 @@
   "name": "livestore-example-web-todomvc-solid",
   "version": "0.0.0",
   "type": "module",
+  "private": true,
   "dependencies": {
     "@livestore/adapter-web": "0.4.0-dev.10",
     "@livestore/livestore": "0.4.0-dev.10",
@@ -14,19 +15,22 @@
   },
   "description": "",
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.10",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vite-plugin-solid": "^2.11.8"
+    "vite-plugin-solid": "^2.11.8",
+    "wrangler": "^4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",
-    "dev": "vite",
-    "serve": "vite preview",
-    "start": "vite"
+    "deploy": "pnpm run build && bunx wrangler deploy",
+    "dev": "vite --force",
+    "preview": "vite preview"
   }
 }

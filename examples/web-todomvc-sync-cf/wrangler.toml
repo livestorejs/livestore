@@ -1,10 +1,14 @@
-name = "websocket-server"
+name = "example-web-todomvc-sync-cf"
 main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-05-08"
 compatibility_flags = [
-  "enable_request_signal", # Needed for HTTP RPC streams
-  "nodejs_compat", # needed for @opentelemetry/*
+  "enable_request_signal",
+  "nodejs_compat",
 ]
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
@@ -14,6 +18,8 @@ class_name = "SyncBackendDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
 
-[vars]
-# should be set via CF dashboard (as secret)
-# ADMIN_SECRET = "..."
+[env.prod]
+name = "example-web-todomvc-sync-cf"
+
+[env.dev]
+name = "example-web-todomvc-sync-cf-dev"
