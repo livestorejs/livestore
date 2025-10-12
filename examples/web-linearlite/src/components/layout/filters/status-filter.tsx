@@ -1,10 +1,10 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
 import { Button } from 'react-aria-components'
-import { Icon, type IconName } from '../../icons/index.tsx'
-import { FilterMenu } from './filter-menu.tsx'
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Status } from '../../../types/status.ts'
+import { Icon, type IconName } from '../../icons/index.tsx'
+import { FilterMenu } from './filter-menu.tsx'
 
 export const StatusFilter = () => {
   const [filterState, setFilterState] = useFilterState()

@@ -2,15 +2,15 @@ import { useStore } from '@livestore/react'
 import { useNavigate } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import { memo } from 'react'
-import { Avatar } from '../../common/avatar.tsx'
-import { PriorityMenu } from '../../common/priority-menu.tsx'
-import { StatusMenu } from '../../common/status-menu.tsx'
 import { events } from '../../../livestore/schema/index.ts'
 import type { Issue } from '../../../types/issue.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
 import { formatDate } from '../../../utils/format-date.ts'
 import { getIssueTag } from '../../../utils/get-issue-tag.ts'
+import { Avatar } from '../../common/avatar.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
 
 export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {
   const navigate = useNavigate()

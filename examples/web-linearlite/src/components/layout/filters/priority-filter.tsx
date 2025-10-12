@@ -1,10 +1,10 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
 import { Button } from 'react-aria-components'
-import { Icon, type IconName } from '../../icons/index.tsx'
-import { FilterMenu } from './filter-menu.tsx'
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
+import { Icon, type IconName } from '../../icons/index.tsx'
+import { FilterMenu } from './filter-menu.tsx'
 
 export const PriorityFilter = () => {
   const [filterState, setFilterState] = useFilterState()

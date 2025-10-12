@@ -1,7 +1,7 @@
 import AutoSizer from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
-import { VirtualRow } from './virtual-row.tsx'
 import { useDebouncedScrollState } from '../../../livestore/queries.ts'
+import { VirtualRow } from './virtual-row.tsx'
 
 export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly number[] }) => {
   const [scrollState, setScrollState] = useDebouncedScrollState('filtered-list')

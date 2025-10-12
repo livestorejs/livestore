@@ -1,12 +1,12 @@
 import React from 'react'
 import { Icon } from '../../icons/index.tsx'
+import { DevtoolsButton } from './devtools-button.tsx'
 import { DownloadButton } from './download-button.tsx'
 import { ResetButton } from './reset-button.tsx'
 import { SeedInput } from './seed-input.tsx'
 import { ShareButton } from './share-button.tsx'
-import { UserInput } from './user-input.tsx'
-import { DevtoolsButton } from './devtools-button.tsx'
 import { SyncToggle } from './sync-toggle.tsx'
+import { UserInput } from './user-input.tsx'
 
 const useClientFPSMeter = () => {
   const [Component, setComponent] = React.useState<React.ComponentType<{ height?: number; className?: string }>>(

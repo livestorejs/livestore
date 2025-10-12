@@ -3,9 +3,9 @@ import { useStore } from '@livestore/react'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
-import Editor from '../../common/editor.tsx'
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { events } from '../../../livestore/schema/index.ts'
+import Editor from '../../common/editor.tsx'
 
 export const CommentInput = ({ issueId, className }: { issueId: number; className?: string }) => {
   // TODO move this into LiveStore

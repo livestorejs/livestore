@@ -1,15 +1,15 @@
 import { useStore } from '@livestore/react'
 import { Button } from 'react-aria-components'
+import { statusOptions } from '../../../data/status-options.ts'
+import { issueCount$, useFilterState } from '../../../livestore/queries.ts'
+import type { Status } from '../../../types/status.ts'
 import { Icon } from '../../icons/index.tsx'
+import { SearchBar } from '../search/search-bar.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 import { Header } from './header.tsx'
 import { PriorityFilter } from './priority-filter.tsx'
 import { SortMenu } from './sort-menu.tsx'
 import { StatusFilter } from './status-filter.tsx'
-import { SearchBar } from '../search/search-bar.tsx'
-import { statusOptions } from '../../../data/status-options.ts'
-import { issueCount$, useFilterState } from '../../../livestore/queries.ts'
-import type { Status } from '../../../types/status.ts'
 
 export const Filters = ({
   filteredCount,

@@ -2,10 +2,10 @@ import { CheckIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
-import { Shortcut } from './shortcut.tsx'
-import { Icon, type IconName } from '../icons/index.tsx'
 import { priorityOptions } from '../../data/priority-options.ts'
 import type { Priority } from '../../types/priority.ts'
+import { Icon, type IconName } from '../icons/index.tsx'
+import { Shortcut } from './shortcut.tsx'
 
 export const PriorityMenu = ({
   priority,

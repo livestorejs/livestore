@@ -2,12 +2,12 @@ import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
 import { Link } from '@tanstack/react-router'
 import React from 'react'
 import { MenuContext } from '../../../app/contexts.ts'
+import { useFilterState } from '../../../livestore/queries.ts'
+import { ToolbarButton } from '../toolbar/toolbar-button.tsx'
 import { AboutMenu } from './about-menu.tsx'
 import { NewIssueButton } from './new-issue-button.tsx'
 import { SearchButton } from './search-button.tsx'
 import { ThemeButton } from './theme-button.tsx'
-import { ToolbarButton } from '../toolbar/toolbar-button.tsx'
-import { useFilterState } from '../../../livestore/queries.ts'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()

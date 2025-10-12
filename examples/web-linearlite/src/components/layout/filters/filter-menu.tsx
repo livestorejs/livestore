@@ -1,12 +1,12 @@
 import { CheckIcon } from '@heroicons/react/16/solid'
 import type React from 'react'
 import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
-import { Icon, type IconName } from '../../icons/index.tsx'
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
+import { Icon, type IconName } from '../../icons/index.tsx'
 
 export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
   const [filterState, setFilterState] = useFilterState()

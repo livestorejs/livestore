@@ -1,12 +1,12 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { Column } from './column.tsx'
-import { Filters } from '../filters/index.tsx'
 import { statusOptions } from '../../../data/status-options.ts'
 import { filterState$ } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'
 import { filterStateToOrderBy, filterStateToWhere } from '../../../livestore/utils.tsx'
 import type { Status } from '../../../types/status.ts'
+import { Filters } from '../filters/index.tsx'
+import { Column } from './column.tsx'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
