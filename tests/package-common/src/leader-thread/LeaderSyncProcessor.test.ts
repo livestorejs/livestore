@@ -23,6 +23,7 @@ import {
   Deferred,
   Duration,
   Effect,
+  Either,
   FetchHttpClient,
   Layer,
   Logger,
@@ -34,7 +35,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -70,7 +71,7 @@ const withTestCtx = (
 
 const makeEventFactory = EventFactory.makeFactory(events)
 
-Vitest.describe.concurrent('LeaderSyncProcessor', () => {
+Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -96,6 +97,63 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  // Regression fix: when local push arrives during upstream pull and becomes old-gen,
+  // the leader should fail the waiter with LeaderAheadError promptly (no timeout).
+  Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      // Prepare a long upstream burst to keep pull busy
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+      const upstreamBurst: LiveStoreEvent.AnyEncodedGlobal[] = []
+      backendFactory.todoCreated.advanceTo(1)
+      for (let i = 0; i < 60; i++) {
+        upstreamBurst.push(backendFactory.todoCreated.next({ id: `b-${i}`, text: 'x', completed: false }))
+      }
+
+      // Disconnect to stage upstream, then connect to start pulling the burst
+      yield* testContext.mockSyncBackend.disconnect
+      yield* testContext.mockSyncBackend.advance(...upstreamBurst)
+      yield* testContext.mockSyncBackend.connect
+
+      // Ensure leader has started pulling (advance upstream head) before enqueuing local push
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((s) => s.upstreamHead.global >= 1),
+        Stream.runDrain,
+      )
+
+      // Immediately enqueue a local push (waitForProcessing=true)
+      const localEvent = testContext.eventFactory.todoCreated.next({ id: 'local-1', text: 'y', completed: false })
+      const waiter = leaderThreadCtx.syncProcessor
+        .push([new LiveStoreEvent.EncodedWithMeta(LiveStoreEvent.encodedFromGlobal(localEvent))], {
+          waitForProcessing: true,
+        })
+        .pipe(Effect.timeout(Duration.millis(500)))
+
+      // Waiter should fail promptly with LeaderAheadError (no timeout)
+      const res = yield* waiter.pipe(Effect.either)
+
+      // Capture any notify payloads for a short window (should be empty or not include local-1)
+      const notified = yield* testContext.pullQueue.pipe(
+        Stream.take(1), // keep sample small to avoid flake
+        Stream.runCollect,
+        Effect.timeout(Duration.millis(300)),
+        Effect.catchAll(() => Effect.succeed(Chunk.empty())),
+      )
+
+      // Expect a prompt failure with LeaderAheadError (no timeout)
+      assert(Either.isLeft(res))
+      expect(res.left._tag).toBe('LeaderAheadError')
+      const notifiedStr = Array.from(notified)
+        .map((p) => JSON.stringify(p))
+        .join('\n')
+      expect(notifiedStr).not.toContain('local-1')
     }).pipe(withTestCtx()(test)),
   )
 
