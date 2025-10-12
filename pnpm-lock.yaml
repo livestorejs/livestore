@@ -1191,6 +1191,9 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-web
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common

@@ -19,16 +19,10 @@ import { getStoreId } from '../util/store-id.ts'
 
 // module level vars are kept across requests
 const getAdapter = createIsomorphicFn()
-  .server(() => {
-    return makeAdapter({ storage: { type: 'in-memory' } })
-  })
-  .client(() => {
-    return makePersistedAdapter({
-      storage: { type: 'opfs' },
-      worker: LiveStoreWorker,
-      sharedWorker: LiveStoreSharedWorker,
-    })
-  })
+  .server(() => makeAdapter({ storage: { type: 'in-memory' } }))
+  .client(() =>
+    makePersistedAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, sharedWorker: LiveStoreSharedWorker }),
+  )
 
 // TODO: otel support for tanstack start
 

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Config, Effect, Option, Schema } from '@livestore/utils/effect'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
@@ -17,8 +17,24 @@ export class CloudflareError extends Schema.TaggedError<CloudflareError>()('Clou
 }) {}
 
 const readEnv = ({ key, message }: { key: string; message: string }): Effect.Effect<string, CloudflareError> =>
-  Effect.sync(() => process.env[key] ?? '').pipe(
+  Config.string(key).pipe(
     Effect.map((value) => value.trim()),
+    Effect.filterOrFail(
+      (value): value is string => value.length > 0,
+      () =>
+        new CloudflareError({
+          reason: 'auth',
+          message,
+        }),
+    ),
+    Effect.mapError(
+      (error) =>
+        new CloudflareError({
+          reason: 'auth',
+          message,
+          cause: error,
+        }),
+    ),
     Effect.filterOrFail(
       (value): value is string => value.length > 0,
       () =>
