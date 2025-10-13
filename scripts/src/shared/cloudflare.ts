@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { Config, Effect, Schema } from '@livestore/utils/effect'
+import { Config, Effect, Option, Schema } from '@livestore/utils/effect'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
@@ -161,20 +161,12 @@ export const resolveWorkerName = ({
   example: CloudflareExample
   kind: CloudflareEnvironmentKind
 }) => {
-  /**
-   * Keep worker names deterministic so the DNS command can infer the workers.dev
-   * host without needing API lookups. Preview workers piggy-back on the prod
-  worker name with a sanitized suffix.
-   */
   if (kind === 'prod') {
     return composeWorkerName({ base: example.workerName })
   }
 
-  if (kind === 'dev') {
-    return composeWorkerName({ base: example.workerName, suffix: 'dev' })
-  }
-
-  return composeWorkerName({ base: example.workerName, suffix: 'preview' })
+  const envAlias = resolveEnvironmentName({ example, kind })
+  return composeWorkerName({ base: example.workerName, suffix: envAlias })
 }
 
 export const buildCloudflareWorker = ({
@@ -211,6 +203,7 @@ export const deployCloudflareWorker = ({
 }) => {
   const envName = resolveEnvironmentName({ example, kind })
   const workerName = resolveWorkerName({ example, kind })
+  const envLabel = kind === 'prod' ? Option.none<string>() : Option.some(envName)
 
   return cmd(
     [
@@ -220,8 +213,7 @@ export const deployCloudflareWorker = ({
       dryRun ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
-      '--name',
-      workerName,
+      ...(Option.isSome(envLabel) ? ['--env', envLabel.value] : ['--name', workerName]),
     ],
     {
       cwd: example.repoRelativePath,
@@ -245,6 +237,7 @@ export const deployCloudflareWorker = ({
         env: envName,
         dry_run: dryRun,
         worker_name: workerName,
+        worker_env: Option.getOrUndefined(envLabel),
       },
     }),
   )
