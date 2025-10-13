@@ -203,35 +203,26 @@ export const deployCloudflareWorker = ({
 }) => {
   const envName = resolveEnvironmentName({ example, kind })
   const workerName = resolveWorkerName({ example, kind })
-  const command = [
-    'bunx',
-    'wrangler',
-    'deploy',
-    dryRun ? '--dry-run' : undefined,
-    '--config',
-    `dist/${example.buildOutputDir}/wrangler.json`,
-    '--name',
-    workerName,
-  ].filter((arg): arg is string => arg !== undefined)
 
-  return Effect.log(
-    `wrangler deploy command: ${JSON.stringify({
-      slug: example.slug,
-      env: envName,
+  return cmd(
+    [
+      'bunx',
+      'wrangler',
+      'deploy',
+      dryRun ? '--dry-run' : undefined,
+      '--config',
+      `dist/${example.buildOutputDir}/wrangler.json`,
+      '--name',
       workerName,
+    ],
+    {
       cwd: example.repoRelativePath,
-      command,
-    })}`,
+      env: {
+        ...process.env,
+        CLOUDFLARE_ENV: envName,
+      },
+    },
   ).pipe(
-    Effect.zipRight(
-      cmd(command, {
-        cwd: example.repoRelativePath,
-        env: {
-          ...process.env,
-          CLOUDFLARE_ENV: envName,
-        },
-      }),
-    ),
     Effect.mapError(
       (cause) =>
         new CloudflareError({

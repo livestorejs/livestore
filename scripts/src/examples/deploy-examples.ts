@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import process from 'node:process'
 
 import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
@@ -111,24 +109,9 @@ const deployExample = ({
     const envName = resolveEnvironmentName({ example: manifest, kind: deploymentKind })
     const workerName = resolveWorkerName({ example: manifest, kind: deploymentKind })
     const workerHost = `${workerName}.${workersSubdomain}.workers.dev`
-    const configPath = path.join(
-      workspaceRoot,
-      manifest.repoRelativePath,
-      'dist',
-      manifest.buildOutputDir,
-      'wrangler.json',
-    )
 
     yield* Effect.log(`Building ${exampleSlug} (${envName})`)
     yield* buildCloudflareWorker({ example: manifest, kind: deploymentKind })
-
-    yield* Effect.log(`CLOUDFLARE_ENV env value: ${process.env.CLOUDFLARE_ENV ?? 'undefined'} (expecting ${envName})`)
-    yield* logWranglerConfig({
-      configPath,
-      envName,
-      exampleSlug,
-      workerName,
-    })
 
     yield* Effect.log(`Deploying ${exampleSlug} as ${workerName}`)
     yield* deployCloudflareWorker({ example: manifest, kind: deploymentKind }).pipe(
@@ -161,58 +144,6 @@ const deployExample = ({
         example: exampleSlug,
       },
     }),
-  )
-
-const logWranglerConfig = ({
-  configPath,
-  envName,
-  exampleSlug,
-  workerName,
-}: {
-  configPath: string
-  envName: string
-  exampleSlug: string
-  workerName: string
-}) =>
-  Effect.tryPromise({
-    try: async () => {
-      const raw = await readFile(configPath, 'utf-8')
-      const parsed = JSON.parse(raw) as {
-        name?: string
-        topLevelName?: string
-        legacy_env?: unknown
-        targetEnvironment?: unknown
-        definedEnvironments?: unknown
-        durable_objects?: {
-          bindings?: ReadonlyArray<{ name?: string; class_name?: string }>
-        }
-      }
-
-      const durableObjects =
-        parsed.durable_objects?.bindings?.map((binding) => ({
-          name: binding.name,
-          class: binding.class_name,
-        })) ?? []
-
-      return {
-        configPath: path.relative(workspaceRoot, configPath),
-        envName,
-        workerName,
-        parsed: {
-          name: parsed.name ?? null,
-          topLevelName: parsed.topLevelName ?? null,
-          legacy_env: parsed.legacy_env ?? null,
-          targetEnvironment: parsed.targetEnvironment ?? null,
-          definedEnvironments: parsed.definedEnvironments ?? null,
-          durableObjects,
-        },
-        sample: raw.slice(0, 400),
-      }
-    },
-    catch: (cause) => cause as unknown,
-  }).pipe(
-    Effect.flatMap((summary) => Effect.log(`wrangler.json summary for ${exampleSlug}: ${JSON.stringify(summary)}`)),
-    Effect.catchAll((error) => Effect.log(`Failed to read wrangler.json for ${exampleSlug}: ${String(error)}`)),
   )
 
 export const command = Cli.Command.make(
