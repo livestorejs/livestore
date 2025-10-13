@@ -5,7 +5,6 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts",
-    "./multi-store": "./src/multi-store/mod.ts",
     "./experimental": "./src/experimental/mod.ts"
   },
   "dependencies": {
