@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { Config, Effect, Option, Schema } from '@livestore/utils/effect'
+import { Config, Effect, Schema } from '@livestore/utils/effect'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
@@ -203,7 +203,6 @@ export const deployCloudflareWorker = ({
 }) => {
   const envName = resolveEnvironmentName({ example, kind })
   const workerName = resolveWorkerName({ example, kind })
-  const envLabel = kind === 'prod' ? Option.none<string>() : Option.some(envName)
 
   return cmd(
     [
@@ -213,7 +212,6 @@ export const deployCloudflareWorker = ({
       dryRun ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
-      ...(Option.isSome(envLabel) ? ['--env', envLabel.value] : ['--name', workerName]),
     ],
     {
       cwd: example.repoRelativePath,
@@ -237,7 +235,6 @@ export const deployCloudflareWorker = ({
         env: envName,
         dry_run: dryRun,
         worker_name: workerName,
-        worker_env: Option.getOrUndefined(envLabel),
       },
     }),
   )
