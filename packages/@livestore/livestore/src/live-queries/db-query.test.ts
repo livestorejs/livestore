@@ -2,7 +2,7 @@ import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
 import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
@@ -273,6 +273,54 @@ Vitest.describe('otel', () => {
       expect(callbackResults2).toHaveLength(3)
 
       unsubscribe2()
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
+  Vitest.scopedLive('QueryBuilder subscription - async iterator', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const defaultTodo = { id: '', text: '', completed: false }
+
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
+
+      yield* Effect.promise(async () => {
+        const iterator = store.subscribe(queryBuilder)[Symbol.asyncIterator]()
+
+        const initial = await iterator.next()
+        expect(initial.done).toBe(false)
+        expect(initial.value).toMatchObject(defaultTodo)
+
+        store.commit(events.todoCreated({ id: 't-async', text: 'write tests', completed: false }))
+
+        const update = await iterator.next()
+        expect(update.done).toBe(false)
+        expect(update.value).toMatchObject({
+          id: 't-async',
+          text: 'write tests',
+          completed: false,
+        })
+
+        const doneResult = await iterator.return?.()
+        assert(doneResult)
+        expect(doneResult.done).toBe(true)
+      })
+
       span.end()
 
       return { exporter, provider }

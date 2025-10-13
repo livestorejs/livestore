@@ -37,7 +37,14 @@ export {
 export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.ts'
 export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.ts'
 export { Store } from './store/store.ts'
-export type { OtelOptions, QueryDebugInfo, RefreshReason, Unsubscribe } from './store/store-types.ts'
+export type {
+  OtelOptions,
+  Queryable,
+  QueryDebugInfo,
+  RefreshReason,
+  SubscribeOptions,
+  Unsubscribe,
+} from './store/store-types.ts'
 export {
   type LiveStoreContext,
   type LiveStoreContextRunning,
