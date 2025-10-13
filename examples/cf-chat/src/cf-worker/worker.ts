@@ -31,7 +31,7 @@ export default {
 
     const assetResponse = await env.ASSETS.fetch(request)
     if (assetResponse.status !== 404) {
-      return assetResponse as CfTypes.Response
+      return assetResponse
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
