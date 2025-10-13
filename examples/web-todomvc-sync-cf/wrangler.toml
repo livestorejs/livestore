@@ -30,8 +30,7 @@ tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
 
 [env.preview]
-# Leave empty: needed so `wrangler deploy --env preview` can target the preview alias.
-
+name = "example-web-todomvc-sync-cf"
 [[env.preview.durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"
