@@ -242,7 +242,11 @@ export const deployCloudflareWorker = ({
   dryRun?: boolean
 }) => {
   const envName = resolveEnvironmentName({ example, kind })
+  const serviceName = resolveWorkerName({ example, kind: 'prod' })
   const workerName = resolveWorkerName({ example, kind })
+  const envLabel = workerName.startsWith(`${serviceName}-`)
+    ? Option.some(workerName.slice(serviceName.length + 1))
+    : Option.none()
 
   /**
    * Use the generated wrangler.json under the build directory so we do not have
@@ -256,8 +260,9 @@ export const deployCloudflareWorker = ({
       dryRun ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
+      ...(Option.isSome(envLabel) ? ['--env', envLabel.value] : []),
       '--name',
-      workerName,
+      serviceName,
     ],
     {
       cwd: example.repoRelativePath,
@@ -280,7 +285,9 @@ export const deployCloudflareWorker = ({
         slug: example.slug,
         env: envName,
         dry_run: dryRun,
+        service_name: serviceName,
         worker_name: workerName,
+        worker_env: Option.getOrUndefined(envLabel),
       },
     }),
   )
