@@ -9,6 +9,7 @@
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
     "@livestore/react": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native/assets-registry": "0.81.1",
     "@react-navigation/native": "7.1.17",
@@ -52,16 +53,19 @@
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",
     "react-test-renderer": "^19.1.1",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "wrangler": "^4.38.0"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "main": "expo-router/entry",
   "scripts": {
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
+    "android": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start --clear --android",
+    "ios": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start --clear --ios",
     "lint": "biome lint .",
-    "start": "expo start"
+    "start": "EXPO_PUBLIC_LIVESTORE_SYNC_URL=http://localhost:8787 expo start",
+    "wrangler:deploy": "wrangler deploy",
+    "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
   }
 }

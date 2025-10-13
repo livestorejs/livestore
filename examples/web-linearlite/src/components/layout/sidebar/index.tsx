@@ -17,13 +17,13 @@ export const Sidebar = ({ className }: { className?: string }) => {
     {
       title: 'List view',
       icon: Bars4Icon,
-      href: '/',
+      href: '.',
       onClick: () => setFilterState({ status: null }),
     },
     {
       title: 'Board view',
       icon: ViewColumnsIcon,
-      href: '/board',
+      href: 'board',
       onClick: () => setFilterState({ status: null }),
     },
   ]

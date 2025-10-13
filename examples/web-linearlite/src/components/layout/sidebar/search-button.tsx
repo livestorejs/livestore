@@ -10,7 +10,7 @@ export const SearchButton = () => {
 
   return (
     <Link
-      to="/search"
+      to="search"
       aria-label="Open search page"
       onClick={() => {
         setFilterState({ query: null })

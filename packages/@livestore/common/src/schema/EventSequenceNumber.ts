@@ -23,7 +23,7 @@ export type EventSequenceNumber = {
   client: ClientEventSequenceNumber
   /**
    * Generation integer that is incremented whenever the client rebased.
-   * Starts from and resets to 0 for each global sequence number.
+   * Remains constant for all subsequent events until another rebase occurs.
    */
   rebaseGeneration: number
 }
@@ -167,6 +167,9 @@ export const make = (seqNum: EventSequenceNumberInput): EventSequenceNumber => {
       })
 }
 
+/**
+ * Computes the next event sequence/parent pair.
+ */
 export const nextPair = ({
   seqNum,
   isClient,
@@ -191,7 +194,7 @@ export const nextPair = ({
     seqNum: {
       global: (seqNum.global + 1) as any as GlobalEventSequenceNumber,
       client: clientDefault,
-      rebaseGeneration: rebaseGenerationDefault,
+      rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
     },
     // NOTE we always point to `client: 0` for non-clientOnly events
     parentSeqNum: { global: seqNum.global, client: clientDefault, rebaseGeneration: seqNum.rebaseGeneration },
