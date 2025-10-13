@@ -46,6 +46,8 @@ type StoreApi<TSchema extends LiveStoreSchema> = {
   useStore: () => Store<TSchema> & ReactApi
 
   useQuery: <TQuery extends LiveQueryDef.Any>(queryDef: TQuery) => LiveQueries.GetResult<TQuery>
+
+  preload: (storeRegistry: StoreRegistry) => Promise<void>
 }
 
 export declare function makeStoreApi<TSchema extends LiveStoreSchema>(
