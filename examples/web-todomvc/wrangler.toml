@@ -15,7 +15,7 @@ not_found_handling = "single-page-application"
 name = "example-web-todomvc"
 
 [env.preview]
-name = "example-web-todomvc-preview"
+# Leave empty: needed so `wrangler deploy --env preview` can target the preview alias.
 
 [env.dev]
 name = "example-web-todomvc-dev"

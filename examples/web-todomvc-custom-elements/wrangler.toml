@@ -14,7 +14,7 @@ binding = "ASSETS"
 name = "example-web-todomvc-custom-elements"
 
 [env.preview]
-name = "example-web-todomvc-custom-elements-preview"
+# Leave empty: needed so `wrangler deploy --env preview` can target the preview alias.
 
 [env.dev]
 name = "example-web-todomvc-custom-elements-dev"
