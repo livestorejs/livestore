@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { Config, Effect, Option, Schema } from '@livestore/utils/effect'
+import { Config, Effect, Schema } from '@livestore/utils/effect'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
@@ -87,7 +87,7 @@ export const getCloudflareExample = (slug: string): Effect.Effect<CloudflareExam
     ),
   )
 
-export type CloudflareEnvironmentKind = 'prod' | 'dev' | { _tag: 'preview'; alias: string }
+export type CloudflareEnvironmentKind = 'prod' | 'dev' | 'preview'
 
 export const resolveEnvironmentName = ({
   example,
@@ -96,11 +96,6 @@ export const resolveEnvironmentName = ({
   example: CloudflareExample
   kind: CloudflareEnvironmentKind
 }) => {
-  /**
-   * Vite flattens env-specific config at build time based on CLOUDFLARE_ENV,
-   * so we only need to signal whether we want the prod or dev build when naming
-   * the worker. Preview deploys reuse the prod config but receive a unique alias.
-   */
   if (kind === 'prod') {
     return example.aliases.prod
   }
@@ -109,34 +104,7 @@ export const resolveEnvironmentName = ({
     return example.aliases.dev
   }
 
-  return example.aliases.prod
-}
-
-export const createPreviewAlias = ({
-  branch,
-  shortSha,
-  explicitAlias,
-}: {
-  branch: string
-  shortSha: string
-  explicitAlias: Option.Option<string>
-}) => {
-  /**
-   * Preview workers must respect the DNS label limit of 63 chars. We reuse the
-   * Netlify-style `branch-<branch>-<sha>` format unless the caller supplied a
-   * specific alias via CLI.
-   */
-  const sanitizedBranch = branch
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40)
-
-  if (Option.isSome(explicitAlias)) {
-    return sanitizeLabel(explicitAlias.value).slice(0, 63)
-  }
-
-  return sanitizeLabel(`branch-${sanitizedBranch}-${shortSha}`).slice(0, 63)
+  return example.aliases.preview
 }
 
 const MAX_WORKER_NAME_LENGTH = 52
@@ -206,7 +174,7 @@ export const resolveWorkerName = ({
     return composeWorkerName({ base: example.workerName, suffix: 'dev' })
   }
 
-  return composeWorkerName({ base: example.workerName, suffix: kind.alias })
+  return composeWorkerName({ base: example.workerName, suffix: 'preview' })
 }
 
 export const buildCloudflareWorker = ({
@@ -242,16 +210,8 @@ export const deployCloudflareWorker = ({
   dryRun?: boolean
 }) => {
   const envName = resolveEnvironmentName({ example, kind })
-  const serviceName = resolveWorkerName({ example, kind: 'prod' })
   const workerName = resolveWorkerName({ example, kind })
-  const envLabel = workerName.startsWith(`${serviceName}-`)
-    ? Option.some(workerName.slice(serviceName.length + 1))
-    : Option.none()
 
-  /**
-   * Use the generated wrangler.json under the build directory so we do not have
-   * to maintain separate deploy config files per environment.
-   */
   return cmd(
     [
       'bunx',
@@ -260,9 +220,8 @@ export const deployCloudflareWorker = ({
       dryRun ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
-      ...(Option.isSome(envLabel) ? ['--env', envLabel.value] : []),
       '--name',
-      serviceName,
+      workerName,
     ],
     {
       cwd: example.repoRelativePath,
@@ -285,9 +244,7 @@ export const deployCloudflareWorker = ({
         slug: example.slug,
         env: envName,
         dry_run: dryRun,
-        service_name: serviceName,
         worker_name: workerName,
-        worker_env: Option.getOrUndefined(envLabel),
       },
     }),
   )

@@ -6,7 +6,7 @@ LiveStore examples ship via Cloudflare Workers using the `mono examples deploy` 
 
 - `main` → builds production artifacts and deploys the Worker named `example-<slug>`. DNS for `<slug>.livestore.dev` is updated to point at the Worker (`example-<slug>.livestore.workers.dev`).
 - `dev` → deploys `example-<slug>-dev` and refreshes the `dev.<slug>.livestore.dev` CNAME record.
-- Any other branch → builds a preview Worker named `example-<slug>-<alias>` and leaves DNS untouched. The preview is available under `https://example-<slug>-<alias>.livestore.workers.dev`. Pass `--alias <value>` to override the generated alias or `--prod` to force a production publish.
+- Any other branch → builds the shared preview Worker named `example-<slug>-preview` and leaves DNS untouched. The preview is always available under `https://example-<slug>-preview.livestore.workers.dev`. Use `--prod` to force a production publish when working on a feature branch.
 
 The script uses the directory name inside `/examples` as the `<slug>` (for example `web-todomvc`).
 
@@ -32,7 +32,6 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 direnv exec . mono examples deploy              # build + deploy all configured examples
 direnv exec . mono examples deploy --example-filter web-
 direnv exec . mono examples deploy --prod       # force a prod push regardless of branch
-direnv exec . mono examples deploy --alias preview-my-change
 ```
 
 The command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are not wired to DNS and remain accessible via their Workers.dev host names.
@@ -53,7 +52,7 @@ The DNS command requires a `VERCEL_TOKEN` (or an interactive Vercel login) becau
 
 1. Add an entry to `scripts/src/shared/cloudflare-manifest.ts` describing the example slug, Worker name, durable object bindings, and production/dev domains.
 2. Ensure the example’s `package.json` has `@cloudflare/vite-plugin` and `wrangler` in `devDependencies`, plus a `wrangler.toml` with `[assets]` pointing at the built client output.
-3. Add `[env.prod]` / `[env.dev]` sections (or at least unique Worker names) so the CLI can deploy prod and dev Workers independently.
+3. Add `[env.prod]`, `[env.preview]`, and `[env.dev]` sections in `wrangler.toml`; duplicate any bindings (Durable Objects, D1, queues, secrets, etc.) inside each environment block because Wrangler does not inherit them automatically.
 4. Provision Cloudflare resources if needed (Durable Objects, D1, secrets) via `wrangler`. Update the manifest with any required metadata.
 5. Run `direnv exec . mono examples deploy --example-filter <slug>` locally to verify the Worker deploys.
 6. Update DNS with `direnv exec . mono examples dns --env prod --example-filter <slug>` when you are ready to point the production domain at the new Worker.

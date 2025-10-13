@@ -25,8 +25,47 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 [env.prod]
 name = "example-cf-chat"
 
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.preview]
+name = "example-cf-chat-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
 [env.dev]
 name = "example-cf-chat-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [observability]
 enabled = true

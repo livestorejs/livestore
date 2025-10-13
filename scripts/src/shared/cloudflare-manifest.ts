@@ -38,6 +38,7 @@ export const CloudflareExampleSchema = Schema.Struct({
   aliases: Schema.Struct({
     prod: Schema.String,
     dev: Schema.String,
+    preview: Schema.String,
   }),
   /**
    * List of DNS domains that should point at the Worker. Prod/dev scopes are filtered
@@ -62,6 +63,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'cf-chat', scope: 'prod' },
@@ -77,6 +79,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-linearlite', scope: 'prod' },
@@ -92,6 +95,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc', scope: 'prod' },
@@ -107,6 +111,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-custom-elements', scope: 'prod' },
@@ -122,6 +127,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-experimental', scope: 'prod' },
@@ -137,6 +143,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-script', scope: 'prod' },
@@ -152,6 +159,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-solid', scope: 'prod' },
@@ -167,6 +175,7 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     aliases: {
       prod: 'prod',
       dev: 'dev',
+      preview: 'preview',
     },
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-sync-cf', scope: 'prod' },
