@@ -15,10 +15,11 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, type MaterializeError, UnexpectedError } from '../adapter-types.ts'
+import { type ClientSession, UnexpectedError } from '../adapter-types.ts'
+import type { MaterializeError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
-import { getEventDef, type LiveStoreSchema } from '../schema/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /**
@@ -51,7 +52,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventDecoded: LiveStoreEvent.AnyDecoded,
+    eventEncoded: LiveStoreEvent.EncodedWithMeta,
     options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
@@ -97,7 +98,7 @@ export const makeClientSessionSyncProcessor = ({
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
-    getEventDef(schema, eventEncoded.name).eventDef.options.clientOnly
+    schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
@@ -107,10 +108,14 @@ export const makeClientSessionSyncProcessor = ({
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
     const encodedEventDefs = batch.map(({ name, args }) => {
-      const eventDef = getEventDef(schema, name)
+      const eventDef = schema.eventsDefsMap.get(name)
+      if (eventDef === undefined) {
+        return shouldNeverHappen(`No event definition found for \`${name}\`.`)
+      }
       const nextNumPair = EventSequenceNumber.nextPair({
         seqNum: baseEventSequenceNumber,
-        isClient: eventDef.eventDef.options.clientOnly,
+        isClient: eventDef.options.clientOnly,
+        rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
       })
       baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(
@@ -155,13 +160,11 @@ export const makeClientSessionSyncProcessor = ({
     // Materialize events to state
     const writeTables = new Set<string>()
     for (const event of mergeResult.newEvents) {
-      // TODO avoid encoding and decoding here again
-      const decodedEventDef = Schema.decodeSync(eventSchema)(event)
       const {
         writeTables: newWriteTables,
         sessionChangeset,
         materializerHash,
-      } = yield* materializeEvent(decodedEventDef, {
+      } = yield* materializeEvent(event, {
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
@@ -305,13 +308,11 @@ export const makeClientSessionSyncProcessor = ({
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
-            // TODO apply changeset if available (will require tracking of write tables as well)
-            const decodedEventDef = Schema.decodeSync(eventSchema)(event)
             const {
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
-            } = yield* materializeEvent(decodedEventDef, {
+            } = yield* materializeEvent(event, {
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })

@@ -4,6 +4,7 @@ import {
   LeaderAheadError,
   liveStoreVersion,
   MigrationsReport,
+  SyncBackend,
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
@@ -146,6 +147,24 @@ export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<Le
   },
 ) {}
 
+export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
+  'GetNetworkStatus',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerNetworkStatusStream>()(
+  'NetworkStatusStream',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
 export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
   payload: {},
   success: Schema.Void,
@@ -173,6 +192,8 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerGetRecreateSnapshot,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
   WebmeshWorker.Schema.CreateConnection,
@@ -218,6 +239,8 @@ export class SharedWorkerRequest extends Schema.Union(
   LeaderWorkerInnerExportEventlog,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
 

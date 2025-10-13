@@ -4,18 +4,18 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.4.0-dev.7",
-    "@livestore/common": "0.4.0-dev.7",
-    "@livestore/livestore": "0.4.0-dev.7",
-    "@livestore/sync-cf": "0.4.0-dev.7",
-    "@livestore/utils": "0.4.0-dev.7"
+    "@livestore/adapter-node": "0.4.0-dev.10",
+    "@livestore/common": "0.4.0-dev.10",
+    "@livestore/livestore": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
+    "@livestore/utils": "0.4.0-dev.10"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "0.4.0-dev.7",
+    "@livestore/utils-dev": "0.4.0-dev.10",
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {}
 }

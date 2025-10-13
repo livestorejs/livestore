@@ -1,4 +1,4 @@
-import { getBranchName } from '../../data.js'
+import { getBranchName, IS_MAIN_BRANCH } from './data.ts'
 
 // Hosted assets - To upload new assets:
 // 1. Get auth token: TOKEN=$(curl -s -X POST https://gitbucket.schickling.dev/api/auth | jq -r '.token')
@@ -20,8 +20,18 @@ export interface Example {
     height: number
   }
   demoUrl?: string
+  devDemoUrl?: string
   sourceUrl: string
   status: 'available' | 'placeholder'
+}
+
+export const getExampleDemoLinks = (example: Example) => {
+  const url = IS_MAIN_BRANCH ? (example.demoUrl ?? example.devDemoUrl) : (example.devDemoUrl ?? example.demoUrl)
+
+  return {
+    url,
+    label: IS_MAIN_BRANCH ? 'Try Demo →' : 'Try Dev Demo →',
+  }
 }
 
 const branch = getBranchName()
@@ -40,6 +50,7 @@ export const examples: Example[] = [
       height: 700,
     },
     demoUrl: 'https://web-todomvc.livestore.dev',
+    devDemoUrl: 'https://dev.web-todomvc.livestore.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc`,
     status: 'available',
   },
@@ -55,6 +66,7 @@ export const examples: Example[] = [
       height: 700,
     },
     demoUrl: 'https://web-linearlite.livestore.dev',
+    devDemoUrl: 'https://dev.web-linearlite.livestore.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-linearlite`,
     status: 'available',
   },
@@ -71,6 +83,7 @@ export const examples: Example[] = [
       height: 700,
     },
     demoUrl: 'https://web-todomvc-sync-cf.livestore.dev',
+    devDemoUrl: 'https://dev.web-todomvc-sync-cf.livestore.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-sync-cf`,
     status: 'available',
   },
@@ -141,6 +154,7 @@ export const examples: Example[] = [
       height: 700,
     },
     demoUrl: 'https://example-cf-chat.netlify.app',
+    devDemoUrl: 'https://dev.cf-chat.livestore.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/cf-chat`,
     status: 'available',
   },

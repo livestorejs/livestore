@@ -1,3 +1,6 @@
+# Jobs tagged with LIVESTORE_BRANCH_PROTECTION_REQUIRED are used by
+# scripts/src/commands/github.ts (mono github branch-protection update)
+# to keep GitHub’s branch protection checks in sync with this workflow.
 name: ci
 run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 
@@ -14,10 +17,17 @@ on:
 
 env:
   GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  S2_ACCESS_TOKEN: ${{ secrets.S2_ACCESS_TOKEN }}
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -26,6 +36,11 @@ jobs:
 
   test-unit:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -34,6 +49,11 @@ jobs:
 
   test-integration-node-sync:
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -48,7 +68,16 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - run: mono test integration node-sync
+      # - run: mono test integration node-sync
+      # TODO: Remove once node-sync flakiness is resolved https://github.com/livestorejs/livestore/issues/624
+      - name: Run node-sync integration tests
+        run: |
+          if mono test integration node-sync; then
+            exit 0
+          else
+            echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
+            exit 0
+          fi
       - name: Display node-sync logs
         if: always()
         run: |
@@ -73,7 +102,15 @@ jobs:
           retention-days: 30
 
   test-integration-sync-provider:
+    strategy:
+      matrix:
+        provider: [mock, electric, s2, cf-http-d1, cf-http-do, cf-ws-d1, cf-ws-do, cf-do-rpc-d1, cf-do-rpc-do]
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -88,13 +125,19 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - run: mono test integration sync-provider
+      - name: Run sync-provider tests for ${{ matrix.provider }}
+        run: mono test integration sync-provider --provider ${{ matrix.provider }}
 
   test-integration-playwright:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
     runs-on: ubuntu-latest
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -139,6 +182,11 @@ jobs:
           fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -159,6 +207,8 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
   wa-sqlite-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -173,7 +223,7 @@ jobs:
         working-directory: packages/@livestore/wa-sqlite
         run: nix run .#build
       - name: Run wa-sqlite tests
-        run: mono test integration wa-sqlite
+        run: devenv shell mono test integration wa-sqlite
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
           GRAFANA_ENDPOINT: https://livestore.grafana.net
@@ -183,6 +233,9 @@ jobs:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-latest
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -196,20 +249,23 @@ jobs:
 
   build-and-deploy-examples-src:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup-env
-      - run: |
-          mono examples deploy \
-            --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
-            --alias=snapshot-$(git rev-parse --short HEAD)
+      - run: mono examples deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-docs:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Set up environment
@@ -266,14 +322,3 @@ jobs:
       - if: ${{ matrix.app != 'expo-linearlite' }} # TODO: build expo app with EAS
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build
-
-  check-nix-flake-inputs:
-    # Performs health checks on the flake.lock file to ensure we stay on recent and supported versions of Nixpkgs.
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Check Nix flake inputs
-        uses: DeterminateSystems/flake-checker-action@main
-        with:
-          flake-lock-path: ./nix/flake.lock

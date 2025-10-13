@@ -96,6 +96,17 @@ Vitest.describe('Vitest.asProp', () => {
 
         return
       }),
-    { fastCheck: { numRuns: 5, endOnFailure: true }, fails: true },
+    {
+      fastCheck: {
+        numRuns: 5,
+        endOnFailure: true,
+        // Provide explicit samples so the second run crosses >50. Randomly drawing five
+        // integers has ~3% chance to stay ≤ 50, which would break the `fails: true`
+        // expectation even though shrinking remains disabled. The examples keep the
+        // demo readable while leaving the remaining runs to FastCheck.
+        examples: [[5], [66]],
+      },
+      fails: true,
+    },
   )
 })

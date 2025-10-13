@@ -1,6 +1,6 @@
 {
   "name": "@livestore/cli",
-  "version": "0.4.0-dev.7",
+  "version": "0.4.0-dev.10",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -10,8 +10,11 @@
     "livestore": "./src/bin.ts"
   },
   "dependencies": {
-    "@effect/ai-openai": "0.29.0",
+    "@effect/ai-openai": "0.32.0",
+    "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {

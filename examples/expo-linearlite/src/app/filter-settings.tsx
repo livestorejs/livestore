@@ -73,8 +73,8 @@ const FilterSettingsScreen = () => {
           )}
           onChange={(value) =>
             selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabGrouping: value.nativeEvent.value.toLowerCase() })
-              : setUiState({ createdTabGrouping: value.nativeEvent.value.toLowerCase() })
+              ? setUiState({ assignedTabGrouping: value.nativeEvent.value })
+              : setUiState({ createdTabGrouping: value.nativeEvent.value })
           }
         />
       </View>
@@ -88,8 +88,8 @@ const FilterSettingsScreen = () => {
           )}
           onChange={(value) =>
             selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabOrdering: value.nativeEvent.value.toLowerCase() })
-              : setUiState({ createdTabOrdering: value.nativeEvent.value.toLowerCase() })
+              ? setUiState({ assignedTabOrdering: value.nativeEvent.value })
+              : setUiState({ createdTabOrdering: value.nativeEvent.value })
           }
         />
       </View>
@@ -100,7 +100,8 @@ const FilterSettingsScreen = () => {
             <RowPropertySwitch
               key={property}
               onPress={() => {
-                const settingKey = `${selectedHomeTab}TabShow${property}`
+                const prefix = selectedHomeTab === 'assigned' ? 'assigned' : 'created'
+                const settingKey = `${prefix}TabShow${property}`
                 const currentValue =
                   selectedHomeTab === 'assigned'
                     ? property === 'Assignee'

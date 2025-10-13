@@ -5,6 +5,7 @@ import {
   type BootStatus,
   ClientSessionLeaderThreadProxy,
   Devtools,
+  IntentionalShutdownCause,
   type LockStatus,
   liveStoreStorageFormatVersion,
   makeClientSession,
@@ -17,7 +18,17 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Exit, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Queue,
+  Schedule,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
@@ -43,13 +54,21 @@ export type MakeDbOptions = {
   clientId?: string
   /** @default 'static' */
   sessionId?: string
+  /**
+   * Warning: This will reset both the app and eventlog database. This should only be used during development.
+   *
+   * @default false
+   */
+  resetPersistence?: boolean
 }
 
-declare global {
-  var RN$Bridgeless: boolean | undefined
-}
-
-const IS_NEW_ARCH = globalThis.RN$Bridgeless === true
+// Expo Go with the New Architecture enables Fabric and TurboModules, but may not run in "bridgeless" mode.
+// Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
+const IS_NEW_ARCH =
+  // Fabric global – set when the new renderer is enabled
+  Boolean((globalThis as any).nativeFabricUIManager) ||
+  // TurboModule proxy – indicates new arch TurboModules
+  Boolean((globalThis as any).__turboModuleProxy)
 
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
@@ -66,13 +85,34 @@ export const makePersistedAdapter =
 
       const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
 
-      const { storage, clientId = yield* getDeviceId, sessionId = 'static', sync: syncOptions } = options
+      if (devtoolsEnabled) {
+        const { directory } = resolveExpoPersistencePaths({
+          storeId,
+          storage: options.storage,
+          schema,
+        })
+        yield* Effect.log(`[@livestore/adapter-expo] Database directory: ${directory}`)
+      }
+
+      const {
+        storage,
+        clientId = yield* getDeviceId,
+        sessionId = 'static',
+        sync: syncOptions,
+        resetPersistence = false,
+      } = options
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+      if (resetPersistence === true) {
+        yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
+
+        yield* resetExpoPersistence({ storeId, storage, schema })
+      }
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
@@ -85,7 +125,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = getDevtoolsUrl().toString()
+      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -159,17 +199,14 @@ const makeLeaderThread = ({
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
-    const subDirectory = storage.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
-    const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
-    const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
-
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-    const stateDatabaseName = `${'livestore-'}${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
-    const dbEventlogPath = `${'livestore-'}eventlog@${liveStoreStorageFormatVersion}.db`
+    const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+      storeId,
+      storage,
+      schema,
+    })
 
     const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory })
-    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbEventlogPath, directory })
+    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
@@ -204,6 +241,7 @@ const makeLeaderThread = ({
         extraIncomingMessagesQueue,
         initialState,
         bootStatusQueue,
+        networkStatus,
       } = yield* LeaderThreadCtx
 
       const bootStatusFiber = yield* Queue.takeBetween(bootStatusQueue, 1, 1000).pipe(
@@ -237,6 +275,7 @@ const makeLeaderThread = ({
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        networkStatus,
       })
 
       const initialSnapshot = db.export()
@@ -244,6 +283,58 @@ const makeLeaderThread = ({
       return { leaderThread, initialSnapshot }
     }).pipe(Effect.provide(layer))
   })
+
+const resolveExpoPersistencePaths = ({
+  storeId,
+  storage,
+  schema,
+}: {
+  storeId: string
+  storage: { subDirectory?: string } | undefined
+  schema: LiveStoreSchema
+}) => {
+  const subDirectory = storage?.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
+  const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
+  const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
+
+  const schemaHashSuffix =
+    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+  const stateDatabaseName = `livestore-${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
+  const eventlogDatabaseName = `livestore-eventlog@${liveStoreStorageFormatVersion}.db`
+
+  return { directory, stateDatabaseName, eventlogDatabaseName }
+}
+
+const resetExpoPersistence = ({
+  storeId,
+  storage,
+  schema,
+}: {
+  storeId: string
+  storage: MakeDbOptions['storage']
+  schema: LiveStoreSchema
+}) => {
+  const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+    storeId,
+    storage,
+    schema,
+  })
+
+  return Effect.try({
+    try: () => {
+      SQLite.deleteDatabaseSync(stateDatabaseName, directory)
+      SQLite.deleteDatabaseSync(eventlogDatabaseName, directory)
+    },
+    catch: (cause) =>
+      new UnexpectedError({
+        cause,
+        note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId} at ${directory}`,
+      }),
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-expo:resetPersistence', { attributes: { storeId } }),
+  )
+}
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,

@@ -4,33 +4,34 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250823.0",
-    "@livestore/adapter-cloudflare": "0.4.0-dev.7",
-    "@livestore/adapter-web": "0.4.0-dev.7",
-    "@livestore/livestore": "0.4.0-dev.7",
-    "@livestore/react": "0.4.0-dev.7",
-    "@livestore/sqlite-wasm": "0.4.0-dev.7",
-    "@livestore/sync-cf": "0.4.0-dev.7",
-    "@livestore/wa-sqlite": "0.4.0-dev.7",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@cloudflare/workers-types": "4.20250923.0",
+    "@livestore/adapter-cloudflare": "0.4.0-dev.10",
+    "@livestore/adapter-node": "0.4.0-dev.10",
+    "@livestore/adapter-web": "0.4.0-dev.10",
+    "@livestore/livestore": "0.4.0-dev.10",
+    "@livestore/react": "0.4.0-dev.10",
+    "@livestore/sqlite-wasm": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
+    "@livestore/wa-sqlite": "0.4.0-dev.10",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.2",
-    "@livestore/devtools-vite": "0.4.0-dev.7",
-    "@playwright/test": "^1.55.0",
-    "@tailwindcss/vite": "^4.1.12",
-    "@types/react": "^19.1.11",
-    "@types/react-dom": "^19.1.8",
-    "@vitejs/plugin-react": "^5.0.1",
+    "@biomejs/biome": "^2.2.4",
+    "@livestore/devtools-vite": "0.4.0-dev.10",
+    "@playwright/test": "^1.55.1-beta-1758616458000",
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
     "concurrently": "^9.0.0",
-    "tailwindcss": "^4.1.12",
+    "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
-    "vite": "^7.1.3",
-    "wrangler": "^4.33.0"
+    "vite": "^7.1.7",
+    "wrangler": "^4.38.0"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-cf-adapter-chat.schickling.workers.dev vite build && wrangler build",

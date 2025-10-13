@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.4.0-dev.7",
+  "version": "0.4.0-dev.10",
   "type": "module",
   "sideEffects": [
     "./src/node-vitest/global.ts",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@effect/opentelemetry": "catalog:",
-    "@effect/vitest": "0.25.1",
+    "@effect/vitest": "0.26.0",
     "@iarna/toml": "2.2.5",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",

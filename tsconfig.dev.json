@@ -4,6 +4,7 @@
   "include": [],
   "references": [
     { "path": "./docs" },
+    { "path": "./docs/src/content/_assets/code" },
     { "path": "./scripts" },
     { "path": "./tests/integration" },
     { "path": "./tests/package-common" },
@@ -28,6 +29,7 @@
     { "path": "./packages/@livestore/sqlite-wasm" },
     { "path": "./packages/@livestore/sync-cf" },
     { "path": "./packages/@livestore/sync-electric" },
+    { "path": "./packages/@livestore/sync-s2" },
     { "path": "./packages/@livestore/utils" },
     { "path": "./packages/@livestore/utils-dev" },
     { "path": "./packages/@livestore/webmesh" }

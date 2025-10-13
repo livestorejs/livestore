@@ -3,7 +3,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { LiveStoreProvider } from '@livestore/react'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { VersionBadge } from '@/components/VersionBadge'
 import { schema } from '@/lib/livestore/schema'
@@ -27,8 +27,13 @@ const adapter = makePersistedAdapter({
   resetPersistence,
 })
 
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
+
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
+  const { storeId: routeStoreId } = useParams()
+  const storeId =
+    (routeStoreId as string | undefined) ?? (import.meta.env.VITE_LIVESTORE_STORE_ID as string | undefined)
   const [showMenu, setShowMenu] = React.useState(false)
   const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
 
@@ -43,7 +48,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
         }
       }
       if (e.key === '/' && e.shiftKey) {
-        navigate('/search')
+        navigate('search')
         e.preventDefault()
       }
     }
@@ -52,7 +57,14 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate])
 
   return (
-    <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} batchUpdates={batchUpdates}>
+    <LiveStoreProvider
+      schema={schema}
+      adapter={adapter}
+      renderLoading={renderBootStatus}
+      batchUpdates={batchUpdates}
+      storeId={storeId}
+      syncPayload={syncPayload}
+    >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
         <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>
           {children}

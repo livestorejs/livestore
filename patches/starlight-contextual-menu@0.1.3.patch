@@ -1,0 +1,53 @@
+diff --git a/index.js b/index.js
+index d914e1da532737bbc511b1bb91ac331e0825cc9f..076055989b37c29502e19ef1a06d6f9376504d22 100644
+--- a/index.js
++++ b/index.js
+@@ -6,12 +6,15 @@ import { starlightMarkdownIntegration } from "starlight-markdown";
+ 
+ const __dirname = dirname(fileURLToPath(import.meta.url));
+ 
+-function starlightContextualMenuIntegration(options) {
+-  const config = {
+-    actions: ["copy", "view"], // Default actions
+-    ...options,
+-  };
++const normalizeConfig = (options = {}) => ({
++  actions: ["copy", "view"],
++  injectMarkdownRoutes: true,
++  ...options,
++});
+ 
++function starlightContextualMenuIntegration(config) {
++  const normalizedConfig = normalizeConfig(config);
++  
+   return {
+     name: "starlight-contextual-menu",
+     hooks: {
+@@ -26,7 +29,7 @@ function starlightContextualMenuIntegration(options) {
+           `
+             ${contextualMenuContent};
+             initContextualMenu(${JSON.stringify({
+-              actions: config.actions,
++              actions: normalizedConfig.actions,
+             })});          
+           `
+         );
+@@ -36,12 +39,16 @@ function starlightContextualMenuIntegration(options) {
+ }
+ 
+ export default function starlightContextualMenu(userConfig) {
++  const config = normalizeConfig(userConfig);
++
+   return {
+     name: "starlight-contextual-menu-plugin",
+     hooks: {
+       "config:setup"({ addIntegration }) {
+-        addIntegration(starlightMarkdownIntegration(userConfig));
+-        addIntegration(starlightContextualMenuIntegration(userConfig));
++        if (config.injectMarkdownRoutes !== false) {
++          addIntegration(starlightMarkdownIntegration(config));
++        }
++        addIntegration(starlightContextualMenuIntegration(config));
+       },
+     },
+   };

@@ -11,7 +11,6 @@ import {
   Layer,
   Option,
   OtelTracer,
-  pipe,
   Queue,
   ReadonlyArray,
   Schedule,
@@ -28,7 +27,7 @@ import {
 } from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -122,10 +121,8 @@ export const makeLeaderSyncProcessor = ({
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
-      const { eventDef } = getEventDef(schema, eventEncoded.name)
-      return eventDef.options.clientOnly
-    }
+    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+      schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
 
@@ -199,14 +196,32 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const { eventDef } = getEventDef(schema, name)
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
+          event: {
+            name,
+            args,
+            clientId,
+            sessionId,
+            seqNum: syncState.localHead,
+          },
+        }).pipe(UnexpectedError.mapToUnexpectedError)
+
+        if (resolution._tag === 'unknown') {
+          // Ignore partial pushes for unrecognised events – they are still
+          // persisted server-side once a schema update ships.
+          return
+        }
 
         const eventEncoded = new LiveStoreEvent.EncodedWithMeta({
           name,
           args,
           clientId,
           sessionId,
-          ...EventSequenceNumber.nextPair({ seqNum: syncState.localHead, isClient: eventDef.options.clientOnly }),
+          ...EventSequenceNumber.nextPair({
+            seqNum: syncState.localHead,
+            isClient: resolution.eventDef.options.clientOnly,
+          }),
         })
 
         yield* push([eventEncoded])
@@ -234,8 +249,8 @@ export const makeLeaderSyncProcessor = ({
         const globalPendingEvents = initialSyncState.pending
           // Don't sync clientOnly events
           .filter((eventEncoded) => {
-            const { eventDef } = getEventDef(schema, eventEncoded.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
 
         if (globalPendingEvents.length > 0) {
@@ -427,18 +442,43 @@ const backgroundApplyLocalPushes = ({
 
       // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
       // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
-      const [newEvents, deferreds] = pipe(
+      const [droppedItems, filteredItems] = ReadonlyArray.partition(
         batchItems,
-        ReadonlyArray.filter(([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration === currentRebaseGeneration),
-        ReadonlyArray.unzip,
+        ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
       )
 
-      if (newEvents.length === 0) {
-        // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
-        // Allow the backend pulling to start
+      if (droppedItems.length > 0) {
+        otelSpan?.addEvent(`push:drop-old-generation`, {
+          droppedCount: droppedItems.length,
+          currentRebaseGeneration,
+        })
+
+        /**
+         * Dropped pushes may still have a deferred awaiting completion.
+         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
+         */
+        yield* Effect.forEach(
+          droppedItems.filter(
+            (item): item is [LiveStoreEvent.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError>] =>
+              item[1] !== undefined,
+          ),
+          ([eventEncoded, deferred]) =>
+            Deferred.fail(
+              deferred,
+              LeaderAheadError.make({
+                minimumExpectedNum: syncState.localHead,
+                providedNum: eventEncoded.seqNum,
+              }),
+            ),
+        )
+      }
+
+      if (filteredItems.length === 0) {
         yield* pullLatch.open
         continue
       }
+
+      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
       const mergeResult = SyncState.merge({
         syncState,
@@ -524,8 +564,8 @@ const backgroundApplyLocalPushes = ({
 
       // Don't sync clientOnly events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-        const { eventDef } = getEventDef(schema, eventEncoded.name)
-        return eventDef.options.clientOnly === false
+        const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+        return eventDef === undefined ? true : eventDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -668,8 +708,8 @@ const backgroundBackendPulling = ({
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const { eventDef } = getEventDef(schema, event.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -693,8 +733,8 @@ const backgroundBackendPulling = ({
 
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
           const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const { eventDef } = getEventDef(schema, event.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalPendingEvents)
 
@@ -982,6 +1022,11 @@ const makePullQueueSet = Effect.gen(function* () {
   }
 })
 
+/**
+ * Validate a client-provided batch before it is admitted to the leader queue.
+ * Ensures the numbers form a strictly increasing chain and that the first
+ * event sits ahead of the current push head.
+ */
 const validatePushBatch = (
   batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
   pushHead: EventSequenceNumber.EventSequenceNumber,
@@ -991,12 +1036,16 @@ const validatePushBatch = (
       return
     }
 
-    // Make sure batch is monotonically increasing
+    // Example: session A already enqueued e1…e6 while session B (same client, different
+    // session) still believes the head is e1 and submits [e2, e7, e8]. The numbers look
+    // monotonic from B’s perspective, but we must reject and force B to rebase locally
+    // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
-        shouldNeverHappen(
-          `Events must be ordered in monotonically ascending order by eventNum. Received: [${batch.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-        )
+        return yield* LeaderAheadError.make({
+          minimumExpectedNum: batch[i - 1]!.seqNum,
+          providedNum: batch[i]!.seqNum,
+        })
       }
     }
 

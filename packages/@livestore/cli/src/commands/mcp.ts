@@ -9,9 +9,9 @@ import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
 import { socialSchemaContent } from '../mcp-content/schemas/social.ts'
 import { todoSchemaContent } from '../mcp-content/schemas/todo.ts'
-
+import { toolHandlers } from './mcp-tool-handlers.ts'
 // Tools imports
-import { livestoreToolkit, toolHandlers } from './mcp-tools.ts'
+import { livestoreToolkit } from './mcp-tools-defs.ts'
 
 const LivestoreResources = Layer.mergeAll(
   McpServer.resource({
@@ -77,9 +77,6 @@ const mcpServerCommand = Cli.Command.make(
   'server',
   {},
   Effect.fn(function* () {
-    yield* Effect.log('🚀 Starting LiveStore MCP Server...')
-
-    // Following Tim Smart's exact pattern from main.ts
     return yield* McpServer.layerStdio({
       name: 'livestore-mcp',
       version: '0.1.0',

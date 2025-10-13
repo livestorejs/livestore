@@ -7,6 +7,9 @@ test-results
 playwright-report
 .playwright-mcp
 
+# Process IDs
+*.pid
+
 .envrc.local
 
 tmp*
@@ -20,6 +23,9 @@ dist
 
 .direnv
 
+# Codex project-local config
+.codex
+
 # self-signed certs
 /certs
 
@@ -28,9 +34,16 @@ dist
 .netlify
 
 _tmp*
+.tmp*
 
 .nitro
 .tanstack
 .output
 
 scripts/.completions
+
+# locally downloaded S2 CLI
+.infra/s2/
+
+.devenv
+.devenv*

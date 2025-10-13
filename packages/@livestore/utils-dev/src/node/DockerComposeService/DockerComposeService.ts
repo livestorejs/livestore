@@ -4,6 +4,7 @@ import {
   type CommandExecutor,
   Duration,
   Effect,
+  Fiber,
   type PlatformError,
   Schedule,
   Schema,
@@ -63,24 +64,59 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       const pull = Effect.gen(function* () {
         yield* Effect.log(`Pulling Docker Compose images in ${cwd}`)
 
-        yield* Command.make('docker', 'compose', 'pull').pipe(
+        // TODO (@IMax153) Refactor the effect command related code below as there is probably a much more elegant way to accomplish what we want here in a more effect idiomatic way.
+        const pullCommand = Command.make('docker', 'compose', 'pull').pipe(
           Command.workingDirectory(cwd),
-          Command.exitCode,
-          Effect.flatMap((exitCode: number) =>
-            exitCode === 0
-              ? Effect.void
-              : Effect.fail(
-                  new DockerComposeError({
-                    cause: new Error(`Docker compose pull failed with exit code ${exitCode}`),
-                    note: `Docker compose pull failed with exit code ${exitCode}`,
-                  }),
-                ),
-          ),
-          Effect.provide(commandExecutorContext),
+          Command.stdout('pipe'),
+          Command.stderr('pipe'),
         )
 
+        const process = yield* pullCommand.pipe(Command.start, Effect.provide(commandExecutorContext))
+
+        const stdoutFiber = yield* process.stdout.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Effect.fork,
+        )
+
+        const stderrFiber = yield* process.stderr.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Effect.fork,
+        )
+
+        const exitCode = yield* process.exitCode
+        const stdout = yield* Fiber.join(stdoutFiber)
+        const stderr = yield* Fiber.join(stderrFiber)
+
+        const exitCodeNumber = Number(exitCode)
+
+        if (exitCodeNumber !== 0) {
+          const stdoutLog = stdout.length > 0 ? stdout : '<empty stdout>'
+          const stderrLog = stderr.length > 0 ? stderr : '<empty stderr>'
+          const failureMessage = [
+            `Docker compose pull failed with exit code ${exitCodeNumber} in ${cwd}`,
+            `stdout:\n${stdoutLog}`,
+            `stderr:\n${stderrLog}`,
+          ].join('\n')
+
+          yield* Effect.logError(failureMessage)
+
+          return yield* new DockerComposeError({
+            cause: new Error(`Docker compose pull failed with exit code ${exitCodeNumber}`),
+            note: failureMessage,
+          })
+        }
+
         yield* Effect.log(`Successfully pulled Docker Compose images`)
-      }).pipe(Effect.withSpan('pullDockerComposeImages'))
+      }).pipe(
+        Effect.retry({
+          schedule: Schedule.exponentialBackoff10Sec,
+          while: Schema.is(DockerComposeError),
+        }),
+        Effect.withSpan('pullDockerComposeImages'),
+        Effect.scoped,
+      )
 
       const start = (options: StartOptions = {}) =>
         Effect.gen(function* () {

@@ -1,3 +1,4 @@
+import { useStore } from '@livestore/react'
 import { Image } from 'expo-image'
 import type { LinkProps } from 'expo-router'
 import { Link } from 'expo-router'
@@ -12,7 +13,8 @@ import { ThemedText } from './ThemedText.tsx'
 
 export interface IssueItemProps {
   issue: Pick<Issue, 'id' | 'title' | 'priority' | 'status'> & {
-    assigneePhotoUrl?: string
+    assigneePhotoUrl?: string | null
+    assigneeName?: string | null
   }
   showAssignee?: boolean
   showStatus?: boolean
@@ -24,11 +26,15 @@ const blurhash =
 
 export const IssueItem = memo(
   ({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
-    const linkHref = `/issue-details?issueId=${issue.id}`
+    const { store } = useStore()
+    const linkHref = {
+      pathname: '/issue-details',
+      params: { issueId: String(issue.id), storeId: store.storeId },
+    } satisfies LinkProps['href']
     const isDarkMode = useColorScheme() === 'dark'
 
     return (
-      <Link href={linkHref as LinkProps['href']} asChild>
+      <Link href={linkHref} asChild>
         <Pressable
           style={[styles.pressable, { backgroundColor: isDarkMode ? '#27272a' : '#fafafa' }]}
           android_ripple={{ color: isDarkMode ? '#333' : '#eee' }}
@@ -39,15 +45,22 @@ export const IssueItem = memo(
               {showStatus && <IssueStatusIcon status={issue.status as Status} />}
               <ThemedText style={styles.title}>{issue.title}</ThemedText>
             </View>
-            {showAssignee && issue.assigneePhotoUrl && (
-              <Image
-                source={issue.assigneePhotoUrl}
-                style={styles.avatar}
-                placeholder={blurhash}
-                transition={500}
-                cachePolicy={'memory-disk'}
-              />
-            )}
+            {showAssignee &&
+              (() => {
+                const fallback = issue.assigneeName
+                  ? `https://ui-avatars.com/api/?name=${encodeURIComponent(issue.assigneeName)}&size=40`
+                  : undefined
+                const uri = issue.assigneePhotoUrl ?? fallback
+                return uri ? (
+                  <Image
+                    source={{ uri }}
+                    style={styles.avatar}
+                    placeholder={blurhash}
+                    transition={500}
+                    cachePolicy={'memory-disk'}
+                  />
+                ) : null
+              })()}
           </View>
         </Pressable>
       </Link>
@@ -96,7 +109,7 @@ IssueItem.displayName = 'IssueItem'
 export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
   const isDarkMode = useColorScheme() === 'dark'
   switch (priority) {
-    case 'none': {
+    case 0: {
       const iconNoPriority = isDarkMode ? iconBase64.no_priority_dark : iconBase64.no_priority
       return (
         <RNImage
@@ -108,7 +121,7 @@ export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
         />
       )
     }
-    case 'low': {
+    case 1: {
       const iconLow = isDarkMode ? iconBase64.lowDark : iconBase64.low
       return (
         <RNImage
@@ -120,7 +133,7 @@ export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
         />
       )
     }
-    case 'medium': {
+    case 2: {
       const iconMedium = isDarkMode ? iconBase64.mediumDark : iconBase64.medium
       return (
         <RNImage
@@ -132,7 +145,7 @@ export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
         />
       )
     }
-    case 'high': {
+    case 3: {
       const iconHigh = isDarkMode ? iconBase64.highDark : iconBase64.high
       return (
         <RNImage
@@ -144,7 +157,7 @@ export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
         />
       )
     }
-    case 'urgent': {
+    case 4: {
       const iconUrgent = isDarkMode ? iconBase64.urgentDark : iconBase64.urgent
       return (
         <RNImage
@@ -163,88 +176,45 @@ export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
 })
 
 export const IssueStatusIcon = memo(({ status }: { status: Status }) => {
+  // Align with Web LinearLite status mapping:
+  // 0 = backlog, 1 = todo, 2 = in_progress, 3 = done, 4 = canceled
   switch (status) {
-    case 'done': {
+    case 0:
       return (
         <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.done}`,
-            cache: 'force-cache',
-          }}
+          source={{ uri: `data:image/png;base64,${iconBase64.backlog}`, cache: 'force-cache' }}
           style={{ width: 16, height: 16 }}
         />
       )
-    }
-    case 'in_progress': {
+    case 1:
       return (
         <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.in_progress}`,
-            cache: 'force-cache',
-          }}
+          source={{ uri: `data:image/png;base64,${iconBase64.todo}`, cache: 'force-cache' }}
           style={{ width: 16, height: 16 }}
         />
       )
-    }
-    case 'in_review': {
+    case 2:
       return (
         <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.in_review}`,
-            cache: 'force-cache',
-          }}
+          source={{ uri: `data:image/png;base64,${iconBase64.in_progress}`, cache: 'force-cache' }}
           style={{ width: 16, height: 16 }}
         />
       )
-    }
-    case 'todo': {
+    case 3:
       return (
         <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.todo}`,
-            cache: 'force-cache',
-          }}
+          source={{ uri: `data:image/png;base64,${iconBase64.done}`, cache: 'force-cache' }}
           style={{ width: 16, height: 16 }}
         />
       )
-    }
-    case 'backlog': {
+    case 4:
       return (
         <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.backlog}`,
-            cache: 'force-cache',
-          }}
+          source={{ uri: `data:image/png;base64,${iconBase64.canceled}`, cache: 'force-cache' }}
           style={{ width: 16, height: 16 }}
         />
       )
-    }
-    case 'canceled':
-    case 'auto_closed':
-    case 'wont_fix': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.canceled}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'triage': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.triage}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    default: {
+    default:
       return null
-    }
   }
 })

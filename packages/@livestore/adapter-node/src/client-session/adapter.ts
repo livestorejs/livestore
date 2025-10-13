@@ -1,10 +1,11 @@
 import { hostname } from 'node:os'
+import path from 'node:path'
 import * as WT from 'node:worker_threads'
 import {
   type Adapter,
   type BootStatus,
   ClientSessionLeaderThreadProxy,
-  type IntentionalShutdownCause,
+  IntentionalShutdownCause,
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
@@ -24,11 +25,14 @@ import {
   Exit,
   FetchHttpClient,
   Fiber,
+  FileSystem,
   Layer,
   ParseResult,
   Queue,
+  Schedule,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   Worker,
   WorkerError,
@@ -50,6 +54,13 @@ export interface NodeAdapterOptions {
    * @default 'static'
    */
   sessionId?: string
+
+  /**
+   * Warning: This will reset both the app and eventlog database. This should only be used during development.
+   *
+   * @default false
+   */
+  resetPersistence?: boolean
 
   devtools?: {
     schemaPath: string | URL
@@ -111,6 +122,7 @@ const makeAdapterImpl = ({
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
   testing,
+  resetPersistence = false,
   leaderThread: leaderThreadInput,
 }: NodeAdapterOptions & {
   leaderThread:
@@ -142,6 +154,14 @@ const makeAdapterImpl = ({
       // }
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+      if (resetPersistence === true) {
+        yield* shutdownChannel
+          .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
+          .pipe(UnexpectedError.mapToUnexpectedError)
+
+        yield* resetNodePersistence({ storage, storeId })
+      }
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
@@ -233,6 +253,35 @@ const makeAdapterImpl = ({
       Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
 
+const resetNodePersistence = ({
+  storage,
+  storeId,
+}: {
+  storage: WorkerSchema.StorageType
+  storeId: string
+}): Effect.Effect<void, UnexpectedError, FileSystem.FileSystem> => {
+  if (storage.type !== 'fs') {
+    return Effect.void
+  }
+
+  const directory = path.join(storage.baseDirectory ?? '', storeId)
+
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+
+    const directoryExists = yield* fs.exists(directory).pipe(UnexpectedError.mapToUnexpectedError)
+
+    if (directoryExists === false) {
+      return
+    }
+
+    yield* fs.remove(directory, { recursive: true }).pipe(UnexpectedError.mapToUnexpectedError)
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-node:resetPersistence', { attributes: { directory } }),
+  )
+}
+
 const makeLocalLeaderThread = ({
   storeId,
   clientId,
@@ -272,7 +321,8 @@ const makeLocalLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -291,6 +341,7 @@ const makeLocalLeaderThread = ({
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           getSyncState: syncProcessor.syncState,
           sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
       )
@@ -444,6 +495,10 @@ const makeWorkerLeaderThread = ({
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
       },
       {
         ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }),

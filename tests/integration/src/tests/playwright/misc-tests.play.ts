@@ -58,13 +58,23 @@ test(
         schema: Bridge.ResultMultipleMigrations,
       })
 
+      expect(exit._tag).toBe('Success')
+      if (exit._tag !== 'Success') throw new Error(`Expected success exit, received ${exit._tag}`)
+
+      const { migrationsCount, archivedStateDbFiles } = exit.value
+
       // Verify that after 22 migrations, we can still complete the process without running out of file handles
       // See packages/@livestore/sqlite-wasm/src/browser/opfs/AccessHandlePoolVFS.ts for default file handle pool size
-      expect(exit).toStrictEqual(
-        Exit.succeed({
-          migrationsCount: 22,
-        }),
-      )
+      expect(migrationsCount).toBe(22)
+
+      // Verify that we have 3 archived state DB files
+      // See packages/@livestore/adapter-web/src/web-worker/common/persisted-sqlite.ts for default retention count
+      expect(archivedStateDbFiles.length).toBe(3)
+
+      // Verify that each archived file isn’t empty
+      archivedStateDbFiles.forEach((file) => {
+        expect(file.size).toBeGreaterThan(0)
+      })
     }),
   ),
 )

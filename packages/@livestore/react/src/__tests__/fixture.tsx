@@ -100,9 +100,9 @@ export const makeTodoMvcReact: ({
   otelContext,
   strictMode,
 }?: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
+  otelTracer?: otel.Tracer | undefined
+  otelContext?: otel.Context | undefined
+  strictMode?: boolean | undefined
 }) => Effect.Effect<
   {
     wrapper: ({ children }: any) => React.JSX.Element
@@ -116,9 +116,9 @@ export const makeTodoMvcReact: ({
   otelContext,
   strictMode,
 }: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
+  otelTracer?: otel.Tracer | undefined
+  otelContext?: otel.Context | undefined
+  strictMode?: boolean | undefined
 } = {}) =>
   Effect.gen(function* () {
     const makeRenderCount = () => {

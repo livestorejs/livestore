@@ -5,6 +5,7 @@ import { type Description, description } from '@/lib/livestore/schema/descriptio
 import { type FilterState, filterState } from '@/lib/livestore/schema/filter-state'
 import { type FrontendState, frontendState } from '@/lib/livestore/schema/frontend-state'
 import { type Issue, issue } from '@/lib/livestore/schema/issue'
+import { type Reaction, reaction } from './reaction.ts'
 import { type ScrollState, scrollState } from './scroll-state.ts'
 
 export {
@@ -14,12 +15,14 @@ export {
   frontendState,
   issue,
   scrollState,
+  reaction,
   type Comment,
   type Description,
   type FilterState,
   type FrontendState,
   type Issue,
   type ScrollState,
+  type Reaction,
 }
 
 export const events = {
@@ -29,7 +32,7 @@ export const events = {
   scrollStateSet: scrollState.set,
 }
 
-export const tables = { issue, description, comment, filterState, frontendState, scrollState }
+export const tables = { issue, description, comment, filterState, frontendState, scrollState, reaction }
 
 const materializers = State.SQLite.materializers(events, {
   'v1.CreateIssueWithDescription': (data) => [
@@ -72,6 +75,10 @@ const materializers = State.SQLite.materializers(events, {
     tables.issue.update({ kanbanorder, status, modified }).where({ id }),
   'v1.UpdateIssuePriority': ({ id, priority, modified }) => tables.issue.update({ priority, modified }).where({ id }),
   'v1.UpdateDescription': ({ id, body }) => tables.description.update({ body }).where({ id }),
+
+  'v1.AllCleared': () => [],
+  'v1.ReactionCreated': ({ id, issueId, commentId, userId, emoji }) =>
+    tables.reaction.insert({ id, issueId, commentId, userId, emoji }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

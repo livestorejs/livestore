@@ -9,6 +9,14 @@ Please follow LiveStore's [guiding principles](/contributing/contributing#guidin
 
 This project broadly tries to follow the [Prisma docs style guide](https://www.prisma.io/docs/about/style-guide/writing-style).
 
-## Reusing code
+## Snippets
 
-When including code snippets, please try to `import` the code from the source in order to avoid duplication.
+For snippet guidelines, see: `/contributor-docs/docs/snippets.md`
+
+## Deploying the docs
+
+- Run `direnv exec . mono docs deploy --build` to build the documentation (including Typedoc output) and push it to the dev domain (`https://dev.docs.livestore.dev`).
+- Passing `--prod` targets the production domain (`https://docs.livestore.dev`) when you are on `main` (otherwise the command deploys using a branch alias).
+- Use `--site=<slug>` if you need to override the default Netlify site name.
+- Add `--purge-cdn` when you need to invalidate Netlify's CDN cache after deploying; this ensures new edge handlers or content-negotiation changes take effect immediately.
+- CI automatically builds and deploys the docs: `main` updates `https://docs.livestore.dev`, `dev` updates `https://dev.docs.livestore.dev`, and feature branches publish to the dev domain behind a branch alias.

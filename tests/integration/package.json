@@ -7,10 +7,11 @@
     "./run-tests": "./scripts/run-tests.ts"
   },
   "dependencies": {
+    "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.7",
+    "@livestore/devtools-vite": "0.4.0-dev.10",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
@@ -20,6 +21,7 @@
     "@local/shared": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
     "@opentelemetry/resources": "^2.0.1",

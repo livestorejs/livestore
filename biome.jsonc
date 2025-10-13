@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
   // WORKAROUND: Biome 2.1.x nested root configuration issue
   // Prevents "Found a nested root configuration" errors in parent repo
   // TODO: Remove "root": false once Biome properly supports git submodules
@@ -14,6 +14,7 @@
       "packages/**",
       "!packages/@livestore/wa-sqlite",
       "examples/**",
+      "!**/routeTree.gen.ts",
       "docs/**",
       "!docs/**/.astro",
       "tests/**",

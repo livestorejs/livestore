@@ -78,7 +78,7 @@ export const makeWebSocketEdge = ({
 }: {
   socket: Socket.Socket
   socketType: SocketType
-  debug?: { id?: string }
+  debug?: { id?: string } | undefined
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>

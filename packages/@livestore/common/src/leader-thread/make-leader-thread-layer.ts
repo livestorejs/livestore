@@ -1,6 +1,16 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, KeyValueStore, Layer, PlatformError, Queue, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  Deferred,
+  Effect,
+  KeyValueStore,
+  Layer,
+  PlatformError,
+  Queue,
+  Stream,
+  Subscribable,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 import {
   type BootStatus,
   type MakeSqliteDb,
@@ -13,7 +23,7 @@ import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.ts'
+import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -23,6 +33,7 @@ import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
+  DevtoolsContext,
   DevtoolsOptions,
   InitialBlockingSyncContext,
   InitialSyncOptions,
@@ -165,6 +176,8 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
+    const networkStatus = yield* makeNetworkStatusSubscribable({ syncBackend, devtoolsContext })
+
     const ctx = {
       schema,
       bootStatusQueue,
@@ -181,6 +194,7 @@ export const makeLeaderThreadLayer = ({
       materializeEvent,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
+      networkStatus,
       // State will be set during `bootLeaderThread`
       initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
@@ -356,4 +370,57 @@ const bootLeaderThread = ({
     yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
     return { migrationsReport, leaderHead: initialLeaderHead }
+  })
+
+/** @internal */
+export const makeNetworkStatusSubscribable = ({
+  syncBackend,
+  devtoolsContext,
+}: {
+  syncBackend: SyncBackend.SyncBackend | undefined
+  devtoolsContext: DevtoolsContext
+}): Effect.Effect<Subscribable.Subscribable<SyncBackend.NetworkStatus>, never, Scope.Scope> =>
+  Effect.gen(function* () {
+    const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
+    const initialLatchClosed =
+      devtoolsContext.enabled === true
+        ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
+        : false
+
+    const networkStatusRef = yield* SubscriptionRef.make<SyncBackend.NetworkStatus>({
+      isConnected: initialIsConnected,
+      timestampMs: Date.now(),
+      devtools: { latchClosed: initialLatchClosed },
+    })
+
+    const updateNetworkStatus = (patch: { isConnected?: boolean; latchClosed?: boolean }) =>
+      SubscriptionRef.update(networkStatusRef, (previous) => ({
+        isConnected: patch.isConnected ?? previous.isConnected,
+        timestampMs: Date.now(),
+        devtools: {
+          latchClosed: patch.latchClosed ?? previous.devtools.latchClosed,
+        },
+      }))
+
+    if (syncBackend !== undefined) {
+      yield* syncBackend.isConnected.changes.pipe(
+        Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+    }
+
+    if (devtoolsContext.enabled === true) {
+      yield* devtoolsContext.syncBackendLatchState.changes.pipe(
+        Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+    }
+
+    return Subscribable.fromSubscriptionRef(networkStatusRef)
   })

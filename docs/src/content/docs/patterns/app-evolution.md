@@ -26,3 +26,21 @@ App instances running version 4 might commit events that are not yet supported b
 - Handle events with a "catch all" event handler
 - Let app render a "app update required" screen. App can still be used in read-only mode.
 - ...
+
+LiveStore exposes a dedicated `unknownEventHandling` configuration on `makeSchema` so you can codify the desired behaviour instead of sprinkling ad-hoc checks across your app. The default is `'warn'`, which logs every unknown event and keeps processing.
+
+```ts
+const schema = makeSchema({
+  events,
+  state,
+  unknownEventHandling: {
+    strategy: 'callback',
+    onUnknownEvent: (event, error) => {
+      // Optional observer hook (only used for the `callback` strategy)
+      console.warn('Unknown event seen in production', { event, reason: error.reason })
+    },
+  },
+})
+```
+
+Set the strategy to `'ignore'` to silently skip forward-only events, `'fail'` to stop immediately (useful during development), or `'callback'` to forward them to custom telemetry while continuing to replay the log.

@@ -14,13 +14,12 @@ import {
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
   prepareBindValues,
-  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -38,13 +37,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import type {
-  LiveQuery,
-  LiveQueryDef,
-  ReactivityGraph,
-  ReactivityGraphContext,
-  SignalDef,
-} from '../live-queries/base-class.ts'
+import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
@@ -52,15 +45,25 @@ import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
-import type { StackInfo } from '../utils/stack-info.ts'
 import type {
+  Queryable,
   RefreshReason,
   StoreCommitOptions,
   StoreEventsOptions,
   StoreOptions,
   StoreOtel,
+  SubscribeOptions,
   Unsubscribe,
 } from './store-types.ts'
+
+type SubscribeFn = {
+  <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
+  ): Unsubscribe
+  <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): AsyncIterable<TResult>
+}
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -74,6 +77,24 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   schema: LiveStoreSchema
   context: TContext
   otel: StoreOtel
+  /**
+   * Reactive connectivity updates emitted by the backing sync backend.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Stream } from 'effect'
+   *
+   * const status = await store.networkStatus.pipe(Effect.runPromise)
+   *
+   * await store.networkStatus.changes.pipe(
+   *   Stream.tap((next) => console.log('network status update', next)),
+   *   Stream.runDrain,
+   *   Effect.scoped,
+   *   Effect.runPromise,
+   * )
+   * ```
+   */
+  readonly networkStatus: ClientSession['leaderThread']['networkStatus']
   /**
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
@@ -118,6 +139,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
 
@@ -130,16 +152,31 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       clientSession,
       runtime: effectContext.runtime,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
-        (eventDecoded, { withChangeset, materializerHashLeader }) =>
+        (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen(this, function* () {
-            const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
+            const resolution = yield* resolveEventDef(schema, {
+              operation: '@livestore/livestore:store:materializeEvent',
+              event: eventEncoded,
+            })
+
+            if (resolution._tag === 'unknown') {
+              // Runtime schema doesn't know this event yet; skip materialization but
+              // keep the log entry so upgraded clients can replay it later.
+              return {
+                writeTables: new Set<string>(),
+                sessionChangeset: { _tag: 'no-op' as const },
+                materializerHash: Option.none(),
+              }
+            }
+
+            const { eventDef, materializer } = resolution
 
             const execArgsArr = getExecStatementsFromMaterializer({
               eventDef,
               materializer,
               dbState: this.sqliteDbWrapper,
-              event: { decoded: eventDecoded, encoded: undefined },
+              event: { decoded: undefined, encoded: eventEncoded },
             })
 
             const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
@@ -153,7 +190,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               materializerHash._tag === 'Some' &&
               materializerHashLeader.value !== materializerHash.value
             ) {
-              return yield* MaterializerHashMismatchError.make({ eventName: eventDecoded.name })
+              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
             }
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
@@ -173,7 +210,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   // TOOD refactor with `SqliteError`
                   throw UnexpectedError.make({
                     cause,
-                    note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                    note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
                   })
                 }
 
@@ -182,7 +219,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   writeTablesForEvent.add(table)
                 }
 
-                this.sqliteDbWrapper.debug.head = eventDecoded.seqNum
+                this.sqliteDbWrapper.debug.head = eventEncoded.seqNum
               }
             }
 
@@ -315,32 +352,39 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   /**
-   * Subscribe to the results of a query
-   * Returns a function to cancel the subscription.
+   * Subscribe to the results of a query.
+   *
+   * - When providing an `onUpdate` callback it returns an {@link Unsubscribe} function.
+   * - Without a callback it returns an {@link AsyncIterable} that yields query results.
    *
    * @example
    * ```ts
-   * const unsubscribe = store.subscribe(query$, { onUpdate: (result) => console.log(result) })
+   * const unsubscribe = store.subscribe(query$, (result) => console.log(result))
+   * ```
+   *
+   * @example
+   * ```ts
+   * for await (const result of store.subscribe(query$)) {
+   *   console.log(result)
+   * }
    * ```
    */
-  subscribe = <TResult>(
-    query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult> | QueryBuilder<TResult, any, any>,
-    options: {
-      /** Called when the query result has changed */
-      onUpdate: (value: TResult) => void
-      onSubscribe?: (query$: LiveQuery<TResult>) => void
-      /** Gets called after the query subscription has been removed */
-      onUnsubsubscribe?: () => void
-      label?: string
-      /**
-       * Skips the initial `onUpdate` callback
-       * @default false
-       */
-      skipInitialRun?: boolean
-      otelContext?: otel.Context
-      /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
-      stackInfo?: StackInfo
-    },
+  subscribe = (<TResult>(
+    query: Queryable<TResult>,
+    onUpdateOrOptions?: ((value: TResult) => void) | SubscribeOptions<TResult>,
+    maybeOptions?: SubscribeOptions<TResult>,
+  ): Unsubscribe | AsyncIterable<TResult> => {
+    if (typeof onUpdateOrOptions === 'function') {
+      return this.subscribeWithCallback(query, onUpdateOrOptions, maybeOptions)
+    }
+
+    return this.subscribeAsAsyncIterable(query, onUpdateOrOptions)
+  }) as SubscribeFn
+
+  private subscribeWithCallback = <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
   ): Unsubscribe => {
     this.checkShutdown('subscribe')
 
@@ -349,7 +393,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
-        // console.debug('store sub', query$.id, query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const queryRcRef = isQueryBuilder(query)
@@ -364,8 +407,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         const label = `subscribe:${options?.label}`
         const effect = this.reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) =>
-            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
           { label },
         )
 
@@ -377,13 +419,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this.activeQueries.add(query$ as LiveQuery<TResult>)
 
-        // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
         }
 
         const unsubscribe = () => {
-          // console.debug('store unsub', query$.id, query$.label)
           try {
             this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
@@ -405,10 +448,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
   }
 
-  subscribeStream = <TResult>(
-    query$: LiveQueryDef<TResult>,
-    options?: { label?: string; skipInitialRun?: boolean } | undefined,
-  ): Stream.Stream<TResult> =>
+  private subscribeAsAsyncIterable = <TResult>(
+    query: Queryable<TResult>,
+    options?: SubscribeOptions<TResult>,
+  ): AsyncIterable<TResult> => {
+    this.checkShutdown('subscribe')
+
+    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+  }
+
+  subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
@@ -418,9 +467,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query$, {
-              onUpdate: (result) => emit.single(result),
-              ...omitUndefineds({ otelContext, label: options?.label }),
+            this.subscribe(query, (result) => emit.single(result), {
+              ...(options ?? {}),
+              otelContext,
             }),
           ),
           (unsub) => Effect.sync(() => unsub()),
@@ -443,12 +492,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query:
-      | QueryBuilder<TResult, any, any>
-      | LiveQuery<TResult>
-      | LiveQueryDef<TResult>
-      | SignalDef<TResult>
-      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')
@@ -816,6 +860,21 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const leader = yield* this.clientSession.leaderThread.getSyncState
         return { session, leader }
       }).pipe(this.runEffectPromise),
+
+    printSyncStates: () => {
+      Effect.gen(this, function* () {
+        const session = yield* this.syncProcessor.syncState
+        yield* Effect.log(
+          `Session sync state: ${EventSequenceNumber.toString(session.localHead)} (upstream: ${EventSequenceNumber.toString(session.upstreamHead)})`,
+          session.toJSON(),
+        )
+        const leader = yield* this.clientSession.leaderThread.getSyncState
+        yield* Effect.log(
+          `Leader sync state: ${EventSequenceNumber.toString(leader.localHead)} (upstream: ${EventSequenceNumber.toString(leader.upstreamHead)})`,
+          leader.toJSON(),
+        )
+      }).pipe(this.runEffectFork)
+    },
 
     version: liveStoreVersion,
 

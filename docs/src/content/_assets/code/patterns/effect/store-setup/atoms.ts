@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import { AtomLivestore } from '@effect-atom/atom-livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'

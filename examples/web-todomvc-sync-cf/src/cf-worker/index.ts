@@ -10,6 +10,7 @@ export class SyncBackendDO extends makeDurableObject({
 }) {}
 
 export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: (payload: any, context) => {
     console.log(`Validating connection for store: ${context.storeId}`)
     if (payload?.authToken !== 'insecure-token-change-me') {

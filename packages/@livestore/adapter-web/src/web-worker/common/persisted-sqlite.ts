@@ -1,6 +1,7 @@
 import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA, type WebDatabaseMetadataOpfs } from '@livestore/sqlite-wasm/browser'
+import { isDevEnv } from '@livestore/utils'
 import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 
 import * as OpfsUtils from '../../opfs-utils.ts'
@@ -143,6 +144,8 @@ export const getStateDbFileName = (schema: LiveStoreSchema) => {
   return `state${schemaHashSuffix}.db`
 }
 
+export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
+
 /**
  * Cleanup old state database files after successful migration.
  * This prevents OPFS file pool capacity from being exhausted by accumulated schema files.
@@ -151,7 +154,15 @@ export const getStateDbFileName = (schema: LiveStoreSchema) => {
  * @param currentSchema - Current schema (to avoid deleting the active database)
  */
 export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(
-  function* ({ vfs, currentSchema }: { vfs: WebDatabaseMetadataOpfs['vfs']; currentSchema: LiveStoreSchema }) {
+  function* ({
+    vfs,
+    currentSchema,
+    opfsDirectory,
+  }: {
+    vfs: WebDatabaseMetadataOpfs['vfs']
+    currentSchema: LiveStoreSchema
+    opfsDirectory: string
+  }) {
     // Only cleanup for auto migration strategy because:
     // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
     //   which accumulate over time and can exhaust OPFS file pool capacity
@@ -162,6 +173,7 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       return
     }
 
+    const isDev = isDevEnv()
     const currentDbFileName = getStateDbFileName(currentSchema)
     const currentPath = `/${currentDbFileName}`
 
@@ -178,8 +190,26 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
     yield* Effect.logDebug(`Found ${oldStateDbPaths.length} old state database file(s) to clean up`)
 
     let deletedCount = 0
+    const archivedFileNames: string[] = []
+    let archiveDirHandle: FileSystemDirectoryHandle | undefined
+
     for (const path of oldStateDbPaths) {
       const fileName = path.startsWith('/') ? path.slice(1) : path
+
+      if (isDev) {
+        archiveDirHandle = yield* Effect.tryPromise({
+          try: () => OpfsUtils.getDirHandle(`${opfsDirectory}/archive`, { create: true }),
+          catch: (cause) => new ArchiveStateDbError({ message: 'Failed to ensure archive directory', cause }),
+        })
+
+        const archivedFileName = yield* archiveStateDbFile({
+          vfs,
+          fileName,
+          archiveDirHandle,
+        })
+
+        archivedFileNames.push(archivedFileName)
+      }
 
       const vfsResultCode = yield* Effect.try({
         try: () => vfs.jDelete(fileName, 0),
@@ -200,7 +230,18 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       yield* Effect.logDebug(`Successfully deleted old state database file: ${fileName}`)
     }
 
-    yield* Effect.logDebug(`State db cleanup completed: removed ${deletedCount} old database file(s)`)
+    if (isDev && archiveDirHandle !== undefined) {
+      const pruneResult = yield* pruneArchiveDir({
+        archiveDirHandle,
+        keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
+      })
+
+      yield* Effect.logDebug(
+        `State db cleanup completed: archived ${archivedFileNames.length} file(s); removed ${deletedCount} old database file(s) from active pool; archive retained ${pruneResult.retained.length} file(s)`,
+      )
+    } else {
+      yield* Effect.logDebug(`State db cleanup completed: removed ${deletedCount} old database file(s)`)
+    }
   },
   Effect.mapError(
     (error) =>
@@ -210,6 +251,108 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       }),
   ),
 )
+
+const archiveStateDbFile = Effect.fn('@livestore/adapter-web:archiveStateDbFile')(function* ({
+  vfs,
+  fileName,
+  archiveDirHandle,
+}: {
+  vfs: WebDatabaseMetadataOpfs['vfs']
+  fileName: string
+  archiveDirHandle: FileSystemDirectoryHandle
+}) {
+  const stateDbBuffer = vfs.readFilePayload(fileName)
+
+  const archiveFileName = `${Date.now()}-${fileName}`
+
+  const archiveFileHandle = yield* Effect.tryPromise({
+    try: () => archiveDirHandle.getFileHandle(archiveFileName, { create: true }),
+    catch: (cause) =>
+      new ArchiveStateDbError({
+        message: 'Failed to open archive file handle',
+        fileName: archiveFileName,
+        cause,
+      }),
+  })
+
+  const archiveFileAccessHandle = yield* Effect.acquireRelease(
+    Effect.tryPromise({
+      try: () => archiveFileHandle.createSyncAccessHandle(),
+      catch: (cause) =>
+        new ArchiveStateDbError({
+          message: 'Failed to create sync access handle for archived file',
+          fileName: archiveFileName,
+          cause,
+        }),
+    }),
+    (handle) => Effect.sync(() => handle.close()).pipe(Effect.ignoreLogged),
+  )
+
+  yield* Effect.try({
+    try: () => {
+      archiveFileAccessHandle.write(stateDbBuffer)
+      archiveFileAccessHandle.flush()
+    },
+    catch: (cause) =>
+      new ArchiveStateDbError({
+        message: 'Failed to write archived state database',
+        fileName: archiveFileName,
+        cause,
+      }),
+  })
+
+  return archiveFileName
+}, Effect.scoped)
+
+const pruneArchiveDir = Effect.fn('@livestore/adapter-web:pruneArchiveDir')(function* ({
+  archiveDirHandle,
+  keep,
+}: {
+  archiveDirHandle: FileSystemDirectoryHandle
+  keep: number
+}) {
+  const files = yield* Effect.tryPromise({
+    try: async () => {
+      const result: { name: string; lastModified: number }[] = []
+
+      for await (const entry of archiveDirHandle.values()) {
+        if (entry.kind !== 'file') continue
+        const fileHandle = await archiveDirHandle.getFileHandle(entry.name)
+        const file = await fileHandle.getFile()
+        result.push({ name: entry.name, lastModified: file.lastModified })
+      }
+
+      return result.sort((a, b) => b.lastModified - a.lastModified)
+    },
+    catch: (cause) => new ArchiveStateDbError({ message: 'Failed to enumerate archived state databases', cause }),
+  })
+
+  const retained = files.slice(0, keep)
+  const toDelete = files.slice(keep)
+
+  yield* Effect.forEach(toDelete, ({ name }) =>
+    Effect.tryPromise({
+      try: () => archiveDirHandle.removeEntry(name),
+      catch: (cause) =>
+        new ArchiveStateDbError({
+          message: 'Failed to delete archived state database',
+          fileName: name,
+          cause,
+        }),
+    }),
+  )
+
+  return {
+    retained,
+    deleted: toDelete,
+  }
+})
+
+export class ArchiveStateDbError extends Schema.TaggedError<ArchiveStateDbError>()('ArchiveStateDbError', {
+  message: Schema.String,
+  fileName: Schema.optional(Schema.String),
+  cause: Schema.Defect,
+}) {}
 
 export class SqliteVfsError extends Schema.TaggedError<SqliteVfsError>()('SqliteVfsError', {
   operation: Schema.String,

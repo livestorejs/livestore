@@ -91,6 +91,54 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   }
 }
 
+/**
+ * Connectivity metadata emitted by sync backends.
+ */
+export const NetworkStatus = Schema.Struct({
+  /** True when the upstream sync backend is reachable and responding to health checks. */
+  isConnected: Schema.Boolean,
+  /** Unix epoch timestamp (ms) of the latest connectivity state transition. */
+  timestampMs: Schema.Number,
+  /** Devtools specific metadata describing simulator overrides. */
+  devtools: Schema.Struct({
+    /** Indicates whether the devtools latch forced the client into an offline state. */
+    latchClosed: Schema.Boolean,
+  }),
+}).annotations({ title: 'NetworkStatus' })
+
+export type NetworkStatus = typeof NetworkStatus.Type
+
+/**
+ * Runtime type guard for SyncBackend objects.
+ * Performs lightweight structural checks on the object shape.
+ */
+export const isSyncBackend = (value: unknown): value is SyncBackend<any> => {
+  if (typeof value !== 'object' || value === null) return false
+
+  const v: any = value
+  const hasCoreFns =
+    typeof v.connect === 'function' &&
+    typeof v.pull === 'function' &&
+    typeof v.push === 'function' &&
+    typeof v.ping === 'function'
+
+  const hasSupports =
+    typeof v.supports === 'object' &&
+    v.supports !== null &&
+    typeof v.supports.pullPageInfoKnown === 'boolean' &&
+    typeof v.supports.pullLive === 'boolean'
+
+  const hasMetadata =
+    typeof v.metadata === 'object' &&
+    v.metadata !== null &&
+    typeof v.metadata.name === 'string' &&
+    typeof v.metadata.description === 'string'
+
+  const hasIsConnected = typeof v.isConnected === 'object' && v.isConnected !== null
+
+  return hasCoreFns && hasSupports && hasMetadata && hasIsConnected
+}
+
 export const PullResPageInfo = Schema.Union(
   Schema.TaggedStruct('MoreUnknown', {}),
   Schema.TaggedStruct('MoreKnown', {

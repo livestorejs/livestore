@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./prepare-ci": "./src/prepare-ci.ts"
+    "./prepare-ci": "./src/prepare-ci.ts",
+    "./registry": "./src/providers/registry.ts"
   },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
@@ -16,6 +17,7 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "postgres": "3.4.7"
   },

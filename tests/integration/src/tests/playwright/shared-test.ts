@@ -6,8 +6,11 @@ import process from 'node:process'
 
 import type { UnexpectedError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
-import { Deferred, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
+import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 import type * as PW from '@playwright/test'
+
+// Allow for slowest observed misc test (schema-migration performs 22 OPFS migrations).
+const runAndGetExitTimeoutMs = Duration.minutes(2)
 
 export const runTest =
   (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
@@ -79,8 +82,6 @@ export const runAndGetExit = <Tag extends string, A>({
         }),
       )
 
-      const exit = yield* Deferred.await(deferred).pipe(Effect.timeout(40_000))
-
-      return exit
+      return yield* deferred.pipe(Effect.timeout(runAndGetExitTimeoutMs))
     }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
   })

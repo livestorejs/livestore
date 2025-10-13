@@ -1,8 +1,8 @@
 import { Transferable } from '@effect/platform'
-import type { SchemaAST } from 'effect'
 import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
+import * as SchemaAST from 'effect/SchemaAST'
 
 import { shouldNeverHappen } from '../../mod.ts'
 
@@ -21,6 +21,21 @@ export const hash = (schema: Schema.Schema<any>) => {
     )
     return Hash.hash(schema.ast.toString())
   }
+}
+
+const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
+  if (SchemaAST.isTransformation(ast)) {
+    return resolveStructAst(ast.from)
+  }
+
+  return ast
+}
+
+export const getResolvedPropertySignatures = (
+  schema: Schema.Schema.AnyNoContext,
+): ReadonlyArray<SchemaAST.PropertySignature> => {
+  const resolvedAst = resolveStructAst(schema.ast)
+  return SchemaAST.getPropertySignatures(resolvedAst)
 }
 
 export const encodeWithTransferables =
@@ -81,4 +96,4 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
   Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ title: 'JsonValue' })
+).annotations({ identifier: 'JsonValue' })
