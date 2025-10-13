@@ -178,15 +178,13 @@ The multi-store architecture introduces three key concepts:
 
 #### Consumption
 
-| API                       | Purpose                                     | Context Required       |
-|:--------------------------|:--------------------------------------------|:-----------------------|
-| `<LiveStoreProvider>`     | Single-store provider (backward compatible) | None                   |
-| `<MultiStoreProvider>`    | Multi-store provider with registry          | None                   |
-| `useStore()`              | Get store instance (suspends until ready)   | Either provider        |
-| `useStoreRegistry()`      | Get registry for advanced operations        | `<MultiStoreProvider>` |
-| `registry.preloadStore()` | Preload store without suspending            | `<MultiStoreProvider>` |
-| `registry.drop()`         | Manually evict store instance               | `<MultiStoreProvider>` |
-| `registry.clear()`        | Evict all store instances                   | `<MultiStoreProvider>` |
+| API                       | Purpose                                   | Context Required       |
+|:--------------------------|:------------------------------------------|:-----------------------|
+| `<LiveStoreProvider>`     | Single-store provider                     | None                   |
+| `<MultiStoreProvider>`    | Multi-store provider with registry        | None                   |
+| `useStore()`              | Get store instance (suspends until ready) | Either provider        |
+| `useStoreRegistry()`      | Get registry for advanced operations      | `<MultiStoreProvider>` |
+| `registry.preloadStore()` | Preload store without suspending          | None                   |
 
 ### Authoring API
 
@@ -439,7 +437,7 @@ Hook to access a store instance. Suspends the component until the store is ready
 **Signatures:**
 
 ```ts
-// Single-store usage (backward compatible)
+// Single-store usage
 function useStore<TSchema extends LiveStoreSchema>(): Store<TSchema>
 
 // Multi-store usage
@@ -540,7 +538,7 @@ function App() {
 }
 ```
 
-**Example: Single-Store Usage (Backward Compatible)**
+**Example: Single-Store Usage**
 
 ```tsx
 import { LiveStoreProvider, useStore } from '@livestore/react'
@@ -613,7 +611,7 @@ function IssueListItem({ issueId }: { issueId: string }) {
 
 #### `registry.preloadStore()`
 
-Preloads a store instance without suspending the component. Useful for prefetching data on hover, focus, or in route loaders.
+Preloads a store instance without suspending the component. It silently discards errors. Useful for prefetching data on hover, focus, or in route loaders.
 
 **Signature:**
 
@@ -721,78 +719,6 @@ function WorkspaceView() {
   }, [workspace.recentIssueIds, registry])
 
   return <div>{/* ... */}</div>
-}
-```
-
-#### `registry.drop()`
-
-Manually evict a store instance from the cache, destroying it immediately.
-
-**Signature:**
-
-```ts
-function drop<TSchema extends LiveStoreSchema>(
-  storeDef: StoreDefinition<TSchema>,
-  storeId: string
-): void
-```
-
-**Behavior:**
-- Cancels any pending GC timer
-- Aborts store loading if in progress
-- Calls `store.destroy()` if instance exists
-- Removes from registry cache
-- No-op if instance doesn't exist
-
-**Warning:** Only call `drop()` if you're certain no components are using the store. Dropping a store with active observers will cause errors when those components try to access it.
-
-**Example:**
-
-```tsx
-function AdminPanel() {
-  const registry = useStoreRegistry()
-
-  const handleResetIssue = (issueId: string) => {
-    // Force drop the store to clear all cached data
-    registry.drop(issueStoreDef, issueId)
-    
-    // Next useStore() call will load a fresh instance
-  }
-
-  return <button onClick={() => handleResetIssue('issue-123')}>Reset</button>
-}
-```
-
-#### `registry.clear()`
-
-Evicts all store instances from the registry.
-
-**Signature:**
-
-```ts
-function clear(): void
-```
-
-**Behavior:**
-- Calls `drop()` on every cached instance
-- Clears the entire registry
-- Useful for logout, test cleanup, etc.
-
-**Example:**
-
-```tsx
-function LogoutButton() {
-  const registry = useStoreRegistry()
-
-  const handleLogout = async () => {
-    // Clear all stores before logout
-    registry.clear()
-    
-    await logout()
-    navigate('/login')
-  }
-
-  return <button onClick={handleLogout}>Logout</button>
 }
 ```
 
@@ -1175,7 +1101,7 @@ A store instance progresses through these states:
 │  • Can transition back to ACTIVE if observer attaches   │
 └────────────────┬────────────────────────────────────────┘
                  │
-                 │ GC timer fires (or manual drop())
+                 │ GC timer fires
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │                       DISPOSED                          │
@@ -1516,8 +1442,6 @@ This section documents key design choices and their rationale. **Feedback and al
 class StoreRegistry {
   get(storeDef, storeId): Promise<Store>
   preloadStore(storeDef, storeId): Promise<void>
-  drop(storeDef, storeId): void
-  clear(): void
 }
 ```
 
@@ -1598,7 +1522,6 @@ const store = useStoreInstance(storeDef, storeId)
 - Zero overhead for single-store users (tree-shaking removes multi-store code)
 - No prop confusion (single-store props vs multi-store props)
 - Easier to document and understand (two distinct APIs)
-- Backward compatible (existing code unchanged)
 
 **Cons:**
 - Two providers to learn
@@ -1779,7 +1702,6 @@ export function useWorkspaceStore(workspaceId: string) {
 - Users control their own abstractions (see User-Space Helpers)
 - Works with any store definition (even dynamically created ones)
 - Simple mental model: "call useStore with the definition you want"
-- No additional build step or tooling required
 
 **Cons:**
 - Slightly more verbose at call-sites (must specify storeDef and storeId)
@@ -1797,7 +1719,6 @@ const store = useWorkspaceStore('ws-1')
 **Pros:**
 - Explicit opt-in to per-definition hooks
 - Type-safe (returns properly typed hooks)
-- No build step required
 
 **Cons:**
 - More API surface (`createStoreHooks`)
@@ -1879,7 +1800,6 @@ The multi-store architecture introduces a three-layer configuration cascade:
 
 **Context:**
 
-Many sync adapters require a `clientId` and `sessionId`:
 - **`clientId`**: Unique identifier for this device/browser (persisted across sessions)
 - **`sessionId`**: Unique identifier for this tab/window
 
@@ -1981,13 +1901,6 @@ class StoreRegistry {
     def: StoreDefinition<TSchema>,
     storeId: string
   ): boolean
-
-  drop<TSchema extends LiveStoreSchema>(
-    def: StoreDefinition<TSchema>,
-    storeId: string
-  ): void
-
-  clear(): void
 }
 ```
 
@@ -2025,7 +1938,7 @@ src/
 ```tsx
 import * as React from 'react'
 
-// --- Single Store (Backward Compatible) ---
+// --- Single Store ---
 
 const DefaultStoreContext = React.createContext<Promise<Store> | null>(null)
 
@@ -2313,12 +2226,7 @@ export class StoreRegistry {
 
   has = <TSchema extends LiveStoreSchema>(storeDef: StoreDefinition<TSchema>, storeId: string) =>
     this.entries.has(this.makeKey(storeDef, storeId))
-
-  drop = <TSchema extends LiveStoreSchema>(storeDef: StoreDefinition<TSchema>, storeId: string) => {
-    const key = this.makeKey(storeDef, storeId)
-    this.dropByKey(key)
-  }
-
+  
   private dropByKey(key: string) {
     const entry = this.entries.get(key)
     if (!entry) return
@@ -2339,23 +2247,6 @@ export class StoreRegistry {
       this.entries.delete(key)
     }
   }
-
-  clear = () => {
-    for (const entry of this.entries.values()) {
-      if (entry.gcTimer) clearTimeout(entry.gcTimer)
-      if (entry.abortController) {
-        entry.abortController.abort()
-        entry.abortController = null
-      }
-      try {
-        entry.instance?.destroy()
-      } catch {
-        // Ignore
-      }
-    }
-
-    this.entries.clear()
-  }
 }
 
 const StoreRegistryContext = React.createContext<StoreRegistry | null>(null)
@@ -2373,12 +2264,6 @@ export function MultiStoreProvider(props: {
   }
 
   const registry = registryRef.current
-
-  React.useEffect(() => {
-    return () => {
-      registry?.clear()
-    }
-  }, [registry])
 
   return <StoreRegistryContext.Provider value={registry}>{props.children}</StoreRegistryContext.Provider>
 }
