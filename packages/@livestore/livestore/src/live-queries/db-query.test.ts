@@ -2,7 +2,7 @@ import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
 import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
@@ -300,7 +300,7 @@ Vitest.describe('otel', () => {
         .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
       yield* Effect.promise(async () => {
-        const iterator = store.subscribe(queryBuilder)
+        const iterator = store.subscribe(queryBuilder)[Symbol.asyncIterator]()
 
         const initial = await iterator.next()
         expect(initial.done).toBe(false)
@@ -316,7 +316,8 @@ Vitest.describe('otel', () => {
           completed: false,
         })
 
-        const doneResult = await iterator.return()
+        const doneResult = await iterator.return?.()
+        assert(doneResult)
         expect(doneResult.done).toBe(true)
       })
 

@@ -5,6 +5,7 @@ import type {
   InvalidPullError,
   IsOfflineError,
   MaterializeError,
+  QueryBuilder,
   StoreInterrupted,
   SyncError,
   UnexpectedError,
@@ -14,7 +15,7 @@ import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { LiveQuery } from '../live-queries/base-class.ts'
+import type { LiveQuery, LiveQueryDef, SignalDef } from '../live-queries/base-class.ts'
 import type { DebugRefreshReasonBase } from '../reactive.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 import type { Store } from './store.ts'
@@ -145,3 +146,10 @@ export type SubscribeOptions<TResult> = {
   otelContext?: otel.Context
   stackInfo?: StackInfo
 }
+
+/** All query definitions or instances the store can execute or subscribe to. */
+export type Queryable<TResult> =
+  | LiveQueryDef<TResult>
+  | SignalDef<TResult>
+  | LiveQuery<TResult>
+  | QueryBuilder<TResult, any, any>

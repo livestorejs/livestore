@@ -14,7 +14,6 @@ import {
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
   prepareBindValues,
-  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   UnexpectedError,
@@ -38,13 +37,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import type {
-  LiveQuery,
-  LiveQueryDef,
-  ReactivityGraph,
-  ReactivityGraphContext,
-  SignalDef,
-} from '../live-queries/base-class.ts'
+import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
@@ -53,6 +46,7 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
 import type {
+  Queryable,
   RefreshReason,
   StoreCommitOptions,
   StoreEventsOptions,
@@ -62,10 +56,14 @@ import type {
   Unsubscribe,
 } from './store-types.ts'
 
-type SubscribeQuery<TResult> =
-  | LiveQueryDef<TResult, 'def' | 'signal-def'>
-  | LiveQuery<TResult>
-  | QueryBuilder<TResult, any, any>
+type SubscribeFn = {
+  <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
+  ): Unsubscribe
+  <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): AsyncIterable<TResult>
+}
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -371,109 +369,95 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * }
    * ```
    */
-  subscribe: {
-    <TResult>(
-      query: SubscribeQuery<TResult>,
-      onUpdate: (value: TResult) => void,
-      options?: SubscribeOptions<TResult>,
-    ): Unsubscribe
-    <TResult>(query: SubscribeQuery<TResult>, options?: SubscribeOptions<TResult>): AsyncIterableIterator<TResult>
-  } = <TResult>(
-    query: SubscribeQuery<TResult>,
+  subscribe = (<TResult>(
+    query: Queryable<TResult>,
     onUpdateOrOptions?: ((value: TResult) => void) | SubscribeOptions<TResult>,
     maybeOptions?: SubscribeOptions<TResult>,
-  ): Unsubscribe | AsyncIterableIterator<TResult> => {
+  ): Unsubscribe | AsyncIterable<TResult> => {
     if (typeof onUpdateOrOptions === 'function') {
-      const onUpdate = onUpdateOrOptions
-      const options = maybeOptions
-
-      this.checkShutdown('subscribe')
-
-      return this.otel.tracer.startActiveSpan(
-        `LiveStore.subscribe`,
-        { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
-        options?.otelContext ?? this.otel.queriesSpanContext,
-        (span) => {
-          // console.debug('store sub', query$.id, query$.label)
-          const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-          const queryRcRef = isQueryBuilder(query)
-            ? queryDb(query).make(this.reactivityGraph.context!)
-            : query._tag === 'def' || query._tag === 'signal-def'
-              ? query.make(this.reactivityGraph.context!)
-              : {
-                  value: query as LiveQuery<TResult>,
-                  deref: () => {},
-                }
-          const query$ = queryRcRef.value
-
-          const label = `subscribe:${options?.label}`
-          const effect = this.reactivityGraph.makeEffect(
-            (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
-            { label },
-          )
-
-          if (options?.stackInfo) {
-            query$.activeSubscriptions.add(options.stackInfo)
-          }
-
-          options?.onSubscribe?.(query$)
-
-          this.activeQueries.add(query$ as LiveQuery<TResult>)
-
-          // Running effect right away to get initial value (unless `skipInitialRun` is set)
-          if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-            effect.doEffect(otelContext, {
-              _tag: 'subscribe.initial',
-              label: `subscribe-initial-run:${options?.label}`,
-            })
-          }
-
-          const unsubscribe = () => {
-            // console.debug('store unsub', query$.id, query$.label)
-            try {
-              this.reactivityGraph.destroyNode(effect)
-              this.activeQueries.remove(query$ as LiveQuery<TResult>)
-
-              if (options?.stackInfo) {
-                query$.activeSubscriptions.delete(options.stackInfo)
-              }
-
-              queryRcRef.deref()
-
-              options?.onUnsubsubscribe?.()
-            } finally {
-              span.end()
-            }
-          }
-
-          return unsubscribe
-        },
-      )
+      return this.subscribeWithCallback(query, onUpdateOrOptions, maybeOptions)
     }
 
-    return this.subscribeAsAsyncIterator(query, onUpdateOrOptions)
-  }
+    return this.subscribeAsAsyncIterable(query, onUpdateOrOptions)
+  }) as SubscribeFn
 
-  private subscribeAsAsyncIterator = <TResult>(
-    query: SubscribeQuery<TResult>,
+  private subscribeWithCallback = <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
     options?: SubscribeOptions<TResult>,
-  ): AsyncIterableIterator<TResult> => {
+  ): Unsubscribe => {
     this.checkShutdown('subscribe')
 
-    const iterator = Stream.toAsyncIterable(this.subscribeStream(query, options))[Symbol.asyncIterator]()
+    return this.otel.tracer.startActiveSpan(
+      `LiveStore.subscribe`,
+      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+      options?.otelContext ?? this.otel.queriesSpanContext,
+      (span) => {
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    return Object.assign(iterator, {
-      [Symbol.asyncIterator]() {
-        return this
+        const queryRcRef = isQueryBuilder(query)
+          ? queryDb(query).make(this.reactivityGraph.context!)
+          : query._tag === 'def' || query._tag === 'signal-def'
+            ? query.make(this.reactivityGraph.context!)
+            : {
+                value: query as LiveQuery<TResult>,
+                deref: () => {},
+              }
+        const query$ = queryRcRef.value
+
+        const label = `subscribe:${options?.label}`
+        const effect = this.reactivityGraph.makeEffect(
+          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          { label },
+        )
+
+        if (options?.stackInfo) {
+          query$.activeSubscriptions.add(options.stackInfo)
+        }
+
+        options?.onSubscribe?.(query$)
+
+        this.activeQueries.add(query$ as LiveQuery<TResult>)
+
+        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
+        }
+
+        const unsubscribe = () => {
+          try {
+            this.reactivityGraph.destroyNode(effect)
+            this.activeQueries.remove(query$ as LiveQuery<TResult>)
+
+            if (options?.stackInfo) {
+              query$.activeSubscriptions.delete(options.stackInfo)
+            }
+
+            queryRcRef.deref()
+
+            options?.onUnsubsubscribe?.()
+          } finally {
+            span.end()
+          }
+        }
+
+        return unsubscribe
       },
-    })
+    )
   }
 
-  subscribeStream = <TResult>(
-    query: SubscribeQuery<TResult>,
+  private subscribeAsAsyncIterable = <TResult>(
+    query: Queryable<TResult>,
     options?: SubscribeOptions<TResult>,
-  ): Stream.Stream<TResult> =>
+  ): AsyncIterable<TResult> => {
+    this.checkShutdown('subscribe')
+
+    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+  }
+
+  subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
@@ -508,12 +492,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query:
-      | QueryBuilder<TResult, any, any>
-      | LiveQuery<TResult>
-      | LiveQueryDef<TResult>
-      | SignalDef<TResult>
-      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')

@@ -39,6 +39,7 @@ export { type CreateStoreOptions, createStore, createStorePromise } from './stor
 export { Store } from './store/store.ts'
 export type {
   OtelOptions,
+  Queryable,
   QueryDebugInfo,
   RefreshReason,
   SubscribeOptions,
