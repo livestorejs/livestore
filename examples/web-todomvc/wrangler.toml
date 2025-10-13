@@ -14,5 +14,8 @@ not_found_handling = "single-page-application"
 [env.prod]
 name = "example-web-todomvc"
 
+[env.preview]
+name = "example-web-todomvc-preview"
+
 [env.dev]
 name = "example-web-todomvc-dev"
