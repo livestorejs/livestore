@@ -61,7 +61,8 @@ export declare class StoreRegistry {
 
   get<TSchema extends LiveStoreSchema>(options: StoreDescriptor<TSchema> & {}): Promise<Store<TSchema>>
 
-  preloadStore<TSchema extends LiveStoreSchema>(options: PreloadStoreOptions<TSchema>): Promise<void>
+  /** Preload a store instance in the background. Silently ignore loading errors. */
+  preload<TSchema extends LiveStoreSchema>(options: PreloadStoreOptions<TSchema>): Promise<void>
 
   retain<TSchema extends LiveStoreSchema>(options: StoreDescriptor<TSchema> & {}): () => void
 
