@@ -21,35 +21,8 @@ new_sqlite_classes = ["SyncBackendDO"]
 [env.prod]
 name = "web-linearlite-sync"
 
-[[env.prod.durable_objects.bindings]]
-name = "SYNC_BACKEND_DO"
-class_name = "SyncBackendDO"
-
-[[env.prod.migrations]]
-tag = "v1"
-new_sqlite_classes = ["SyncBackendDO"]
-
-[env.preview]
-name = "web-linearlite-sync-preview"
-
-[[env.preview.durable_objects.bindings]]
-name = "SYNC_BACKEND_DO"
-class_name = "SyncBackendDO"
-
-[[env.preview.migrations]]
-tag = "v1"
-new_sqlite_classes = ["SyncBackendDO"]
-
 [env.dev]
 name = "web-linearlite-sync-dev"
-
-[[env.dev.durable_objects.bindings]]
-name = "SYNC_BACKEND_DO"
-class_name = "SyncBackendDO"
-
-[[env.dev.migrations]]
-tag = "v1"
-new_sqlite_classes = ["SyncBackendDO"]
 
 [vars]
 # should be set via CF dashboard (as secret)
