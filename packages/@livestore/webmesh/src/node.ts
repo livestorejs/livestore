@@ -456,7 +456,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
         if (!edgeChannels.has(targetNodeName)) {
-          yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
+          return yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
         }
 
         yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
