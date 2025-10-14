@@ -189,7 +189,7 @@ export const command = Cli.Command.make(
           branchName,
           workersSubdomain,
         }),
-      { concurrency: 3 },
+      { concurrency: 1 },
     )
 
     console.log(`Deployed ${results.length} examples`)
