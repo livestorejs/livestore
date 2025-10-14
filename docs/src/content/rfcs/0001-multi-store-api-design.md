@@ -116,34 +116,34 @@ A multi-store solution must:
 The multi-store architecture introduces three key concepts:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     <MultiStoreProvider>                    │
-│  • Provides StoreRegistry                                   │
-│  • Passes default store options (gcTime, syncPayload, etc.) │
-│  • Lives at application root                                │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                      <MultiStoreProvider>                      │
+│  • Provides StoreRegistry                                      │
+│  • Passes default store options (gcTime, syncPayload, etc.)    │
+│  • Lives at application root                                   │
+└────────────────────────────────────────────────────────────────┘
                               │
                               │ provides
                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       StoreRegistry                         │
-│  • Central registry for all store instances                 │
-│  • Key: storeDefinition + storeId                           │
-│  • Manages caching, ref-counting, garbage collection        │
-│  • Framework-agnostic (reusable outside React)              │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                         StoreRegistry                          │
+│  • Central registry for all store instances                    │
+│  • Key: storeDefinition + storeId                              │
+│  • Manages caching, ref-counting, garbage collection           │
+│  • Framework-agnostic (reusable outside React)                 │
+└────────────────────────────────────────────────────────────────┘
                               │
                               │ manages
                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Store Instances                           │
-│                                                             │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐    │
-│  │ workspace:123 │  │ issue:456     │  │ issue:789     │    │
-│  │ observers: 2  │  │ observers: 1  │  │ observers: 0  │    │
-│  │ gcTimer: null │  │ gcTimer: null │  │ gcTimer: 60s  │    │
-│  └───────────────┘  └───────────────┘  └───────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                         Store Instances                        │
+│                                                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
+│  │ storeId:123     │  │ storeId:456     │  │ storeId:789    │  │
+│  │ observers: 2    │  │ observers: 1    │  │ observers: 0   │  │
+│  │ gcTimeout: null │  │ gcTimeout: null │  │ gcTimeout: 60s │  │
+│  └─────────────────┘  └─────────────────┘  └────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 #### Key Design Principles
@@ -349,6 +349,8 @@ type MultiStoreProviderProps = {
    * Can be overridden by individual definitions or useStore() calls.
    */
   defaultStoreOptions?: StoreDefaultOptions
+
+  storeRegistry: StoreRegistry
 
   children: React.ReactNode
 }
@@ -587,11 +589,11 @@ import { useStoreRegistry } from '@livestore/react'
 import { issueStoreDef } from '../stores/issue'
 
 function IssueListItem({ issueId }: { issueId: string }) {
-  const registry = useStoreRegistry()
+  const storeRegistry = useStoreRegistry()
 
-  const prefetchIssue = () => {
+  const preloadIssueStore = () => {
     // Preload the issue store on hover (doesn't suspend this component)
-    registry.preloadStore({
+    storeRegistry.preloadStore({
       storeDef: issueStoreDef,
       storeId: issueId,
     })
@@ -600,8 +602,8 @@ function IssueListItem({ issueId }: { issueId: string }) {
   return (
     <Link
       to={`/issues/${issueId}`}
-      onMouseEnter={prefetchIssue}
-      onFocus={prefetchIssue}
+      onMouseEnter={preloadIssueStore}
+      onFocus={preloadIssueStore}
     >
       Issue {issueId}
     </Link>
