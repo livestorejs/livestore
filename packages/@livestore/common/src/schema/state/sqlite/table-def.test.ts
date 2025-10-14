@@ -300,4 +300,48 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.metadata.columnType).toBe('text')
     expect(userTable.sqliteDef.columns.metadata.nullable).toBe(true)
   })
+
+  it('supports discriminated unions with parsed JSON payloads', () => {
+    const CircleDataSchema = Schema.Struct({
+      radius: Schema.Number,
+    })
+    const CircleSchema = Schema.Struct({
+      kind: Schema.Literal('circle'),
+      data: Schema.parseJson(CircleDataSchema),
+    })
+
+    const SquareDataSchema = Schema.Struct({
+      sideLength: Schema.Number,
+    })
+    const SquareSchema = Schema.Struct({
+      kind: Schema.Literal('square'),
+      data: Schema.parseJson(SquareDataSchema),
+    })
+
+    const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)
+
+    const shapes = State.SQLite.table({
+      name: 'shapes',
+      schema: ShapeSchema,
+    })
+
+    expect(shapes.sqliteDef.columns.kind.columnType).toBe('text')
+
+    const kindSchema = shapes.sqliteDef.columns.kind.schema.toString()
+    expect(kindSchema).toContain('"circle" | "square"')
+
+    expect(() =>
+      shapes.insert({
+        kind: 'square',
+        data: { sideLength: 10 },
+      }).asSql(),
+    ).not.toThrow()
+
+    expect(() =>
+      shapes.insert({
+        kind: 'circle',
+        data: { radius: 5 },
+      }).asSql(),
+    ).not.toThrow()
+  })
 })
