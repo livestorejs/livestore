@@ -14,13 +14,18 @@ export const useSuspenseStore = <TSchema extends LiveStoreSchema>(
 ): Store<TSchema> => {
   const storeRegistry = useStoreRegistry()
 
-  storeRegistry.ensureStoreEntry(storeDescriptor)
+  storeRegistry.ensureStoreEntry(storeDescriptor.storeId)
 
-  React.useSyncExternalStore(
-    (onChange) => storeRegistry.subscribe(storeDescriptor, onChange),
-    () => storeRegistry.getVersion(storeDescriptor),
-    () => storeRegistry.getVersion(storeDescriptor),
+  const subscribe = React.useCallback(
+    (onChange: () => void) => storeRegistry.subscribe(storeDescriptor.storeId, onChange),
+    [storeRegistry, storeDescriptor.storeId],
   )
+  const getSnapshot = React.useCallback(
+    () => storeRegistry.getVersion(storeDescriptor.storeId),
+    [storeRegistry, storeDescriptor.storeId],
+  )
+
+  React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   return storeRegistry.read(storeDescriptor)
 }
