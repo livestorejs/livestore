@@ -113,10 +113,16 @@ export class StoreRegistry {
       entry.promise = createStorePromise(storeDescriptor)
         .then((store) => {
           entry.setStore(store)
+
+          if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+
           return store
         })
         .catch((error) => {
           entry.setError(error)
+
+          if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+
           throw error
         })
     }
