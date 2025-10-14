@@ -2,18 +2,54 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStorePromise, type Store, type Unsubscribe } from '@livestore/livestore'
 import type { StoreDescriptor, StoreId } from './types.ts'
 
+/**
+ * Minimal cache entry that tracks store, error, and in-flight promise along with subscribers.
+ *
+ * @typeParam TSchema - The schema for this entry's store.
+ * @internal
+ */
 class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
+  /**
+   * The resolved store.
+   *
+   * @remarks
+   * A value of `undefined` indicates "not loaded yet".
+   */
   store: Store<TSchema> | undefined = undefined
+
+  /**
+   * The most recent error encountered for this entry, if any.
+   */
   error: unknown = undefined
+
+  /**
+   * The in-flight promise for loading the store, or `undefined` if not yet loading or already resolved.
+   */
   promise: Promise<Store<TSchema>> | undefined = undefined
 
+  /**
+   * Set of subscriber callbacks to notify on state changes.
+   */
   #subscribers = new Set<() => void>()
+
+  /**
+   * Monotonic counter that increments on every notify.
+   */
   version = 0
 
+  /**
+   * The number of active subscribers for this entry.
+   */
   get subscriberCount() {
     return this.#subscribers.size
   }
 
+  /**
+   * Subscribes to this entry's updates.
+   *
+   * @param listener - Callback invoked when the entry changes
+   * @returns Unsubscribe function
+   */
   subscribe = (listener: () => void): Unsubscribe => {
     this.#subscribers.add(listener)
     return () => {
@@ -21,6 +57,12 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     }
   }
 
+  /**
+   * Notifies all subscribers and increments the version counter.
+   *
+   * @remarks
+   * This should be called after any meaningful state change.
+   */
   notify = (): void => {
     this.version++
     for (const sub of this.#subscribers) {
@@ -53,6 +95,14 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 }
 
+/**
+ * In-memory map of {@link StoreEntry} instances keyed by {@link StoreId}.
+ *
+ * @privateRemarks
+ * The cache is intentionally small; eviction and GC timers are coordinated by the client.
+ *
+ * @internal
+ */
 class StoreCache {
   readonly #entries = new Map<StoreId, StoreEntry>()
 
@@ -60,7 +110,6 @@ class StoreCache {
     return this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
   }
 
-  /** Get or create a store entry */
   getOrCreate = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
     let entry = this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
 
@@ -72,6 +121,13 @@ class StoreCache {
     return entry
   }
 
+  /**
+   * Removes an entry from the cache and notifies its subscribers.
+   *
+   * @param storeId - The ID of the store to remove
+   * @remarks
+   * Notifying subscribers prompts consumers to re-render and re-read as needed.
+   */
   remove = (storeId: StoreId): void => {
     const entry = this.#entries.get(storeId)
     if (!entry) return
@@ -81,7 +137,7 @@ class StoreCache {
     try {
       entry.notify()
     } catch {
-      // Best-effort notify
+      // Best-effort notify; swallowing to avoid crashing removal flows.
     }
   }
 
@@ -94,26 +150,55 @@ class StoreCache {
 
 const GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
+/**
+ * Store Registry coordinating cache, GC, and Suspense reads.
+ *
+ * @public
+ */
 export class StoreRegistry {
   private readonly cache = new StoreCache()
   private readonly gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
 
+  /**
+   * Ensures a store entry exists in the cache.
+   *
+   * @param storeId - The ID of the store
+   * @returns The existing or newly created store entry
+   *
+   * @internal
+   */
   ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
     return this.cache.getOrCreate<TSchema>(storeId)
   }
 
+  /**
+   * Loads a store, throwing to integrate with Suspense/Error Boundaries.
+   *
+   * @typeParam TSchema - The schema of the store to load
+   * @returns The loaded store
+   * @throws Promise<TStore<TSchema>> that resolves when loading is complete to integrate with React Suspense
+   * @throws unknown loading error to integrate with React Error Boundaries
+   *
+   * @remarks
+   * - This API intentionally has no loading or error states; it cooperates with React Suspense and Error Boundaries.
+   * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
+   */
   load = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Store<TSchema> => {
     const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
 
+    // If already loaded, return it
     if (entry.store) return entry.store
 
+    // If a previous error exists, throw it
     if (entry.error !== undefined) throw entry.error
 
+    // Load store if none is in flight
     if (!entry.promise) {
       entry.promise = createStorePromise(storeDescriptor)
         .then((store) => {
           entry.setStore(store)
 
+          // If no one subscribed (e.g., initial render aborted), schedule GC.
           if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
 
           return store
@@ -121,22 +206,33 @@ export class StoreRegistry {
         .catch((error) => {
           entry.setError(error)
 
+          // Likewise, ensure unused entries are eventually collected.
           if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
 
           throw error
         })
     }
 
-    // Suspend while fetching
+    // Suspend while the load is in flight.
     throw entry.promise
   }
 
-  preload = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Promise<Store<TSchema>> => {
+  /**
+   * Warms the cache for a store without mounting a subscriber.
+   *
+   * @typeParam TSchema - The schema of the store to preload
+   * @returns A promise that resolves when the store is loaded
+   *
+   * @remarks
+   * - We don't return the store or throw as this is a fire-and-forget operation.
+   * - If the entry remains unused after preload resolves/rejects, it is scheduled for GC.
+   */
+  preload = async <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Promise<void> => {
     const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
 
-    if (entry.store) return Promise.resolve(entry.store)
+    if (entry.store) return Promise.resolve()
 
-    if (entry.promise) return entry.promise
+    if (entry.promise) await entry.promise
 
     entry.promise = createStorePromise(storeDescriptor)
       .then((store) => {
@@ -155,7 +251,7 @@ export class StoreRegistry {
         return Promise.reject(error)
       })
 
-    return entry.promise
+    await entry.promise
   }
 
   removeStore = (storeId: StoreId): void => {
