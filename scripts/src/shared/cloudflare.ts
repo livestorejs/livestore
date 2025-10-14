@@ -182,13 +182,21 @@ export const buildCloudflareWorker = ({
    * We rely on Vite's Cloudflare plugin to emit the environment-specific
    * wrangler.json when CLOUDFLARE_ENV is set. The rest of the pipeline works
    * off the build output.
+   *
+   * Clean the dist directory first to ensure fresh builds without stale artifacts.
    */
-  return cmd(['pnpm', 'build'], {
-    cwd: example.repoRelativePath,
-    env: {
-      ...process.env,
-      CLOUDFLARE_ENV: envName,
-    },
+  return Effect.gen(function* () {
+    yield* cmd(['rm', '-rf', 'dist'], {
+      cwd: example.repoRelativePath,
+    }).pipe(Effect.ignore)
+
+    yield* cmd(['pnpm', 'build'], {
+      cwd: example.repoRelativePath,
+      env: {
+        ...process.env,
+        CLOUDFLARE_ENV: envName,
+      },
+    })
   })
 }
 
