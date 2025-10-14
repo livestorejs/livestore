@@ -256,6 +256,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up environment
         uses: ./.github/actions/setup-env
+      - name: Run Cloudflare Diagnostic Script
+        if: github.event.pull_request.head.repo.fork != true
+        run: ./scripts/bin/diagnose-cloudflare.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: mono examples deploy
