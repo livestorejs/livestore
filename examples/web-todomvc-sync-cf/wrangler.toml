@@ -39,3 +39,14 @@ class_name = "SyncBackendDO"
 [[env.dev.migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
+
+[env.preview]
+name = "example-web-todomvc-sync-cf-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]

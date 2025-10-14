@@ -16,3 +16,6 @@ name = "example-web-todomvc"
 
 [env.dev]
 name = "example-web-todomvc-dev"
+
+[env.preview]
+name = "example-web-todomvc-preview"

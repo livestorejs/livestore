@@ -7,7 +7,6 @@ import { cmdText } from '@livestore/utils-dev/node'
 import {
   buildCloudflareWorker,
   type CloudflareEnvironmentKind,
-  createPreviewAlias,
   deployCloudflareWorker,
   getCloudflareExample,
   resolveCloudflareAccountId,
@@ -37,8 +36,6 @@ interface DeploymentSummary {
   workerHost: string
   env: 'prod' | 'dev' | 'preview'
   domains: string[]
-  alias?: string
-  previewUrl?: string
 }
 
 const getBranchInfo = Effect.gen(function* () {
@@ -57,25 +54,19 @@ const getBranchInfo = Effect.gen(function* () {
     }
   }
 
-  const shortSha = (yield* cmdText('git rev-parse --short HEAD', { cwd: workspaceRoot })).trim()
-
-  return { branchName, shortSha }
+  return { branchName }
 })
 
 /**
- * Decide whether a deploy should target the prod worker, dev worker, or an ephemeral preview
- * alias. Preview aliases are deterministic and safe for DNS labels.
+ * Decide whether a deploy should target the prod worker, dev worker, or the static preview
+ * environment.
  */
 const determineDeploymentKind = ({
-  aliasOption,
   prod,
   branchName,
-  shortSha,
 }: {
-  aliasOption: Option.Option<string>
   prod: boolean
   branchName: string
-  shortSha: string
 }): CloudflareEnvironmentKind => {
   const normalizedBranch = branchName.toLowerCase()
 
@@ -87,38 +78,31 @@ const determineDeploymentKind = ({
     return 'dev'
   }
 
-  const alias = createPreviewAlias({ branch: normalizedBranch, shortSha, explicitAlias: aliasOption })
-
-  return { _tag: 'preview', alias }
+  return 'preview'
 }
 
 const formatDomain = (domain: { domain: string; name: string }) =>
   domain.name === '@' ? domain.domain : `${domain.name}.${domain.domain}`
 
-const deploymentKindLabel = (kind: CloudflareEnvironmentKind) =>
-  kind === 'prod' ? 'prod' : kind === 'dev' ? 'dev' : `preview:${kind.alias}`
+const deploymentKindLabel = (kind: CloudflareEnvironmentKind) => kind
 
 /**
  * Build + deploy a single example, returning a summary that can be rendered in the CLI table.
  */
 const deployExample = ({
   exampleSlug,
-  aliasOption,
   prod,
   branchName,
-  shortSha,
   workersSubdomain,
 }: {
   exampleSlug: string
-  aliasOption: Option.Option<string>
   prod: boolean
   branchName: string
-  shortSha: string
   workersSubdomain: string
 }) =>
   Effect.gen(function* () {
     const manifest = yield* getCloudflareExample(exampleSlug)
-    const deploymentKind = determineDeploymentKind({ aliasOption, prod, branchName, shortSha })
+    const deploymentKind = determineDeploymentKind({ prod, branchName })
     const envName = resolveEnvironmentName({ example: manifest, kind: deploymentKind })
     const workerName = resolveWorkerName({ example: manifest, kind: deploymentKind })
     const workerHost = `${workerName}.${workersSubdomain}.workers.dev`
@@ -145,11 +129,8 @@ const deployExample = ({
       example: manifest.slug,
       workerName,
       workerHost,
-      env: typeof deploymentKind === 'string' ? deploymentKind : 'preview',
+      env: deploymentKind,
       domains: scopedDomains.map(formatDomain),
-      ...(typeof deploymentKind === 'string'
-        ? {}
-        : ({ alias: deploymentKind.alias, previewUrl: `https://${workerHost}` } as const)),
     }
 
     return summary
@@ -166,15 +147,14 @@ export const command = Cli.Command.make(
   {
     exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
     prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
-    alias: Cli.Options.text('alias').pipe(Cli.Options.withAlias('a'), Cli.Options.optional),
   },
-  Effect.fn(function* ({ exampleFilter, prod, alias }) {
+  Effect.fn(function* ({ exampleFilter, prod }) {
     // Ensure credentials are present before kicking off parallel builds; wrangler fails with
     // an opaque message otherwise.
     yield* resolveCloudflareAccountId
     yield* resolveCloudflareApiToken
 
-    const { branchName, shortSha } = yield* getBranchInfo
+    const { branchName } = yield* getBranchInfo
     console.log(`Deploy branch: ${branchName}`)
 
     const filteredExamples = cloudflareExamples.filter((example) =>
@@ -201,10 +181,8 @@ export const command = Cli.Command.make(
       (example) =>
         deployExample({
           exampleSlug: example.slug,
-          aliasOption: alias,
           prod,
           branchName,
-          shortSha,
           workersSubdomain,
         }),
       { concurrency: 1 },
@@ -217,7 +195,6 @@ export const command = Cli.Command.make(
       Worker: result.workerHost,
       Target: result.env,
       Domains: result.domains.length > 0 ? result.domains.join(', ') : '—',
-      Preview: result.previewUrl ?? '—',
     }))
 
     console.log('\nDeployment summary:')
