@@ -86,13 +86,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     this.promise = undefined
     this.notify()
   }
-
-  reset = (): void => {
-    this.store = undefined
-    this.error = undefined
-    this.promise = undefined
-    this.notify()
-  }
 }
 
 /**
@@ -252,11 +245,6 @@ export class StoreRegistry {
       })
 
     await entry.promise
-  }
-
-  removeStore = (storeId: StoreId): void => {
-    this.#cancelGC(storeId)
-    this.cache.remove(storeId)
   }
 
   subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {
