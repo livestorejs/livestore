@@ -13,5 +13,8 @@ binding = "ASSETS"
 [env.prod]
 name = "example-web-todomvc-script"
 
+[env.preview]
+name = "example-web-todomvc-script-preview"
+
 [env.dev]
 name = "example-web-todomvc-script-dev"
