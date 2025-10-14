@@ -6,7 +6,8 @@ import { schema } from './schema/index.ts'
 makeWorker({
   schema,
   sync: {
-    backend: makeWsSync({ url: globalThis.location.origin }),
+    // Use /sync path to avoid Assets binding intercepting root path requests (alternative: wrangler.toml `run_worker_first = true` but less efficient)
+    backend: makeWsSync({ url: `${globalThis.location.origin}/sync` }),
     initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
   },
 })
