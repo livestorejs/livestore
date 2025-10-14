@@ -102,7 +102,7 @@ export class StoreRegistry {
     return this.cache.getOrCreate<TSchema>(storeId)
   }
 
-  read = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Store<TSchema> => {
+  load = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Store<TSchema> => {
     const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
 
     if (entry.store) return entry.store
