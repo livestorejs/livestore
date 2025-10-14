@@ -24,8 +24,32 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 [env.prod]
 name = "cloudflare-todomvc"
 
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
 [env.dev]
 name = "cloudflare-todomvc-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [vars]
 # should be set via CF dashboard (as secret)
