@@ -1188,12 +1188,12 @@ importers:
 
   examples/web-todomvc-sync-electric:
     dependencies:
-      '@livestore/adapter-web':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/adapter-web
       '@livestore/adapter-node':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-node
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common

@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import { readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import process from 'node:process'
 
 import { Config, Effect, Schema } from '@livestore/utils/effect'
@@ -196,6 +198,46 @@ export const buildCloudflareWorker = ({
         ...process.env,
         CLOUDFLARE_ENV: envName,
       },
+    })
+
+    /**
+     * Remove the account_id field from the generated wrangler.json if present.
+     *
+     * The @cloudflare/vite-plugin generates wrangler.json with "account_id": null,
+     * which prevents wrangler from properly using the CLOUDFLARE_ACCOUNT_ID
+     * environment variable in CI/CD environments.
+     *
+     * Related GitHub issues:
+     * - https://github.com/cloudflare/workers-sdk/issues/1590
+     *   Wrangler not honoring CLOUDFLARE_ACCOUNT_ID when cached config exists
+     * - https://github.com/cloudflare/workers-sdk/issues/3614
+     *   Wrangler using literal "CLOUDFLARE_ACCOUNT_ID" string instead of value
+     * - https://github.com/cloudflare/workers-sdk/issues/2100
+     *   Error 7003: "Could not route to /accounts/.../workers/services/..."
+     *
+     * Solution: Omit account_id entirely to let wrangler resolve it from
+     * the CLOUDFLARE_ACCOUNT_ID environment variable.
+     */
+    const wranglerJsonPath = join(example.repoRelativePath, 'dist', example.buildOutputDir, 'wrangler.json')
+
+    yield* Effect.tryPromise({
+      try: async () => {
+        const content = await readFile(wranglerJsonPath, 'utf-8')
+        const config = JSON.parse(content)
+
+        // Remove account_id field if present
+        if ('account_id' in config) {
+          delete config.account_id
+        }
+
+        await writeFile(wranglerJsonPath, `${JSON.stringify(config, null, 2)}\n`, 'utf-8')
+      },
+      catch: (error) =>
+        new CloudflareError({
+          reason: 'config',
+          message: `Failed to process wrangler.json for ${example.slug}`,
+          cause: error,
+        }),
     })
   })
 }
