@@ -3,18 +3,12 @@ import { createStorePromise as loadStore, type Store, type Unsubscribe } from '@
 import type { StoreDescriptor, StoreId } from './types.ts'
 
 class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
-  readonly storeDescriptor: StoreDescriptor<TSchema>
-
   store: Store<TSchema> | undefined = undefined
   error: unknown = undefined
   promise: Promise<Store<TSchema>> | undefined = undefined
 
   #subscribers = new Set<() => void>()
   version = 0
-
-  constructor(storeDescriptor: StoreDescriptor<TSchema>) {
-    this.storeDescriptor = storeDescriptor
-  }
 
   get subscriberCount() {
     return this.#subscribers.size
@@ -71,7 +65,7 @@ class StoreCache {
     let entry = this.#entries.get(storeDescriptor.storeId) as StoreEntry<TSchema> | undefined
 
     if (!entry) {
-      entry = new StoreEntry<TSchema>(storeDescriptor)
+      entry = new StoreEntry<TSchema>()
       this.#entries.set(storeDescriptor.storeId, entry as unknown as StoreEntry)
     }
 
