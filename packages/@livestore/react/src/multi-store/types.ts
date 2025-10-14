@@ -1,6 +1,8 @@
 import type { Adapter } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 
+export type StoreId = string
+
 /**
  * Helper to future‑proof adapter/schema coupling.
  * Replace `AdapterFor<TSchema>` with `Adapter<TSchema>` when `Adapter` accepts a generic schema parameter.
@@ -24,7 +26,5 @@ export type StoreDescriptor<TSchema extends LiveStoreSchema> = {
   /**
    * The ID of the store.
    */
-  readonly storeId: string
+  readonly storeId: StoreId
 }
-
-export type StoreId = string

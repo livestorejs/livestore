@@ -61,12 +61,12 @@ class StoreCache {
   }
 
   /** Get or create a store entry */
-  getOrCreate = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): StoreEntry<TSchema> => {
-    let entry = this.#entries.get(storeDescriptor.storeId) as StoreEntry<TSchema> | undefined
+  getOrCreate = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
+    let entry = this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
 
     if (!entry) {
       entry = new StoreEntry<TSchema>()
-      this.#entries.set(storeDescriptor.storeId, entry as unknown as StoreEntry)
+      this.#entries.set(storeId, entry as unknown as StoreEntry)
     }
 
     return entry
@@ -98,12 +98,12 @@ export class StoreRegistry {
   private readonly cache = new StoreCache()
   private readonly gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
 
-  ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>) => {
-    return this.cache.getOrCreate(storeDescriptor)
+  ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
+    return this.cache.getOrCreate<TSchema>(storeId)
   }
 
   read = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Store<TSchema> => {
-    const entry = this.ensureStoreEntry(storeDescriptor)
+    const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
 
     if (entry.store) return entry.store
 
@@ -126,7 +126,7 @@ export class StoreRegistry {
   }
 
   preload = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Promise<Store<TSchema>> => {
-    const entry = this.ensureStoreEntry(storeDescriptor)
+    const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
 
     if (entry.store) return Promise.resolve(entry.store)
 
@@ -157,13 +157,10 @@ export class StoreRegistry {
     this.cache.remove(storeId)
   }
 
-  subscribe = <TSchema extends LiveStoreSchema>(
-    storeDescriptor: StoreDescriptor<TSchema>,
-    listener: () => void,
-  ): Unsubscribe => {
-    const entry = this.ensureStoreEntry(storeDescriptor)
+  subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {
+    const entry = this.ensureStoreEntry<TSchema>(storeId)
     // Active subscriber: cancel any scheduled GC
-    this.#cancelGC(storeDescriptor.storeId)
+    this.#cancelGC(storeId)
 
     const unsubscribe = entry.subscribe(listener)
 
@@ -171,13 +168,13 @@ export class StoreRegistry {
       unsubscribe()
       // If no more subscribers remain, schedule GC
       if (entry.subscriberCount === 0) {
-        this.#scheduleGC(storeDescriptor.storeId)
+        this.#scheduleGC(storeId)
       }
     }
   }
 
-  getVersion = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): number => {
-    const entry = this.ensureStoreEntry(storeDescriptor)
+  getVersion = <TSchema extends LiveStoreSchema>(storeId: StoreId): number => {
+    const entry = this.ensureStoreEntry<TSchema>(storeId)
     return entry.version
   }
 
