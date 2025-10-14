@@ -1,6 +1,6 @@
 export { LiveStoreContext, type ReactApi } from './LiveStoreContext.ts'
 export { LiveStoreProvider } from './LiveStoreProvider.tsx'
-export * from './multi-store/types.ts'
+export * from './multi-store/mod.ts'
 export {
   type Dispatch,
   type SetStateAction,
