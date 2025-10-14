@@ -13,7 +13,8 @@ This repository uses [`direnv`](https://direnv.net) for automatic environment se
 
 ## Tooling
 
-- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)
+- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`).
+- Never run dev servers in the foreground. Always run them in the background and pipe their logs to a file which you can read from.
 
 - For depedency management see @contributor-docs/dependency-management.md
 
