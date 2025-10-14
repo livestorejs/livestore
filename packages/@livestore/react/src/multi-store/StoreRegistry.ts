@@ -1,5 +1,5 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { createStorePromise as loadStore, type Store, type Unsubscribe } from '@livestore/livestore'
+import { createStorePromise, type Store, type Unsubscribe } from '@livestore/livestore'
 import type { StoreDescriptor, StoreId } from './types.ts'
 
 class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
@@ -110,7 +110,7 @@ export class StoreRegistry {
     if (entry.error !== undefined) throw entry.error
 
     if (!entry.promise) {
-      entry.promise = loadStore(storeDescriptor)
+      entry.promise = createStorePromise(storeDescriptor)
         .then((store) => {
           entry.setStore(store)
           return store
@@ -132,7 +132,7 @@ export class StoreRegistry {
 
     if (entry.promise) return entry.promise
 
-    entry.promise = loadStore(storeDescriptor)
+    entry.promise = createStorePromise(storeDescriptor)
       .then((store) => {
         entry.setStore(store)
 
