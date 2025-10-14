@@ -212,8 +212,6 @@ export const deployCloudflareWorker = ({
       dryRun ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
-      '--name',
-      workerName,
     ],
     {
       cwd: example.repoRelativePath,
