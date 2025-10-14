@@ -79,6 +79,6 @@ test.describe('LinearLite UI', () => {
       .getByRole('button', { name: /back to issues/i })
       .first()
       .click()
-    await expect(page.getByRole('button', { name: /Playwright Issue \(edited\)/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Playwright Issue \(edited\)/ }).first()).toBeVisible()
   })
 })

@@ -1,6 +1,6 @@
 // @ts-check
 import path from 'node:path'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+// import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -29,8 +29,11 @@ export default defineConfig({
     ],
   },
   plugins: [
-    tanstackStart({ customViteReactPlugin: true }),
+    tanstackStart(),
     viteReact(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    // TEMPORARY: Disabled due to Vite 7 compatibility issue
+    // See: https://github.com/livestorejs/livestore/issues/746
+    // Error: "invoke was called before connect" - plugin needs update for Vite 7 module runner API
+    // livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
   ],
 })
