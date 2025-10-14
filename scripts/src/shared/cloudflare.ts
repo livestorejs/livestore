@@ -225,12 +225,21 @@ export const buildCloudflareWorker = ({
         const content = await readFile(wranglerJsonPath, 'utf-8')
         const config = JSON.parse(content)
 
+        // Log original config for debugging
+        console.log(`[DEBUG] Original wrangler.json for ${example.slug}:`, JSON.stringify(config, null, 2))
+
         // Remove account_id field if present
         if ('account_id' in config) {
+          console.log(`[DEBUG] Removing account_id field from wrangler.json`)
           delete config.account_id
+        } else {
+          console.log(`[DEBUG] No account_id field found in wrangler.json`)
         }
 
         await writeFile(wranglerJsonPath, `${JSON.stringify(config, null, 2)}\n`, 'utf-8')
+
+        // Log modified config
+        console.log(`[DEBUG] Modified wrangler.json:`, JSON.stringify(config, null, 2))
       },
       catch: (error) =>
         new CloudflareError({
