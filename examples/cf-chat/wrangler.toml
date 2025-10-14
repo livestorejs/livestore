@@ -1,3 +1,4 @@
+# Note: account_id is intentionally omitted so wrangler uses CLOUDFLARE_ACCOUNT_ID env var
 name = "example-cf-chat"
 main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"

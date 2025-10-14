@@ -1,0 +1,33 @@
+name: Test Official Wrangler Action
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        working-directory: examples/cf-chat
+        run: npm install -g pnpm && pnpm install
+
+      - name: Build
+        working-directory: examples/cf-chat
+        run: pnpm build
+        env:
+          CLOUDFLARE_ENV: preview
+
+      - name: Deploy with Official Action
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: examples/cf-chat
+          command: deploy --config dist/example_cf_chat/wrangler.json
