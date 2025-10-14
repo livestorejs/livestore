@@ -67,3 +67,6 @@ database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
 [vars]
 # should be set via CF dashboard (as secret)
 # ADMIN_SECRET = "..."
+
+[observability]
+enabled = true

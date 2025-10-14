@@ -18,3 +18,6 @@ name = "example-web-todomvc-custom-elements-dev"
 
 [env.preview]
 name = "example-web-todomvc-custom-elements-preview"
+
+[observability]
+enabled = true

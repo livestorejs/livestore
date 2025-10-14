@@ -50,3 +50,6 @@ class_name = "SyncBackendDO"
 [[env.preview.migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
+
+[observability]
+enabled = true

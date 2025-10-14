@@ -74,3 +74,6 @@ SYNC_BACKEND_URL = "http://localhost:8787"
 
 [triggers] # bootstrap ping every minute
 crons = ["*/1 * * * *"]
+
+[observability]
+enabled = true

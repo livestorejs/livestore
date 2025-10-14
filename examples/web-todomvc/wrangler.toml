@@ -19,3 +19,6 @@ name = "example-web-todomvc-dev"
 
 [env.preview]
 name = "example-web-todomvc-preview"
+
+[observability]
+enabled = true
