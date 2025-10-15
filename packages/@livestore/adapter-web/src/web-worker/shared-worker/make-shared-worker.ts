@@ -258,6 +258,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     ExportEventlog: forwardRequest,
     Setup: forwardRequest,
     GetLeaderSyncState: forwardRequest,
+    SyncStateStream: forwardRequestStream,
     GetLeaderHead: forwardRequest,
     GetNetworkStatus: forwardRequest,
     NetworkStatusStream: forwardRequestStream,

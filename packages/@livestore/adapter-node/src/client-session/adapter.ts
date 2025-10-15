@@ -339,7 +339,7 @@ const makeLocalLeaderThread = ({
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
-          getSyncState: syncProcessor.syncState,
+          syncState: syncProcessor.syncState,
           sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
           networkStatus,
         },
@@ -486,10 +486,13 @@ const makeWorkerLeaderThread = ({
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
-        ),
+        syncState: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
+          ),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+        }),
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
             UnexpectedError.mapToUnexpectedError,

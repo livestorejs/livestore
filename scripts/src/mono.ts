@@ -1,19 +1,15 @@
-import fs from 'node:fs'
-
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
+import { examplesCommand } from './commands/examples/cli.ts'
 import { githubCommand } from './commands/github.ts'
 import { lintCommand } from './commands/lint.ts'
 import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
-import { copyTodomvcSrc } from './examples/copy-examples.ts'
-import { command as deployExamplesCommand } from './examples/deploy-examples.ts'
-import { syncDnsCommand } from './examples/sync-dns.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -51,27 +47,6 @@ const circularCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true })
   }),
-)
-
-const examples = fs
-  .readdirSync(`${cwd}/examples`)
-  .filter((entry) => fs.statSync(`${cwd}/examples/${entry}`).isDirectory())
-
-const examplesRunCommand = Cli.Command.make(
-  'run',
-  {
-    example: Cli.Args.choice(
-      examples.map((example) => [example, example]),
-      { name: 'example' },
-    ),
-  },
-  Effect.fn(function* ({ example }) {
-    yield* cmd(`pnpm dev`, { cwd: `${cwd}/examples/${example}` })
-  }),
-)
-
-const examplesCommand = Cli.Command.make('examples').pipe(
-  Cli.Command.withSubcommands([deployExamplesCommand, syncDnsCommand, copyTodomvcSrc, examplesRunCommand]),
 )
 
 const command = Cli.Command.make('mono').pipe(

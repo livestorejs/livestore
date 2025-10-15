@@ -240,6 +240,10 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
+- Ensure large batches no longer leave follower sessions behind by reconciling leader/follower heads correctly (#362)
+- Detect sync backend identity mismatches after Cloudflare state resets and surface an actionable error instead of silent failure (#389)
+- Stop advancing the backend head when materializers crash so subsequent boots no longer fail (#409)
+- Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
 
 ##### TypeScript & Build
 
@@ -250,8 +254,10 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - **New example: CF Chat:** A Cloudflare Durable Objects chat example demonstrates WebSocket sync, reactive message handling, and bot integrations across client React components and Durable Object services.
 - Cloudflare examples now default to DO SQLite storage. D1 usage is documented via an explicit binding and a one‑line `storage` option in code.
+- **Cloudflare Workers deployments:** `mono examples deploy` now provisions Worker targets so DO-backed demos stay current across prod and dev environments (#690, #735).
 - Add Netlify dev deployments for examples to simplify testing (#684).
 - Use Twoslash for select getting started snippets in docs (#658).
+- **TanStack Start examples:** `web-linearlite`, `web-todomvc-sync-electric`, and `web-todomvc-sync-s2` now run on TanStack Start with Vite 7 compatibility fixes and Cloudflare runtime flags (#747).
 - **Docs for coding agents:** Documentation now serves agent-optimised Markdown so automations get concise answers without burning unnecessary tokens (#715).
 - **TypeScript-validated snippets:** Most examples are now type checked through the Twoslash pipeline enabling in-docs intellisense (#715).
 
@@ -269,7 +275,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 > Updates in this section are primarily relevant to maintainers and contributors. They cover infrastructure, tooling, and other non-user-facing work that supports the release.
 
 #### Testing Infrastructure
-- Comprehensive sync provider test suite with property-based testing
+- Comprehensive sync provider test suite with property-based testing (#386)
 - Node.js sync test infrastructure with Wrangler dev server integration (#594)
 - Parallel CI test execution reducing test time significantly (#523)
 - Cloudflare sync provider tests run against both storage engines (D1 and DO SQLite) using separate wrangler configs.
@@ -308,16 +314,9 @@ Open issues:
 - Vite DevTools consistently loses app connection (#331)
 - Sync state memory leak: Unbounded pending events accumulation when no sync backend is used (#360)
 - Type Annotations on schemas not portable (#383)
-- Create integration test suite for sync providers (#386)
-- Invalid parent event number after deleting .wrangler/ and restarting (#389)
-- Expose connectedness / onlineness (#394)
-- Events fail to sync when many events are committed (#362)
-- Improve handling of unknown livestore events (#353)
-- Crash in materializer while syncing new events advances `backendHead` and causes later boot failure (#409)
 - store.shutdown() doesn't wait for pending writes to complete, causing data loss (#416)
 - Consider mechanism to reject events on sync (#404)
 - [Devtools] Clicking on session doesn't work (#474)
-- [node client] store.commit inside store.subscribe will create race condition & crash (#577)
 - Improved multi-store support (#585)
 - Fix: Rolling back empty materializers currently fails
 

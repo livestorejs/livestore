@@ -1,12 +1,33 @@
+import { useStore } from '@livestore/react'
+import { Effect, Stream } from '@livestore/utils/effect'
 import React from 'react'
 import { Switch } from 'react-aria-components'
 
 export const SyncToggle = ({ className }: { className?: string }) => {
   // TODO hook up actual sync/network state
   const [sync, setSync] = React.useState(false)
+  const hasPendingSyncEvents = usePendingSyncEvents()
+  const statusText = hasPendingSyncEvents ? 'Pending sync events' : 'No pending sync events'
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
+      <span
+        role="application"
+        aria-live="polite"
+        aria-label={statusText}
+        title={statusText}
+        className="flex size-6 items-center justify-center"
+      >
+        <span
+          aria-hidden="true"
+          className={`size-3 rounded-full border-2 ${
+            hasPendingSyncEvents
+              ? 'animate-spin border-orange-500 border-t-transparent'
+              : 'border-transparent opacity-0'
+          }`}
+        />
+        <span className="sr-only">{statusText}</span>
+      </span>
       {/* TODO add disabled tooltip for now */}
       <Switch
         aria-label="Toggle sync/network"
@@ -24,4 +45,77 @@ export const SyncToggle = ({ className }: { className?: string }) => {
       </Switch>
     </div>
   )
+}
+
+const usePendingSyncEvents = () => {
+  const { store } = useStore()
+  const [hasPendingEvents, setHasPendingEvents] = React.useState(false)
+  const sessionPendingRef = React.useRef(false)
+  const leaderPendingRef = React.useRef(false)
+
+  React.useEffect(
+    () =>
+      Effect.gen(function* () {
+        const isActive = true
+        const leaderSyncState = store.clientSession.leaderThread.syncState
+
+        const applyState = () => {
+          if (!isActive) return
+          setHasPendingEvents((prev) => {
+            const next = sessionPendingRef.current || leaderPendingRef.current
+            return prev === next ? prev : next
+          })
+        }
+
+        const setSessionPending = (pending: boolean) => {
+          if (sessionPendingRef.current !== pending) {
+            sessionPendingRef.current = pending
+          }
+
+          applyState()
+        }
+
+        const setLeaderPending = (pending: boolean) => {
+          if (leaderPendingRef.current !== pending) {
+            leaderPendingRef.current = pending
+          }
+
+          applyState()
+        }
+
+        sessionPendingRef.current = false
+        leaderPendingRef.current = false
+
+        applyState()
+
+        const sessionState = yield* store.syncProcessor.syncState
+        const leaderState = yield* leaderSyncState
+
+        setSessionPending(sessionState.pending.length > 0)
+        setLeaderPending(leaderState.pending.filter((_) => _.seqNum.client === 0).length > 0)
+
+        yield* store.syncProcessor.syncState.changes.pipe(
+          Stream.tap((sessionState) => Effect.sync(() => setSessionPending(sessionState.pending.length > 0))),
+          Stream.runDrain,
+          Effect.interruptible,
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+        )
+
+        yield* leaderSyncState.changes.pipe(
+          Stream.tap((leaderState) =>
+            Effect.sync(() => setLeaderPending(leaderState.pending.filter((_) => _.seqNum.client === 0).length > 0)),
+          ),
+          Stream.runDrain,
+          Effect.interruptible,
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+        )
+
+        return yield* Effect.never
+      }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runCallback),
+    [store],
+  )
+
+  return hasPendingEvents
 }

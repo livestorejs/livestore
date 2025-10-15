@@ -4,18 +4,15 @@ import { priorityOptions } from '../data/priority-options.ts'
 import { statusOptions } from '../data/status-options.ts'
 import type { Priority } from '../types/priority.ts'
 import type { Status } from '../types/status.ts'
-import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries.ts'
+import { highestIssueId$, highestKanbanOrder$ } from './queries.ts'
 import { events } from './schema/index.ts'
 
 export const seed = (store: Store, count: number) => {
   try {
-    const existingCount = store.query(issueCount$)
+    if (count <= 0) return
     const highestId = store.query(highestIssueId$)
     const highestKanbanOrder = store.query(highestKanbanOrder$)
-    if (existingCount >= count) return
-    const adjustedCount = count - existingCount
-    console.log('SEEDING WITH ', adjustedCount, ' ADDITIONAL ROWS')
-    store.commit(...Array.from(createIssues(adjustedCount, highestId, highestKanbanOrder)))
+    store.commit(...Array.from(createIssues(count, highestId, highestKanbanOrder)))
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')

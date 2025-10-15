@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 
 test.setTimeout(60_000)
 
-test.describe('TodoMVC (sync-s2)', () => {
-  test('adds and toggles todos', async ({ baseURL, page }) => {
+test.describe('TodoMVC (web)', () => {
+  test('creates and toggles a todo', async ({ baseURL, page }) => {
     if (!baseURL) throw new Error('baseURL is required')
 
     await page.goto(baseURL)

@@ -1,8 +1,8 @@
 import process from 'node:process'
 
-import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
+import { Effect, FileSystem, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import {
   buildCloudflareWorker,
@@ -14,9 +14,9 @@ import {
   resolveEnvironmentName,
   resolveWorkerName,
   resolveWorkersSubdomain,
-} from '../shared/cloudflare.ts'
-import { cloudflareExamples } from '../shared/cloudflare-manifest.ts'
-import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+} from '../../shared/cloudflare.ts'
+import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
+import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 
 /**
  * Deploys the example gallery to Cloudflare Workers. Handles prod/dev/preview behaviour while
@@ -28,6 +28,106 @@ if (!workspaceRoot) {
   console.error('WORKSPACE_ROOT environment variable is not set')
   process.exit(1)
 }
+
+const examplesDir = `${workspaceRoot}/examples`
+
+// Accept only the fields we care about (scripts) while tolerating extra metadata from Vite or toolchains.
+const ExamplePackageJsonSchema = Schema.Struct(
+  {
+    scripts: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+  },
+  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+)
+
+const parseExamplePackageJson = Schema.decodeUnknown(Schema.parseJson(ExamplePackageJsonSchema))
+
+export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(function* () {
+  /**
+   * Cloudflare deploys operate on example directories; walk the examples root once so every caller
+   * shares a consistent snapshot of what is available on disk.
+   */
+  const fs = yield* FileSystem.FileSystem
+  const entries = yield* fs.readDirectory(examplesDir)
+  const directories: string[] = []
+
+  for (const entry of entries) {
+    const info = yield* fs.stat(`${examplesDir}/${entry}`).pipe(
+      Effect.map((stat) => stat.type === 'Directory'),
+      Effect.catchAll(() => Effect.succeed(false)),
+    )
+
+    if (info) {
+      directories.push(entry)
+    }
+  }
+
+  directories.sort((a, b) => a.localeCompare(b))
+  return directories
+})
+
+export const ensureExampleExists = (example: string, available: readonly string[]) =>
+  available.includes(example)
+    ? Effect.succeed(example)
+    : Effect.fail(
+        new Error(
+          `Unknown example "${example}". Available examples: ${available.length > 0 ? available.join(', ') : 'none'}`,
+        ),
+      )
+
+export const runExampleTests = (examples: ReadonlyArray<string>, options: { skipMissing?: boolean } = {}) =>
+  Effect.gen(function* () {
+    /**
+     * Lightweight preflight that mirrors the `mono examples test` command so CI and deploys share
+     * the same behaviour. We deliberately run sequentially to avoid overwhelming the runner when
+     * Vite spins up multiple dev servers.
+     */
+    if (examples.length === 0) {
+      yield* Effect.logDebug('No examples provided for testing')
+      return
+    }
+
+    const skipMissing = options.skipMissing ?? true
+    const fs = yield* FileSystem.FileSystem
+
+    for (const example of examples) {
+      const packageJsonPath = `${examplesDir}/${example}/package.json`
+      const hasPackageJson = yield* fs.exists(packageJsonPath)
+
+      if (!hasPackageJson) {
+        if (skipMissing) {
+          yield* Effect.logWarning(`Skipping ${example}: package.json not found`)
+          continue
+        }
+        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: package.json not found`))
+      }
+
+      const packageJsonContent = yield* fs.readFileString(packageJsonPath)
+      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
+
+      if (decoded._tag === 'Left') {
+        if (skipMissing) {
+          yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
+          continue
+        }
+        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: invalid package.json`))
+      }
+
+      const packageJson = decoded.right
+      if (typeof packageJson.scripts?.test !== 'string') {
+        if (skipMissing) {
+          yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
+          continue
+        }
+        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: no test script defined`))
+      }
+
+      yield* Effect.log(`Running tests for ${example}`)
+      yield* cmd('pnpm test', {
+        cwd: `${examplesDir}/${example}`,
+        env: { CI: '1' },
+      })
+    }
+  })
 
 const DEV_BRANCH_NAME = 'dev'
 

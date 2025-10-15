@@ -222,6 +222,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
       ),
+    SyncStateStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.syncProcessor.syncState.changes
+      }).pipe(Stream.unwrapScoped),
     GetNetworkStatus: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx

@@ -19,7 +19,9 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements' })
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
+
+const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements', syncPayload })
 
 // Add version badge
 console.log(`LiveStore v${liveStoreVersion}`)

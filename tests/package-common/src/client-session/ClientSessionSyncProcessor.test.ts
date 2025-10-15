@@ -449,7 +449,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           },
           export: Effect.dieMessage('not used'),
           getEventlogData: Effect.dieMessage('not used'),
-          getSyncState: Effect.dieMessage('not used'),
+          syncState: Subscribable.make({
+            get: Effect.dieMessage('not used'),
+            changes: Stream.never,
+          }),
           sendDevtoolsMessage: () => Effect.dieMessage('not used'),
           networkStatus,
         },

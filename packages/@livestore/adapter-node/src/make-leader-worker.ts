@@ -119,6 +119,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:worker:GetLeaderSyncState'),
       ),
+    SyncStateStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.syncProcessor.syncState.changes
+      }).pipe(Stream.unwrapScoped),
     GetNetworkStatus: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
