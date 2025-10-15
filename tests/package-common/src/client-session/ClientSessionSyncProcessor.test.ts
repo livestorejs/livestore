@@ -1,5 +1,5 @@
 import { makeAdapter } from '@livestore/adapter-node'
-import type { MockSyncBackend } from '@livestore/common'
+import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
   type ClientSession,
@@ -317,6 +317,82 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         { id: 'client_0', text: 't1', completed: false, deletedAt: null },
         { id: 'backend_0', text: 't2', completed: false, deletedAt: null },
       ])
+    }).pipe(withTestCtx(test)),
+  )
+
+  /**
+   * Regression guard for https://github.com/livestorejs/livestore/issues/744:
+   * `ClientSessionSyncProcessor.push` must carry the current rebase generation into both
+   * the child and parent sequence numbers after the leader forces a rebase.
+   * Without the carry-forward logic in `EventSequenceNumber.nextPair`, the generation would reset,
+   * masking stale pushes and reintroducing the queue leak described in the issue.
+   */
+  Vitest.scopedLive('rebased pushes carry rebase generation forward', (test) =>
+    Effect.gen(function* () {
+      const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
+      const runtime = yield* Effect.runtime<Scope.Scope>()
+      const span = makeNoopSpan()
+      const baseHead = EventSequenceNumber.make({ global: 10, client: 0, rebaseGeneration: 4 })
+      const recordedEvents: LiveStoreEvent.EncodedWithMeta[] = []
+
+      const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
+        events: {
+          pull: () => Stream.empty,
+          push: () => Effect.void,
+        },
+        initialState: {
+          leaderHead: baseHead,
+          migrationsReport: { migrations: [] },
+        },
+        export: Effect.dieMessage('not implemented'),
+        getEventlogData: Effect.dieMessage('not implemented'),
+        getSyncState: Effect.dieMessage('not implemented'),
+        sendDevtoolsMessage: () => Effect.void,
+        networkStatus: Subscribable.make({
+          get: Effect.dieMessage('not implemented'),
+          changes: Stream.empty,
+        }),
+      }
+
+      const clientSession: ClientSession = {
+        sqliteDb: {} as any,
+        devtools: { enabled: false },
+        clientId: 'client-test',
+        sessionId: 'session-test',
+        lockStatus,
+        shutdown: () => Effect.void,
+        leaderThread,
+        debugInstanceId: 'test-instance',
+      }
+
+      const syncProcessor = makeClientSessionSyncProcessor({
+        schema: schema as LiveStoreSchema,
+        clientSession,
+        runtime,
+        materializeEvent: (event) =>
+          Effect.sync(() => {
+            recordedEvents.push(event)
+          }).pipe(
+            Effect.as({
+              writeTables: new Set<string>(),
+              sessionChangeset: { _tag: 'no-op' as const },
+              materializerHash: Option.none<number>(),
+            }),
+          ),
+        rollback: () => undefined,
+        refreshTables: () => undefined,
+        span,
+        params: { leaderPushBatchSize: 10 },
+        confirmUnsavedChanges: false,
+      })
+
+      yield* syncProcessor.push([events.todoCreated({ id: 'post-rebase', text: 'after', completed: false })])
+
+      expect(recordedEvents).toHaveLength(1)
+      const event = recordedEvents[0]!
+      expect(event.seqNum).toEqual(EventSequenceNumber.make({ global: 11, client: 0, rebaseGeneration: 4 }))
+      expect(event.seqNum.rebaseGeneration).toBe(baseHead.rebaseGeneration)
+      expect(event.parentSeqNum.rebaseGeneration).toBe(baseHead.rebaseGeneration)
     }).pipe(withTestCtx(test)),
   )
 

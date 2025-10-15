@@ -209,6 +209,8 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - **Store:** `store.networkStatus` now surfaces sync backend connectivity so apps can read the latest status or subscribe directly; the signal is no longer re-exposed on client sessions (livestorejs/livestore#394).
 - `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
+- **Store.subscribe async iteration:** The async iterator overload now exposes a first-class `AsyncIterable` so `for await` loops work without manual casts, and the new exported `Queryable` type documents the accepted inputs (livestorejs/livestore#736).
+- **Queryable type export:** `packages/@livestore/livestore` now re-exports `Queryable<TResult>` so shared utilities and framework adapters can describe the exact shapes accepted by `store.subscribe` and `subscribeStream` (livestorejs/livestore#736).
 - Store operations after shutdown are rejected with a descriptive `UnexpectedError`. Shutdown now returns an Effect (see breaking changes).
 - Exact optional property types are enabled, surfacing missing optional handling at compile time (#600).
 - Effect `Equal` and `Hash` implementations for `LiveQueryDef` and `SignalDef` improve comparisons.

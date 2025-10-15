@@ -16,7 +16,6 @@ import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { tryAsFunctionAndNew } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, SubscriptionRef, Worker } from '@livestore/utils/effect'
@@ -24,10 +23,8 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
 import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.ts'
+import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
 import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
-
-// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = loadSqlite3Wasm()
 
 export interface InMemoryAdapterOptions {
   importSnapshot?: Uint8Array<ArrayBuffer>
@@ -60,7 +57,7 @@ export const makeInMemoryAdapter =
   (adapterArgs) =>
     Effect.gen(function* () {
       const { schema, shutdown, syncPayload, storeId, devtoolsEnabled } = adapterArgs
-      const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
+      const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
 

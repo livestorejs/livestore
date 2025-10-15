@@ -115,6 +115,7 @@ export const makeClientSessionSyncProcessor = ({
       const nextNumPair = EventSequenceNumber.nextPair({
         seqNum: baseEventSequenceNumber,
         isClient: eventDef.options.clientOnly,
+        rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
       })
       baseEventSequenceNumber = nextNumPair.seqNum
       return new LiveStoreEvent.EncodedWithMeta(

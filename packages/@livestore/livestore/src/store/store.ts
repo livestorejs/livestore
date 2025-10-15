@@ -14,7 +14,6 @@ import {
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
   prepareBindValues,
-  type QueryBuilder,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   UnexpectedError,
@@ -38,13 +37,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import type {
-  LiveQuery,
-  LiveQueryDef,
-  ReactivityGraph,
-  ReactivityGraphContext,
-  SignalDef,
-} from '../live-queries/base-class.ts'
+import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
@@ -52,15 +45,25 @@ import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
-import type { StackInfo } from '../utils/stack-info.ts'
 import type {
+  Queryable,
   RefreshReason,
   StoreCommitOptions,
   StoreEventsOptions,
   StoreOptions,
   StoreOtel,
+  SubscribeOptions,
   Unsubscribe,
 } from './store-types.ts'
+
+type SubscribeFn = {
+  <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
+  ): Unsubscribe
+  <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): AsyncIterable<TResult>
+}
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -349,32 +352,39 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   /**
-   * Subscribe to the results of a query
-   * Returns a function to cancel the subscription.
+   * Subscribe to the results of a query.
+   *
+   * - When providing an `onUpdate` callback it returns an {@link Unsubscribe} function.
+   * - Without a callback it returns an {@link AsyncIterable} that yields query results.
    *
    * @example
    * ```ts
    * const unsubscribe = store.subscribe(query$, (result) => console.log(result))
    * ```
+   *
+   * @example
+   * ```ts
+   * for await (const result of store.subscribe(query$)) {
+   *   console.log(result)
+   * }
+   * ```
    */
-  subscribe = <TResult>(
-    query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult> | QueryBuilder<TResult, any, any>,
-    /** Called when the query result has changed */
+  subscribe = (<TResult>(
+    query: Queryable<TResult>,
+    onUpdateOrOptions?: ((value: TResult) => void) | SubscribeOptions<TResult>,
+    maybeOptions?: SubscribeOptions<TResult>,
+  ): Unsubscribe | AsyncIterable<TResult> => {
+    if (typeof onUpdateOrOptions === 'function') {
+      return this.subscribeWithCallback(query, onUpdateOrOptions, maybeOptions)
+    }
+
+    return this.subscribeAsAsyncIterable(query, onUpdateOrOptions)
+  }) as SubscribeFn
+
+  private subscribeWithCallback = <TResult>(
+    query: Queryable<TResult>,
     onUpdate: (value: TResult) => void,
-    options?: {
-      onSubscribe?: (query$: LiveQuery<TResult>) => void
-      /** Gets called after the query subscription has been removed */
-      onUnsubsubscribe?: () => void
-      label?: string
-      /**
-       * Skips the initial `onUpdate` callback
-       * @default false
-       */
-      skipInitialRun?: boolean
-      otelContext?: otel.Context
-      /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
-      stackInfo?: StackInfo
-    },
+    options?: SubscribeOptions<TResult>,
   ): Unsubscribe => {
     this.checkShutdown('subscribe')
 
@@ -383,7 +393,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
-        // console.debug('store sub', query$.id, query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const queryRcRef = isQueryBuilder(query)
@@ -410,13 +419,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this.activeQueries.add(query$ as LiveQuery<TResult>)
 
-        // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
         }
 
         const unsubscribe = () => {
-          // console.debug('store unsub', query$.id, query$.label)
           try {
             this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
@@ -438,10 +448,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
   }
 
-  subscribeStream = <TResult>(
-    query$: LiveQueryDef<TResult>,
-    options?: { label?: string; skipInitialRun?: boolean } | undefined,
-  ): Stream.Stream<TResult> =>
+  private subscribeAsAsyncIterable = <TResult>(
+    query: Queryable<TResult>,
+    options?: SubscribeOptions<TResult>,
+  ): AsyncIterable<TResult> => {
+    this.checkShutdown('subscribe')
+
+    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+  }
+
+  subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
@@ -451,11 +467,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(
-              query$,
-              (result) => emit.single(result),
-              omitUndefineds({ otelContext, label: options?.label }),
-            ),
+            this.subscribe(query, (result) => emit.single(result), {
+              ...(options ?? {}),
+              otelContext,
+            }),
           ),
           (unsub) => Effect.sync(() => unsub()),
         )
@@ -477,12 +492,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query:
-      | QueryBuilder<TResult, any, any>
-      | LiveQuery<TResult>
-      | LiveQueryDef<TResult>
-      | SignalDef<TResult>
-      | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')

@@ -10,7 +10,7 @@
     "@livestore/react": "0.4.0-dev.10",
     "@livestore/sync-cf": "0.4.0-dev.10",
     "@livestore/wa-sqlite": "0.4.0-dev.10",
-    "@overengineering/fps-meter": "0.2.1",
+    "@overengineering/fps-meter": "0.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "todomvc-app-css": "2.4.3"
