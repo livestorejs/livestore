@@ -3,10 +3,6 @@ import '../app/style.css'
 
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type React from 'react'
-import { Provider } from '../app/provider.tsx'
-import { Layout } from '../components/layout/index.tsx'
-import { NewIssueModal } from '../components/layout/issue/new-issue-modal.tsx'
-import { Sidebar } from '../components/layout/sidebar/index.tsx'
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -29,23 +25,9 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
 }
 
 const RootComponent = () => {
-  const search = Route.useSearch() as Record<string, unknown>
-  const storeIdValue = search.storeId
-  const resolvedStoreId = typeof storeIdValue === 'string' && storeIdValue.length > 0 ? storeIdValue : undefined
-
   return (
     <RootDocument>
-      <Provider storeId={resolvedStoreId}>
-        <Layout>
-          <Sidebar className="hidden lg:flex" />
-          <div className="w-full lg:max-w-[calc(100%-16rem)] p-2 lg:pl-0">
-            <main className="flex flex-col h-full border border-neutral-200 dark:border-neutral-700 rounded-lg">
-              <Outlet />
-            </main>
-          </div>
-        </Layout>
-        <NewIssueModal />
-      </Provider>
+      <Outlet />
     </RootDocument>
   )
 }

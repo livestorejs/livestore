@@ -1,5 +1,5 @@
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
-import { Link } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import React from 'react'
 import { MenuContext } from '../../../app/contexts.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
@@ -12,18 +12,19 @@ import { ThemeButton } from './theme-button.tsx'
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
+  const { storeId } = useParams({ from: '/$storeId' })
 
   const navItems = [
     {
       title: 'List view',
       icon: Bars4Icon,
-      to: '/',
+      to: '/$storeId',
       onClick: () => setFilterState({ status: null }),
     },
     {
       title: 'Board view',
       icon: ViewColumnsIcon,
-      to: '/board',
+      to: '/$storeId/board',
       onClick: () => setFilterState({ status: null }),
     },
   ]
@@ -48,6 +49,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
             <Link
               key={to}
               to={to}
+              params={{ storeId }}
               search={(prev) => ({ ...prev, issueId: undefined })}
               onClick={() => {
                 onClick()

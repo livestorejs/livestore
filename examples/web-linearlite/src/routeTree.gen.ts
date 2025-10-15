@@ -9,24 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as IssueRouteImport } from './routes/issue'
-import { Route as BoardRouteImport } from './routes/board'
+import { Route as StoreIdRouteImport } from './routes/$storeId'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StoreIdIndexRouteImport } from './routes/$storeId/index'
+import { Route as StoreIdSearchRouteImport } from './routes/$storeId/search'
+import { Route as StoreIdIssueRouteImport } from './routes/$storeId/issue'
+import { Route as StoreIdBoardRouteImport } from './routes/$storeId/board'
 
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IssueRoute = IssueRouteImport.update({
-  id: '/issue',
-  path: '/issue',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BoardRoute = BoardRouteImport.update({
-  id: '/board',
-  path: '/board',
+const StoreIdRoute = StoreIdRouteImport.update({
+  id: '/$storeId',
+  path: '/$storeId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -34,62 +26,89 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoreIdIndexRoute = StoreIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StoreIdRoute,
+} as any)
+const StoreIdSearchRoute = StoreIdSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => StoreIdRoute,
+} as any)
+const StoreIdIssueRoute = StoreIdIssueRouteImport.update({
+  id: '/issue',
+  path: '/issue',
+  getParentRoute: () => StoreIdRoute,
+} as any)
+const StoreIdBoardRoute = StoreIdBoardRouteImport.update({
+  id: '/board',
+  path: '/board',
+  getParentRoute: () => StoreIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/board': typeof BoardRoute
-  '/issue': typeof IssueRoute
-  '/search': typeof SearchRoute
+  '/$storeId': typeof StoreIdRouteWithChildren
+  '/$storeId/board': typeof StoreIdBoardRoute
+  '/$storeId/issue': typeof StoreIdIssueRoute
+  '/$storeId/search': typeof StoreIdSearchRoute
+  '/$storeId/': typeof StoreIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/board': typeof BoardRoute
-  '/issue': typeof IssueRoute
-  '/search': typeof SearchRoute
+  '/$storeId/board': typeof StoreIdBoardRoute
+  '/$storeId/issue': typeof StoreIdIssueRoute
+  '/$storeId/search': typeof StoreIdSearchRoute
+  '/$storeId': typeof StoreIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/board': typeof BoardRoute
-  '/issue': typeof IssueRoute
-  '/search': typeof SearchRoute
+  '/$storeId': typeof StoreIdRouteWithChildren
+  '/$storeId/board': typeof StoreIdBoardRoute
+  '/$storeId/issue': typeof StoreIdIssueRoute
+  '/$storeId/search': typeof StoreIdSearchRoute
+  '/$storeId/': typeof StoreIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/board' | '/issue' | '/search'
+  fullPaths:
+    | '/'
+    | '/$storeId'
+    | '/$storeId/board'
+    | '/$storeId/issue'
+    | '/$storeId/search'
+    | '/$storeId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/issue' | '/search'
-  id: '__root__' | '/' | '/board' | '/issue' | '/search'
+  to:
+    | '/'
+    | '/$storeId/board'
+    | '/$storeId/issue'
+    | '/$storeId/search'
+    | '/$storeId'
+  id:
+    | '__root__'
+    | '/'
+    | '/$storeId'
+    | '/$storeId/board'
+    | '/$storeId/issue'
+    | '/$storeId/search'
+    | '/$storeId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BoardRoute: typeof BoardRoute
-  IssueRoute: typeof IssueRoute
-  SearchRoute: typeof SearchRoute
+  StoreIdRoute: typeof StoreIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/issue': {
-      id: '/issue'
-      path: '/issue'
-      fullPath: '/issue'
-      preLoaderRoute: typeof IssueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/board': {
-      id: '/board'
-      path: '/board'
-      fullPath: '/board'
-      preLoaderRoute: typeof BoardRouteImport
+    '/$storeId': {
+      id: '/$storeId'
+      path: '/$storeId'
+      fullPath: '/$storeId'
+      preLoaderRoute: typeof StoreIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -99,14 +118,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$storeId/': {
+      id: '/$storeId/'
+      path: '/'
+      fullPath: '/$storeId/'
+      preLoaderRoute: typeof StoreIdIndexRouteImport
+      parentRoute: typeof StoreIdRoute
+    }
+    '/$storeId/search': {
+      id: '/$storeId/search'
+      path: '/search'
+      fullPath: '/$storeId/search'
+      preLoaderRoute: typeof StoreIdSearchRouteImport
+      parentRoute: typeof StoreIdRoute
+    }
+    '/$storeId/issue': {
+      id: '/$storeId/issue'
+      path: '/issue'
+      fullPath: '/$storeId/issue'
+      preLoaderRoute: typeof StoreIdIssueRouteImport
+      parentRoute: typeof StoreIdRoute
+    }
+    '/$storeId/board': {
+      id: '/$storeId/board'
+      path: '/board'
+      fullPath: '/$storeId/board'
+      preLoaderRoute: typeof StoreIdBoardRouteImport
+      parentRoute: typeof StoreIdRoute
+    }
   }
 }
 
+interface StoreIdRouteChildren {
+  StoreIdBoardRoute: typeof StoreIdBoardRoute
+  StoreIdIssueRoute: typeof StoreIdIssueRoute
+  StoreIdSearchRoute: typeof StoreIdSearchRoute
+  StoreIdIndexRoute: typeof StoreIdIndexRoute
+}
+
+const StoreIdRouteChildren: StoreIdRouteChildren = {
+  StoreIdBoardRoute: StoreIdBoardRoute,
+  StoreIdIssueRoute: StoreIdIssueRoute,
+  StoreIdSearchRoute: StoreIdSearchRoute,
+  StoreIdIndexRoute: StoreIdIndexRoute,
+}
+
+const StoreIdRouteWithChildren =
+  StoreIdRoute._addFileChildren(StoreIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BoardRoute: BoardRoute,
-  IssueRoute: IssueRoute,
-  SearchRoute: SearchRoute,
+  StoreIdRoute: StoreIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

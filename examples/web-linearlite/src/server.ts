@@ -11,10 +11,6 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
   },
 }) {}
 
-type WorkerEnv = SyncBackend.Env & {
-  ASSETS: { fetch: (request: Request) => Promise<Response> }
-}
-
 const validatePayload = (payload: any, context: { storeId: string }) => {
   console.log(`Validating connection for store: ${context.storeId}`)
   if (payload?.authToken !== 'insecure-token-change-me') {
@@ -23,14 +19,13 @@ const validatePayload = (payload: any, context: { storeId: string }) => {
 }
 
 export default {
-  async fetch(request: CfTypes.Request, env: WorkerEnv, ctx: CfTypes.ExecutionContext) {
+  async fetch(request: CfTypes.Request, _env: SyncBackend.Env, ctx: CfTypes.ExecutionContext) {
     const searchParams = SyncBackend.matchSyncRequest(request)
 
     if (searchParams !== undefined) {
       return SyncBackend.handleSyncRequest({
         request,
         searchParams,
-        env,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
         validatePayload,

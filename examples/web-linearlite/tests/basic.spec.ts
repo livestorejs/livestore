@@ -1,13 +1,20 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('LinearLite', () => {
-  test('serves home page markup', async ({ baseURL, page, request }) => {
+  test('serves home page markup', async ({ baseURL, page }) => {
     if (!baseURL) throw new Error('baseURL is required')
 
-    const response = await request.get(baseURL)
-    expect(await response.text()).toContain('LinearLite')
-
+    // Navigate with page to follow redirects from / to /:storeId/
     await page.goto(baseURL)
+
+    // Verify we got redirected to a store ID route
+    expect(page.url()).toMatch(/\/[a-f0-9-]{36}\/?/)
+
+    // Wait for the store to load by checking for a key UI element
+    await expect(page.getByRole('link', { name: /list view/i })).toBeVisible({ timeout: 30000 })
+
+    // Verify the page contains LinearLite content
+    await expect(page.locator('html')).toContainText('LinearLite')
   })
 })
 
@@ -15,9 +22,12 @@ test.describe('LinearLite UI', () => {
   test('create, open, and edit an issue', async ({ baseURL, page }) => {
     if (!baseURL) throw new Error('baseURL is required')
 
+    // Navigate to base URL - will redirect to /:storeId/
     await page.goto(baseURL)
 
+    // Wait for the store to load by checking for the board link
     const boardLink = page.getByRole('link', { name: /board view/i })
+    await expect(boardLink).toBeVisible({ timeout: 30000 })
     await boardLink.click()
 
     await expect(page.getByRole('heading', { name: /backlog/i })).toBeVisible()

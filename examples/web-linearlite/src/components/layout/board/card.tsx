@@ -1,5 +1,5 @@
 import { useStore } from '@livestore/react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
 import { events, type Issue } from '../../../livestore/schema/index.ts'
 import type { Priority } from '../../../types/priority.ts'
@@ -12,6 +12,7 @@ import { StatusMenu } from '../../common/status-menu.tsx'
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
   const navigate = useNavigate()
   const { store } = useStore()
+  const { storeId } = useParams({ from: '/$storeId' })
 
   const handleChangeStatus = (status: Status) =>
     store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
@@ -25,11 +26,21 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() => navigate({ to: '/issue', search: (prev) => ({ ...prev, issueId: issue.id.toString() }) })}
+      onClick={() =>
+        navigate({
+          to: '/$storeId/issue',
+          params: { storeId },
+          search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+        })
+      }
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate({ to: '/issue', search: (prev) => ({ ...prev, issueId: issue.id.toString() }) })
+          navigate({
+            to: '/$storeId/issue',
+            params: { storeId },
+            search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+          })
         }
       }}
     >

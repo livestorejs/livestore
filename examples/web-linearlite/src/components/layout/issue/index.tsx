@@ -1,7 +1,7 @@
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { useNavigate, useRouter } from '@tanstack/react-router'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
 import { events, tables } from '../../../livestore/schema/index.ts'
 import type { Priority } from '../../../types/priority.ts'
@@ -23,6 +23,7 @@ export const Issue = ({ issueId }: { issueId: number }) => {
   const navigate = useNavigate()
   const router = useRouter()
   const { store } = useStore()
+  const { storeId } = useParams({ from: '/$storeId' })
   const issue = store.useQuery(
     queryDb(tables.issue.where({ id: issueId }).first({ behaviour: 'error' }), { deps: [issueId] }),
   )
@@ -31,7 +32,7 @@ export const Issue = ({ issueId }: { issueId: number }) => {
     if (window.history.length > 2) {
       router.history.back()
     } else {
-      navigate({ to: '/', search: (prev) => ({ ...prev, issueId: undefined }) })
+      navigate({ to: '/$storeId', params: { storeId }, search: (prev) => ({ ...prev, issueId: undefined }) })
     }
   }
 

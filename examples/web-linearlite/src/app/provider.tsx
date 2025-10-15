@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { useRouter } from '@tanstack/react-router'
+import { useParams, useRouter } from '@tanstack/react-router'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { VersionBadge } from '../components/VersionBadge.tsx'
@@ -34,6 +34,7 @@ const syncPayload = { authToken: 'insecure-token-change-me' } as const
 
 export const Provider = ({ children, storeId: storeIdOverride }: { children: React.ReactNode; storeId?: string }) => {
   const router = useRouter()
+  const { storeId: routeStoreId } = useParams({ from: '/$storeId', strict: false }) ?? {}
   const storeId = storeIdOverride ?? import.meta.env.VITE_LIVESTORE_STORE_ID ?? defaultStoreId
   const [showMenu, setShowMenu] = React.useState(false)
   const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
@@ -49,13 +50,14 @@ export const Provider = ({ children, storeId: storeIdOverride }: { children: Rea
         }
       }
       if (e.key === '/' && e.shiftKey) {
-        router.navigate({ to: '/search' })
+        const currentStoreId = routeStoreId ?? storeId
+        router.navigate({ to: '/$storeId/search', params: { storeId: currentStoreId } })
         e.preventDefault()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [router])
+  }, [router, routeStoreId, storeId])
 
   return (
     <LiveStoreProvider
