@@ -26,11 +26,14 @@ interface FileSystemFileHandle {
 //   export default sharedWorkerConstructor
 // }
 
+declare interface ImportMetaEnv {
+  readonly SSR?: string | boolean
+  readonly DEV: boolean | undefined
+  readonly VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
+}
+
 declare interface ImportMeta {
-  env: {
-    DEV: boolean | undefined
-    VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
-  }
+  readonly env: ImportMetaEnv
 }
 
 declare var __debugLiveStoreUtils: any

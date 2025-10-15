@@ -12,7 +12,6 @@ import {
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
@@ -40,9 +39,7 @@ import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
-
-// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = loadSqlite3Wasm()
+import { loadSqlite3 } from './sqlite-loader.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
@@ -147,7 +144,7 @@ export const makePersistedAdapter =
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
-      const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
+      const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
       const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
