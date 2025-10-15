@@ -25,5 +25,5 @@ export const useSuspenseStore = <TSchema extends LiveStoreSchema>(options: Store
 
   React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  return storeRegistry.load(options)
+  return storeRegistry.read(options)
 }
