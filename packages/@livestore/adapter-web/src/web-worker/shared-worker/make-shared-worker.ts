@@ -70,12 +70,15 @@ const makeWorkerRunner = Effect.gen(function* () {
 
   const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
-  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
-    ? Effect.Effect<A, UnexpectedError, never>
-    : never =>
+  ): Effect.Effect<
+    Schema.WithResult.Success<TReq>,
+    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Context<TReq>
+  > =>
+    // Forward the request to the active worker and normalize platform errors into UnexpectedError.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
-      Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, never>),
+      Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, unknown>),
       // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
       // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
       Effect.interruptible,
@@ -92,17 +95,23 @@ const makeWorkerRunner = Effect.gen(function* () {
       ),
       Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
       Effect.tapCauseLogPretty,
-    ) as any
+    ) as Effect.Effect<
+      Schema.WithResult.Success<TReq>,
+      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Context<TReq>
+    >
 
   const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
-  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
-    ? Stream.Stream<A, UnexpectedError, never>
-    : never =>
+  ): Stream.Stream<
+    Schema.WithResult.Success<TReq>,
+    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Context<TReq>
+  > =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker.execute(req) as Stream.Stream<unknown, unknown, never>
+      const stream = worker.execute(req) as Stream.Stream<unknown, unknown, unknown>
 
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
@@ -123,7 +132,11 @@ const makeWorkerRunner = Effect.gen(function* () {
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
       UnexpectedError.mapToUnexpectedErrorStream,
-    ) as any
+    ) as Stream.Stream<
+      Schema.WithResult.Success<TReq>,
+      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Context<TReq>
+    >
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
     const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)

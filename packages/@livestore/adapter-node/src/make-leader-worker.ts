@@ -17,7 +17,6 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
   Effect,
   FetchHttpClient,
-  identity,
   Layer,
   Logger,
   LogLevel,
@@ -59,6 +58,13 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
     : undefined
+
+  // Merge the runtime dependencies once so we can provide them together without chaining Effect.provide.
+  const runtimeLayer = Layer.mergeAll(
+    FetchHttpClient.layer,
+    PlatformNode.NodeFileSystem.layer,
+    TracingLive ?? Layer.empty,
+  )
 
   return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: (args) =>
@@ -169,9 +175,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     // TODO bring back with Effect 4 once it's easier to work with replacing loggers.
     // We basically only want to provide this logger if it's replacing the default logger, not if there's a custom logger already provided.
     // Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
-    Effect.provide(FetchHttpClient.layer),
-    Effect.provide(PlatformNode.NodeFileSystem.layer),
-    TracingLive ? Effect.provide(TracingLive) : identity,
+    Effect.provide(runtimeLayer),
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )
 }

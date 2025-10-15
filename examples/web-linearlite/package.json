@@ -70,7 +70,7 @@
     "dev": "vite --force",
     "lint": "biome lint .",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
+    "test": "playwright test",
     "vite": "vite",
     "wrangler:deploy": "wrangler deploy -c dist/server/wrangler.json",
     "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"

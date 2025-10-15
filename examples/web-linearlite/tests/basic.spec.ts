@@ -1,45 +1,22 @@
-import { spawnSync } from 'node:child_process'
-import type { APIRequestContext } from '@playwright/test'
-import { chromium, expect, test } from '@playwright/test'
-
-const waitForApp = async (baseURL: string, request: APIRequestContext) => {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    try {
-      const response = await request.get(baseURL)
-      if (response.ok()) {
-        return
-      }
-    } catch {
-      // keep retrying until server is ready
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-
-  throw new Error(`Failed to load ${baseURL}`)
-}
+import { expect, test } from '@playwright/test'
 
 test.describe('LinearLite', () => {
-  test('serves home page markup', async ({ baseURL, request }) => {
-    const url = baseURL ?? 'http://localhost:5600'
-    await waitForApp(url, request)
+  test('serves home page markup', async ({ baseURL, page, request }) => {
+    if (!baseURL) throw new Error('baseURL is required')
 
-    const response = await request.get(url)
+    const response = await request.get(baseURL)
     expect(await response.text()).toContain('LinearLite')
+
+    await page.goto(baseURL)
+    await page.screenshot()
   })
 })
 
-const executablePath = chromium.executablePath()
-const probe = executablePath ? spawnSync(executablePath, ['--version'], { stdio: 'ignore' }) : undefined
-const missingBrowserDeps = !executablePath || Boolean(probe?.error || (probe && probe.status !== 0))
-
 test.describe('LinearLite UI', () => {
-  test.skip(missingBrowserDeps, 'Chromium dependencies missing in this environment')
+  test('create, open, and edit an issue', async ({ baseURL, page }) => {
+    if (!baseURL) throw new Error('baseURL is required')
 
-  test('create, open, and edit an issue', async ({ baseURL, page, request }) => {
-    const url = baseURL ?? 'http://localhost:5600'
-    await waitForApp(url, request)
-
-    await page.goto(url)
+    await page.goto(baseURL)
 
     const boardLink = page.getByRole('link', { name: /board view/i })
     await boardLink.click()
@@ -79,6 +56,9 @@ test.describe('LinearLite UI', () => {
       .getByRole('button', { name: /back to issues/i })
       .first()
       .click()
+
     await expect(page.getByRole('button', { name: /Playwright Issue \(edited\)/ }).first()).toBeVisible()
+
+    await page.screenshot()
   })
 })
