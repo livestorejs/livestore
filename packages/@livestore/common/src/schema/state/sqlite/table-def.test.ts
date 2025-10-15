@@ -331,17 +331,21 @@ describe('table function overloads', () => {
     expect(kindSchema).toContain('"circle" | "square"')
 
     expect(() =>
-      shapes.insert({
-        kind: 'square',
-        data: { sideLength: 10 },
-      }).asSql(),
+      shapes
+        .insert({
+          kind: 'square',
+          data: { sideLength: 10 },
+        })
+        .asSql(),
     ).not.toThrow()
 
     expect(() =>
-      shapes.insert({
-        kind: 'circle',
-        data: { radius: 5 },
-      }).asSql(),
+      shapes
+        .insert({
+          kind: 'circle',
+          data: { radius: 5 },
+        })
+        .asSql(),
     ).not.toThrow()
   })
 })
