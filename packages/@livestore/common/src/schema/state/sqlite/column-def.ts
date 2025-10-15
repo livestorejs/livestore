@@ -216,7 +216,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
   }
 
   if (coreTypes.length === 1) {
-    return coreTypes[0]
+    return coreTypes[0]!
   }
 
   return SchemaAST.Union.make(coreTypes, ast.annotations)
