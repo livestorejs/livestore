@@ -7,8 +7,8 @@
     "@livestore/adapter-web": "0.4.0-dev.10",
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
-    "@livestore/wa-sqlite": "0.4.0-dev.10",
-    "@livestore/sync-cf": "0.4.0-dev.10"
+    "@livestore/sync-cf": "0.4.0-dev.10",
+    "@livestore/wa-sqlite": "0.4.0-dev.10"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
