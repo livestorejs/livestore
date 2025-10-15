@@ -257,6 +257,12 @@ const makeWorkerRunner = Effect.gen(function* () {
 }).pipe(Layer.unwrapScoped)
 
 export const makeWorker = () => {
+  const layer = Layer.mergeAll(
+    Logger.prettyWithThread(self.name),
+    FetchHttpClient.layer,
+    WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) }),
+  )
+
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     // WorkerRunner.launch,
@@ -264,9 +270,7 @@ export const makeWorker = () => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.prettyWithThread(self.name)),
-    Effect.provide(FetchHttpClient.layer),
-    Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) })),
+    Effect.provide(layer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     (_) => _ as any as Effect.Effect<void, any>,
