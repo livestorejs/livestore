@@ -1,27 +1,34 @@
-interface AssetsBinding {
-  fetch(request: Request): Promise<Response>
-}
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
+import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 
-interface WorkerEnv {
-  ASSETS: AssetsBinding
+export class SyncBackendDO extends SyncBackend.makeDurableObject({
+  onPush: async (message, context) => {
+    console.log('onPush', message.batch, 'storeId:', context.storeId, 'payload:', context.payload)
+  },
+  onPull: async (message, context) => {
+    console.log('onPull', message, 'storeId:', context.storeId, 'payload:', context.payload)
+  },
+}) {}
+
+const validatePayload = (payload: any, context: { storeId: string }) => {
+  console.log(`Validating connection for store: ${context.storeId}`)
+  if (payload?.authToken !== 'insecure-token-change-me') {
+    throw new Error('Invalid auth token')
+  }
 }
 
 export default {
-  async fetch(request: Request, env: WorkerEnv) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-          'Access-Control-Allow-Headers': '*',
-        },
-      })
-    }
+  async fetch(request: CfTypes.Request, _env: SyncBackend.Env, ctx: CfTypes.ExecutionContext) {
+    const searchParams = SyncBackend.matchSyncRequest(request)
 
-    const assetResponse = await env.ASSETS.fetch(request)
-    if (assetResponse.status !== 404) {
-      return assetResponse
+    if (searchParams !== undefined) {
+      return SyncBackend.handleSyncRequest({
+        request,
+        searchParams,
+        ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+        validatePayload,
+      })
     }
 
     return new Response('Not Found', { status: 404 })

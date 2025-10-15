@@ -6,11 +6,6 @@ compatibility_flags = [
   "nodejs_compat",
 ]
 
-[assets]
-directory = "./dist/client"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-
 [env.prod]
 name = "example-web-todomvc"
 

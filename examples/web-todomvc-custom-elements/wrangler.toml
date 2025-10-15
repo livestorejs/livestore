@@ -6,15 +6,43 @@ compatibility_flags = [
   "nodejs_compat",
 ]
 
-[assets]
-directory = "./dist/client"
-binding = "ASSETS"
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
 
 [env.prod]
 name = "example-web-todomvc-custom-elements"
 
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
 [env.preview]
 name = "example-web-todomvc-custom-elements-preview"
 
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
 [env.dev]
 name = "example-web-todomvc-custom-elements-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]

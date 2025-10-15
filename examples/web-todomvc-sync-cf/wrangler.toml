@@ -6,10 +6,6 @@ compatibility_flags = [
   "nodejs_compat",
 ]
 
-[assets]
-directory = "./dist/client"
-binding = "ASSETS"
-
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"

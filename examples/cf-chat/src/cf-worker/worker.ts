@@ -14,7 +14,6 @@ export default {
       return SyncBackend.handleSyncRequest({
         request,
         searchParams,
-        env,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
       })
@@ -27,11 +26,6 @@ export default {
       const id = env.CLIENT_DO.idFromName(storeId)
 
       return env.CLIENT_DO.get(id).fetch(request)
-    }
-
-    const assetResponse = await env.ASSETS.fetch(request)
-    if (assetResponse.status !== 404) {
-      return assetResponse
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811

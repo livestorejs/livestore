@@ -91,7 +91,7 @@ Vitest.describe('Vitest.asProp', () => {
 
         // This will fail but shrinking is disabled
         if (value > 50) {
-          yield* Effect.fail(new Error(`Value ${value} is too large (> 50) - but no shrinking!`))
+          return yield* Effect.fail(new Error(`Value ${value} is too large (> 50) - but no shrinking!`))
         }
 
         return

@@ -1,10 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { generateStoreId } from '../util/store-id.ts'
 
 export const Route = createFileRoute('/')({
   beforeLoad: () => {
     // Generate a new store ID and redirect
-    const storeId = generateStoreId()
+    const storeId = crypto.randomUUID()
     throw redirect({
       to: '/$storeId',
       params: { storeId },

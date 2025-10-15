@@ -1,7 +1,7 @@
-import type { CfTypes, Env as SyncEnv } from '@livestore/sync-cf/cf-worker'
-import { makeDurableObject, makeWorker, matchSyncRequest } from '@livestore/sync-cf/cf-worker'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
+import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 
-export class SyncBackendDO extends makeDurableObject({
+export class SyncBackendDO extends SyncBackend.makeDurableObject({
   onPush: async (message, context) => {
     console.log('onPush', message.batch, 'storeId:', context.storeId, 'payload:', context.payload)
   },
@@ -10,35 +10,24 @@ export class SyncBackendDO extends makeDurableObject({
   },
 }) {}
 
-interface AssetsBinding {
-  fetch(request: Request): Promise<Response>
+const validatePayload = (payload: any, context: { storeId: string }) => {
+  console.log(`Validating connection for store: ${context.storeId}`)
+  if (payload?.authToken !== 'insecure-token-change-me') {
+    throw new Error('Invalid auth token')
+  }
 }
-
-type WorkerEnv = SyncEnv & {
-  ASSETS: AssetsBinding
-  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<typeof SyncBackendDO>
-}
-
-const syncWorker = makeWorker<WorkerEnv>({
-  syncBackendBinding: 'SYNC_BACKEND_DO',
-  validatePayload: (payload: any, context) => {
-    console.log(`Validating connection for store: ${context.storeId}`)
-    if (payload?.authToken !== 'insecure-token-change-me') {
-      throw new Error('Invalid auth token')
-    }
-  },
-  enableCORS: true,
-})
 
 export default {
-  async fetch(request: Request, env: WorkerEnv, ctx: CfTypes.ExecutionContext) {
-    if (matchSyncRequest(request) !== undefined || request.method === 'OPTIONS') {
-      return syncWorker.fetch(request, env, ctx)
-    }
-
-    const assetResponse = await env.ASSETS.fetch(request)
-    if (assetResponse.status !== 404) {
-      return assetResponse
+  async fetch(request: CfTypes.Request, _env: SyncBackend.Env, ctx: CfTypes.ExecutionContext) {
+    const searchParams = SyncBackend.matchSyncRequest(request)
+    if (searchParams !== undefined) {
+      return SyncBackend.handleSyncRequest({
+        request,
+        searchParams,
+        ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+        validatePayload,
+      })
     }
 
     return new Response('Not Found', { status: 404 })

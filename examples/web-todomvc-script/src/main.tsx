@@ -1,11 +1,16 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, liveStoreVersion } from '@livestore/livestore'
+import { makeWsSync } from '@livestore/sync-cf/client'
 import { events, schema, tables } from './livestore/schema.js'
 
 // Or use makePersistedAdapter for OPFS storage
 const adapter = makeInMemoryAdapter({
   devtools: { sharedWorker: LiveStoreSharedWorker },
+  sync: {
+    backend: makeWsSync({ url: `${globalThis.location.origin}/sync` }),
+    initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
+  },
 })
 
 const store = await createStorePromise({ adapter, schema, storeId: 'store-1' })
