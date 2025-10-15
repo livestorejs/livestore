@@ -1,29 +1,30 @@
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
+import { Link, useParams } from '@tanstack/react-router'
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { MenuContext } from '@/app/contexts'
-import { AboutMenu } from '@/components/layout/sidebar/about-menu'
-import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
-import { SearchButton } from '@/components/layout/sidebar/search-button'
-import { ThemeButton } from '@/components/layout/sidebar/theme-button'
-import { ToolbarButton } from '@/components/layout/toolbar/toolbar-button'
-import { useFilterState } from '@/lib/livestore/queries'
+import { MenuContext } from '../../../app/contexts.ts'
+import { useFilterState } from '../../../livestore/queries.ts'
+import { ToolbarButton } from '../toolbar/toolbar-button.tsx'
+import { AboutMenu } from './about-menu.tsx'
+import { NewIssueButton } from './new-issue-button.tsx'
+import { SearchButton } from './search-button.tsx'
+import { ThemeButton } from './theme-button.tsx'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
+  const { storeId } = useParams({ from: '/$storeId' })
 
   const navItems = [
     {
       title: 'List view',
       icon: Bars4Icon,
-      href: '.',
+      to: '/$storeId',
       onClick: () => setFilterState({ status: null }),
     },
     {
       title: 'Board view',
       icon: ViewColumnsIcon,
-      href: 'board',
+      to: '/$storeId/board',
       onClick: () => setFilterState({ status: null }),
     },
   ]
@@ -44,10 +45,12 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, href, onClick }) => (
+          {navItems.map(({ title, icon: Icon, to, onClick }) => (
             <Link
-              key={href}
-              to={href}
+              key={to}
+              to={to}
+              params={{ storeId }}
+              search={(prev) => ({ ...prev, issueId: undefined })}
               onClick={() => {
                 onClick()
                 setShowMenu(false)

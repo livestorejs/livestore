@@ -1,3 +1,4 @@
+import { env as importedEnv } from 'cloudflare:workers'
 import { UnexpectedError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
 import type { Schema } from '@livestore/utils/effect'
@@ -149,14 +150,14 @@ export const handleSyncRequest = <
 >({
   request,
   searchParams: { storeId, payload, transport },
-  env,
+  env: explicitlyProvidedEnv,
   syncBackendBinding,
   headers,
   validatePayload,
 }: {
   request: CfTypes.Request<CFHostMetada>
   searchParams: SearchParams
-  env: TEnv
+  env?: TEnv | undefined
   /** Only there for type-level reasons */
   ctx: CfTypes.ExecutionContext
   /** Binding name of the sync backend Durable Object */
@@ -176,6 +177,8 @@ export const handleSyncRequest = <
         return new Response(result.left.toString(), { status: 400, headers })
       }
     }
+
+    const env = explicitlyProvidedEnv ?? (importedEnv as TEnv)
 
     if (!(syncBackendBinding in env)) {
       return new Response(

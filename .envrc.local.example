@@ -7,7 +7,6 @@ export MXBAI_API_KEY=""
 export MXBAI_VECTOR_STORE_ID=""
 
 # Optional: Override default development URLs if needed
-# export VITE_LIVESTORE_SYNC_URL="http://localhost:8787"
 # export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 # export GRAFANA_ENDPOINT="http://localhost:30003"
 

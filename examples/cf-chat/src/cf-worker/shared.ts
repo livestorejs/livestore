@@ -5,7 +5,6 @@ export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
   SYNC_BACKEND_URL: string
-  DB: CfTypes.D1Database
   ADMIN_SECRET: string
 }
 

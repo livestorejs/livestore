@@ -2,19 +2,30 @@
 
 [Demo](https://web-linearlite.livestore.dev/)
 
-## Cloudflare Sync (optional)
+## Local development
 
-This app can sync via Cloudflare Durable Objects, mirroring the TodoMVC CF example.
+The app now runs both the UI and Cloudflare Sync worker through the single Vite dev server provided by [`@cloudflare/vite-plugin`](https://developers.cloudflare.com/workers/vite-plugin/). No extra Wrangler process is needed while iterating.
 
-Steps:
+```bash
+pnpm install
+pnpm --filter livestore-example-web-linearlite run dev
+```
 
-- Start the Cloudflare Worker locally
-  - cd examples/web-linearlite
-  - pnpm wrangler:dev
-  - This serves the backend on `http://localhost:8787`
+The dev server automatically forwards sync calls to the worker bundle and exposes the WebSocket endpoint on the same origin, so the app always connects to the current host without any extra configuration.
 
-- Run the app with the sync URL
-  - fish-compatible: `env VITE_LIVESTORE_SYNC_URL=http://localhost:8787 pnpm dev`
-  - Alternatively rely on the dev server plugin that auto-starts Wrangler during `pnpm dev`.
+## Deploy
 
-The app passes `syncPayload` with a demo token; adjust validation in `src/cf-worker/index.ts` for real auth.
+This example deploys the Cloudflare Worker (sync backend) **and** the Vite frontend together. A single command builds the client into `dist/client`, bundles the Worker, and uploads both to Cloudflare:
+
+```bash
+pnpm --filter livestore-example-web-linearlite run deploy
+```
+
+## Building / deploying
+
+```bash
+pnpm --filter livestore-example-web-linearlite run build
+pnpm --filter livestore-example-web-linearlite run wrangler:deploy
+```
+
+The build command emits both the web assets and the worker script that the deploy step uploads to Cloudflare using `wrangler@4.42.2`.

@@ -34,8 +34,8 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   //     }),
   //   ),
   GetSpan: (_) =>
-    Effect.gen(function* (_) {
-      const span = yield* _(Effect.currentSpan, Effect.orDie)
+    Effect.gen(function* () {
+      const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       return {
         traceId: span.traceId,
         spanId: span.spanId,

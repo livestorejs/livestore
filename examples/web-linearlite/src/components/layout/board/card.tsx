@@ -1,18 +1,18 @@
 import { useStore } from '@livestore/react'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Avatar } from '@/components/common/avatar'
-import { PriorityMenu } from '@/components/common/priority-menu'
-import { StatusMenu } from '@/components/common/status-menu'
-import { events, type Issue } from '@/lib/livestore/schema'
-import type { Priority } from '@/types/priority'
-import type { Status } from '@/types/status'
-import { getIssueTag } from '@/utils/get-issue-tag'
+import { events, type Issue } from '../../../livestore/schema/index.ts'
+import type { Priority } from '../../../types/priority.ts'
+import type { Status } from '../../../types/status.ts'
+import { getIssueTag } from '../../../utils/get-issue-tag.ts'
+import { Avatar } from '../../common/avatar.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
 
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
   const navigate = useNavigate()
-  const { storeId } = useParams()
   const { store } = useStore()
+  const { storeId } = useParams({ from: '/$storeId' })
 
   const handleChangeStatus = (status: Status) =>
     store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
@@ -26,11 +26,21 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() => navigate(`/${storeId}/issue/${issue.id}`)}
+      onClick={() =>
+        navigate({
+          to: '/$storeId/issue',
+          params: { storeId },
+          search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+        })
+      }
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`/${storeId}/issue/${issue.id}`)
+          navigate({
+            to: '/$storeId/issue',
+            params: { storeId },
+            search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+          })
         }
       }}
     >

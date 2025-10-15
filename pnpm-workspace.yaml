@@ -42,5 +42,5 @@ catalog:
   graphql: 16.11.0
 
   # Cloudflare tools
-  wrangler: 4.38.0
+  wrangler: 4.42.2
   "@cloudflare/workers-types": 4.20250923.0

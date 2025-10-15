@@ -1,8 +1,8 @@
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
-import { Icon } from '@/components/icons'
-import { AboutModal } from '@/components/layout/sidebar/about-modal'
+import { Icon } from '../../icons/index.tsx'
+import { AboutModal } from './about-modal.tsx'
 
 export const AboutMenu = () => {
   const [showAboutModal, setShowAboutModal] = React.useState(false)

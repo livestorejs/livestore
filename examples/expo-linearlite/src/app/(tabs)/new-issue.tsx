@@ -1,3 +1,4 @@
+import { nanoid } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
 import { Fragment } from 'react'
@@ -6,7 +7,7 @@ import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 're
 import { useUser } from '@/hooks/useUser.ts'
 import { uiState$ } from '@/livestore/queries.ts'
 import { events } from '@/livestore/schema.ts'
-import { makeNextIssueId } from '@/utils/generate-fake-data.ts'
+import { PRIORITIES, STATUSES } from '@/types.ts'
 
 const NewIssueScreen = () => {
   const user = useUser()
@@ -19,23 +20,23 @@ const NewIssueScreen = () => {
   const handleCreateIssue = () => {
     if (!newIssueText) return
 
-    const idNum = makeNextIssueId(store)()
+    const id = nanoid()
     store.commit(
-      events.createIssueWithDescription({
-        id: idNum,
+      events.issueCreated({
+        id,
         title: newIssueText,
         description: newIssueDescription,
-        creator: user.name,
-        status: 0,
-        priority: 0,
-        created: new Date(),
-        modified: new Date(),
-        kanbanorder: 'a1',
+        parentIssueId: null,
+        assigneeId: user.id,
+        status: STATUSES.BACKLOG,
+        priority: PRIORITIES.NONE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }),
       // reset state
       events.uiStateSet({ newIssueText: '', newIssueDescription: '' }),
     )
-    router.push({ pathname: '/issue-details', params: { issueId: String(idNum), storeId: store.storeId } })
+    router.push(`/issue-details?issueId=${id}`)
   }
 
   return (
@@ -49,12 +50,7 @@ const NewIssueScreen = () => {
             </Pressable>
           ),
           headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                if (router.canGoBack()) router.back()
-                else router.replace({ pathname: '/(tabs)', params: { storeId: store.storeId } })
-              }}
-            >
+            <Pressable onPress={() => router.back()}>
               <Text style={styles.actionButton}>Cancel</Text>
             </Pressable>
           ),

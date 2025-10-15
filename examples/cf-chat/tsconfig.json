@@ -8,6 +8,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "types": ["vite/client", "@cloudflare/workers-types"],
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,

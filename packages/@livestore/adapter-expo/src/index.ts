@@ -85,15 +85,6 @@ export const makePersistedAdapter =
 
       const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
 
-      if (devtoolsEnabled) {
-        const { directory } = resolveExpoPersistencePaths({
-          storeId,
-          storage: options.storage,
-          schema,
-        })
-        yield* Effect.log(`[@livestore/adapter-expo] Database directory: ${directory}`)
-      }
-
       const {
         storage,
         clientId = yield* getDeviceId,
@@ -313,28 +304,27 @@ const resetExpoPersistence = ({
   storeId: string
   storage: MakeDbOptions['storage']
   schema: LiveStoreSchema
-}) => {
-  const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
-    storeId,
-    storage,
-    schema,
-  })
-
-  return Effect.try({
+}) =>
+  Effect.try({
     try: () => {
+      const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+        storeId,
+        storage,
+        schema,
+      })
+
       SQLite.deleteDatabaseSync(stateDatabaseName, directory)
       SQLite.deleteDatabaseSync(eventlogDatabaseName, directory)
     },
     catch: (cause) =>
       new UnexpectedError({
         cause,
-        note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId} at ${directory}`,
+        note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId}`,
       }),
   }).pipe(
     Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
     Effect.withSpan('@livestore/adapter-expo:resetPersistence', { attributes: { storeId } }),
   )
-}
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,

@@ -1,46 +1,17 @@
 import { faker } from '@faker-js/faker'
 import { nanoid } from '@livestore/livestore'
 
-import type { Priority, Status } from '@/types.ts'
+import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
+import { PRIORITIES, STATUSES } from '@/types.ts'
 
-type SeedIssue = {
-  id: number
-  title: string
-  description: string | null
-  parentIssueId: string | null
-  assigneeId: string
-  status: Status
-  priority: Priority
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: null
-}
-
-type SeedComment = {
-  id: string
-  issueId: number
-  userId: string
-  content: string
-  createdAt: Date
-  updatedAt: Date
-}
-
-type SeedReaction = {
-  id: string
-  issueId: string
-  commentId: string
-  userId: string
-  emoji: string
-}
-
-export const createRandomUser = (): { id: string; name: string; email: string; photoUrl: string | null } => ({
+export const createRandomUser = (): User => ({
   id: nanoid(),
   name: faker.person.firstName(),
   email: faker.internet.email(),
   photoUrl: faker.image.avatar(),
 })
 
-export const createRandomIssue = (assigneeId: string, idOverride?: number): SeedIssue => {
+export const createRandomIssue = (assigneeId: string): Issue => {
   const actions = ['Fix', 'Update', 'Implement', 'Debug', 'Optimize', 'Refactor', 'Add']
   const subjects = [
     'login flow',
@@ -58,37 +29,20 @@ export const createRandomIssue = (assigneeId: string, idOverride?: number): Seed
   const createdAt = faker.date.recent()
 
   return {
-    // Local numeric id for staging; caller can override to enforce sequencing
-    id: idOverride ?? Date.now() + Math.floor(Math.random() * 1_000_000),
+    id: nanoid(),
     title,
     description: faker.lorem.sentences({ min: 1, max: 2 }),
     parentIssueId: null,
     assigneeId,
-    status: randomValueFromArray(Array.from({ length: 5 }, (_, index) => index)) as Status,
-    priority: randomValueFromArray(Array.from({ length: 5 }, (_, index) => index)) as Priority,
+    status: randomValueFromArray(Object.values(STATUSES)),
+    priority: randomValueFromArray(Object.values(PRIORITIES)),
     createdAt,
     updatedAt: createdAt,
     deletedAt: null,
   }
 }
 
-import { queryDb, Schema, type Store, sql } from '@livestore/livestore'
-
-export const makeNextIssueId = (store: Store) => {
-  const { maxId } = store.query(
-    queryDb(
-      {
-        query: sql`SELECT COALESCE(MAX(id), 0) AS maxId FROM issues`,
-        schema: Schema.Struct({ maxId: Schema.Number }).pipe(Schema.Array, Schema.headOrElse()),
-      },
-      { label: 'max-issue-id', deps: ['issues'] },
-    ),
-  )
-  let next = maxId + 1
-  return () => next++
-}
-
-export const createRandomComment = (issueId: number, userId: string): SeedComment => {
+export const createRandomComment = (issueId: string, userId: string): Comment => {
   const createdAt = faker.date.recent()
   return {
     id: nanoid(),
@@ -100,9 +54,9 @@ export const createRandomComment = (issueId: number, userId: string): SeedCommen
   }
 }
 
-export const createRandomReaction = (issueId: number, userId: string, commentId: string): SeedReaction => ({
+export const createRandomReaction = (issueId: string, userId: string, commentId: string): Reaction => ({
   id: nanoid(),
-  issueId: String(issueId),
+  issueId,
   commentId,
   userId,
   emoji: randomValueFromArray(emojies),

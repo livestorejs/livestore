@@ -8,6 +8,7 @@
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
     "@livestore/react": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
     "@livestore/wa-sqlite": "0.4.0-dev.10",
     "@overengineering/fps-meter": "0.2.1",
     "react": "19.1.0",
@@ -15,20 +16,22 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.10",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
-    "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wrangler": "^4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=1 run build",
+    "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
     "preview": "vite preview"
   }

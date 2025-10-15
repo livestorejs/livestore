@@ -3,9 +3,9 @@ import { ComputerDesktopIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
-import { Shortcut } from '@/components/common/shortcut'
-import { type Theme, themeOptions } from '@/data/theme-options'
-import { useFrontendState } from '@/lib/livestore/queries'
+import { type Theme, themeOptions } from '../../../data/theme-options.ts'
+import { useFrontendState } from '../../../livestore/queries.ts'
+import { Shortcut } from '../../common/shortcut.tsx'
 
 export const ThemeButton = () => {
   const [theme, setTheme] = React.useState<Theme | undefined>(undefined)

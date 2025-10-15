@@ -2,9 +2,9 @@ import { ArrowsUpDownIcon, BarsArrowDownIcon, BarsArrowUpIcon } from '@heroicons
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
-import { Shortcut } from '@/components/common/shortcut'
-import { type SortingDirection, type SortingOption, sortingOptions } from '@/data/sorting-options'
-import { useFilterState } from '@/lib/livestore/queries'
+import { type SortingDirection, type SortingOption, sortingOptions } from '../../../data/sorting-options.ts'
+import { useFilterState } from '../../../livestore/queries.ts'
+import { Shortcut } from '../../common/shortcut.tsx'
 
 export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
   const [filterState, setFilterState] = useFilterState()

@@ -1,17 +1,26 @@
-import fs from 'node:fs'
 import process from 'node:process'
 
 import { Effect, Logger, LogLevel, Option } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmdText } from '@livestore/utils-dev/node'
 
-import { deployToNetlify } from '../shared/netlify.ts'
-
-type NetlifyTarget = Parameters<typeof deployToNetlify>[0]['target']
+import {
+  buildCloudflareWorker,
+  type CloudflareEnvironmentKind,
+  deployCloudflareWorker,
+  getCloudflareExample,
+  resolveCloudflareAccountId,
+  resolveCloudflareApiToken,
+  resolveEnvironmentName,
+  resolveWorkerName,
+  resolveWorkersSubdomain,
+} from '../shared/cloudflare.ts'
+import { cloudflareExamples } from '../shared/cloudflare-manifest.ts'
+import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
 /**
- * This script is used to deploy prod-builds of all examples to Netlify.
- * It assumes existing Netlify sites with names `example-<example-name>`.
+ * Deploys the example gallery to Cloudflare Workers. Handles prod/dev/preview behaviour while
+ * leaving DNS updates to a dedicated subcommand.
  */
 
 const workspaceRoot = process.env.WORKSPACE_ROOT
@@ -20,32 +29,34 @@ if (!workspaceRoot) {
   process.exit(1)
 }
 
-const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples`
-
 const DEV_BRANCH_NAME = 'dev'
-
-/**
- * Thin wrapper around the Netlify deploy target union so we can annotate the site that should
- * receive a deploy and whether we intend to hit prod or a named alias.
- */
-interface DeploymentConfig {
-  site: string
-  target: NetlifyTarget
-}
 
 interface DeploymentSummary {
   example: string
-  site: string
-  siteName: string
-  deployUrl: string
-  target: NetlifyTarget['_tag']
-  alias?: string
+  workerName: string
+  workerHost: string
+  env: 'prod' | 'dev' | 'preview'
+  domains: string[]
+  previewUrl?: string
 }
 
-/**
- * Resolve the current git branch and short SHA from CI-friendly environment variables or git.
- * We prefer `GITHUB_BRANCH_NAME` when present so GitHub Actions can inject the branch during checkout.
- */
+export const formatDeploymentSummaryMarkdown = (summaries: ReadonlyArray<DeploymentSummary>) => {
+  const rows = summaries.map((summary) => [
+    summary.example,
+    summary.workerHost,
+    summary.env,
+    summary.domains.length > 0 ? summary.domains.join(', ') : '—',
+    summary.previewUrl ?? '—',
+  ])
+
+  return formatMarkdownTable({
+    title: 'Deployed examples',
+    headers: ['Example', 'Worker', 'Target', 'Domains', 'Preview'],
+    rows,
+    emptyMessage: '_No examples were deployed in this run._',
+  })
+}
+
 const getBranchInfo = Effect.gen(function* () {
   const branchFromEnv = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_REF_NAME ?? process.env.GITHUB_HEAD_REF
 
@@ -67,137 +78,90 @@ const getBranchInfo = Effect.gen(function* () {
   return { branchName, shortSha }
 })
 
-const DNS_LABEL_MAX_LENGTH = 63
-const NETLIFY_ALIAS_SEPARATOR_LENGTH = 2 // `alias--site` joins alias + site with two hyphens
-
-const sanitizeAlias = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/--+/g, '-')
-    .replace(/^-|-$/g, '')
-
-const trimAliasToDnsLabel = (aliasCandidate: string, maxLength: number) => {
-  if (maxLength <= 0) {
-    return Option.none<string>()
-  }
-
-  const sanitized = sanitizeAlias(aliasCandidate)
-  if (sanitized.length === 0) {
-    return Option.none<string>()
-  }
-
-  const trimmed = sanitized.slice(0, maxLength).replace(/-+$/g, '')
-
-  return trimmed.length > 0 ? Option.some(trimmed) : Option.none<string>()
-}
-
-export const resolveAlias = ({
-  site,
-  alias,
-  normalizedBranch,
-  shortSha,
-}: {
-  site: string
-  alias: Option.Option<string>
-  normalizedBranch: string
-  shortSha: string
-}) => {
-  const maxAliasLength = Math.max(1, DNS_LABEL_MAX_LENGTH - (site.length + NETLIFY_ALIAS_SEPARATOR_LENGTH))
-
-  const candidates: string[] = [
-    ...(Option.isSome(alias) ? [alias.value] : []),
-    `branch-${normalizedBranch}-${shortSha}`,
-    `snapshot-${shortSha}`,
-    shortSha,
-  ]
-
-  for (const candidate of candidates) {
-    const trimmed = trimAliasToDnsLabel(candidate, maxAliasLength)
-    if (Option.isSome(trimmed)) {
-      return trimmed.value
-    }
-  }
-
-  // Fallback: use the short SHA truncated to fit the DNS label limit.
-  return shortSha.slice(0, Math.min(shortSha.length, maxAliasLength))
-}
-
 /**
- * Decide which Netlify site and target we should deploy to for a given example based on branch,
- * CLI flags (`--prod` and `--alias`), and a fall-back alias derived from the branch + commit.
+ * Decide whether a deploy should target the prod worker, dev worker, or the shared preview
+ * environment.
  */
-const resolveDeployment = ({
-  example,
-  alias,
+const determineDeploymentKind = ({
   prod,
   branchName,
-  shortSha,
 }: {
-  example: string
-  alias: Option.Option<string>
   prod: boolean
   branchName: string
-  shortSha: string
-}): DeploymentConfig => {
-  const exampleSite = `example-${example}`
-  const devSite = `${exampleSite}-dev`
-
+}): CloudflareEnvironmentKind => {
   const normalizedBranch = branchName.toLowerCase()
-  const site = prod || normalizedBranch === 'main' ? exampleSite : devSite
 
-  const safeAlias = resolveAlias({ site, alias, normalizedBranch, shortSha })
-
-  if (Option.isSome(alias)) {
-    return { site, target: { _tag: 'alias', alias: safeAlias } }
+  if (prod || normalizedBranch === 'main') {
+    return 'prod'
   }
 
-  if (prod || normalizedBranch === 'main' || normalizedBranch === DEV_BRANCH_NAME) {
-    return { site, target: { _tag: 'prod' } }
+  if (normalizedBranch === DEV_BRANCH_NAME) {
+    return 'dev'
   }
 
-  return { site, target: { _tag: 'alias', alias: safeAlias } }
+  return 'preview'
 }
 
-const buildAndDeployExample = ({ example, deployment }: { example: string; deployment: DeploymentConfig }) =>
-  Effect.gen(function* () {
-    const cwd = `${EXAMPLES_SRC_DIR}/${example}`
-    yield* cmd(['pnpm', 'build'], { cwd })
+const formatDomain = (domain: { domain: string; name: string }) =>
+  domain.name === '@' ? domain.domain : `${domain.name}.${domain.domain}`
 
-    const result = yield* deployToNetlify({
-      site: deployment.site,
-      dir: `${EXAMPLES_SRC_DIR}/${example}/dist`,
-      target: deployment.target,
-      cwd,
-    }).pipe(
+const deploymentKindLabel = (kind: CloudflareEnvironmentKind) => kind
+
+/**
+ * Build + deploy a single example, returning a summary that can be rendered in the CLI table.
+ */
+const deployExample = ({
+  exampleSlug,
+  prod,
+  branchName,
+  workersSubdomain,
+}: {
+  exampleSlug: string
+  prod: boolean
+  branchName: string
+  workersSubdomain: string
+}) =>
+  Effect.gen(function* () {
+    const manifest = yield* getCloudflareExample(exampleSlug)
+    const deploymentKind = determineDeploymentKind({ prod, branchName })
+    const envName = resolveEnvironmentName({ example: manifest, kind: deploymentKind })
+    const workerName = resolveWorkerName({ example: manifest, kind: deploymentKind })
+    const workerHost = `${workerName}.${workersSubdomain}.workers.dev`
+
+    yield* Effect.log(`Building ${exampleSlug} (${envName})`)
+    yield* buildCloudflareWorker({ example: manifest, kind: deploymentKind })
+
+    yield* Effect.log(`Deploying ${exampleSlug} as ${workerName}`)
+    yield* deployCloudflareWorker({ example: manifest, kind: deploymentKind }).pipe(
       Effect.retry({ times: 2 }),
-      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
+      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
     )
 
-    console.log(`Deployed ${example} to ${result.deploy_url}`)
+    yield* Effect.annotateCurrentSpan({ deployment_kind: deploymentKindLabel(deploymentKind) })
+
+    const scopedDomains =
+      deploymentKind === 'prod'
+        ? manifest.domains.filter((domain) => domain.scope === 'prod')
+        : deploymentKind === 'dev'
+          ? manifest.domains.filter((domain) => domain.scope === 'dev')
+          : []
 
     const summary: DeploymentSummary = {
-      example,
-      site: deployment.site,
-      siteName: result.site_name,
-      deployUrl: result.deploy_url,
-      target: deployment.target._tag,
-      alias: deployment.target._tag === 'alias' ? deployment.target.alias : '<none>',
+      example: manifest.slug,
+      workerName,
+      workerHost,
+      env: deploymentKind,
+      domains: scopedDomains.map(formatDomain),
+      ...(deploymentKind === 'preview' ? ({ previewUrl: `https://${workerHost}` } as const) : {}),
     }
 
     return summary
   }).pipe(
-    Effect.withSpan(`deploy-example-${example}`, {
+    Effect.withSpan(`deploy-example-${exampleSlug}`, {
       attributes: {
-        example,
-        site: deployment.site,
-        target: deployment.target._tag,
-        alias: deployment.target._tag === 'alias' ? deployment.target.alias : undefined,
+        example: exampleSlug,
       },
     }),
-    Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)),
-    Effect.annotateLogs({ example }),
   )
 
 export const command = Cli.Command.make(
@@ -205,69 +169,66 @@ export const command = Cli.Command.make(
   {
     exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
     prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
-    alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
   },
-  Effect.fn(
-    function* ({ alias, exampleFilter, prod }) {
-      const { branchName, shortSha } = yield* getBranchInfo
+  Effect.fn(function* ({ exampleFilter, prod }) {
+    // Ensure credentials are present before kicking off parallel builds; wrangler fails with
+    // an opaque message otherwise.
+    yield* resolveCloudflareAccountId
+    yield* resolveCloudflareApiToken
 
-      console.log(`Deploy branch: ${branchName}`)
+    const { branchName } = yield* getBranchInfo
+    console.log(`Deploy branch: ${branchName}`)
 
-      const excludeDirs = new Set([
-        'expo-linearlite',
-        'expo-todomvc-sync-cf',
-        'node-effect-cli',
-        'node-todomvc-sync-cf',
-        'web-todomvc-sync-electric',
-        'web-todomvc-sync-s2',
-        'cloudflare-todomvc',
-      ])
-      const examplesToDeploy = fs
-        .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && !excludeDirs.has(entry.name))
-        .map((entry) => entry.name)
+    const filteredExamples = cloudflareExamples.filter((example) =>
+      Option.isSome(exampleFilter) ? example.slug.includes(exampleFilter.value) : true,
+    )
 
-      const filteredExamplesToDeploy = examplesToDeploy.filter((example) =>
-        Option.isSome(exampleFilter) ? example.includes(exampleFilter.value) : true,
+    if (filteredExamples.length === 0) {
+      const available = cloudflareExamples.map((example) => example.slug).join(', ')
+      console.error(
+        Option.isSome(exampleFilter)
+          ? `No examples found matching filter: ${exampleFilter.value}. Available examples: ${available}`
+          : 'No examples configured for Cloudflare deployment.',
       )
+      return
+    }
 
-      if (filteredExamplesToDeploy.length === 0 && Option.isSome(exampleFilter)) {
-        console.error(
-          `No examples found matching filter: ${exampleFilter.value}. Available examples: ${examplesToDeploy.join(', ')}`,
-        )
-        return
-      } else {
-        console.log(`Deploying${prod ? ' (to prod)' : ''}: ${filteredExamplesToDeploy.join(', ')}`)
-      }
+    const workersSubdomain = yield* resolveWorkersSubdomain
+    console.log(
+      `Deploying${prod ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
+    )
 
-      const results = yield* Effect.forEach(
-        filteredExamplesToDeploy,
-        (example) =>
-          buildAndDeployExample({
-            example,
-            deployment: resolveDeployment({ example, alias, prod, branchName, shortSha }),
-          }),
-        { concurrency: 4 },
-      )
+    const results = yield* Effect.forEach(
+      filteredExamples,
+      (example) =>
+        deployExample({
+          exampleSlug: example.slug,
+          prod,
+          branchName,
+          workersSubdomain,
+        }),
+      { concurrency: 3 },
+    )
 
-      console.log(`Deployed ${results.length} examples`)
+    console.log(`Deployed ${results.length} examples`)
 
-      const tableRows = results.map((result) => ({
-        Example: result.example,
-        Site: result.site,
-        'Site Name': result.siteName,
-        Target: result.target === 'alias' ? `alias:${result.alias ?? 'n/a'}` : result.target,
-        'Deploy URL': result.deployUrl,
-      }))
+    const tableRows = results.map((result) => ({
+      Example: result.example,
+      Worker: result.workerHost,
+      Target: result.env,
+      Domains: result.domains.length > 0 ? result.domains.join(', ') : '—',
+      Preview: result.previewUrl ?? '—',
+    }))
 
-      console.log('\nDeployment summary:')
-      console.table(tableRows)
-    },
-    Effect.catchIf(
-      (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
-      () => Effect.logWarning('::warning Not logged in to Netlify'),
-    ),
-  ),
+    console.log('\nDeployment summary:')
+    console.table(tableRows)
+
+    // Also surface the deployment results in the GitHub run summary when available.
+    yield* appendGithubSummaryMarkdown({
+      markdown: formatDeploymentSummaryMarkdown(results),
+      context: 'example deployment',
+    })
+  }),
 )
 
 if (import.meta.main) {
@@ -276,7 +237,9 @@ if (import.meta.main) {
     version: '0.0.0',
   })
 
-  cli(process.argv).pipe(
+  Effect.gen(function* () {
+    return yield* cli(process.argv)
+  }).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.provide(PlatformNode.NodeContext.layer),
     PlatformNode.NodeRuntime.runMain,

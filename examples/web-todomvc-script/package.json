@@ -7,18 +7,23 @@
     "@livestore/adapter-web": "0.4.0-dev.10",
     "@livestore/livestore": "0.4.0-dev.10",
     "@livestore/peer-deps": "0.4.0-dev.10",
+    "@livestore/sync-cf": "0.4.0-dev.10",
     "@livestore/wa-sqlite": "0.4.0-dev.10"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.10",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wrangler": "^4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
     "build": "vite build",
+    "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
     "preview": "vite preview"
   }

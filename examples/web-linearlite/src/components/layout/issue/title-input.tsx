@@ -1,6 +1,6 @@
 import { useStore } from '@livestore/react'
-import { events } from '@/lib/livestore/schema'
-import type { Issue } from '@/types/issue'
+import { events } from '../../../livestore/schema/index.ts'
+import type { Issue } from '../../../types/issue.ts'
 
 export const TitleInput = ({
   issue,

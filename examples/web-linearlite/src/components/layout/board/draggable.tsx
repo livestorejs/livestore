@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import React, { memo } from 'react'
 import { DragPreview, useDrag } from 'react-aria'
-import type { Issue } from '@/lib/livestore/schema'
+import type { Issue } from '../../../livestore/schema/index.ts'
 import { Card } from './card.tsx'
 
 export const Draggable = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {

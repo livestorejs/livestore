@@ -13,7 +13,6 @@ export default {
       return SyncBackend.handleSyncRequest({
         request,
         searchParams,
-        env,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
         headers: {},

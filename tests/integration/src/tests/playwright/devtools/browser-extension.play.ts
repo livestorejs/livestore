@@ -112,8 +112,14 @@ const runTest =
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
-  ) =>
-    Effect.gen(function* () {
+  ) => {
+    const outerLayer = Layer.mergeAll(
+      Logger.prettyWithThread('playwright-worker'),
+      PlatformNode.NodeContext.layer,
+      FetchHttpClient.layer,
+    )
+
+    return Effect.gen(function* () {
       const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
         traceId: parentSpanContext.traceId,
@@ -137,13 +143,8 @@ const runTest =
         Effect.annotateLogs({ thread }),
         Effect.provide(layer),
       )
-    }).pipe(
-      Effect.tapCauseLogPretty,
-      Effect.provide(Logger.pretty),
-      Effect.provide(PlatformNode.NodeContext.layer),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.runPromise,
-    )
+    }).pipe(Effect.tapCauseLogPretty, Effect.provide(outerLayer), Effect.runPromise)
+  }
 
 const getExtensionPath = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
@@ -165,7 +166,7 @@ const getExtensionPath = Effect.gen(function* () {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       if ((yield* fs.exists(path)) === false) {
-        yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+        return yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
       }
     }),
   ),

@@ -1,14 +1,11 @@
 // @ts-check
 import path from 'node:path'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+// import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
 const __dirname = import.meta.dirname
-
-const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -26,14 +23,17 @@ export default defineConfig({
   },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/wa-sqlite'],
+    exclude: [
+      '@livestore/wa-sqlite',
+      'lightningcss', // Avoid wasm branch looking for missing ../pkg (lightningcss#701)
+    ],
   },
   plugins: [
-    tanstackStart({ customViteReactPlugin: true }),
+    tanstackStart(),
     viteReact(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    shouldAnalyze
-      ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
-      : undefined,
+    // TEMPORARY: Disabled due to Vite 7 compatibility issue
+    // See: https://github.com/livestorejs/livestore/issues/746
+    // Error: "invoke was called before connect" - plugin needs update for Vite 7 module runner API
+    // livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
   ],
 })
