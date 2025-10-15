@@ -80,7 +80,7 @@
     {
       "label": "dev:ts:watch",
       "type": "shell",
-      "command": "direnv exec . mono ts --watch",
+      "command": "direnv exec . mono ts --clean --watch",
       "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {

@@ -857,7 +857,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     syncStates: () =>
       Effect.gen(this, function* () {
         const session = yield* this.syncProcessor.syncState
-        const leader = yield* this.clientSession.leaderThread.getSyncState
+        const leader = yield* this.clientSession.leaderThread.syncState
         return { session, leader }
       }).pipe(this.runEffectPromise),
 
@@ -868,7 +868,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           `Session sync state: ${session.localHead} (upstream: ${session.upstreamHead})`,
           session.toJSON(),
         )
-        const leader = yield* this.clientSession.leaderThread.getSyncState
+        const leader = yield* this.clientSession.leaderThread.syncState
         yield* Effect.log(`Leader sync state: ${leader.localHead} (upstream: ${leader.upstreamHead})`, leader.toJSON())
       }).pipe(this.runEffectFork)
     },

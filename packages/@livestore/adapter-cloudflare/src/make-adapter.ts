@@ -109,7 +109,7 @@ export const makeAdapter =
             initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
-            getSyncState: syncProcessor.syncState,
+            syncState: syncProcessor.syncState,
             sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
             networkStatus,
           },

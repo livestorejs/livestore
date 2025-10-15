@@ -13,7 +13,9 @@ const adapter = makeInMemoryAdapter({
   },
 })
 
-const store = await createStorePromise({ adapter, schema, storeId: 'store-1' })
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
+
+const store = await createStorePromise({ adapter, schema, storeId: 'store-1', syncPayload })
 
 // Add version badge
 console.log(`LiveStore v${liveStoreVersion}`)

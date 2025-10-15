@@ -25,7 +25,7 @@ Use the `mono` CLI for common workflows:
   - Some tests can take a while to run.
 - `mono ts [--watch] [--clean]` to build the TypeScript code
 - `mono docs <dev|build|deploy>` for docs workflows
-- `mono examples <run|deploy>` for example workflows
+- `mono examples <run|deploy|test>` for example workflows
 - ... and more
 
 ## Testing

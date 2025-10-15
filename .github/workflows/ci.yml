@@ -258,6 +258,8 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Build examples
         run: pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build
+      - name: Test examples
+        run: mono examples test
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: mono examples deploy

@@ -30,7 +30,6 @@ export const useDebouncedScrollState = (id: string, { debounce = 100 }: { deboun
 
 export const useFrontendState = () => useClientDocument(tables.frontendState)
 
-export const issueCount$ = queryDb(tables.issue.count().where({ deleted: null }), { label: 'global.issueCount' })
 export const highestIssueId$ = queryDb(
   tables.issue
     .select('id')

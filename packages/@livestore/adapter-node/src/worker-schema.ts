@@ -167,6 +167,15 @@ export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<Le
   },
 ) {}
 
+export class LeaderWorkerInnerSyncStateStream extends Schema.TaggedRequest<LeaderWorkerInnerSyncStateStream>()(
+  'SyncStateStream',
+  {
+    payload: {},
+    success: SyncState.SyncState,
+    failure: UnexpectedError,
+  },
+) {}
+
 export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
   'GetNetworkStatus',
   {
@@ -212,6 +221,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerExportEventlog,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerSyncStateStream,
   LeaderWorkerInnerGetNetworkStatus,
   LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,

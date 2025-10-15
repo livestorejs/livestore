@@ -6,8 +6,8 @@ import {
   getCloudflareExample,
   resolveWorkerName,
   resolveWorkersSubdomain,
-} from '../shared/cloudflare.ts'
-import { cloudflareExamples } from '../shared/cloudflare-manifest.ts'
+} from '../../shared/cloudflare.ts'
+import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 
 type TargetEnv = 'prod' | 'dev'
 

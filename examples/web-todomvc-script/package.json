@@ -14,6 +14,7 @@
     "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.10",
+    "@playwright/test": "^1.55.1-beta-1758616458000",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "wrangler": "^4.42.2"
@@ -25,6 +26,7 @@
     "build": "vite build",
     "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test"
   }
 }

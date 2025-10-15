@@ -39,6 +39,7 @@
     "build": "vite build",
     "dev": "vite dev",
     "start": "node .output/server/index.mjs",
-    "test:e2e": "playwright test"
+    "test": "playwright test",
+    "test:e2e": "pnpm test"
   }
 }

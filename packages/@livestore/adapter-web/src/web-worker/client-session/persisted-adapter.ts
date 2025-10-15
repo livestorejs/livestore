@@ -460,10 +460,13 @@ export const makePersistedAdapter =
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
-        ),
+        syncState: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
+          ),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+        }),
 
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(

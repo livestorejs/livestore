@@ -26,12 +26,15 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
+const syncPayload = { authToken: 'insecure-token-change-me' } as const
+
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
     batchUpdates={batchUpdates}
+    syncPayload={syncPayload}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />
