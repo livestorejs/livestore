@@ -149,8 +149,8 @@ const GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_00
  * @public
  */
 export class StoreRegistry {
-  private readonly cache = new StoreCache()
-  private readonly gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
+  readonly #cache = new StoreCache()
+  readonly #gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
 
   /**
    * Ensures a store entry exists in the cache.
@@ -161,7 +161,7 @@ export class StoreRegistry {
    * @internal
    */
   ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
-    return this.cache.getOrCreate<TSchema>(storeId)
+    return this.#cache.getOrCreate<TSchema>(storeId)
   }
 
   /**
@@ -271,17 +271,17 @@ export class StoreRegistry {
   #scheduleGC = (id: StoreId): void => {
     this.#cancelGC(id)
     const timer = setTimeout(() => {
-      this.gcTimeouts.delete(id)
-      this.cache.remove(id)
+      this.#gcTimeouts.delete(id)
+      this.#cache.remove(id)
     }, GC_TIME)
-    this.gcTimeouts.set(id, timer)
+    this.#gcTimeouts.set(id, timer)
   }
 
   #cancelGC = (id: StoreId): void => {
-    const t = this.gcTimeouts.get(id)
+    const t = this.#gcTimeouts.get(id)
     if (t) {
       clearTimeout(t)
-      this.gcTimeouts.delete(id)
+      this.#gcTimeouts.delete(id)
     }
   }
 }
