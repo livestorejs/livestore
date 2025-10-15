@@ -27,7 +27,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
       if (yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) {
         yield* fs.remove(targetDir, { recursive: true })
       } else {
-        yield* Effect.die('Aborting...')
+        return yield* Effect.die('Aborting...')
       }
     }
 

@@ -16,6 +16,7 @@ import {
   resolveWorkersSubdomain,
 } from '../shared/cloudflare.ts'
 import { cloudflareExamples } from '../shared/cloudflare-manifest.ts'
+import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
 /**
  * Deploys the example gallery to Cloudflare Workers. Handles prod/dev/preview behaviour while
@@ -37,6 +38,23 @@ interface DeploymentSummary {
   env: 'prod' | 'dev' | 'preview'
   domains: string[]
   previewUrl?: string
+}
+
+export const formatDeploymentSummaryMarkdown = (summaries: ReadonlyArray<DeploymentSummary>) => {
+  const rows = summaries.map((summary) => [
+    summary.example,
+    summary.workerHost,
+    summary.env,
+    summary.domains.length > 0 ? summary.domains.join(', ') : '—',
+    summary.previewUrl ?? '—',
+  ])
+
+  return formatMarkdownTable({
+    title: 'Deployed examples',
+    headers: ['Example', 'Worker', 'Target', 'Domains', 'Preview'],
+    rows,
+    emptyMessage: '_No examples were deployed in this run._',
+  })
 }
 
 const getBranchInfo = Effect.gen(function* () {
@@ -204,6 +222,12 @@ export const command = Cli.Command.make(
 
     console.log('\nDeployment summary:')
     console.table(tableRows)
+
+    // Also surface the deployment results in the GitHub run summary when available.
+    yield* appendGithubSummaryMarkdown({
+      markdown: formatDeploymentSummaryMarkdown(results),
+      context: 'example deployment',
+    })
   }),
 )
 

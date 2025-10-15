@@ -15,12 +15,6 @@ type WorkerEnv = SyncBackend.Env & {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': '*',
-}
-
 const validatePayload = (payload: any, context: { storeId: string }) => {
   console.log(`Validating connection for store: ${context.storeId}`)
   if (payload?.authToken !== 'insecure-token-change-me') {
@@ -33,7 +27,7 @@ const startFetch = createStartHandler(defaultStreamHandler)
 export default {
   async fetch(request: CfTypes.Request, env: WorkerEnv, ctx: CfTypes.ExecutionContext) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders })
+      return new Response(null, { status: 204 })
     }
 
     const searchParams = SyncBackend.matchSyncRequest(request)
@@ -45,7 +39,6 @@ export default {
         env,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
-        headers: corsHeaders,
         validatePayload,
       })
     }

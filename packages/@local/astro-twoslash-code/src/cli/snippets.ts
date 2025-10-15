@@ -1563,8 +1563,7 @@ const watchSnippetsInternal = (
 
       if (watchStreams.length === 0) {
         yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
-        yield* Effect.never
-        return
+        return yield* Effect.never
       }
 
       const merged =

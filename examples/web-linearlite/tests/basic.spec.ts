@@ -8,7 +8,6 @@ test.describe('LinearLite', () => {
     expect(await response.text()).toContain('LinearLite')
 
     await page.goto(baseURL)
-    await page.screenshot()
   })
 })
 
@@ -58,7 +57,5 @@ test.describe('LinearLite UI', () => {
       .click()
 
     await expect(page.getByRole('button', { name: /Playwright Issue \(edited\)/ }).first()).toBeVisible()
-
-    await page.screenshot()
   })
 })

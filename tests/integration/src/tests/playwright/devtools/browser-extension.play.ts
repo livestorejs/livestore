@@ -165,7 +165,7 @@ const getExtensionPath = Effect.gen(function* () {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       if ((yield* fs.exists(path)) === false) {
-        yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+        return yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
       }
     }),
   ),

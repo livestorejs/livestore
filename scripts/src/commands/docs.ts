@@ -7,6 +7,7 @@ import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
+import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 
 const workspaceRoot =
@@ -15,6 +16,57 @@ const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
+
+type NetlifyDeploySummary = {
+  site_id: string
+  site_name: string
+  deploy_id: string
+  deploy_url: string
+  logs: string
+}
+
+const formatDocsDeploymentSummaryMarkdown = ({
+  site,
+  alias,
+  prod,
+  purgeCdn,
+  draftDeploy,
+  finalDeploy,
+}: {
+  site: string
+  alias: string
+  prod: boolean
+  purgeCdn: boolean
+  draftDeploy: NetlifyDeploySummary
+  finalDeploy: NetlifyDeploySummary
+}) => {
+  const rows: Array<ReadonlyArray<string>> = []
+
+  rows.push(['draft', site, draftDeploy.deploy_id, draftDeploy.deploy_url, 'draft URL'])
+
+  const notes: string[] = []
+  if (!prod) {
+    notes.push(`alias: ${alias}`)
+  }
+  if (purgeCdn) {
+    notes.push('CDN purged')
+  }
+
+  rows.push([
+    prod ? 'prod' : 'alias',
+    site,
+    finalDeploy.deploy_id,
+    finalDeploy.deploy_url,
+    notes.length > 0 ? notes.join(', ') : '—',
+  ])
+
+  return formatMarkdownTable({
+    title: 'Docs deployment',
+    headers: ['Stage', 'Site', 'Deploy ID', 'URL', 'Notes'],
+    rows,
+    emptyMessage: '_Docs deployment did not run._',
+  })
+}
 
 const docsBuildCommand = Cli.Command.make(
   'build',
@@ -166,7 +218,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
-          const draftDeploy = yield* deployToNetlify({
+          const draftDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             dir: `${docsPath}/dist`,
             target: { _tag: 'draft' },
@@ -188,7 +240,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
-          const finalDeploy = yield* deployToNetlify({
+          const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             dir: `${docsPath}/dist`,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
@@ -199,6 +251,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             const purgeSiteId = finalDeploy.site_id ?? draftDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
           }
+
+          yield* appendGithubSummaryMarkdown({
+            markdown: formatDocsDeploymentSummaryMarkdown({
+              site,
+              alias,
+              prod,
+              purgeCdn,
+              draftDeploy,
+              finalDeploy,
+            }),
+            context: 'docs deployment',
+          })
         },
         Effect.catchIf(
           (e) => e._tag === 'NetlifyError' && e.reason === 'auth',

@@ -10,7 +10,9 @@ const baseURL = process.env.BASE_URL
 if (!process.env.PLAYWRIGHT_PORT && !process.env.PORT) {
   process.env.PLAYWRIGHT_PORT = String(await getFreePort())
 }
-const port = process.env.PORT ? Number.parseInt(process.env.PORT, 10) : Number.parseInt(process.env.PLAYWRIGHT_PORT!, 10)
+const port = process.env.PORT
+  ? Number.parseInt(process.env.PORT, 10)
+  : Number.parseInt(process.env.PLAYWRIGHT_PORT!, 10)
 
 const config: PlaywrightTestConfig = {
   // Only start web server if BASE_URL is not provided
@@ -29,6 +31,7 @@ const config: PlaywrightTestConfig = {
   use: {
     headless: true,
     baseURL: baseURL ?? `http://localhost:${port}`,
+    screenshot: 'on',
   },
 }
 
