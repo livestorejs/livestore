@@ -1,6 +1,6 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStorePromise, type Store, type Unsubscribe } from '@livestore/livestore'
-import type { StoreDescriptor, StoreId } from './types.ts'
+import type { StoreId, StoreOptions } from './types.ts'
 
 /**
  * Minimal cache entry that tracks store, error, and in-flight promise along with subscribers.
@@ -176,8 +176,8 @@ export class StoreRegistry {
    * - This API intentionally has no loading or error states; it cooperates with React Suspense and Error Boundaries.
    * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
    */
-  load = <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Store<TSchema> => {
-    const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
+  load = <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Store<TSchema> => {
+    const entry = this.ensureStoreEntry<TSchema>(options.storeId)
 
     // If already loaded, return it
     if (entry.store) return entry.store
@@ -187,12 +187,12 @@ export class StoreRegistry {
 
     // Load store if none is in flight
     if (!entry.promise) {
-      entry.promise = createStorePromise(storeDescriptor)
+      entry.promise = createStorePromise(options)
         .then((store) => {
           entry.setStore(store)
 
           // If no one subscribed (e.g., initial render aborted), schedule GC.
-          if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+          if (entry.subscriberCount === 0) this.#scheduleGC(options.storeId)
 
           return store
         })
@@ -200,7 +200,7 @@ export class StoreRegistry {
           entry.setError(error)
 
           // Likewise, ensure unused entries are eventually collected.
-          if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+          if (entry.subscriberCount === 0) this.#scheduleGC(options.storeId)
 
           throw error
         })
@@ -220,26 +220,26 @@ export class StoreRegistry {
    * - We don't return the store or throw as this is a fire-and-forget operation.
    * - If the entry remains unused after preload resolves/rejects, it is scheduled for GC.
    */
-  preload = async <TSchema extends LiveStoreSchema>(storeDescriptor: StoreDescriptor<TSchema>): Promise<void> => {
-    const entry = this.ensureStoreEntry<TSchema>(storeDescriptor.storeId)
+  preload = async <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<void> => {
+    const entry = this.ensureStoreEntry<TSchema>(options.storeId)
 
     if (entry.store) return Promise.resolve()
 
     if (entry.promise) await entry.promise
 
-    entry.promise = createStorePromise(storeDescriptor)
+    entry.promise = createStorePromise(options)
       .then((store) => {
         entry.setStore(store)
 
         // If still unused after preload, start GC countdown.
-        if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+        if (entry.subscriberCount === 0) this.#scheduleGC(options.storeId)
 
         return store
       })
       .catch((error) => {
         entry.setError(error)
 
-        if (entry.subscriberCount === 0) this.#scheduleGC(storeDescriptor.storeId)
+        if (entry.subscriberCount === 0) this.#scheduleGC(options.storeId)
 
         return Promise.reject(error)
       })

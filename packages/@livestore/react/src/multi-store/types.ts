@@ -1,5 +1,6 @@
 import type { Adapter } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import type { CreateStoreOptions, OtelOptions } from '@livestore/livestore'
 
 export type StoreId = string
 
@@ -28,3 +29,12 @@ export type StoreDescriptor<TSchema extends LiveStoreSchema> = {
    */
   readonly storeId: StoreId
 }
+
+export type StoreOptions<TSchema extends LiveStoreSchema> = StoreDescriptor<TSchema> &
+  Pick<
+    CreateStoreOptions<TSchema>,
+    'boot' | 'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug'
+  > & {
+    signal?: AbortSignal
+    otelOptions?: Partial<OtelOptions>
+  }
