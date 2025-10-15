@@ -22,7 +22,7 @@ export default defineConfig({
   },
   plugins: [
     // https://tanstack.com/start/latest/docs/framework/react/guide/hosting#cloudflare-workers--official-partner
-    cloudflare({ viteEnvironment: { name: 'ssr' }, inspectorPort: false }),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart(),
     react(),
     tailwindcss(),

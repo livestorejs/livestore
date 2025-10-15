@@ -4,7 +4,10 @@ import type { FilterState, tables } from './schema/index.ts'
 
 export const renderBootStatus = (bootStatus: BootStatus) => {
   return (
-    <div className="fixed inset-0 bg-white dark:bg-neutral-900 flex flex-col items-center justify-center gap-4 text-sm">
+    <div
+      className="fixed inset-0 bg-white dark:bg-neutral-900 flex flex-col items-center justify-center gap-4 text-sm"
+      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+    >
       <div className="flex items-center gap-3 text-xl font-bold">
         <Icon name="livestore" className="size-7 mt-1" />
         <span>LiveStore</span>

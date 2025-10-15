@@ -13,6 +13,7 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
     <html lang="en">
       <head>
         <HeadContent />
+        <link rel="stylesheet" href="/src/app/style.css" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="LinearLite clone using React & TailwindJS" />

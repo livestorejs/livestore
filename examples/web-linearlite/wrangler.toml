@@ -2,14 +2,10 @@ name = "web-linearlite-sync"
 main = "./src/server.ts"
 compatibility_date = "2025-05-08"
 compatibility_flags = [
-  "enable_request_signal", # Needed for HTTP RPC streams
-  "nodejs_compat", # needed for @opentelemetry/*
+  "enable_request_signal",      # Needed for HTTP RPC streams
+  "nodejs_compat",              # needed for @opentelemetry/*
   "enable_nodejs_http_modules", # Required for node:http module resolution in dev server
 ]
-
-[assets]
-directory = "./dist/client"
-binding = "ASSETS"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"

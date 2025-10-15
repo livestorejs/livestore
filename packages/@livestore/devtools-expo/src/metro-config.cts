@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect, Logger, LogLevel } =
+const { Effect, Logger, LogLevel, Layer } =
   require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: {
     'resolution-mode': 'import',
   }})
@@ -29,14 +29,18 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
 
   import('@livestore/adapter-node/devtools')
     .then(async ({ startDevtoolsServer }) => {
+      const layer = Layer.mergeAll(
+        PlatformNode.NodeHttpClient.layer,
+        Logger.prettyWithThread('@livestore/devtools-expo:metro-config'),
+      )
+
       startDevtoolsServer({
         clientSessionInfo: undefined,
         schemaPath: options.schemaPath,
         host,
         port,
       }).pipe(
-        Effect.provide(PlatformNode.NodeHttpClient.layer),
-        Effect.provide(Logger.prettyWithThread('@livestore/devtools-expo:metro-config')),
+        Effect.provide(layer),
         Logger.withMinimumLogLevel(LogLevel.Debug),
         Effect.tapCauseLogPretty,
         Effect.runPromise,

@@ -1,6 +1,6 @@
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import type { CfTypes } from '@livestore/sync-cf/common'
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import tanstackHandler from '@tanstack/react-start/server-entry'
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
   onPush: async (message, context) => {
@@ -22,14 +22,8 @@ const validatePayload = (payload: any, context: { storeId: string }) => {
   }
 }
 
-const startFetch = createStartHandler(defaultStreamHandler)
-
 export default {
   async fetch(request: CfTypes.Request, env: WorkerEnv, ctx: CfTypes.ExecutionContext) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204 })
-    }
-
     const searchParams = SyncBackend.matchSyncRequest(request)
 
     if (searchParams !== undefined) {
@@ -43,13 +37,6 @@ export default {
       })
     }
 
-    if (request.method === 'GET' || request.method === 'HEAD') {
-      const assetResponse = await env.ASSETS.fetch(request as any)
-      if (assetResponse.status !== 404) {
-        return assetResponse
-      }
-    }
-
-    return startFetch(request as any)
+    return tanstackHandler.fetch(request as any)
   },
 }
