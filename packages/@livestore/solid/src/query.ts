@@ -1,19 +1,18 @@
-import type { LiveQueries } from '@livestore/livestore/internal'
+import type { Queryable } from '@livestore/livestore'
 import * as Solid from 'solid-js'
-
 import { storeToExport } from './store.ts'
 
-export const query = <TQuery extends LiveQueries.LiveQueryDef.Any>(
-  queryDef: TQuery,
+export const query = <TResult>(
+  queryDef: Queryable<TResult>,
   // TODO do we actually need an `initialValue` at all?
-  initialValue: LiveQueries.GetResult<TQuery>,
-): Solid.Accessor<LiveQueries.GetResult<TQuery>> => {
+  initialValue: TResult,
+): Solid.Accessor<TResult> => {
   const [value, setValue] = Solid.createSignal(initialValue)
 
   const store = storeToExport()
 
   // TODO avoid null-optionality branching
-  const unsubscribe = store?.subscribe(queryDef, setValue)
+  const unsubscribe = store?.subscribe(queryDef, (value) => setValue(value as any))
 
   Solid.onCleanup(() => {
     unsubscribe?.()

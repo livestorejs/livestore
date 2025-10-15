@@ -11,7 +11,6 @@ import {
   Layer,
   Option,
   OtelTracer,
-  pipe,
   Queue,
   ReadonlyArray,
   Schedule,
@@ -443,23 +442,43 @@ const backgroundApplyLocalPushes = ({
 
       // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
       // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
-      const [newEvents, deferreds] = pipe(
+      const [droppedItems, filteredItems] = ReadonlyArray.partition(
         batchItems,
-        ReadonlyArray.filter(
-          ([eventEncoded]) =>
-            // Keep events that match the current generation or newer. Older generations will
-            // be rejected below when their sequence numbers no longer advance the local head.
-            eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
-        ),
-        ReadonlyArray.unzip,
+        ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
       )
 
-      if (newEvents.length === 0) {
-        // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
-        // Allow the backend pulling to start
+      if (droppedItems.length > 0) {
+        otelSpan?.addEvent(`push:drop-old-generation`, {
+          droppedCount: droppedItems.length,
+          currentRebaseGeneration,
+        })
+
+        /**
+         * Dropped pushes may still have a deferred awaiting completion.
+         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
+         */
+        yield* Effect.forEach(
+          droppedItems.filter(
+            (item): item is [LiveStoreEvent.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError>] =>
+              item[1] !== undefined,
+          ),
+          ([eventEncoded, deferred]) =>
+            Deferred.fail(
+              deferred,
+              LeaderAheadError.make({
+                minimumExpectedNum: syncState.localHead,
+                providedNum: eventEncoded.seqNum,
+              }),
+            ),
+        )
+      }
+
+      if (filteredItems.length === 0) {
         yield* pullLatch.open
         continue
       }
+
+      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
       const mergeResult = SyncState.merge({
         syncState,
