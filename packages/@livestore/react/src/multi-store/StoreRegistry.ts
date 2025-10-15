@@ -143,6 +143,17 @@ class StoreCache {
 
 const GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
+type DefaultStoreOptions = Partial<
+  Pick<
+    StoreOptions<any>,
+    'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug' | 'otelOptions'
+  >
+>
+
+type StoreRegistryConfig = {
+  defaultOptions?: DefaultStoreOptions
+}
+
 /**
  * Store Registry coordinating cache, GC, and Suspense reads.
  *
@@ -151,6 +162,11 @@ const GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_00
 export class StoreRegistry {
   readonly #cache = new StoreCache()
   readonly #gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
+  readonly #defaultOptions: DefaultStoreOptions
+
+  constructor({ defaultOptions = {} }: StoreRegistryConfig = {}) {
+    this.#defaultOptions = defaultOptions
+  }
 
   /**
    * Ensures a store entry exists in the cache.
