@@ -346,7 +346,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         },
         export: Effect.dieMessage('not implemented'),
         getEventlogData: Effect.dieMessage('not implemented'),
-        getSyncState: Effect.dieMessage('not implemented'),
+        syncState: Subscribable.make({
+          get: Effect.dieMessage('not implemented'),
+          changes: Stream.empty,
+        }),
         sendDevtoolsMessage: () => Effect.void,
         networkStatus: Subscribable.make({
           get: Effect.dieMessage('not implemented'),
