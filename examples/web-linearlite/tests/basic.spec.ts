@@ -69,3 +69,20 @@ test.describe('LinearLite UI', () => {
     await expect(page.getByRole('button', { name: /Playwright Issue \(edited\)/ }).first()).toBeVisible()
   })
 })
+
+test.describe('DevTools UI', () => {
+  test('opens LiveStore DevTools in a new tab', async ({ baseURL, context }) => {
+    if (!baseURL) throw new Error('baseURL is required')
+
+    const devtools = await context.newPage()
+    await devtools.goto(new URL('/_livestore', baseURL).toString(), { waitUntil: 'domcontentloaded' })
+
+    // Assert the DevTools meta tag is present
+    await expect(devtools.locator('meta[name="livestore-devtools"]')).toHaveCount(1)
+
+    // Title should be set by the DevTools HTML
+    await expect(devtools).toHaveTitle(/LiveStore Devtools/i)
+
+    await devtools.close()
+  })
+})

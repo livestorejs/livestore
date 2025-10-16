@@ -2,7 +2,7 @@
 
 import process from 'node:process'
 import { cloudflare } from '@cloudflare/vite-plugin'
-// import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
@@ -26,10 +26,7 @@ export default defineConfig({
     tanstackStart(),
     react(),
     tailwindcss(),
-    // TEMPORARY: Disabled due to Vite 7 compatibility issue
-    // See: https://github.com/livestorejs/livestore/issues/746
-    // Error: "invoke was called before connect" - plugin needs update for Vite 7 module runner API
-    // livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema/index.ts' }),
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema/index.ts' }),
     svgr({
       svgrOptions: {
         svgo: true,
