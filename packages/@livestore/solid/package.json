@@ -1,6 +1,6 @@
 {
   "name": "@livestore/solid",
-  "version": "0.4.0-dev.11",
+  "version": "0.4.0-dev.12",
   "type": "module",
   "exports": {
     ".": "./src/mod.ts"
