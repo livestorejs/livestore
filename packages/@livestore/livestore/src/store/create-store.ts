@@ -36,17 +36,13 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
+import { DEFAULT_PARAMS } from './store-constants.ts'
 import { Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
-
-export const DEFAULT_PARAMS = {
-  leaderPushBatchSize: 100,
-  eventQueryBatchSize: 1000,
-}
 
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
   LiveStoreContextRunning,

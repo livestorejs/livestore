@@ -101,18 +101,21 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
   failure: UnexpectedError,
 }) {}
 
-export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()('StreamEvents', {
-  payload: {
-    since: EventSequenceNumber.EventSequenceNumber,
-    until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
-    filter: Schema.optional(Schema.Array(Schema.String)),
-    clientIds: Schema.optional(Schema.Array(Schema.String)),
-    sessionIds: Schema.optional(Schema.Array(Schema.String)),
-    batchSize: Schema.optional(Schema.Number),
+export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
+  'StreamEvents',
+  {
+    payload: {
+      since: EventSequenceNumber.EventSequenceNumber,
+      until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
+      filter: Schema.optional(Schema.Array(Schema.String)),
+      clientIds: Schema.optional(Schema.Array(Schema.String)),
+      sessionIds: Schema.optional(Schema.Array(Schema.String)),
+      batchSize: Schema.optional(Schema.Number),
+    },
+    success: LiveStoreEvent.EncodedWithMeta,
+    failure: UnexpectedError,
   },
-  success: LiveStoreEvent.EncodedWithMeta,
-  failure: UnexpectedError,
-}) {}
+) {}
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},

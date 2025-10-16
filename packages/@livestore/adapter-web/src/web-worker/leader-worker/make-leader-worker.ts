@@ -204,10 +204,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           dbState,
           options: { since, until, filter, clientIds, sessionIds, batchSize },
         })
-      }).pipe(
-        Stream.unwrapScoped,
-        Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
-      ),
+      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,

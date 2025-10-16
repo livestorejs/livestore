@@ -54,7 +54,7 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
-import { DEFAULT_PARAMS } from './create-store.ts'
+import { DEFAULT_PARAMS } from './store-constants.ts'
 import type {
   RefreshReason,
   StoreCommitOptions,
@@ -716,11 +716,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
-    const self = this
+    const stream = this.eventsStream(options)
     return {
       async *[Symbol.asyncIterator]() {
         // Convert the stream to an async iterable
-        const iterator = Stream.toAsyncIterable(self.eventsStream(options))
+        const iterator = Stream.toAsyncIterable(stream)
         for await (const event of iterator) {
           yield event
         }
@@ -731,8 +731,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
   ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
-    const self = this
-    const { syncProcessor, schema, clientSession, params } = self
+    const { syncProcessor, schema, clientSession, params } = this
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
@@ -794,9 +793,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             .stream({
               since: cursor,
               until: backendHead,
-              filter: options?.filter as ReadonlyArray<string> | undefined,
-              clientIds: options?.clientIds,
-              sessionIds: options?.sessionIds,
+              ...omitUndefineds({
+                filter: options?.filter as ReadonlyArray<string> | undefined,
+                clientIds: options?.clientIds,
+                sessionIds: options?.sessionIds,
+              }),
               batchSize,
             })
             .pipe(
@@ -810,10 +811,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           return leaderThreadProxy.events
             .stream({
               since: cursor,
-              until: options?.until,
-              filter: options?.filter as ReadonlyArray<string> | undefined,
-              clientIds: options?.clientIds,
-              sessionIds: options?.sessionIds,
+              ...omitUndefineds({
+                until: options?.until,
+                filter: options?.filter as ReadonlyArray<string>,
+                clientIds: options?.clientIds,
+                sessionIds: options?.sessionIds,
+              }),
               batchSize,
             })
             .pipe(
@@ -837,9 +840,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   .stream({
                     since: cursor,
                     until: leaderHead,
-                    filter: options?.filter as ReadonlyArray<string> | undefined,
-                    clientIds: options?.clientIds,
-                    sessionIds: options?.sessionIds,
+                    ...omitUndefineds({
+                      filter: options?.filter as ReadonlyArray<string>,
+                      clientIds: options?.clientIds,
+                      sessionIds: options?.sessionIds,
+                    }),
                     batchSize,
                   })
                   .pipe(
@@ -868,22 +873,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                 // Continue with live updates
                 let lastSeenHead = currentState.localHead
                 yield* syncProcessor.syncState.changes.pipe(
-                  Stream.tap((newState) =>
-                    Effect.gen(function* () {
-                      for (const eventEncoded of newState.pending) {
-                        if (
-                          EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 &&
-                          matchesFilters(eventEncoded)
-                        ) {
-                          const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                          emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
-                        }
+                  Stream.tapSync((newState) => {
+                    for (const eventEncoded of newState.pending) {
+                      if (
+                        EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 &&
+                        matchesFilters(eventEncoded)
+                      ) {
+                        const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
+                        emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
                       }
-                      lastSeenHead = newState.localHead
-                    }),
-                  ),
+                    }
+                    lastSeenHead = newState.localHead
+                  }),
                   Stream.runDrain,
                 )
+              } else {
+                // When snapshotOnly is true, we need to end the stream after emitting the current pending events
+                emit.end()
               }
             }),
           )

@@ -28,7 +28,7 @@ export interface ClientSessionLeaderThreadProxy {
     stream(options: {
       since: EventSequenceNumber.EventSequenceNumber
       until?: EventSequenceNumber.EventSequenceNumber
-      filter?: ReadonlyArray<string>  // event names
+      filter?: ReadonlyArray<string> // event names
       clientIds?: ReadonlyArray<string>
       sessionIds?: ReadonlyArray<string>
       batchSize?: number
