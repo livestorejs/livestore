@@ -36,8 +36,8 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
-import { DEFAULT_PARAMS } from './store-constants.ts'
 import { Store } from './store.ts'
+import { DEFAULT_PARAMS } from './store-constants.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
