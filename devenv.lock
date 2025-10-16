@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1758856036,
+        "lastModified": 1760560333,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "11380b77be7f8c0602a45c8625f255db9971a873",
+        "rev": "0a4043938f540027e562c5a0feebbe6be872c3ea",
         "type": "github"
       },
       "original": {
@@ -57,10 +57,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1758108966,
+        "lastModified": 1760392170,
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "54df955a695a84cd47d4a43e08e1feaf90b1fd9b",
+        "rev": "46d55f0aeb1d567a78223e69729734f3dca25a85",
         "type": "github"
       },
       "original": {
@@ -91,10 +91,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1758690382,
+        "lastModified": 1760524057,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e643668fd71b949c53f8626614b21ff71a07379d",
+        "rev": "544961dfcce86422ba200ed9a0b00dd4b1486ec5",
         "type": "github"
       },
       "original": {
@@ -112,10 +112,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1758760208,
+        "lastModified": 1759883412,
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
-        "rev": "d8f3e755b1c5f0db8ce9e63c9b893dff2b678786",
+        "rev": "25c9ebd50c8ea3d23a0deee969c01562bebacca1",
         "type": "github"
       },
       "original": {

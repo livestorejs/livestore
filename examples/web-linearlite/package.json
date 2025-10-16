@@ -42,7 +42,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
     "@livestore/devtools-vite": "0.4.0-dev.10",
-    "@playwright/test": "^1.55.1-beta-1758616458000",
+    "@playwright/test": "^1.56.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.16",

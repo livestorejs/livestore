@@ -18,7 +18,7 @@
     "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.10",
-    "@playwright/test": "^1.55.1-beta-1758616458000",
+    "@playwright/test": "^1.56.0",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
