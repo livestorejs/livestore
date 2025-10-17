@@ -103,8 +103,27 @@ export const toTableName = (storeId: string) => {
 }
 
 /**
- * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
+ * CRITICAL: Increment this version whenever you modify the Postgres table schema structure.
  *
- * Changing this version number will lead to a "soft reset".
+ * Bump required when:
+ * - Adding/removing/renaming columns in the eventlog table (see examples/web-todomvc-sync-electric/src/server/db.ts)
+ * - Changing column types or constraints
+ * - Modifying primary keys or indexes
+ *
+ * Bump NOT required when:
+ * - Changing query patterns or fetch logic
+ * - Adding new tables (as long as existing table schema remains unchanged)
+ * - Updating client-side implementation details
+ *
+ * Impact: Changing this version triggers a "soft reset" - new table names are created
+ * and old data becomes inaccessible (but remains in the database).
+ *
+ * Current schema (PostgreSQL):
+ * - seqNum (INTEGER PRIMARY KEY)
+ * - parentSeqNum (INTEGER)
+ * - name (TEXT NOT NULL)
+ * - args (JSONB NOT NULL)
+ * - clientId (TEXT NOT NULL)
+ * - sessionId (TEXT NOT NULL)
  */
 export const PERSISTENCE_FORMAT_VERSION = 6
