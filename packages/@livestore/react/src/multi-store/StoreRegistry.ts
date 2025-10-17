@@ -1,7 +1,7 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStorePromise, type Store, type Unsubscribe } from '@livestore/livestore'
 import { noop } from '@livestore/utils'
-import type { StoreId, StoreOptions } from './types.ts'
+import type { CachedStoreOptions, StoreId } from './types.ts'
 
 /**
  * Minimal cache entry that tracks store, error, and in-flight promise along with subscribers.
@@ -142,14 +142,32 @@ class StoreCache {
   }
 }
 
-const GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 type DefaultStoreOptions = Partial<
   Pick<
-    StoreOptions<any>,
+    CachedStoreOptions<any>,
     'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug' | 'otelOptions'
   >
->
+> & {
+  /**
+   * The time in milliseconds that inactive stores remain in memory.
+   * When a store becomes inactive, it will be garbage collected
+   * after this duration.
+   *
+   * Stores transition to the inactive state as soon as they have no
+   * subscriptions registered, so when all components which use that
+   * store have unmounted.
+   *
+   * @remarks
+   * - If set to `infinity`, will disable garbage collection
+   * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
+   *
+   * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
+   * disposing stores before server render completes.
+   */
+  gcTime?: number
+}
 
 type StoreRegistryConfig = {
   defaultOptions?: DefaultStoreOptions
@@ -191,7 +209,7 @@ export class StoreRegistry {
    * - If the store is already cached, the returned promise resolves immediately with that instance.
    * - Concurrent callers share the same in-flight request to avoid duplicate store creation.
    */
-  load = async <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<Store<TSchema>> => {
+  load = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
 
@@ -238,7 +256,7 @@ export class StoreRegistry {
    * - This API intentionally has no loading or error states; it cooperates with React Suspense and Error Boundaries.
    * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
    */
-  read = async <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<Store<TSchema>> => {
+  read = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
 
@@ -284,7 +302,7 @@ export class StoreRegistry {
    * - We don't return the store or throw as this is a fire-and-forget operation.
    * - If the entry remains unused after preload resolves/rejects, it is scheduled for GC.
    */
-  preload = async <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<void> => {
+  preload = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<void> => {
     return this.load(options).then(noop).catch(noop)
   }
 
@@ -309,7 +327,9 @@ export class StoreRegistry {
     return entry.version
   }
 
-  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): StoreOptions<TSchema> => ({
+  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
+    options: CachedStoreOptions<TSchema>,
+  ): CachedStoreOptions<TSchema> => ({
     ...this.#defaultOptions,
     ...options,
   })
@@ -319,7 +339,7 @@ export class StoreRegistry {
     const timer = setTimeout(() => {
       this.#gcTimeouts.delete(id)
       this.#cache.remove(id)
-    }, GC_TIME)
+    }, DEFAULT_GC_TIME)
     this.#gcTimeouts.set(id, timer)
   }
 

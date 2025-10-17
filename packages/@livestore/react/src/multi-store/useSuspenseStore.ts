@@ -4,7 +4,7 @@ import * as React from 'react'
 import type { ReactApi } from '../LiveStoreContext.ts'
 import { withReactApi } from '../useStore.ts'
 import { useStoreRegistry } from './StoreRegistryContext.ts'
-import type { StoreOptions } from './types.ts'
+import type { CachedStoreOptions } from './types.ts'
 
 /**
  * Suspense + Error Boundary friendly hook.
@@ -12,7 +12,7 @@ import type { StoreOptions } from './types.ts'
  * - No loading or error states are returned.
  */
 export const useSuspenseStore = <TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>,
+  options: CachedStoreOptions<TSchema>,
 ): Store<TSchema> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
