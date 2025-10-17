@@ -7,15 +7,13 @@ import { cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
-const cwd =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
-
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
-const listSnapshotPackages = Effect.gen(function* () {
-  const fsEffect = yield* FileSystem.FileSystem
-  const baseDir = `${cwd}/packages/@livestore`
-  const packages: string[] = []
+const listSnapshotPackages = (cwd: string) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    const baseDir = `${cwd}/packages/@livestore`
+    const packages: string[] = []
 
   const baseExists = yield* fsEffect.exists(baseDir)
   if (!baseExists) {
@@ -65,17 +63,17 @@ const listSnapshotPackages = Effect.gen(function* () {
     packages.push(name)
   }
 
-  packages.sort((a, b) => a.localeCompare(b))
-  return packages
-}).pipe(
-  Effect.catchAll((error) =>
-    Effect.gen(function* () {
-      const message = toErrorMessage(error)
-      yield* Effect.logWarning(`Unable to enumerate snapshot packages: ${message}`)
-      return [] as string[]
-    }),
-  ),
-)
+    packages.sort((a, b) => a.localeCompare(b))
+    return packages
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        const message = toErrorMessage(error)
+        yield* Effect.logWarning(`Unable to enumerate snapshot packages: ${message}`)
+        return [] as string[]
+      }),
+    ),
+  )
 
 const formatSnapshotSummaryMarkdown = ({
   packages,
@@ -93,22 +91,30 @@ const formatSnapshotSummaryMarkdown = ({
     emptyMessage: '_No packages matched the snapshot filter._',
   })
 
-const releaseSnapshotCommand = Cli.Command.make(
+export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
     gitShaOption: Cli.Options.text('git-sha').pipe(Cli.Options.optional),
     dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+    cwd: Cli.Options.text('cwd').pipe(
+      Cli.Options.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
   },
-  Effect.fn(function* ({ gitShaOption, dryRun }) {
+  Effect.fn(function* ({ gitShaOption, dryRun, cwd }) {
     const originalVersion = yield* Effect.promise(() =>
       import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
 
-    const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD')
+    const gitSha =
+      gitShaOption._tag === 'Some'
+        ? gitShaOption.value
+        : yield* cmdText('git rev-parse HEAD', { cwd })
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
     const snapshotVersion = `0.0.0-snapshot-${gitSha}`
-    const snapshotPackages = yield* listSnapshotPackages
+    const snapshotPackages = yield* listSnapshotPackages(cwd)
 
     const versionFilePath = `${cwd}/packages/@livestore/common/src/version.ts`
     fs.writeFileSync(
@@ -118,15 +124,18 @@ const releaseSnapshotCommand = Cli.Command.make(
 
     yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
       shell: true,
+      cwd,
     })
 
     yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
       shell: true,
+      cwd,
     })
 
     // Rollback package.json versions
     yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
       shell: true,
+      cwd,
     })
 
     // Rollback version.ts
