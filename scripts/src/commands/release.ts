@@ -15,53 +15,53 @@ const listSnapshotPackages = (cwd: string) =>
     const baseDir = `${cwd}/packages/@livestore`
     const packages: string[] = []
 
-  const baseExists = yield* fsEffect.exists(baseDir)
-  if (!baseExists) {
-    yield* Effect.logWarning(`Snapshot packages directory not found at ${baseDir}`)
-    return packages
-  }
+    const baseExists = yield* fsEffect.exists(baseDir)
+    if (!baseExists) {
+      yield* Effect.logWarning(`Snapshot packages directory not found at ${baseDir}`)
+      return packages
+    }
 
-  const entries = yield* fsEffect.readDirectory(baseDir)
+    const entries = yield* fsEffect.readDirectory(baseDir)
 
-  for (const entry of entries) {
-    if (entry === 'effect-playwright') continue
+    for (const entry of entries) {
+      if (entry === 'effect-playwright') continue
 
-    const packageJsonPath = `${baseDir}/${entry}/package.json`
-    const hasPackageJson = yield* fsEffect.exists(packageJsonPath)
-    if (!hasPackageJson) continue
+      const packageJsonPath = `${baseDir}/${entry}/package.json`
+      const hasPackageJson = yield* fsEffect.exists(packageJsonPath)
+      if (!hasPackageJson) continue
 
-    const pkgResult = yield* fsEffect.readFileString(packageJsonPath).pipe(
-      Effect.flatMap((content) =>
-        Effect.try({
-          try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
-          catch: (cause) => cause as unknown,
-        }),
-      ),
-      Effect.either,
-    )
-
-    if (pkgResult._tag === 'Left') {
-      const error = pkgResult.left
-      const message = toErrorMessage(error)
-      yield* Effect.logWarning(
-        `Unable to read package metadata for ${packageJsonPath} while preparing snapshot summary: ${message}`,
+      const pkgResult = yield* fsEffect.readFileString(packageJsonPath).pipe(
+        Effect.flatMap((content) =>
+          Effect.try({
+            try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
+            catch: (cause) => cause as unknown,
+          }),
+        ),
+        Effect.either,
       )
-      continue
-    }
 
-    const pkgJson = pkgResult.right
-    const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
-    if (!name) {
-      yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)
-      continue
-    }
+      if (pkgResult._tag === 'Left') {
+        const error = pkgResult.left
+        const message = toErrorMessage(error)
+        yield* Effect.logWarning(
+          `Unable to read package metadata for ${packageJsonPath} while preparing snapshot summary: ${message}`,
+        )
+        continue
+      }
 
-    if (pkgJson.private === true) {
-      continue
-    }
+      const pkgJson = pkgResult.right
+      const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
+      if (!name) {
+        yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)
+        continue
+      }
 
-    packages.push(name)
-  }
+      if (pkgJson.private === true) {
+        continue
+      }
+
+      packages.push(name)
+    }
 
     packages.sort((a, b) => a.localeCompare(b))
     return packages
@@ -107,10 +107,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
       import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
 
-    const gitSha =
-      gitShaOption._tag === 'Some'
-        ? gitShaOption.value
-        : yield* cmdText('git rev-parse HEAD', { cwd })
+    const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD', { cwd })
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
     const snapshotVersion = `0.0.0-snapshot-${gitSha}`
