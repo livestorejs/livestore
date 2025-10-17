@@ -54,9 +54,20 @@ export type StoreId = string
 export type DurableObjectId = string
 
 /**
- * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
+ * CRITICAL: Increment this version whenever you modify the database schema structure.
  *
- * Changing this version number will lead to a "soft reset".
+ * Bump required when:
+ * - Adding/removing/renaming columns in eventlogTable or contextTable (see sqlite.ts)
+ * - Changing column types or constraints
+ * - Modifying primary keys or indexes
+ *
+ * Bump NOT required when:
+ * - Changing query patterns, pagination logic, or streaming behavior
+ * - Adding new tables (as long as existing table schemas remain unchanged)
+ * - Updating implementation details in sync-storage.ts
+ *
+ * Impact: Changing this version triggers a "soft reset" - new table names are created
+ * and old data becomes inaccessible (but remains in storage).
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 

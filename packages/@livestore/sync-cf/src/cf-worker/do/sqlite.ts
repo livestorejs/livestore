@@ -2,6 +2,11 @@ import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 import { PERSISTENCE_FORMAT_VERSION } from '../shared.ts'
 
+/**
+ * Main event log table storing all LiveStore events.
+ *
+ * ⚠️  IMPORTANT: Any changes to this schema require bumping PERSISTENCE_FORMAT_VERSION in shared.ts
+ */
 export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime to use proper storeId
   name: `eventlog_${PERSISTENCE_FORMAT_VERSION}_$storeId`,
@@ -17,7 +22,11 @@ export const eventlogTable = State.SQLite.table({
   },
 })
 
-/** Will only ever have one row per durable object. */
+/**
+ * Context metadata table - one row per durable object.
+ *
+ * ⚠️  IMPORTANT: Any changes to this schema require bumping PERSISTENCE_FORMAT_VERSION in shared.ts
+ */
 export const contextTable = State.SQLite.table({
   name: `context_${PERSISTENCE_FORMAT_VERSION}`,
   columns: {

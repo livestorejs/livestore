@@ -9,8 +9,8 @@ import {
   eventlogMetaTable,
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
-  sessionChangesetMetaTable,
-} from '../schema/state/sqlite/system-tables.ts'
+} from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
