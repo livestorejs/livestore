@@ -1,6 +1,8 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import * as React from 'react'
+import type { ReactApi } from '../LiveStoreContext.ts'
+import { withReactApi } from '../useStore.ts'
 import { useStoreRegistry } from './StoreRegistryContext.ts'
 import type { StoreOptions } from './types.ts'
 
@@ -9,7 +11,9 @@ import type { StoreOptions } from './types.ts'
  * - Returns data or throws (Promise|Error).
  * - No loading or error states are returned.
  */
-export const useSuspenseStore = <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Store<TSchema> => {
+export const useSuspenseStore = <TSchema extends LiveStoreSchema>(
+  options: StoreOptions<TSchema>,
+): Store<TSchema> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
   storeRegistry.ensureStoreEntry(options.storeId)
@@ -25,5 +29,7 @@ export const useSuspenseStore = <TSchema extends LiveStoreSchema>(options: Store
 
   React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  return storeRegistry.read(options)
+  const loadedStore = React.use(storeRegistry.read(options)) // Will suspend if not yet loaded
+
+  return withReactApi(loadedStore)
 }

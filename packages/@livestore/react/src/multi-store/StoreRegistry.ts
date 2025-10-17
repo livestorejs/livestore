@@ -238,7 +238,7 @@ export class StoreRegistry {
    * - This API intentionally has no loading or error states; it cooperates with React Suspense and Error Boundaries.
    * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
    */
-  read = <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Store<TSchema> => {
+  read = async <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
 
