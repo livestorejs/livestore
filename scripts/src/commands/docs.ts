@@ -218,12 +218,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
+          const deployFilter = 'docs'
+
           const draftDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             dir: `${docsPath}/dist`,
             target: { _tag: 'draft' },
             cwd: docsPath,
-            filter: 'docs',
+            filter: deployFilter,
           })
 
           const alias =
@@ -245,6 +247,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             dir: `${docsPath}/dist`,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
+            filter: deployFilter,
           })
 
           if (purgeCdn) {
