@@ -6,7 +6,7 @@ sidebar:
 ---
 
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
-import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
+import { makeCreate, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import babelConfigCode from '../../../../../examples/expo-todomvc-sync-cf/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/expo-todomvc-sync-cf/metro.config.js?raw'
@@ -57,16 +57,16 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     <Tabs syncKey="package-manager">
       <TabItem label="bun">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'bunx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'bunx')} lang="sh" />
       </TabItem>
       <TabItem label="pnpm">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
       </TabItem>
       <TabItem label="npm">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'npx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'npx')} lang="sh" />
       </TabItem>
       <TabItem label="yarn">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'yarn dlx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'yarn dlx')} lang="sh" />
       </TabItem>
     </Tabs>
 

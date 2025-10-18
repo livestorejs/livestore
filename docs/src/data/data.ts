@@ -17,10 +17,19 @@ export const getBranchName = () =>
 
 export const versionNpmSuffix = liveStoreVersion.includes('dev') ? `@${liveStoreVersion}` : ''
 
+export const npmTagSuffix = liveStoreVersion.includes('dev') ? '@dev' : ''
+
 export const IS_MAIN_BRANCH = getBranchName() === 'main'
 
 export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx') => {
   const hashSuffix = `#${getBranchName()}`
   // The quotes around the github URI are necessary for certain shells (e.g. zsh) to parse correctly
   return `${approach} tiged "github:livestorejs/livestore/examples/${example}${hashSuffix}" livestore-app`
+}
+
+export const makeCreate = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx' | 'yarn dlx') => {
+  const branch = getBranchName()
+  const branchFlag = branch !== 'dev' ? ` --branch ${branch}` : ''
+  const packageName = `@livestore/cli${npmTagSuffix}`
+  return `${approach} ${packageName} create --example ${example}${branchFlag} livestore-app`
 }
