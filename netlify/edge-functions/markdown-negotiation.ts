@@ -1,6 +1,6 @@
 import type { Context } from 'netlify:edge'
 
-import { appendVary, buildMarkdownUrl, isAssetPath, preferredMarkdown } from '../../src/server/markdown-negotiation.ts'
+import { appendVary, buildMarkdownUrl, isAssetPath, preferredMarkdown } from '../../docs/src/server/markdown-negotiation.ts'
 
 /**
  * Netlify caches edge responses aggressively. Even when we fall back to the
