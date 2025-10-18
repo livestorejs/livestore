@@ -1,26 +1,16 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { Context, Effect, Logger, LogLevel, Stream } from '@livestore/utils/effect'
-import type { Store } from '@livestore/livestore'
-import type { Scope } from '@livestore/utils/effect'
-import type { OtelTracer } from '@livestore/utils/effect'
 import type { MockSyncBackend } from '@livestore/common'
-import {
-  type BootStatus,
-  type ClientSessionLeaderThreadProxy,
-  makeMockSyncBackend,
-  SyncState,
-  type UnexpectedError,
-} from '@livestore/common'
-import type { ShutdownDeferred } from '@livestore/livestore'
-import { Layer, FetchHttpClient } from '@livestore/utils/effect'
-import { makeShutdownDeferred } from '@livestore/livestore'
-import { nanoid } from '@livestore/utils/nanoid'
-import { omitUndefineds } from '@livestore/utils'
+import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import type { ShutdownDeferred, Store } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred } from '@livestore/livestore'
+import { omitUndefineds } from '@livestore/utils'
+import type { OtelTracer, Scope } from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Stream } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
+import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import { createStore } from '@livestore/livestore'
-import { PlatformNode } from '@livestore/utils/node'
 import { events, schema } from '../utils/tests/fixture.ts'
 
 const withTestCtx = Vitest.makeWithTestCtx({
@@ -34,29 +24,30 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 Vitest.describe('Store events API', () => {
-  Vitest.scopedLive('should stream events with filtering', (_test) =>
-    Effect.gen(function* () {
-      const { makeStore } = yield* TestContext
-      const store = yield* makeStore()
+  Vitest.scopedLive(
+    'should stream events with filtering',
+    (_test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
 
-      store.commit(events.todoCreated({ id: '1', text: 'Test todo', completed: false }))
-      store.commit(events.todoCreated({ id: '2', text: 'Test todo 2', completed: false }))
-      store.commit(events.todoCompleted({ id: '1' }))
+        store.commit(events.todoCreated({ id: '1', text: 'Test todo', completed: false }))
+        store.commit(events.todoCreated({ id: '2', text: 'Test todo 2', completed: false }))
+        store.commit(events.todoCompleted({ id: '1' }))
 
-      const collected: any[] = []
-      yield* store
-        .eventsStream({
-          filter: ['todo.created'],
-          snapshotOnly: true,
-        })
-        .pipe(
-          Stream.tapSync((event) => collected.push(event)),
-          Stream.runDrain,
-        )
+        const collected: any[] = []
+        yield* store
+          .eventsStream({
+            filter: ['todo.created'],
+            snapshotOnly: true,
+          })
+          .pipe(
+            Stream.tapSync((event) => collected.push(event)),
+            Stream.runDrain,
+          )
 
-      expect(collected).toHaveLength(2)
-
-    }).pipe(withTestCtx(_test)),
+        expect(collected).toHaveLength(2)
+      }).pipe(withTestCtx(_test)),
 
     // Effect.scoped(
     //   Effect.gen(function* () {
@@ -109,7 +100,6 @@ Vitest.describe('Store events API', () => {
   //   ),
   // )
 })
-
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
