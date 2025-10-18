@@ -43,6 +43,12 @@ export class SyncBackendDO extends makeDurableObject({
   // onPull: async (message) => {
   //   console.log('onPull', message)
   // },
+  http: {
+    responseHeaders: {
+      'X-Custom-Header': 'test-value',
+      'X-LiveStore-Version': '1.0.0',
+    },
+  },
 }) {}
 
 const DurableObjectBase = DurableObject as any as new (
