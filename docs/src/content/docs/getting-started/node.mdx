@@ -6,7 +6,7 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import { makeTiged } from '../../../data/data.ts'
+import { makeCreate } from '../../../data/data.ts'
 import NodeMinimalExampleSnippet from '../../_assets/code/getting-started/node/minimal-example.ts?snippet'
 
 ## Minimal example
@@ -25,13 +25,13 @@ For a quick start, we recommend using our template app following the steps below
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
-       <Code code={makeTiged('node-todomvc-sync-cf', 'bunx')} lang="sh" />
+       <Code code={makeCreate('node-todomvc-sync-cf', 'bunx')} lang="sh" />
      </TabItem>
      <TabItem label="pnpm">
-       <Code code={makeTiged('node-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+       <Code code={makeCreate('node-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
      </TabItem>
      <TabItem label="npm">
-       <Code code={makeTiged('node-todomvc-sync-cf', 'npx')} lang="sh" />
+       <Code code={makeCreate('node-todomvc-sync-cf', 'npx')} lang="sh" />
      </TabItem>
    </Tabs>
 
