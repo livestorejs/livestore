@@ -2,6 +2,11 @@
 # This file configures Netlify's Image CDN to allow remote image transformations
 # from the hosted asset service used for example screenshots
 
+[build]
+  # Dummy command required for edge functions to deploy with `netlify deploy`
+  # See: https://github.com/netlify/cli/issues/6298
+  command = "echo 'Build already completed'"
+
 [images]
 # Allow image transformations from gitbucket.schickling.dev
 # This is needed for example screenshots to display properly in production

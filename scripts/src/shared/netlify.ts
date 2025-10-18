@@ -82,7 +82,7 @@ export const deployToNetlify = ({
         // 'bunx',
         // 'netlify-cli',
         'deploy',
-        '--no-build',
+        '--build', // Required for edge functions to be deployed (see https://github.com/netlify/cli/issues/6298)
         '--json',
         `--dir=${dir}`,
         `--site=${site}`,
