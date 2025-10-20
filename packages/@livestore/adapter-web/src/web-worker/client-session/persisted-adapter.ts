@@ -200,21 +200,6 @@ export const makePersistedAdapter =
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorkerRequest.Type>({
         size: 1,
         concurrency: 100,
-        initialMessage: () =>
-          new WorkerSchema.SharedWorkerInitialMessage({
-            liveStoreVersion,
-            payload: {
-              _tag: 'FromClientSession',
-              initialMessage: new WorkerSchema.LeaderWorkerInnerInitialMessage({
-                storageOptions,
-                storeId,
-                clientId,
-                devtoolsEnabled,
-                debugInstanceId,
-                syncPayload,
-              }),
-            },
-          }),
       }).pipe(
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
@@ -270,10 +255,25 @@ export const makePersistedAdapter =
         yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorkerUpdateMessagePort({ port: mc.port2 })).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
-        )
+        yield* sharedWorker
+          .executeEffect(
+            new WorkerSchema.SharedWorkerUpdateMessagePort({
+              port: mc.port2,
+              liveStoreVersion,
+              initial: new WorkerSchema.LeaderWorkerInnerInitialMessage({
+                storageOptions,
+                storeId,
+                clientId,
+                devtoolsEnabled,
+                debugInstanceId,
+                syncPayload,
+              }),
+            }),
+          )
+          .pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+          )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
@@ -487,8 +487,7 @@ export const makePersistedAdapter =
         lockStatus,
         clientId,
         sessionId,
-        // isLeader: gotLocky, // TODO update when leader is changing
-        isLeader: true,
+        isLeader: gotLocky,
         leaderThread,
         webmeshMode: 'direct',
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>

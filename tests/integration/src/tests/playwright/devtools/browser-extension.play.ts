@@ -207,7 +207,7 @@ test(
           expect: {
             leader: true,
             alreadyLoaded: false,
-            tables: ['uiState (1)', 'todos (1)'],
+            tables: ['todos (1)'],
           },
         })
       }).pipe(
