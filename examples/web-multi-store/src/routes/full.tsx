@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useStoreRegistry, useSuspenseStore } from '@livestore/react/experimental'
+import { useStore, useStoreRegistry } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -32,7 +32,7 @@ function FullDemoRoute() {
 }
 
 function WorkspacePanel() {
-  const workspaceStore = useSuspenseStore(workspaceStoreOptions)
+  const workspaceStore = useStore(workspaceStoreOptions)
 
   const [workspace] = workspaceStore.useQuery(queryDb(workspaceTables.workspaces.select().limit(1)))
   const issueIds = workspaceStore.useQuery(
@@ -61,7 +61,12 @@ function WorkspacePanel() {
   const storeRegistry = useStoreRegistry()
   const preloadIssue = (issueId: string) => {
     setPreloadingIssueId(issueId)
-    storeRegistry.preload(issueStoreOptions({ issueId, gcTime: 5_000 })).then(() => setPreloadingIssueId(undefined))
+    storeRegistry
+      .preload({
+        ...issueStoreOptions(issueId),
+        gcTime: 5_000,
+      })
+      .then(() => setPreloadingIssueId(undefined))
   }
 
   return (
@@ -111,7 +116,7 @@ function WorkspacePanel() {
 }
 
 function IssuePanel({ issueId }: { issueId: string }) {
-  const issueStore = useSuspenseStore(issueStoreOptions({ issueId }))
+  const issueStore = useStore(issueStoreOptions(issueId))
   const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
 
   const toggleStatus = () => {
