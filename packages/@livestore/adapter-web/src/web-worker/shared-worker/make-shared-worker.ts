@@ -153,6 +153,9 @@ const makeWorkerRunner = Effect.gen(function* () {
 
   const reset = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
+    // Clear cached invariants so a fresh configuration can be accepted after shutdown
+    yield* Ref.set(invariantsRef, undefined)
+    // Tear down current leader worker context
     yield* resetCurrentWorkerCtx
   })
 
