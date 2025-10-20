@@ -99,15 +99,14 @@ const issueStore2 = await createStorePromise({ ... })
 
 A multi-store solution must:
 
-1. **✅ Support Multiple Store Types/Definitions**: Different schemas, adapters, configurations
-2. **✅ Support Multiple Instances**: Same definition, different data (e.g., issue-1, issue-2)
+1. **✅ Support Multiple Store Types**: Different schemas, adapters, configurations
+2. **✅ Support Multiple Instances**: Same type, different data (e.g., issue-1, issue-2)
 3. **✅ Dynamic Store IDs**: Store IDs determined at runtime (e.g., from route params)
-4. **✅ Common Case Optimization**: Multi-store support shouldn't complicate single-store usage
-5. **✅ Automatic Lifecycle Management**: Creation, caching, garbage collection
-6. **✅ Type Safety**: Full TypeScript inference from schema to usage
-7. **✅ React Integration**: Natural use of Suspense, Error Boundaries, hooks
-8. **✅ Framework Agnostic Core**: Core logic reusable outside React (Node.js, CLI, etc.)
-9. **✅ Testability**: Easy to create isolated store instances for tests
+4. **✅ Automatic Lifecycle Management**: Creation, caching, garbage collection
+5. **✅ Type Safety**: Full TypeScript inference from schema to usage
+6. **✅ React Integration**: Natural use of Suspense, Error Boundaries, hooks
+7. **✅ Framework Agnostic Core**: Core logic reusable outside React (Node.js, CLI, etc.)
+8. **✅ Testability**: Easy to create isolated store instances for tests
 
 ## Proposed Solution
 
@@ -117,9 +116,8 @@ The multi-store architecture introduces three key concepts:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                      <MultiStoreProvider>                      │
+│                    <StoreRegistryProvider>                     │
 │  • Provides StoreRegistry                                      │
-│  • Passes default store options (gcTime, syncPayload, etc.)    │
 │  • Lives at application root                                   │
 └────────────────────────────────────────────────────────────────┘
                               │
@@ -128,8 +126,9 @@ The multi-store architecture introduces three key concepts:
 ┌────────────────────────────────────────────────────────────────┐
 │                         StoreRegistry                          │
 │  • Central registry for all store instances                    │
-│  • Key: storeDefinition + storeId                              │
+│  • Passes default store options (gcTime, syncPayload, etc.)    │
 │  • Manages caching, ref-counting, garbage collection           │
+│  • Cache key: storeId                                          │
 │  • Framework-agnostic (reusable outside React)                 │
 └────────────────────────────────────────────────────────────────┘
                               │
@@ -146,144 +145,38 @@ The multi-store architecture introduces three key concepts:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-#### Key Design Principles
+### API
 
-1. **Store Definition vs Store Instance**
-  - A **definition** is a blueprint (schema + adapter + config)
-  - An **instance** is a loaded store with data (identified by storeId)
-  - One definition → many instances
+| API                       | Purpose                                   | Example                                                        |
+|:--------------------------|:------------------------------------------|:---------------------------------------------------------------|
+| `storeOptions()`          | Define re-usable store options            | `storeOptions({ storeId: 'workspace-root', schema, adapter })` |
+| `new StoreRegistry()`     | Create store registry instance            | `new StoreRegistry({ defaultOptions: { ... } })`               |
+| `<StoreRegistryProvider>` | StoreRegistry provider                    | `<StoreRegistryProvider storeRegistry={registry}>`             |
+| `useStore()`              | Get store instance (suspends until ready) | `useStore(storeOptions)`                                       |
+| `useStoreRegistry()`      | Get registry for advanced operations      | `useStoreRegistry()`                                           |
+| `registry.preload()`      | Preload store                             | `await registry.preload(storeOptions)`                         |
 
-2. **Automatic Lifecycle Management**
-  - Instances are created on first access
-  - Cached for subsequent access
-  - Ref-counted via observers (components using `useStore()`)
-  - Auto-disposed after `gcTime` when observers drop to zero (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime))
+#### `storeOptions()`
 
-3. **Configuration Cascade**
-  - Provider defaults → Definition defaults → Call-site overrides
-  - Later layers override earlier ones
-  - Allows global policy with local control (see [Configuration Cascade](#configuration-cascade-provider--definition--call-site))
-
-4. **Framework Agnostic Core**
-  - `StoreRegistry` doesn't depend on React
-  - React bindings are a thin wrapper (see [Generic useStore() Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks))
-
-### API Surface Summary
-
-#### Authoring
-
-| API             | Purpose                               | Example                                           |
-|:----------------|:--------------------------------------|:--------------------------------------------------|
-| `defineStore()` | Create a store definition (blueprint) | `defineStore({ name: 'issue', schema, adapter })` |
-
-#### Consumption
-
-| API                       | Purpose                                   | Context Required       |
-|:--------------------------|:------------------------------------------|:-----------------------|
-| `<LiveStoreProvider>`     | Single-store provider                     | None                   |
-| `<MultiStoreProvider>`    | Multi-store provider with registry        | None                   |
-| `useStore()`              | Get store instance (suspends until ready) | Either provider        |
-| `useStoreRegistry()`      | Get registry for advanced operations      | `<MultiStoreProvider>` |
-| `registry.preloadStore()` | Preload store without suspending          | None                   |
-
-### Authoring API
-
-The authoring API focuses on **defining store blueprints** that can be instantiated multiple times.
-
-#### `defineStore()`
-
-Creates a store definition—a reusable blueprint for loading store instances with a specific schema and adapter.
+Helper to define re-usable store option that can be later be passed to `useStore()` or `storeRegistry.preload()` while preserving type inference and type safety. At runtime, this helper just returns whatever you pass into it.
 
 **Signature:**
 
 ```ts
-function defineStore<TSchema extends LiveStoreSchema>(
-  options: DefineStoreOptions<TSchema>
-): StoreDefinition<TSchema>
+function storeOptions<TSchema extends LiveStoreSchema>(
+  options: StoreOptions<TSchema>
+): StoreOptions<TSchema>
 ```
 
-**Parameters:**
-
-```ts
-type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
-  /**
-   * Unique name for this store type (e.g., "workspace", "issue").
-   * Used in telemetry, devtools, and error messages.
-   * 
-   * Note: Multiple definitions can share the same name, but each
-   * definition gets a unique internal ID to prevent collisions.
-   */
-  name: string
-
-  /**
-   * Schema describing the data structure.
-   */
-  schema: TSchema
-
-  /**
-   * Adapter for persistence and synchronization.
-   */
-  adapter: Adapter
-
-  /**
-   * Default garbage collection time (milliseconds) for instances of this definition.
-   * When observer count drops to zero, instances remain cached for this
-   * duration before being disposed.
-   *
-   * @defaultValue 60 seconds in browser, Infinity during SSR to avoid
-   * disposing store instances before server render completes.
-   */
-  gcTime?: number
-
-  /**
-   * Function called once per instance after loading completes.
-   */
-  onLoad?: (
-    store: Store<TSchema>,
-    ctx: {
-      migrationsReport: MigrationsReport
-      parentSpan: otel.Span
-    }
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
-}
-```
-
-**Returns:**
-
-```ts
-type StoreDefinition<TSchema extends LiveStoreSchema> = {
-  /**
-   * Internal unique identifier for this definition.
-   * Generated automatically to prevent collisions even if names are reused.
-   */
-  readonly definitionId: string
-
-  /**
-   * Human-readable name for this store type.
-   */
-  readonly name: string
-
-  /**
-   * Schema for type inference.
-   */
-  readonly schema: TSchema
-
-  /**
-   * Other configuration (not exposed directly).
-   */
-  // ... internal fields
-}
-```
-
-**Example:**
+**Example (Singleton Store):**
 
 ```tsx
 // src/stores/workspace/index.ts
-import { defineStore } from '@livestore/livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { workspaceSchema } from './schema'
-import worker from './worker?worker'
+import { storeOptions } from '@livestore/react'
+import { schema, workspaceEvents, workspaceTables } from './schema.ts'
+import worker from './worker.ts?worker'
 
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
@@ -291,26 +184,26 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const workspaceStoreDef = defineStore({
-  name: 'workspace',
-  schema: workspaceSchema,
+export const workspaceStoreOptions = storeOptions({
+  storeId: 'workspace-root',
+  schema,
   adapter,
-  onLoad: async (store, { migrationsReport, parentSpan }) => {
-    console.log('Workspace store loaded', { migrationsReport })
+  gcTime: Infinity,
+  boot: (store) => {
+    console.log('Workspace store loaded')
   },
 })
-
-// TypeScript infers the schema type from the definition
-// workspaceStoreDef.schema is typed as typeof workspaceSchema
 ```
+
+**Example (Multi-Instance Store):**
 
 ```tsx
 // src/stores/issue/index.ts
-import { defineStore } from '@livestore/livestore'
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { issueSchema } from './schema'
-import worker from './worker?worker'
+import { storeOptions } from '@livestore/react'
+import { issueEvents, issueTables, schema } from './schema.ts'
+import worker from './worker.ts?worker'
 
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
@@ -318,248 +211,78 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const issueStoreDef = defineStore({
-  name: 'issue',
-  schema: issueSchema,
-  adapter,
-  gcTime: 2 * 60_000, // Evict inactive issues after 2 minutes
-})
-
-// Even if we create another definition with name: 'issue',
-// issueStoreDef.definitionId will be unique
+export const issueStoreOptions = (issueId: string) =>
+  storeOptions({
+    storeId: `issue-${issueId}`,
+    schema,
+    adapter,
+    gcTime: 20_000,
+  })
 ```
 
-### Consumption API
+#### `new StoreRegistry()`
 
-The consumption API provides **React components and hooks** for accessing store instances.
+Instantiates the registry that coordinates caching, ref-counting, garbage collection and provides default options to all store instances.
 
-#### `<MultiStoreProvider>`
+**Example:**
 
-Provides a `StoreRegistry` to the component tree and configures default options for all store instances.
+```tsx
+import { StoreRegistry } from '@livestore/react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
--  Rationale and separation from `<LiveStoreProvider>` (see [Different Provider for Multi-Store](#different-provider-for-multi-store-multistoreprovider))
--  Naming rationale (see [Name it MultiStoreProvider vs. Alternatives](#name-it-multistoreprovider-vs-alternatives))
+const storeRegistry = new StoreRegistry({
+  defaultOptions: {
+    batchUpdates,
+    disableDevtools: false,
+    confirmUnsavedChanges: true,
+    syncPayload: { authToken: 'insecure-token-change-me' },
+  },
+})
+```
 
-**Props:**
+#### `<StoreRegistryProvider>`
+
+Supplies a `StoreRegistry` instance to descendants via context.
+
+**Example:**
+
+```tsx
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+
+export default function App({ children }: { children: React.ReactNode }) {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+  
+  return <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
+}
+```
+
+#### `useStore()`
+
+Suspense-focused hook that returns a loaded store or triggers Suspense while the store loads.
+
+**Signature:**
 
 ```ts
-type MultiStoreProviderProps = {
-  /**
-   * Default options that apply to all stores loaded within this provider.
-   * Can be overridden by individual definitions or useStore() calls.
-   */
-  defaultStoreOptions?: StoreDefaultOptions
-
-  storeRegistry: StoreRegistry
-
-  children: React.ReactNode
-}
-
-type StoreDefaultOptions = {
-  /**
-   * Function to batch React state updates.
-   * Typically React's unstable_batchedUpdates or similar.
-   */
-  batchUpdates?: (callback: () => void) => void
-
-  /**
-   * Payload sent to sync server for authentication, tenancy, etc.
-   */
-  syncPayload?: Schema.JsonValue
-
-  /**
-   * OpenTelemetry configuration for tracing and metrics.
-   */
-  otelOptions?: Partial<OtelOptions>
-
-  /**
-   * Default garbage collection time (milliseconds) for all stores.
-   *
-   * @defaultValue 60 seconds in browser, Infinity during SSR to avoid
-   * disposing store instances before server render completes.
-   */
-  gcTime?: number
-}
+function useStore<TSchema extends LiveStoreSchema>(
+  options: StoreOptions<TSchema>
+): Store<TSchema> & ReactApi
 ```
 
 **Example:**
 
 ```tsx
-// src/App.tsx
-import { Suspense } from 'react'
-import { MultiStoreProvider } from '@livestore/react'
-import { unstable_batchedUpdates } from 'react-dom'
-import { useAuth } from '../../auth'
-import MainContent from './MainContent'
-
-export default function App() {
-  const { authToken } = useAuth()
-  
-  return (
-    <MultiStoreProvider
-      defaultStoreOptions={{
-        batchUpdates: unstable_batchedUpdates,
-        syncPayload: {
-          authToken: authToken,
-          apiVersion: 'v2',
-        },
-        otelOptions: {
-          serviceName: 'my-app',
-          endpoint: 'https://otel.example.com',
-        },
-        gcTime: 2 * 60_000, // 2 minutes default
-      }}
-    >
-      <Suspense fallback={<div>Loading app...</div>}>
-        <MainContent />
-      </Suspense>
-    </MultiStoreProvider>
-  )
-}
-```
-
-**Configuration Precedence:**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  Call-site overrides (useStore({ gcTime: X }))           │  ← Highest
-├──────────────────────────────────────────────────────────┤
-│  Definition defaults (defineStore({ gcTime: X }))        │  ← Middle
-├──────────────────────────────────────────────────────────┤
-│  Provider defaults (defaultStoreOptions.gcTime)          │  ← Lowest
-└──────────────────────────────────────────────────────────┘
-```
-
-Later layers replace earlier ones for scalar values (gcTime), but merge for objects (otelOptions, syncPayload). See [Configuration Cascade](#configuration-cascade-provider--definition--call-site).
-
-#### `useStore()`
-
-Hook to access a store instance. Suspends the component until the store is ready (see [Suspend on useStore Instead of Render Prop](#suspend-on-usestore-instead-of-render-prop)). It is a single generic hook (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks)).
-
-**Signatures:**
-
-```ts
-// Single-store usage
-function useStore<TSchema extends LiveStoreSchema>(): Store<TSchema>
-
-// Multi-store usage
-function useStore<TSchema extends LiveStoreSchema>(
-  options: UseStoreOptions<TSchema>
-): Store<TSchema>
-```
-
-**Options:**
-
-```ts
-type UseStoreOptions<TSchema extends LiveStoreSchema> = {
-  /**
-   * Store definition created via defineStore().
-   */
-  storeDef: StoreDefinition<TSchema>
-
-  /**
-   * Globally unique identifier for this store instance.
-   * 
-   * Requirements:
-   * - Must be stable across renders for the same logical entity
-   * - Must be globally unique (no collisions with other instances)
-   * - Should be deterministic (same inputs → same storeId)
-   * - Recommended: Use namespaced format like "issue:123"
-   */
-  storeId: string
-
-  /**
-   * Per-call override for garbage collection time (milliseconds).
-   * This instance will remain cached this long after observer count drops to zero.
-   * 
-   * If multiple observers specify different gcTime values, the longest wins.
-   */
-  gcTime?: number
-}
-```
-
-**Behavior:**
-
-1. **On First Call:**
-  - Checks registry for existing instance with `(storeDef, storeId)`
-  - If not found, loads store asynchronously
-  - Suspends component until promise resolves
-  - Increments observer ref-count
-  - Cancels any pending GC timer
-
-2. **On Subsequent Calls:**
-  - Returns cached instance immediately (or suspends if still loading)
-  - Increments observer ref-count
-
-3. **On Unmount:**
-  - Decrements observer ref-count
-  - If count reaches zero, schedules GC timer for `gcTime` milliseconds
-  - If component re-mounts before timer fires, timer is cancelled
-
-**Example: Multi-Store Usage**
-
-```tsx
+import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { issueStoreDef } from '../stores/issue'
-import { issueQuery, issueEvents } from '../stores/issue/queries'
+import { issueStoreOptions } from '@/stores/issue'
+import { issueTables } from '@/stores/issue/schema.ts'
 
-function IssueView({ issueId }: { issueId: string }) {
-  // Suspends until issue store is ready
-  const issueStore = useStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-
-  const issue = issueStore.useQuery(issueQuery(issueId))
-
-  function handleUpdateTitle(newTitle: string) {
-    issueStore.commit(
-      issueEvents.issueTitleUpdated({ issueId, newTitle })
-    )
-  }
-
-  return (
-    <div>
-      <h2>Issue: {issue.title}</h2>
-      <button onClick={() => handleUpdateTitle('New Title')}>
-        Update Title
-      </button>
-    </div>
-  )
-}
-
-// Usage with Suspense boundary
-function App() {
-  return (
-    <ErrorBoundary fallback={<div>Failed to load issue</div>}>
-      <Suspense fallback={<div>Loading issue...</div>}>
-        <IssueView issueId="issue-123" />
-      </Suspense>
-    </ErrorBoundary>
-  )
-}
-```
-
-**Example: Single-Store Usage**
-
-```tsx
-import { LiveStoreProvider, useStore } from '@livestore/react'
-
-function App() {
-  return (
-    <LiveStoreProvider schema={schema} adapter={adapter}>
-      <Suspense fallback={<div>Loading...</div>}>
-        <MainContent />
-      </Suspense>
-    </LiveStoreProvider>
-  )
-}
-
-function MainContent() {
-  // No parameters needed for single-store usage
-  const store = useStore()
-  const data = store.useQuery(myQuery)
-  return <div>{data}</div>
+export function IssuePanel({ issueId }: { issueId: string }) {
+  const issueStore = useStore(issueStoreOptions(issueId))
+  const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
+  
+  return <h2>{issue.title}</h2>
 }
 ```
 
@@ -580,99 +303,46 @@ function useStoreRegistry(override?: StoreRegistry): StoreRegistry
 - The current `StoreRegistry` from context (or the override)
 
 **Throws:**
-- Error if called outside `<MultiStoreProvider>` and no override provided
+- Error if called outside `<StoreRegistryProvider>` and no override provided
 
-**Example:**
+#### `registry.preload()`
 
-```tsx
-import { useStoreRegistry } from '@livestore/react'
-import { issueStoreDef } from '../stores/issue'
-
-function IssueListItem({ issueId }: { issueId: string }) {
-  const storeRegistry = useStoreRegistry()
-
-  const preloadIssueStore = () => {
-    // Preload the issue store on hover (doesn't suspend this component)
-    storeRegistry.preloadStore({
-      storeDef: issueStoreDef,
-      storeId: issueId,
-    })
-  }
-
-  return (
-    <Link
-      to={`/issues/${issueId}`}
-      onMouseEnter={preloadIssueStore}
-      onFocus={preloadIssueStore}
-    >
-      Issue {issueId}
-    </Link>
-  )
-}
-```
-
-#### `registry.preloadStore()`
-
-Preloads a store instance without suspending the component. It silently discards errors. Useful for prefetching data on hover, focus, or in route loaders.
+Preloads a store instance without suspending the component. It silently discards errors. Useful for preloading on hover, focus, or in route loaders.
 
 **Signature:**
 
 ```ts
 type PreloadStore = <TSchema extends LiveStoreSchema>(
-  options: PreloadStoreOptions<TSchema>
+  options: StoreOptions<TSchema>
 ) => Promise<void>
 ```
 
-**Options:**
-
-```ts
-type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
-  /**
-   * Store definition to preload.
-   */
-  storeDef: StoreDefinition<TSchema>
-
-  /**
-   * Store instance identifier.
-   */
-  storeId: string
-
-  /**
-   * Optional GC time override.
-   */
-  gcTime?: number
-
-  /**
-   * Optional abort signal to cancel loading if user navigates away.
-   */
-  signal?: AbortSignal
-}
-```
-
 **Behavior:**
-- Returns immediately if store is already loaded
-- Starts loading if not in cache (doesn't suspend caller)
+
+- Return immediately if the store is already loaded/cached
+- Starts loading if not in cache
 - Returns promise that resolves when loading completes
+- Silently discards errors
 - Instance still subject to GC if no observers attach
 
-**Example: Prefetch on Hover**
+**Example: Preload on Hover**
 
 ```tsx
 function IssueLink({ issueId }: { issueId: string }) {
-  const registry = useStoreRegistry()
+  const storeRegistry = useStoreRegistry()
 
-  const prefetch = () => {
-    registry.preloadStore({
-      storeDef: issueStoreDef,
-      storeId: issueId,
+  const preloadIssue = (issueId: string) => {
+    storeRegistry.preload({
+      ...issueStoreOptions(issueId),
+      gcTime: 5_000,
     })
   }
 
   return (
     <a
       href={`/issues/${issueId}`}
-      onMouseEnter={prefetch}
-      onFocus={prefetch}
+      onMouseEnter={preload}
+      onFocus={preload}
     >
       View Issue
     </a>
@@ -680,23 +350,12 @@ function IssueLink({ issueId }: { issueId: string }) {
 }
 ```
 
-**Example: Route Loader (React Router)**
+**Example: Route Loader**
 
 ```tsx
-import { redirect } from 'react-router-dom'
-
-export async function issueLoader({ params, request }: LoaderFunctionArgs) {
-  const { issueId } = params
-  if (!issueId) return redirect('/issues')
-
+export async function RouteLoader({ params, context }) {
   // Preload store before rendering component
-  await registry.preloadStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-    signal: request.signal, // Abort if navigation cancelled
-  })
-
-  return { issueId }
+  context.storeRegistry.preload(issueStoreOptions(params.issueId))
 }
 ```
 
@@ -704,21 +363,18 @@ export async function issueLoader({ params, request }: LoaderFunctionArgs) {
 
 ```tsx
 function WorkspaceView() {
-  const workspaceStore = useStore({
-    storeDef: workspaceStoreDef,
-    storeId: 'workspace-root',
-  })
-  const workspace = workspaceStore.useQuery(workspaceQuery)
-  const registry = useStoreRegistry()
+  const workspaceStore = useStore(workspaceStoreOptions)
+  const [workspace] = workspaceStore.useQuery(workspaceQuery)
+  const storeRegisty = useStoreRegistry()
   
   const mostRecentIssueIds = workspace.recentIssueIds.slice(0, 20)
 
-  // Preload all issue stores in parallel
+  // Preload most recent issues' stores
   React.useEffect(() => {
     mostRecentIssueIds.forEach((issueId) => {
-      registry.preloadStore({ storeDef: issueStoreDef, storeId: issueId })
+      storeRegistry.preload(issueStoreOptions(issueId))
     })
-  }, [workspace.recentIssueIds, registry])
+  }, [mostRecentIssueIds, storeRegisty])
 
   return <div>{/* ... */}</div>
 }
@@ -789,284 +445,6 @@ issueId  // What if issueId === workspaceId?
 | User-scoped    | `user:userId:type:id` | `user:u1:settings`    |
 | Tenant-scoped  | `org:orgId:type:id`   | `org:acme:workspace`  |
 
-### User-Space Helpers
-
-While `useStore()` provides the core API for accessing stores, applications often benefit from **custom abstractions** that encapsulate common patterns and reduce boilerplate. These helpers build on the generic hook approach (see [Generic `useStore()` Hook vs. Per-Definition Hooks](#generic-usestore-hook-vs-per-definition-hooks)).
-
-#### Pattern 1: Singleton Store Hooks
-
-For stores that logically have only one instance in your application (e.g., current workspace, user settings), create a custom hook that hides the `storeId` management.
-
-**Example: Current Workspace Store**
-
-```tsx
-// src/stores/workspace/index.ts
-import { useStore } from '@livestore/react'
-import { useAuth } from '../../auth'
-
-export const workspaceStoreDef = defineStore({
-  name: 'workspace',
-  schema: workspaceSchema,
-  adapter,
-  gcTime: Infinity, // Never evict workspace
-})
-
-/**
- * Hook to access the current user's workspace store.
- * By design, our app has a single workspace per organization.
- */
-export function useCurrentWorkspaceStore() {
-  const { orgId } = useAuth() // Get orgId from auth context
-  
-  return useStore({
-    storeDef: workspaceStoreDef,
-    storeId: `workspace:org_${orgId}`,
-  })
-}
-
-/**
- * Preload function for route loaders.
- */
-export async function preloadCurrentWorkspaceStore(
-  registry: StoreRegistry,
-  orgId: string
-) {
-  await registry.preloadStore({
-    storeDef: workspaceStoreDef,
-    storeId: `workspace:org_${orgId}`,
-  })
-}
-```
-
-**Usage:**
-
-```tsx
-function WorkspaceView() {
-  // Simple API - no storeId needed
-  const workspaceStore = useCurrentWorkspaceStore()
-  const workspace = workspaceStore.useQuery(workspaceQuery)
-  
-  return <div>Workspace: {workspace.name}</div>
-}
-```
-
-#### Pattern 2: Context-Based Store Providers
-
-For stores that are used deeply within a component subtree, create a React Context to avoid prop drilling.
-
-**Example: Issue Store Provider**
-
-```tsx
-// src/stores/issue/index.ts
-import { createContext, use } from 'react'
-import { useStore } from '@livestore/react'
-
-export const issueStoreDef = defineStore({
-  name: 'issue',
-  schema: issueSchema,
-  adapter,
-  gcTime: 2 * 60_000,
-})
-
-// Create context for the issue store
-const IssueStoreContext = createContext<Store<typeof issueSchema> | null>(null)
-
-/**
- * Provider component that loads and provides an issue store.
- * This component will suspend while the store is loading.
- */
-export function IssueStoreProvider({
-  issueId,
-  children,
-}: {
-  issueId: string
-  children: React.ReactNode
-}) {
-  const store = useStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-  
-  return (
-    <IssueStoreContext.Provider value={store}>
-      {children}
-    </IssueStoreContext.Provider>
-  )
-}
-
-/**
- * Hook to access the issue store from context.
- * Must be used within an <IssueStoreProvider>.
- */
-export function useIssueStore() {
-  const store = use(IssueStoreContext)
-  if (!store) {
-    throw new Error('useIssueStore must be used within an <IssueStoreProvider>')
-  }
-  return store
-}
-```
-
-**Usage:**
-
-```tsx
-function IssueDetailPage({ issueId }: { issueId: string }) {
-  return (
-    <ErrorBoundary fallback={<IssueError />}>
-      <Suspense fallback={<IssueLoading />}>
-        <IssueStoreProvider issueId={issueId}>
-          <IssueHeader />
-          <IssueDescription />
-          <IssueComments />
-        </IssueStoreProvider>
-      </Suspense>
-    </ErrorBoundary>
-  )
-}
-
-function IssueHeader() {
-  // No need to pass issueId as prop
-  const issueStore = useIssueStore()
-  const issue = issueStore.useQuery(issueQuery)
-  
-  return <h1>{issue.title}</h1>
-}
-
-function IssueComments() {
-  const issueStore = useIssueStore()
-  const comments = issueStore.useQuery(commentsQuery)
-  
-  return <CommentList comments={comments} />
-}
-```
-
-#### Pattern 3: Router-Integrated Hooks
-
-For stores that correspond to route parameters, create hooks that automatically extract the `storeId` from the router.
-
-**Example: Route-Based Issue Store**
-
-```tsx
-// src/stores/issue/index.ts
-import { useParams } from 'react-router-dom'
-import { useStore } from '@livestore/react'
-
-export const issueStoreDef = defineStore({
-  name: 'issue',
-  schema: issueSchema,
-  adapter,
-})
-
-/**
- * Hook to access the issue store from the current route.
- * Expects a route like: /issues/:issueId
- */
-export function useIssueStoreFromRoute() {
-  const { issueId } = useParams<{ issueId: string }>()
-  
-  if (!issueId) {
-    throw new Error('useIssueStoreFromRoute must be used within a route with an :issueId param')
-  }
-  
-  return useStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-}
-
-/**
- * Route loader for React Router.
- */
-export async function issueRouteLoader({
-  params,
-  context,
-}: {
-  params: { issueId: string }
-  context: { registry: StoreRegistry }
-}) {
-  const { issueId } = params
-  const { registry } = context
-  
-  // Preload the issue store before rendering
-  await registry.preloadStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-  
-  return { issueId }
-}
-```
-
-**Usage:**
-
-```tsx
-// Route configuration
-const routes = [
-  {
-    path: '/issues/:issueId',
-    loader: issueRouteLoader,
-    element: <IssueDetailPage />,
-  },
-]
-
-// Component
-function IssueDetailPage() {
-  // Automatically uses issueId from route params
-  const issueStore = useIssueStoreFromRoute()
-  const issue = issueStore.useQuery(issueQuery)
-  
-  return <div>{issue.title}</div>
-}
-```
-
-#### Pattern 4: Parameterized Store Hooks
-
-For stores that need multiple pieces of data to construct the `storeId`, create hooks that accept those parameters.
-
-**Example: Project-Scoped Issue Store**
-
-```tsx
-// src/stores/issue/index.ts
-import { useStore } from '@livestore/react'
-
-export const issueStoreDef = defineStore({
-  name: 'issue',
-  schema: issueSchema,
-  adapter,
-})
-
-/**
- * Hook to access an issue store scoped to a specific project.
- * Useful when the same issue ID might exist in different projects.
- */
-export function useProjectIssueStore(projectId: string, issueId: string) {
-  return useStore({
-    storeDef: issueStoreDef,
-    storeId: `project:${projectId}:issue:${issueId}`,
-  })
-}
-
-/**
- * Hook for the current project's issue (uses project from context).
- */
-export function useCurrentProjectIssueStore(issueId: string) {
-  const { currentProjectId } = useProject()
-  
-  return useProjectIssueStore(currentProjectId, issueId)
-}
-```
-
-**Usage:**
-
-```tsx
-function IssueView({ issueId }: { issueId: string }) {
-  // Automatically scoped to current project
-  const issueStore = useCurrentProjectIssueStore(issueId)
-  const issue = issueStore.useQuery(issueQuery)
-  
-  return <div>{issue.title}</div>
-}
-```
 
 ### Store Instance Lifecycle and GC
 
@@ -1079,16 +457,16 @@ A store instance progresses through these states:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                        LOADING                          │
-│  • registry.get() called for the first time             │
-│  • Promise created, loadStore() in progress             │
-│  • Components suspend while waiting                     │
+│  • registry.read() called for the first time            │
+│  • Promise created, store loading                       │
+│  • Components suspend while store loads                 │
 └────────────────┬────────────────────────────────────────┘
                  │
-                 │ loadStore() resolves
+                 │ Store loaded
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │                         ACTIVE                          │
-│  • Store instance ready                                 │
+│  • Store ready                                          │
 │  • observers > 0                                        │
 │  • Components using useStore() can access it            │
 └────────────────┬────────────────────────────────────────┘
@@ -1097,130 +475,84 @@ A store instance progresses through these states:
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │                        INACTIVE                         │
-│  • Store instance ready but not observed                │
+│  • Store cached but not observed                        │
 │  • observers === 0                                      │
-│  • GC timer scheduled for gcTime milliseconds           │
-│  • Can transition back to ACTIVE if observer attaches   │
+│  • GC timer scheduled for `gcTime` milliseconds         │
+|  • May transition back to ACTIVE if observer attaches   │
+│  • Re-activation cancels pending GC                     │
 └────────────────┬────────────────────────────────────────┘
                  │
                  │ GC timer fires
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │                       DISPOSED                          │
-│  • store.destroy() called                               │
-│  • Removed from registry                                │
+│  • store.shutdown() called                              │
+│  • Removed from registry cache                          │
 │  • Must reload from scratch if needed again             │
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Observer Ref-Counting
+#### Configuration Layers
 
-Each `useStore()` call increments an **observer count**. When the component unmounts, the count decrements.
-
-```tsx
-function ComponentA() {
-  useStore({ storeDef, storeId: 'issue-1' }) // observers: 0 → 1
-  return <div>A</div>
-}
-
-function ComponentB() {
-  useStore({ storeDef, storeId: 'issue-1' }) // observers: 1 → 2
-  return <div>B</div>
-}
-
-// If ComponentA unmounts: observers: 2 → 1 (still active)
-// If ComponentB unmounts: observers: 1 → 0 (start GC timer)
-```
-
-**Key Points:**
-- Observer count is per-instance (not per-definition)
-- Multiple components can observe the same instance
-- GC only starts when count reaches **exactly zero**
-- Re-mounting a component before GC fires cancels the timer
-
-#### Garbage Collection Algorithm
-
-```
-When observers drop to zero:
-  1. Check if gcTime is Infinity
-     → YES: Keep instance cached forever
-     → NO: Continue
-
-  2. Schedule setTimeout(() => { ... }, gcTime)
-  
-  3. When timer fires:
-     a. Re-check observer count (might have changed)
-     b. If still zero, call store.destroy() and remove from cache
-     c. If non-zero, do nothing (timer was stale)
-
-When a new observer attaches:
-  1. Cancel any pending GC timer
-  2. Increment observer count
-```
-
-**Example Timeline:**
-
-```
-t=0s   : Component mounts → useStore() → observers: 0 → 1
-t=10s  : Component unmounts → observers: 1 → 0, schedule GC for t=70s (gcTime=60s)
-t=20s  : Another component mounts → useStore() → observers: 0 → 1, cancel GC timer
-t=30s  : Component unmounts → observers: 1 → 0, schedule GC for t=90s
-t=90s  : GC timer fires, observers still 0 → store.destroy() → removed from cache
-```
-
-#### GC Time Configuration Layers
-
-Multiple layers can specify `gcTime`. The effective value is determined by precedence (see [Configuration Cascade](#configuration-cascade-provider--definition--call-site)):
+Two layers define an effective store's configuration.
 
 ```tsx
-// Layer 1: Provider default (lowest priority)
-<MultiStoreProvider
-  defaultStoreOptions={{ gcTime: 60_000 }}
-/>
-
-// Layer 2: Definition default (middle priority)
-const issueStoreDef = defineStore({
-  name: 'issue',
-  schema,
-  adapter,
-  gcTime: 120_000, // Overrides provider default
+// Registry default (lowest priority)
+const registry = new StoreRegistry({
+  defaultOptions: { gcTime: 60_000 },
 })
 
-// Layer 3: Call-site override (highest priority)
-useStore({
-  storeDef: issueStoreDef,
+// Call-site override (highest priority)
+const store = useStore({
   storeId: 'issue-1',
-  gcTime: 300_000, // Overrides both definition and provider
+  schema,
+  adapter,
+  gcTime: 120_000, // Overrides registry default
 })
 ```
 
 **Observer-Specific GC Times:**
 
-If multiple observers specify different `gcTime` values, the longest duration wins (see [Longest `gcTime` Wins When Multiple Observers](#longest-gctime-wins-when-multiple-observers)):
+If multiple observers specify different `gcTime` values, the longest duration wins:
 
 ```tsx
 // Component A
-useStore({ storeDef, storeId: 'issue-1', gcTime: 30_000 }) // 30s
+useStore({...issueStoreOptions('issue-1'), gcTime: 30_000 }) // 30s
 
 // Component B
-useStore({ storeDef, storeId: 'issue-1', gcTime: 120_000 }) // 120s
+useStore({...issueStoreOptions('issue-1'), gcTime: 120_000 }) // 120s
 
 // When both unmount, GC timer will be 120s (longest)
 ```
 
-**Rationale:** This ensures late-arriving observers don't get surprised by an early eviction from a short-lived peer.
+During runtime the longest `gcTime` wins when multiple observers pass different options for the same `storeId`. This mirrors the behaviour in the examples where the workspace store disables GC (`Infinity`) while issue stores use shorter windows.
 
-#### Special GC Values
-
-| Value              | Behavior            | Use Case                            |
-|:-------------------|:--------------------|:------------------------------------|
-| `Infinity`         | Never auto-dispose  | Singleton stores, critical app data |
-| `60_000` (default) | 60 seconds          | Standard UI data                    |
-| `0`                | Dispose immediately | Not recommended (causes thrashing)  |
+**Rationale:** This ensures late-arriving observers don't get surprised by an early eviction from a short-lived peer (see [Longest `gcTime` Wins When Multiple Observers](#longest-gctime-wins-when-multiple-observers)).
 
 #### SSR Considerations
 
-**Server-Side Default:**
+**Scope Stores to Requests:**
+
+Each server request should create its own `StoreRegistry` instance to ensure stores are request-scoped and do not leak between requests.
+
+```tsx
+// ❌ Do not instantiate StoreRegistry at module scope
+const storeRegistry = new StoreRegistry() // Bad: shared across requests
+
+// ✅ Instantiate per request
+export default function App({ children }) {
+  const [storeRegistry] = useState(() => new StoreRegistry()) // Good: new instance per request
+  return (
+    <StoreRegistryProvider storeRegistry={storeRegistry}>
+      {children}
+    </StoreRegistryProvider>
+  )
+}
+```
+
+**Default GC Time:**
+
+On the server, the default `gcTime` is promoted to `Number.POSITIVE_INFINITY` to prevent premature disposal during HTML generation.
 
 ```ts
 const DEFAULT_GC_TIME = typeof window === 'undefined'
@@ -1228,199 +560,31 @@ const DEFAULT_GC_TIME = typeof window === 'undefined'
   : 60_000
 ```
 
-**Rationale:**
-- On the server, stores are request-scoped
-- Setting `gcTime: Infinity` prevents premature disposal during HTML generation
-- Streaming SSR: Suspense boundaries may resume after initial render
-- Component lifecycle timing is less predictable on server
 
 See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-gctime-of-60-seconds-browser--infinity-ssr).
 
-### Edge Cases & Limitations
-
-#### Known Limitations
+#### Limitations
 
 ##### 1. No Cross-Store Queries
 
-Each store is fully isolated. You cannot query across store boundaries in a single operation.
-
-**Example:**
+Each store remains fully isolated. There is no supported way to query across store boundaries in a single operation.
 
 ```tsx
-// ❌ Cannot do this
-const result = someStore.useQuery((workspaceStore, issueStore) => {
-  return {
-    workspace: workspaceStore.data,
-    issue: issueStore.data,
-  }
-})
+// ❌ Cannot combine stores inside a single query invocation
+const result = someStore.useQuery((workspaceStore, issueStore) => ({
+  workspace: workspaceStore.data,
+  issue: issueStore.data,
+}))
 
-// ✅ Must do this
-const workspaceStore = useStore({ storeDef: workspaceStoreDef, storeId: 'ws-1' })
-const issueStore = useStore({ storeDef: issueStoreDef, storeId: 'issue-1' })
+// ✅ Query each store independently
+const workspaceStore = useStore(workspaceStoreOptions)
+const issueStore = useStore(issueStoreOptions('issue-1'))
 
-const workspace = workspaceStore.useQuery(workspaceQuery)
-const issue = issueStore.useQuery(issueQuery)
+const [workspace] = workspaceStore.useQuery(workspaceQuery)
+const [issue] = issueStore.useQuery(issueQuery)
 
-// Combine in component
+// Combine data at the component layer
 const combined = { workspace, issue }
-```
-
-**Workaround:**
-- Query each store separately
-- Combine results in component render
-- Or use a parent store that references child IDs
-
-##### 2. `storeId` Must Be String
-
-No support for objects, symbols, or complex keys.
-
-```tsx
-// ❌ Not supported
-useStore({ storeDef, storeId: { projectId: '1', issueId: '2' } })
-
-// ✅ Serialize to string
-useStore({ storeDef, storeId: `project:1:issue:2` })
-```
-
-### Migration Guide
-
-#### From Single Store to Multi Store
-
-##### Step 1: Update Dependencies
-
-```bash
-npm install @livestore/livestore@latest @livestore/react@latest
-```
-
-##### Step 2: Keep Single-Store Usage (No Changes Needed)
-
-Your existing single-store code continues to work unchanged:
-
-```tsx
-// ✅ Still works!
-<LiveStoreProvider schema={schema} adapter={adapter}>
-  <App />
-</LiveStoreProvider>
-```
-
-##### Step 3: Migrate to Multi-Store (Optional)
-
-If you want to use multiple stores:
-
-**Before:**
-
-```tsx
-// app.tsx
-<LiveStoreProvider schema={schema} adapter={adapter}>
-  <App />
-</LiveStoreProvider>
-
-// component.tsx
-const store = useStore()
-```
-
-**After:**
-
-```tsx
-// stores/app/index.ts
-export const appStoreDef = defineStore({
-  name: 'app',
-  schema: schema,
-  adapter: adapter,
-})
-
-// app.tsx
-<MultiStoreProvider defaultStoreOptions={{ ... }}>
-  <App />
-</MultiStoreProvider>
-
-// component.tsx
-const store = useStore({
-  storeDef: appStoreDef,
-  storeId: 'app-root', // or derive from context
-})
-```
-
-##### Step 4: Create Store Definitions
-
-Move store configuration to module-level definitions:
-
-```tsx
-// stores/workspace/index.ts
-import { defineStore } from '@livestore/livestore'
-import { workspaceSchema } from './schema'
-import { makePersistedAdapter } from '@livestore/adapter-web'
-
-export const workspaceStoreDef = defineStore({
-  name: 'workspace',
-  schema: workspaceSchema,
-  adapter: makePersistedAdapter({ ... }),
-  gcTime: 5 * 60_000,
-})
-
-// stores/issue/index.ts
-export const issueStoreDef = defineStore({
-  name: 'issue',
-  schema: issueSchema,
-  adapter: makePersistedAdapter({ ... }),
-  gcTime: 2 * 60_000,
-})
-```
-
-##### Step 5: Update Components
-
-Replace `useStore()` calls with store-specific hooks:
-
-```tsx
-// Before
-function IssueView({ issueId }) {
-  const store = useStore() // Global store
-  const issue = store.useQuery(issueQuery(issueId))
-  return <div>{issue.title}</div>
-}
-
-// After
-function IssueView({ issueId }) {
-  const issueStore = useStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-  const issue = issueStore.useQuery(issueQuery(issueId))
-  return <div>{issue.title}</div>
-}
-```
-
-##### Step 6: Add Suspense Boundaries
-
-Wrap components that use `useStore()` with Suspense and Error Boundaries:
-
-```tsx
-<ErrorBoundary fallback={<ErrorView />}>
-  <Suspense fallback={<LoadingSpinner />}>
-    <IssueView issueId="issue-1" />
-  </Suspense>
-</ErrorBoundary>
-```
-
-##### Step 7: Create Helper Hooks (Optional)
-
-Reduce boilerplate with custom hooks:
-
-```tsx
-// stores/issue/hooks.ts
-export function useIssueStore(issueId: string) {
-  return useStore({
-    storeDef: issueStoreDef,
-    storeId: issueId,
-  })
-}
-
-// Usage
-function IssueView({ issueId }) {
-  const issueStore = useIssueStore(issueId)
-  // ...
-}
 ```
 
 ## Design Choices
@@ -1433,7 +597,6 @@ This section documents key design choices and their rationale. **Feedback and al
 1. **Registry pattern** (chosen)
 2. **Context-per-store pattern**
 3. **Hook-based pattern** (no central management)
-4. **Global module state**
 
 **Chosen:** Registry pattern (option 1)
 
@@ -1441,9 +604,13 @@ This section documents key design choices and their rationale. **Feedback and al
 
 **Option 1: Registry Pattern (✅ Chosen)**
 ```tsx
-class StoreRegistry {
-  get(storeDef, storeId): Promise<Store>
-  preloadStore(storeDef, storeId): Promise<void>
+export default function App({ children }) {
+  const [storeRegistry] = useState(() => new StoreRegistry()) // Good: new instance per request
+  return (
+    <StoreRegistryProvider storeRegistry={storeRegistry}>
+      {children}
+    </StoreRegistryProvider>
+  )
 }
 ```
 
@@ -1452,7 +619,7 @@ class StoreRegistry {
 - Framework-agnostic core (reusable in Node.js, tests, CLI)
 - Clear ownership model (one place manages all stores)
 - Easy to test (mock registry)
-- Provides API for advanced operations (preload, drop, clear)
+- Provides API for advanced operations (preload, clear)
 - Familiar pattern (similar to TanStack Query's QueryClient)
 
 **Cons:**
@@ -1469,19 +636,19 @@ class StoreRegistry {
 ```
 
 **Pros:**
-- Pure React patterns
 - No custom registry abstraction
 
 **Cons:**
 - Deep nesting with many stores
 - No central point for GC or preloading
 - Difficult to manage lifecycle across stores
+- Easy to forget to remove unused providers
 - No way to preload without rendering provider
-- Context pollution (one context per store instance)
+- Context pollution (one context per store type)
 
 **Option 3: Hook-Based**
 ```tsx
-const store = useStoreInstance(storeDef, storeId)
+const store = useStore({ storeId: 'issue-1', schema, adapter })
 // Each hook manages its own lifecycle
 ```
 
@@ -1493,138 +660,20 @@ const store = useStoreInstance(storeDef, storeId)
 - No centralized GC (every hook manages its own cache)
 - Difficult to share instances across components
 - No preloading capability
-- Memory leaks likely (no ref-counting)
-
-### Different Provider for Multi-Store (`<MultiStoreProvider>`)
-
-**Alternatives Considered:**
-1. **Different Provider**: Introduce `<MultiStoreProvider>` alongside `<LiveStoreProvider>` (chosen)
-2. **Reuse Same Provider**: Add optional props to `<LiveStoreProvider>` to enable multi-store mode
-3. **Add Another Provider**: Introduce `<StoreRegistryProvider>` that wraps `<LiveStoreProvider>`
-
-**Chosen:** Different Provider (option 1)
-
-**Rationale:**
-
-**Option 1: Different Provider (✅ Chosen)**
-```tsx
-// Single store
-<LiveStoreProvider schema={schema} adapter={adapter}>
-  <App />
-</LiveStoreProvider>
-
-// Multi store
-<MultiStoreProvider defaultStoreOptions={{ ... }}>
-  <App />
-</MultiStoreProvider>
-```
-
-**Pros:**
-- Clear intent: name signals different usage patterns
-- Zero overhead for single-store users (tree-shaking removes multi-store code)
-- No prop confusion (single-store props vs multi-store props)
-- Easier to document and understand (two distinct APIs)
-
-**Cons:**
-- Two providers to learn
-- Cannot easily mix single-store and multi-store in same app
-
-**Option 2: Reuse Same Provider**
-```tsx
-// Single store
-<LiveStoreProvider schema={schema} adapter={adapter}>
-  <App />
-</LiveStoreProvider>
-
-// Multi store
-<LiveStoreProvider defaultStoreOptions={{ ... }}>
-  <App />
-</LiveStoreProvider>
-```
-
-**Pros:**
-- Single provider to learn
-- Could mix single-store and multi-store usage
-
-**Cons:**
-- Props become confusing (schema/adapter only for single-store, defaultStoreOptions only for multi-store)
-- Bundle includes both code paths even if only using one
-- Unclear which mode you're in without reading props carefully
-- Migration path less clear
-
-**Option 3: Add Another Provider**
-```tsx
-// Single store
-<LiveStoreProvider schema={schema} adapter={adapter}>
-  <App />
-</LiveStoreProvider>
-
-// Multi store
-<StoreRegistryProvider defaultStoreOptions={{ ... }}>
-  <LiveStoreProvider schema={schema} adapter={adapter} storeDef={def} storeId="x">
-    <App />
-  </LiveStoreProvider>
-</StoreRegistryProvider>
-```
-
-**Pros:**
-- Could compose single-store and multi-store providers
-
-**Cons:**
-- Confusing nesting (why two providers for multi-store?)
-- More boilerplate
-- LiveStoreProvider semantics change when nested in StoreRegistryProvider
-- Harder to understand which provider does what
-
-**Trade-offs:**
-- ✅ Zero overhead for single-store apps
-- ✅ Easier to document
-- ⚠️ Two providers to learn (acceptable given clear use case distinction)
-
-### Name it `MultiStoreProvider` vs. Alternatives
-
-**Alternatives Considered:**
-1. **`<MultiStoreProvider>`** (chosen)
-2. **`<StoreRegistryProvider>`**
-3. **`<LiveStoreRegistryProvider>`**
-4. **`<LiveStoresProvider>`** (plural)
-5. **`<StoreProvider>`** (generic)
-
-**Chosen:** `<MultiStoreProvider>` (option 1)
-
-**Rationale:**
-
-| Name                        | Pros                                                                                                | Cons                                                                                                |
-|:----------------------------|:----------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------|
-| `MultiStoreProvider` ✅      | • Clearly communicates "multiple stores"<br>• Parallel to `LiveStoreProvider` (single)<br>• Concise | • Doesn't mention "registry"                                                                        |
-| `StoreRegistryProvider`     | • Names the implementation detail<br>• Technical accuracy                                           | • Less clear about use case<br>• Users don't care about "registry"<br>• Too implementation-focused  |
-| `LiveStoreRegistryProvider` | • Consistent with `LiveStoreProvider`<br>• Mentions registry                                        | • Too verbose<br>• "LiveStore" is brand name, not a descriptor                                      |
-| `LiveStoresProvider`        | • Plural indicates multiple                                                                         | • Awkward plural<br>• Doesn't clearly convey difference from single-store                           |
-| `StoreProvider`             | • Simple and generic                                                                                | • Too generic<br>• Conflicts with common naming patterns<br>• Doesn't distinguish from single-store |
-
-**Additional Considerations:**
-- Future extensibility: Name should accommodate potential features beyond just providing a registry (e.g., store orchestration, cross-store events)
-- "MultiStore" is user-focused (what it enables) vs. "StoreRegistry" is implementation-focused (how it works)
-
-**Trade-offs:**
-- ✅ Clear, concise, user-focused
-- ✅ Room for future features
-- ⚠️ Hides implementation detail (registry) — acceptable since it's an implementation detail
 
 ### Automatic Garbage Collection with `gcTime`
 
 **Alternatives Considered:**
 1. **Manual disposal**: User calls `store.destroy()` explicitly
 2. **React lifecycle**: Dispose when provider unmounts
-3. **Ref-counting + timer**: Dispose after N seconds of inactivity (chosen)
+3. **Ref-counting + GC**: Dispose after N seconds of inactivity (chosen)
 
-**Chosen:** Ref-counting + timer (option 3)
+**Chosen:** Ref-counting + GC (option 3)
 
 **Rationale:**
 - Balances memory efficiency with performance (avoid reload thrashing)
 - Familiar pattern (similar to TanStack Query, RTK Query)
-- Allows late-arriving components to reuse cached instances
-- Configurable per store type (long-lived vs. short-lived)
+- Allows late-arriving components to reuse cached stores
 
 **Trade-offs:**
 - ✅ Automatic memory management
@@ -1646,10 +695,8 @@ const store = useStoreInstance(storeDef, storeId)
 - Conservative approach (avoids surprise evictions)
 - Late-arriving observers can extend lifetime
 - Prevents short-lived observer from prematurely dropping store used by long-lived observer
-- Matches user intuition ("keep it around longer")
 
 **Trade-offs:**
-- ✅ Predictable behavior (store stays alive longer than shortest)
 - ⚠️ Potentially keeps stores in memory longer than some observers expect
 
 ### Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
@@ -1667,138 +714,60 @@ const store = useStoreInstance(storeDef, storeId)
   - Long enough to avoid thrashing on quick navigation (back/forward)
   - Short enough to prevent excessive memory usage in long-running sessions
   - Shorter than TanStack Query's default (5 minutes) because stores are heavier than query results
-- **Infinity during SSR** prevents premature disposal during HTML generation:
-  - Server render lifecycle is less predictable (streaming, Suspense boundaries resuming)
-  - Request-scoped cleanup happens naturally when request completes
-  - Server memory is less constrained than client memory
+- **Infinity during SSR** prevents premature disposal during HTML generation
 
 **Comparison with Other Libraries:**
 - **TanStack Query**: `gcTime: 5 minutes` (cache time for query data)
-- **RTK Query**: `keepUnusedDataFor: 60 seconds`
+- **RTK Query**: `keepUnusedDataFor: 60 seconds` (cache time for query data)
 
-### Generic `useStore()` Hook vs. Per-Definition Hooks
+### Suspend via `useStore()`
 
-**Alternatives Considered:**
-1. **Single generic `useStore()` hook** (chosen)
-2. **Factory function to create typed hooks** (e.g., `createStoreHooks(storeDef)`)
+Rather than returning `{ store, status }`, the hook integrates with Suspense by throwing promises during load and errors during failure. This aligns with React 18 patterns and keeps component code free of manual loading branches.
 
-**Chosen:** Single generic `useStore()` hook (option 1)
+### Configuration Cascade (Registry Defaults → `storeOptions`)
 
-**Rationale:**
+Two layers control configuration:
+1. `new StoreRegistry({ defaultOptions })` for app-wide policies (batching, auth payloads, default `gcTime`).
+2. `storeOptions({ ... })` for per-store overrides (dynamic `storeId`, specialized `gcTime`, `boot`).
 
-**Option 1: Generic Hook (✅ Chosen)**
-```tsx
-// Library provides
-const store = useStore({ storeDef: workspaceStoreDef, storeId: 'ws-1' })
-
-// Users can create their own wrappers
-export function useWorkspaceStore(workspaceId: string) {
-  return useStore({ storeDef: workspaceStoreDef, storeId: workspaceId })
-}
-```
-
-**Pros:**
-- Minimal API surface (one hook to learn)
-- No magic or code generation
-- Full type safety through TypeScript generics
-- Users control their own abstractions (see User-Space Helpers)
-- Works with any store definition (even dynamically created ones)
-- Simple mental model: "call useStore with the definition you want"
-
-**Cons:**
-- Slightly more verbose at call-sites (must specify storeDef and storeId)
-- Users must create their own helper hooks for convenience
-
-**Option 2: Factory Function**
-```tsx
-const workspaceStoreDef = defineStore({ name: 'workspace', ... })
-const { useStore: useWorkspaceStore } = createStoreHooks(workspaceStoreDef)
-
-// Later
-const store = useWorkspaceStore('ws-1')
-```
-
-**Pros:**
-- Explicit opt-in to per-definition hooks
-- Type-safe (returns properly typed hooks)
-
-**Cons:**
-- More API surface (`createStoreHooks`)
-- Users must remember to call factory
-- Inconsistent patterns (some use generic, some use factory)
-- Additional imports to manage
-- Not significantly better than user-space wrappers
-- Adds ceremony for little benefit
-
-### Suspend on `useStore()` Instead of Render Prop
-
-**Alternatives Considered:**
-1. **Render props**: `<StoreLoader render={(store) => ...} />`
-2. **Suspense** (chosen)
-3. **Status flags**: `const { store, isLoading } = useStore()`
-
-**Chosen:** Suspense (option 2)
-
-**Rationale:**
-- Aligns with React 18+ best practices
-- Composable with other Suspense-based libraries
-- Decouples loading UI from business logic
-- Simpler component code (no loading branches)
-
-**Trade-offs:**
-- ✅ Modern React patterns
-- ✅ Composable with React Router, Next.js, etc.
-- ⚠️ Requires React 18+
-- ⚠️ Learning curve for users unfamiliar with Suspense
-- ⚠️ Differs from existing loading pattern
-
-### Configuration Cascade (Provider → Definition → Call-Site)
-
-**Alternatives Considered:**
-1. **Flat**: Only call-site options
-2. **Two-level**: Provider + call-site
-3. **Three-level**: Provider → Definition → Call-site (chosen)
-
-**Chosen:** Three-level cascade (option 3)
-
-**Rationale:**
-- Provider: App-wide policy (auth, telemetry)
-- Definition: Store-type policy (workspace = long-lived, issues = short-lived)
-- Call-site: Override for specific use case
-
-**Trade-offs:**
-- ✅ Flexibility without repetition
-- ✅ Clear precedence rules
-- ⚠️ More complexity to document
-- ⚠️ Potential confusion about which layer wins
+If both specify the same key, the `storeOptions` value wins.
 
 ## Open Questions
 
-### 1. Which Configurations Should Be Available at Each Layer and How Should Values Merge?
+### 1. How Should We Reconcile The Single Store API With Multi-Store?
 
 **Context:**
 
-The multi-store architecture introduces a three-layer configuration cascade:
-1. **Provider Layer** (`<MultiStoreProvider defaultStoreOptions>`)
-2. **Definition Layer** (`defineStore({ ... })`)
-3. **Call-Site Layer** (`useStore({ ... })`)
+The existing single-store API uses `<LiveStoreProvider>` and `useStore()` without parameters. With multi-store support, `useStore()` requires options to identify which store to load.
 
-| Configuration           | Type               | Provider | Definition | Call-Site | Merging Strategy |
-|:------------------------|:-------------------|:---------|:-----------|:----------|:-----------------|
-| `gcTime`                | number             | ✅        | ✅          | ✅         |                  |
-| `batchUpdates`          | function           | ✅        | ❌          | ❌         |                  |
-| `syncPayload`           | object (data)      | ❓        | ❓          | ❓         |                  |
-| `otelOptions`           | object (instances) | ❓        | ❓          | ❓         |                  |
-| `disableDevtools`       | boolean            | ❓        | ❓          | ❓         |                  |
-| `confirmUnsavedChanges` | boolean            | ❓        | ❓          | ❓         |                  |
-| `debug`                 | object (data)      | ❓        | ❓          | ❓         |                  |
-| `onLoad`                | function           | ❓        | ❓          | ❓         |                  |
-| `schema`                | object             | ❌        | ✅          | ❌         |                  |
-| `adapter`               | object (instance)  | ❌        | ✅          | ❌         |                  |
-| `signal`                | object (instance)  | ❌        | ❌          | ✅         |                  |
+**Question:** Should we deprecate the single-store API in favor of multi-store, or maintain both? If maintaining both, how to clearly distinguish them?
 
+### 2. Which Store Options Should Be Available at Each Layer and How Should Values Merge?
 
-### 2. How are `clientId` and `sessionId` Managed in Multi-Store?
+**Context:**
+
+We have a two-layer configuration cascade for configuring store options:
+
+1. **Registry Layer** (`new StoreRegistry({ defaultOptions: { ... } })`)
+2. **Call-Site Layer** (`useStore({ ... })`)
+
+We still need to validate which knobs belong where (e.g., should `batchUpdates` ever vary at call-site?). We also need clearer merge semantics for nested objects like `otelOptions`.
+
+| Configuration           | Type               | Registry | Call-Site | Merging Strategy    |
+|:------------------------|:-------------------|:---------|:----------|:--------------------|
+| `gcTime`                | number             | ✅        | ✅         | Call-site overrides |
+| `batchUpdates`          | function           | ✅        | ❌         | -                   |
+| `syncPayload`           | object (data)      | ❓        | ❓         | ❓                   |
+| `otelOptions`           | object (instances) | ❓        | ❓         | ❓                   |
+| `disableDevtools`       | boolean            | ✅        | ✅         | Call-site overrides |
+| `confirmUnsavedChanges` | boolean            | ✅        | ✅         | Call-site overrides |
+| `debug`                 | object (data)      | ✅        | ✅         | Deep merge          |
+| `boot`                  | function           | ❌        | ✅         | -                   |
+| `schema`                | object             | ❌        | ✅         | -                   |
+| `adapter`               | object (instance)  | ❌        | ✅         | -                   |
+| `signal`                | object (instance)  | ❌        | ✅         | -                   |
+
+### 3. How are `clientId` and `sessionId` Managed in Multi-Store?
 
 **Context:**
 
@@ -1807,7 +776,7 @@ The multi-store architecture introduces a three-layer configuration cascade:
 
 **Question:** In a multi-store environment, how should these IDs kept consistent across store instances?
 
-### 3. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
+### 4. How Should We Handle LiveStore Shutdown in Multi-Store Scenarios?
 
 **Context:**
 
@@ -1817,102 +786,13 @@ In single-store mode, app shutdown is straightforward—destroy the one store in
 
 ## Appendix
 
-### A. Full Type Definitions
-
-```ts
-// Store Definition
-type DefineStoreOptions<TSchema extends LiveStoreSchema> = {
-  name: string
-  schema: TSchema
-  adapter: Adapter
-  gcTime?: number
-  onLoad?: (
-    store: Store<TSchema>,
-    ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span }
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
-}
-
-type StoreDefinition<TSchema extends LiveStoreSchema> = {
-  readonly definitionId: string
-  readonly name: string
-  readonly schema: TSchema
-  // Internal fields omitted
-}
-
-declare function defineStore<TSchema extends LiveStoreSchema>(
-  options: DefineStoreOptions<TSchema>
-): StoreDefinition<TSchema>
-
-// Provider
-type StoreDefaultOptions = {
-  batchUpdates?: (callback: () => void) => void
-  syncPayload?: Schema.JsonValue
-  otelOptions?: Partial<OtelOptions>
-  gcTime?: number
-}
-
-// Hooks
-type UseStoreOptions<TSchema extends LiveStoreSchema> = {
-  storeDef: StoreDefinition<TSchema>
-  storeId: string
-  gcTime?: number
-}
-
-declare function useStore<TSchema extends LiveStoreSchema>(): Store<TSchema>
-declare function useStore<TSchema extends LiveStoreSchema>(
-  options: UseStoreOptions<TSchema>
-): Store<TSchema>
-
-declare function useStoreRegistry(override?: StoreRegistry): StoreRegistry
-
-// Registry
-type PreloadStoreOptions<TSchema extends LiveStoreSchema> = {
-  storeDef: StoreDefinition<TSchema>
-  storeId: string
-  gcTime?: number
-  signal?: AbortSignal
-}
-
-class StoreRegistry {
-  constructor(defaultOptions?: StoreDefaultOptions)
-
-  updateDefaultOptions(options: StoreDefaultOptions): void
-
-  get<TSchema extends LiveStoreSchema>(
-    def: StoreDefinition<TSchema>,
-    options: LoadStoreOptions<TSchema>
-  ): Promise<Store<TSchema>>
-
-  preloadStore<TSchema extends LiveStoreSchema>(
-    options: PreloadStoreOptions<TSchema>
-  ): Promise<void>
-
-  retain<TSchema extends LiveStoreSchema>(
-    def: StoreDefinition<TSchema>,
-    storeId: string,
-    gcTime?: number
-  ): () => void
-
-  release<TSchema extends LiveStoreSchema>(
-    def: StoreDefinition<TSchema>,
-    storeId: string,
-    gcOverride?: number
-  ): void
-
-  has<TSchema extends LiveStoreSchema>(
-    def: StoreDefinition<TSchema>,
-    storeId: string
-  ): boolean
-}
-```
-
-### B. Example Application Structure
+### A. Application Structure Example
 
 ```
 src/
 ├── stores/
 │   ├── workspace/
-│   │   ├── index.ts           # Store definition + custom hooks
+│   │   ├── index.ts           # Store options + custom hooks
 │   │   ├── schema.ts          # Schema definition
 │   │   └── worker.ts          # Dedicated web worker
 │   │
@@ -1927,10 +807,191 @@ src/
 │       └── ...
 │
 ├── components/
-│   ├── WorkspaceView.tsx      # Uses useStore with workspaceStoreDef
-│   ├── IssueView.tsx          # Uses useStore with issueStoreDef
+│   ├── WorkspaceView.tsx      # Uses useStore() with workspaceStoreOptions
+│   ├── IssueView.tsx          # Uses useStore() with issueStoreOptions
 │   └── ...
 │
-├── App.tsx                    # <MultiStoreProvider>
-└── main.tsx                   # ReactDOM.render
+├── App.tsx                    # <StoreRegistryProvider>
+└── ...
+```
+
+### B. Type Definitions
+
+```ts
+declare function storeOptions<TSchema extends LiveStoreSchema>(
+  options: StoreOptions<TSchema>
+): StoreOptions<TSchema>;
+
+
+type StoreRegistryOptions = {
+  readonly defaultOptions?: Readonly<Partial<StoreOptions>>;
+};
+
+declare class StoreRegistry {
+  constructor(options?: StoreRegistryOptions);
+  
+  preload<TSchema extends LiveStoreSchema>(
+    options: StoreOptions<TSchema>
+  ): Promise<void>;
+  
+  clear(): Promise<void>;
+}
+
+type StoreRegistryProviderProps = {
+  readonly storeRegistry: StoreRegistry;
+  readonly children: React.ReactNode;
+};
+
+declare function StoreRegistryProvider(
+  props: StoreRegistryProviderProps
+): React.ReactElement;
+
+declare function useStoreRegistry(override?: StoreRegistry): StoreRegistry;
+
+declare function useStore<TSchema extends LiveStoreSchema>(
+  options: StoreOptions<TSchema>
+): Store<TSchema> & ReactApi
+```
+
+### C. Complete Usage Example
+
+```tsx
+import { useState, useMemo, Suspense } from "react";
+import { unstable_batchedUpdates as batchUpdates } from "react-dom";
+import {
+  StoreRegistry,
+  StoreRegistryProvider,
+  useStoreRegistry,
+  useStore,
+  storeOptions,
+} from "@livestore/react";
+import {
+  workspaceSchema,
+  workspaceAdapter,
+  workspaceEvents,
+  selectWorkspaceQuery,
+  selectWorkspaceIssueIdsQuery,
+} from "./workspace";
+import {
+  issueSchema,
+  issueAdapter,
+  issueEvents,
+  selectIssueQuery,
+} from "./issue";
+
+
+// Workspace store (singleton)
+export const workspaceStoreOptions = storeOptions({
+  storeId: "workspace-root",
+  schema: workspaceSchema,
+  adapter: workspaceAdapter,
+  gcTime: Number.POSITIVE_INFINITY, // Disable garbage collection
+  boot: (store) => {
+    // Callback triggered when the store is first loaded
+  },
+});
+
+// Issue store (multi-instance)
+export const issueStoreOptions = (issueId: string) =>
+  storeOptions({
+    storeId: `issue-${issueId}`,
+    schema: issueSchema,
+    adapter: issueAdapter,
+    gcTime: 20_000,
+    boot: (issueStore) => {
+      // Callback triggered when the store is first loaded
+    },
+  });
+
+function App({ children }: { children: React.ReactNode }) {
+  const [storeRegistry] = useState(
+    () =>
+      new StoreRegistry({
+        defaultOptions: {
+          batchUpdates,
+          syncPayload: { authToken: "insecure-token-change-me" },
+        },
+      }),
+  );
+
+  return (
+    <StoreRegistryProvider storeRegistry={storeRegistry}>
+      {children}
+    </StoreRegistryProvider>
+  );
+}
+
+type RouterLoaderContext = {
+  storeRegistry: StoreRegistry;
+};
+
+export async function RouteLoader({ context }: { context: RouterLoaderContext }) {
+  context.storeRegistry.preload(workspaceStoreOptions);
+}
+
+export default function Route() {
+  const workspaceStore = useStore(workspaceStoreOptions); // Suspends
+  const [workspace] = workspaceStore.useQuery(selectWorkspaceQuery);
+  const issueIds = workspaceStore.useQuery(selectWorkspaceIssueIdsQuery(workspace.id));
+
+  const createIssue = () => {
+    workspaceStore.commit(
+      workspaceEvents.issueCreated({ title: `Issue ${issueIds.length + 1}` }),
+    );
+  };
+
+  const [selectedIssueId, setSelectedIssueId] = useState<string>();
+
+  const storeRegistry = useStoreRegistry();
+  const preloadIssue = (issueId: string) =>
+    storeRegistry.preload({
+      ...issueStoreOptions(issueId),
+      gcTime: 5 * 1000,
+    });
+
+  return (
+    <>
+      <h1>{workspace.name}</h1>
+      <button onClick={createIssue}>Create Issue</button>
+      {issueIds.map((id) => (
+        <button
+          key={id}
+          onMouseEnter={() => preloadIssue(id)}
+          onClick={() => setSelectedIssueId(id)}
+        >
+          Select issue {id}
+        </button>
+      ))}
+      {selectedIssueId && (
+        <Suspense fallback={<>Loading issue…</>}>
+          <IssuePanel issueId={selectedIssueId} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+function IssuePanel({ issueId }: { issueId: string }) {
+  const issueStore = useStore({
+    ...issueStoreOptions(issueId),
+    gcTime: 5 * 1000, // Override gcTime
+  }); // Suspends
+  const [issue] = issueStore.useQuery(selectIssueQuery(issueId));
+
+  const toggleStatus = () => {
+    issueStore.commit(
+      issueEvents.issueStatusChanged({
+        id: issue.id,
+        status: issue.status === "done" ? "todo" : "done",
+      }),
+    );
+  };
+
+  return (
+    <>
+      <button onClick={toggleStatus}>Toggle status</button>
+      <p>{issue.status}</p>
+    </>
+  );
+}
 ```
