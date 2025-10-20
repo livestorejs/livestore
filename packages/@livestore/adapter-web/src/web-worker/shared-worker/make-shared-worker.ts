@@ -1,4 +1,4 @@
-import { Devtools, UnexpectedError, liveStoreVersion } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -51,7 +51,6 @@ if (isDevEnv()) {
   }
 }
 
-
 const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
@@ -60,7 +59,6 @@ const makeWorkerRunner = Effect.gen(function* () {
       }
     | undefined
   >(undefined)
-
 
   const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),

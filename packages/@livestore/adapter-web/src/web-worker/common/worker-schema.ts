@@ -2,11 +2,11 @@ import {
   BootStatus,
   Devtools,
   LeaderAheadError,
+  liveStoreVersion,
   MigrationsReport,
   SyncBackend,
   SyncState,
   UnexpectedError,
-  liveStoreVersion,
 } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
