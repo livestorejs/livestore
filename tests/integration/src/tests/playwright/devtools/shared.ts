@@ -24,7 +24,11 @@ const checkDevtoolsState_ = async (options: {
 
   // expect(await options.devtools.getByRole('status', { name: 'Leader Tab' }).isVisible()).toBe(options.expect.leader)
 
-  await options.devtools.getByText('Tables').describe(`${options.label}:Tables`).waitFor({ timeout: 2000 }).catch(() => {})
+  await options.devtools
+    .getByText('Tables')
+    .describe(`${options.label}:Tables`)
+    .waitFor({ timeout: 2000 })
+    .catch(() => {})
 
   for (const table of options.expect.tables) {
     await expect(
