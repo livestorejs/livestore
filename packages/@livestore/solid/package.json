@@ -6,6 +6,7 @@
     ".": "./src/mod.ts"
   },
   "dependencies": {
+    "@bigmistqke/solid-whenever": "^0.1.1",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
