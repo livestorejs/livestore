@@ -193,7 +193,7 @@ export const cmdOutput: (
   )
 
   return yield* Effect.all([readStdout, readStderr, childProcess.exitCode], {
-    concurrency: 2,
+    concurrency: 3,
   })
 }, Effect.scoped)
 
