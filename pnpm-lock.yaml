@@ -464,7 +464,7 @@ importers:
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@tanstack/react-router':
         specifier: 1.139.14
-        version: 1.139.14(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 1.139.14(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/node':
         specifier: 'catalog:'
         version: 25.0.3
@@ -2342,7 +2342,7 @@ importers:
     dependencies:
       '@bigmistqke/solid-whenever':
         specifier: ^0.1.1
-        version: 0.1.1(solid-js@1.9.9)
+        version: 0.1.1(solid-js@1.9.10)
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -2356,9 +2356,21 @@ importers:
         specifier: 'catalog:'
         version: 1.9.0
     devDependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../adapter-web
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: 'catalog:'
         version: 2.2.0(@opentelemetry/api@1.9.0)
+      '@solidjs/testing-library':
+        specifier: ^0.8.10
+        version: 0.8.10(solid-js@1.9.10)
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.9.1
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
@@ -2371,6 +2383,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vite-plugin-solid:
+        specifier: ^2.11.8
+        version: 2.11.10(@testing-library/jest-dom@6.9.1)(solid-js@1.9.10)(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       vitest:
         specifier: 'catalog:'
         version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
@@ -3845,6 +3860,12 @@ packages:
   '@babel/types@7.28.5':
     resolution: {integrity: sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA==}
     engines: {node: '>=6.9.0'}
+
+  '@bigmistqke/solid-whenever@0.1.1':
+    resolution: {integrity: sha512-BhAtrauFOsYsNVhoNV93CPNIcj++R3tPzCok4eWB6BVCYVPedHGDtvqlUcAvftt67bOq9yAkF8DSJMjx3zfYeQ==}
+    engines: {node: '>=18', pnpm: '>=9.0.0'}
+    peerDependencies:
+      solid-js: ^1.6.0
 
   '@biomejs/biome@2.3.8':
     resolution: {integrity: sha512-Qjsgoe6FEBxWAUzwFGFrB+1+M8y/y5kwmg5CHac+GSVOdmOIqsAiXM5QMVGZJ1eCUCLlPZtq4aFAQ0eawEUuUA==}
@@ -7216,8 +7237,6 @@ packages:
   '@react-native/codegen@0.81.4':
     resolution: {integrity: sha512-LWTGUTzFu+qOQnvkzBP52B90Ym3stZT8IFCzzUrppz8Iwglg83FCtDZAR4yLHI29VY/x/+pkcWAMCl3739XHdw==}
     engines: {node: '>= 20.19.4'}
-    peerDependencies:
-      '@babel/core': '*'
 
   '@react-native/codegen@0.81.5':
     resolution: {integrity: sha512-a2TDA03Up8lpSa9sh5VRGCQDXgCTOyDOFH+aqyinxp1HChG8uk89/G+nkJ9FPd0rqgi25eCTR16TWdS3b+fA6g==}
@@ -7960,6 +7979,16 @@ packages:
     resolution: {integrity: sha512-hZ/M/qr25QOCcwDPOHtGjxTD8w2mNyVAYvcfgwzBHq2RwNqHNdDNsMZYap20+ruRwW4A3Cdkczyoz0TSxLCAPQ==}
     peerDependencies:
       solid-js: ^1.6.12
+
+  '@solidjs/testing-library@0.8.10':
+    resolution: {integrity: sha512-qdeuIerwyq7oQTIrrKvV0aL9aFeuwTd86VYD3afdq5HYEwoox1OBTJy4y8A3TFZr8oAR0nujYgCzY/8wgHGfeQ==}
+    engines: {node: '>= 14'}
+    peerDependencies:
+      '@solidjs/router': '>=0.9.0'
+      solid-js: '>=1.0.0'
+    peerDependenciesMeta:
+      '@solidjs/router':
+        optional: true
 
   '@speed-highlight/core@1.2.12':
     resolution: {integrity: sha512-uilwrK0Ygyri5dToHYdZSjcvpS2ZwX0w5aSt3GCEN9hrjxWCoeV4Z2DTXuxjwbntaLQIEEAlCeNQss5SoHvAEA==}
@@ -18261,6 +18290,10 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
+  '@bigmistqke/solid-whenever@0.1.1(solid-js@1.9.10)':
+    dependencies:
+      solid-js: 1.9.10
+
   '@biomejs/biome@2.3.8':
     optionalDependencies:
       '@biomejs/cli-darwin-arm64': 2.3.8
@@ -22643,7 +22676,6 @@ snapshots:
       '@babel/traverse': 7.28.5
       '@react-native/codegen': 0.81.4
     transitivePeerDependencies:
-      - '@babel/core'
       - supports-color
 
   '@react-native/babel-plugin-codegen@0.81.5':
@@ -22696,7 +22728,7 @@ snapshots:
       '@babel/plugin-transform-typescript': 7.28.5(@babel/core@7.28.5)
       '@babel/plugin-transform-unicode-regex': 7.27.1(@babel/core@7.28.5)
       '@babel/template': 7.27.2
-      '@react-native/babel-plugin-codegen': 0.81.4(@babel/core@7.28.4)
+      '@react-native/babel-plugin-codegen': 0.81.4
       babel-plugin-syntax-hermes-parser: 0.29.1
       babel-plugin-transform-flow-enums: 0.0.2(@babel/core@7.28.5)
       react-refresh: 0.14.2
@@ -22762,6 +22794,8 @@ snapshots:
       invariant: 2.2.4
       nullthrows: 1.1.1
       yargs: 17.7.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@react-native/codegen@0.81.5':
     dependencies:
@@ -23765,6 +23799,11 @@ snapshots:
 
   '@solid-primitives/utils@6.3.2(solid-js@1.9.10)':
     dependencies:
+      solid-js: 1.9.10
+
+  '@solidjs/testing-library@0.8.10(solid-js@1.9.10)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
       solid-js: 1.9.10
 
   '@speed-highlight/core@1.2.12': {}
@@ -33256,7 +33295,7 @@ snapshots:
     dependencies:
       '@jest/create-cache-key-function': 29.7.0
       '@react-native/assets-registry': 0.81.4
-      '@react-native/codegen': 0.81.4(@babel/core@7.28.4)
+      '@react-native/codegen': 0.81.4
       '@react-native/community-cli-plugin': 0.81.4
       '@react-native/gradle-plugin': 0.81.4
       '@react-native/js-polyfills': 0.81.4
@@ -35535,7 +35574,6 @@ snapshots:
       '@testing-library/jest-dom': 6.9.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   vite-plugin-svgr@4.5.0(rollup@4.53.3)(typescript@5.9.3)(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:

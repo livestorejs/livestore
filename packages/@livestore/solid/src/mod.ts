@@ -1,4 +1,4 @@
-export { LiveStoreContext, type SolidApi as ReactApi } from './LiveStoreContext.ts'
+export { LiveStoreContext, type SolidApi } from './LiveStoreContext.ts'
 export { LiveStoreProvider } from './LiveStoreProvider.tsx'
 export {
   type Dispatch,

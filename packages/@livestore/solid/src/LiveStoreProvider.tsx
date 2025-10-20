@@ -25,17 +25,18 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import {
+  batch,
+  createComputed,
   createEffect,
-  createRenderEffect,
+  createMemo,
   type JSX,
-  Match,
+  type JSXElement,
   mergeProps,
   on,
   onCleanup,
   type ParentProps,
-  Switch,
 } from 'solid-js'
-import { createStore as createSolidStore } from 'solid-js/store'
+import { createStore as createSolidStore, reconcile } from 'solid-js/store'
 import { LiveStoreContext } from './LiveStoreContext.ts'
 
 export interface LiveStoreProviderProps {
@@ -60,19 +61,6 @@ export interface LiveStoreProviderProps {
   renderError?: (error: UnexpectedError | unknown) => JSX.Element
   renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => JSX.Element
   adapter: Adapter
-  /**
-   * In order for LiveStore to apply multiple events in a single render,
-   * you need to pass the `batchUpdates` function from either `react-dom` or `react-native`.
-   *
-   * ```ts
-   * // With React DOM
-   * import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-   *
-   * // With React Native
-   * import { unstable_batchedUpdates as batchUpdates } from 'react-native'
-   * ```
-   */
-  batchUpdates: (run: () => void) => void
   disableDevtools?: boolean
   signal?: AbortSignal
   /**
@@ -93,8 +81,9 @@ export interface LiveStoreProviderProps {
   }
 }
 
-const defaultRenderError = (error: UnexpectedError | unknown) =>
-  Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)
+const defaultRenderError = (error: UnexpectedError | unknown) => (
+  <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
+)
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => {
   const reason =
@@ -132,7 +121,6 @@ export const LiveStoreProvider = (props: LiveStoreProviderProps & ParentProps) =
     storeId: config.storeId,
     schema: config.schema,
     adapter: config.adapter,
-    batchUpdates: config.batchUpdates,
     confirmUnsavedChanges: config.confirmUnsavedChanges,
     ...omitUndefineds({
       otelOptions: config.otelOptions,
@@ -144,48 +132,44 @@ export const LiveStoreProvider = (props: LiveStoreProviderProps & ParentProps) =
     }),
   })
 
-  return (
-    <Switch>
-      <Match when={storeCtx.stage === 'error' && storeCtx}>{(ctx) => config.renderError(ctx().error)}</Match>
-      <Match when={storeCtx.stage === 'shutdown' && storeCtx}>{(ctx) => config.renderShutdown(ctx().cause)}</Match>
-      <Match when={storeCtx.stage === 'running' && storeCtx}>
-        {(ctx) => {
-          globalThis.__debugLiveStore ??= {}
-          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-            globalThis.__debugLiveStore._ = ctx().store
-          }
-          globalThis.__debugLiveStore[config.debug?.instanceId ?? config.storeId] = ctx().store
-          return <LiveStoreContext.Provider value={storeCtx as TODO}>{config.children}</LiveStoreContext.Provider>
-        }}
-      </Match>
-      <Match
-        when={
-          // SOLID  - these checks are technically redundant
-          //          but otherwise the types aren't inferred and we would have to typecast to BootStatus
-          storeCtx.stage !== 'error' && storeCtx.stage !== 'shutdown' && storeCtx.stage !== 'running' && storeCtx
+  createEffect(() => {
+    console.log(JSON.stringify(storeCtx))
+  })
+
+  return createMemo(() => {
+    switch (storeCtx.stage) {
+      case 'error':
+        return config.renderError(storeCtx.error)
+      case 'shutdown':
+        return config.renderShutdown(storeCtx.cause)
+      case 'running':
+        globalThis.__debugLiveStore ??= {}
+        if (Object.keys(globalThis.__debugLiveStore).length === 0) {
+          globalThis.__debugLiveStore._ = storeCtx.store
         }
-      >
-        {(ctx) => config.renderLoading(ctx())}
-      </Match>
-    </Switch>
-  )
+        globalThis.__debugLiveStore[config.debug?.instanceId ?? config.storeId] = storeCtx.store
+        return <LiveStoreContext.Provider value={storeCtx}>{config.children}</LiveStoreContext.Provider>
+      default:
+        return config.renderLoading(storeCtx as BootStatus)
+    }
+  }) as unknown as JSXElement
 }
 
-type UseCreateStoreOptions = CreateStoreOptions<LiveStoreSchema> & {
+interface UseCreateStoreOptions extends Omit<CreateStoreOptions<LiveStoreSchema>, 'batchUpdates'> {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
 }
 
 const useCreateStore = (options: UseCreateStoreOptions) => {
+  const [contextValue, _setContextValue] = createSolidStore<StoreContext_ | BootStatus>({ stage: 'loading' })
+
   const [context, setContext] = createSolidStore<{
-    value: StoreContext_ | BootStatus
     componentScope: Scope.CloseableScope | undefined
     shutdownDeferred: ShutdownDeferred | undefined
     /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
     previousShutdownDeferred: ShutdownDeferred | undefined
     counter: number
   }>({
-    value: { stage: 'loading' },
     componentScope: undefined,
     shutdownDeferred: undefined,
     previousShutdownDeferred: undefined,
@@ -206,7 +190,7 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
       Effect.runFork,
     )
 
-  createRenderEffect(
+  createComputed(
     on(
       () => ({ ...options }),
       () => {
@@ -238,10 +222,11 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
 
   createEffect(() => {
     const counter = context.counter
+    console.log('createEffect running with counter:', counter)
 
     const setContextValue = (value: StoreContext_ | BootStatus) => {
       if (context.counter !== counter) return
-      setContext({ value })
+      _setContextValue(reconcile(value))
     }
 
     options.signal?.addEventListener('abort', () => {
@@ -262,7 +247,7 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
       }
     })
 
-    const cancelStore = createCancelStore(context, setContext, setContextValue, options)
+    const cancelStore = createCancelStore(context, setContext, contextValue, setContextValue, options)
 
     onCleanup(() => {
       cancelStore()
@@ -281,11 +266,10 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
     })
   })
 
-  return context.value
+  return contextValue
 }
 
 interface Context {
-  value: StoreContext_ | BootStatus
   componentScope: Scope.CloseableScope | undefined
   shutdownDeferred: ShutdownDeferred | undefined
   /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
@@ -298,10 +282,10 @@ type MakeOptional<T, TKeys extends keyof T> = Omit<T, TKeys> & { [TKey in TKeys]
 const createCancelStore = (
   context: Context,
   setContext: (context: Partial<Context>) => void,
+  contextValue: StoreContext_ | BootStatus,
   setContextValue: (value: StoreContext_ | BootStatus) => void,
   options: MakeOptional<
     UseCreateStoreOptions,
-    | 'batchUpdates'
     | 'boot'
     | 'confirmUnsavedChanges'
     | 'context'
@@ -333,9 +317,9 @@ const createCancelStore = (
         storeId: options.storeId,
         adapter: options.adapter,
         shutdownDeferred,
+        batchUpdates: batch,
         ...omitUndefineds({
           boot: options.boot,
-          batchUpdates: options.batchUpdates,
           disableDevtools: options.disableDevtools,
           context: options.context,
           params: options.params,
@@ -343,7 +327,7 @@ const createCancelStore = (
           syncPayload: options.syncPayload,
         }),
         onBootStatus: (status) => {
-          if (context.value.stage === 'running' || context.value.stage === 'error') return
+          if (contextValue.stage === 'running' || contextValue.stage === 'error') return
           // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
           setContextValue(status)
         },

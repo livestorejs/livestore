@@ -1,27 +1,25 @@
-import * as ReactTesting from '@testing-library/react'
-import * as React from 'react'
+import * as SolidTesting from '@solidjs/testing-library'
+import { createSignal } from 'solid-js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { __resetUseRcResourceCache, useRcResource } from './useRcResource.js'
 
-describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (strictMode=%s)', ({ strictMode }) => {
+describe('useRcResource', () => {
   beforeEach(() => {
     __resetUseRcResourceCache()
   })
-
-  const wrapper = strictMode ? React.StrictMode : React.Fragment
 
   it('should create a stateful entity using make and call cleanup on unmount', () => {
     const makeSpy = vi.fn(() => Symbol('statefulResource'))
     const cleanupSpy = vi.fn()
 
-    const { result, unmount } = ReactTesting.renderHook(() => useRcResource('key-1', makeSpy, cleanupSpy), { wrapper })
+    const { result, cleanup } = SolidTesting.renderHook(() => useRcResource(() => 'key-1', makeSpy, cleanupSpy))
 
     expect(makeSpy).toHaveBeenCalledTimes(1)
-    expect(result.current).toBeDefined()
+    expect(result).toBeDefined()
 
     expect(cleanupSpy).toHaveBeenCalledTimes(0)
-    unmount()
+    cleanup()
     expect(cleanupSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -29,44 +27,42 @@ describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (str
     const makeSpy = vi.fn(() => Symbol('statefulResource'))
     const cleanupSpy = vi.fn()
 
-    const { result, rerender, unmount } = ReactTesting.renderHook(
-      ({ key }) => useRcResource(key, makeSpy, cleanupSpy),
-      { initialProps: { key: 'consistent-key' }, wrapper },
-    )
+    // Test with same key multiple times
+    const { result: result1, cleanup: cleanup1 } = SolidTesting.renderHook(() => useRcResource(() => 'consistent-key', makeSpy, cleanupSpy))
+    const instance1 = result1()
 
-    const instance1 = result.current
-
-    // Re-render with the same key
-    rerender({ key: 'consistent-key' })
-    const instance2 = result.current
+    const { result: result2, cleanup: cleanup2 } = SolidTesting.renderHook(() => useRcResource(() => 'consistent-key', makeSpy, cleanupSpy))
+    const instance2 = result2()
 
     expect(instance1).toBe(instance2)
     expect(makeSpy).toHaveBeenCalledTimes(1)
 
-    unmount()
-    expect(cleanupSpy).toHaveBeenCalledTimes(1)
+    cleanup1()
+    expect(cleanupSpy).toHaveBeenCalledTimes(0) // Still has one reference
+    
+    cleanup2()
+    expect(cleanupSpy).toHaveBeenCalledTimes(1) // Now cleaned up
   })
 
   it('should dispose the previous instance when the key changes', () => {
     const makeSpy = vi.fn(() => Symbol('statefulResource'))
     const cleanupSpy = vi.fn()
 
-    const { result, rerender, unmount } = ReactTesting.renderHook(
-      ({ key }) => useRcResource(key, makeSpy, cleanupSpy),
-      { initialProps: { key: 'a' }, wrapper },
-    )
+    const [key, setKey] = createSignal('a')
 
-    const instanceA = result.current
+    const { result, cleanup } = SolidTesting.renderHook(() => useRcResource(key, makeSpy, cleanupSpy))
+
+    const instanceA = result()
 
     // Change the key; this should trigger the disposal of the 'a' instance
-    rerender({ key: 'b' })
-    const instanceB = result.current
+    setKey('b')
+    const instanceB = result()
 
     expect(instanceA).not.toBe(instanceB)
     expect(makeSpy).toHaveBeenCalledTimes(2)
     expect(cleanupSpy).toHaveBeenCalledTimes(1)
 
-    unmount()
+    cleanup()
     expect(cleanupSpy).toHaveBeenCalledTimes(2)
   })
 
@@ -75,25 +71,18 @@ describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (str
     const cleanupSpy = vi.fn()
 
     // Simulate two consumers using the same key independently.
-    const { unmount: unmount1 } = ReactTesting.renderHook(() => useRcResource('shared-key', makeSpy, cleanupSpy), {
-      wrapper,
-    })
-    const { unmount: unmount2, result } = ReactTesting.renderHook(
-      () => useRcResource('shared-key', makeSpy, cleanupSpy),
-      {
-        wrapper,
-      },
-    )
+    const { cleanup: cleanup1 } = SolidTesting.renderHook(() => useRcResource(() => 'shared-key', makeSpy, cleanupSpy))
+    const { cleanup: cleanup2, result } = SolidTesting.renderHook(() => useRcResource(() => 'shared-key', makeSpy, cleanupSpy))
 
-    expect(result.current).toBeDefined()
+    expect(result).toBeDefined()
     expect(makeSpy).toHaveBeenCalledTimes(1)
 
-    // Unmount first consumer; the entity should remain active.
-    unmount1()
+    // Cleanup first consumer; the entity should remain active.
+    cleanup1()
     expect(cleanupSpy).not.toHaveBeenCalled()
 
-    // Unmount second consumer; now the entity is disposed.
-    unmount2()
+    // Cleanup second consumer; now the entity is disposed.
+    cleanup2()
     expect(cleanupSpy).toHaveBeenCalledTimes(1)
   })
 
@@ -101,21 +90,20 @@ describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (str
     const makeSpy = vi.fn(() => Symbol('statefulResource'))
     const cleanupSpy = vi.fn()
 
-    const { rerender, unmount } = ReactTesting.renderHook(({ key }) => useRcResource(key, makeSpy, cleanupSpy), {
-      initialProps: { key: '1' },
-      wrapper,
-    })
+    const [key, setKey] = createSignal('1')
+
+    const { cleanup } = SolidTesting.renderHook(() => useRcResource(key, makeSpy, cleanupSpy))
 
     // Rapid sequence of key changes.
-    rerender({ key: '2' })
-    rerender({ key: '3' })
+    setKey('2')
+    setKey('3')
 
     // Expect three creations: one each for keys '1', '2', '3'
     expect(makeSpy).toHaveBeenCalledTimes(3)
     // Cleanup should have been triggered for key '1' and key '2'
     expect(cleanupSpy).toHaveBeenCalledTimes(2)
 
-    unmount()
+    cleanup()
     // Unmounting the final consumer disposes the key '3' instance.
     expect(cleanupSpy).toHaveBeenCalledTimes(3)
   })

@@ -24,7 +24,7 @@ import { createWritable } from './utils/create-writable.ts'
 export const useQuery = <TQuery extends LiveQueryDef.Any>(
   queryDef: Accessor<TQuery>,
   options?: { store?: Store },
-): LiveQueries.GetResult<TQuery> => useQueryRef(queryDef, options).valueRef()
+): Accessor<LiveQueries.GetResult<TQuery>> => useQueryRef(queryDef, options).valueRef
 
 /**
  */

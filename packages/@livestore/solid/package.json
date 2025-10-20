@@ -13,11 +13,16 @@
     "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
     "jsdom": "^26.1.0",
     "solid-js": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-solid": "^2.11.8",
     "vitest": "catalog:"
   },
   "files": [
@@ -37,6 +42,6 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo 'todo'"
+    "test": "vitest run"
   }
 }

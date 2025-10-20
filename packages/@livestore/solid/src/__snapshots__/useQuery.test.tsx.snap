@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query 1`] = `
+exports[`useQuery > filtered dependency query 1`] = `
 {
   "atoms": [
     {
@@ -167,7 +167,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query 2`] = `
+exports[`useQuery > filtered dependency query 2`] = `
 {
   "atoms": [
     {
@@ -298,6 +298,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       ],
       "super": [
         "node-9",
+        "node-10",
       ],
     },
     {
@@ -330,11 +331,21 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
         "node-7",
       ],
     },
+    {
+      "_tag": "effect",
+      "id": "node-10",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "sub": [
+        "node-7",
+      ],
+    },
   ],
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query 3`] = `
+exports[`useQuery > filtered dependency query 3`] = `
 {
   "atoms": [
     {
@@ -465,6 +476,8 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       ],
       "super": [
         "node-9",
+        "node-10",
+        "node-11",
       ],
     },
     {
@@ -497,11 +510,31 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
         "node-7",
       ],
     },
+    {
+      "_tag": "effect",
+      "id": "node-10",
+      "invocations": 2,
+      "isDestroyed": false,
+      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "sub": [
+        "node-7",
+      ],
+    },
+    {
+      "_tag": "effect",
+      "id": "node-11",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "sub": [
+        "node-7",
+      ],
+    },
   ],
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook invoked with different queries > 1: after first render 1`] = `
+exports[`useQuery > same \`useQuery\` hook invoked with different queries > 1: after first render 1`] = `
 {
   "atoms": [
     {
@@ -629,7 +662,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook invoked with different queries > 2: after first commit 1`] = `
+exports[`useQuery > same \`useQuery\` hook invoked with different queries > 2: after first commit 1`] = `
 {
   "atoms": [
     {
@@ -738,6 +771,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
       ],
       "super": [
         "node-7",
+        "node-8",
       ],
     },
   ],
@@ -753,11 +787,21 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
         "node-6",
       ],
     },
+    {
+      "_tag": "effect",
+      "id": "node-8",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:libraryTracksView1",
+      "sub": [
+        "node-6",
+      ],
+    },
   ],
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook invoked with different queries > 3: after forced rerender 1`] = `
+exports[`useQuery > same \`useQuery\` hook invoked with different queries > 3: after forced rerender 1`] = `
 {
   "atoms": [
     {
@@ -776,7 +820,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
       "refreshes": 2,
       "sub": [],
       "super": [
-        "node-8",
+        "node-9",
       ],
     },
     {
@@ -849,7 +893,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
     },
     {
       "_tag": "thunk",
-      "id": "node-8",
+      "id": "node-9",
       "isDestroyed": false,
       "isDirty": false,
       "label": "libraryTracksView2:results",
@@ -865,7 +909,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
         "node-1",
       ],
       "super": [
-        "node-9",
+        "node-10",
       ],
     },
   ],
@@ -873,19 +917,19 @@ exports[`useQuery (strictMode={ strictMode: false }) > same \`useQuery\` hook in
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-9",
+      "id": "node-10",
       "invocations": 1,
       "isDestroyed": false,
       "label": "subscribe:libraryTracksView2",
       "sub": [
-        "node-8",
+        "node-9",
       ],
     },
   ],
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > simple 1`] = `
+exports[`useQuery > simple 1`] = `
 {
   "atoms": [
     {
@@ -1013,7 +1057,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > simple 1`] = `
 }
 `;
 
-exports[`useQuery (strictMode={ strictMode: false }) > simple 2`] = `
+exports[`useQuery > simple 2`] = `
 {
   "atoms": [
     {
@@ -1122,6 +1166,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > simple 2`] = `
       ],
       "super": [
         "node-7",
+        "node-8",
       ],
     },
   ],
@@ -1137,1141 +1182,10 @@ exports[`useQuery (strictMode={ strictMode: false }) > simple 2`] = `
         "node-6",
       ],
     },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 1`] = `
-{
-  "atoms": [
     {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 1,
-      "sub": [],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:query",
-      "meta": {
-        "liveStoreThunkType": "db.query",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
-      },
-      "recomputations": 1,
-      "sub": [
-        "node-8",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-7",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t1","text":"buy milk","completed":false}]",
-      },
-      "recomputations": 1,
-      "sub": [
-        "node-6",
-        "node-1",
-      ],
-      "super": [
-        "node-9",
-      ],
-    },
-    {
-      "_tag": "ref",
+      "_tag": "effect",
       "id": "node-8",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "id-filter",
-      "meta": undefined,
-      "previousResult": {
-        "_tag": "Some",
-        "value": ""t1"",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
       "invocations": 1,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 2`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 2,
-      "sub": [],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:query",
-      "meta": {
-        "liveStoreThunkType": "db.query",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
-      },
-      "recomputations": 1,
-      "sub": [
-        "node-8",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-7",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t1","text":"buy soy milk","completed":false}]",
-      },
-      "recomputations": 2,
-      "sub": [
-        "node-6",
-        "node-1",
-      ],
-      "super": [
-        "node-9",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-8",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "id-filter",
-      "meta": undefined,
-      "previousResult": {
-        "_tag": "Some",
-        "value": ""t1"",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 3`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 2,
-      "sub": [],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:query",
-      "meta": {
-        "liveStoreThunkType": "db.query",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{}}",
-      },
-      "recomputations": 2,
-      "sub": [
-        "node-8",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-7",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "todo:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t2","text":"buy eggs","completed":false}]",
-      },
-      "recomputations": 3,
-      "sub": [
-        "node-6",
-        "node-1",
-      ],
-      "super": [
-        "node-9",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-8",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "id-filter",
-      "meta": undefined,
-      "previousResult": {
-        "_tag": "Some",
-        "value": ""t2"",
-      },
-      "refreshes": 1,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
-      "invocations": 3,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook invoked with different queries > 1: after first render 1`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 1,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "libraryTracksView1:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t1","text":"buy milk","completed":false}]",
-      },
-      "recomputations": 1,
-      "sub": [
-        "node-1",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 1,
-      "isDestroyed": false,
-      "label": "subscribe:libraryTracksView1",
-      "sub": [
-        "node-6",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook invoked with different queries > 2: after first commit 1`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 2,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "libraryTracksView1:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t1","text":"buy soy milk","completed":false}]",
-      },
-      "recomputations": 2,
-      "sub": [
-        "node-1",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:libraryTracksView1",
-      "sub": [
-        "node-6",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > same \`useQuery\` hook invoked with different queries > 3: after forced rerender 1`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 2,
-      "sub": [],
-      "super": [
-        "node-8",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-8",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "libraryTracksView2:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t2","text":"buy eggs","completed":false}]",
-      },
-      "recomputations": 2,
-      "sub": [
-        "node-1",
-      ],
-      "super": [
-        "node-9",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
-      "invocations": 1,
-      "isDestroyed": false,
-      "label": "subscribe:libraryTracksView2",
-      "sub": [
-        "node-8",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > simple 1`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "select * from todos:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[]",
-      },
-      "recomputations": 1,
-      "sub": [
-        "node-1",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 1,
-      "isDestroyed": false,
-      "label": "subscribe:select * from todos",
-      "sub": [
-        "node-6",
-      ],
-    },
-  ],
-}
-`;
-
-exports[`useQuery (strictMode={ strictMode: true }) > simple 2`] = `
-{
-  "atoms": [
-    {
-      "_tag": "ref",
-      "id": "node-1",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:todos",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 1,
-      "sub": [],
-      "super": [
-        "node-6",
-      ],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-2",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:app",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-3",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:UserInfo",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-4",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:AppRouter",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "ref",
-      "id": "node-5",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "tableRef:Kv",
-      "meta": {
-        "liveStoreRefType": "table",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "null",
-      },
-      "refreshes": 0,
-      "sub": [],
-      "super": [],
-    },
-    {
-      "_tag": "thunk",
-      "id": "node-6",
-      "isDestroyed": false,
-      "isDirty": false,
-      "label": "select * from todos:results",
-      "meta": {
-        "liveStoreThunkType": "db.result",
-      },
-      "previousResult": {
-        "_tag": "Some",
-        "value": "[{"id":"t1","text":"buy milk","completed":false}]",
-      },
-      "recomputations": 2,
-      "sub": [
-        "node-1",
-      ],
-      "super": [
-        "node-7",
-      ],
-    },
-  ],
-  "deferredEffects": [],
-  "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 2,
       "isDestroyed": false,
       "label": "subscribe:select * from todos",
       "sub": [

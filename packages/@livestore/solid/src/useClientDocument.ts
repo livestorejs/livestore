@@ -7,11 +7,11 @@ import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
-import { createMemo, createRenderEffect, mergeProps, on, useContext, type Accessor } from 'solid-js'
+import { createMemo, createRenderEffect, mergeProps, useContext, type Accessor } from 'solid-js'
 import { when } from '@bigmistqke/solid-whenever'
 
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
-  row: TTableDef['Value'],
+  row: Accessor<TTableDef['Value']>,
   setRow: StateSetters<TTableDef>,
   id: Accessor<string>,
   query$: Accessor<LiveQuery<TTableDef['Value']>>,
