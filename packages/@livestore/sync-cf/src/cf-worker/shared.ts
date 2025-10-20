@@ -44,6 +44,26 @@ export type MakeDurableObjectClassOptions = {
    */
   enabledTransports?: Set<'http' | 'ws' | 'do-rpc'>
 
+  /**
+   * Custom HTTP response headers for HTTP transport
+   * These headers will be added to all HTTP RPC responses (Pull, Push, Ping)
+   *
+   * @example
+   * ```ts
+   * {
+   *   http: {
+   *     responseHeaders: {
+   *       'Access-Control-Allow-Origin': '*',
+   *       'Cache-Control': 'no-cache'
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  http?: {
+    responseHeaders?: Record<string, string>
+  }
+
   otel?: {
     baseUrl?: string
     serviceName?: string

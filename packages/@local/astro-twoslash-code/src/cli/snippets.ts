@@ -740,6 +740,11 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     return root
   }
 
+  // Remove sentinel nodes from each filtered line before updating code.children
+  for (const line of filtered) {
+    removeSentinelNodes(line as THastElementContent)
+  }
+
   code.children = filtered
 
   const figcaption = findChildByTag(figure, 'figcaption')
@@ -784,15 +789,17 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
 
   if (figure && Array.isArray((figure as THastParent).children)) {
     const retainedChildren: Array<THastElementContent> = []
-    if (pre) retainedChildren.push(pre as unknown as THastElementContent)
+
+    // Sentinel nodes were already cleaned from individual lines before setting code.children
+    // So we can safely add the pre element without further cleaning
+    if (pre) {
+      retainedChildren.push(pre as unknown as THastElementContent)
+    }
     if (copyElement && isElementNode(copyElement)) {
+      removeSentinelNodes(copyElement as unknown as THastElementContent)
       retainedChildren.push(copyElement as THastElementContent)
     }
     ;(figure as THastParent).children = retainedChildren
-  }
-
-  if (figure) {
-    removeSentinelNodes(figure as unknown as THastElementContent)
   }
 
   return root
