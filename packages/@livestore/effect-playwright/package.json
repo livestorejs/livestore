@@ -4,10 +4,7 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*"
