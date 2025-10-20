@@ -8,9 +8,9 @@
 
 ### Reflections on API
 
-**[!]** Only placed here for temporary reference. Relevant parts can later be removed or if relevant moved.
+**[!]** Only placed here for temporary reference.
 
-**[!]** These comments are based on my basic understanding of how LiveStore works. It's possible I'm making the wrong assumptions here. To clarify my understanding I've written [this document](understanding-events.md)
+**[!]** These are based on my current understanding of how LiveStore works. It's possible I'm making the wrong assumptions here. To clarify my understanding I've written [this document](understanding-events.md)
 
 **Only streaming confirmed events**
 
@@ -46,8 +46,10 @@ Batch 1 might read `[e41, e42]` with `since = e39` and `offset = 0`. If a rebase
 
 ## Deterministic scenarios
 
-- If rebase occurs mid stream no events should get omitted (?)
-- Stream should progress as upstream head advances (client, leader)
+*These need to be elaborated on as to what the expected behaviour should be.*
+
+- Rebase occurs mid-stream
+- Stream progression as upstream head advances
 
 ## Use cases
 
