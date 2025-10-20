@@ -9,6 +9,7 @@ import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
 import { createMemo, createRenderEffect, mergeProps, useContext, type Accessor } from 'solid-js'
 import { when } from '@bigmistqke/solid-whenever'
+import { resolve, type AccessorMaybe } from './utils.ts'
 
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: Accessor<TTableDef['Value']>,
@@ -62,8 +63,8 @@ export const useClientDocument: {
       }
     >,
   >(
-    table: Accessor<TTableDef>,
-    id?: Accessor<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
+    table: AccessorMaybe<TTableDef>,
+    id?: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
     options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   ): UseClientDocumentResult<TTableDef>
 
@@ -80,21 +81,21 @@ export const useClientDocument: {
       }
     >,
   >(
-    table: Accessor<TTableDef>,
+    table: AccessorMaybe<TTableDef>,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: Accessor<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | string | SessionIdSymbol>,
+    id: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | string | SessionIdSymbol>,
     options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   ): UseClientDocumentResult<TTableDef>
 } = <TTableDef extends State.SQLite.ClientDocumentTableDef.Any>(
-  table: Accessor<TTableDef>,
-  idOrOptions?: Accessor<string | SessionIdSymbol>,
+  table: AccessorMaybe<TTableDef>,
+  idOrOptions?: AccessorMaybe<string | SessionIdSymbol>,
   options_?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   storeArg?: { store?: Store },
 ): UseClientDocumentResult<TTableDef> => {
   const id = when(idOrOptions, (idOrOptions) =>
     typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol
       ? idOrOptions
-      : table()[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
+      : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
   )
 
   const options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> = mergeProps(
@@ -104,9 +105,9 @@ export const useClientDocument: {
     ),
   )
 
-  createRenderEffect(() => validateTableOptions(table()))
+  createRenderEffect(() => validateTableOptions(resolve(table)))
 
-  const tableName = () => table().sqliteDef.name
+  const tableName = () => resolve(table).sqliteDef.name
 
   // SOLID  - does this imply we assume storeArg?.store will never change from being defined to being undefined and vice versa?
   //          because this breaks both react's hook rules and solid's assumptions around context
@@ -121,8 +122,8 @@ export const useClientDocument: {
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef = createMemo<QueryDef>(() =>
-    queryDb(table().get(id()!, { default: options.default! }), {
-      deps: [idStr()!, table().sqliteDef.name, JSON.stringify(options.default)],
+    queryDb(resolve(table).get(id()!, { default: options.default! }), {
+      deps: [idStr()!, resolve(table).sqliteDef.name, JSON.stringify(options.default)],
     }),
   )
 
@@ -140,7 +141,7 @@ export const useClientDocument: {
 
     if (queryRef.valueRef() === newValue) return
 
-    store.commit(table().set(removeUndefinedValues(newValue), id()))
+    store.commit(resolve(table).set(removeUndefinedValues(newValue), id()))
   }
 
   return [queryRef.valueRef, setState, idStr, () => queryRef.queryRcRef().value]

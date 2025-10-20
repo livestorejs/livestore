@@ -30,7 +30,7 @@ Vitest.describe('useClientDocument', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const [state, setState, id] = store.useClientDocument(() => tables.userInfo, userId)
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
           return { state, setState, id }
         },
         { wrapper },
@@ -57,10 +57,7 @@ Vitest.describe('useClientDocument', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const [state, setState, id] = store.useClientDocument(
-            () => tables.userInfo,
-            () => 'u1',
-          )
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
           return { state, setState, id }
         },
         { wrapper },
@@ -82,10 +79,7 @@ Vitest.describe('useClientDocument', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const [state, setState, id] = store.useClientDocument(
-            () => tables.userInfo,
-            () => 'u1',
-          )
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
           return { state, setState, id }
         },
         { wrapper },
@@ -185,7 +179,7 @@ Vitest.describe('useClientDocument', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const [_row, _setRow, _id, rowState$] = store.useClientDocument(() => tables.userInfo, userId)
+          const [_row, _setRow, _id, rowState$] = store.useClientDocument(tables.userInfo, userId)
           const todos = store.useQuery(
             () =>
               LiveStore.queryDb(
@@ -219,16 +213,12 @@ Vitest.describe('useClientDocument', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const [state, setState] = store.useClientDocument(
-            () => tables.kv,
-            () => 'k1',
-          )
-          return { state, setState, id: () => 'k1' }
+          const [state, setState] = store.useClientDocument(tables.kv, 'k1')
+          return { state, setState }
         },
         { wrapper },
       )
 
-      expect(result.id()).toBe('k1')
       expect(result.state()).toBe(null)
 
       result.setState(1)
@@ -258,41 +248,30 @@ Vitest.describe('useClientDocument', () => {
           otelTracer,
         })
 
+        const [userId, setUserId] = createSignal('u1')
+
         // Test with first user
-        const { result: result1 } = SolidTesting.renderHook(
+        const { result } = SolidTesting.renderHook(
           () => {
-            const [state, setState, id] = store.useClientDocument(
-              () => tables.userInfo,
-              () => 'u1',
-            )
+            const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
             return { state, setState, id }
           },
           { wrapper },
         )
 
-        expect(result1.id()).toBe('u1')
-        expect(result1.state().username).toBe('')
+        expect(result.id()).toBe('u1')
+        expect(result.state().username).toBe('')
 
         // For u2 we'll make sure that the row already exists,
         // so the lazy `insert` will be skipped
         store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2'))
 
         // Test with second user (new hook instance)
-        const { result: result2 } = SolidTesting.renderHook(
-          () => {
-            const [state, setState, id] = store.useClientDocument(
-              () => tables.userInfo,
-              () => 'u2',
-            )
-            return { state, setState, id }
-          },
-          { wrapper },
-        )
+        setUserId('u2')
 
-        expect(result2.id()).toBe('u2')
-        expect(result2.state().username).toBe('username_u2')
+        expect(result.id()).toBe('u2')
+        expect(result.state().username).toBe('username_u2')
 
-        // Note: Solid testing library cleanup happens automatically
         span.end()
       }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 

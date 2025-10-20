@@ -3,7 +3,7 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createMemo, onMount } from 'solid-js'
+import { onMount } from 'solid-js'
 import { describe, expect, it } from 'vitest'
 
 import { events, schema, tables } from './__tests__/fixture.js'
@@ -20,7 +20,7 @@ describe('LiveStoreProvider', () => {
       appRenderCount++
       const { store } = LiveStoreSolid.useStore()
 
-      const todos = store.useQuery(() => allTodos$)
+      const todos = store.useQuery(allTodos$)
 
       return <div>{JSON.stringify(todos())}</div>
     }
@@ -31,12 +31,12 @@ describe('LiveStoreProvider', () => {
       const bootCb = (store: Store) =>
         store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
-      const adapter = createMemo(() => makeInMemoryAdapter())
+      const adapter = makeInMemoryAdapter()
       return (
         <LiveStoreProvider
           schema={schema}
           renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
-          adapter={adapter()}
+          adapter={adapter}
           boot={bootCb}
           signal={abortController.signal}
         >
@@ -76,12 +76,12 @@ describe('LiveStoreProvider', () => {
         // This should trigger an error because we're trying to insert invalid data
         throw new Error('Simulated boot error')
       }
-      const adapterMemo = createMemo(() => makeInMemoryAdapter())
+      const adapterMemo = makeInMemoryAdapter()
       return (
         <LiveStoreProvider
           schema={schema}
           renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
-          adapter={adapterMemo()}
+          adapter={adapterMemo}
           boot={bootCb}
         >
           <App />
@@ -114,7 +114,7 @@ describe('LiveStoreProvider', () => {
         })
       })
 
-      const todos = store.useQuery(() => allTodos$)
+      const todos = store.useQuery(allTodos$)
 
       return <div>{JSON.stringify(todos())}</div>
     }
@@ -161,7 +161,7 @@ describe('LiveStoreProvider', () => {
       const instanceId = store.clientSession.debugInstanceId as 'store1' | 'store2'
       appRenderCount[instanceId]!++
 
-      const todos = store.useQuery(() => allTodos$)
+      const todos = store.useQuery(allTodos$)
 
       return (
         <div id={instanceId}>
