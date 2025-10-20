@@ -1,6 +1,6 @@
 # TodoMVC Example
 
-[Demo](https://web-todomvc-sync-cf.livestore.dev)
+[Demo](https://example-web-todomvc-sync-cf.livestore.workers.dev)
 
 ## Running locally
 

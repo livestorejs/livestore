@@ -15,9 +15,9 @@ const formatDomain = (domain: { domain: string; name: string }) =>
   domain.name === '@' ? domain.domain : `${domain.name}.${domain.domain}`
 
 /**
- * Updates the Vercel-managed DNS records for a single example/environment pair so that the
- * relevant `*.livestore.dev` host points at the chosen workers.dev service. This stays separate
- * from the deploy step to avoid requiring Vercel credentials in CI.
+ * Legacy helper that previously updated custom `*.livestore.dev` domains via Vercel DNS.
+ * The project now links directly to the `*.livestore.workers.dev` hosts, so this command
+ * is kept only for historical reference and should not be used in new workflows.
  */
 const syncDnsForExample = ({
   exampleSlug,
