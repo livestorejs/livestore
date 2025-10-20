@@ -5,12 +5,6 @@ import type { CreateStoreOptions, OtelOptions } from '@livestore/livestore'
 export type StoreId = string
 
 /**
- * Helper to future‑proof adapter/schema coupling.
- * Replace `AdapterFor<TSchema>` with `Adapter<TSchema>` when `Adapter` accepts a generic schema parameter.
- */
-type AdapterFor<TSchema extends LiveStoreSchema> = Adapter
-
-/**
  * Minimum information required to create a store
  */
 export type StoreDescriptor<TSchema extends LiveStoreSchema> = {
@@ -22,7 +16,7 @@ export type StoreDescriptor<TSchema extends LiveStoreSchema> = {
   /**
    * Adapter for persistence and synchronization.
    */
-  readonly adapter: AdapterFor<TSchema>
+  readonly adapter: Adapter
 
   /**
    * The ID of the store.
