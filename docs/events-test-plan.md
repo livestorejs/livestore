@@ -1,5 +1,29 @@
 # LiveStore Events Test Plan
 
+### Current eventStream implementation
+
+- minSyncLevel **client** merges client syncState which includes pending events and leader event log
+- minSyncLevel **leader** emits events from event log even those not confirmed by backend
+- minSyncLevel **backend** does not read from backend but reads from leader thread up until backend head
+
+### Reflections on API
+
+**[!]** Only placed here for temporary reference. Relevant parts can later be removed or if relevant moved.
+
+**[!]** These comments are based on my basic understanding of how LiveStore works. It's possible I'm making the wrong assumptions here. To clarify my understanding I've written [this document](understanding-events.md)
+
+**Only streaming confirmed events**
+
+Streaming only confirmed events as discussed removes the current value of minSyncLevel client (which merges pending events) and leaves backend as the only level that guarantees confirmation which is not useful in offline scenarios.
+
+**Dynamically pushing `until` marker to align with upstream head**
+
+Users expect a backend-level stream to follow the advancing head without manual restarts. Today `until` is fixed at stream start at client and backend level.
+
+**Starting stream from local head**
+
+Starting from the local head already works via a `since` cursor, but it would probably be beneficial to document how this can be done since I can imagine it being a common scenario where users wants to take actions only on new events and not the entire event log.
+
 ## Scenarios that can occur
 
 - Large event log (≥100k events): confirm throughput remains stable and memory stays bounded while streaming.
@@ -21,13 +45,6 @@
 
 - If rebase occurs mid stream no events should get omitted (?)
 - Stream should progress as upstream head advances (client, leader)
-
-## Notes
-
-### Current implementation of eventStream
-- minSyncLevel **client** merges client syncState which includes pending events and leader event log
-- minSyncLevel **leader** emits events from event log even those not confirmed by backend
-- minSyncLevel **backend** does not read from backend but reads from leader thread up until backend head
 
 ## Use cases
 
