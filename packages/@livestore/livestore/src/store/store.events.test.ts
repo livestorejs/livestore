@@ -2,6 +2,7 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
 import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
@@ -12,7 +13,6 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { events, schema } from '../utils/tests/fixture.ts'
-import { EventFactory } from '@livestore/common/testing'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -52,7 +52,7 @@ Vitest.describe('Store events API', () => {
   Vitest.scopedLive('should stream backend confirmed events', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore()
+      const _store = yield* makeStore()
       // const store = yield* makeStore({
       //   testing: {
       //     overrides: {
