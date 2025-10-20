@@ -14,7 +14,7 @@ import {
   identity,
   List,
   LogLevel,
-  PlatformError,
+  type PlatformError,
   Schema,
   Sink,
   Stream,
@@ -117,7 +117,7 @@ export const cmd: (
  * returns the `stdout` from the child process.
  *
  * If `options.enforceSuccess` is true, will check the command exit code prior
- * to emitting results. If the exit code is anything other than `0` (i.e. a 
+ * to emitting results. If the exit code is anything other than `0` (i.e. a
  * successful exit code), the `stderr` for the child process will be returned.
  */
 export const cmdText: (
