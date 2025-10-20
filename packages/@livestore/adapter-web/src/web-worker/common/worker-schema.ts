@@ -2,11 +2,11 @@ import {
   BootStatus,
   Devtools,
   LeaderAheadError,
-  liveStoreVersion,
   MigrationsReport,
   SyncBackend,
   SyncState,
   UnexpectedError,
+  liveStoreVersion,
 } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
@@ -210,26 +210,20 @@ export const LeaderWorkerInnerRequest = Schema.Union(
 )
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
-export class SharedWorkerInitialMessagePayloadFromClientSession extends Schema.TaggedStruct('FromClientSession', {
-  initialMessage: LeaderWorkerInnerInitialMessage,
-}) {}
-
-export class SharedWorkerInitialMessage extends Schema.TaggedRequest<SharedWorkerInitialMessage>()('InitialMessage', {
-  payload: {
-    payload: Schema.Union(SharedWorkerInitialMessagePayloadFromClientSession, Schema.TaggedStruct('FromWebBridge', {})),
-    // To guard against scenarios where a client session is already running a newer version of LiveStore
-    // We should probably find a better way to handle those cases once they become more common.
-    liveStoreVersion: Schema.Literal(liveStoreVersion),
-  },
-  success: Schema.Void,
-  failure: UnexpectedError,
-}) {}
-
 export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
   'UpdateMessagePort',
   {
     payload: {
       port: Transferable.MessagePort,
+      // Version gate to prevent mixed LiveStore builds talking to the same SharedWorker
+      liveStoreVersion: Schema.Literal(liveStoreVersion),
+      /**
+       * Initial configuration for the leader worker. This replaces the previous
+       * two-phase SharedWorker handshake and is sent under the tab lock by the
+       * elected leader. Subsequent calls can omit changes and will simply rebind
+       * the port (join) without reinitializing the store.
+       */
+      initial: LeaderWorkerInnerInitialMessage,
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -237,7 +231,6 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
 ) {}
 
 export class SharedWorkerRequest extends Schema.Union(
-  SharedWorkerInitialMessage,
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
