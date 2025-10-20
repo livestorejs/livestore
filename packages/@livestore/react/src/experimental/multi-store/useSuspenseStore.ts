@@ -1,8 +1,8 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import * as React from 'react'
-import type { ReactApi } from '../LiveStoreContext.ts'
-import { withReactApi } from '../useStore.ts'
+import type { ReactApi } from '../../LiveStoreContext.ts'
+import { withReactApi } from '../../useStore.ts'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import type { CachedStoreOptions } from './types.ts'
 
