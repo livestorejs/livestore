@@ -24,6 +24,9 @@ Users expect a backend-level stream to follow the advancing head without manual 
 
 Starting from the local head already works via a `since` cursor, but it would probably be beneficial to document how this can be done since I can imagine it being a common scenario where users wants to take actions only on new events and not the entire event log.
 
+**Potential issue of missed events due to rebase mid-stream when batching**
+Batch 1 might read `[e41, e42]` with `since = e39` and `offset = 0`. If a rebase then replaces those rows with `[e41′, e42′]`, the next query runs with the old `offset = 2`, so it jumps straight to `[e43, …]` and never surfaces the replacements. This mirrors `syncstate.test.ts` (“should rebase single client event to end”), where upstream injects `[e1_1, e1_2, e1_3, e2_0]` ahead of a pending event; the eventlog grows, but the streaming query still only sees the tail unless the consumer rewinds to a cursor ≤ `e1_1`.
+
 ## Scenarios that can occur
 
 - Large event log (≥100k events): confirm throughput remains stable and memory stays bounded while streaming.
