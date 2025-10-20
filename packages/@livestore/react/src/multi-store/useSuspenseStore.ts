@@ -29,7 +29,11 @@ export const useSuspenseStore = <TSchema extends LiveStoreSchema>(
 
   React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  const loadedStore = React.use(storeRegistry.read(options)) // Will suspend if not yet loaded
+  const storeOrPromise = storeRegistry.read(options)
+
+  // If read() returns a Promise, use React.use() to suspend
+  // If it returns a Store directly, use it immediately
+  const loadedStore = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
 
   return withReactApi(loadedStore)
 }

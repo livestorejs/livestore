@@ -245,29 +245,33 @@ export class StoreRegistry {
   }
 
   /**
-   * Reads a store, throwing to integrate with Suspense/Error Boundaries.
+   * Reads a store, returning it directly if loaded or a promise if loading.
+   * Designed to work with React.use() for Suspense integration.
    *
    * @typeParam TSchema - The schema of the store to load
-   * @returns The loaded store
-   * @throws Promise<TStore<TSchema>> that resolves when loading is complete to integrate with React Suspense
+   * @returns The loaded store if available, or a Promise that resolves to the store if loading
    * @throws unknown loading error to integrate with React Error Boundaries
    *
    * @remarks
-   * - This API intentionally has no loading or error states; it cooperates with React Suspense and Error Boundaries.
+   * - When the store is already loaded, returns the store instance directly (not wrapped in a Promise)
+   * - When loading, returns a stable Promise reference that can be used with React.use()
+   * - This prevents re-suspension on subsequent renders when the store is already loaded
    * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
    */
-  read = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<Store<TSchema>> => {
+  read = <TSchema extends LiveStoreSchema>(
+    options: CachedStoreOptions<TSchema>,
+  ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
 
-    // If already loaded, return it
+    // If already loaded, return it directly (not wrapped in Promise)
     if (entry.store) return entry.store
 
     // If a previous error exists, throw it
     if (entry.error !== undefined) throw entry.error
 
-    // If a load is already in flight, throw its promise to suspend
-    if (entry.promise) throw entry.promise
+    // If a load is already in flight, return the existing promise
+    if (entry.promise) return entry.promise
 
     // Load store if none is in flight
     entry.promise = createStorePromise(optionsWithDefaults)
@@ -288,8 +292,7 @@ export class StoreRegistry {
         throw error
       })
 
-    // Suspend while the load is in flight.
-    throw entry.promise
+    return entry.promise
   }
 
   /**
