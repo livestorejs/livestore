@@ -50,6 +50,43 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     {
       "_name": "LiveStore:queries",
+      "children": [
+        {
+          "_name": "LiveStore:useClientDocument:() => (0,__vite_ssr_import_8__.resolve)(table).sqliteDef.name:() => id() === __vite_ssr_import_0__.SessionIdSymbol ? store.clientSession.sessionId : id()",
+          "attributes": {
+            "firstStackInfo": "{"frames":[{"name":"Store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
+          },
+          "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 0,
+              },
+            },
+            {
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+              "attributes": {
+                "livestore.debugRefreshReason": "useQuery:initial-run:UserInfo.get:u1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
   ],
 }

@@ -132,10 +132,6 @@ export const LiveStoreProvider = (props: LiveStoreProviderProps & ParentProps) =
     }),
   })
 
-  createEffect(() => {
-    console.log(JSON.stringify(storeCtx))
-  })
-
   return createMemo(() => {
     switch (storeCtx.stage) {
       case 'error':
@@ -222,7 +218,6 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
 
   createEffect(() => {
     const counter = context.counter
-    console.log('createEffect running with counter:', counter)
 
     const setContextValue = (value: StoreContext_ | BootStatus) => {
       if (context.counter !== counter) return
