@@ -3,6 +3,15 @@ import type { StoreRegistry } from './StoreRegistry.js'
 
 export const StoreRegistryContext = React.createContext<StoreRegistry | undefined>(undefined)
 
+export type StoreRegistryProviderProps = {
+  storeRegistry: StoreRegistry
+  children: React.ReactNode
+}
+
+export const StoreRegistryProvider = ({ storeRegistry, children }: StoreRegistryProviderProps): React.JSX.Element => {
+  return <StoreRegistryContext value={storeRegistry}>{children}</StoreRegistryContext>
+}
+
 export const useStoreRegistry = (override?: StoreRegistry) => {
   if (override) return override
 

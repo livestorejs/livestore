@@ -1,6 +1,5 @@
-export * from './MultiStoreProvider.tsx'
 export * from './StoreRegistry.ts'
-export * from './StoreRegistryContext.ts'
+export * from './StoreRegistryContext.tsx'
 export * from './storeOptions.ts'
 export * from './types.ts'
 export * from './useSuspenseStore.ts'
