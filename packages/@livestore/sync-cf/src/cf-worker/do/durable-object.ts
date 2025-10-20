@@ -223,6 +223,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private handleHttp = (request: CfTypes.Request) =>
       createHttpRpcHandler({
         request,
+        responseHeaders: options?.http?.responseHeaders,
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>

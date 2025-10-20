@@ -6,15 +6,29 @@ import { DoCtx } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
-export const createHttpRpcHandler = ({ request }: { request: CfTypes.Request }) =>
+export const createHttpRpcHandler = ({
+  request,
+  responseHeaders,
+}: {
+  request: CfTypes.Request
+  responseHeaders?: Record<string, string>
+}) =>
   Effect.gen(function* () {
     const handlerLayer = createHttpRpcLayer
     const httpApp = RpcServer.toHttpApp(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
     const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
 
-    return yield* Effect.promise(
+    const response = yield* Effect.promise(
       () => webHandler(request as TODO as Request) as TODO as Promise<CfTypes.Response>,
     ).pipe(Effect.timeout(10000))
+
+    if (responseHeaders !== undefined) {
+      for (const [key, value] of Object.entries(responseHeaders)) {
+        response.headers.set(key, value)
+      }
+    }
+
+    return response
   }).pipe(Effect.withSpan('createHttpRpcHandler'))
 
 const createHttpRpcLayer =

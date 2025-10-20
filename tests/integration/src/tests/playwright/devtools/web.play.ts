@@ -129,7 +129,7 @@ test(
   'single tab',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`, 'tab-1')
 
       yield* Effect.gen(function* () {
         yield* Effect.tryPromise(async () => {
@@ -184,8 +184,8 @@ test(
   'two tabs',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
-      const tab2 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-2')
+      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`, 'tab-1')
+      const tab2 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`, 'tab-2')
 
       // const browserContext = yield* Playwright.BrowserContext
 
