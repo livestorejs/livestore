@@ -6,9 +6,9 @@ import { createStore } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import React from 'react'
+import { type JSX } from 'solid-js'
 
-import * as LiveStoreReact from '../mod.js'
+import * as LiveStoreSolid from '../mod.js'
 
 export type Todo = {
   id: string
@@ -95,47 +95,21 @@ export const tables = { todos, app, userInfo, AppRouterSchema, kv }
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })
 
-export const makeTodoMvcReact: ({
+export const makeTodoMvcSolid = ({
   otelTracer,
   otelContext,
-  strictMode,
-}?: {
-  otelTracer?: otel.Tracer | undefined
-  otelContext?: otel.Context | undefined
-  strictMode?: boolean | undefined
-}) => Effect.Effect<
-  {
-    wrapper: ({ children }: any) => React.JSX.Element
-    store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreReact.ReactApi
-    renderCount: { readonly val: number; inc: () => void }
-  },
-  UnexpectedError,
-  Scope.Scope
-> = ({
-  otelTracer,
-  otelContext,
-  strictMode,
 }: {
   otelTracer?: otel.Tracer | undefined
   otelContext?: otel.Context | undefined
-  strictMode?: boolean | undefined
-} = {}) =>
+} = {}): Effect.Effect<
+  {
+    wrapper: ({ children }: any) => JSX.Element
+    store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreSolid.SolidApi
+  },
+  UnexpectedError,
+  Scope.Scope
+> =>
   Effect.gen(function* () {
-    const makeRenderCount = () => {
-      let val = 0
-
-      const inc = () => {
-        val += strictMode ? 0.5 : 1
-      }
-
-      return {
-        get val() {
-          return val
-        },
-        inc,
-      }
-    }
-
     const store: Store<any> = yield* createStore({
       schema,
       storeId: 'default',
@@ -143,25 +117,19 @@ export const makeTodoMvcReact: ({
       debug: { instanceId: 'test' },
     })
 
-    const storeWithReactApi = LiveStoreReact.withReactApi(store)
+    const storeWithSolidApi = LiveStoreSolid.withSolidApi(store)
 
     // TODO improve typing of `LiveStoreContext`
     const storeContext = {
       stage: 'running' as const,
-      store: storeWithReactApi,
+      store: storeWithSolidApi,
     }
 
-    const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
-
     const wrapper = ({ children }: any) => (
-      <MaybeStrictMode>
-        <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
-          {children}
-        </LiveStoreReact.LiveStoreContext.Provider>
-      </MaybeStrictMode>
+      <LiveStoreSolid.LiveStoreContext.Provider value={storeContext}>
+        {children}
+      </LiveStoreSolid.LiveStoreContext.Provider>
     )
 
-    const renderCount = makeRenderCount()
-
-    return { wrapper, store: storeWithReactApi, renderCount }
+    return { wrapper, store: storeWithSolidApi }
   }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer })))

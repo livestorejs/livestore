@@ -9,7 +9,24 @@
     // "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
+  "include": [
+    "./src",
+    "../solid/src/experimental",
+    "../solid/src/utils",
+    "../solid/src/ambient.d.ts",
+    "../solid/src/LiveStoreContext.ts",
+    "../solid/src/LiveStoreProvider.test.tsx",
+    "../solid/src/LiveStoreProvider.tsx",
+    "../solid/src/mod.ts",
+    "../solid/src/useClientDocument.test.tsx",
+    "../solid/src/useClientDocument.ts",
+    "../solid/src/useQuery.test.tsx",
+    "../solid/src/useQuery.ts",
+    "../solid/src/useRcResource.test.tsx",
+    "../solid/src/useRcResource.ts",
+    "../solid/src/useStore.ts",
+    "../solid/src/__tests__"
+  ],
   "references": [
     { "path": "../common" },
     { "path": "../adapter-web" },
