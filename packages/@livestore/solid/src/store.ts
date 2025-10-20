@@ -1,10 +1,4 @@
-import {
-  type IntentionalShutdownCause,
-  LogConfig,
-  provideOtel,
-  StoreInterrupted,
-  type SyncError,
-} from '@livestore/common'
+import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type SyncError } from '@livestore/common'
 import type {
   BootStatus,
   CreateStoreOptions,
@@ -15,7 +9,7 @@ import type {
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { LS_DEV, omitUndefineds } from '@livestore/utils'
-import { Cause, Deferred, Effect, Exit, identity, Scope, TaskTracing } from '@livestore/utils/effect'
+import { Cause, Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 
 const interrupt = (componentScope: Scope.CloseableScope, shutdownDeferred: ShutdownDeferred, error: StoreInterrupted) =>
@@ -74,10 +68,7 @@ const setupStore = async ({
   disableDevtools,
   signal,
   setupDone,
-  logger,
-  logLevel,
-}: CreateStoreOptions<LiveStoreSchema> &
-  LogConfig.WithLoggerOptions & { signal?: AbortSignal; setupDone: () => void }) => {
+}: CreateStoreOptions<LiveStoreSchema> & { signal?: AbortSignal; setupDone: () => void }) => {
   Solid.createEffect(() => {
     const counter = storeValue.counter
 
@@ -152,7 +143,8 @@ const setupStore = async ({
       provideOtel({}),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
-      LogConfig.withLoggerConfig({ logger, logLevel }, { threadName: 'window' }),
+      Effect.provide(Logger.prettyWithThread('window')),
+      Logger.withMinimumLogLevel(LogLevel.Debug),
       Effect.runFork,
     )
 
@@ -174,9 +166,7 @@ export const getStore = async <Schema extends LiveStoreSchema>({
   adapter,
   schema,
   storeId,
-  logger,
-  logLevel,
-}: Pick<CreateStoreOptions<Schema>, 'schema' | 'adapter' | 'storeId'> & LogConfig.WithLoggerOptions): Promise<
+}: Pick<CreateStoreOptions<Schema>, 'schema' | 'adapter' | 'storeId'>): Promise<
   Solid.Accessor<Store<Schema> | undefined>
 > => {
   const setupDone = Promise.withResolvers<void>()
@@ -185,8 +175,6 @@ export const getStore = async <Schema extends LiveStoreSchema>({
     adapter,
     schema,
     storeId,
-    logger,
-    logLevel,
     setupDone: setupDone.resolve,
   })
 

@@ -1,0 +1,721 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: false } 1`] = `
+{
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
+  "children": [
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    ",
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
+      "_name": "LiveStore:sync",
+    },
+    {
+      "_name": "LiveStore:commits",
+    },
+    {
+      "_name": "LiveStore:queries",
+      "children": [
+        {
+          "_name": "LiveStore:useClientDocument:UserInfo:u1",
+          "attributes": {
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
+          },
+          "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 0,
+              },
+            },
+            {
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+              "attributes": {
+                "livestore.debugRefreshReason": "useQuery:initial-run:UserInfo.get:u1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "UserInfo.get:u1",
+                "queryLabel": "UserInfo.get:u1",
+              },
+              "children": [
+                {
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+                  "attributes": {
+                    "livestore.debugRefreshReason": "commit",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                  "children": [
+                    {
+                      "_name": "sql-in-memory-select",
+                      "attributes": {
+                        "sql.cached": false,
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                        "sql.rowsCount": 1,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          "_name": "LiveStore:useClientDocument:UserInfo:u2",
+          "attributes": {
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
+          },
+          "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+            },
+            {
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+              "attributes": {
+                "livestore.debugRefreshReason": "useQuery:initial-run:UserInfo.get:u2",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "UserInfo.get:u2",
+                "queryLabel": "UserInfo.get:u2",
+              },
+              "children": [
+                {
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+                  "attributes": {
+                    "livestore.debugRefreshReason": "subscribe-initial-run:UserInfo.get:u2",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                  "children": [
+                    {
+                      "_name": "sql-in-memory-select",
+                      "attributes": {
+                        "sql.cached": true,
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                        "sql.rowsCount": 1,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: false } 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.commitLabel": "UserInfo.set:u1",
+      "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: true } 1`] = `
+{
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
+  "children": [
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    ",
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
+      "_name": "LiveStore:sync",
+    },
+    {
+      "_name": "LiveStore:commits",
+    },
+    {
+      "_name": "LiveStore:queries",
+      "children": [
+        {
+          "_name": "LiveStore:useClientDocument:UserInfo:u1",
+          "attributes": {
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
+          },
+          "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 0,
+              },
+            },
+            {
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+              "attributes": {
+                "livestore.debugRefreshReason": "useQuery:initial-run:UserInfo.get:u1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "UserInfo.get:u1",
+                "queryLabel": "UserInfo.get:u1",
+              },
+              "children": [
+                {
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
+                  "attributes": {
+                    "livestore.debugRefreshReason": "commit",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                  "children": [
+                    {
+                      "_name": "sql-in-memory-select",
+                      "attributes": {
+                        "sql.cached": false,
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                        "sql.rowsCount": 1,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: true } 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.commitLabel": "UserInfo.set:u1",
+      "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
+exports[`useClientDocument > should update the data based on component key 1`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:UserInfo",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 1,
+      "sub": [],
+      "super": [
+        "node-6",
+      ],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-4",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:AppRouter",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-5",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:Kv",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-6",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "UserInfo.get:u1:results",
+      "meta": {
+        "liveStoreThunkType": "db.result",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "{"username":"","text":""}",
+      },
+      "recomputations": 1,
+      "sub": [
+        "node-3",
+      ],
+      "super": [
+        "node-7",
+      ],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [
+    {
+      "_tag": "effect",
+      "id": "node-7",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:UserInfo.get:u1",
+      "sub": [
+        "node-6",
+      ],
+    },
+  ],
+}
+`;
+
+exports[`useClientDocument > should update the data based on component key 2`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:UserInfo",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 2,
+      "sub": [],
+      "super": [
+        "node-8",
+      ],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-4",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:AppRouter",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-5",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:Kv",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-8",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "UserInfo.get:u2:results",
+      "meta": {
+        "liveStoreThunkType": "db.result",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "{"username":"username_u2","text":""}",
+      },
+      "recomputations": 2,
+      "sub": [
+        "node-3",
+      ],
+      "super": [
+        "node-9",
+      ],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [
+    {
+      "_tag": "effect",
+      "id": "node-9",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:UserInfo.get:u2",
+      "sub": [
+        "node-8",
+      ],
+    },
+  ],
+}
+`;
