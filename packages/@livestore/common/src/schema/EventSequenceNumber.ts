@@ -17,6 +17,8 @@ export const rebaseGenerationDefault = 0
  * and a client sequence number.
  *
  * The client sequence number is only used for clientOnly events and starts from 0 for each global sequence number.
+ *
+ * For event notation documentation, see: contributor-docs/events-notation.md
  */
 export type EventSequenceNumber = {
   global: GlobalEventSequenceNumber
@@ -66,6 +68,8 @@ export const compare = (a: EventSequenceNumber, b: EventSequenceNumber) => {
 
 /**
  * Convert an event sequence number to a string representation.
+ *
+ * For notation documentation, see: contributor-docs/events-notation.md
  */
 export const toString = (seqNum: EventSequenceNumber) => {
   const rebaseGenerationStr = seqNum.rebaseGeneration > 0 ? `r${seqNum.rebaseGeneration}` : ''
@@ -78,6 +82,8 @@ export const toString = (seqNum: EventSequenceNumber) => {
  * Convert a string representation of an event sequence number to an event sequence number.
  * Parses strings in the format: e{global}[+{client}][r{rebaseGeneration}]
  * Examples: "e0", "e0r1", "e0+1", "e0+1r1"
+ *
+ * For full notation documentation, see: contributor-docs/events-notation.md
  */
 export const fromString = (str: string): EventSequenceNumber => {
   if (!str.startsWith('e')) {
