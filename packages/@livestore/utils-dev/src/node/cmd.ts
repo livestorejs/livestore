@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
 import {
   Cause,
+  Chunk,
   Command,
   type CommandExecutor,
   Effect,
@@ -13,8 +14,9 @@ import {
   identity,
   List,
   LogLevel,
-  type PlatformError,
+  PlatformError,
   Schema,
+  Sink,
   Stream,
 } from '@livestore/utils/effect'
 import { applyLoggingToCommand } from './cmd-log.ts'
@@ -110,6 +112,14 @@ export const cmd: (
     return exitCode
   })
 
+/**
+ * Runs the command with associated arguments specified by `commandInput` and
+ * returns the `stdout` from the child process.
+ *
+ * If `options.enforceSuccess` is true, will check the command exit code prior
+ * to emitting results. If the exit code is anything other than `0` (i.e. a 
+ * successful exit code), the `stderr` for the child process will be returned.
+ */
 export const cmdText: (
   commandInput: string | (string | undefined)[],
   options?: {
@@ -117,33 +127,75 @@ export const cmdText: (
     stderr?: 'inherit' | 'pipe'
     runInShell?: boolean
     env?: Record<string, string | undefined>
+    enforceSuccess?: boolean
   },
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
   function* (commandInput, options) {
-    const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-    const [command, ...args] = Array.isArray(commandInput)
-      ? commandInput.filter(isNotUndefined)
-      : commandInput.split(' ')
-    const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
-      .join('')
-
-    const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
-    const subshellStr = options?.runInShell ? ' (in subshell)' : ''
-
-    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
-    yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
-
-    return yield* Command.make(command!, ...args).pipe(
-      // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
-      Command.stderr(options?.stderr ?? 'inherit'),
-      Command.workingDirectory(cwd),
-      options?.runInShell ? Command.runInShell(true) : identity,
-      Command.env(options?.env ?? {}),
-      Command.string,
-    )
+    const [stdout, stderr, exitCode] = yield* cmdOutput(commandInput, options)
+    if (options?.enforceSuccess === true && exitCode !== 0) {
+      return stderr
+    }
+    return stdout
   },
 )
+
+export const cmdOutput: (
+  commandInput: string | (string | undefined)[],
+  options?: {
+    cwd?: string
+    stderr?: 'inherit' | 'pipe'
+    runInShell?: boolean
+    env?: Record<string, string | undefined>
+  },
+) => Effect.Effect<
+  [stdout: string, stderr: string, exitCode: CommandExecutor.ExitCode],
+  PlatformError.PlatformError,
+  CommandExecutor.CommandExecutor
+> = Effect.fn('cmdText')(function* (commandInput, options) {
+  const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+  const [command, ...args] = Array.isArray(commandInput) ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+  const debugEnvStr = Object.entries(options?.env ?? {})
+    .map(([key, value]) => `${key}='${value}' `)
+    .join('')
+
+  const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+  const subshellStr = options?.runInShell ? ' (in subshell)' : ''
+
+  yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
+  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
+
+  const childProcess = yield* Command.make(command!, ...args).pipe(
+    // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
+    Command.stderr(options?.stderr ?? 'inherit'),
+    Command.workingDirectory(cwd),
+    options?.runInShell ? Command.runInShell(true) : identity,
+    Command.env(options?.env ?? {}),
+    Command.start,
+  )
+
+  const decoder = new TextDecoder('utf-8')
+
+  const collectUint8Array = Sink.foldLeftChunks(new Uint8Array(), (bytes, chunk: Chunk.Chunk<Uint8Array>) =>
+    Chunk.reduce(chunk, bytes, (acc, curr) => {
+      const newArray = new Uint8Array(acc.length + curr.length)
+      newArray.set(acc)
+      newArray.set(curr, acc.length)
+      return newArray
+    }),
+  )
+  const readStdout = childProcess.stdout.pipe(
+    Stream.run(collectUint8Array),
+    Effect.map((bytes) => decoder.decode(bytes)),
+  )
+  const readStderr = childProcess.stderr.pipe(
+    Stream.run(collectUint8Array),
+    Effect.map((bytes) => decoder.decode(bytes)),
+  )
+
+  return yield* Effect.all([readStdout, readStderr, childProcess.exitCode], {
+    concurrency: 2,
+  })
+}, Effect.scoped)
 
 export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
   command: Schema.String,

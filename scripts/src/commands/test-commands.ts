@@ -157,9 +157,11 @@ export const testUnitCommand = Cli.Command.make(
         allPaths,
         (vitestPath) =>
           // TODO use this https://x.com/luxdav/status/1942532247833436656
-          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
-            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
-          ),
+          cmdText(`vitest run ${vitestPath}`, {
+            cwd,
+            stderr: 'pipe',
+            enforceSuccess: true,
+          }).pipe(Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`))),
         { concurrency: 'unbounded' },
       )
     }
