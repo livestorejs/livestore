@@ -135,17 +135,13 @@ export const useClientDocument: {
     ...omitUndefineds({ store: storeArg?.store }),
   })
 
-  const setState = createMemo<StateSetters<TTableDef>>(
-    on(
-      () => [id(), queryRef.valueRef(), store, table()],
-      () => (newValueOrFn: TTableDef['Value']) => {
-        const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef()) : newValueOrFn
-        if (queryRef.valueRef() === newValue) return
+  const setState = (newValueOrFn: TTableDef['Value']) => {
+    const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef()) : newValueOrFn
 
-        store.commit(table().set(removeUndefinedValues(newValue), id as any))
-      },
-    ),
-  )
+    if (queryRef.valueRef() === newValue) return
+
+    store.commit(table().set(removeUndefinedValues(newValue), id()))
+  }
 
   return [queryRef.valueRef, setState, idStr, () => queryRef.queryRcRef().value]
 }
