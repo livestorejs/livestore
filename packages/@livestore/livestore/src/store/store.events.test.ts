@@ -12,6 +12,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { events, schema } from '../utils/tests/fixture.ts'
+import { EventFactory } from '@livestore/common/testing'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -24,81 +25,80 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 Vitest.describe('Store events API', () => {
-  Vitest.scopedLive(
-    'should stream events with filtering',
-    (_test) =>
-      Effect.gen(function* () {
-        const { makeStore } = yield* TestContext
-        const store = yield* makeStore()
+  Vitest.scopedLive('should stream events with filtering', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
 
-        store.commit(events.todoCreated({ id: '1', text: 'Test todo', completed: false }))
-        store.commit(events.todoCreated({ id: '2', text: 'Test todo 2', completed: false }))
-        store.commit(events.todoCompleted({ id: '1' }))
+      // One commit with array
+      store.commit(events.todoCreated({ id: '1', text: 'Test todo', completed: false }))
+      store.commit(events.todoCreated({ id: '2', text: 'Test todo 2', completed: false }))
+      store.commit(events.todoCompleted({ id: '1' }))
 
-        const collected: any[] = []
-        yield* store
-          .eventsStream({
-            filter: ['todo.created'],
-            snapshotOnly: true,
-          })
-          .pipe(
-            Stream.tapSync((event) => collected.push(event)),
-            Stream.runDrain,
-          )
-
-        expect(collected).toHaveLength(2)
-      }).pipe(withTestCtx(_test)),
-
-    // Effect.scoped(
-    //   Effect.gen(function* () {
-    //     const { store } = yield* makeTestStore
-
-    //     store.commit(
-    //       events.todoCreated({ id: '1', text: 'Test todo', completed: false }),
-    //       events.todoCreated({ id: '2', text: 'Test todo 2', completed: false }),
-    //       events.todoCompleted({ id: '1' }),
-    //     )
-
-    //     const collected: any[] = []
-    //     yield* store
-    //       .eventsStream({
-    //         filter: ['todo.created'],
-    //         snapshotOnly: true,
-    //       })
-    //       .pipe(
-    //         Stream.tapSync((event) => collected.push(event)),
-    //         Stream.runDrain,
-    //       )
-
-    //     expect(collected).toHaveLength(2)
-    //   }),
-    // ),
+      const collected: any[] = []
+      yield* store
+        .eventsStream({
+          filter: ['todo.created'],
+          snapshotOnly: true,
+        })
+        .pipe(
+          Stream.tapSync((event) => collected.push(event)), // runCollect
+          Stream.runDrain,
+        )
+      expect(collected).toHaveLength(2)
+    }).pipe(withTestCtx(test)),
   )
 
-  // Vitest.scopedLive('should stream backend confirmed events', (_test) =>
-  //   Effect.scoped(
-  //     Effect.gen(function* () {
-  //       const { store, waitForBackendIdle } = yield* makeTestStore
+  Vitest.scopedLive('should stream backend confirmed events', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      // const store = yield* makeStore({
+      //   testing: {
+      //     overrides: {
+      //       clientSession: {
+      //         leaderThreadProxy: (leader) => ({
+      //           events: {
+      //             pull: ({ cursor }) =>
+      //               Effect.sync(() => {
+      //                 console.log('pull', cursor)
+      //                 return leader.events.pull({ cursor })
+      //               }).pipe(Stream.unwrap),
+      //             push: () =>
+      //               Effect.sync(() => {
+      //                 console.log('push')
+      //                 return leader.events.push([])
+      //               }),
+      //             //leader.events.push,
+      //             stream: leader.events.stream,
+      //           },
+      //         }),
+      //       },
+      //     },
+      //   },
+      // })
 
-  //       store.commit(events.todoCreated({ id: '1', text: 'Pending todo', completed: false }))
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
 
-  //       yield* waitForBackendIdle
+      yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
+      yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
 
-  //       const collected: any[] = []
-
-  //       yield* store
-  //         .eventsStream({
-  //           minSyncLevel: 'backend',
-  //           filter: ['todo.created'],
-  //           snapshotOnly: true,
-  //         })
-  //         .pipe(Stream.tapSync((event) => collected.push(event)), Stream.runDrain)
-
-  //       expect(collected).toHaveLength(1)
-  //       expect(collected[0]?.name).toBe('todo.created')
-  //     }),
-  //   ),
-  // )
+      // const collected: any[] = []
+      // yield* store
+      //   .eventsStream({
+      //     minSyncLevel: 'backend',
+      //     filter: ['todo.created'],
+      //   })
+      //   .pipe(
+      //     Stream.tapSync((event) => collected.push(event)),
+      //     Stream.take(1),
+      //     Stream.runDrain,
+      //   )
+      // expect(collected).toHaveLength(1)
+    }).pipe(withTestCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<

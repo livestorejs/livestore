@@ -76,7 +76,7 @@ const completedTodos = store.eventsStream({ filter: ['todoCompleted'] })
 ```typescript
 function EventLog({ store }) {
   const [events, setEvents] = useState([])
-  
+
   useEffect(() => {
     const subscription = store.subscribe(
       store.eventsStream(),
@@ -87,10 +87,10 @@ function EventLog({ store }) {
         label: 'event-log'
       }
     )
-    
+
     return () => subscription()
   }, [store])
-  
+
   return (
     <div>
       {events.map((event, i) => (
@@ -108,7 +108,7 @@ function EventLog({ store }) {
 const eventCounts = await store.eventsStream()
   .pipe(
     Stream.groupBy((event) => event.name),
-    Stream.map(([name, events]) => 
+    Stream.map(([name, events]) =>
       Stream.fromIterable(events).pipe(
         Stream.runCount,
         Effect.map(count => ({ name, count }))
