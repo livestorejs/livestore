@@ -187,23 +187,15 @@ export const cmdOutput: (
     Stream.run(collectUint8Array),
     Effect.map((bytes) => decoder.decode(bytes)),
     Effect.forkScoped,
-    Effect.withSpan("cmdText:readStdout")
   )
   const readStderr = yield* childProcess.stderr.pipe(
     Stream.run(collectUint8Array),
     Effect.map((bytes) => decoder.decode(bytes)),
     Effect.forkScoped,
-    Effect.withSpan("cmdText:readStderr")
   )
-  const exitCode = yield* Effect.forkScoped(childProcess.exitCode).pipe(
-    Effect.withSpan("cmdText:exitCode")
-  )
+  const exitCode = yield* Effect.forkScoped(childProcess.exitCode)
 
-  return [
-    yield* Fiber.await(readStdout),
-    yield* Fiber.await(readStderr),
-    yield* Fiber.await(exitCode),
-  ]
+  return [yield* Fiber.join(readStdout), yield* Fiber.join(readStderr), yield* Fiber.join(exitCode)]
 }, Effect.scoped)
 
 export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
