@@ -9,6 +9,7 @@ import { useRcResource } from './useRcResource.ts'
 import { originalStackLimit } from './utils/stack-info.ts'
 import { createEffect, createMemo, useContext, type Accessor } from 'solid-js'
 import { createWritable } from './utils/create-writable.ts'
+import { resolve, type AccessorMaybe } from './utils.ts'
 
 /**
  * Returns the result of a query and subscribes to future updates.
@@ -22,14 +23,14 @@ import { createWritable } from './utils/create-writable.ts'
  * ```
  */
 export const useQuery = <TQuery extends LiveQueryDef.Any>(
-  queryDef: Accessor<TQuery>,
+  queryDef: AccessorMaybe<TQuery>,
   options?: { store?: Store },
 ): Accessor<LiveQueries.GetResult<TQuery>> => useQueryRef(queryDef, options).valueRef
 
 /**
  */
 export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
-  queryDef: Accessor<TQuery>,
+  queryDef: AccessorMaybe<TQuery>,
   options?: {
     store?: Store
     /** Parent otel context for the query */
@@ -49,7 +50,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     shouldNeverHappen(`No store provided to useQuery`)
 
   // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
-  const rcRefKey = () => `${store.storeId}_${store.clientId}_${store.sessionId}_${queryDef().hash}`
+  const rcRefKey = () => `${store.storeId}_${store.clientId}_${store.sessionId}_${resolve(queryDef).hash}`
 
   const stackInfo = (() => {
     Error.stackTraceLimit = 10
@@ -61,7 +62,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   const resource = useRcResource(
     rcRefKey,
     () => {
-      const queryDefLabel = queryDef().label
+      const queryDefLabel = resolve(queryDef).label
 
       const span = store.otel.tracer.startSpan(
         options?.otelSpanName ?? `LiveStore:useQuery:${queryDefLabel}`,
@@ -71,7 +72,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
 
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const queryRcRef = queryDef().make(store.reactivityGraph.context!, otelContext)
+      const queryRcRef = resolve(queryDef).make(store.reactivityGraph.context!, otelContext)
 
       return { queryRcRef, span, otelContext }
     },

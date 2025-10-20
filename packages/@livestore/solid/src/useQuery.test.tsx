@@ -25,7 +25,7 @@ Vitest.describe('useQuery', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          return store.useQuery(() => allTodos$)
+          return store.useQuery(allTodos$)
         },
         { wrapper },
       )
@@ -63,8 +63,7 @@ Vitest.describe('useQuery', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const query$ = createMemo(() => (todoId() === 't1' ? todo1$ : todo2$))
-          const query = store.useQuery(() => query$())
+          const query = store.useQuery(() => (todoId() === 't1' ? todo1$ : todo2$))
           return () => query()[0]!.text
         },
         { wrapper },
@@ -100,7 +99,7 @@ Vitest.describe('useQuery', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const query = store.useQuery(() => todo$)
+          const query = store.useQuery(todo$)
           return () => query()[0]!.text
         },
         { wrapper },
@@ -224,7 +223,7 @@ Vitest.describe('useQuery', () => {
       const { wrapper, store } = yield* makeTodoMvcSolid({})
       const num$ = signal(0)
 
-      const { result } = SolidTesting.renderHook(() => store.useQuery(() => num$), { wrapper })
+      const { result } = SolidTesting.renderHook(() => store.useQuery(num$), { wrapper })
 
       expect(result()).toBe(0)
 
