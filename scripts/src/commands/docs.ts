@@ -109,11 +109,9 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
       },
       ({ open }) =>
-        Effect.gen(function* () {
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-            cwd: docsPath,
-            logDir: `${docsPath}/logs`,
-          })
+        cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+          cwd: docsPath,
+          logDir: `${docsPath}/logs`,
         }),
     ),
     docsBuildCommand,
@@ -182,9 +180,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
         build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
-        purgeCdn: Cli.Options.boolean('purge-cdn')
-          .pipe(Cli.Options.withDefault(false))
-          .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
+        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        ),
       },
       Effect.fn(
         function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild, purgeCdn }) {
