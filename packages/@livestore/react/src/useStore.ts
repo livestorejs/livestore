@@ -9,7 +9,7 @@ import { useQuery } from './useQuery.ts'
 export const withReactApi = (store: Store): Store & ReactApi => {
   // @ts-expect-error TODO properly implement this
 
-  store.useQuery = (queryDef) => useQuery(queryDef, { store })
+  store.useQuery = (queryable) => useQuery(queryable, { store })
   // @ts-expect-error TODO properly implement this
 
   store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })

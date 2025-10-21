@@ -187,5 +187,25 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(result.current).toBe(1)
       }),
     )
+
+    Vitest.scopedLive('supports query builders directly', () =>
+      Effect.gen(function* () {
+        const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
+
+        store.commit(
+          events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+          events.todoCreated({ id: 't2', text: 'buy eggs', completed: true }),
+        )
+
+        const todosWhereIncomplete = tables.todos.where({ completed: false })
+
+        const { result } = ReactTesting.renderHook(
+          () => store.useQuery(todosWhereIncomplete).map((todo) => todo.id),
+          { wrapper },
+        )
+
+        expect(result.current).toEqual(['t1'])
+      }),
+    )
   },
 )

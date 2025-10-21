@@ -48,6 +48,7 @@ export type {
 export {
   type LiveStoreContext,
   type LiveStoreContextRunning,
+  isQueryable,
   makeShutdownDeferred,
   type ShutdownDeferred,
 } from './store/store-types.ts'

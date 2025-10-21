@@ -1,21 +1,23 @@
-import type {
-  ClientSession,
-  ClientSessionSyncProcessorSimulationParams,
-  IntentionalShutdownCause,
-  InvalidPullError,
-  IsOfflineError,
-  MaterializeError,
-  QueryBuilder,
-  StoreInterrupted,
-  SyncError,
-  UnexpectedError,
+import {
+  type ClientSession,
+  type ClientSessionSyncProcessorSimulationParams,
+  type IntentionalShutdownCause,
+  type InvalidPullError,
+  type IsOfflineError,
+  type MaterializeError,
+  type QueryBuilder,
+  isQueryBuilder,
+  type StoreInterrupted,
+  type SyncError,
+  type UnexpectedError,
 } from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
-import { Deferred } from '@livestore/utils/effect'
+import { Deferred, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, LiveQueryDef, SignalDef } from '../live-queries/base-class.ts'
+import { TypeId } from '../live-queries/base-class.ts'
 import type { DebugRefreshReasonBase } from '../reactive.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 import type { Store } from './store.ts'
@@ -153,3 +155,19 @@ export type Queryable<TResult> =
   | SignalDef<TResult>
   | LiveQuery<TResult>
   | QueryBuilder<TResult, any, any>
+
+const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> =>
+  typeof value === 'object' &&
+  value !== null &&
+  '_tag' in value &&
+  ((value as LiveQueryDef<any> | SignalDef<any>)._tag === 'def' ||
+    (value as LiveQueryDef<any> | SignalDef<any>)._tag === 'signal-def') &&
+  typeof (value as LiveQueryDef<any>).make === 'function' &&
+  typeof (value as LiveQueryDef<any>).hash === 'string' &&
+  typeof (value as LiveQueryDef<any>).label === 'string'
+
+const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> =>
+  Predicate.hasProperty(value, TypeId)
+
+export const isQueryable = (value: unknown): value is Queryable<unknown> =>
+  isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)
