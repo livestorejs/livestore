@@ -1,4 +1,4 @@
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -59,10 +59,6 @@ const makeWorkerRunner = Effect.gen(function* () {
       }
     | undefined
   >(undefined)
-
-  const initialMessagePayloadDeferredRef = yield* Deferred.make<
-    typeof WorkerSchema.SharedWorkerInitialMessagePayloadFromClientSession.Type
-  >().pipe(Effect.andThen(Ref.make))
 
   const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
@@ -155,62 +151,59 @@ const makeWorkerRunner = Effect.gen(function* () {
     }
   }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:resetCurrentWorkerCtx'))
 
-  // const devtoolsWebBridge = yield* makeDevtoolsWebBridge
-
   const reset = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
-
-    const initialMessagePayloadDeferred =
-      yield* Deferred.make<typeof WorkerSchema.SharedWorkerInitialMessagePayloadFromClientSession.Type>()
-    yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
-
+    // Clear cached invariants so a fresh configuration can be accepted after shutdown
+    yield* Ref.set(invariantsRef, undefined)
+    // Tear down current leader worker context
     yield* resetCurrentWorkerCtx
-    // yield* devtoolsWebBridge.reset
   })
 
+  // Cache first-applied invariants to enforce stability across leader transitions
+  const InvariantsSchema = Schema.Struct({
+    storeId: Schema.String,
+    storageOptions: WorkerSchema.StorageType,
+    syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+    liveStoreVersion: Schema.Literal(liveStoreVersion),
+    devtoolsEnabled: Schema.Boolean,
+  })
+  type Invariants = typeof InvariantsSchema.Type
+  const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
+  const sameInvariants = Schema.equivalence(InvariantsSchema)
+
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
-    InitialMessage: (message) =>
-      Effect.gen(function* () {
-        if (message.payload._tag === 'FromWebBridge') return
-
-        const initialMessagePayloadDeferred = yield* Ref.get(initialMessagePayloadDeferredRef)
-        const deferredAlreadyDone = yield* Deferred.isDone(initialMessagePayloadDeferred)
-        const initialMessage = message.payload.initialMessage
-
-        if (deferredAlreadyDone) {
-          const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
-          const messageSchema = WorkerSchema.LeaderWorkerInnerInitialMessage.pipe(
-            Schema.omit('devtoolsEnabled', 'debugInstanceId'),
-          )
-          const isEqual = Schema.equivalence(messageSchema)
-          if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
-            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)
-
-            return yield* new UnexpectedError({
-              cause: 'Initial message already sent and was different now',
-              payload: {
-                diff,
-                previousInitialMessage: previousInitialMessage.initialMessage,
-                newInitialMessage: initialMessage,
-              },
-            })
-          }
-        } else {
-          yield* Deferred.succeed(initialMessagePayloadDeferred, message.payload)
-        }
-      }),
     // Whenever the client session leader changes (and thus creates a new leader thread), the new client session leader
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
-    UpdateMessagePort: ({ port }) =>
+    UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
       Effect.gen(function* () {
-        const initialMessagePayload = yield* initialMessagePayloadDeferredRef.get.pipe(Effect.andThen(Deferred.await))
+        // Enforce invariants: storeId, storageOptions, syncPayload, liveStoreVersion must remain stable
+        const invariants: Invariants = {
+          storeId: initial.storeId,
+          storageOptions: initial.storageOptions,
+          syncPayload: initial.syncPayload,
+          liveStoreVersion: clientLiveStoreVersion,
+          devtoolsEnabled: initial.devtoolsEnabled,
+        }
+        const prev = yield* Ref.get(invariantsRef)
+        // Early return on mismatch to keep happy path linear
+        if (prev !== undefined && !sameInvariants(prev, invariants)) {
+          const diff = Schema.debugDiff(InvariantsSchema)(prev, invariants)
+          return yield* new UnexpectedError({
+            cause: 'Store invariants changed across leader transitions',
+            payload: { diff, previous: prev, next: invariants },
+          })
+        }
+        // First writer records invariants
+        if (prev === undefined) {
+          yield* Ref.set(invariantsRef, invariants)
+        }
 
         yield* resetCurrentWorkerCtx
 
         const scope = yield* Scope.make()
 
         yield* Effect.gen(function* () {
-          const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
+          const shutdownChannel = yield* makeShutdownChannel(initial.storeId)
 
           yield* shutdownChannel.listen.pipe(
             Stream.flatten(),
@@ -225,7 +218,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
             size: 1,
             concurrency: 100,
-            initialMessage: () => initialMessagePayload.initialMessage,
+            initialMessage: () => initial,
           }).pipe(
             Effect.provide(workerLayer),
             Effect.withSpan('@livestore/adapter-web:shared-worker:makeWorkerProxyFromPort'),
@@ -233,7 +226,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           // Prepare the web mesh connection for leader worker to be able to connect to the devtools
           const { node } = yield* WebmeshWorker.CacheService
-          const { storeId, clientId } = initialMessagePayload.initialMessage
+          const { storeId, clientId } = initial
 
           yield* DevtoolsWeb.connectViaWorker({
             node,

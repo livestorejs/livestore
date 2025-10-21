@@ -58,6 +58,10 @@ const routes = [
     path: '/devtools/no-livestore',
     component: NoLivestore,
   },
+  {
+    path: '/adapter-web/concurrent-boot',
+    component: React.lazy(() => import('./adapter-web/Root.tsx').then((m) => ({ default: m.Root }))),
+  },
 ]
 
 const Home = () => {

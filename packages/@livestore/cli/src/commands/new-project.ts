@@ -192,8 +192,8 @@ const downloadExample = (exampleName: string, branch: string, destinationPath: s
     yield* Console.log(`✅ Example "${exampleName}" created successfully at: ${destinationPath}`)
   })
 
-export const newProjectCommand = Cli.Command.make(
-  'new-project',
+export const createCommand = Cli.Command.make(
+  'create',
   {
     example: Cli.Options.text('example').pipe(
       Cli.Options.optional,

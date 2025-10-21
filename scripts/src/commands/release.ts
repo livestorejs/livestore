@@ -101,8 +101,9 @@ export const releaseSnapshotCommand = Cli.Command.make(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
+    versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
   },
-  Effect.fn(function* ({ gitShaOption, dryRun, cwd }) {
+  Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption }) {
     const originalVersion = yield* Effect.promise(() =>
       import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
@@ -110,7 +111,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
     const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD', { cwd })
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
-    const snapshotVersion = `0.0.0-snapshot-${gitSha}`
+    const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
 
     const versionFilePath = `${cwd}/packages/@livestore/common/src/version.ts`
