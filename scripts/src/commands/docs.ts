@@ -226,6 +226,25 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             return undefined
           })()
           const shortSha = yield* cmdText('git rev-parse --short HEAD').pipe(Effect.map((s) => s.trim()))
+          const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
+          const fullSha = process.env.GITHUB_SHA ?? (yield* cmdText('git rev-parse HEAD').pipe(Effect.map((s) => s.trim())))
+          const runId = process.env.GITHUB_RUN_ID
+          const commitUrl = `https://github.com/${repo}/commit/${fullSha}`
+          const prUrl = prNumber ? `https://github.com/${repo}/pull/${prNumber}` : undefined
+          const runUrl = runId ? `https://github.com/${repo}/actions/runs/${runId}` : undefined
+
+          const contextLabelFor = (isProd: boolean, a: string) => (isProd ? 'prod' : `alias:${a}`)
+          const buildMessage = (ctx: string) =>
+            [
+              'docs deploy',
+              `context: ${ctx}`,
+              `branch: ${branchName}`,
+              `commit: ${shortSha} ${commitUrl}`,
+              prNumber ? `pr: #${prNumber} ${prUrl}` : undefined,
+              runUrl ? `run: ${runUrl}` : undefined,
+            ]
+              .filter((p): p is string => typeof p === 'string')
+              .join(' | ')
 
           yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
@@ -237,6 +256,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             target: { _tag: 'draft' },
             cwd: docsPath,
             filter: deployFilter,
+            message: buildMessage('draft'),
           })
 
           const alias = (() => {
@@ -264,6 +284,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             filter: deployFilter,
+            message: buildMessage(contextLabelFor(prod, alias)),
           })
 
           if (purgeCdn) {

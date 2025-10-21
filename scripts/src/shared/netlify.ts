@@ -58,12 +58,14 @@ export const deployToNetlify = ({
   target,
   cwd,
   filter,
+  message,
 }: {
   site: string
   dir: string
   target: Target
   cwd: string
   filter?: string
+  message?: string
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -87,6 +89,8 @@ export const deployToNetlify = ({
         `--dir=${dir}`,
         `--site=${site}`,
         filter ? `--filter=${filter}` : undefined,
+        message && message.length > 0 ? '-m' : undefined,
+        message && message.length > 0 ? message : undefined,
         // Either use `--prod` or `--alias`
         target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
       ],
