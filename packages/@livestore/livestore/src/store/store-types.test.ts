@@ -1,10 +1,10 @@
-import { queryDb, signal } from '../live-queries/mod.ts'
-import { TypeId } from '../live-queries/base-class.ts'
+import type { QueryBuilder } from '@livestore/common'
+import { QueryBuilderTypeId } from '@livestore/common'
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+import { TypeId } from '../live-queries/base-class.ts'
+import { queryDb, signal } from '../live-queries/mod.ts'
 import { isQueryable } from './store-types.ts'
-import { QueryBuilderTypeId } from '@livestore/common'
-import type { QueryBuilder } from '@livestore/common'
 
 const makeQueryBuilder = (): QueryBuilder<any, any, any> =>
   ({
@@ -12,7 +12,7 @@ const makeQueryBuilder = (): QueryBuilder<any, any, any> =>
     ResultType: null,
     asSql: () => ({ query: 'select 1', bindValues: [], usedTables: new Set<string>() }),
     toString: () => 'select 1',
-  } as unknown as QueryBuilder<any, any, any>)
+  }) as unknown as QueryBuilder<any, any, any>
 
 describe('isQueryable', () => {
   it('identifies live query definitions', () => {

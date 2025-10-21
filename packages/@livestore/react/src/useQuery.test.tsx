@@ -199,10 +199,9 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         const todosWhereIncomplete = tables.todos.where({ completed: false })
 
-        const { result } = ReactTesting.renderHook(
-          () => store.useQuery(todosWhereIncomplete).map((todo) => todo.id),
-          { wrapper },
-        )
+        const { result } = ReactTesting.renderHook(() => store.useQuery(todosWhereIncomplete).map((todo) => todo.id), {
+          wrapper,
+        })
 
         expect(result.current).toEqual(['t1'])
       }),
