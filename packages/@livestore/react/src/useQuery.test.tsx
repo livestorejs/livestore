@@ -199,12 +199,37 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         const todosWhereIncomplete = tables.todos.where({ completed: false })
 
-        const { result } = ReactTesting.renderHook(
-          () => store.useQuery(todosWhereIncomplete).map((todo) => todo.id),
-          { wrapper },
-        )
+        const { result } = ReactTesting.renderHook(() => store.useQuery(todosWhereIncomplete).map((todo) => todo.id), {
+          wrapper,
+        })
 
         expect(result.current).toEqual(['t1'])
+      }),
+    )
+
+    Vitest.scopedLive('union of different result types with useQuery', () =>
+      Effect.gen(function* () {
+        const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
+
+        const str$ = signal('hello', { label: 'str' })
+        const num$ = signal(123, { label: 'num' })
+
+        const { result, rerender } = ReactTesting.renderHook(
+          (useNum: boolean) => {
+            renderCount.inc()
+            const query$ = React.useMemo(() => (useNum ? num$ : str$), [useNum])
+            return store.useQuery(query$)
+          },
+          { wrapper, initialProps: false },
+        )
+
+        expect(result.current).toBe('hello')
+        expect(renderCount.val).toBe(1)
+
+        rerender(true)
+
+        expect(result.current).toBe(123)
+        expect(renderCount.val).toBe(2)
       }),
     )
   },

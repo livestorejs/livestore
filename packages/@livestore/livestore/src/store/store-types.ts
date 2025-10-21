@@ -156,6 +156,24 @@ export type Queryable<TResult> =
   | LiveQuery<TResult>
   | QueryBuilder<TResult, any, any>
 
+/**
+ * Helper types for `Queryable`.
+ *
+ * Provides type-level utilities to work with `Queryable` values.
+ */
+export namespace Queryable {
+  /**
+   * Extracts the result type from a `Queryable`.
+   *
+   * Example:
+   * - `Queryable.Result<LiveQueryDef<number>>` → `number`
+   * - `Queryable.Result<SignalDef<string>>` → `string`
+   * - `Queryable.Result<LiveQuery<{ id: string }>>` → `{ id: string }`
+   * - `Queryable.Result<LiveQueryDef<A> | SignalDef<B>>` → `A | B`
+   */
+  export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
+}
+
 const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
   if (typeof value !== 'object' || value === null) {
     return false

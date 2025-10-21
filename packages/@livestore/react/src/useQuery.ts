@@ -29,13 +29,36 @@ import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInp
  * }
  * ```
  */
-export const useQuery = <TResult>(queryable: Queryable<TResult>, options?: { store?: Store }): TResult =>
-  useQueryRef(queryable, options).valueRef.current
+export const useQuery = <TQueryable extends Queryable<any>>(
+  queryable: TQueryable,
+  options?: { store?: Store },
+): Queryable.Result<TQueryable> => useQueryRef(queryable, options).valueRef.current
 
 /**
+ * Like `useQuery`, but also returns a reference to the underlying LiveQuery instance.
+ *
+ * Usage
+ * - Accepts any `Queryable<TResult>`: a `LiveQueryDef`, `SignalDef`, a `LiveQuery` instance
+ *   or a SQL `QueryBuilder`. Unions of queryables are supported and the result type is
+ *   inferred via `Queryable.Result<TQueryable>`.
+ * - Creates an OpenTelemetry span per unique query, reusing it while the ref-counted
+ *   resource is alive. The span name is updated once the dynamic label is known.
+ * - Manages a reference-counted resource under-the-hood so query instances are shared
+ *   across re-renders and properly disposed once no longer referenced.
+ *
+ * Parameters
+ * - `queryable`: The query definition/instance/builder to run and subscribe to.
+ * - `options.store`: Optional store to use; by default the store from `LiveStoreContext` is used.
+ * - `options.otelContext`: Optional parent otel context for the query span.
+ * - `options.otelSpanName`: Optional explicit span name; otherwise derived from the query label.
+ *
+ * Returns
+ * - `valueRef`: A React ref whose `current` holds the latest query result. The type is
+ *   `Queryable.Result<TQueryable>` with full inference for unions.
+ * - `queryRcRef`: The underlying reference-counted `LiveQuery` instance used by the store.
  */
-export const useQueryRef = <TResult>(
-  queryable: Queryable<TResult>,
+export const useQueryRef = <TQueryable extends Queryable<any>>(
+  queryable: TQueryable,
   options?: {
     store?: Store
     /** Parent otel context for the query */
@@ -44,14 +67,15 @@ export const useQueryRef = <TResult>(
     otelSpanName?: string
   },
 ): {
-  valueRef: React.RefObject<TResult>
-  queryRcRef: LiveQueries.RcRef<LiveQuery<TResult>>
+  valueRef: React.RefObject<Queryable.Result<TQueryable>>
+  queryRcRef: LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>
 } => {
   const store =
     options?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
     React.useContext(LiveStoreContext)?.store ??
     shouldNeverHappen(`No store provided to useQuery`)
 
+  type TResult = Queryable.Result<TQueryable>
   type NormalizedQueryable =
     | { _tag: 'definition'; def: LiveQueryDef<TResult> | SignalDef<TResult> }
     | { _tag: 'live-query'; query$: LiveQuery<TResult> }
