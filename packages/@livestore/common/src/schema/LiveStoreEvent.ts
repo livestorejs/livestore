@@ -216,16 +216,16 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
    * the resulting event num will be e4 → e3
    *
    * Example: (client event)
-   * For event e2+1 → e2 which should be rebased on event e3 → e2
-   * the resulting event num will be e3+1 → e3
+   * For event e2.1 → e2 which should be rebased on event e3 → e2
+   * the resulting event num will be e3.1 → e3
    *
-   * Syntax: e2+2 → e2+1
+   * Syntax: e2.2 → e2.1
    *          ^ ^    ^ ^
    *          | |    | +- client parent number
    *          | |    +--- global parent number
    *          | +-- client number
    *          +---- global number
-   * Client num is ommitted for global events
+   * Client num is omitted for global events
    */
   rebase = ({
     parentSeqNum,
