@@ -446,11 +446,11 @@ issueId  // What if issueId === workspaceId?
 | Tenant-scoped  | `org:orgId:type:id`   | `org:acme:workspace`  |
 
 
-### Store Instance Lifecycle and GC
+### Store Lifecycle and GC
 
 Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime)).
 
-A store instance progresses through these states:
+A store progresses through these states:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -656,7 +656,7 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 
 **Cons:**
 - No centralized GC (every hook manages its own cache)
-- Difficult to share instances across components
+- Difficult to share store instances across components
 - No preloading capability
 
 ### Automatic Garbage Collection with `gcTime`
