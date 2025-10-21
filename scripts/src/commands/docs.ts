@@ -216,6 +216,17 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 ? 'livestore-docs' // Prod site
                 : 'livestore-docs-dev' // Dev site
 
+          const isPr = isGithubAction && process.env.GITHUB_EVENT_NAME === 'pull_request'
+          const prNumber = (() => {
+            const ref = process.env.GITHUB_REF
+            if (typeof ref === 'string') {
+              const match = ref.match(/refs\/pull\/(\d+)\//)
+              if (match && match[1]) return match[1]
+            }
+            return undefined
+          })()
+          const shortSha = yield* cmdText('git rev-parse --short HEAD').pipe(Effect.map((s) => s.trim()))
+
           yield* Effect.log(`Deploying to "${site}" for draft URL`)
 
           const deployFilter = 'docs'
@@ -228,13 +239,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             filter: deployFilter,
           })
 
-          const alias =
-            aliasOption._tag === 'Some' ? aliasOption.value : branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+          const alias = (() => {
+            if (aliasOption._tag === 'Some') return aliasOption.value
+            if (isPr && prNumber !== undefined) return `pr-${prNumber}-${shortSha}`
+            return branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+          })()
 
           const prod =
             prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
               ? prodOption.value
-              : branchName === 'main' || branchName === devBranchName
+              : isPr
+                ? false
+                : branchName === 'main' || branchName === devBranchName
 
           if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
             return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
