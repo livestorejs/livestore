@@ -158,29 +158,26 @@ export type Queryable<TResult> =
 
 const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
   if (typeof value !== 'object' || value === null) {
-    // Definitions are always objects; primitives cannot describe queries.
     return false
   }
 
   if (!('_tag' in value)) {
-    // Live query definitions are discriminated unions keyed by `_tag`.
     return false
   }
 
   const tag = (value as LiveQueryDef<any> | SignalDef<any>)._tag
   if (tag !== 'def' && tag !== 'signal-def') {
-    // We only accept the two definition tags that the store knows how to execute.
     return false
   }
 
   const candidate = value as LiveQueryDef<any>
   if (typeof candidate.make !== 'function') {
-    // All definitions expose a `make` factory for creating live query instances.
+    // Definitions must be able to materialize a live query instance.
     return false
   }
 
   if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
-    // Metadata must be present so we can dedupe subscriptions and surface diagnostics.
+    // These identifiers let the store dedupe subscriptions and debug queries.
     return false
   }
 
