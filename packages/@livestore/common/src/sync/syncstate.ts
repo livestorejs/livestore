@@ -15,7 +15,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
  *                 +------------------------+
  *               ▼                       ▼
  *        Upstream Head             Local Head
- *             (1,0)     (1,1), (1,2), (2,0)
+ *              e1        e1.1, e1.2, e2
  * ```
  *
  * **Pending Events**: Events awaiting acknowledgment from the upstream.
@@ -31,7 +31,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
  * Invariants:
  * 1. **Chain Continuity**: Each event must reference its immediate parent.
  * 2. **Head Ordering**: Upstream Head ≤ Local Head.
- * 3. **Event number sequence**: Must follow the pattern (1,0)→(1,1)→(1,2)→(2,0).
+ * 3. **Event number sequence**: Must follow the pattern e1→e1.1→e1.2→e2.
  *
  * A few further notes to help form an intuition:
  * - The goal is to keep the pending events as small as possible (i.e. to have synced with the next upstream node)
