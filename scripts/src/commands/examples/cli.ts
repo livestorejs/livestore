@@ -11,7 +11,6 @@ import {
   readExampleSlugs,
   runExampleTests,
 } from './deploy-examples.ts'
-import { syncDnsCommand } from './sync-dns.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -79,7 +78,6 @@ const examplesRunCommand = Cli.Command.make(
 export const examplesCommand = Cli.Command.make('examples').pipe(
   Cli.Command.withSubcommands([
     deployExamplesCommand,
-    syncDnsCommand,
     copyTodomvcSrc,
     examplesRunCommand,
     examplesTestCommand,
