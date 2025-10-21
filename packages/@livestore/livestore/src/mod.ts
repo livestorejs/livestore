@@ -46,6 +46,7 @@ export type {
   Unsubscribe,
 } from './store/store-types.ts'
 export {
+  isQueryable,
   type LiveStoreContext,
   type LiveStoreContextRunning,
   makeShutdownDeferred,

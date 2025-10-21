@@ -185,6 +185,10 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     if (typeof value === 'boolean') return SqliteDsl.boolean({ nullable })
   }
 
+  if (isLiteralUnionOf(coreAst, (value): value is string => typeof value === 'string')) {
+    return SqliteDsl.text({ schema: coreSchema, nullable })
+  }
+
   // Literals based on their encoded type
   if (SchemaAST.isLiteral(encodedAst)) {
     const value = encodedAst.literal
@@ -197,6 +201,10 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
       }
       return SqliteDsl.real({ schema: coreSchema, nullable })
     }
+  }
+
+  if (isLiteralUnionOf(encodedAst, (value): value is string => typeof value === 'string')) {
+    return SqliteDsl.text({ schema: coreSchema, nullable })
   }
 
   // Everything else needs JSON encoding
@@ -221,3 +229,11 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
   return SchemaAST.Union.make(coreTypes, ast.annotations)
 }
+
+const isLiteralUnionOf = <T extends SchemaAST.LiteralValue>(
+  ast: SchemaAST.AST,
+  predicate: (value: SchemaAST.LiteralValue) => value is T,
+): ast is SchemaAST.Union & { types: ReadonlyArray<SchemaAST.Literal & { literal: T }> } =>
+  SchemaAST.isUnion(ast) &&
+  ast.types.length > 0 &&
+  ast.types.every((type) => SchemaAST.isLiteral(type) && predicate(type.literal))

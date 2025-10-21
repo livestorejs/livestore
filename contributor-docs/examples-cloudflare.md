@@ -1,12 +1,12 @@
 # Cloudflare Example Deployments
 
-LiveStore examples ship via Cloudflare Workers using the `mono examples deploy` workflow. The script builds each example, deploys the corresponding Worker, and keeps the public `*.livestore.dev` domains in sync through the Vercel DNS API.
+LiveStore examples ship via Cloudflare Workers using the `mono examples deploy` workflow. The script builds each example and deploys the corresponding Worker. Each deployment is reachable via its `*.livestore.workers.dev` hostname—no additional DNS step is required.
 
 ## Branch Behaviour
 
-- `main` → builds production artifacts and deploys the Worker named `example-<slug>`. DNS for `<slug>.livestore.dev` is updated to point at the Worker (`example-<slug>.livestore.workers.dev`).
-- `dev` → deploys `example-<slug>-dev` and refreshes the `dev.<slug>.livestore.dev` CNAME record.
-- Any other branch → builds the shared preview Worker named `example-<slug>-preview` and leaves DNS untouched. The preview is always available under `https://example-<slug>-preview.livestore.workers.dev`. Use `--prod` to force a production publish when working on a feature branch.
+- `main` → builds production artifacts and deploys the Worker named `example-<slug>`, served at `https://example-<slug>.livestore.workers.dev`.
+- `dev` → deploys `example-<slug>-dev`, served at `https://example-<slug>-dev.livestore.workers.dev`.
+- Any other branch → builds the shared preview Worker named `example-<slug>-preview`, available at `https://example-<slug>-preview.livestore.workers.dev`. Use `--prod` to force a production publish when working on a feature branch.
 
 The script uses the directory name inside `/examples` as the `<slug>` (for example `web-todomvc`).
 
@@ -18,13 +18,8 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
   direnv exec . bunx wrangler login
   direnv exec . bunx wrangler whoami            # should list the LiveStore account
   ```
-- Ensure a Cloudflare API token is available as `CLOUDFLARE_API_TOKEN` (export it via `.envrc.local` for local work and set `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` in CI secrets).
-- (Optional) Authenticate with Vercel if you plan to run DNS syncing:
-  ```bash
-  direnv exec . bunx vercel login
-  direnv exec . bunx vercel whoami              # should print the configured user
-  ```
-- Verify that the target Worker does not already exist or can be replaced. `mono examples deploy` does not modify DNS; use the DNS command below when you are ready to point records at a new Worker.
+- (Optional) A Cloudflare API token (`CLOUDFLARE_API_TOKEN`) allows headless deploys in CI, but interactive work only requires `wrangler login`.
+- Verify that the target Worker does not already exist or can be replaced. `mono examples deploy` emits the Workers.dev URL so you can sanity-check the new build.
 
 ## Running Deployments
 
@@ -34,19 +29,7 @@ direnv exec . mono examples deploy --example-filter web-
 direnv exec . mono examples deploy --prod       # force a prod push regardless of branch
 ```
 
-The command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are not wired to DNS and remain accessible via their Workers.dev host names.
-
-To update DNS records for production or dev environments run:
-
-```bash
-# Update production DNS for all examples
-direnv exec . mono examples dns --env prod
-
-# Update dev DNS for a subset of examples
-direnv exec . mono examples dns --env dev --example-filter web-
-```
-
-The DNS command requires a `VERCEL_TOKEN` (or an interactive Vercel login) because it calls `vercel dns add/rm` under the hood.
+The command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are accessible exclusively via their Workers.dev host names.
 
 ## Creating a New Example Worker
 
@@ -55,12 +38,10 @@ The DNS command requires a `VERCEL_TOKEN` (or an interactive Vercel login) becau
 3. Add `[env.prod]`, `[env.preview]`, and `[env.dev]` sections in `wrangler.toml`; duplicate any bindings (Durable Objects, D1, queues, secrets, etc.) inside each environment block because Wrangler does not inherit them automatically.
 4. Provision Cloudflare resources if needed (Durable Objects, D1, secrets) via `wrangler`. Update the manifest with any required metadata.
 5. Run `direnv exec . mono examples deploy --example-filter <slug>` locally to verify the Worker deploys.
-6. Update DNS with `direnv exec . mono examples dns --env prod --example-filter <slug>` when you are ready to point the production domain at the new Worker.
 6. Update `docs/src/data/examples.ts` with the new production/dev URLs so the documentation links point to the Cloudflare deployment.
 
 ## Troubleshooting
 
 - `wrangler deploy` fails with `Not logged in`: re-run `direnv exec . bunx wrangler login`.
-- DNS updates fail with `The domain ... can't be found`: ensure `VERCEL_TOKEN` is configured (or run `bunx vercel login`) and that the token has permission to manage the `livestore.dev` domain.
-- `mono examples deploy` leaves DNS untouched: confirm you are on the correct branch (only `main` and `dev` update DNS) and that the manifest lists the intended domain under the right scope (`prod` vs `dev`).
+- Preview Worker unavailable: ensure the deploy succeeded and visit `https://example-<slug>-preview.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.
 - Preview Worker unavailable: the worker is deployed at `https://<worker-name>.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.
