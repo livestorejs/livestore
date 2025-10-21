@@ -16,7 +16,9 @@ export const rebaseGenerationDefault = 0
  * LiveStore event sequence number value consisting of a globally unique event sequence number
  * and a client sequence number.
  *
- * The client sequence number is only used for clientOnly events and starts from 0 for each global sequence number.
+ * The client sequence number is only used for client-local events and starts from 0 for each global sequence number.
+ *
+ * For event notation documentation, see: contributor-docs/events-notation.md
  */
 export type EventSequenceNumber = {
   global: GlobalEventSequenceNumber
@@ -38,7 +40,7 @@ export type EventSequenceNumberInput =
  */
 export const EventSequenceNumber = Schema.Struct({
   global: GlobalEventSequenceNumber,
-  /** Only increments for clientOnly events */
+  /** Only increments for client-local events */
   client: ClientEventSequenceNumber,
 
   // TODO also provide a way to see "confirmation level" of event (e.g. confirmed by leader/sync backend)
@@ -66,18 +68,22 @@ export const compare = (a: EventSequenceNumber, b: EventSequenceNumber) => {
 
 /**
  * Convert an event sequence number to a string representation.
+ *
+ * For notation documentation, see: contributor-docs/events-notation.md
  */
 export const toString = (seqNum: EventSequenceNumber) => {
   const rebaseGenerationStr = seqNum.rebaseGeneration > 0 ? `r${seqNum.rebaseGeneration}` : ''
   return seqNum.client === 0
     ? `e${seqNum.global}${rebaseGenerationStr}`
-    : `e${seqNum.global}+${seqNum.client}${rebaseGenerationStr}`
+    : `e${seqNum.global}.${seqNum.client}${rebaseGenerationStr}`
 }
 
 /**
  * Convert a string representation of an event sequence number to an event sequence number.
- * Parses strings in the format: e{global}[+{client}][r{rebaseGeneration}]
- * Examples: "e0", "e0r1", "e0+1", "e0+1r1"
+ * Parses strings in the format: e{global}[.{client}][r{rebaseGeneration}]
+ * Examples: "e0", "e0r1", "e0.1", "e0.1r1"
+ *
+ * For full notation documentation, see: contributor-docs/events-notation.md
  */
 export const fromString = (str: string): EventSequenceNumber => {
   if (!str.startsWith('e')) {
@@ -97,7 +103,7 @@ export const fromString = (str: string): EventSequenceNumber => {
   }
 
   // Parse global and client parts
-  const parts = withoutRebase.split('+')
+  const parts = withoutRebase.split('.')
 
   // Validate that parts contain only digits (and possibly empty for client)
   if (parts[0] === '' || !/^\d+$/.test(parts[0]!)) {
@@ -196,7 +202,7 @@ export const nextPair = ({
       client: clientDefault,
       rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
     },
-    // NOTE we always point to `client: 0` for non-clientOnly events
+    // NOTE we always point to `client: 0` for non-client-local events
     parentSeqNum: { global: seqNum.global, client: clientDefault, rebaseGeneration: seqNum.rebaseGeneration },
   }
 }
