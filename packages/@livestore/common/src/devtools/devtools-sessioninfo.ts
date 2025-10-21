@@ -21,6 +21,12 @@ export const SessionInfo = Schema.TaggedStruct('SessionInfo', {
   sessionId: Schema.String,
   schemaAlias: Schema.String,
   isLeader: Schema.Boolean,
+  /**
+   * Browser origin that produced this SessionInfo (for example, 'http://localhost:5173').
+   * Set by browser-based publishers so DevTools can defensively filter by origin.
+   * Currently only needed by the browser extension; non‑browser publishers typically set `undefined`.
+   */
+  origin: Schema.UndefinedOr(Schema.String),
 })
 export type SessionInfo = typeof SessionInfo.Type
 

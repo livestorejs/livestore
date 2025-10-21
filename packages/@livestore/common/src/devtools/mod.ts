@@ -34,7 +34,15 @@ export const makeNodeName = {
 }
 
 export const makeChannelName = {
-  sessionInfo: () => `session-info`,
+  /**
+   * SessionInfo channel for DevTools discovery.
+   * When an `origin` is provided, it is incorporated into the channel name to scope
+   * broadcasts per origin (e.g. `session-info::http%3A%2F%2Flocalhost%3A5173`).
+   * The `origin` is currently required only for the browser extension path; non‑browser
+   * publishers can pass `undefined` to use the legacy global channel name.
+   */
+  sessionInfo: ({ origin }: { origin: string | undefined }) =>
+    origin ? `session-info::${encodeURIComponent(origin)}` : `session-info`,
   devtoolsClientSession: ({ storeId, clientId, sessionId }: { storeId: string; clientId: string; sessionId: string }) =>
     `devtools-channel(client-session-${storeId}-${clientId}-${sessionId})`,
   devtoolsClientLeader: ({ storeId, clientId, sessionId }: { storeId: string; clientId: string; sessionId: string }) =>
@@ -52,8 +60,9 @@ export const isChannelName = {
 
 export const makeSessionInfoBroadcastChannel = (
   webmeshNode: MeshNode,
+  options: { origin: string | undefined },
 ): Effect.Effect<WebChannel.WebChannel<SessionInfo.Message, SessionInfo.Message>, never, Scope.Scope> =>
   webmeshNode.makeBroadcastChannel({
-    channelName: makeChannelName.sessionInfo(),
+    channelName: makeChannelName.sessionInfo({ origin: options?.origin }),
     schema: SessionInfo.Message,
   })
