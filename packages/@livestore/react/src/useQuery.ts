@@ -1,14 +1,14 @@
+import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import {
   extractStackInfoFromStackTrace,
   isQueryable,
-  queryDb,
-  stackInfoToString,
   type Queryable,
+  queryDb,
   type SignalDef,
+  stackInfoToString,
 } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import { isQueryBuilder } from '@livestore/common'
 import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
@@ -53,8 +53,8 @@ export const useQueryRef = <TResult>(
     shouldNeverHappen(`No store provided to useQuery`)
 
   type NormalizedQueryable =
-    | { kind: 'definition'; def: LiveQueryDef<TResult> | SignalDef<TResult> }
-    | { kind: 'live-query'; query$: LiveQuery<TResult> }
+    | { _tag: 'definition'; def: LiveQueryDef<TResult> | SignalDef<TResult> }
+    | { _tag: 'live-query'; query$: LiveQuery<TResult> }
 
   const normalized = React.useMemo<NormalizedQueryable>(() => {
     if (!isQueryable(queryable)) {
@@ -62,31 +62,31 @@ export const useQueryRef = <TResult>(
     }
 
     if (isQueryBuilder(queryable)) {
-      return { kind: 'definition', def: queryDb(queryable) }
+      return { _tag: 'definition', def: queryDb(queryable) }
     }
 
     if (
       (queryable as LiveQueryDef<TResult> | SignalDef<TResult>)._tag === 'def' ||
       (queryable as LiveQueryDef<TResult> | SignalDef<TResult>)._tag === 'signal-def'
     ) {
-      return { kind: 'definition', def: queryable as LiveQueryDef<TResult> | SignalDef<TResult> }
+      return { _tag: 'definition', def: queryable as LiveQueryDef<TResult> | SignalDef<TResult> }
     }
 
-    return { kind: 'live-query', query$: queryable as LiveQuery<TResult> }
+    return { _tag: 'live-query', query$: queryable as LiveQuery<TResult> }
   }, [queryable])
 
   // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
   const rcRefKey = React.useMemo(() => {
     const base = `${store.storeId}_${store.clientId}_${store.sessionId}`
 
-    if (normalized.kind === 'definition') {
+    if (normalized._tag === 'definition') {
       return `${base}:def:${normalized.def.hash}`
     }
 
     return `${base}:instance:${normalized.query$.id}`
   }, [normalized, store.clientId, store.sessionId, store.storeId])
 
-  const resourceLabel = normalized.kind === 'definition' ? normalized.def.label : normalized.query$.label
+  const resourceLabel = normalized._tag === 'definition' ? normalized.def.label : normalized.query$.label
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
@@ -107,7 +107,7 @@ export const useQueryRef = <TResult>(
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
       const queryRcRef =
-        normalized.kind === 'definition'
+        normalized._tag === 'definition'
           ? normalized.def.make(store.reactivityGraph.context!, otelContext)
           : ({
               value: normalized.query$,
