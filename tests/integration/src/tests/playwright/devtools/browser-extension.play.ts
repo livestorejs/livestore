@@ -20,7 +20,7 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState } from './shared.ts'
 
@@ -338,6 +338,78 @@ test(
       )
     }),
     // .pipe(Effect.retry({ times: 2 })),
+  ),
+)
+
+test(
+  'sessions list is origin isolated',
+  runTest(
+    Effect.gen(function* () {
+      const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
+      if (!port) {
+        return yield* Effect.fail(new Error('LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set'))
+      }
+
+      // Open two tabs on different origins
+      const tabLocalhost = yield* makeTabPair(`http://localhost:${port}/devtools/todomvc`, 'tab-localhost')
+      const tabLoopback = yield* makeTabPair(`http://127.0.0.1:${port}/devtools/todomvc`, 'tab-127')
+
+      yield* Effect.tryPromise(async () => {
+        // Ensure both apps are ready and activate a session
+        const input1 = tabLocalhost.page.locator('.new-todo').describe('tab-localhost:new-todo')
+        await input1.waitFor({ timeout: 20_000 })
+        const input2 = tabLoopback.page.locator('.new-todo').describe('tab-127:new-todo')
+        await input2.waitFor({ timeout: 20_000 })
+
+        await input1.fill('Buy milk')
+        await input1.press('Enter')
+        await tabLocalhost.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+
+        // Derive labels used in the session links
+        const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string]>(() => [
+          (window as any).__debugLiveStore.default.clientId,
+          (window as any).__debugLiveStore.default.clientSession.sessionId,
+        ])
+        const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string]>(() => [
+          (window as any).__debugLiveStore.default.clientId,
+          (window as any).__debugLiveStore.default.clientSession.sessionId,
+        ])
+
+        const localLabel = `${localClientId}:${localSessionId}`
+        const loopLabel = `${loopClientId}:${loopSessionId}`
+
+        // Navigate DevTools frames to the sessions index route
+        const toIndexUrl = (u: string) => {
+          const cur = new URL(u)
+          const base = new URL('/_livestore/browser-extension/', cur.origin)
+          const tabId = cur.searchParams.get('tabId')
+          if (tabId) base.searchParams.set('tabId', tabId)
+          return base.toString()
+        }
+        await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))
+        await tabLoopback.liveStoreDevtools.goto(toIndexUrl(tabLoopback.liveStoreDevtools.url()))
+
+        // Isolation assertions: specific items must appear / not appear
+        await expect(tabLocalhost.liveStoreDevtools.getByText(localLabel, { exact: false }).first()).toBeVisible({
+          timeout: 60_000,
+        })
+        await expect(tabLocalhost.liveStoreDevtools.getByText(loopLabel, { exact: false })).toHaveCount(0)
+
+        await expect(tabLoopback.liveStoreDevtools.getByText(loopLabel, { exact: false }).first()).toBeVisible({
+          timeout: 60_000,
+        })
+        await expect(tabLoopback.liveStoreDevtools.getByText(localLabel, { exact: false })).toHaveCount(0)
+      }).pipe(
+        Effect.raceFirst(
+          Fiber.joinAll([
+            tabLocalhost.pageConsoleFiber,
+            tabLocalhost.devtoolsConsoleFiber,
+            tabLoopback.pageConsoleFiber,
+            tabLoopback.devtoolsConsoleFiber,
+          ]).pipe(Effect.ignoreLogged),
+        ),
+      )
+    }),
   ),
 )
 

@@ -33,6 +33,7 @@ export const makeClientSession = <R>({
   webmeshMode,
   registerBeforeUnload,
   debugInstanceId,
+  origin,
 }: AdapterArgs & {
   clientId: string
   sessionId: string
@@ -46,6 +47,8 @@ export const makeClientSession = <R>({
   }) => Effect.Effect<void, UnexpectedError, Scope.Scope | R>
   webmeshMode: 'direct' | 'proxy'
   registerBeforeUnload: (onBeforeUnload: () => void) => () => void
+  /** Browser origin of the client session; used for origin-scoped DevTools mesh channels */
+  origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] = devtoolsEnabled
@@ -67,11 +70,14 @@ export const makeClientSession = <R>({
           sessionId,
           schemaAlias,
           isLeader,
+          origin,
         })
 
         yield* connectWebmeshNode({ webmeshNode, sessionInfo })
 
-        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode)
+        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode, {
+          origin,
+        })
 
         yield* Devtools.SessionInfo.provideSessionInfo({
           webChannel: sessionInfoBroadcastChannel,
