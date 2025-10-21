@@ -1,6 +1,6 @@
 # Linearlite Example
 
-[Demo](https://web-linearlite.livestore.dev/)
+[Demo](https://example-web-linearlite.livestore.workers.dev/)
 
 ## Local development
 
