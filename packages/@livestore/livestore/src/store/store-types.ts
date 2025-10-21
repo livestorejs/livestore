@@ -172,12 +172,12 @@ const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<
 
   const candidate = value as LiveQueryDef<any>
   if (typeof candidate.make !== 'function') {
-    // Without a factory function the store cannot instantiate the live query.
+    // The store calls make() to turn the definition into a live query instance.
     return false
   }
 
   if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
-    // `hash` and `label` identify the definition for caching and logging.
+    // Both identifiers must be present so the store can cache and log the query.
     return false
   }
 
