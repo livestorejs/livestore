@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore, useStoreRegistry } from '@livestore/react'
+import { useStore, useStoreRegistry } from '@livestore/react/experimental'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'

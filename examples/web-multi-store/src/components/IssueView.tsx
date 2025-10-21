@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
+import { useStore } from '@livestore/react/experimental'
 import { issueStoreOptions } from '@/stores/issue'
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
 
