@@ -156,18 +156,38 @@ export type Queryable<TResult> =
   | LiveQuery<TResult>
   | QueryBuilder<TResult, any, any>
 
-const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> =>
-  typeof value === 'object' &&
-  value !== null &&
-  '_tag' in value &&
-  ((value as LiveQueryDef<any> | SignalDef<any>)._tag === 'def' ||
-    (value as LiveQueryDef<any> | SignalDef<any>)._tag === 'signal-def') &&
-  typeof (value as LiveQueryDef<any>).make === 'function' &&
-  typeof (value as LiveQueryDef<any>).hash === 'string' &&
-  typeof (value as LiveQueryDef<any>).label === 'string'
+const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
+  if (typeof value !== 'object' || value === null) {
+    // Definitions are always objects; primitives cannot describe queries.
+    return false
+  }
 
-const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> =>
-  Predicate.hasProperty(value, TypeId)
+  if (!('_tag' in value)) {
+    // Live query definitions are discriminated unions keyed by `_tag`.
+    return false
+  }
+
+  const tag = (value as LiveQueryDef<any> | SignalDef<any>)._tag
+  if (tag !== 'def' && tag !== 'signal-def') {
+    // We only accept the two definition tags that the store knows how to execute.
+    return false
+  }
+
+  const candidate = value as LiveQueryDef<any>
+  if (typeof candidate.make !== 'function') {
+    // All definitions expose a `make` factory for creating live query instances.
+    return false
+  }
+
+  if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
+    // Metadata must be present so we can dedupe subscriptions and surface diagnostics.
+    return false
+  }
+
+  return true
+}
+
+const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
 
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)
