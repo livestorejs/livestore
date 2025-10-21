@@ -15,8 +15,8 @@
     "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/devtools-vite": "0.4.0-dev.14",
     "@playwright/test": "^1.56.0",
-    "typescript": "5.9.3",
-    "vite": "7.1.9",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
     "wrangler": "^4.42.2"
   },
   "engines": {

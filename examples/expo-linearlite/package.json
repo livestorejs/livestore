@@ -30,8 +30,8 @@
     "expo-updates": "29.0.11",
     "expo-web-browser": "15.0.7",
     "lucide-react-native": "0.536.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "0.81.4",
     "react-native-css-interop": "0.1.22",
     "react-native-gesture-handler": "2.28.0",
@@ -47,12 +47,12 @@
     "@babel/plugin-syntax-import-attributes": "^7.27.1",
     "@babel/runtime": "^7.28.2",
     "@faker-js/faker": "^9.9.0",
-    "@types/react": "19.2.1",
+    "@types/react": "^19.1.13",
     "@types/react-test-renderer": "^19.1.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",
     "react-test-renderer": "^19.1.1",
-    "typescript": "5.9.3"
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=24.0.0"
