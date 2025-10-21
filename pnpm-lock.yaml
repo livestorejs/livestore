@@ -5742,6 +5742,8 @@ packages:
   '@react-native/codegen@0.81.4':
     resolution: {integrity: sha512-LWTGUTzFu+qOQnvkzBP52B90Ym3stZT8IFCzzUrppz8Iwglg83FCtDZAR4yLHI29VY/x/+pkcWAMCl3739XHdw==}
     engines: {node: '>= 20.19.4'}
+    peerDependencies:
+      '@babel/core': '*'
 
   '@react-native/community-cli-plugin@0.81.4':
     resolution: {integrity: sha512-8mpnvfcLcnVh+t1ok6V9eozWo8Ut+TZhz8ylJ6gF9d6q9EGDQX6s8jenan5Yv/pzN4vQEKI4ib2pTf/FELw+SA==}
@@ -18967,11 +18969,12 @@ snapshots:
 
   '@react-native/assets-registry@0.81.4': {}
 
-  '@react-native/babel-plugin-codegen@0.81.4':
+  '@react-native/babel-plugin-codegen@0.81.4(@babel/core@7.28.4)':
     dependencies:
       '@babel/traverse': 7.28.4
-      '@react-native/codegen': 0.81.4
+      '@react-native/codegen': 0.81.4(@babel/core@7.28.4)
     transitivePeerDependencies:
+      - '@babel/core'
       - supports-color
 
   '@react-native/babel-preset@0.81.4(@babel/core@7.28.4)':
@@ -19017,14 +19020,14 @@ snapshots:
       '@babel/plugin-transform-typescript': 7.28.0(@babel/core@7.28.4)
       '@babel/plugin-transform-unicode-regex': 7.27.1(@babel/core@7.28.4)
       '@babel/template': 7.27.2
-      '@react-native/babel-plugin-codegen': 0.81.4
+      '@react-native/babel-plugin-codegen': 0.81.4(@babel/core@7.28.4)
       babel-plugin-syntax-hermes-parser: 0.29.1
       babel-plugin-transform-flow-enums: 0.0.2(@babel/core@7.28.4)
       react-refresh: 0.14.2
     transitivePeerDependencies:
       - supports-color
 
-  '@react-native/codegen@0.81.4':
+  '@react-native/codegen@0.81.4(@babel/core@7.28.4)':
     dependencies:
       '@babel/core': 7.28.4
       '@babel/parser': 7.28.4
@@ -19033,8 +19036,6 @@ snapshots:
       invariant: 2.2.4
       nullthrows: 1.1.1
       yargs: 17.7.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@react-native/community-cli-plugin@0.81.4':
     dependencies:
@@ -27855,7 +27856,7 @@ snapshots:
     dependencies:
       '@jest/create-cache-key-function': 29.7.0
       '@react-native/assets-registry': 0.81.4
-      '@react-native/codegen': 0.81.4
+      '@react-native/codegen': 0.81.4(@babel/core@7.28.4)
       '@react-native/community-cli-plugin': 0.81.4
       '@react-native/gradle-plugin': 0.81.4
       '@react-native/js-polyfills': 0.81.4
