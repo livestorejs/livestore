@@ -76,10 +76,5 @@ const examplesRunCommand = Cli.Command.make(
 )
 
 export const examplesCommand = Cli.Command.make('examples').pipe(
-  Cli.Command.withSubcommands([
-    deployExamplesCommand,
-    copyTodomvcSrc,
-    examplesRunCommand,
-    examplesTestCommand,
-  ]),
+  Cli.Command.withSubcommands([deployExamplesCommand, copyTodomvcSrc, examplesRunCommand, examplesTestCommand]),
 )
