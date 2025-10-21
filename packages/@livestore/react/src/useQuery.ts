@@ -29,10 +29,8 @@ import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInp
  * }
  * ```
  */
-export const useQuery = <TResult>(
-  queryable: Queryable<TResult>,
-  options?: { store?: Store },
-): TResult => useQueryRef(queryable, options).valueRef.current
+export const useQuery = <TResult>(queryable: Queryable<TResult>, options?: { store?: Store }): TResult =>
+  useQueryRef(queryable, options).valueRef.current
 
 /**
  */
@@ -60,7 +58,7 @@ export const useQueryRef = <TResult>(
 
   const normalized = React.useMemo<NormalizedQueryable>(() => {
     if (!isQueryable(queryable)) {
-      throw new Error('useQuery expected a Queryable value')
+      return shouldNeverHappen('useQuery expected a Queryable value')
     }
 
     if (isQueryBuilder(queryable)) {
