@@ -11,7 +11,7 @@ import type { CachedStoreOptions } from './types.ts'
  * - Returns data or throws (Promise|Error).
  * - No loading or error states are returned.
  */
-export const useSuspenseStore = <TSchema extends LiveStoreSchema>(
+export const useStore = <TSchema extends LiveStoreSchema>(
   options: CachedStoreOptions<TSchema>,
 ): Store<TSchema> & ReactApi => {
   const storeRegistry = useStoreRegistry()
