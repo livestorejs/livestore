@@ -381,6 +381,19 @@ describe('getColumnDefForSchema', () => {
       expect((table.rowSchema as any).fields.count.toString()).toBe('Int | null')
     })
 
+    it('should treat unions of string literals as text columns without JSON parsing', () => {
+      const schema = Schema.Struct({
+        id: Schema.String,
+        status: Schema.Literal('idle', 'running', 'stopped'),
+      })
+
+      const table = State.SQLite.table({ name: 'timers', schema })
+
+      expect(table.sqliteDef.columns.status.columnType).toBe('text')
+      expect(table.sqliteDef.columns.status.schema.toString()).toBe('"idle" | "running" | "stopped"')
+      expect((table.rowSchema as any).fields.status.toString()).toBe('"idle" | "running" | "stopped"')
+    })
+
     it('should handle Schema.NullOr with complex types', () => {
       const schema = Schema.Struct({
         data: Schema.NullOr(Schema.Struct({ value: Schema.Number })),
