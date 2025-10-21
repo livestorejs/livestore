@@ -1,0 +1,36 @@
+{
+  "name": "livestore-example-web-multi-store",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.4.0-dev.10",
+    "@livestore/livestore": "0.4.0-dev.10",
+    "@livestore/peer-deps": "0.4.0-dev.10",
+    "@livestore/react": "0.4.0-dev.10",
+    "@livestore/wa-sqlite": "0.4.0-dev.10",
+    "@tanstack/react-start": "1.132.56",
+    "@tanstack/react-router": "1.132.47",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-error-boundary": "6.0.0"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.10",
+    "@types/node": "24.5.2",
+    "@types/react": "19.2.1",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "5.0.4",
+    "typescript": "5.9.3",
+    "vite": "7.1.9",
+    "vite-tsconfig-paths": "5.1.4"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev --force",
+    "preview": "vite preview"
+  }
+}
