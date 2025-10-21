@@ -8,36 +8,36 @@ Concise notation for describing event sequences in Livestore.
 
 Events use integer sequence numbers and are denoted as `e0`, `e1`, `e2`, etc. These correspond to the `EventSequenceNumber` type (see `packages/@livestore/common/src/schema/EventSequenceNumber.ts`) which contains:
 - **global**: Globally unique integer sequence number
-- **client**: Client-only event counter (default: 0)
+- **client**: Client-local event counter (default: 0)
 - **rebaseGeneration**: Increments when client rebases (default: 0)
 
 ### Notation Format
 
 ```
-[Client:]e{global}[+{client}][r{rebaseGeneration}]['][{context}][(←origin)]
+[Client:]e{global}[.{client}][r{rebaseGeneration}]['][/{origin}][{context}]
 ```
 
-The base format `e{global}[+{client}][r{rebaseGeneration}]` is implemented by `EventSequenceNumber.toString()` and `EventSequenceNumber.fromString()`.
+The base format `e{global}[.{client}][r{rebaseGeneration}]` is implemented by `EventSequenceNumber.toString()` and `EventSequenceNumber.fromString()`.
 
 Core examples:
 - `e0` - Global event 0
 - `e3'` - Unconfirmed event 3
-- `e5+1` - Client-only event (global: 5, client: 1)
+- `e5.1` - Client-local event (global: 5, client: 1)
 - `e3r1` - Event with rebase generation 1
 
 Extended examples:
 - `A:e3'` - Client A's unconfirmed e3
-- `e3{createUser}` - Event with context hint
-- `B:e5'(←e3')` - Client B's e5' that was originally e3'
-- `B:e5'{user.456}(←e3')` - Full notation with client, context, and origin
+- `e3{userCreated}` - Event with context hint
+- `B:e5'/e3'` - Client B's e5' that was originally e3'
+- `B:e5.1'{user.456}/e3'` - Full notation with client, context, and origin
 
-### Client-Only Events
+### Client-Local Events
 
-Events with non-zero client numbers (`e5+1`, `e5+2`, `e5+3`, etc.) are client-only and won't sync to the backend. They increment the client counter while keeping the same global number.
+Events with non-zero client numbers (`e5.1`, `e5.2`, `e5.3`, etc.) are client-local and won't sync to the backend. They increment the client counter while keeping the same global number.
 
 ```
-e5 → e5+1 → e5+2 → e5+3 → e6
-     └─ client-only ─┘
+e5 → e5.1 → e5.2 → e5.3 → e6
+     └─ client-local ─┘
 ```
 
 ## Common Patterns
@@ -47,17 +47,7 @@ e5 → e5+1 → e5+2 → e5+3 → e6
 e1 → e2 → e3
 ```
 
-### Concurrent Events
-```
-e1 ║ e2
-```
-
-### Parent Relationships
-```
-e1 (parent: e0)
-e2 (parent: e1)
-e2+1 (parent: e2)
-```
+The arrow notation (`→`) shows chronological order, with parent relationships pointing backward: e3's parent is e2, e2's parent is e1.
 
 ## Sync Scenarios
 
@@ -99,7 +89,7 @@ Sync Backend:  e1 → e2 → e3 → e4
 
 Client B syncs (rebase required):
 Client B before:   e1 → e2 → B:e3' → B:e4' → B:e5'
-Client B rebased:  e1 → e2 → e3 → e4 → B:e5'(←e3') → B:e6'(←e4') → B:e7'(←e5')  (unconfirmed)
+Client B rebased:  e1 → e2 → e3 → e4 → B:e5'/e3' → B:e6'/e4' → B:e7'/e5'  (unconfirmed)
 Client B after:    e1 → e2 → e3 → e4 → e5 → e6 → e7  (confirmed)
 Sync Backend:      e1 → e2 → e3 → e4 → e5 → e6 → e7
 
@@ -114,22 +104,35 @@ Notes:
 - The prefix `A:` or `B:` clarifies which client created each unconfirmed event
 - The sync backend assigns the final authoritative sequence numbers
 - Rebasing happens in two steps: first events are rebased locally (still unconfirmed), then confirmed by the sync backend
-- The `(←e3')` notation shows the origin: `B:e5'(←e3')` means this is B's e5' which was originally e3'
+- The `/e3'` notation shows the origin: `B:e5'/e3'` means B's e5' was originally e3'
+
+### Multiple Rebases Example
+
+When a client undergoes multiple rebases, the origin tracks through each rebase:
+
+```
+Initial:       C:e3'
+First rebase:  C:e5'/e3'   (rebased from sequence number 3 to 5)
+Second rebase: C:e8'/e5'/e3'  (rebased from sequence number 5 to 8)
+Final:         e8  (confirmed)
+```
+
+The notation `C:e8'/e5'/e3'` shows the complete rebase history: originally e3', became e5' after first rebase, then e8' after second rebase.
 
 ## Event Context Hints
 
 Add context hints to clarify what events do:
 
 ```
-Client A: e1 → e2{createUser} → e3'{updateUser.name} → e4'{deletePost.123}
-Client B: e1 → e2 → e3'{user.456} → e4'{post.create}
+Client A: e1 → e2{userCreated} → e3'{userNameUpdated} → e4'{postDeleted.123}
+Client B: e1 → e2 → e3'{user.456} → e4'{postCreated}
 
-Client B rebased: e1 → e2 → e3 → e4 → B:e5'{user.456}(←e3') → B:e6'{post.create}(←e4')
+Client B rebased: e1 → e2 → e3 → e4 → B:e5'{user.456}/e3' → B:e6'{postCreated}/e4'
 ```
 
 Context hint formats:
-- `{actionType}` - General action: `e2{createUser}`
-- `{entity.action}` - Entity and action: `e3'{user.update}`
+- `{eventName}` - Event name: `e2{userCreated}`
+- `{entity.eventName}` - Entity and event: `e3'{user.updated}`
 - `{entity.id}` - Specific entity: `e4'{user.123}`
 - `{entity.id.field}` - Specific field: `e5'{user.123.email}`
 
