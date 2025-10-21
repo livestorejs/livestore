@@ -23,7 +23,7 @@
     "@vitejs/plugin-react": "5.0.4",
     "typescript": "5.9.3",
     "vite": "7.1.9",
-    "vite-tsconfig-paths": "5.1.4"
+    "vite-tsconfig-paths": "^5.1.4"
   },
   "engines": {
     "node": ">=24.0.0"

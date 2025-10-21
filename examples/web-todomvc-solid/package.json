@@ -20,8 +20,8 @@
     "@livestore/devtools-vite": "0.4.0-dev.14",
     "@playwright/test": "^1.56.0",
     "solid-devtools": "^0.34.3",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.7",
+    "typescript": "5.9.3",
+    "vite": "7.1.9",
     "vite-plugin-solid": "^2.11.8",
     "wrangler": "^4.42.2"
   },
