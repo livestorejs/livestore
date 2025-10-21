@@ -27,17 +27,19 @@ import type * as otel from '@opentelemetry/api'
 import {
   batch,
   createComputed,
-  createEffect,
-  createMemo,
   type JSX,
-  type JSXElement,
+  Match,
   mergeProps,
   on,
   onCleanup,
   type ParentProps,
+  splitProps,
+  Switch,
 } from 'solid-js'
 import { createStore as createSolidStore, reconcile } from 'solid-js/store'
+import { trackDeep } from '@solid-primitives/deep'
 import { LiveStoreContext } from './LiveStoreContext.ts'
+import type { MakeOptional } from './utils.ts'
 
 export interface LiveStoreProviderProps {
   schema: LiveStoreSchema
@@ -86,22 +88,24 @@ const defaultRenderError = (error: UnexpectedError | unknown) => (
 )
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => {
-  const reason =
-    cause._tag === 'LiveStore.StoreInterrupted'
-      ? `interrupted due to: ${cause.reason}`
-      : cause._tag === 'InvalidPushError' || cause._tag === 'InvalidPullError'
-        ? `sync error: ${cause.cause}`
-        : cause.reason === 'devtools-import'
-          ? 'devtools import'
-          : cause.reason === 'devtools-reset'
-            ? 'devtools reset'
-            : cause.reason === 'adapter-reset'
-              ? 'adapter reset'
-              : cause.reason === 'manual'
-                ? 'manual shutdown'
-                : 'unknown reason'
-
-  return <>LiveStore Shutdown due to {reason}</>
+  return (
+    <>
+      LiveStore Shutdown due to{' '}
+      {cause._tag === 'LiveStore.StoreInterrupted'
+        ? `interrupted due to: ${cause.reason}`
+        : cause._tag === 'InvalidPushError' || cause._tag === 'InvalidPullError'
+          ? `sync error: ${cause.cause}`
+          : cause.reason === 'devtools-import'
+            ? 'devtools import'
+            : cause.reason === 'devtools-reset'
+              ? 'devtools reset'
+              : cause.reason === 'adapter-reset'
+                ? 'adapter reset'
+                : cause.reason === 'manual'
+                  ? 'manual shutdown'
+                  : 'unknown reason'}
+    </>
+  )
 }
 
 const defaultRenderLoading = (status: BootStatus) => <>LiveStore is loading ({status.stage})...</>
@@ -117,60 +121,82 @@ export const LiveStoreProvider = (props: LiveStoreProviderProps & ParentProps) =
     },
     props,
   )
-  const storeCtx = useCreateStore({
-    storeId: config.storeId,
-    schema: config.schema,
-    adapter: config.adapter,
-    confirmUnsavedChanges: config.confirmUnsavedChanges,
-    ...omitUndefineds({
-      otelOptions: config.otelOptions,
-      boot: config.boot,
-      disableDevtools: config.disableDevtools,
-      signal: config.signal,
-      syncPayload: config.syncPayload,
-      debug: config.debug,
-    }),
-  })
+  const [, rest] = splitProps(config, ['children'])
 
-  return createMemo(() => {
-    switch (storeCtx.stage) {
-      case 'error':
-        return config.renderError(storeCtx.error)
-      case 'shutdown':
-        return config.renderShutdown(storeCtx.cause)
-      case 'running':
-        globalThis.__debugLiveStore ??= {}
-        if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-          globalThis.__debugLiveStore._ = storeCtx.store
+  const storeContext = createStoreContext(rest)
+
+  return (
+    <Switch
+      fallback={
+        // SOLID  - should we untrack render functions?
+        config.renderLoading(storeContext as BootStatus)
+      }
+    >
+      <Match when={storeContext.stage === 'error' && storeContext}>
+        {(ctx) =>
+          // SOLID  - should we untrack render functions?
+          config.renderError(ctx().error)
         }
-        globalThis.__debugLiveStore[config.debug?.instanceId ?? config.storeId] = storeCtx.store
-        return <LiveStoreContext.Provider value={storeCtx}>{config.children}</LiveStoreContext.Provider>
-      default:
-        return config.renderLoading(storeCtx as BootStatus)
-    }
-  }) as unknown as JSXElement
+      </Match>
+      <Match when={storeContext.stage === 'shutdown' && storeContext}>
+        {(ctx) =>
+          // SOLID  - should we untrack render functions?
+          config.renderShutdown(ctx().cause)
+        }
+      </Match>
+      <Match when={storeContext.stage === 'running' && storeContext}>
+        {(ctx) => {
+          globalThis.__debugLiveStore ??= {}
+          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
+            globalThis.__debugLiveStore._ = ctx().store
+          }
+          globalThis.__debugLiveStore[config.debug?.instanceId ?? config.storeId] = ctx().store
+          return (
+            <LiveStoreContext.Provider
+              value={
+                // SOLID  - according to the types it should also receive useQuery and useClientDocument
+                //          but this is not currently implemented in the react implementation and is anotated with TODO
+                ctx() as TODO
+              }
+            >
+              {config.children}
+            </LiveStoreContext.Provider>
+          )
+        }}
+      </Match>
+    </Switch>
+  )
 }
 
-interface UseCreateStoreOptions extends Omit<CreateStoreOptions<LiveStoreSchema>, 'batchUpdates'> {
+interface CreateStoreContextOptions
+  extends Exclude<CreateStoreOptions<LiveStoreSchema>, 'batchUpdates' | 'onBootStatus'> {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
 }
 
-const useCreateStore = (options: UseCreateStoreOptions) => {
-  const [contextValue, _setContextValue] = createSolidStore<StoreContext_ | BootStatus>({ stage: 'loading' })
+interface CreateStoreContextState {
+  componentScope: Scope.CloseableScope | undefined
+  shutdownDeferred: ShutdownDeferred | undefined
+  /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
+  previousShutdownDeferred: ShutdownDeferred | undefined
+  counter: number
+}
 
-  const [context, setContext] = createSolidStore<{
+const createStoreContext = (options: CreateStoreContextOptions) => {
+  const [storeContext, _setStoreContext] = createSolidStore<StoreContext_ | BootStatus>({ stage: 'loading' })
+
+  const state: {
     componentScope: Scope.CloseableScope | undefined
     shutdownDeferred: ShutdownDeferred | undefined
     /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
     previousShutdownDeferred: ShutdownDeferred | undefined
     counter: number
-  }>({
+  } = {
     componentScope: undefined,
     shutdownDeferred: undefined,
     previousShutdownDeferred: undefined,
     counter: 0,
-  })
+  }
 
   const interrupt = (
     componentScope: Scope.CloseableScope,
@@ -188,99 +214,72 @@ const useCreateStore = (options: UseCreateStoreOptions) => {
 
   createComputed(
     on(
-      () => ({ ...options }),
+      () => trackDeep(options),
       () => {
-        if (context.componentScope !== undefined && context.shutdownDeferred !== undefined) {
+        if (state.componentScope !== undefined && state.shutdownDeferred !== undefined) {
           interrupt(
-            context.componentScope,
-            context.shutdownDeferred,
+            state.componentScope,
+            state.shutdownDeferred,
             new StoreInterrupted({
               reason: `re-rendering due to changed input props: ${''}`,
             }),
           )
-
-          setContext({
-            componentScope: undefined,
-            shutdownDeferred: undefined,
-          })
         }
 
-        setContext((context) => ({
-          value: { stage: 'loading' },
-          componentScope: undefined,
-          shutdownDeferred: undefined,
-          previousShutdownDeferred: context.shutdownDeferred,
-          counter: context.counter + 1,
-        }))
+        _setStoreContext({ stage: 'loading' })
+
+        state.componentScope = undefined
+        state.shutdownDeferred = undefined
+        state.previousShutdownDeferred = state.shutdownDeferred
+        state.counter = state.counter + 1
+
+        const counter = state.counter
+
+        const setStoreContext = (value: StoreContext_ | BootStatus) => {
+          if (state.counter !== counter) return
+          _setStoreContext(reconcile(value))
+        }
+
+        options.signal?.addEventListener('abort', () => {
+          if (state.componentScope !== undefined && state.shutdownDeferred !== undefined && state.counter === counter) {
+            interrupt(
+              state.componentScope,
+              state.shutdownDeferred,
+              new StoreInterrupted({ reason: 'Aborted via provided AbortController' }),
+            )
+            state.componentScope = undefined
+            state.shutdownDeferred = undefined
+          }
+        })
+
+        const cancelStore = createStoreEffect(state, storeContext, setStoreContext, options)
+
+        onCleanup(() => {
+          cancelStore()
+
+          if (state.componentScope !== undefined && state.shutdownDeferred !== undefined) {
+            interrupt(
+              state.componentScope,
+              state.shutdownDeferred,
+              new StoreInterrupted({ reason: 'unmounting component' }),
+            )
+            state.componentScope = undefined
+            state.shutdownDeferred = undefined
+          }
+        })
       },
     ),
   )
 
-  createEffect(() => {
-    const counter = context.counter
-
-    const setContextValue = (value: StoreContext_ | BootStatus) => {
-      if (context.counter !== counter) return
-      _setContextValue(reconcile(value))
-    }
-
-    options.signal?.addEventListener('abort', () => {
-      if (
-        context.componentScope !== undefined &&
-        context.shutdownDeferred !== undefined &&
-        context.counter === counter
-      ) {
-        interrupt(
-          context.componentScope,
-          context.shutdownDeferred,
-          new StoreInterrupted({ reason: 'Aborted via provided AbortController' }),
-        )
-        setContext({
-          componentScope: undefined,
-          shutdownDeferred: undefined,
-        })
-      }
-    })
-
-    const cancelStore = createCancelStore(context, setContext, contextValue, setContextValue, options)
-
-    onCleanup(() => {
-      cancelStore()
-
-      if (context.componentScope !== undefined && context.shutdownDeferred !== undefined) {
-        interrupt(
-          context.componentScope,
-          context.shutdownDeferred,
-          new StoreInterrupted({ reason: 'unmounting component' }),
-        )
-        setContext({
-          componentScope: undefined,
-          shutdownDeferred: undefined,
-        })
-      }
-    })
-  })
-
-  return contextValue
+  return storeContext
 }
 
-interface Context {
-  componentScope: Scope.CloseableScope | undefined
-  shutdownDeferred: ShutdownDeferred | undefined
-  /** Used to wait for the previous shutdown deferred to fully complete before creating a new one */
-  previousShutdownDeferred: ShutdownDeferred | undefined
-  counter: number
-}
-
-type MakeOptional<T, TKeys extends keyof T> = Omit<T, TKeys> & { [TKey in TKeys]: T[TKey] | undefined }
-
-const createCancelStore = (
-  context: Context,
-  setContext: (context: Partial<Context>) => void,
-  contextValue: StoreContext_ | BootStatus,
-  setContextValue: (value: StoreContext_ | BootStatus) => void,
+const createStoreEffect = (
+  state: CreateStoreContextState,
+  storeContext: StoreContext_ | BootStatus,
+  setStoreContext: (value: StoreContext_ | BootStatus) => void,
   options: MakeOptional<
-    UseCreateStoreOptions,
+    CreateStoreContextOptions,
     | 'boot'
     | 'confirmUnsavedChanges'
     | 'context'
@@ -294,17 +293,15 @@ const createCancelStore = (
 ) => {
   return Effect.gen(function* () {
     // Wait for the previous store to fully shutdown before creating a new one
-    if (context.previousShutdownDeferred) {
-      yield* Deferred.await(context.previousShutdownDeferred)
+    if (state.previousShutdownDeferred) {
+      yield* Deferred.await(state.previousShutdownDeferred)
     }
 
     const componentScope = yield* Scope.make().pipe(Effect.acquireRelease(Scope.close))
     const shutdownDeferred = yield* makeShutdownDeferred
 
-    setContext({
-      componentScope,
-      shutdownDeferred,
-    })
+    state.componentScope = componentScope
+    state.shutdownDeferred = shutdownDeferred
 
     yield* Effect.gen(function* () {
       const store = yield* createStore({
@@ -322,18 +319,18 @@ const createCancelStore = (
           syncPayload: options.syncPayload,
         }),
         onBootStatus: (status) => {
-          if (contextValue.stage === 'running' || contextValue.stage === 'error') return
+          if (storeContext.stage === 'running' || storeContext.stage === 'error') return
           // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
-          setContextValue(status)
+          setStoreContext(status)
         },
         debug: { ...omitUndefineds({ instanceId: options.debug?.instanceId }) },
       }).pipe(Effect.tapErrorCause((cause) => Deferred.failCause(shutdownDeferred, cause)))
 
-      setContextValue({ stage: 'running', store })
+      setStoreContext({ stage: 'running', store })
     }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
     const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) =>
-      Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
+      Effect.sync(() => setStoreContext({ stage: 'shutdown', cause }))
 
     yield* Deferred.await(shutdownDeferred).pipe(
       Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', Cause.pretty(cause))),
@@ -341,8 +338,8 @@ const createCancelStore = (
       Effect.catchTag('InvalidPushError', (cause) => shutdownContext(cause)),
       Effect.catchTag('InvalidPullError', (cause) => shutdownContext(cause)),
       Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
-      Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
-      Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
+      Effect.tapError((error) => Effect.sync(() => setStoreContext({ stage: 'error', error }))),
+      Effect.tapDefect((defect) => Effect.sync(() => setStoreContext({ stage: 'error', error: defect }))),
       Effect.exit,
     )
   }).pipe(
