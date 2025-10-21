@@ -145,6 +145,9 @@ The multi-store architecture introduces three key concepts:
 └────────────────────────────────────────────────────────────────┘
 ```
 
+> [!NOTE]
+> The multi-store API design draws inspiration from [TanStack Query](https://tanstack.com/query), particularly its approach to managing multiple query through a central client cache with automatic garbage collection and its Query Options API.
+
 ### API
 
 | API                       | Purpose                                   | Example                                                        |
@@ -781,6 +784,13 @@ We still need to validate which knobs belong where (e.g., should `batchUpdates` 
 In single-store mode, app shutdown is straightforward—destroy the one store instance. With multiple stores, the shutdown sequence becomes more complex.
 
 **Question:** What's the right shutdown strategy for multi-store environments?
+
+## Acknowledgments
+
+Special thanks to:
+
+- The [TanStack Query](https://tanstack.com/query) team for their work on client-side state management patterns, particularly the Query Options API and automatic garbage collection approach that inspired this design.
+- [@marceloclp](https://github.com/marceloclp), [@slashv](https://github.com/slashv), [@joodaloop](https://github.com/joodaloop), and [@drowrin](https://github.com/drowrin) for their valuable feedback and insights during the design phase.
 
 ## Appendix
 
