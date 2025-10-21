@@ -310,3 +310,64 @@ describe('buildSnippets cache reuse', () => {
     expect(secondRunCount).toBe(0)
   })
 })
+
+describe('Sentinel node removal regression', () => {
+  it('should not remove <pre> element when it contains sentinel markers in aggregate text', async () => {
+    // This is a regression test for a bug where removeSentinelNodes was called on the entire
+    // <pre> element after filtering lines. Since the <pre> element's aggregate text contained
+    // sentinel markers (from the __LS_FILE_START__/__LS_FILE_END__ markers), it would remove
+    // the entire <pre> element, resulting in empty code blocks in the rendered HTML.
+
+    const entryFilePath = path.join(docsPaths.snippetAssetsRoot, 'patterns/auth/live-store-provider.tsx')
+    const bundle = buildSnippetBundle({ entryFilePath, baseDir: docsPaths.snippetAssetsRoot })
+
+    const rendered = await Effect.runPromise(
+      __internal.renderSnippet(docsRenderer, bundle, 'patterns/auth/live-store-provider.tsx'),
+    )
+
+    const html = rendered.html ?? ''
+
+    // Critical checks: The HTML must contain <pre> and <code> tags
+    expect(html).toContain('<pre')
+    expect(html).toContain('<code')
+
+    // The <pre> tag should not be empty
+    expect(html).not.toMatch(/<pre[^>]*>\s*<\/pre>/)
+
+    // Should contain the actual code content
+    expect(html).toContain('AuthenticatedProvider')
+    expect(html).toContain('LiveStoreProvider')
+    expect(html).toContain('syncPayload')
+
+    // Should NOT contain sentinel markers in the final output
+    expect(html).not.toContain('__LS_FILE_START__')
+    expect(html).not.toContain('__LS_FILE_END__')
+    expect(html).not.toContain('// ---cut---')
+  })
+
+  it('should not remove <pre> element for keep-payload-canonical snippet', async () => {
+    const entryFilePath = path.join(docsPaths.snippetAssetsRoot, 'patterns/auth/keep-payload-canonical.ts')
+    const bundle = buildSnippetBundle({ entryFilePath, baseDir: docsPaths.snippetAssetsRoot })
+
+    const rendered = await Effect.runPromise(
+      __internal.renderSnippet(docsRenderer, bundle, 'patterns/auth/keep-payload-canonical.ts'),
+    )
+
+    const html = rendered.html ?? ''
+
+    // Critical checks: The HTML must contain <pre> and <code> tags
+    expect(html).toContain('<pre')
+    expect(html).toContain('<code')
+
+    // The <pre> tag should not be empty
+    expect(html).not.toMatch(/<pre[^>]*>\s*<\/pre>/)
+
+    // Should contain the actual code content
+    expect(html).toContain('ensureAuthorized')
+    expect(html).toContain('validatePayload')
+
+    // Should NOT contain sentinel markers
+    expect(html).not.toContain('__LS_FILE_START__')
+    expect(html).not.toContain('__LS_FILE_END__')
+  })
+})

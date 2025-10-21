@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main  # Only run on pushes to main
+      - dev   # Also run on pushes to dev to keep dev docs deploys consistent
   pull_request:
     branches: ['**']  # Run on PRs targeting any branch
 
@@ -277,8 +278,9 @@ jobs:
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: mono docs build --api-docs
-      - run: mono docs deploy
-        if: github.event.pull_request.head.repo.fork != true
+      - name: Deploy docs (PRs from non-forks or any push)
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
+        run: mono docs deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 
