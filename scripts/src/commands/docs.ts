@@ -221,7 +221,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             const ref = process.env.GITHUB_REF
             if (typeof ref === 'string') {
               const match = ref.match(/refs\/pull\/(\d+)\//)
-              if (match && match[1]) return match[1]
+              if (match?.[1]) return match[1]
             }
             return undefined
           })()
