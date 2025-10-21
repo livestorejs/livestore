@@ -4,9 +4,9 @@ import {
   type IntentionalShutdownCause,
   type InvalidPullError,
   type IsOfflineError,
+  isQueryBuilder,
   type MaterializeError,
   type QueryBuilder,
-  isQueryBuilder,
   type StoreInterrupted,
   type SyncError,
   type UnexpectedError,
@@ -172,12 +172,12 @@ const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<
 
   const candidate = value as LiveQueryDef<any>
   if (typeof candidate.make !== 'function') {
-    // Definitions must be able to materialize a live query instance.
+    // Without a factory function the store cannot instantiate the live query.
     return false
   }
 
   if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
-    // These identifiers let the store dedupe subscriptions and debug queries.
+    // `hash` and `label` identify the definition for caching and logging.
     return false
   }
 
