@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RecursiveRouteImport } from './routes/recursive'
 import { Route as MultiInstanceRouteImport } from './routes/multi-instance'
 import { Route as IndependentRouteImport } from './routes/independent'
-import { Route as FullRouteImport } from './routes/full'
 import { Route as ChainedRouteImport } from './routes/chained'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -31,11 +30,6 @@ const IndependentRoute = IndependentRouteImport.update({
   path: '/independent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FullRoute = FullRouteImport.update({
-  id: '/full',
-  path: '/full',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ChainedRoute = ChainedRouteImport.update({
   id: '/chained',
   path: '/chained',
@@ -50,7 +44,6 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chained': typeof ChainedRoute
-  '/full': typeof FullRoute
   '/independent': typeof IndependentRoute
   '/multi-instance': typeof MultiInstanceRoute
   '/recursive': typeof RecursiveRoute
@@ -58,7 +51,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chained': typeof ChainedRoute
-  '/full': typeof FullRoute
   '/independent': typeof IndependentRoute
   '/multi-instance': typeof MultiInstanceRoute
   '/recursive': typeof RecursiveRoute
@@ -67,7 +59,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chained': typeof ChainedRoute
-  '/full': typeof FullRoute
   '/independent': typeof IndependentRoute
   '/multi-instance': typeof MultiInstanceRoute
   '/recursive': typeof RecursiveRoute
@@ -77,23 +68,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chained'
-    | '/full'
     | '/independent'
     | '/multi-instance'
     | '/recursive'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/chained'
-    | '/full'
-    | '/independent'
-    | '/multi-instance'
-    | '/recursive'
+  to: '/' | '/chained' | '/independent' | '/multi-instance' | '/recursive'
   id:
     | '__root__'
     | '/'
     | '/chained'
-    | '/full'
     | '/independent'
     | '/multi-instance'
     | '/recursive'
@@ -102,7 +85,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChainedRoute: typeof ChainedRoute
-  FullRoute: typeof FullRoute
   IndependentRoute: typeof IndependentRoute
   MultiInstanceRoute: typeof MultiInstanceRoute
   RecursiveRoute: typeof RecursiveRoute
@@ -131,13 +113,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndependentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/full': {
-      id: '/full'
-      path: '/full'
-      fullPath: '/full'
-      preLoaderRoute: typeof FullRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/chained': {
       id: '/chained'
       path: '/chained'
@@ -158,7 +133,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChainedRoute: ChainedRoute,
-  FullRoute: FullRoute,
   IndependentRoute: IndependentRoute,
   MultiInstanceRoute: MultiInstanceRoute,
   RecursiveRoute: RecursiveRoute,

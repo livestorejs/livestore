@@ -18,7 +18,7 @@ export function WorkspaceView() {
     ),
   )
 
-  const addIssue = () => {
+  const addIssue = () =>
     workspaceStore.commit(
       workspaceEvents.issueCreated({
         id: Date.now().toString(),
@@ -27,55 +27,67 @@ export function WorkspaceView() {
         createdAt: new Date(),
       }),
     )
-  }
 
-  const [isPreloadedIssueShown, setisPreloadedIssueShown] = useState(false)
-
+  const [isPreloadedIssueShown, setIsPreloadedIssueShown] = useState(false)
   const storeRegistry = useStoreRegistry()
   const preloadIssue = (issueId: string) =>
     storeRegistry.preload({
       ...issueStoreOptions(issueId),
-      gcTime: 5_000,
+      gcTime: 10_000,
     })
 
   return (
-    <div className="container">
-      <h2>{workspace.name}</h2>
+    <div>
+      <h3>{workspace.name}</h3>
       <dl>
         <dt>ID:</dt>
         <dd>{workspace.id}</dd>
         <dt>Store ID:</dt>
         <dd>{workspaceStore.storeId}</dd>
       </dl>
-      <div style={{ marginBottom: 20 }}>
-        <button type="button" onClick={addIssue}>
-          Create Issue
-        </button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div>
+          <h4>Recent Issues ({issueIds.length})</h4>
+          <p>
+            <button type="button" onClick={addIssue}>
+              Create Issue
+            </button>
+          </p>
+          <ul>
+            <ErrorBoundary FallbackComponent={ErrorFallback}>
+              <Suspense fallback={<div className="loading">Loading issue stores...</div>}>
+                {issueIds.map((id) => (
+                  <IssueView key={id} issueId={id} />
+                ))}
+              </Suspense>
+            </ErrorBoundary>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Preload Issue</h4>
+          <em>Preload by hovering over the button.</em>
+          <div>
+            {!isPreloadedIssueShown ? (
+              <p>
+                <button
+                  type="button"
+                  onMouseEnter={() => preloadIssue('preloaded-issue')}
+                  onClick={() => setIsPreloadedIssueShown(true)}
+                >
+                  Show
+                </button>
+              </p>
+            ) : (
+              <ErrorBoundary FallbackComponent={ErrorFallback}>
+                <Suspense fallback={<div className="loading">Loading issue store...</div>}>
+                  <IssueView issueId="preloaded-issue" />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </div>
+        </div>
       </div>
-
-      <h3>Recent Issues ({issueIds.length})</h3>
-      <ul>
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading issue stores...</div>}>
-            {issueIds.map((id) => (
-              <IssueView key={id} issueId={id} />
-            ))}
-          </Suspense>
-        </ErrorBoundary>
-      </ul>
-
-      <h3>Preloaded Issue (will preload on mouse enter)</h3>
-      {!isPreloadedIssueShown ? (
-        <button
-          type="button"
-          onMouseEnter={() => preloadIssue('preloaded-issue')}
-          onClick={() => setisPreloadedIssueShown(true)}
-        >
-          Show
-        </button>
-      ) : (
-        <IssueView issueId={'preloaded-issue'} />
-      )}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { StoreRegistryProvider } from '@livestore/react/experimental'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -10,8 +11,10 @@ export const Route = createFileRoute('/independent')({
 })
 
 function IndependentDemoRoute() {
+  const { storeRegistry } = Route.useRouteContext()
+
   return (
-    <section className="container">
+    <>
       <h2>Independent</h2>
       <em>Independent · Different Types · Separate Loading</em>
       <p>
@@ -19,19 +22,21 @@ function IndependentDemoRoute() {
         failure states stay isolated.
       </p>
 
-      <div className="grid">
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading workspace...</div>}>
-            <WorkspaceView />
-          </Suspense>
-        </ErrorBoundary>
+      <div>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<div className="loading">Loading workspace...</div>}>
+              <WorkspaceView />
+            </Suspense>
+          </ErrorBoundary>
 
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading issue...</div>}>
-            <IssueView issueId="root-issue" />
-          </Suspense>
-        </ErrorBoundary>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<div className="loading">Loading issue...</div>}>
+              <IssueView issueId="root-issue" />
+            </Suspense>
+          </ErrorBoundary>
+        </StoreRegistryProvider>
       </div>
-    </section>
+    </>
   )
 }

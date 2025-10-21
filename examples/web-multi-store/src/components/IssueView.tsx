@@ -7,44 +7,40 @@ export function IssueView({ issueId }: { issueId: string }) {
   const issueStore = useStore(issueStoreOptions(issueId)) // Will suspend component if the store is not yet loaded
   const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
 
-  const handleChangeStatus = (status: 'todo' | 'in-progress' | 'done') => {
+  const toggleStatus = () =>
     issueStore.commit(
       issueEvents.issueStatusChanged({
         id: issue.id,
-        status,
+        status: issue.status === 'done' ? 'todo' : 'done',
       }),
     )
-  }
 
   return (
-    <div className="container">
-      <h3>{issue.title}</h3>
+    <div>
+      <h4>{issue.title}</h4>
       <dl>
         <dt>ID:</dt>
         <dd>{issue.id}</dd>
         <dt>Store ID:</dt>
         <dd>{issueStore.storeId}</dd>
+        <dt>Status:</dt>
+        <dd>{issue.status}</dd>
       </dl>
       <p>
-        <strong>Status:</strong> {issue.status}
-        <br />
-        <button type="button" onClick={() => handleChangeStatus('todo')}>
-          To Do
-        </button>
-        <button type="button" onClick={() => handleChangeStatus('in-progress')}>
-          In Progress
-        </button>
-        <button type="button" onClick={() => handleChangeStatus('done')}>
-          Done
+        <button type="button" onClick={toggleStatus}>
+          Toggle Status
         </button>
       </p>
 
-      <h4>Child Issues ({issue.childIssueIds.length})</h4>
-      <ul>
-        {issue.childIssueIds.map((id) => (
-          <IssueView key={id} issueId={id} />
-        ))}
-      </ul>
+      {issue.childIssueIds.length > 0 && (
+        <ul>
+          {issue.childIssueIds.map((id) => (
+            <li key={id}>
+              <IssueView issueId={id} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

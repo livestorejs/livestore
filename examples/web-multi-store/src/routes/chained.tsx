@@ -1,3 +1,4 @@
+import { StoreRegistryProvider } from '@livestore/react/experimental'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -9,8 +10,10 @@ export const Route = createFileRoute('/chained')({
 })
 
 function ChainedDemoRoute() {
+  const { storeRegistry } = Route.useRouteContext()
+
   return (
-    <section className="container">
+    <>
       <h2>Chained</h2>
       <em>Dependent · Different Types · Separate Loading</em>
       <p>
@@ -18,13 +21,13 @@ function ChainedDemoRoute() {
         provider but still suspends independently to keep loading isolated.
       </p>
 
-      <div className="grid">
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Suspense fallback={<div className="loading">Loading workspace store...</div>}>
             <WorkspaceView />
           </Suspense>
         </ErrorBoundary>
-      </div>
-    </section>
+      </StoreRegistryProvider>
+    </>
   )
 }

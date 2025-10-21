@@ -1,3 +1,4 @@
+import { StoreRegistryProvider } from '@livestore/react/experimental'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -14,12 +15,14 @@ export const Route = createFileRoute('/multi-instance')({
 
     return null
   },
-  component: MultiInstanceDemoRoute,
+  component: MultiInstanceRoute,
 })
 
-function MultiInstanceDemoRoute() {
+function MultiInstanceRoute() {
+  const { storeRegistry } = Route.useRouteContext()
+
   return (
-    <section className="container">
+    <>
       <h2>Multi-Instance</h2>
       <em>Independent · Same Type · Shared Loading</em>
       <p>
@@ -27,15 +30,17 @@ function MultiInstanceDemoRoute() {
         isolated store instance keyed by its <code>storeId</code>.
       </p>
 
-      <div className="grid">
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
-            {issueIds.map((id) => (
-              <IssueView key={id} issueId={id} />
-            ))}
-          </Suspense>
-        </ErrorBoundary>
+      <div>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
+              {issueIds.map((id) => (
+                <IssueView key={id} issueId={id} />
+              ))}
+            </Suspense>
+          </ErrorBoundary>
+        </StoreRegistryProvider>
       </div>
-    </section>
+    </>
   )
 }
