@@ -161,6 +161,7 @@ const makeDevtoolsOptions = ({
               sessionId: 'static', // TODO make this dynamic
               schemaAlias: devtools.schemaAlias,
               isLeader: true,
+              origin: undefined,
             }),
             port: devtools.port,
             host: devtools.host,

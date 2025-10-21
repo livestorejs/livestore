@@ -159,6 +159,7 @@ export const makePersistedAdapter =
 
           return () => {}
         },
+        origin: undefined,
       })
 
       return clientSession

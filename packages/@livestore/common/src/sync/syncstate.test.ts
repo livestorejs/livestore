@@ -441,6 +441,48 @@ describe('syncstate', () => {
             expectEventArraysEqual(result.newEvents, [e1_1, e1_2, e1_3])
             expectEventArraysEqual(result.confirmedEvents, [])
           })
+
+          // Leaders can choose to ignore client-only events while still returning them for broadcast.
+          // Ensure pending/local head only reflects events that must be pushed upstream.
+          it('keeps pending empty when pushing only client-only events that are being ignored', () => {
+            const syncState = new SyncState.SyncState({
+              pending: [],
+              upstreamHead: EventSequenceNumber.ROOT,
+              localHead: EventSequenceNumber.ROOT,
+            })
+
+            const result = merge({
+              syncState,
+              payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1] }),
+              ignoreClientEvents: true,
+            })
+
+            expectAdvance(result)
+            expectEventArraysEqual(result.newSyncState.pending, [])
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(EventSequenceNumber.ROOT)
+            expectEventArraysEqual(result.newEvents, [e0_1])
+          })
+
+          it('appends only upstream-bound events to pending when ignoring client-only pushes', () => {
+            const syncState = new SyncState.SyncState({
+              pending: [],
+              upstreamHead: EventSequenceNumber.ROOT,
+              localHead: EventSequenceNumber.ROOT,
+            })
+
+            const result = merge({
+              syncState,
+              payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1, e1_0] }),
+              ignoreClientEvents: true,
+            })
+
+            expectAdvance(result)
+            expectEventArraysEqual(result.newSyncState.pending, [e1_0])
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(e1_0.seqNum)
+            expectEventArraysEqual(result.newEvents, [e0_1, e1_0])
+          })
         })
 
         describe('reject', () => {

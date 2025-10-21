@@ -245,6 +245,7 @@ const makeAdapterImpl = ({
         isLeader: true,
         // Not really applicable for node as there is no "reload the app" concept
         registerBeforeUnload: (_onBeforeUnload) => () => {},
+        origin: undefined,
       })
 
       return clientSession

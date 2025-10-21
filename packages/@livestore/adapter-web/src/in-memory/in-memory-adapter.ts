@@ -52,6 +52,16 @@ export interface InMemoryAdapterOptions {
   }
 }
 
+/**
+ * Create a web-only in-memory LiveStore adapter.
+ *
+ * - Runs entirely in memory: fast, zero I/O, great for tests, sandboxes, or ephemeral sessions.
+ * - Works across browser execution contexts: Window, WebWorker, SharedWorker, and ServiceWorker.
+ * - DevTools: to inspect this adapter from the browser DevTools, provide a `sharedWorker` in `options.devtools`.
+ *   (The shared worker is used to bridge the DevTools UI to the running session.)
+ * - No persistence support: nothing is written to OPFS/IndexedDB/localStorage. `importSnapshot`
+ *   can bootstrap initial state only; subsequent changes are not persisted anywhere.
+ */
 export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
   (adapterArgs) =>
@@ -108,6 +118,7 @@ export const makeInMemoryAdapter =
         lockStatus,
         shutdown,
         webmeshMode: 'direct',
+        origin: typeof window !== 'undefined' ? window.location.origin : self.location.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           Effect.gen(function* () {
             if (sharedWorkerFiber === undefined || devtoolsEnabled === false) {
