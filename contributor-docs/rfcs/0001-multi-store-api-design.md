@@ -450,8 +450,6 @@ issueId  // What if issueId === workspaceId?
 
 Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime)).
 
-#### Instance States
-
 A store instance progresses through these states:
 
 ```
@@ -492,7 +490,7 @@ A store instance progresses through these states:
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Configuration Layers
+### Configuration Layers
 
 Two layers define an effective store's configuration.
 
@@ -529,7 +527,7 @@ During runtime the longest `gcTime` wins when multiple observers pass different 
 
 **Rationale:** This ensures late-arriving observers don't get surprised by an early eviction from a short-lived peer (see [Longest `gcTime` Wins When Multiple Observers](#longest-gctime-wins-when-multiple-observers)).
 
-#### SSR Considerations
+### SSR Considerations
 
 **Scope Stores to Requests:**
 
@@ -563,9 +561,9 @@ const DEFAULT_GC_TIME = typeof window === 'undefined'
 
 See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-gctime-of-60-seconds-browser--infinity-ssr).
 
-#### Limitations
+### Limitations
 
-##### 1. No Cross-Store Queries
+#### 1. No Cross-Store Queries
 
 Each store remains fully isolated. There is no supported way to query across store boundaries in a single operation.
 
