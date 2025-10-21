@@ -278,7 +278,17 @@ jobs:
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - run: mono docs build --api-docs
-      - name: Deploy docs (PRs from non-forks or any push)
+
+      # Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
+      # - pull_request (any base): deploy alias on dev docs site (no purge)
+      #     example domain: https://<alias>--livestore-docs-dev.netlify.app
+      # - push to dev: deploy to dev docs site as prod
+      #     domain: https://dev.docs.livestore.dev
+      # - push to main: deploy to prod docs site as prod
+      #     domain: https://docs.livestore.dev
+      # `mono docs deploy` applies filter="docs" and infers context from GitHub env.
+
+      - name: Deploy docs (context-inferred)
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
         run: mono docs deploy
         env:
