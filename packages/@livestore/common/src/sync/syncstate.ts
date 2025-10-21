@@ -407,13 +407,20 @@ export const merge = ({
           }),
         )
       } else {
+        const nonClientEvents = ignoreClientEvents
+          ? payload.newEvents.filter((event) => !isClientEvent(event))
+          : payload.newEvents
+        const newPending = [...syncState.pending, ...nonClientEvents]
+        const newLocalHead =
+          newPending.at(-1)?.seqNum ?? EventSequenceNumber.max(syncState.localHead, syncState.upstreamHead)
+
         return validateMergeResult(
           MergeResultAdvance.make({
             _tag: 'advance',
             newSyncState: new SyncState({
-              pending: [...syncState.pending, ...payload.newEvents],
+              pending: newPending,
               upstreamHead: syncState.upstreamHead,
-              localHead: payload.newEvents.at(-1)!.seqNum,
+              localHead: newLocalHead,
             }),
             newEvents: payload.newEvents,
             confirmedEvents: [],
