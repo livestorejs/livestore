@@ -247,7 +247,7 @@ export const makeLeaderSyncProcessor = ({
       // Rehydrate sync queue
       if (initialSyncState.pending.length > 0) {
         const globalPendingEvents = initialSyncState.pending
-          // Don't sync clientOnly events
+          // Don't sync client-local events
           .filter((eventEncoded) => {
             const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
             return eventDef === undefined ? true : eventDef.options.clientOnly === false
@@ -562,7 +562,7 @@ const backgroundApplyLocalPushes = ({
         mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
       })
 
-      // Don't sync clientOnly events
+      // Don't sync client-local events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
         const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
         return eventDef === undefined ? true : eventDef.options.clientOnly === false
