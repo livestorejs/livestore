@@ -53,16 +53,11 @@ const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 
 /**
- * Deploys docs using the Netlify CLI in config‑driven mode.
+ * Deploy docs using the Netlify CLI by uploading the prebuilt directory.
  *
  * Assumptions:
  * - Astro already built the site (mono docs build) into ./docs/dist
- * - docs/netlify.toml contains [build].publish = "docs/dist"
  * - We want Edge Functions registered/activated without triggering another app build
- *
- * Implementation:
- * - We always omit --dir so the CLI reads [build].publish and performs the
- *   deploy (including edge function registration) with --no-build.
  */
 export const deployToNetlify = ({
   site,
@@ -70,12 +65,15 @@ export const deployToNetlify = ({
   cwd,
   filter,
   message,
+  dir,
 }: {
   site: string
   target: Target
   cwd: string
   filter?: string
   message?: string
+  /** Absolute or docs-relative path to the built output directory. */
+  dir: string
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -96,6 +94,7 @@ export const deployToNetlify = ({
         'deploy',
         '--no-build',
         '--json',
+        `--dir=${dir}`,
         `--site=${site}`,
         filter ? `--filter=${filter}` : undefined,
         message ? `--message=${message}` : undefined,
