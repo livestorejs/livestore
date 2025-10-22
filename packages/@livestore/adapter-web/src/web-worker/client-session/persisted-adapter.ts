@@ -282,7 +282,7 @@ export const makePersistedAdapter =
                 clientId,
                 devtoolsEnabled,
                 debugInstanceId,
-                syncPayload: syncPayloadEncoded,
+                syncPayloadEncoded,
               }),
             }),
           )

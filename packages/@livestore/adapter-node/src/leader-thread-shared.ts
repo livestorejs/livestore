@@ -34,24 +34,20 @@ export type TestingOverrides = {
   >
 }
 
-export interface MakeLeaderThreadArgs<
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
-> {
+export interface MakeLeaderThreadArgs {
   storeId: string
   clientId: string
-  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
+  syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
   makeSqliteDb: MakeNodeSqliteDb
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
-  syncPayloadSchema: TSyncPayloadSchema
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
+  syncPayloadSchema: Schema.Schema.AnyNoContext
   testing: TestingOverrides | undefined
 }
 
-export const makeLeaderThread = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+export const makeLeaderThread = ({
   storeId,
   clientId,
   syncOptions,
@@ -62,7 +58,7 @@ export const makeLeaderThread = <
   syncPayloadEncoded,
   syncPayloadSchema,
   testing,
-}: MakeLeaderThreadArgs<TSyncPayloadSchema>): Effect.Effect<
+}: MakeLeaderThreadArgs): Effect.Effect<
   Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
   UnexpectedError,
   Scope.Scope

@@ -81,7 +81,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           schema: options.schema,
           testing: options.testing,
           makeSqliteDb,
-          syncPayloadEncoded: args.syncPayload,
+          syncPayloadEncoded: args.syncPayloadEncoded,
           syncPayloadSchema,
         })
       }).pipe(Layer.unwrapScoped),

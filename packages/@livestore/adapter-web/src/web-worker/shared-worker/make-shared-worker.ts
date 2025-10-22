@@ -163,7 +163,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const InvariantsSchema = Schema.Struct({
     storeId: Schema.String,
     storageOptions: WorkerSchema.StorageType,
-    syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+    syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
     liveStoreVersion: Schema.Literal(liveStoreVersion),
     devtoolsEnabled: Schema.Boolean,
   })
@@ -176,11 +176,11 @@ const makeWorkerRunner = Effect.gen(function* () {
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
     UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
       Effect.gen(function* () {
-        // Enforce invariants: storeId, storageOptions, syncPayload, liveStoreVersion must remain stable
+        // Enforce invariants: storeId, storageOptions, syncPayloadEncoded, liveStoreVersion must remain stable
         const invariants: Invariants = {
           storeId: initial.storeId,
           storageOptions: initial.storageOptions,
-          syncPayload: initial.syncPayload,
+          syncPayloadEncoded: initial.syncPayloadEncoded,
           liveStoreVersion: clientLiveStoreVersion,
           devtoolsEnabled: initial.devtoolsEnabled,
         }

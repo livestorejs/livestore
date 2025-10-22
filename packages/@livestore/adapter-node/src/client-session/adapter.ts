@@ -292,9 +292,7 @@ const resetNodePersistence = ({
   )
 }
 
-const makeLocalLeaderThread = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+const makeLocalLeaderThread = ({
   storeId,
   clientId,
   schema,
@@ -310,10 +308,10 @@ const makeLocalLeaderThread = <
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
-  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
+  syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
-  syncPayloadSchema: TSyncPayloadSchema
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
+  syncPayloadSchema: Schema.Schema.AnyNoContext
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
@@ -367,9 +365,7 @@ const makeLocalLeaderThread = <
     }).pipe(Effect.provide(layer))
   })
 
-const makeWorkerLeaderThread = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+const makeWorkerLeaderThread = ({
   shutdown,
   storeId,
   clientId,
@@ -391,7 +387,7 @@ const makeWorkerLeaderThread = <
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
   testing?: {
     overrides?: TestingOverrides
   }
@@ -412,7 +408,7 @@ const makeWorkerLeaderThread = <
           clientId,
           storage,
           devtools,
-          syncPayload: syncPayloadEncoded,
+          syncPayloadEncoded,
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),

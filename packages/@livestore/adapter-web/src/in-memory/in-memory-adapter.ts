@@ -143,24 +143,20 @@ export const makeInMemoryAdapter =
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer))
 
-export interface MakeLeaderThreadArgs<
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
-> {
+export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
   storeId: string
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
-  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
-  syncPayloadSchema: TSyncPayloadSchema
+  syncOptions: SyncOptions | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
+  syncPayloadSchema: Schema.Schema.AnyNoContext
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
 }
 
-const makeLeaderThread = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+const makeLeaderThread = ({
   schema,
   storeId,
   clientId,
@@ -171,7 +167,7 @@ const makeLeaderThread = <
   importSnapshot,
   devtoolsEnabled,
   sharedWorkerFiber,
-}: MakeLeaderThreadArgs<TSyncPayloadSchema>) =>
+}: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()
 

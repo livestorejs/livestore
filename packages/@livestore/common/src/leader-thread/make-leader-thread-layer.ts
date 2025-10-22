@@ -43,12 +43,10 @@ import type {
 } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
-export interface MakeLeaderThreadLayerParams<
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
-> {
+export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayloadSchema: TSyncPayloadSchema
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: Schema.Schema.AnyNoContext
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -70,9 +68,7 @@ export interface MakeLeaderThreadLayerParams<
   }
 }
 
-export const makeLeaderThreadLayer = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
@@ -86,7 +82,7 @@ export const makeLeaderThreadLayer = <
   shutdownChannel,
   params,
   testing,
-}: MakeLeaderThreadLayerParams<TSyncPayloadSchema>): Layer.Layer<
+}: MakeLeaderThreadLayerParams): Layer.Layer<
   LeaderThreadCtx,
   UnexpectedError,
   Scope.Scope | HttpClient.HttpClient

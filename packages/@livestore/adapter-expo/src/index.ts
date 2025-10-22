@@ -175,9 +175,7 @@ export const makePersistedAdapter =
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
 
-const makeLeaderThread = <
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
->({
+const makeLeaderThread = ({
   storeId,
   clientId,
   schema,
@@ -194,14 +192,14 @@ const makeLeaderThread = <
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeExpoSqliteDb
-  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
+  syncOptions: SyncOptions | undefined
   storage: {
     subDirectory?: string
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
-  syncPayloadSchema: TSyncPayloadSchema
+  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
+  syncPayloadSchema: Schema.Schema.AnyNoContext
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
