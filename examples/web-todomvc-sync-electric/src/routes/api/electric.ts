@@ -1,6 +1,7 @@
 import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
 import { createFileRoute } from '@tanstack/react-router'
+import { SyncPayload } from '../../livestore/schema.ts'
 import { makeDb } from '../../server/db.ts'
 
 // You can change this to your own ElectricSQL endpoint
@@ -21,7 +22,9 @@ export const Route = createFileRoute('/api/electric')({
           apiSecret: 'change-me-electric-secret',
         })
 
-        if ((payload as any)?.authToken !== 'insecure-token-change-me') {
+        const decodedPayload = payload === undefined ? undefined : Schema.decodeUnknownSync(SyncPayload)(payload)
+
+        if (decodedPayload?.authToken !== 'insecure-token-change-me') {
           return new Response(JSON.stringify({ error: 'Invalid auth token' }), { status: 401 })
         }
 

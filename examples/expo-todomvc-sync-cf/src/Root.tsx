@@ -10,7 +10,7 @@ import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
-import { events, schema, tables } from './livestore/schema.ts'
+import { events, SyncPayload, schema, tables } from './livestore/schema.ts'
 
 const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
@@ -28,6 +28,7 @@ export const Root = () => {
         schema={schema}
         adapter={adapter}
         storeId={storeId}
+        syncPayloadSchema={SyncPayload}
         syncPayload={{ authToken: 'insecure-token-change-me' }}
         renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
         renderError={(error: any) => <Text>Error: {error.toString()}</Text>}

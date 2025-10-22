@@ -5,7 +5,7 @@ import { useParams, useRouter } from '@tanstack/react-router'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { VersionBadge } from '../components/VersionBadge.tsx'
-import { schema } from '../livestore/schema/index.ts'
+import { SyncPayload, schema } from '../livestore/schema/index.ts'
 import { renderBootStatus } from '../livestore/utils.tsx'
 import LiveStoreWorker from '../livestore/worker.ts?worker'
 import type { Status } from '../types/status.ts'
@@ -30,7 +30,7 @@ const adapter = makePersistedAdapter({
 })
 
 const defaultStoreId = 'linearlite-demo' as const
-const syncPayload = { authToken: 'insecure-token-change-me' } as const
+const syncPayload = { authToken: 'insecure-token-change-me' }
 
 export const Provider = ({ children, storeId: storeIdOverride }: { children: React.ReactNode; storeId?: string }) => {
   const router = useRouter()
@@ -66,6 +66,7 @@ export const Provider = ({ children, storeId: storeIdOverride }: { children: Rea
       renderLoading={renderBootStatus}
       batchUpdates={batchUpdates}
       storeId={storeId}
+      syncPayloadSchema={SyncPayload}
       syncPayload={syncPayload}
     >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>

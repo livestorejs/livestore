@@ -4,7 +4,7 @@ import { makeAdapter } from '@livestore/adapter-node'
 import { createStorePromise } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
 
-import { events, schema, tables } from './livestore/schema.ts'
+import { events, SyncPayload, schema, tables } from './livestore/schema.ts'
 
 const main = async () => {
   const adapter = makeAdapter({
@@ -16,6 +16,7 @@ const main = async () => {
     adapter,
     schema,
     storeId: process.env.STORE_ID ?? 'test',
+    syncPayloadSchema: SyncPayload,
     syncPayload: { authToken: 'insecure-token-change-me' },
   })
 
@@ -27,7 +28,7 @@ const main = async () => {
 
   // TODO wait for syncing to be complete
   await new Promise((resolve) => setTimeout(resolve, 1000))
-  await store.shutdown()
+  await store.shutdownPromise()
 }
 
 main().catch(console.error)

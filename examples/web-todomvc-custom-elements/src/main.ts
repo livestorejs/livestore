@@ -6,7 +6,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { events, schema, type Todo, tables } from './schema.ts'
+import { events, SyncPayload, schema, type Todo, tables } from './schema.ts'
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -19,9 +19,15 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-const syncPayload = { authToken: 'insecure-token-change-me' } as const
+const syncPayload = { authToken: 'insecure-token-change-me' }
 
-const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements', syncPayload })
+const store = await createStorePromise({
+  schema,
+  adapter,
+  storeId: 'todomvc-custom-elements',
+  syncPayloadSchema: SyncPayload,
+  syncPayload,
+})
 
 // Add version badge
 console.log(`LiveStore v${liveStoreVersion}`)

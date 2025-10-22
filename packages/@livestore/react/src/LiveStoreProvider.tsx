@@ -28,7 +28,7 @@ import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
 
-export interface LiveStoreProviderProps {
+export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue> {
   schema: LiveStoreSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -77,8 +77,8 @@ export interface LiveStoreProviderProps {
    *
    * @default undefined
    */
-  syncPayloadSchema?: CreateStoreOptions<LiveStoreSchema>['syncPayloadSchema']
-  syncPayload?: CreateStoreOptions<LiveStoreSchema>['syncPayload']
+  syncPayloadSchema?: TSyncPayloadSchema
+  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   debug?: {
     instanceId?: string
   }
@@ -109,7 +109,7 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
 const defaultRenderLoading = (status: BootStatus) =>
   IS_REACT_NATIVE ? null : <>LiveStore is loading ({status.stage})...</>
 
-export const LiveStoreProvider = ({
+export const LiveStoreProvider = <TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue>({
   renderLoading = defaultRenderLoading,
   renderError = defaultRenderError,
   renderShutdown = defaultRenderShutdown,
@@ -126,7 +126,7 @@ export const LiveStoreProvider = ({
   syncPayload,
   syncPayloadSchema,
   debug,
-}: LiveStoreProviderProps & React.PropsWithChildren): React.ReactNode => {
+}: LiveStoreProviderProps<TSyncPayloadSchema> & React.PropsWithChildren): React.ReactNode => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
