@@ -17,8 +17,7 @@ import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/com
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import type { Schema, Scope } from '@livestore/utils/effect'
 import {
   Effect,
   Exit,
