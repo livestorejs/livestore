@@ -255,12 +255,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           // from docs/netlify.toml and registers Edge Functions without rebuilding
           const draftDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
-            dir: `${docsPath}/dist`,
             target: { _tag: 'draft' },
             cwd: docsPath,
             filter: deployFilter,
             message: buildMessage('draft'),
-            useConfigPublish: true,
           })
 
           const alias = (() => {
@@ -285,12 +283,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           // Final deploy (prod or alias) using config‑driven publish as well
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
-            dir: `${docsPath}/dist`,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             filter: deployFilter,
             message: buildMessage(contextLabelFor(prod, alias)),
-            useConfigPublish: true,
           })
 
           if (purgeCdn) {

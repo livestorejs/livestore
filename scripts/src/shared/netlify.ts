@@ -64,23 +64,30 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
  *   (we still pass `--no-build`). This is required for Edge Functions to be active when
  *   the app was already built by Astro.
  */
+/**
+ * Deploys docs using the Netlify CLI in config‑driven mode.
+ *
+ * Assumptions:
+ * - Astro already built the site (mono docs build) into ./docs/dist
+ * - docs/netlify.toml contains [build].publish = "docs/dist"
+ * - We want Edge Functions registered/activated without triggering another app build
+ *
+ * Implementation:
+ * - We always omit --dir so the CLI reads [build].publish and performs the
+ *   deploy (including edge function registration) with --no-build.
+ */
 export const deployToNetlify = ({
   site,
-  dir,
   target,
   cwd,
   filter,
   message,
-  useConfigPublish = false,
 }: {
   site: string
-  dir: string
   target: Target
   cwd: string
   filter?: string
   message?: string
-  /** When true, omit --dir and let Netlify read [build].publish from netlify.toml */
-  useConfigPublish?: boolean
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -101,8 +108,6 @@ export const deployToNetlify = ({
         'deploy',
         '--no-build',
         '--json',
-        // In config‑driven mode we omit --dir so the CLI can read [build].publish
-        useConfigPublish ? undefined : `--dir=${dir}`,
         `--site=${site}`,
         filter ? `--filter=${filter}` : undefined,
         message ? `--message=${message}` : undefined,
