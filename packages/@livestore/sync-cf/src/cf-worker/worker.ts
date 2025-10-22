@@ -190,10 +190,9 @@ export const handleSyncRequest = <
           return new Response(message, { status: 400, headers })
         }
 
-        const result = yield* Effect.promise(async () => validatePayload(decodedEither.right as TSyncPayload, { storeId })).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.either,
-        )
+        const result = yield* Effect.promise(async () =>
+          validatePayload(decodedEither.right as TSyncPayload, { storeId }),
+        ).pipe(UnexpectedError.mapToUnexpectedError, Effect.either)
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
