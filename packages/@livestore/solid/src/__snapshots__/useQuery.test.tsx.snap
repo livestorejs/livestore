@@ -297,7 +297,6 @@ exports[`useQuery > filtered dependency query 2`] = `
         "node-1",
       ],
       "super": [
-        "node-9",
         "node-10",
       ],
     },
@@ -321,16 +320,6 @@ exports[`useQuery > filtered dependency query 2`] = `
   ],
   "deferredEffects": [],
   "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
     {
       "_tag": "effect",
       "id": "node-10",
@@ -475,8 +464,6 @@ exports[`useQuery > filtered dependency query 3`] = `
         "node-1",
       ],
       "super": [
-        "node-9",
-        "node-10",
         "node-11",
       ],
     },
@@ -500,26 +487,6 @@ exports[`useQuery > filtered dependency query 3`] = `
   ],
   "deferredEffects": [],
   "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-9",
-      "invocations": 3,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
-    {
-      "_tag": "effect",
-      "id": "node-10",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
-      "sub": [
-        "node-7",
-      ],
-    },
     {
       "_tag": "effect",
       "id": "node-11",
@@ -770,23 +737,12 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 2: a
         "node-1",
       ],
       "super": [
-        "node-7",
         "node-8",
       ],
     },
   ],
   "deferredEffects": [],
   "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:libraryTracksView1",
-      "sub": [
-        "node-6",
-      ],
-    },
     {
       "_tag": "effect",
       "id": "node-8",
@@ -1165,23 +1121,12 @@ exports[`useQuery > simple 2`] = `
         "node-1",
       ],
       "super": [
-        "node-7",
         "node-8",
       ],
     },
   ],
   "deferredEffects": [],
   "effects": [
-    {
-      "_tag": "effect",
-      "id": "node-7",
-      "invocations": 2,
-      "isDestroyed": false,
-      "label": "subscribe:select * from todos",
-      "sub": [
-        "node-6",
-      ],
-    },
     {
       "_tag": "effect",
       "id": "node-8",
