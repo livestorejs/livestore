@@ -138,7 +138,8 @@ const makeAdapterImpl = ({
 }): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema, schema } =
+        adapterArgs
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -205,7 +206,8 @@ const makeAdapterImpl = ({
               storage,
               ...omitUndefineds({
                 syncOptions: leaderThreadInput.sync,
-                syncPayload,
+                syncPayloadEncoded,
+                syncPayloadSchema,
                 testing,
               }),
             }).pipe(UnexpectedError.mapToUnexpectedError)
@@ -219,7 +221,7 @@ const makeAdapterImpl = ({
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
-              syncPayload,
+              syncPayloadEncoded,
             })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -289,7 +291,8 @@ const makeLocalLeaderThread = ({
   schema,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   storage,
   devtools,
   testing,
@@ -300,7 +303,8 @@ const makeLocalLeaderThread = ({
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any>
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
@@ -314,7 +318,8 @@ const makeLocalLeaderThread = ({
         schema,
         syncOptions,
         storage,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtools,
         makeSqliteDb,
         ...omitUndefineds({ testing: testing?.overrides }),
@@ -363,7 +368,7 @@ const makeWorkerLeaderThread = ({
   storage,
   devtools,
   bootStatusQueue,
-  syncPayload,
+  syncPayloadEncoded,
   testing,
 }: {
   shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
@@ -375,7 +380,7 @@ const makeWorkerLeaderThread = ({
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   testing?: {
     overrides?: TestingOverrides
   }
@@ -396,7 +401,7 @@ const makeWorkerLeaderThread = ({
           clientId,
           storage,
           devtools,
-          syncPayload,
+          syncPayloadEncoded,
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),

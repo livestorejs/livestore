@@ -30,7 +30,13 @@ export const makeAdapter =
   }): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, /* devtoolsEnabled, shutdown, bootStatusQueue,  */ syncPayload, schema } = adapterArgs
+      const {
+        storeId,
+        /* devtoolsEnabled, shutdown, bootStatusQueue,  */
+        syncPayloadEncoded,
+        syncPayloadSchema,
+        schema,
+      } = adapterArgs
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
 
@@ -85,7 +91,8 @@ export const makeAdapter =
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayloadEncoded,
+          syncPayloadSchema,
         }),
       )
 

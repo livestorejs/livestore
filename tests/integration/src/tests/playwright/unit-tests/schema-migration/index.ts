@@ -42,7 +42,8 @@ export const testMultipleMigrations = () =>
           shutdown: () => Effect.void,
           connectDevtoolsToStore: () => Effect.void,
           debugInstanceId: `migration-${index}`,
-          syncPayload: undefined,
+          syncPayloadEncoded: undefined,
+          syncPayloadSchema: undefined,
         })
 
         let hasMigrated = false

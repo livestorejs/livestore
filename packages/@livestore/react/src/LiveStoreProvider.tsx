@@ -77,7 +77,8 @@ export interface LiveStoreProviderProps {
    *
    * @default undefined
    */
-  syncPayload?: Schema.JsonValue
+  syncPayloadSchema?: CreateStoreOptions<LiveStoreSchema>['syncPayloadSchema']
+  syncPayload?: CreateStoreOptions<LiveStoreSchema>['syncPayload']
   debug?: {
     instanceId?: string
   }
@@ -123,6 +124,7 @@ export const LiveStoreProvider = ({
   signal,
   confirmUnsavedChanges = true,
   syncPayload,
+  syncPayloadSchema,
   debug,
 }: LiveStoreProviderProps & React.PropsWithChildren): React.ReactNode => {
   const storeCtx = useCreateStore({
@@ -137,6 +139,7 @@ export const LiveStoreProvider = ({
       disableDevtools,
       signal,
       syncPayload,
+      syncPayloadSchema,
       debug,
     }),
   })
@@ -175,6 +178,7 @@ const useCreateStore = ({
   params,
   confirmUnsavedChanges,
   syncPayload,
+  syncPayloadSchema,
   debug,
 }: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
@@ -211,6 +215,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    syncPayloadSchema,
     debugInstanceId,
   })
 
@@ -239,6 +244,7 @@ const useCreateStore = ({
     params: inputPropsCacheRef.current.params !== params,
     confirmUnsavedChanges: inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges,
     syncPayload: inputPropsCacheRef.current.syncPayload !== syncPayload,
+    syncPayloadSchema: inputPropsCacheRef.current.syncPayloadSchema !== syncPayloadSchema,
     debugInstanceId: inputPropsCacheRef.current.debugInstanceId !== debugInstanceId,
   }
 
@@ -253,7 +259,8 @@ const useCreateStore = ({
     inputPropChanges.context ||
     inputPropChanges.params ||
     inputPropChanges.confirmUnsavedChanges ||
-    inputPropChanges.syncPayload
+    inputPropChanges.syncPayload ||
+    inputPropChanges.syncPayloadSchema
   ) {
     inputPropsCacheRef.current = {
       schema,
@@ -267,6 +274,7 @@ const useCreateStore = ({
       params,
       confirmUnsavedChanges,
       syncPayload,
+      syncPayloadSchema,
       debugInstanceId,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
@@ -342,6 +350,7 @@ const useCreateStore = ({
             params,
             confirmUnsavedChanges,
             syncPayload,
+            syncPayloadSchema,
           }),
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
@@ -405,6 +414,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    syncPayloadSchema,
     debugInstanceId,
     interrupt,
   ])

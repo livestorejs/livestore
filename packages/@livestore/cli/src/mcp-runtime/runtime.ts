@@ -4,6 +4,7 @@ import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { isLiveStoreSchema, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 /** Currently connected store */
@@ -48,16 +49,29 @@ export const init = ({
     }
 
     // Optional: syncPayload for authenticated backends
-    const syncPayload = (mod as any)?.syncPayload
-    if (syncPayload !== undefined) {
-      try {
-        JSON.stringify(syncPayload)
-      } catch {
-        throw new Error(
-          `Exported 'syncPayload' from ${abs} must be JSON-serializable (received non-serializable value).`,
-        )
-      }
-    }
+    const syncPayloadSchemaExport = (mod as any)?.syncPayloadSchema
+    const syncPayloadSchema =
+      syncPayloadSchemaExport === undefined
+        ? Schema.JsonValue
+        : Schema.isSchema(syncPayloadSchemaExport)
+          ? (syncPayloadSchemaExport as Schema.Schema<any>)
+          : shouldNeverHappen(
+              `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
+            )
+
+    const syncPayloadExport = (mod as any)?.syncPayload
+    const syncPayload =
+      syncPayloadExport === undefined
+        ? undefined
+        : (() => {
+            try {
+              return Schema.decodeSync(syncPayloadSchema)(syncPayloadExport)
+            } catch (error) {
+              throw new Error(
+                `Failed to decode 'syncPayload' from ${abs} using the provided schema: ${(error as Error).message}`,
+              )
+            }
+          })()
 
     // Build Node adapter internally
     const adapter = makeNodeAdapter({
@@ -78,6 +92,7 @@ export const init = ({
       adapter,
       disableDevtools: true,
       syncPayload,
+      syncPayloadSchema,
     })
 
     // Replace existing store if any

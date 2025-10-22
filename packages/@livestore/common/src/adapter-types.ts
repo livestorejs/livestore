@@ -138,5 +138,7 @@ export interface AdapterArgs {
    *
    * @default undefined
    */
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
+  syncPayloadEncoded: Schema.JsonValue | undefined
 }

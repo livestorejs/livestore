@@ -74,7 +74,7 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       storeId: Schema.String,
       clientId: Schema.String,
       storage: StorageType,
-      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+      syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
       devtools: Schema.Union(
         Schema.Struct({
           enabled: Schema.Literal(true),

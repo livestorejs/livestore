@@ -17,8 +17,17 @@ import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import {
+  BrowserWorker,
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  type Schema,
+  SubscriptionRef,
+  Worker,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
@@ -66,7 +75,7 @@ export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, shutdown, syncPayload, storeId, devtoolsEnabled } = adapterArgs
+      const { schema, shutdown, syncPayloadEncoded, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
@@ -98,7 +107,8 @@ export const makeInMemoryAdapter =
         clientId,
         makeSqliteDb: sqliteDbFactory({ sqlite3 }),
         syncOptions: options.sync,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorkerFiber,
@@ -149,7 +159,8 @@ export interface MakeLeaderThreadArgs {
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
@@ -161,7 +172,8 @@ const makeLeaderThread = ({
   clientId,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   importSnapshot,
   devtoolsEnabled,
   sharedWorkerFiber,
@@ -208,7 +220,8 @@ const makeLeaderThread = ({
         dbEventlog,
         devtoolsOptions,
         shutdownChannel,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
       }),
     )
 

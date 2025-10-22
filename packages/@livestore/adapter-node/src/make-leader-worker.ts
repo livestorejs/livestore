@@ -35,6 +35,7 @@ import * as WorkerSchema from './worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
     /** @default 'livestore-node-leader-thread' */
@@ -79,6 +80,8 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           schema: options.schema,
           testing: options.testing,
           makeSqliteDb,
+          syncPayloadEncoded: args.syncPayloadEncoded,
+          syncPayloadSchema: options.syncPayloadSchema,
         })
       }).pipe(Layer.unwrapScoped),
     PushToLeader: ({ batch }) =>

@@ -1,5 +1,5 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -7,6 +7,7 @@ import {
   Layer,
   PlatformError,
   Queue,
+  Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -44,7 +45,8 @@ import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -70,7 +72,8 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
-  syncPayload,
+  syncPayloadSchema = Schema.JsonValue,
+  syncPayloadEncoded,
   makeSqliteDb,
   syncOptions,
   dbState,
@@ -81,6 +84,9 @@ export const makeLeaderThreadLayer = ({
   testing,
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
+    const syncPayloadDecoded =
+      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
@@ -93,7 +99,7 @@ export const makeLeaderThreadLayer = ({
     const syncBackend =
       syncOptions?.backend === undefined
         ? undefined
-        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload }).pipe(
+        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayloadDecoded }).pipe(
             Effect.provide(
               Layer.succeed(
                 KeyValueStore.KeyValueStore,
