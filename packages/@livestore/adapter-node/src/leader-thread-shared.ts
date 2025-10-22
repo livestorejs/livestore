@@ -42,7 +42,8 @@ export interface MakeLeaderThreadArgs {
   makeSqliteDb: MakeNodeSqliteDb
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   testing: TestingOverrides | undefined
 }
 
@@ -54,7 +55,8 @@ export const makeLeaderThread = ({
   storage,
   devtools,
   schema,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   testing,
 }: MakeLeaderThreadArgs): Effect.Effect<
   Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
@@ -113,7 +115,8 @@ export const makeLeaderThread = ({
       dbEventlog,
       devtoolsOptions,
       shutdownChannel,
-      syncPayload,
+      syncPayloadEncoded,
+      syncPayloadSchema,
     })
   }).pipe(
     Effect.tapCauseLogPretty,

@@ -83,7 +83,8 @@ export const makePersistedAdapter =
         })
       }
 
-      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
+      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema } =
+        adapterArgs
 
       const {
         storage,
@@ -127,7 +128,8 @@ export const makePersistedAdapter =
         storage: storage ?? {},
         devtoolsEnabled,
         bootStatusQueue,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtoolsUrl,
       })
 
@@ -174,7 +176,8 @@ const makeLeaderThread = ({
   storage,
   devtoolsEnabled,
   bootStatusQueue: bootStatusQueueClientSession,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   devtoolsUrl,
 }: {
   storeId: string
@@ -187,7 +190,8 @@ const makeLeaderThread = ({
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
@@ -221,7 +225,8 @@ const makeLeaderThread = ({
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 

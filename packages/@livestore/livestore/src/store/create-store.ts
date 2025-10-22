@@ -28,7 +28,7 @@ import {
   OtelTracer,
   Queue,
   Runtime,
-  type Schema,
+  Schema,
   Scope,
   TaskTracing,
 } from '@livestore/utils/effect'
@@ -63,7 +63,11 @@ export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effe
   Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
 >() {}
 
-export type LiveStoreContextProps<TSchema extends LiveStoreSchema, TContext = {}> = {
+export type LiveStoreContextProps<
+  TSchema extends LiveStoreSchema,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> = {
   schema: TSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -88,9 +92,15 @@ export type LiveStoreContextProps<TSchema extends LiveStoreSchema, TContext = {}
   disableDevtools?: boolean | 'auto'
   onBootStatus?: (status: BootStatus) => void
   batchUpdates: (run: () => void) => void
+  syncPayloadSchema?: TSyncPayloadSchema
+  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
 }
 
-export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> {
+export interface CreateStoreOptions<
+  TSchema extends LiveStoreSchema,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> {
   schema: TSchema
   adapter: Adapter
   storeId: string
@@ -123,7 +133,8 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
    *
    * @default undefined
    */
-  syncPayload?: Schema.JsonValue
+  syncPayloadSchema?: TSyncPayloadSchema
+  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   params?: {
     leaderPushBatchSize?: number
     simulation?: {
@@ -136,11 +147,15 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
 }
 
 /** Create a new LiveStore Store */
-export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
+export const createStorePromise = async <
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+>({
   signal,
   otelOptions,
   ...options
-}: CreateStoreOptions<TSchema, TContext> & {
+}: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
 }): Promise<Store<TSchema, TContext>> =>
@@ -167,7 +182,11 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
     Effect.runPromise,
   )
 
-export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}>({
+export const createStore = <
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+>({
   schema,
   adapter,
   storeId,
@@ -181,7 +200,8 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
   debug,
   confirmUnsavedChanges = true,
   syncPayload,
-}: CreateStoreOptions<TSchema, TContext>): Effect.Effect<
+  syncPayloadSchema,
+}: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema>): Effect.Effect<
   Store<TSchema, TContext>,
   UnexpectedError,
   Scope.Scope | OtelTracer.OtelTracer
@@ -194,6 +214,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
     yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
+    const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as TSyncPayloadSchema
 
     return yield* Effect.gen(function* () {
       const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
@@ -250,6 +271,11 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
           Fiber.join,
         )
 
+      const syncPayloadEncoded =
+        syncPayload === undefined
+          ? undefined
+          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnexpectedError.mapToUnexpectedError)
+
       const clientSession: ClientSession = yield* adapter({
         schema,
         storeId,
@@ -258,7 +284,8 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema.An
         shutdown,
         connectDevtoolsToStore: connectDevtoolsToStore_,
         debugInstanceId,
-        syncPayload,
+        syncPayloadSchema: resolvedSyncPayloadSchema,
+        syncPayloadEncoded,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
       if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
