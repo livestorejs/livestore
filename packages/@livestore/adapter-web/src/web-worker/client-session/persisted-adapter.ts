@@ -34,6 +34,8 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as OpfsUtils from '../../opfs-utils.ts'
+import type { WebAdapterSsrEncodedSnapshot, WebAdapterSsrSnapshot } from '../../ssr.ts'
+import { decodeWebAdapterSsrSnapshot } from '../../ssr.ts'
 import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
@@ -115,6 +117,14 @@ export type WebAdapterOptions = {
      */
     awaitSharedWorkerTermination?: boolean
   }
+  ssr?: WebAdapterSsrOptions
+}
+
+export type WebAdapterSsrInitialData = WebAdapterSsrSnapshot | WebAdapterSsrEncodedSnapshot
+
+export interface WebAdapterSsrOptions {
+  initialData?: WebAdapterSsrInitialData | ((context: { storeId: string }) => WebAdapterSsrInitialData | undefined)
+  onConsume?: (data: WebAdapterSsrInitialData) => void
 }
 
 /**
@@ -159,6 +169,8 @@ export const makePersistedAdapter =
         yield* resetPersistedDataFromClientSession({ storageOptions, storeId })
       }
 
+      const ssrInitialData = yield* resolveSsrInitialData({ options: options.ssr, storeId })
+
       // Note on fast-path booting:
       // Instead of waiting for the leader worker to boot and then get a database snapshot from it,
       // we're here trying to get the snapshot directly from storage
@@ -166,9 +178,10 @@ export const makePersistedAdapter =
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
       const dataFromFile =
-        options.experimental?.disableFastPath === true
+        ssrInitialData?.normalized.snapshot ??
+        (options.experimental?.disableFastPath === true
           ? undefined
-          : yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
+          : yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema }))
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
@@ -366,18 +379,36 @@ export const makePersistedAdapter =
       // TODO maybe bring back transfering the initially created in-memory db snapshot instead of
       // re-exporting the db
       const initialResult =
-        dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
-              Effect.map(({ snapshot, migrationsReport }) => ({
-                _tag: 'from-leader-worker' as const,
-                snapshot,
-                migrationsReport,
-              })),
-            )
-          : { _tag: 'fast-path' as const, snapshot: dataFromFile }
+        ssrInitialData !== undefined
+          ? ({
+              _tag: 'from-ssr' as const,
+              snapshot: ssrInitialData.normalized.snapshot,
+              migrationsReport: ssrInitialData.normalized.migrationsReport,
+            } satisfies {
+              _tag: 'from-ssr'
+              snapshot: Uint8Array<ArrayBuffer>
+              migrationsReport: typeof ssrInitialData.normalized.migrationsReport
+            })
+          : dataFromFile === undefined
+            ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+                Effect.map(({ snapshot, migrationsReport }) => ({
+                  _tag: 'from-leader-worker' as const,
+                  snapshot,
+                  migrationsReport,
+                })),
+              )
+            : { _tag: 'fast-path' as const, snapshot: dataFromFile }
+
+      if (initialResult._tag === 'from-ssr' && ssrInitialData !== undefined) {
+        options.ssr?.onConsume?.(ssrInitialData.raw)
+      }
 
       const migrationsReport =
-        initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
+        initialResult._tag === 'from-leader-worker'
+          ? initialResult.migrationsReport
+          : initialResult._tag === 'from-ssr'
+            ? initialResult.migrationsReport
+            : { migrations: [] }
 
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
@@ -556,3 +587,35 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
 })
+
+const resolveSsrInitialData = ({ options, storeId }: { options: WebAdapterSsrOptions | undefined; storeId: string }) =>
+  Effect.gen(function* () {
+    if (options?.initialData === undefined) {
+      return undefined
+    }
+
+    const initialData =
+      typeof options.initialData === 'function' ? options.initialData({ storeId }) : options.initialData
+
+    if (initialData === undefined) {
+      return undefined
+    }
+
+    const normalized = 'snapshotBase64' in initialData ? decodeWebAdapterSsrSnapshot(initialData) : initialData
+
+    if (normalized.storeId !== storeId) {
+      yield* Effect.logWarning(
+        `[@livestore/adapter-web:ssr] Ignoring SSR payload for store '${normalized.storeId}' (expected '${storeId}')`,
+      )
+      return undefined
+    }
+
+    if (normalized.liveStoreVersion !== liveStoreVersion) {
+      yield* Effect.logWarning(
+        `[@livestore/adapter-web:ssr] Ignoring SSR payload built for LiveStore v${normalized.liveStoreVersion} (expected v${liveStoreVersion})`,
+      )
+      return undefined
+    }
+
+    return { normalized, raw: initialData }
+  })
