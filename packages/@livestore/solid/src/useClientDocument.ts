@@ -127,14 +127,16 @@ export const useClientDocument: {
     }),
   )
 
-  const queryRef = useQueryRef(queryDef, {
-    otelSpanName: `LiveStore:useClientDocument:${tableName}:${idStr}`,
-    // SOLID  - if we want useQueryRef's options to be reactive
-    //          - we should either use getters (and not spread)
-    //          - or use mergeProps
-    //          but we can assume storeArg?.store will stay in 1 state? (see above)
-    ...omitUndefineds({ store: storeArg?.store }),
-  })
+  const queryRefOptions = mergeProps(
+    {
+      get otelSpanName() {
+        return `LiveStore:useClientDocument:${tableName()}:${idStr()}`
+      },
+    },
+    () => omitUndefineds({ store: storeArg?.store }),
+  )
+
+  const queryRef = useQueryRef(queryDef, queryRefOptions)
 
   const setState = (newValueOrFn: TTableDef['Value']) => {
     const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef()) : newValueOrFn
