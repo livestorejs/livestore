@@ -9,7 +9,7 @@ import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import { VersionBadge } from './components/VersionBadge.js'
-import { schema } from './livestore/schema.js'
+import { SyncPayload, schema } from './livestore/schema.js'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
 const AppBody: React.FC = () => (
@@ -26,7 +26,7 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-const syncPayload = { authToken: 'insecure-token-change-me' } as const
+const syncPayload = { authToken: 'insecure-token-change-me' }
 
 export const App: React.FC = () => (
   <LiveStoreProvider
@@ -34,6 +34,7 @@ export const App: React.FC = () => (
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
     batchUpdates={batchUpdates}
+    syncPayloadSchema={SyncPayload}
     syncPayload={syncPayload}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

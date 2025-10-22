@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { SyncPayload } from '../schema.ts'
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
   onPush: async (message, context) => {
@@ -10,7 +11,7 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
   },
 }) {}
 
-const validatePayload = (payload: any, context: { storeId: string }) => {
+const validatePayload = (payload: typeof SyncPayload.Type | undefined, context: { storeId: string }) => {
   console.log(`Validating connection for store: ${context.storeId}`)
   if (payload?.authToken !== 'insecure-token-change-me') {
     throw new Error('Invalid auth token')
@@ -26,6 +27,7 @@ export default {
         searchParams,
         ctx,
         syncBackendBinding: 'SYNC_BACKEND_DO',
+        syncPayloadSchema: SyncPayload,
         validatePayload,
       })
     }

@@ -9,7 +9,7 @@ import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import { VersionBadge } from './components/VersionBadge.js'
-import { schema } from './livestore/schema.js'
+import { SyncPayload, schema } from './livestore/schema.js'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { getStoreId } from './util/store-id.js'
 
@@ -36,6 +36,7 @@ export const App: React.FC = () => (
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     batchUpdates={batchUpdates}
     storeId={storeId}
+    syncPayloadSchema={SyncPayload}
     syncPayload={{ authToken: 'insecure-token-change-me' }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

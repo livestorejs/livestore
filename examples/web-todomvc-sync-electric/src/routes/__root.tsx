@@ -13,7 +13,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { VersionBadge } from '../components/VersionBadge.tsx'
-import { schema } from '../livestore/schema.ts'
+import { SyncPayload, schema } from '../livestore/schema.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { getStoreId } from '../util/store-id.ts'
 
@@ -40,6 +40,7 @@ const RootComponent = () => {
           renderLoading={() => <div>Loading...</div>}
           adapter={adapter}
           batchUpdates={batchUpdates}
+          syncPayloadSchema={SyncPayload}
           syncPayload={{ authToken: 'insecure-token-change-me' }}
         >
           <Outlet />

@@ -1,8 +1,7 @@
 import { env as importedEnv } from 'cloudflare:workers'
 import { UnexpectedError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
-import type { Schema } from '@livestore/utils/effect'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 import type { CfTypes, SearchParams } from '../common/mod.ts'
 import type { CfDeclare } from './mod.ts'
 import { type Env, matchSyncRequest } from './shared.ts'
@@ -23,7 +22,7 @@ export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjec
  * Options accepted by {@link makeWorker}. The Durable Object binding has to be
  * supplied explicitly so we never fall back to deprecated defaults when Cloudflare config changes.
  */
-export type MakeWorkerOptions<TEnv extends Env = Env> = {
+export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.JsonValue> = {
   /**
    * Binding name of the sync Durable Object declared in wrangler config.
    */
@@ -33,7 +32,16 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
    * Note: This runs only at connection time, not for individual push events.
    * For push event validation, use the `onPush` callback in the durable object.
    */
-  validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
+  /**
+   * Optionally pass a schema to decode the client-provided payload into a typed object
+   * before calling {@link validatePayload}. If omitted, the raw JSON value is forwarded.
+   */
+  syncPayloadSchema?: Schema.Schema<TSyncPayload>
+  /**
+   * Validates the (optionally decoded) payload during WebSocket connection establishment.
+   * If {@link syncPayloadSchema} is provided, `payload` will be of the schema’s inferred type.
+   */
+  validatePayload?: (payload: TSyncPayload, context: { storeId: string }) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
 }
@@ -48,8 +56,9 @@ export type MakeWorkerOptions<TEnv extends Env = Env> = {
 export const makeWorker = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
+  TSyncPayload = Schema.JsonValue,
 >(
-  options: MakeWorkerOptions<TEnv>,
+  options: MakeWorkerOptions<TEnv, TSyncPayload>,
 ): CFWorker<TEnv, TDurableObjectRpc> => {
   return {
     fetch: async (request, env, _ctx) => {
@@ -74,7 +83,7 @@ export const makeWorker = <
 
       // Check if this is a sync request first, before showing info message
       if (searchParams !== undefined) {
-        return handleSyncRequest<TEnv, TDurableObjectRpc>({
+        return handleSyncRequest<TEnv, TDurableObjectRpc, unknown, TSyncPayload>({
           request,
           searchParams,
           env,
@@ -82,6 +91,7 @@ export const makeWorker = <
           syncBackendBinding: options.syncBackendBinding,
           headers: corsHeaders,
           validatePayload: options.validatePayload,
+          syncPayloadSchema: options.syncPayloadSchema,
         })
       }
 
@@ -147,6 +157,7 @@ export const handleSyncRequest = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
+  TSyncPayload = Schema.JsonValue,
 >({
   request,
   searchParams: { storeId, payload, transport },
@@ -154,6 +165,7 @@ export const handleSyncRequest = <
   syncBackendBinding,
   headers,
   validatePayload,
+  syncPayloadSchema,
 }: {
   request: CfTypes.Request<CFHostMetada>
   searchParams: SearchParams
@@ -161,20 +173,41 @@ export const handleSyncRequest = <
   /** Only there for type-level reasons */
   ctx: CfTypes.ExecutionContext
   /** Binding name of the sync backend Durable Object */
-  syncBackendBinding: MakeWorkerOptions<TEnv>['syncBackendBinding']
+  syncBackendBinding: MakeWorkerOptions<TEnv, TSyncPayload>['syncBackendBinding']
   headers?: CfTypes.HeadersInit | undefined
-  validatePayload?: (payload: Schema.JsonValue | undefined, context: { storeId: string }) => void | Promise<void>
+  validatePayload?: MakeWorkerOptions<TEnv, TSyncPayload>['validatePayload']
+  syncPayloadSchema?: MakeWorkerOptions<TEnv, TSyncPayload>['syncPayloadSchema']
 }): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
     if (validatePayload !== undefined) {
-      const result = yield* Effect.promise(async () => validatePayload!(payload, { storeId })).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.either,
-      )
+      // Always decode with the supplied schema when present, even if payload is undefined.
+      // This ensures required payloads are enforced by the schema.
+      if (syncPayloadSchema !== undefined) {
+        const decodedEither = Schema.decodeUnknownEither(syncPayloadSchema)(payload)
+        if (decodedEither._tag === 'Left') {
+          const message = decodedEither.left.toString()
+          console.error('Invalid payload (decode failed)', message)
+          return new Response(message, { status: 400, headers })
+        }
 
-      if (result._tag === 'Left') {
-        console.error('Invalid payload', result.left)
-        return new Response(result.left.toString(), { status: 400, headers })
+        const result = yield* Effect.promise(async () =>
+          validatePayload(decodedEither.right as TSyncPayload, { storeId }),
+        ).pipe(UnexpectedError.mapToUnexpectedError, Effect.either)
+
+        if (result._tag === 'Left') {
+          console.error('Invalid payload (validation failed)', result.left)
+          return new Response(result.left.toString(), { status: 400, headers })
+        }
+      } else {
+        const result = yield* Effect.promise(async () => validatePayload(payload as TSyncPayload, { storeId })).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.either,
+        )
+
+        if (result._tag === 'Left') {
+          console.error('Invalid payload (validation failed)', result.left)
+          return new Response(result.left.toString(), { status: 400, headers })
+        }
       }
     }
 

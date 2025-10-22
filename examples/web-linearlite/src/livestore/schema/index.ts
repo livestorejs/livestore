@@ -1,4 +1,4 @@
-import { makeSchema, State } from '@livestore/livestore'
+import { makeSchema, Schema, State } from '@livestore/livestore'
 import * as eventsDefs from '../events.ts'
 import { type Comment, comment } from './comment.ts'
 import { type Description, description } from './description.ts'
@@ -77,3 +77,6 @@ const materializers = State.SQLite.materializers(events, {
 const state = State.SQLite.makeState({ tables, materializers })
 
 export const schema = makeSchema({ events, state })
+
+// Shared sync payload schema for this example
+export const SyncPayload = Schema.Struct({ authToken: Schema.String })

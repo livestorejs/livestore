@@ -92,7 +92,24 @@ export type LiveStoreContextProps<
   disableDevtools?: boolean | 'auto'
   onBootStatus?: (status: BootStatus) => void
   batchUpdates: (run: () => void) => void
+  /**
+   * Schema describing the shape of the sync payload and used to encode it.
+   *
+   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
+   *   and pass it here to get end-to-end type safety and validation.
+   */
   syncPayloadSchema?: TSyncPayloadSchema
+  /**
+   * Payload that is sent to the sync backend during connection establishment.
+   *
+   * - Its TypeScript type is inferred from `syncPayloadSchema` (i.e. `typeof SyncPayload.Type`).
+   * - At runtime this value is encoded with `syncPayloadSchema` before being handed to the adapter.
+   *
+   * Example:
+   *   const SyncPayload = Schema.Struct({ authToken: Schema.String })
+   *   <LiveStoreProvider syncPayloadSchema={SyncPayload} syncPayload={{ authToken: '...' }} />
+   */
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
 }
 
@@ -129,11 +146,22 @@ export interface CreateStoreOptions<
    */
   confirmUnsavedChanges?: boolean
   /**
-   * Payload that will be passed to the sync backend when connecting
+   * Schema describing the shape of the sync payload and used to encode it.
+   *
+   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
+   *   and pass it here to get end-to-end type safety and validation.
+   */
+  syncPayloadSchema?: TSyncPayloadSchema
+  /**
+   * Payload that is sent to the sync backend during connection establishment.
+   *
+   * - Its TypeScript type is inferred from `syncPayloadSchema` (i.e. `typeof SyncPayload.Type`).
+   * - At runtime this value is encoded with `syncPayloadSchema` and carried through the adapter
+   *   to the backend where it can be decoded with the same schema.
    *
    * @default undefined
    */
-  syncPayloadSchema?: TSyncPayloadSchema
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   params?: {
     leaderPushBatchSize?: number

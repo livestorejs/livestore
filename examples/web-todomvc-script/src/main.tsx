@@ -2,7 +2,7 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, liveStoreVersion } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { events, schema, tables } from './livestore/schema.js'
+import { events, SyncPayload, schema, tables } from './livestore/schema.js'
 
 // Or use makePersistedAdapter for OPFS storage
 const adapter = makeInMemoryAdapter({
@@ -13,9 +13,15 @@ const adapter = makeInMemoryAdapter({
   },
 })
 
-const syncPayload = { authToken: 'insecure-token-change-me' } as const
+const syncPayload = { authToken: 'insecure-token-change-me' }
 
-const store = await createStorePromise({ adapter, schema, storeId: 'store-1', syncPayload })
+const store = await createStorePromise({
+  adapter,
+  schema,
+  storeId: 'store-1',
+  syncPayloadSchema: SyncPayload,
+  syncPayload,
+})
 
 // Add version badge
 console.log(`LiveStore v${liveStoreVersion}`)
