@@ -8,6 +8,20 @@
 # The domain is double-escaped as required by Netlify's regex configuration
 remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
 
+# Publish configuration for Netlify CLI deploys (no additional build)
+#
+# We build the site with Astro via our Mono CLI (mono docs build), which writes
+# the static assets to ./dist and Netlify edge bundling artifacts to ./\.netlify.
+# For deploys, we intentionally avoid a second framework build and instead use
+# the Netlify CLI in config-driven mode (without --dir). With this [build]
+# section, the CLI can pick up the publish directory and perform the deploy
+# (including edge function registration) while respecting our prebuilt outputs.
+#
+# Important: publish is workspace-root relative; our docs live in ./docs and the
+# Astro build emits to ./docs/dist, hence the path below.
+[build]
+publish = "docs/dist"
+
 [[edge_functions]]
 function = "markdown-negotiation"
 path = "/*"

@@ -52,6 +52,18 @@ const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 
 const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 
+/**
+ * Deploys a folder/site to Netlify using the CLI.
+ *
+ * Two deploy modes are supported:
+ * - Directory upload (legacy) by passing a `dir` and leaving `useConfigPublish` false.
+ *   This copies only the static files. Note: This does NOT register Edge Functions.
+ * - Config‑driven publish (recommended) by setting `useConfigPublish` true and omitting
+ *   `--dir`. Netlify reads `netlify.toml` (docs/netlify.toml) to learn the publish
+ *   directory and performs edge function registration WITHOUT rebuilding the app
+ *   (we still pass `--no-build`). This is required for Edge Functions to be active when
+ *   the app was already built by Astro.
+ */
 export const deployToNetlify = ({
   site,
   dir,
@@ -59,6 +71,7 @@ export const deployToNetlify = ({
   cwd,
   filter,
   message,
+  useConfigPublish = false,
 }: {
   site: string
   dir: string
@@ -66,6 +79,8 @@ export const deployToNetlify = ({
   cwd: string
   filter?: string
   message?: string
+  /** When true, omit --dir and let Netlify read [build].publish from netlify.toml */
+  useConfigPublish?: boolean
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -86,7 +101,8 @@ export const deployToNetlify = ({
         'deploy',
         '--no-build',
         '--json',
-        `--dir=${dir}`,
+        // In config‑driven mode we omit --dir so the CLI can read [build].publish
+        useConfigPublish ? undefined : `--dir=${dir}`,
         `--site=${site}`,
         filter ? `--filter=${filter}` : undefined,
         message ? `--message=${message}` : undefined,
