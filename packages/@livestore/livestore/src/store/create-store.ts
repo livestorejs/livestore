@@ -66,7 +66,7 @@ export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effe
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 > = {
   schema: TSchema
   /**
@@ -83,7 +83,7 @@ export type LiveStoreContextProps<
   boot?: (
     store: Store<TSchema, TContext>,
   ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
-  adapter: Adapter<TSyncPayloadSchema>
+  adapter: Adapter
   /**
    * Whether to disable devtools.
    *
@@ -99,10 +99,10 @@ export type LiveStoreContextProps<
 export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 > {
   schema: TSchema
-  adapter: Adapter<TSyncPayloadSchema>
+  adapter: Adapter
   storeId: string
   context?: TContext
   boot?: (
@@ -150,7 +150,7 @@ export interface CreateStoreOptions<
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >({
   signal,
   otelOptions,
@@ -185,7 +185,7 @@ export const createStorePromise = async <
 export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >({
   schema,
   adapter,
@@ -272,7 +272,9 @@ export const createStore = <
         )
 
       const syncPayloadEncoded =
-        syncPayload === undefined ? undefined : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload)
+        syncPayload === undefined
+          ? undefined
+          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnexpectedError.mapToUnexpectedError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,

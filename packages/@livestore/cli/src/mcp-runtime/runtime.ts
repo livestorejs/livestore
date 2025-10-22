@@ -4,6 +4,7 @@ import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { isLiveStoreSchema, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 /** Currently connected store */
@@ -53,12 +54,10 @@ export const init = ({
       syncPayloadSchemaExport === undefined
         ? Schema.JsonValue
         : Schema.isSchema(syncPayloadSchemaExport)
-          ? (syncPayloadSchemaExport as Schema.Schema<any, any, any>)
-          : (() => {
-              throw new Error(
-                `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
-              )
-            })()
+          ? (syncPayloadSchemaExport as Schema.Schema<any>)
+          : shouldNeverHappen(
+              `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
+            )
 
     const syncPayloadExport = (mod as any)?.syncPayload
     const syncPayload =

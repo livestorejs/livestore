@@ -19,7 +19,7 @@ import {
   LogLevel,
   OtelTracer,
   Scheduler,
-  Schema,
+  type Schema,
   Stream,
   TaskTracing,
   WorkerRunner,
@@ -34,7 +34,7 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
-  syncPayloadSchema?: Schema.Schema<any, any, any>
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
   }
@@ -111,7 +111,6 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
         const runtime = yield* Effect.runtime<never>()
-        const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as Schema.Schema<any, any, any>
 
         const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -158,7 +157,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           devtoolsOptions,
           shutdownChannel,
           syncPayloadEncoded,
-          syncPayloadSchema: resolvedSyncPayloadSchema,
+          syncPayloadSchema,
         })
       }).pipe(
         Effect.tapCauseLogPretty,

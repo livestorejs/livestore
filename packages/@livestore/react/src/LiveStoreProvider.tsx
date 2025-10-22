@@ -178,6 +178,7 @@ const useCreateStore = ({
   params,
   confirmUnsavedChanges,
   syncPayload,
+  syncPayloadSchema,
   debug,
 }: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
@@ -413,6 +414,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    syncPayloadSchema,
     debugInstanceId,
     interrupt,
   ])

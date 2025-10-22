@@ -35,7 +35,7 @@ import * as WorkerSchema from './worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
-  syncPayloadSchema?: Schema.Schema<any, any, any>
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
     /** @default 'livestore-node-leader-thread' */
@@ -74,7 +74,6 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
         )
         const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
-        const syncPayloadSchema = (options.syncPayloadSchema ?? Schema.JsonValue) as Schema.Schema<any, any, any>
         return yield* makeLeaderThread({
           ...args,
           syncOptions: options.sync,
@@ -82,7 +81,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           testing: options.testing,
           makeSqliteDb,
           syncPayloadEncoded: args.syncPayloadEncoded,
-          syncPayloadSchema,
+          syncPayloadSchema: options.syncPayloadSchema,
         })
       }).pipe(Layer.unwrapScoped),
     PushToLeader: ({ batch }) =>

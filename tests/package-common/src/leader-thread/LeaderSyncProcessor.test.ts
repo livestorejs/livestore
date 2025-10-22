@@ -504,6 +504,7 @@ const LeaderThreadCtxLive = ({
       storeId: 'test',
       clientId: 'test',
       syncPayloadEncoded: undefined,
+      syncPayloadSchema: undefined,
       makeSqliteDb,
       syncOptions: {
         backend:

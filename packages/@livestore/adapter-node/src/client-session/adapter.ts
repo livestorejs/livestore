@@ -303,8 +303,8 @@ const makeLocalLeaderThread = ({
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
-  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
-  syncPayloadSchema: Schema.Schema.AnyNoContext
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any>
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
@@ -380,7 +380,7 @@ const makeWorkerLeaderThread = ({
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   testing?: {
     overrides?: TestingOverrides
   }

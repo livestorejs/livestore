@@ -190,8 +190,8 @@ const makeLeaderThread = ({
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
-  syncPayloadSchema: Schema.Schema.AnyNoContext
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {

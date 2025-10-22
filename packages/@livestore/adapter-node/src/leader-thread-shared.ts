@@ -42,8 +42,8 @@ export interface MakeLeaderThreadArgs {
   makeSqliteDb: MakeNodeSqliteDb
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayloadEncoded: Schema.Schema.Encoded<Schema.Schema.AnyNoContext> | undefined
-  syncPayloadSchema: Schema.Schema.AnyNoContext
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   testing: TestingOverrides | undefined
 }
 
