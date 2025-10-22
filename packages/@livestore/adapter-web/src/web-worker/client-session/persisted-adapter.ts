@@ -490,7 +490,8 @@ export const makePersistedAdapter =
         isLeader: gotLocky,
         leaderThread,
         webmeshMode: 'direct',
-        origin: typeof window !== 'undefined' ? window.location.origin : self.location.origin,
+        // Can be undefined in Node.js
+        origin: globalThis.location?.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           connectWebmeshNodeClientSession({ webmeshNode, sessionInfo, sharedWorker, devtoolsEnabled, schema }),
         registerBeforeUnload: (onBeforeUnload) => {
