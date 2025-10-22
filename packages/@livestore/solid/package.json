@@ -10,7 +10,8 @@
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
+    "@opentelemetry/api": "catalog:",
+    "@solid-primitives/deep": "^0.3.3"
   },
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
