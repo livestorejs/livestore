@@ -7,7 +7,7 @@ import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useRcResource } from './useRcResource.ts'
 import { originalStackLimit } from './utils/stack-info.ts'
-import { createEffect, createMemo, useContext, type Accessor } from 'solid-js'
+import { createEffect, createMemo, onCleanup, useContext, type Accessor } from 'solid-js'
 import { createWritable } from './utils/create-writable.ts'
 import { resolve, type AccessorMaybe } from './utils.ts'
 
@@ -135,9 +135,11 @@ Stack trace:
     // so we're also updating the span name here.
     resource().span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${query$().label}`)
 
-    return store.subscribe(
+    const cleanup = store.subscribe(
       query$(),
       (newValue) => {
+        // SOLID  - I wonder if this has implications if we would do setStore({reconcile})
+        //          because then the proxy is mutated, which might be backed by the original LiveStore-object
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
         // there may be weird reactivity bugs.
@@ -153,6 +155,8 @@ Stack trace:
         otelContext: resource().otelContext,
       },
     )
+
+    onCleanup(cleanup)
   })
 
   useRcResource(
