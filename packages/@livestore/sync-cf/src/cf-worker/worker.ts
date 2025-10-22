@@ -180,8 +180,9 @@ export const handleSyncRequest = <
 }): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
     if (validatePayload !== undefined) {
-      // Decode the payload using the provided schema when available, otherwise forward as-is
-      if (syncPayloadSchema !== undefined && payload !== undefined) {
+      // Always decode with the supplied schema when present, even if payload is undefined.
+      // This ensures required payloads are enforced by the schema.
+      if (syncPayloadSchema !== undefined) {
         const decodedEither = Schema.decodeUnknownEither(syncPayloadSchema)(payload)
         if (decodedEither._tag === 'Left') {
           const message = decodedEither.left.toString()
@@ -189,7 +190,7 @@ export const handleSyncRequest = <
           return new Response(message, { status: 400, headers })
         }
 
-        const result = yield* Effect.promise(async () => validatePayload(decodedEither.right, { storeId })).pipe(
+        const result = yield* Effect.promise(async () => validatePayload(decodedEither.right as TSyncPayload, { storeId })).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.either,
         )
