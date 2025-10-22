@@ -47,18 +47,6 @@ export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
 }
 
-export const resolveSyncPayload = <TSyncPayloadSchema extends Schema.Schema<any, any, any>>(
-  schema: TSyncPayloadSchema,
-  payload: Schema.Schema.Type<TSyncPayloadSchema> | undefined,
-) =>
-  payload === undefined
-    ? Effect.succeed({ decoded: undefined, encoded: undefined as Schema.Schema.Encoded<TSyncPayloadSchema> | undefined })
-    : Effect.gen(function* () {
-        const decoded = yield* Schema.validate(schema)(payload)
-        const encoded = yield* Schema.encode(schema)(decoded)
-        return { decoded, encoded }
-      })
-
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
   LiveStoreContextRunning,
   LiveStoreContextRunning_
@@ -283,10 +271,10 @@ export const createStore = <
           Fiber.join,
         )
 
-      const { decoded: decodedSyncPayload, encoded: encodedSyncPayload } = yield* resolveSyncPayload(
-        resolvedSyncPayloadSchema,
-        syncPayload,
-      )
+      const syncPayloadEncoded =
+        syncPayload === undefined
+          ? undefined
+          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -296,9 +284,8 @@ export const createStore = <
         shutdown,
         connectDevtoolsToStore: connectDevtoolsToStore_,
         debugInstanceId,
-        syncPayload: decodedSyncPayload,
         syncPayloadSchema: resolvedSyncPayloadSchema,
-        syncPayloadEncoded: encodedSyncPayload,
+        syncPayloadEncoded,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
       if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {

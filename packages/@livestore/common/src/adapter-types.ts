@@ -140,7 +140,7 @@ export interface AdapterArgs<TSyncPayloadSchema extends Schema.Schema<any, any, 
    *
    * @default undefined
    */
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
+  /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
   syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
 }

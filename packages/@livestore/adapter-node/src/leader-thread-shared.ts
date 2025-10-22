@@ -44,7 +44,7 @@ export interface MakeLeaderThreadArgs<
   makeSqliteDb: MakeNodeSqliteDb
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
   testing: TestingOverrides | undefined
 }
@@ -59,7 +59,7 @@ export const makeLeaderThread = <
   storage,
   devtools,
   schema,
-  syncPayload,
+  syncPayloadEncoded,
   syncPayloadSchema,
   testing,
 }: MakeLeaderThreadArgs<TSyncPayloadSchema>): Effect.Effect<
@@ -119,7 +119,7 @@ export const makeLeaderThread = <
       dbEventlog,
       devtoolsOptions,
       shutdownChannel,
-      syncPayload,
+      syncPayloadEncoded,
       syncPayloadSchema,
     })
   }).pipe(

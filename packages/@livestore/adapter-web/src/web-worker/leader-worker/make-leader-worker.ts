@@ -112,8 +112,6 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
         const runtime = yield* Effect.runtime<never>()
         const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as Schema.Schema<any, any, any>
-        const decodedSyncPayload =
-          syncPayload === undefined ? undefined : yield* Schema.decodeUnknown(resolvedSyncPayloadSchema)(syncPayload)
 
         const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -159,7 +157,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload: decodedSyncPayload,
+          syncPayloadEncoded: syncPayload,
           syncPayloadSchema: resolvedSyncPayloadSchema,
         })
       }).pipe(

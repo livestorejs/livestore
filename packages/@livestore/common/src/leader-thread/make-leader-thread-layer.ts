@@ -1,5 +1,5 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -7,6 +7,7 @@ import {
   Layer,
   PlatformError,
   Queue,
+  Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -46,8 +47,8 @@ export interface MakeLeaderThreadLayerParams<
   TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
 > {
   storeId: string
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -75,8 +76,8 @@ export const makeLeaderThreadLayer = <
   schema,
   storeId,
   clientId,
-  syncPayload,
   syncPayloadSchema,
+  syncPayloadEncoded,
   makeSqliteDb,
   syncOptions,
   dbState,
@@ -91,6 +92,11 @@ export const makeLeaderThreadLayer = <
   Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
+    const syncPayloadDecoded =
+      syncPayloadEncoded === undefined
+        ? undefined
+        : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
@@ -103,7 +109,7 @@ export const makeLeaderThreadLayer = <
     const syncBackend =
       syncOptions?.backend === undefined
         ? undefined
-        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload }).pipe(
+        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayloadDecoded }).pipe(
             Effect.provide(
               Layer.succeed(
                 KeyValueStore.KeyValueStore,

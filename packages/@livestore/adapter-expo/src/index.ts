@@ -84,7 +84,15 @@ export const makePersistedAdapter =
         })
       }
 
-      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload, syncPayloadSchema } = adapterArgs
+      const {
+        schema,
+        shutdown,
+        devtoolsEnabled,
+        storeId,
+        bootStatusQueue,
+        syncPayloadEncoded,
+        syncPayloadSchema,
+      } = adapterArgs
 
       const {
         storage,
@@ -128,7 +136,7 @@ export const makePersistedAdapter =
         storage: storage ?? {},
         devtoolsEnabled,
         bootStatusQueue,
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
         devtoolsUrl,
       })
@@ -178,7 +186,7 @@ const makeLeaderThread = <
   storage,
   devtoolsEnabled,
   bootStatusQueue: bootStatusQueueClientSession,
-  syncPayload,
+  syncPayloadEncoded,
   syncPayloadSchema,
   devtoolsUrl,
 }: {
@@ -192,7 +200,7 @@ const makeLeaderThread = <
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
   devtoolsUrl: string
 }) =>
@@ -227,7 +235,7 @@ const makeLeaderThread = <
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )

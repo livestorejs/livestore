@@ -33,7 +33,7 @@ export const makeAdapter =
       const {
         storeId,
         /* devtoolsEnabled, shutdown, bootStatusQueue,  */
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
         schema,
       } = adapterArgs
@@ -91,7 +91,7 @@ export const makeAdapter =
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayloadEncoded,
           syncPayloadSchema,
         }),
       )

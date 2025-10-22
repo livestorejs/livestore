@@ -143,9 +143,8 @@ const makeAdapterImpl = ({
         devtoolsEnabled,
         shutdown,
         bootStatusQueue,
-        syncPayload,
-        syncPayloadSchema,
         syncPayloadEncoded,
+        syncPayloadSchema,
         schema,
       } = adapterArgs
 
@@ -214,7 +213,7 @@ const makeAdapterImpl = ({
               storage,
               ...omitUndefineds({
                 syncOptions: leaderThreadInput.sync,
-                syncPayload,
+                syncPayloadEncoded,
                 syncPayloadSchema,
                 testing,
               }),
@@ -229,7 +228,7 @@ const makeAdapterImpl = ({
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
-              syncPayload: syncPayloadEncoded,
+              syncPayloadEncoded,
             })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -301,7 +300,7 @@ const makeLocalLeaderThread = <
   schema,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
   syncPayloadSchema,
   storage,
   devtools,
@@ -313,7 +312,7 @@ const makeLocalLeaderThread = <
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
   storage: WorkerSchema.StorageType
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
@@ -328,7 +327,7 @@ const makeLocalLeaderThread = <
         schema,
         syncOptions,
         storage,
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
         devtools,
         makeSqliteDb,
@@ -380,7 +379,7 @@ const makeWorkerLeaderThread = <
   storage,
   devtools,
   bootStatusQueue,
-  syncPayload,
+  syncPayloadEncoded,
   testing,
 }: {
   shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
@@ -392,7 +391,7 @@ const makeWorkerLeaderThread = <
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   testing?: {
     overrides?: TestingOverrides
   }
@@ -413,7 +412,7 @@ const makeWorkerLeaderThread = <
           clientId,
           storage,
           devtools,
-          syncPayload,
+          syncPayload: syncPayloadEncoded,
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),

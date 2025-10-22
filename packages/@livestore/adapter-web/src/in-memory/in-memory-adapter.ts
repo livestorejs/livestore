@@ -66,7 +66,7 @@ export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, shutdown, syncPayload, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
+      const { schema, shutdown, syncPayloadEncoded, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
@@ -98,7 +98,7 @@ export const makeInMemoryAdapter =
         clientId,
         makeSqliteDb: sqliteDbFactory({ sqlite3 }),
         syncOptions: options.sync,
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
@@ -151,7 +151,7 @@ export interface MakeLeaderThreadArgs<
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
-  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   syncPayloadSchema: TSyncPayloadSchema
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
@@ -166,7 +166,7 @@ const makeLeaderThread = <
   clientId,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
   syncPayloadSchema,
   importSnapshot,
   devtoolsEnabled,
@@ -214,7 +214,7 @@ const makeLeaderThread = <
         dbEventlog,
         devtoolsOptions,
         shutdownChannel,
-        syncPayload,
+        syncPayloadEncoded,
         syncPayloadSchema,
       }),
     )

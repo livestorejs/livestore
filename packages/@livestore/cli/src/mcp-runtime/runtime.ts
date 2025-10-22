@@ -52,7 +52,7 @@ export const init = ({
     const syncPayloadSchema =
       syncPayloadSchemaExport === undefined
         ? Schema.JsonValue
-        : syncPayloadSchemaExport && typeof syncPayloadSchemaExport === 'object' && 'ast' in syncPayloadSchemaExport
+        : Schema.isSchema(syncPayloadSchemaExport)
           ? (syncPayloadSchemaExport as Schema.Schema<any, any, any>)
           : (() => {
               throw new Error(

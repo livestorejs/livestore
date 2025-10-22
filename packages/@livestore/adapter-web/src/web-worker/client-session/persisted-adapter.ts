@@ -145,7 +145,6 @@ export const makePersistedAdapter =
         debugInstanceId,
         bootStatusQueue,
         shutdown,
-        syncPayload,
         syncPayloadSchema: _syncPayloadSchema,
         syncPayloadEncoded,
       } = adapterArgs
