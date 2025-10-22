@@ -28,8 +28,11 @@ import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
 
-export interface LiveStoreProviderProps {
-  schema: LiveStoreSchema
+export interface LiveStoreProviderProps<
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+> {
+  schema: TSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
    * So it can be useful for multi-tenancy scenarios.
@@ -77,7 +80,8 @@ export interface LiveStoreProviderProps {
    *
    * @default undefined
    */
-  syncPayload?: Schema.JsonValue
+  syncPayloadSchema?: TSyncPayloadSchema
+  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   debug?: {
     instanceId?: string
   }
@@ -108,7 +112,10 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
 const defaultRenderLoading = (status: BootStatus) =>
   IS_REACT_NATIVE ? null : <>LiveStore is loading ({status.stage})...</>
 
-export const LiveStoreProvider = ({
+export const LiveStoreProvider = <
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   renderLoading = defaultRenderLoading,
   renderError = defaultRenderError,
   renderShutdown = defaultRenderShutdown,
@@ -123,8 +130,9 @@ export const LiveStoreProvider = ({
   signal,
   confirmUnsavedChanges = true,
   syncPayload,
+  syncPayloadSchema,
   debug,
-}: LiveStoreProviderProps & React.PropsWithChildren): React.ReactNode => {
+}: LiveStoreProviderProps<TSchema, TSyncPayloadSchema> & React.PropsWithChildren): React.ReactNode => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
@@ -137,6 +145,7 @@ export const LiveStoreProvider = ({
       disableDevtools,
       signal,
       syncPayload,
+      syncPayloadSchema,
       debug,
     }),
   })
@@ -211,6 +220,7 @@ const useCreateStore = ({
     params,
     confirmUnsavedChanges,
     syncPayload,
+    syncPayloadSchema,
     debugInstanceId,
   })
 
@@ -239,6 +249,7 @@ const useCreateStore = ({
     params: inputPropsCacheRef.current.params !== params,
     confirmUnsavedChanges: inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges,
     syncPayload: inputPropsCacheRef.current.syncPayload !== syncPayload,
+    syncPayloadSchema: inputPropsCacheRef.current.syncPayloadSchema !== syncPayloadSchema,
     debugInstanceId: inputPropsCacheRef.current.debugInstanceId !== debugInstanceId,
   }
 
@@ -253,7 +264,8 @@ const useCreateStore = ({
     inputPropChanges.context ||
     inputPropChanges.params ||
     inputPropChanges.confirmUnsavedChanges ||
-    inputPropChanges.syncPayload
+    inputPropChanges.syncPayload ||
+    inputPropChanges.syncPayloadSchema
   ) {
     inputPropsCacheRef.current = {
       schema,
@@ -267,6 +279,7 @@ const useCreateStore = ({
       params,
       confirmUnsavedChanges,
       syncPayload,
+      syncPayloadSchema,
       debugInstanceId,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
@@ -342,6 +355,7 @@ const useCreateStore = ({
             params,
             confirmUnsavedChanges,
             syncPayload,
+            syncPayloadSchema,
           }),
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return

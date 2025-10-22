@@ -138,7 +138,16 @@ const makeAdapterImpl = ({
 }): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+      const {
+        storeId,
+        devtoolsEnabled,
+        shutdown,
+        bootStatusQueue,
+        syncPayload,
+        syncPayloadSchema,
+        syncPayloadEncoded,
+        schema,
+      } = adapterArgs
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -206,6 +215,7 @@ const makeAdapterImpl = ({
               ...omitUndefineds({
                 syncOptions: leaderThreadInput.sync,
                 syncPayload,
+                syncPayloadSchema,
                 testing,
               }),
             }).pipe(UnexpectedError.mapToUnexpectedError)
@@ -219,7 +229,7 @@ const makeAdapterImpl = ({
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
-              syncPayload,
+              syncPayload: syncPayloadEncoded,
             })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -283,13 +293,16 @@ const resetNodePersistence = ({
   )
 }
 
-const makeLocalLeaderThread = ({
+const makeLocalLeaderThread = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   storeId,
   clientId,
   schema,
   makeSqliteDb,
   syncOptions,
   syncPayload,
+  syncPayloadSchema,
   storage,
   devtools,
   testing,
@@ -298,9 +311,10 @@ const makeLocalLeaderThread = ({
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
-  syncOptions: SyncOptions | undefined
+  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
   storage: WorkerSchema.StorageType
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
@@ -315,6 +329,7 @@ const makeLocalLeaderThread = ({
         syncOptions,
         storage,
         syncPayload,
+        syncPayloadSchema,
         devtools,
         makeSqliteDb,
         ...omitUndefineds({ testing: testing?.overrides }),
@@ -353,7 +368,9 @@ const makeLocalLeaderThread = ({
     }).pipe(Effect.provide(layer))
   })
 
-const makeWorkerLeaderThread = ({
+const makeWorkerLeaderThread = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   shutdown,
   storeId,
   clientId,
@@ -375,7 +392,7 @@ const makeWorkerLeaderThread = ({
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
   testing?: {
     overrides?: TestingOverrides
   }

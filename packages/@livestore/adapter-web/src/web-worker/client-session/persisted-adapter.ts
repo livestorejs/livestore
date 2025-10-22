@@ -138,7 +138,24 @@ export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, storeId, devtoolsEnabled, debugInstanceId, bootStatusQueue, shutdown, syncPayload } = adapterArgs
+      const {
+        schema,
+        storeId,
+        devtoolsEnabled,
+        debugInstanceId,
+        bootStatusQueue,
+        shutdown,
+        syncPayload,
+        syncPayloadSchema: _syncPayloadSchema,
+        syncPayloadEncoded,
+      } = adapterArgs
+
+      // NOTE: The schema travels with the worker bundle (developers call
+      // `makeWorker({ schema, syncPayloadSchema })`). We only keep the
+      // destructured value here to document availability on the client session
+      // side—structured cloning the Effect schema into the worker is not
+      // possible, so we intentionally do not forward it.
+      void _syncPayloadSchema
 
       yield* ensureBrowserRequirements
 
@@ -266,7 +283,7 @@ export const makePersistedAdapter =
                 clientId,
                 devtoolsEnabled,
                 debugInstanceId,
-                syncPayload,
+                syncPayload: syncPayloadEncoded,
               }),
             }),
           )

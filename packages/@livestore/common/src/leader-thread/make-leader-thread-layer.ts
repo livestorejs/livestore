@@ -42,9 +42,12 @@ import type {
 } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
-export interface MakeLeaderThreadLayerParams {
+export interface MakeLeaderThreadLayerParams<
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+> {
   storeId: string
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -66,11 +69,14 @@ export interface MakeLeaderThreadLayerParams {
   }
 }
 
-export const makeLeaderThreadLayer = ({
+export const makeLeaderThreadLayer = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   schema,
   storeId,
   clientId,
   syncPayload,
+  syncPayloadSchema,
   makeSqliteDb,
   syncOptions,
   dbState,
@@ -79,7 +85,11 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams<TSyncPayloadSchema>): Layer.Layer<
+  LeaderThreadCtx,
+  UnexpectedError,
+  Scope.Scope | HttpClient.HttpClient
+> =>
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 

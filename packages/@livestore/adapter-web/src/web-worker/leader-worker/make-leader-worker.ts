@@ -19,6 +19,7 @@ import {
   LogLevel,
   OtelTracer,
   Scheduler,
+  Schema,
   Stream,
   TaskTracing,
   WorkerRunner,
@@ -33,6 +34,7 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
+  syncPayloadSchema?: Schema.Schema<any, any, any>
   otelOptions?: {
     tracer?: otel.Tracer
   }
@@ -102,13 +104,16 @@ const makeWorkerRunnerOuter = (
       }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
-const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
+const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayload }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
         const runtime = yield* Effect.runtime<never>()
+        const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as Schema.Schema<any, any, any>
+        const decodedSyncPayload =
+          syncPayload === undefined ? undefined : yield* Schema.decodeUnknown(resolvedSyncPayloadSchema)(syncPayload)
 
         const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -154,7 +159,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayload: decodedSyncPayload,
+          syncPayloadSchema: resolvedSyncPayloadSchema,
         })
       }).pipe(
         Effect.tapCauseLogPretty,

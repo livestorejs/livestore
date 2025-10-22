@@ -17,8 +17,8 @@ import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
@@ -66,7 +66,7 @@ export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, shutdown, syncPayload, storeId, devtoolsEnabled } = adapterArgs
+      const { schema, shutdown, syncPayload, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
@@ -99,6 +99,7 @@ export const makeInMemoryAdapter =
         makeSqliteDb: sqliteDbFactory({ sqlite3 }),
         syncOptions: options.sync,
         syncPayload,
+        syncPayloadSchema,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorkerFiber,
@@ -142,29 +143,35 @@ export const makeInMemoryAdapter =
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer))
 
-export interface MakeLeaderThreadArgs {
+export interface MakeLeaderThreadArgs<
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+> {
   schema: LiveStoreSchema
   storeId: string
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
-  syncOptions: SyncOptions | undefined
-  syncPayload: Schema.JsonValue | undefined
+  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
 }
 
-const makeLeaderThread = ({
+const makeLeaderThread = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   schema,
   storeId,
   clientId,
   makeSqliteDb,
   syncOptions,
   syncPayload,
+  syncPayloadSchema,
   importSnapshot,
   devtoolsEnabled,
   sharedWorkerFiber,
-}: MakeLeaderThreadArgs) =>
+}: MakeLeaderThreadArgs<TSyncPayloadSchema>) =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()
 
@@ -208,6 +215,7 @@ const makeLeaderThread = ({
         devtoolsOptions,
         shutdownChannel,
         syncPayload,
+        syncPayloadSchema,
       }),
     )
 

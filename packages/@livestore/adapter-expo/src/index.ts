@@ -17,7 +17,8 @@ import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/com
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Schema, Scope } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 import {
   Effect,
   Exit,
@@ -83,7 +84,7 @@ export const makePersistedAdapter =
         })
       }
 
-      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
+      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload, syncPayloadSchema } = adapterArgs
 
       const {
         storage,
@@ -128,6 +129,7 @@ export const makePersistedAdapter =
         devtoolsEnabled,
         bootStatusQueue,
         syncPayload,
+        syncPayloadSchema,
         devtoolsUrl,
       })
 
@@ -165,7 +167,9 @@ export const makePersistedAdapter =
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
 
-const makeLeaderThread = ({
+const makeLeaderThread = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   storeId,
   clientId,
   schema,
@@ -175,19 +179,21 @@ const makeLeaderThread = ({
   devtoolsEnabled,
   bootStatusQueue: bootStatusQueueClientSession,
   syncPayload,
+  syncPayloadSchema,
   devtoolsUrl,
 }: {
   storeId: string
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeExpoSqliteDb
-  syncOptions: SyncOptions | undefined
+  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
   storage: {
     subDirectory?: string
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
@@ -222,6 +228,7 @@ const makeLeaderThread = ({
         storeId,
         syncOptions,
         syncPayload,
+        syncPayloadSchema,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 

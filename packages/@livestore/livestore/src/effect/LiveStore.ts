@@ -16,6 +16,8 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
   disableDevtools,
   onBootStatus,
   batchUpdates,
+  syncPayload,
+  syncPayloadSchema,
 }: LiveStoreContextProps<TSchema, TContext>): Effect.Effect<
   LiveStoreContextRunning['Type'],
   UnexpectedError | Cause.TimeoutException,
@@ -28,7 +30,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
         storeId,
         adapter,
         batchUpdates,
-        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus }),
+        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
       })
 
       globalThis.__debugLiveStore ??= {}

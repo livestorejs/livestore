@@ -19,15 +19,18 @@ export * from './sync-backend-kv.ts'
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
  */
-export type MakeBackendArgs = {
+export type MakeBackendArgs<TPayload = Schema.JsonValue> = {
   storeId: string
   clientId: string
-  payload: Schema.JsonValue | undefined
+  payload: TPayload | undefined
 }
 
 // TODO rename to `SyncProviderClientConstructor`
-export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
-  args: MakeBackendArgs,
+export type SyncBackendConstructor<
+  TSyncMetadata = Schema.JsonValue,
+  TPayload = Schema.JsonValue,
+> = (
+  args: MakeBackendArgs<TPayload>,
 ) => Effect.Effect<
   SyncBackend<TSyncMetadata>,
   UnexpectedError,

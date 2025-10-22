@@ -34,19 +34,24 @@ export type TestingOverrides = {
   >
 }
 
-export interface MakeLeaderThreadArgs {
+export interface MakeLeaderThreadArgs<
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+> {
   storeId: string
   clientId: string
-  syncOptions: SyncOptions | undefined
+  syncOptions: SyncOptions<Schema.Schema.Type<TSyncPayloadSchema>> | undefined
   storage: WorkerSchema.StorageType
   makeSqliteDb: MakeNodeSqliteDb
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
   testing: TestingOverrides | undefined
 }
 
-export const makeLeaderThread = ({
+export const makeLeaderThread = <
+  TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue,
+>({
   storeId,
   clientId,
   syncOptions,
@@ -55,8 +60,9 @@ export const makeLeaderThread = ({
   devtools,
   schema,
   syncPayload,
+  syncPayloadSchema,
   testing,
-}: MakeLeaderThreadArgs): Effect.Effect<
+}: MakeLeaderThreadArgs<TSyncPayloadSchema>): Effect.Effect<
   Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
   UnexpectedError,
   Scope.Scope
@@ -114,6 +120,7 @@ export const makeLeaderThread = ({
       devtoolsOptions,
       shutdownChannel,
       syncPayload,
+      syncPayloadSchema,
     })
   }).pipe(
     Effect.tapCauseLogPretty,

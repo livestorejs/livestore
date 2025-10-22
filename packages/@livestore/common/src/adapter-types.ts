@@ -121,9 +121,11 @@ export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: ClientSessionDevtoolsChannel,
 ) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
-export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
+export type Adapter<TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue> = (
+  args: AdapterArgs<TSyncPayloadSchema>,
+) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
 
-export interface AdapterArgs {
+export interface AdapterArgs<TSyncPayloadSchema extends Schema.Schema<any, any, any> = typeof Schema.JsonValue> {
   schema: LiveStoreSchema
   storeId: string
   devtoolsEnabled: boolean
@@ -138,5 +140,7 @@ export interface AdapterArgs {
    *
    * @default undefined
    */
-  syncPayload: Schema.JsonValue | undefined
+  syncPayload: Schema.Schema.Type<TSyncPayloadSchema> | undefined
+  syncPayloadSchema: TSyncPayloadSchema
+  syncPayloadEncoded: Schema.Schema.Encoded<TSyncPayloadSchema> | undefined
 }
