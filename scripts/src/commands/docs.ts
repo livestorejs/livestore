@@ -179,6 +179,9 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       {
         // TODO clean up when Effect CLI boolean flag is fixed
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
+        debug: Cli.Options.boolean('debug')
+          .pipe(Cli.Options.withDefault(false), Cli.Options.optional)
+          .pipe(Cli.Options.withDescription('Enable Netlify CLI --debug and preflight logs')),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
         build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
@@ -187,7 +190,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, build: shouldBuild, purgeCdn }) {
+        function* ({
+          prod: prodOption,
+          debug: debugOption,
+          alias: aliasOption,
+          site: siteOption,
+          build: shouldBuild,
+          purgeCdn,
+        }) {
           if (shouldBuild) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
           }
@@ -251,6 +261,20 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           const deployFilter = 'docs'
 
+          // Preflight diagnostics for Edge Functions (when requested)
+          if (debugOption._tag === 'Some' && debugOption.value === true) {
+            const edgeDir = `${docsPath}/.netlify/edge-functions-dist`
+            const manifestPath = `${edgeDir}/manifest.json`
+            yield* Effect.logDebug(`[docs-deploy] edge dir: ${edgeDir}`)
+            yield* cmd(['bash', '-lc', `ls -la ${edgeDir} || true`], { cwd: docsPath }).pipe(
+              Effect.catchAll(() => Effect.void),
+            )
+            yield* Effect.logDebug(`[docs-deploy] manifest: ${manifestPath}`)
+            yield* cmd(['bash', '-lc', `test -f ${manifestPath} && head -n 200 ${manifestPath} || true`], {
+              cwd: docsPath,
+            }).pipe(Effect.catchAll(() => Effect.void))
+          }
+
           const draftDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             target: { _tag: 'draft' },
@@ -258,6 +282,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             filter: deployFilter,
             message: buildMessage('draft'),
             dir: `${docsPath}/dist`,
+            debug: debugOption._tag === 'Some' && debugOption.value === true,
           })
 
           const alias = (() => {
@@ -286,6 +311,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             filter: deployFilter,
             message: buildMessage(contextLabelFor(prod, alias)),
             dir: `${docsPath}/dist`,
+            debug: debugOption._tag === 'Some' && debugOption.value === true,
           })
 
           if (purgeCdn) {
