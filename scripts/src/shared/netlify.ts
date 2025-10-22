@@ -53,18 +53,6 @@ const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 
 /**
- * Deploys a folder/site to Netlify using the CLI.
- *
- * Two deploy modes are supported:
- * - Directory upload (legacy) by passing a `dir` and leaving `useConfigPublish` false.
- *   This copies only the static files. Note: This does NOT register Edge Functions.
- * - Config‑driven publish (recommended) by setting `useConfigPublish` true and omitting
- *   `--dir`. Netlify reads `netlify.toml` (docs/netlify.toml) to learn the publish
- *   directory and performs edge function registration WITHOUT rebuilding the app
- *   (we still pass `--no-build`). This is required for Edge Functions to be active when
- *   the app was already built by Astro.
- */
-/**
  * Deploys docs using the Netlify CLI in config‑driven mode.
  *
  * Assumptions:
