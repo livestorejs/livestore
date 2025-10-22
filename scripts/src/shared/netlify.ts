@@ -103,7 +103,12 @@ export const deployToNetlify = ({
       ],
       {
         cwd,
-        env: { CI: '1' }, // Prevent netlify from using TTY
+        env: {
+          CI: '1', // Prevent netlify from using TTY
+          // Force the CLI to read the docs-local Netlify config so Edge Functions
+          // mapping is consistently applied in CI and locally.
+          NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+        },
       },
     )
 
