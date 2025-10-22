@@ -272,9 +272,7 @@ export const createStore = <
         )
 
       const syncPayloadEncoded =
-        syncPayload === undefined
-          ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload)
+        syncPayload === undefined ? undefined : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload)
 
       const clientSession: ClientSession = yield* adapter({
         schema,

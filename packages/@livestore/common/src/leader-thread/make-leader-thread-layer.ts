@@ -82,16 +82,10 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<
-  LeaderThreadCtx,
-  UnexpectedError,
-  Scope.Scope | HttpClient.HttpClient
-> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
-      syncPayloadEncoded === undefined
-        ? undefined
-        : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 

@@ -138,15 +138,8 @@ const makeAdapterImpl = ({
 }): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const {
-        storeId,
-        devtoolsEnabled,
-        shutdown,
-        bootStatusQueue,
-        syncPayloadEncoded,
-        syncPayloadSchema,
-        schema,
-      } = adapterArgs
+      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema, schema } =
+        adapterArgs
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 

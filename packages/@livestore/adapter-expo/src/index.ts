@@ -83,15 +83,8 @@ export const makePersistedAdapter =
         })
       }
 
-      const {
-        schema,
-        shutdown,
-        devtoolsEnabled,
-        storeId,
-        bootStatusQueue,
-        syncPayloadEncoded,
-        syncPayloadSchema,
-      } = adapterArgs
+      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema } =
+        adapterArgs
 
       const {
         storage,

@@ -26,10 +26,7 @@ export type MakeBackendArgs<TPayload = Schema.JsonValue> = {
 }
 
 // TODO rename to `SyncProviderClientConstructor`
-export type SyncBackendConstructor<
-  TSyncMetadata = Schema.JsonValue,
-  TPayload = Schema.JsonValue,
-> = (
+export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue, TPayload = Schema.JsonValue> = (
   args: MakeBackendArgs<TPayload>,
 ) => Effect.Effect<
   SyncBackend<TSyncMetadata>,
