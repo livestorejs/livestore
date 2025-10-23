@@ -89,6 +89,8 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify', { cwd: docsPath })
 
+    // Local/CI prebuild uses Astro directly. The deploy step performs the
+    // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
       cwd: docsPath,
       env: {
@@ -179,29 +181,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       {
         // TODO clean up when Effect CLI boolean flag is fixed
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
-        debug: Cli.Options.boolean('debug')
-          .pipe(Cli.Options.withDefault(false), Cli.Options.optional)
-          .pipe(Cli.Options.withDescription('Enable Netlify CLI --debug and preflight logs')),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        build: Cli.Options.boolean('build').pipe(Cli.Options.withDefault(false)),
         purgeCdn: Cli.Options.boolean('purge-cdn')
           .pipe(Cli.Options.withDefault(false))
           .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
       },
       Effect.fn(
-        function* ({
-          prod: prodOption,
-          debug: debugOption,
-          alias: aliasOption,
-          site: siteOption,
-          build: shouldBuild,
-          purgeCdn,
-        }) {
-          if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
-          }
-
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -257,34 +244,6 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               .filter((p): p is string => typeof p === 'string')
               .join(' | ')
 
-          yield* Effect.log(`Deploying to "${site}" for draft URL`)
-
-          const deployFilter = 'docs'
-
-          // Preflight diagnostics for Edge Functions (when requested)
-          if (debugOption._tag === 'Some' && debugOption.value === true) {
-            const edgeDir = `${docsPath}/.netlify/edge-functions-dist`
-            const manifestPath = `${edgeDir}/manifest.json`
-            yield* Effect.logDebug(`[docs-deploy] edge dir: ${edgeDir}`)
-            yield* cmd(['bash', '-lc', `ls -la ${edgeDir} || true`], { cwd: docsPath }).pipe(
-              Effect.catchAll(() => Effect.void),
-            )
-            yield* Effect.logDebug(`[docs-deploy] manifest: ${manifestPath}`)
-            yield* cmd(['bash', '-lc', `test -f ${manifestPath} && head -n 200 ${manifestPath} || true`], {
-              cwd: docsPath,
-            }).pipe(Effect.catchAll(() => Effect.void))
-          }
-
-          const draftDeploy: NetlifyDeploySummary = yield* deployToNetlify({
-            site,
-            target: { _tag: 'draft' },
-            cwd: docsPath,
-            filter: deployFilter,
-            message: buildMessage('draft'),
-            dir: `${docsPath}/dist`,
-            debug: debugOption._tag === 'Some' && debugOption.value === true,
-          })
-
           const alias = (() => {
             if (aliasOption._tag === 'Some') return aliasOption.value
             if (isPr && prNumber !== undefined) return `pr-${prNumber}-${shortSha}`
@@ -308,14 +267,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             site,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
-            filter: deployFilter,
             message: buildMessage(contextLabelFor(prod, alias)),
             dir: `${docsPath}/dist`,
-            debug: debugOption._tag === 'Some' && debugOption.value === true,
+            // Pass through build-time flags so the Netlify CLI build includes
+            // API docs and has sufficient memory headroom.
+            env: {
+              STARLIGHT_INCLUDE_API_DOCS: '1',
+              NODE_OPTIONS: '--max_old_space_size=4096',
+            },
           })
 
           if (purgeCdn) {
-            const purgeSiteId = finalDeploy.site_id ?? draftDeploy.site_id
+            const purgeSiteId = finalDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
           }
 
@@ -325,7 +288,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               alias,
               prod,
               purgeCdn,
-              draftDeploy,
+              draftDeploy: finalDeploy,
               finalDeploy,
             }),
             context: 'docs deployment',

@@ -63,34 +63,27 @@ export const deployToNetlify = ({
   site,
   target,
   cwd,
-  filter,
   message,
   dir,
   debug,
+  env,
 }: {
   site: string
   target: Target
   cwd: string
-  filter?: string
   message?: string
   /** Absolute or docs-relative path to the built output directory. */
   dir: string
   /** When true, passes --debug to Netlify CLI and increases logging. */
   debug?: boolean
+  /** Additional environment to pass to the Netlify CLI (e.g. STARLIGHT_*). */
+  env?: Record<string, string | undefined>
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
 
     if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE)) {
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
-    }
-
-    // Extra diagnostics for CI/local parity
-    if (debug === true) {
-      yield* Effect.logDebug(
-        `[deploy-to-netlify] preflight | cwd=${cwd} dir=${dir} site=${site} filter=${filter ?? '—'}`,
-      )
-      yield* Effect.logDebug(`[deploy-to-netlify] preflight | NETLIFY_CONFIG=${join(cwd, 'netlify.toml')}`)
     }
 
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
@@ -103,12 +96,10 @@ export const deployToNetlify = ({
         // 'bunx',
         // 'netlify-cli',
         'deploy',
-        '--no-build',
         '--json',
         debug === true ? '--debug' : undefined,
         `--dir=${dir}`,
         `--site=${site}`,
-        filter ? `--filter=${filter}` : undefined,
         message ? `--message=${message}` : undefined,
         // Either use `--prod` or `--alias`
         target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
@@ -120,6 +111,7 @@ export const deployToNetlify = ({
           // Force the CLI to read the docs-local Netlify config so Edge Functions
           // mapping is consistently applied in CI and locally.
           NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+          ...(env ?? {}),
         },
       },
     )

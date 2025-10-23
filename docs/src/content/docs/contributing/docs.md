@@ -15,7 +15,7 @@ For snippet guidelines, see: `/contributor-docs/docs/snippets.md`
 
 ## Deploying the docs
 
-- Run `direnv exec . mono docs deploy --build` to build the documentation (including Typedoc output) and push it to the dev domain (`https://dev.docs.livestore.dev`).
+- Run `direnv exec . mono docs deploy` to build and deploy the documentation to the dev domain (`https://dev.docs.livestore.dev`).
 - Passing `--prod` targets the production domain (`https://docs.livestore.dev`) when you are on `main` (otherwise the command deploys using a branch alias).
 - Use `--site=<slug>` if you need to override the default Netlify site name.
 - Add `--purge-cdn` when you need to invalidate Netlify's CDN cache after deploying; this ensures new edge handlers or content-negotiation changes take effect immediately.
