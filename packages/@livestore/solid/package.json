@@ -6,17 +6,24 @@
     ".": "./src/mod.ts"
   },
   "dependencies": {
+    "@bigmistqke/solid-whenever": "^0.1.1",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
+    "@opentelemetry/api": "catalog:",
+    "@solid-primitives/deep": "^0.3.3"
   },
   "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
     "jsdom": "^26.1.0",
     "solid-js": "^1.9.9",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-solid": "^2.11.8",
     "vitest": "catalog:"
   },
   "files": [
@@ -36,6 +43,6 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo 'todo'"
+    "test": "vitest run"
   }
 }

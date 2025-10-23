@@ -1,2 +1,13 @@
-export { query } from './query.ts'
-export { getStore } from './store.ts'
+export { LiveStoreContext, type SolidApi } from './LiveStoreContext.ts'
+export { LiveStoreProvider } from './LiveStoreProvider.tsx'
+export {
+  type Dispatch,
+  type SetStateAction,
+  type SetStateActionPartial,
+  type StateSetters,
+  type UseClientDocumentResult,
+  useClientDocument,
+} from './useClientDocument.ts'
+export { useQuery, useQueryRef } from './useQuery.ts'
+export { useStore, withSolidApi } from './useStore.ts'
+export { useStackInfo } from './utils/stack-info.ts'
