@@ -31,6 +31,12 @@ const NetlifyCliConfigSchema = Schema.Struct({
   users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
 })
 
+// Hardcoded site ids for reliability (slug → id)
+const NETLIFY_SITE_IDS: Readonly<Record<string, string>> = {
+  'livestore-docs-dev': 'e02ba783-ea85-4be1-8b7f-c1b2b4d0d307',
+  'livestore-docs': 'abeae053-d336-480a-a0fe-f0aaaacaa74e',
+}
+
 const NetlifyPurgeRequestSchema = Schema.Struct({
   site_id: Schema.optional(Schema.String),
   site_slug: Schema.optional(Schema.String),
@@ -89,6 +95,13 @@ export const deployToNetlify = ({
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
     const debugEnabled =
       debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
+    // Resolve site id to avoid team ambiguity when multiple teams exist.
+    // Prefer explicit NETLIFY_SITE_ID if provided, otherwise discover via sites:list.
+    const resolvedSiteArg = (process.env.NETLIFY_SITE_ID ??
+      env?.NETLIFY_SITE_ID ??
+      NETLIFY_SITE_IDS[site] ??
+      site) as string
+    yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
     const deployCommand = cmdText(
       [
         'pnpm',
@@ -98,16 +111,19 @@ export const deployToNetlify = ({
         // 'bunx',
         // 'netlify-cli',
         'deploy',
-        '--json',
+        // In debug mode, omit --json so we get full build logs in stdout/stderr
+        debugEnabled ? undefined : '--json',
         debugEnabled ? '--debug' : undefined,
         `--dir=${dir}`,
-        `--site=${site}`,
+        `--site=${resolvedSiteArg}`,
         message ? `--message=${message}` : undefined,
         // Either use `--prod` or `--alias`
         target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
       ],
       {
         cwd,
+        // Pipe stderr into stdout so the returned string includes build errors
+        stderr: 'pipe',
         env: {
           CI: '1', // Prevent netlify from using TTY
           // Force the CLI to read the docs-local Netlify config so Edge Functions
