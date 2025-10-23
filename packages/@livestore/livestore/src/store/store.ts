@@ -35,6 +35,7 @@ import {
   Runtime,
   Schema,
   Stream,
+  Subscribable,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
@@ -785,7 +786,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       switch (minSyncLevel) {
         case 'backend': {
           // Only events confirmed by backend
+
           const leaderSyncState = yield* leaderThreadProxy.getSyncState
+          // From dev branch: syncState = yield* leaderThreadProxy.syncState
+          // What happens when we reach the end? Restart with the same head value?
+          // If there is semantically a clear end (until) we should end at that cursor
+          // If there is not we should keep streaming
+          // -> Get rid of snapshotOnly for now (until we realize we needed it)
           const backendHead = leaderSyncState.upstreamHead
 
           // Stream from leader, but only up to backend head

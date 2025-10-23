@@ -1,5 +1,8 @@
 # LiveStore Events Test Plan
 
+ADD SECTION ABOUT EVERYTHING RELATED TO UNCONFIRMED WHICH WE LEAVE AS PENDING
+- Anything related to rebase
+
 ### Current eventStream implementation
 
 - minSyncLevel **client** merges client syncState which includes pending events and leader event log

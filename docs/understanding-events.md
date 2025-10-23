@@ -1,17 +1,40 @@
+# Notes from meeting with Johannes
+add node diagrams for visual tracking of state
+client -> client Session
+SQLite not tighlty coupled in future -> SQLite -> Materialized State
+Lead with events -> State follows events
+Write document primariy from en event perspective (state as a bonus / secondary effect)
+Free people from thinking about both events and state
+new events -> pulled events
+important conepts to understand (push, pull)
+client session can pull down rebase results from the leader (same as the leader pulls event from the sync backend)
+cannonical -> authoratative
+Experiment with visual and notation style for events
+important to understand heads
+client, leader and backedn -> Nodes
+Each node has a head
+https://www.tldraw.com/f/aR50x7vdQmBUGx4k7WIEf?d=v-601.-130.2908.1572.BfMH9wpQWHX7Ss2oP9TbE
+
+
+Two scenarios:
+rebase on leader (app comes back from offline -> all session in leader all in sync)
+multiple sessions (tabs) a lot of stuff is happening concurrently -> each session is trying to win which is the next event
+
+
 # Notes on LiveStore event system
 
 **Client session**
 - SQLite database that matches the schema
 - SyncState in-memory for pending events only
 
-**Leader thread**
+**Client leader thread**
 - SQLite dbState - mirrors schema so leader can materialize events and handle rollbacks
 - SQLite dbEventLog - stores the durable event log and tracks global sequence of events which the backend has acknowledged
 
 **Sync backend**
 - Any storage solution that supports pushing and pulling events. Events are never deleted only appended.
 
-## What happens when you commit an event
+## What happens when you commit an event (happy path)
 
 1. Client commits an event
     - Merges event into local SyncState with state pending
@@ -36,6 +59,8 @@
     - Event confirmed on all levels and heads at same location
 
 ## What happens when a conflict is detected and rebase occurs?
+
+This can happen in on client and leader level
 
 1. Leader thread detects incoming events that conflict with the clients pending chain
     - Local events are compared to upstream events to find point of divergence
@@ -68,7 +93,7 @@
 
 3. Rollback (Step 2)
     - Leader runs `rollback` and deletes the old e42 row from `eventlog`
-    - Client `SyncState.pending` drops e42 while its changeset is inverted
+    - Client `SyncState.pending` drops e42
 
 4. Apply upstream events (Step 3)
     - Leader inserts the canonical e42 from upstream
