@@ -279,6 +279,21 @@ jobs:
         uses: ./.github/actions/setup-env
       - run: mono docs build --api-docs
 
+      - name: Pre-deploy diagnostics (edge artifacts)
+        run: |
+          echo "repo root: $(pwd)"
+          echo "git toplevel: $(git rev-parse --show-toplevel)"
+          echo "docs path: $GITHUB_WORKSPACE/docs"
+          echo "--- repo root .netlify ---" || true
+          ls -la .netlify || true
+          ls -la .netlify/edge-functions-dist || true
+          echo "--- docs .netlify ---"
+          ls -la "$GITHUB_WORKSPACE/docs/.netlify" || true
+          echo "--- docs edge-functions-dist ---"
+          ls -la "$GITHUB_WORKSPACE/docs/.netlify/edge-functions-dist" || true
+          echo "--- docs edge manifest (head) ---"
+          head -n 200 "$GITHUB_WORKSPACE/docs/.netlify/edge-functions-dist/manifest.json" || true
+
       # Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
       # - pull_request (any base): deploy alias on dev docs site (no purge)
       #     example domain: https://<alias>--livestore-docs-dev.netlify.app
@@ -293,6 +308,23 @@ jobs:
         run: mono docs deploy --debug
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+      - name: Post-deploy diagnostics (Netlify + curl)
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "--- Netlify production deploy metadata ---"
+          SITE_ID=$(bunx netlify-cli sites:list --json | jq -r '.[] | select(.name=="livestore-docs-dev") | .id')
+          echo "SITE_ID=$SITE_ID"
+          PROD_ID=$(bunx netlify-cli api listSiteDeploys --data '{"site_id":"'"$SITE_ID"'","per_page":10}' | jq -r '[.[] | select(.context=="production")] | sort_by(.created_at) | last | .id')
+          echo "PROD_ID=$PROD_ID"
+          bunx netlify-cli api getDeploy --data '{"deploy_id":"'"$PROD_ID"'"}' | jq '{id, context, published_at, links: {edge_functions: .links.edge_functions, edge_function_logs: .links.edge_function_logs, functions: .links.functions}}'
+          echo "--- Curl dev domain (default) ---"
+          curl -sI https://dev.docs.livestore.dev/reference/devtools/ | tr -d '\r' | sed -n '1,200p'
+          echo "--- Curl dev domain (Accept: text/markdown) ---"
+          curl -sI -H 'Accept: text/markdown' https://dev.docs.livestore.dev/reference/devtools/ | tr -d '\r' | sed -n '1,200p'
 
   build-example-tiged:
     if: github.event.pull_request.head.repo.fork != true
