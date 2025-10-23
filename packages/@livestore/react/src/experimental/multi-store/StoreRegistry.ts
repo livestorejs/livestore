@@ -206,6 +206,7 @@ export class StoreRegistry {
   load = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
+    this.#cancelGC(optionsWithDefaults.storeId)
 
     // If already loaded, return it
     if (entry.store) return entry.store
@@ -257,6 +258,7 @@ export class StoreRegistry {
   ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
+    this.#cancelGC(optionsWithDefaults.storeId)
 
     // If already loaded, return it directly (not wrapped in Promise)
     if (entry.store) return entry.store
