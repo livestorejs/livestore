@@ -90,9 +90,7 @@ export const deployToNetlify = ({
       yield* Effect.logDebug(
         `[deploy-to-netlify] preflight | cwd=${cwd} dir=${dir} site=${site} filter=${filter ?? '—'}`,
       )
-      yield* Effect.logDebug(
-        `[deploy-to-netlify] preflight | NETLIFY_CONFIG=${join(cwd, 'netlify.toml')}`,
-      )
+      yield* Effect.logDebug(`[deploy-to-netlify] preflight | NETLIFY_CONFIG=${join(cwd, 'netlify.toml')}`)
     }
 
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
