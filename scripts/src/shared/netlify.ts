@@ -87,7 +87,8 @@ export const deployToNetlify = ({
     }
 
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
-    const debugEnabled = debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
+    const debugEnabled =
+      debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
     const deployCommand = cmdText(
       [
         'pnpm',
@@ -126,12 +127,27 @@ export const deployToNetlify = ({
       },
     )
 
-    const result = yield* deployCommand.pipe(
-      Effect.tap((result) => Effect.logDebug(`[deploy-to-netlify] Deploy result for ${site}: ${result}`)),
-      Effect.andThen(Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))),
-      Effect.mapError(
-        (error) =>
-          new NetlifyError({ message: 'Failed to decode Netlify deploy result', reason: 'unknown', cause: error }),
+    // Capture raw CLI output first so we can include it in error logs if JSON
+    // parsing fails (Netlify sometimes prints human-readable errors instead).
+    const rawOutput = yield* deployCommand.pipe(
+      Effect.tap((out) => Effect.logDebug(`[deploy-to-netlify] Deploy raw output for ${site}: ${out}`)),
+    )
+
+    const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          // Log the problematic output to aid debugging, then fail with a
+          // structured error that includes both the parse error and raw text.
+          yield* Effect.logError(
+            `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
+          )
+          yield* Effect.logError(rawOutput)
+          return yield* new NetlifyError({
+            message: 'Failed to decode Netlify deploy result',
+            reason: 'unknown',
+            cause: { error, raw: rawOutput },
+          })
+        }),
       ),
     )
 
