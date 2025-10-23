@@ -3,30 +3,20 @@ import { createStorePromise, type Store, type Unsubscribe } from '@livestore/liv
 import { noop } from '@livestore/utils'
 import type { CachedStoreOptions, StoreId } from './types.ts'
 
+type StoreEntryState<TSchema extends LiveStoreSchema> =
+  | { status: 'idle' }
+  | { status: 'loading'; promise: Promise<Store<TSchema>> }
+  | { status: 'success'; store: Store<TSchema> }
+  | { status: 'error'; error: unknown }
+
 /**
- * Minimal cache entry that tracks store, error, and in-flight promise along with subscribers.
+ * Minimal cache entry that tracks store state and subscribers.
  *
  * @typeParam TSchema - The schema for this entry's store.
  * @internal
  */
 class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
-  /**
-   * The resolved store.
-   *
-   * @remarks
-   * A value of `undefined` indicates "not loaded yet".
-   */
-  store: Store<TSchema> | undefined = undefined
-
-  /**
-   * The most recent error encountered for this entry, if any.
-   */
-  error: unknown = undefined
-
-  /**
-   * The in-flight promise for loading the store, or `undefined` if not yet loading or already resolved.
-   */
-  promise: Promise<Store<TSchema>> | undefined = undefined
+  #state: StoreEntryState<TSchema> = { status: 'idle' }
 
   /**
    * Set of subscriber callbacks to notify on state changes.
@@ -69,17 +59,66 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     }
   }
 
-  setStore = (store: Store<TSchema>): void => {
-    this.store = store
-    this.error = undefined
-    this.promise = undefined
+  /**
+   * Transitions to the loading state.
+   */
+  #setPromise(promise: Promise<Store<TSchema>>): void {
+    if (this.#state.status === 'success' || this.#state.status === 'loading') return
+    this.#state = { status: 'loading', promise }
+    this.notify() // TODO: Test if notifying on loading is needed
+  }
+
+  /**
+   * Transitions to the success state.
+   */
+  #setStore = (store: Store<TSchema>): void => {
+    this.#state = { status: 'success', store }
     this.notify()
   }
 
-  setError = (error: unknown): void => {
-    this.error = error
-    this.promise = undefined
+  /**
+   * Transitions to the error state.
+   */
+  #setError = (error: unknown): void => {
+    this.#state = { status: 'error', error }
     this.notify()
+  }
+
+  /**
+   * Initiates loading of the store if not already in progress.
+   *
+   * @param options - Store creation options
+   * @param onSettle - Callback invoked when the promise settles (success or failure) if no subscribers remain
+   * @returns Promise that resolves to the loaded store or rejects with an error
+   *
+   * @remarks
+   * This method handles the complete lifecycle of loading a store:
+   * - Creates the store promise via createStorePromise
+   * - Transitions through loading → success/error states
+   * - Invokes onSettle callback for GC scheduling when needed
+   */
+  load = (options: CachedStoreOptions<TSchema>, onSettle?: () => void): Store<TSchema> | Promise<Store<TSchema>> => {
+    if (this.#state.status === 'success') return this.#state.store
+    if (this.#state.status === 'loading') return this.#state.promise
+    if (this.#state.status === 'error') throw this.#state.error
+
+    const promise = createStorePromise(options)
+      .then((store) => {
+        this.#setStore(store)
+        return store
+      })
+      .catch((error) => {
+        this.#setError(error)
+        throw error
+      })
+      .finally(() => {
+        // If no one subscribed (e.g., initial render aborted), schedule GC.
+        if (this.subscriberCount === 0) onSettle?.()
+      })
+
+    this.#setPromise(promise)
+
+    return promise
   }
 }
 
@@ -98,7 +137,7 @@ class StoreCache {
     return this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
   }
 
-  getOrCreate = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
+  ensure = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
     let entry = this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
 
     if (!entry) {
@@ -190,7 +229,7 @@ export class StoreRegistry {
    * @internal
    */
   ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
-    return this.#cache.getOrCreate<TSchema>(storeId)
+    return this.#cache.ensure<TSchema>(storeId)
   }
 
   /**
@@ -208,35 +247,7 @@ export class StoreRegistry {
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
     this.#cancelGC(optionsWithDefaults.storeId)
 
-    // If already loaded, return it
-    if (entry.store) return entry.store
-
-    // If a load is already in flight, return its promise
-    if (entry.promise) return entry.promise
-
-    // If a previous error exists, throw it
-    if (entry.error) throw entry.error
-
-    // Load store if none is in flight
-    entry.promise = createStorePromise(optionsWithDefaults)
-      .then((store) => {
-        entry.setStore(store)
-
-        // If no one subscribed (e.g., initial render aborted), schedule GC.
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-
-        return store
-      })
-      .catch((error) => {
-        entry.setError(error)
-
-        // Likewise, ensure unused entries are eventually collected.
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-
-        throw error
-      })
-
-    return entry.promise
+    return entry.load(optionsWithDefaults, () => this.#scheduleGC(optionsWithDefaults.storeId))
   }
 
   /**
@@ -260,35 +271,7 @@ export class StoreRegistry {
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
     this.#cancelGC(optionsWithDefaults.storeId)
 
-    // If already loaded, return it directly (not wrapped in Promise)
-    if (entry.store) return entry.store
-
-    // If a load is already in flight, return the existing promise
-    if (entry.promise) return entry.promise
-
-    // If a previous error exists, throw it
-    if (entry.error) throw entry.error
-
-    // Load store if none is in flight
-    entry.promise = createStorePromise(optionsWithDefaults)
-      .then((store) => {
-        entry.setStore(store)
-
-        // If no one subscribed (e.g., initial render aborted), schedule GC.
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-
-        return store
-      })
-      .catch((error) => {
-        entry.setError(error)
-
-        // Likewise, ensure unused entries are eventually collected.
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-
-        throw error
-      })
-
-    return entry.promise
+    return entry.load(optionsWithDefaults, () => this.#scheduleGC(optionsWithDefaults.storeId))
   }
 
   /**
