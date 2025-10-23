@@ -310,7 +310,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 
-  build-example-tiged:
+  build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
     strategy:
@@ -340,7 +340,8 @@ jobs:
         # We use `github.ref_name` instead of `github.sha` because, when a workflow is triggered by a pull request,
         # `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
         # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
-        run: pnpm dlx tiged github:${{ github.repository }}/${{ env.APP_PATH }}#${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
+        # Use the LiveStore CLI (snapshot version) to scaffold the example
+        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --branch ${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Increase pnpm fetch retries
         # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
         # We increase the fetch retries to mitigate this issue.
