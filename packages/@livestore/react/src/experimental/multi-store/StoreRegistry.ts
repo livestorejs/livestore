@@ -1,6 +1,5 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStorePromise, type Store, type Unsubscribe } from '@livestore/livestore'
-import { noop } from '@livestore/utils'
 import type { CachedStoreOptions, StoreId } from './types.ts'
 
 type StoreEntryState<TSchema extends LiveStoreSchema> =
@@ -97,7 +96,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * - Transitions through loading → success/error states
    * - Invokes onSettle callback for GC scheduling when needed
    */
-  load = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
+  getOrLoad = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
     if (this.#state.status === 'success') return this.#state.store
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
@@ -229,63 +228,35 @@ export class StoreRegistry {
   }
 
   /**
-   * Resolves a store instance for imperative code paths.
-   *
-   * @typeParam TSchema - Schema associated with the requested store.
-   * @returns A promise that resolves with the ready store or rejects with the loading error.
-   *
-   * @remarks
-   * - If the store is already cached, the returned promise resolves immediately with that instance.
-   * - Concurrent callers share the same in-flight request to avoid duplicate store creation.
-   */
-  load = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<Store<TSchema>> => {
-    const optionsWithDefaults = this.#applyDefaultOptions(options)
-    const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
-    this.#cancelGC(optionsWithDefaults.storeId)
-
-    const storeOrPromise = entry.load(optionsWithDefaults)
-
-    if (storeOrPromise instanceof Promise) {
-      return storeOrPromise.finally(() => {
-        // If no subscribers remain after load settles, schedule GC
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-      })
-    } else {
-      return storeOrPromise
-    }
-  }
-
-  /**
-   * Reads a store, returning it directly if loaded or a promise if loading.
-   * Designed to work with React.use() for Suspense integration.
+   * Get or load a store, returning it directly if loaded or a promise if loading.
    *
    * @typeParam TSchema - The schema of the store to load
    * @returns The loaded store if available, or a Promise that resolves to the store if loading
-   * @throws unknown loading error to integrate with React Error Boundaries
+   * @throws unknown loading error
    *
    * @remarks
+   * - Designed to work with React.use() for Suspense integration.
    * - When the store is already loaded, returns the store instance directly (not wrapped in a Promise)
    * - When loading, returns a stable Promise reference that can be used with React.use()
    * - This prevents re-suspension on subsequent renders when the store is already loaded
-   * - If the initial render that triggered the fetch never commits, we still schedule GC on settle.
    */
-  read = <TSchema extends LiveStoreSchema>(
+  getOrLoad = <TSchema extends LiveStoreSchema>(
     options: CachedStoreOptions<TSchema>,
   ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
     this.#cancelGC(optionsWithDefaults.storeId)
 
-    const storeOrPromise = entry.load(optionsWithDefaults)
+    const storeOrPromise = entry.getOrLoad(optionsWithDefaults)
 
     if (storeOrPromise instanceof Promise) {
       return storeOrPromise.finally(() => {
         // If no subscribers remain after load settles, schedule GC
         if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
       })
-    } else {
-      return storeOrPromise
     }
+
+    return storeOrPromise
   }
 
   /**
@@ -299,7 +270,11 @@ export class StoreRegistry {
    * - If the entry remains unused after preload resolves/rejects, it is scheduled for GC.
    */
   preload = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<void> => {
-    return this.load(options).then(noop).catch(noop)
+    try {
+      await this.getOrLoad(options)
+    } catch {
+      // Do nothing; preload is best-effort
+    }
   }
 
   subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {

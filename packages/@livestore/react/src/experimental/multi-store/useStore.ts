@@ -20,7 +20,7 @@ export const useStore = <TSchema extends LiveStoreSchema>(
     (onChange: () => void) => storeRegistry.subscribe(options.storeId, onChange),
     [storeRegistry, options.storeId],
   )
-  const getSnapshot = React.useCallback(() => storeRegistry.read(options), [storeRegistry, options])
+  const getSnapshot = React.useCallback(() => storeRegistry.getOrLoad(options), [storeRegistry, options])
 
   const storeOrPromise = React.useSyncExternalStore(subscribe, getSnapshot)
 
