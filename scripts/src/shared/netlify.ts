@@ -87,6 +87,7 @@ export const deployToNetlify = ({
     }
 
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
+    const debugEnabled = debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
     const deployCommand = cmdText(
       [
         'pnpm',
@@ -97,7 +98,7 @@ export const deployToNetlify = ({
         // 'netlify-cli',
         'deploy',
         '--json',
-        debug === true ? '--debug' : undefined,
+        debugEnabled ? '--debug' : undefined,
         `--dir=${dir}`,
         `--site=${site}`,
         message ? `--message=${message}` : undefined,
@@ -111,6 +112,15 @@ export const deployToNetlify = ({
           // Force the CLI to read the docs-local Netlify config so Edge Functions
           // mapping is consistently applied in CI and locally.
           NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+          // Ensure Astro/rehype-mermaid can find Playwright browsers when running
+          // inside the Netlify CLI build step (direnv provides this in our dev shells).
+          PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
+          // Preserve workspace root path required by various scripts/utilities
+          // in the docs build (set by direnv in dev/CI environments).
+          WORKSPACE_ROOT: process.env.WORKSPACE_ROOT,
+          // Preserve PATH/HOME to ensure bun/pnpm and caches are available to the build
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
           ...(env ?? {}),
         },
       },
