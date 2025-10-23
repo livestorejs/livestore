@@ -35,7 +35,6 @@ import {
   Runtime,
   Schema,
   Stream,
-  Subscribable,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
