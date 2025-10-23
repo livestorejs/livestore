@@ -97,7 +97,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * - Transitions through loading → success/error states
    * - Invokes onSettle callback for GC scheduling when needed
    */
-  load = (options: CachedStoreOptions<TSchema>, onSettle?: () => void): Store<TSchema> | Promise<Store<TSchema>> => {
+  load = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
     if (this.#state.status === 'success') return this.#state.store
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
@@ -110,10 +110,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
       .catch((error) => {
         this.#setError(error)
         throw error
-      })
-      .finally(() => {
-        // If no one subscribed (e.g., initial render aborted), schedule GC.
-        if (this.subscriberCount === 0) onSettle?.()
       })
 
     this.#setPromise(promise)
@@ -247,7 +243,16 @@ export class StoreRegistry {
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
     this.#cancelGC(optionsWithDefaults.storeId)
 
-    return entry.load(optionsWithDefaults, () => this.#scheduleGC(optionsWithDefaults.storeId))
+    const storeOrPromise = entry.load(optionsWithDefaults)
+
+    if (storeOrPromise instanceof Promise) {
+      return storeOrPromise.finally(() => {
+        // If no subscribers remain after load settles, schedule GC
+        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
+      })
+    } else {
+      return storeOrPromise
+    }
   }
 
   /**
@@ -271,7 +276,16 @@ export class StoreRegistry {
     const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
     this.#cancelGC(optionsWithDefaults.storeId)
 
-    return entry.load(optionsWithDefaults, () => this.#scheduleGC(optionsWithDefaults.storeId))
+    const storeOrPromise = entry.load(optionsWithDefaults)
+
+    if (storeOrPromise instanceof Promise) {
+      return storeOrPromise.finally(() => {
+        // If no subscribers remain after load settles, schedule GC
+        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
+      })
+    } else {
+      return storeOrPromise
+    }
   }
 
   /**
