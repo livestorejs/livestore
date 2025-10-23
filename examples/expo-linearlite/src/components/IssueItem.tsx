@@ -4,9 +4,9 @@ import { Link } from 'expo-router'
 import { memo } from 'react'
 import { Pressable, Image as RNImage, StyleSheet, useColorScheme, View } from 'react-native'
 
-import { iconBase64 } from '@/assets/Icons/iconBase64.ts'
-import type { Issue } from '@/livestore/schema.ts'
-import type { Priority, Status } from '@/types.ts'
+import { iconBase64 } from '../assets/Icons/iconBase64.ts'
+import type { Issue } from '../livestore/schema.ts'
+import type { Priority, Status } from '../types.ts'
 
 import { ThemedText } from './ThemedText.tsx'
 

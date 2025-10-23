@@ -10,9 +10,9 @@ import * as ReactTesting from '@testing-library/react'
 import type React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
-import type * as LiveStoreReact from './mod.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
+import type * as LiveStoreReact from './mod.ts'
+import { __resetUseRcResourceCache } from './useRcResource.ts'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 

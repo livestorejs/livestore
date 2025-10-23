@@ -2,7 +2,7 @@ import type { LiveQueryDef } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
 import React from 'react'
 
-import { useQuery } from '../../useQuery.js'
+import { useQuery } from '../../useQuery.ts'
 
 /*
 TODO:

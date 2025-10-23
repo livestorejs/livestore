@@ -6,10 +6,10 @@
     "module": "ES2022",
     "moduleResolution": "bundler",
     "types": ["./worker-configuration.d.ts", "./types/rw.d.ts", "./types/vite.d.ts"],
-    "paths": {
-      "@/*": ["./src/*"]
-    },
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
     "checkJs": false,
     "noEmit": true,
     "isolatedModules": true,

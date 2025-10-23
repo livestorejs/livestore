@@ -13,7 +13,7 @@ import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnexpectedError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
-import type { IsOfflineError, SyncError } from './sync/index.js'
+import type { IsOfflineError, SyncError } from './sync/index.ts'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'

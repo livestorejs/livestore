@@ -2,9 +2,9 @@ import { queryDb } from '@livestore/livestore'
 import { query } from '@livestore/solid'
 import { type Component, Index } from 'solid-js'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
-import { store } from '../livestore/store.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
+import { store } from '../livestore/store.ts'
 
 const visibleTodos$ = queryDb(
   (get) => {

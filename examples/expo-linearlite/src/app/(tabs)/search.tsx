@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native'
 
-import { ThemedText } from '@/components/ThemedText.tsx'
+import { ThemedText } from '../../components/ThemedText.tsx'
 
 const SearchScreen = () => {
   return (

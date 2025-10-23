@@ -3,8 +3,8 @@ import { useStore } from '@livestore/react'
 import type React from 'react'
 import { NavLink } from 'react-router-dom'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
 
 const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',

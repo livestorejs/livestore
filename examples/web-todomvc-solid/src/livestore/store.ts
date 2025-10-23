@@ -3,7 +3,7 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { getStore } from '@livestore/solid'
 
 import LiveStoreWorker from '../livestore.worker.ts?worker'
-import { schema } from './schema.js'
+import { schema } from './schema.ts'
 
 const adapterFactory = makePersistedAdapter({
   storage: { type: 'opfs' },

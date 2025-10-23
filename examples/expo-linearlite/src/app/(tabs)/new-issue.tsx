@@ -4,10 +4,10 @@ import { Stack, useRouter } from 'expo-router'
 import { Fragment } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
 
-import { useUser } from '@/hooks/useUser.ts'
-import { uiState$ } from '@/livestore/queries.ts'
-import { events } from '@/livestore/schema.ts'
-import { PRIORITIES, STATUSES } from '@/types.ts'
+import { useUser } from '../../hooks/useUser.ts'
+import { uiState$ } from '../../livestore/queries.ts'
+import { events } from '../../livestore/schema.ts'
+import { PRIORITIES, STATUSES } from '../../types.ts'
 
 const NewIssueScreen = () => {
   const user = useUser()

@@ -7,9 +7,9 @@ import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { describe, expect, it } from 'vitest'
 
-import { events, schema, tables } from './__tests__/fixture.js'
-import { LiveStoreProvider } from './LiveStoreProvider.js'
-import * as LiveStoreReact from './mod.js'
+import { events, schema, tables } from './__tests__/fixture.tsx'
+import { LiveStoreProvider } from './LiveStoreProvider.tsx'
+import * as LiveStoreReact from './mod.ts'
 
 describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) => {
   const WithStrictMode = strictMode ? React.StrictMode : React.Fragment

@@ -1,11 +1,10 @@
 // @ts-check
-import path from 'node:path'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const __dirname = import.meta.dirname
+// const __dirname = import.meta.dirname
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -16,11 +15,6 @@ export default defineConfig({
     },
   },
   worker: { format: 'es' },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: [

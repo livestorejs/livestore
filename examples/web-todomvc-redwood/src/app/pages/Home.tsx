@@ -1,4 +1,4 @@
-import { TodoApp } from '../todomvc/TodoApp.js'
+import { TodoApp } from '../todomvc/TodoApp.tsx'
 
 export const Home = () => {
   return <TodoApp />

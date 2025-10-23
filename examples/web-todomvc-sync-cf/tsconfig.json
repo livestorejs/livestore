@@ -9,7 +9,9 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "types": ["vite/client", "@cloudflare/workers-types"],
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client", "@cloudflare/workers-types", "wicg-file-system-access"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,

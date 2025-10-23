@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 
-import { tables } from '@/livestore/schema.ts'
+import { tables } from '../livestore/schema.ts'
 
 /**
  * @returns The first user in the users table.

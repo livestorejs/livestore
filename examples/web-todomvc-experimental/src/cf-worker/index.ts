@@ -1,6 +1,6 @@
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import { SyncPayload } from '../livestore/schema.js'
+import { SyncPayload } from '../livestore/schema.ts'
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
   onPush: async (message, context) => {

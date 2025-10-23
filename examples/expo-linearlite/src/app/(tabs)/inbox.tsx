@@ -5,18 +5,17 @@ import React from 'react'
 import type { ViewStyle } from 'react-native'
 import { ActivityIndicator, Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
-import { ThemedText } from '@/components/ThemedText.tsx'
-import { useUser } from '@/hooks/useUser.ts'
+import { ThemedText } from '../../components/ThemedText.tsx'
+import { useUser } from '../../hooks/useUser.ts'
+import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
+import { events, tables } from '../../livestore/schema.ts'
 import {
   createRandomComment,
   createRandomIssue,
   createRandomReaction,
   createRandomUser,
   randomValueFromArray,
-} from '@/utils/generate-fake-data.ts'
-
-import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
-import { events, tables } from '../../livestore/schema.ts'
+} from '../../utils/generate-fake-data.ts'
 
 const COMMENTS_PER_ISSUE = 10
 const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })

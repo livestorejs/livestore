@@ -2,7 +2,7 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, liveStoreVersion } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { events, SyncPayload, schema, tables } from './livestore/schema.js'
+import { events, SyncPayload, schema, tables } from './livestore/schema.ts'
 
 // Or use makePersistedAdapter for OPFS storage
 const adapter = makeInMemoryAdapter({

@@ -8,7 +8,7 @@ import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import * as LiveStoreReact from '../mod.js'
+import * as LiveStoreReact from '../mod.ts'
 
 export type Todo = {
   id: string

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { StoreRegistry } from './StoreRegistry.js'
+import type { StoreRegistry } from './StoreRegistry.ts'
 
 export const StoreRegistryContext = React.createContext<StoreRegistry | undefined>(undefined)
 

@@ -18,15 +18,15 @@ import {
   View,
 } from 'react-native'
 
-import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
-import { darkBackground, darkText, nordicGray } from '@/constants/Colors.ts'
-import ThemeProvider from '@/context/ThemeProvider.tsx'
+import { LoadingLiveStore } from '../components/LoadingLiveStore.tsx'
+import { darkBackground, darkText, nordicGray } from '../constants/Colors.ts'
+import ThemeProvider from '../context/ThemeProvider.tsx'
 
 import { events, schema, tables } from '../livestore/schema.ts'
 
 LogBox.ignoreAllLogs()
 
-const adapter = makePersistedAdapter()
+const adapter = makePersistedAdapter({})
 
 const boot = (store: Store) => {
   if (store.query(tables.users.count()) === 0) {

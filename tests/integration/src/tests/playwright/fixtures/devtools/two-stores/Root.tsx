@@ -5,8 +5,8 @@ import { unstable_batchedUpdates as batchedUpdates } from 'react-dom'
 
 import LiveStoreWorkerNotes from './livestore-notes.worker.ts?worker'
 import LiveStoreWorkerTodos from './livestore-todos.worker.ts?worker'
-import { schema as schemaNotes } from './schema-notes.js'
-import { schema as schemaTodos } from './schema-todos.js'
+import { schema as schemaNotes } from './schema-notes.ts'
+import { schema as schemaTodos } from './schema-todos.ts'
 
 const Notes = () => {
   return (

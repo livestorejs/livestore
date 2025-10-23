@@ -1,8 +1,8 @@
 import { useStore } from '@livestore/react'
 import type React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
 
 export const Header: React.FC = () => {
   const { store } = useStore()

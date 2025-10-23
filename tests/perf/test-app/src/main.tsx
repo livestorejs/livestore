@@ -7,10 +7,10 @@ import React, { StrictMode } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
-import LiveStoreWorker from './livestore.worker.js?worker'
-import { makeTracer } from './otel.js'
-import { allItems$, uiState$ } from './queries.js'
-import { events, type Item, type Items, schema } from './schema.js'
+import LiveStoreWorker from './livestore.worker.ts?worker'
+import { makeTracer } from './otel.ts'
+import { allItems$, uiState$ } from './queries.ts'
+import { events, type Item, type Items, schema } from './schema.ts'
 
 const A = [
   'pretty',

@@ -8,6 +8,7 @@
 
     "moduleResolution": "NodeNext",
     "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -22,10 +23,7 @@
     // "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    "types": ["vite/client"],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["./src"],
   "exclude": ["node_modules", "./src/server/api.ts"]

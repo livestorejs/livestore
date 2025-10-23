@@ -2,7 +2,7 @@ import { useQuery, useStore } from '@livestore/react'
 import type React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { uiState$ } from '@/livestore/queries.ts'
+import { uiState$ } from '../livestore/queries.ts'
 
 import { events } from '../livestore/schema.ts'
 import type { Filter } from '../types.ts'

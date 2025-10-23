@@ -2,7 +2,7 @@ import * as ReactTesting from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { __resetUseRcResourceCache, useRcResource } from './useRcResource.js'
+import { __resetUseRcResourceCache, useRcResource } from './useRcResource.ts'
 
 describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (strictMode=%s)', ({ strictMode }) => {
   beforeEach(() => {

@@ -2,7 +2,7 @@ import { XIcon } from 'lucide-react-native'
 import type React from 'react'
 import { Pressable, Modal as RNModal, StyleSheet, useColorScheme, View } from 'react-native'
 
-import { Colors } from '@/constants/Colors.ts'
+import { Colors } from '../constants/Colors.ts'
 
 interface CustomModalProps {
   visible: boolean

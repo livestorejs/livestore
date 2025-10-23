@@ -10,8 +10,8 @@ import React from 'react'
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
 
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
+import { __resetUseRcResourceCache } from './useRcResource.ts'
 
 Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
   'useQuery (strictMode=%s)',

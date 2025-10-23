@@ -3,12 +3,11 @@ import { useQuery, useStore } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 
-import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
-import { ThemedText } from '@/components/ThemedText.tsx'
-import { useThemeColor } from '@/hooks/useThemeColor.ts'
-import type { Priority, Status } from '@/types.ts'
-
+import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
+import { ThemedText } from '../components/ThemedText.tsx'
+import { useThemeColor } from '../hooks/useThemeColor.ts'
 import { events, tables } from '../livestore/schema.ts'
+import type { Priority, Status } from '../types.ts'
 
 const EditIssueScreen = () => {
   const issueId = useLocalSearchParams().issueId as string

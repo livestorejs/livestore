@@ -7,12 +7,12 @@ import { useEffect } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom'
 
-import { Footer } from './components/Footer.js'
-import { Header } from './components/Header.js'
-import { MainSection } from './components/MainSection.js'
-import { VersionBadge } from './components/VersionBadge.js'
-import { uiState$ } from './livestore/queries.js'
-import { events, schema, type tables } from './livestore/schema.js'
+import { Footer } from './components/Footer.tsx'
+import { Header } from './components/Header.tsx'
+import { MainSection } from './components/MainSection.tsx'
+import { VersionBadge } from './components/VersionBadge.tsx'
+import { uiState$ } from './livestore/queries.ts'
+import { events, schema, type tables } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
 type Filter = (typeof tables.uiState.Value)['filter']
