@@ -42,6 +42,18 @@ const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   resetPersistence,
+  ssr: {
+    initialData: ({ storeId }) => (typeof window === 'undefined' ? undefined : window.__LIVESTORE_SSR__?.[storeId]),
+    onConsume: (data) => {
+      if (typeof window === 'undefined') {
+        return
+      }
+
+      if (window.__LIVESTORE_SSR__ !== undefined) {
+        delete window.__LIVESTORE_SSR__[data.storeId]
+      }
+    },
+  },
 })
 
 export const TodoApp: React.FC = () => (

@@ -20,4 +20,4 @@ Run the smoke test locally with `pnpm --filter livestore-example-web-todomvc-red
 
 ## To-do
 
-- [ ] Make SSR work properly with LiveStore initialization
+- [x] Make SSR work properly with LiveStore initialization

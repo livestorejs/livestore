@@ -1,6 +1,9 @@
 import type React from 'react'
+import type { RequestInfo } from 'rwsdk/worker'
 
-export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+type DocumentProps = React.PropsWithChildren<RequestInfo>
+
+export const Document: React.FC<DocumentProps> = ({ children, rw }) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
@@ -11,7 +14,16 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) 
     <body>
       {/* biome-ignore lint/correctness/useUniqueElementIds: Redwood hydrates client markup at a fixed root id */}
       <div id="root">{children}</div>
-      <script type="module">import("/src/client.tsx")</script>
+      {[...rw.entryScripts].map((src) => (
+        <script key={src} type="module" src={src} nonce={rw.nonce} />
+      ))}
+      {[...rw.inlineScripts].map((content) => (
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is generated server-side and protected by the request nonce.
+        <script key={content} nonce={rw.nonce} dangerouslySetInnerHTML={{ __html: content }} />
+      ))}
+      <script type="module" nonce={rw.nonce}>
+        import('/src/client.tsx')
+      </script>
     </body>
   </html>
 )
