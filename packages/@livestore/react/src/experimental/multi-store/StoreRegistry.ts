@@ -34,11 +34,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   #subscribers = new Set<() => void>()
 
   /**
-   * Monotonic counter that increments on every notify.
-   */
-  version = 0
-
-  /**
    * The number of active subscribers for this entry.
    */
   get subscriberCount() {
@@ -59,13 +54,12 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 
   /**
-   * Notifies all subscribers and increments the version counter.
+   * Notifies all subscribers of state changes.
    *
    * @remarks
    * This should be called after any meaningful state change.
    */
   notify = (): void => {
-    this.version++
     for (const sub of this.#subscribers) {
       try {
         sub()
@@ -220,7 +214,7 @@ export class StoreRegistry {
     if (entry.promise) return entry.promise
 
     // If a previous error exists, throw it
-    if (entry.error !== undefined) throw entry.error
+    if (entry.error) throw entry.error
 
     // Load store if none is in flight
     entry.promise = createStorePromise(optionsWithDefaults)
@@ -267,11 +261,11 @@ export class StoreRegistry {
     // If already loaded, return it directly (not wrapped in Promise)
     if (entry.store) return entry.store
 
-    // If a previous error exists, throw it
-    if (entry.error !== undefined) throw entry.error
-
     // If a load is already in flight, return the existing promise
     if (entry.promise) return entry.promise
+
+    // If a previous error exists, throw it
+    if (entry.error) throw entry.error
 
     // Load store if none is in flight
     entry.promise = createStorePromise(optionsWithDefaults)
@@ -319,15 +313,8 @@ export class StoreRegistry {
     return () => {
       unsubscribe()
       // If no more subscribers remain, schedule GC
-      if (entry.subscriberCount === 0) {
-        this.#scheduleGC(storeId)
-      }
+      if (entry.subscriberCount === 0) this.#scheduleGC(storeId)
     }
-  }
-
-  getVersion = <TSchema extends LiveStoreSchema>(storeId: StoreId): number => {
-    const entry = this.ensureStoreEntry<TSchema>(storeId)
-    return entry.version
   }
 
   #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
