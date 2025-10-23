@@ -17,7 +17,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.4",
+    "@biomejs/biome": "^2.2.7",
     "@cloudflare/vite-plugin": "^1.13.12",
     "@livestore/devtools-vite": "0.4.0-dev.14",
     "@playwright/test": "^1.56.0",
