@@ -83,6 +83,11 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     this.notify()
   }
 
+  #reset = (): void => {
+    this.#state = { status: 'idle' }
+    this.notify()
+  }
+
   /**
    * Initiates loading of the store if not already in progress.
    *
@@ -115,6 +120,13 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
 
     return promise
   }
+
+  shutdown = async (): Promise<void> => {
+    if (this.#state.status !== 'success') return
+    await this.#state.store.shutdownPromise()
+
+    this.#reset()
+  }
 }
 
 /**
@@ -144,23 +156,18 @@ class StoreCache {
   }
 
   /**
-   * Removes an entry from the cache and notifies its subscribers.
+   * Removes an entry from the cache.
    *
    * @param storeId - The ID of the store to remove
+   *
    * @remarks
-   * Notifying subscribers prompts consumers to re-render and re-read as needed.
+   * - Invokes shutdown on the store before removal.
    */
   remove = (storeId: StoreId): void => {
     const entry = this.#entries.get(storeId)
     if (!entry) return
+    void entry.shutdown()
     this.#entries.delete(storeId)
-    // Notify any subscribers of the removal to force re-render;
-    // components will resubscribe to a new entry and re-read.
-    try {
-      entry.notify()
-    } catch {
-      // Best-effort notify; swallowing to avoid crashing removal flows.
-    }
   }
 
   clear = (): void => {
