@@ -48,7 +48,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * @remarks
    * This should be called after any meaningful state change.
    */
-  notify = (): void => {
+  #notify = (): void => {
     for (const sub of this.#subscribers) {
       try {
         sub()
@@ -64,7 +64,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   #setPromise(promise: Promise<Store<TSchema>>): void {
     if (this.#state.status === 'success' || this.#state.status === 'loading') return
     this.#state = { status: 'loading', promise }
-    this.notify() // TODO: Test if notifying on loading is needed
+    this.#notify()
   }
 
   /**
@@ -72,7 +72,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    */
   #setStore = (store: Store<TSchema>): void => {
     this.#state = { status: 'success', store }
-    this.notify()
+    this.#notify()
   }
 
   /**
@@ -80,12 +80,12 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    */
   #setError = (error: unknown): void => {
     this.#state = { status: 'error', error }
-    this.notify()
+    this.#notify()
   }
 
   #reset = (): void => {
     this.#state = { status: 'idle' }
-    this.notify()
+    this.#notify()
   }
 
   /**
