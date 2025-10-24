@@ -30,35 +30,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 
   /**
-   * Subscribes to this entry's updates.
-   *
-   * @param listener - Callback invoked when the entry changes
-   * @returns Unsubscribe function
-   */
-  subscribe = (listener: () => void): Unsubscribe => {
-    this.#subscribers.add(listener)
-    return () => {
-      this.#subscribers.delete(listener)
-    }
-  }
-
-  /**
-   * Notifies all subscribers of state changes.
-   *
-   * @remarks
-   * This should be called after any meaningful state change.
-   */
-  #notify = (): void => {
-    for (const sub of this.#subscribers) {
-      try {
-        sub()
-      } catch {
-        // Swallow to protect other listeners
-      }
-    }
-  }
-
-  /**
    * Transitions to the loading state.
    */
   #setPromise(promise: Promise<Store<TSchema>>): void {
@@ -86,6 +57,35 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   #reset = (): void => {
     this.#state = { status: 'idle' }
     this.#notify()
+  }
+
+  /**
+   * Notifies all subscribers of state changes.
+   *
+   * @remarks
+   * This should be called after any meaningful state change.
+   */
+  #notify = (): void => {
+    for (const sub of this.#subscribers) {
+      try {
+        sub()
+      } catch {
+        // Swallow to protect other listeners
+      }
+    }
+  }
+
+  /**
+   * Subscribes to this entry's updates.
+   *
+   * @param listener - Callback invoked when the entry changes
+   * @returns Unsubscribe function
+   */
+  subscribe = (listener: () => void): Unsubscribe => {
+    this.#subscribers.add(listener)
+    return () => {
+      this.#subscribers.delete(listener)
+    }
   }
 
   /**
