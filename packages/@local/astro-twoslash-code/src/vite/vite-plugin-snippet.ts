@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-
+import { shouldNeverHappen } from '@livestore/utils'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { formatRebuildInstruction, resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle, type SnippetBundle } from './snippet-graph.ts'
@@ -309,7 +309,9 @@ export type TwoslashSnippetPluginOptions = {
 }
 
 export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOptions = {}): MinimalVitePlugin => {
-  let paths: TwoslashProjectPaths = resolveProjectPaths(options.projectRoot ?? process.cwd())
+  let paths: TwoslashProjectPaths = resolveProjectPaths(
+    options.projectRoot ?? shouldNeverHappen('projectRoot is not set'),
+  )
   let rebuildInstruction = formatRebuildInstruction()
   let manifestCache: ManifestCache | null = null
   const runtimeOptions = normalizeRuntimeOptions(options.runtime)
