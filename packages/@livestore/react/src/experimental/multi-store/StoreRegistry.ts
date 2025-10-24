@@ -168,12 +168,6 @@ class StoreCache {
     void entry.shutdown()
     this.#entries.delete(storeId)
   }
-
-  clear = (): void => {
-    for (const storeId of Array.from(this.#entries.keys())) {
-      this.remove(storeId)
-    }
-  }
 }
 
 const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
