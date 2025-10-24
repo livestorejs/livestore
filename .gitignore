@@ -47,3 +47,5 @@ scripts/.completions
 
 .devenv
 .devenv*
+
+.claude/settings.local.json
