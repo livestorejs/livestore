@@ -21,6 +21,7 @@ remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
 [build]
 command = "bunx astro build"
 publish = "docs/dist"
+edge_functions = "docs/netlify/edge-functions"
 
 # Edge Function configuration. The Edge runtime bundles the file(s) below and
 # attaches them at the CDN layer during the Netlify build phase.

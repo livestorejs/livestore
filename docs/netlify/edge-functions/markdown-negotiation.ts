@@ -1,4 +1,4 @@
-import type { Context } from 'netlify:edge'
+import type { Config, Context } from 'netlify:edge'
 
 import { appendVary, buildMarkdownUrl, isAssetPath, preferredMarkdown } from '../../src/server/markdown-negotiation.ts'
 
@@ -57,4 +57,9 @@ export default async function handler(request: Request, context: Context): Promi
     : new Response(markdownResponse.body, { status: markdownResponse.status, headers })
   appendVary(response, 'Accept')
   return response
+}
+
+export const config : Config = {
+  path: "/*",
+  cache: "manual"
 }
