@@ -92,7 +92,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * Initiates loading of the store if not already in progress.
    *
    * @param options - Store creation options
-   * @param onSettle - Callback invoked when the promise settles (success or failure) if no subscribers remain
    * @returns Promise that resolves to the loaded store or rejects with an error
    *
    * @remarks
