@@ -7,9 +7,14 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "jsxImportSource": "solid-js",
-    // "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../common" }, { "path": "../livestore" }, { "path": "../utils" }]
+  "references": [
+    { "path": "../common" },
+    { "path": "../adapter-web" },
+    { "path": "../livestore" },
+    { "path": "../utils" },
+    { "path": "../utils-dev" }
+  ]
 }
