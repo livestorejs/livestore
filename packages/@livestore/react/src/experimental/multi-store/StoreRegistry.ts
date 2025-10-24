@@ -223,18 +223,6 @@ export class StoreRegistry {
   }
 
   /**
-   * Ensures a store entry exists in the cache.
-   *
-   * @param storeId - The ID of the store
-   * @returns The existing or newly created store entry
-   *
-   * @internal
-   */
-  ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
-    return this.#cache.ensure<TSchema>(storeId)
-  }
-
-  /**
    * Get or load a store, returning it directly if loaded or a promise if loading.
    *
    * @typeParam TSchema - The schema of the store to load
@@ -251,8 +239,7 @@ export class StoreRegistry {
     options: CachedStoreOptions<TSchema>,
   ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
-    const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
-    this.#cancelGC(optionsWithDefaults.storeId)
+    const entry = this.#cache.ensure<TSchema>(optionsWithDefaults.storeId)
 
     const storeOrPromise = entry.getOrLoad(optionsWithDefaults)
 
@@ -285,7 +272,7 @@ export class StoreRegistry {
   }
 
   subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {
-    const entry = this.ensureStoreEntry<TSchema>(storeId)
+    const entry = this.#cache.ensure<TSchema>(storeId)
     // Active subscriber: cancel any scheduled GC
     this.#cancelGC(storeId)
 
