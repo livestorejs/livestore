@@ -59,7 +59,7 @@ export default async function handler(request: Request, context: Context): Promi
   return response
 }
 
-export const config : Config = {
-  path: "/*",
-  cache: "manual"
+export const config: Config = {
+  path: '/*',
+  cache: 'manual',
 }
