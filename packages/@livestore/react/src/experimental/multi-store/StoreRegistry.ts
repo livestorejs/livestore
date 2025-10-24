@@ -222,6 +222,30 @@ export class StoreRegistry {
     this.#defaultOptions = defaultOptions
   }
 
+  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
+    options: CachedStoreOptions<TSchema>,
+  ): CachedStoreOptions<TSchema> => ({
+    ...this.#defaultOptions,
+    ...options,
+  })
+
+  #scheduleGC = (id: StoreId): void => {
+    this.#cancelGC(id)
+    const timer = setTimeout(() => {
+      this.#gcTimeouts.delete(id)
+      this.#cache.remove(id)
+    }, DEFAULT_GC_TIME)
+    this.#gcTimeouts.set(id, timer)
+  }
+
+  #cancelGC = (id: StoreId): void => {
+    const t = this.#gcTimeouts.get(id)
+    if (t) {
+      clearTimeout(t)
+      this.#gcTimeouts.delete(id)
+    }
+  }
+
   /**
    * Get or load a store, returning it directly if loaded or a promise if loading.
    *
@@ -282,30 +306,6 @@ export class StoreRegistry {
       unsubscribe()
       // If no more subscribers remain, schedule GC
       if (entry.subscriberCount === 0) this.#scheduleGC(storeId)
-    }
-  }
-
-  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
-    options: CachedStoreOptions<TSchema>,
-  ): CachedStoreOptions<TSchema> => ({
-    ...this.#defaultOptions,
-    ...options,
-  })
-
-  #scheduleGC = (id: StoreId): void => {
-    this.#cancelGC(id)
-    const timer = setTimeout(() => {
-      this.#gcTimeouts.delete(id)
-      this.#cache.remove(id)
-    }, DEFAULT_GC_TIME)
-    this.#gcTimeouts.set(id, timer)
-  }
-
-  #cancelGC = (id: StoreId): void => {
-    const t = this.#gcTimeouts.get(id)
-    if (t) {
-      clearTimeout(t)
-      this.#gcTimeouts.delete(id)
     }
   }
 }
