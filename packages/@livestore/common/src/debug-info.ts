@@ -63,12 +63,12 @@ const BoundArraySchemaFromSelf = <A, I, R>(
           if (a === b) {
             return true
           }
-            if (!isBoundArrayLike(a) || !isBoundArrayLike(b)) {
-              return false
-            }
-            if (getSizeLimit(a) !== getSizeLimit(b) || a.length !== b.length) {
-              return false
-            }
+          if (!isBoundArrayLike(a) || !isBoundArrayLike(b)) {
+            return false
+          }
+          if (getSizeLimit(a) !== getSizeLimit(b) || a.length !== b.length) {
+            return false
+          }
           const itemsA = [...a]
           const itemsB = [...b]
           for (let i = 0; i < itemsA.length; i++) {
