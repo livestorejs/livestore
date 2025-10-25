@@ -288,6 +288,12 @@ const Event: FC<EventProps> = ({ event }) => {
           )}
           <div className="font-semibold">Confirmed:</div>
           <div>{event.isUnconfirmed ? 'No' : 'Yes'}</div>
+          {event.originChain.length > 0 && (
+            <>
+              <div className="font-semibold">Origin chain:</div>
+              <div>{event.originChain.map((origin) => origin.fullNotation).join(' → ')}</div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@ sidebar:
 import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
 import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
 import { EventsVisualizer } from '../../../components/EventsVisualizer'
+import { Image } from 'astro:assets'
+import eventNodesImg from '../../../assets/event-nodes.svg'
 
 ## Event definitions
 
@@ -34,16 +36,20 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 ### Nodes in the LiveStore system
 
-#### Client Session
-- SyncState in-memory for pending events only
-- Materialized state that matches the schema (SQLite database)
+<div class="bg-gray-800 dark:bg-transparent rounded-lg p-4">
+  <Image src={eventNodesImg} alt="Event nodes diagram" />
+</div>
 
-#### Client leader
-- SQLite dbState - mirrors schema so leader can materialize events and handle rollbacks
-- SQLite dbEventLog - stores the durable event log and tracks global sequence of events which the backend has acknowledged
+#### Client Session
+- `SyncState`: in-memory for pending events only
+- `dbState`: Materialized state that matches the schema (SQLite database)
+
+#### Client Leader
+- `dbEventLog`: Database that stores the durable event log and tracks global sequence of events which the backend has acknowledged
+- `dbState`: Materialized state that matches the schema (SQLite database) so leader can materialize events and handle rollbacks
 
 #### Sync backend
-- Any storage solution that supports pushing and pulling events. Events are never deleted only appended.
+- `EventLog`: Any storage solution that supports pushing and pulling events. Append only storage.
 
 ### Event commit (happy path)
 
@@ -108,7 +114,7 @@ This example shows how a client session rebases its pending events when new auth
 
 4. Client replays its local pending events on top of the new head
     - Stored original events keep their payload but their sequence number gets updated to follow upstream head
-    - Each newly numbered event is re-appplied (materialized) to store database
+    - Each newly numbered event is re-appplied and materialized to state in both client session and client leader
     <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
     <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4'{todoRenamed}/e3"]} />
     <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
