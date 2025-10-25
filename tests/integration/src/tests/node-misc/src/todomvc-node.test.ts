@@ -73,7 +73,7 @@ Vitest.describe('todomvc-node', () => {
       expect(() => store.query(tables.todo)).toThrowErrorMatchingInlineSnapshot(
         `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"query\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
       )
-      expect(() => store.subscribe(tables.todo, { onUpdate: () => {} })).toThrowErrorMatchingInlineSnapshot(
+      expect(() => store.subscribe(tables.todo, () => {})).toThrowErrorMatchingInlineSnapshot(
         `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"subscribe\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
       )
     }).pipe(withTestCtx(test)),

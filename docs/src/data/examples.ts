@@ -1,4 +1,4 @@
-import { getBranchName, IS_MAIN_BRANCH } from '../../data.js'
+import { getBranchName, IS_MAIN_BRANCH } from './data.ts'
 
 // Hosted assets - To upload new assets:
 // 1. Get auth token: TOKEN=$(curl -s -X POST https://gitbucket.schickling.dev/api/auth | jq -r '.token')
@@ -49,8 +49,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://web-todomvc.livestore.dev',
-    devDemoUrl: 'https://dev.web-todomvc.livestore.dev',
+    demoUrl: 'https://example-web-todomvc.livestore.workers.dev',
+    devDemoUrl: 'https://example-web-todomvc-dev.livestore.workers.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc`,
     status: 'available',
   },
@@ -65,8 +65,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://web-linearlite.livestore.dev',
-    devDemoUrl: 'https://dev.web-linearlite.livestore.dev',
+    demoUrl: 'https://example-web-linearlite.livestore.workers.dev',
+    devDemoUrl: 'https://example-web-linearlite-dev.livestore.workers.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-linearlite`,
     status: 'available',
   },
@@ -82,8 +82,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://web-todomvc-sync-cf.livestore.dev',
-    devDemoUrl: 'https://dev.web-todomvc-sync-cf.livestore.dev',
+    demoUrl: 'https://example-web-todomvc-sync-cf.livestore.workers.dev',
+    devDemoUrl: 'https://example-web-todomvc-sync-cf-dev.livestore.workers.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-sync-cf`,
     status: 'available',
   },
@@ -153,8 +153,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://example-cf-chat.netlify.app',
-    devDemoUrl: 'https://dev.cf-chat.livestore.dev',
+    demoUrl: 'https://example-cf-chat.livestore.workers.dev',
+    devDemoUrl: 'https://example-cf-chat-dev.livestore.workers.dev',
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/cf-chat`,
     status: 'available',
   },

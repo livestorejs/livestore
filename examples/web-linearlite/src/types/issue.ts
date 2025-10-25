@@ -1,5 +1,5 @@
-import type { Priority } from '@/types/priority'
-import type { Status } from '@/types/status'
+import type { Priority } from './priority.ts'
+import type { Status } from './status.ts'
 
 export type Issue = {
   id: number

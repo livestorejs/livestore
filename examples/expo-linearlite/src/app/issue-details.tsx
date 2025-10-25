@@ -4,11 +4,11 @@ import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
 
-import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'
-import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
-import { ThemedText } from '@/components/ThemedText.tsx'
-import { events, tables } from '@/livestore/schema.ts'
-import type { Priority, Status } from '@/types.ts'
+import { IssueDetailsBottomTab } from '../components/IssueDetailsBottomTab.tsx'
+import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
+import { ThemedText } from '../components/ThemedText.tsx'
+import { events, tables } from '../livestore/schema.ts'
+import type { Priority, Status } from '../types.ts'
 
 const styles = StyleSheet.create({
   container: {

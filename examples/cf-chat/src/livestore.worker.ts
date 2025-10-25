@@ -4,8 +4,9 @@ import { schema } from './livestore/schema.ts'
 
 makeWorker({
   schema,
-  // For now, let's disable sync until we figure out the correct CF sync approach
   sync: {
-    backend: makeWsSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL }),
+    // Use /sync path to avoid Assets binding intercepting root path requests (alternative: wrangler.toml `run_worker_first = true` but less efficient)
+    backend: makeWsSync({ url: `${globalThis.location.origin}/sync` }),
+    initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
   },
 })

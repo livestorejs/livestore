@@ -1,0 +1,43 @@
+{
+  "name": "livestore-example-web-todomvc-redwood",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.4.0-dev.14",
+    "@livestore/livestore": "0.4.0-dev.14",
+    "@livestore/peer-deps": "0.4.0-dev.14",
+    "@livestore/react": "0.4.0-dev.14",
+    "@livestore/sqlite-wasm": "0.4.0-dev.14",
+    "@livestore/wa-sqlite": "0.4.0-dev.14",
+    "@overengineering/fps-meter": "0.2.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-server-dom-webpack": "19.1.0",
+    "rwsdk": "1.0.0-beta.12",
+    "todomvc-app-css": "2.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "wrangler": "^4.42.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "dev": "vite dev",
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
+    "test:e2e:preview": "playwright test --config playwright.config.ts"
+  }
+}

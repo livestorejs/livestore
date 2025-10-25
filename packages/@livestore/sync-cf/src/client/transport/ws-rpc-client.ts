@@ -1,6 +1,9 @@
 import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
+import type { LiveStoreEvent } from '@livestore/common/schema'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
+  Chunk,
   type Duration,
   Effect,
   Layer,
@@ -16,6 +19,7 @@ import {
   UrlParams,
   type WebSocket,
 } from '@livestore/utils/effect'
+import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
@@ -150,22 +154,38 @@ export const makeWsSync =
 
         push: (batch) =>
           Effect.gen(function* () {
-            if (batch.length === 0) {
-              return
-            }
+            if (batch.length === 0) return
 
-            return yield* rpcClient.SyncWsRpc.Push({
+            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => ({
               storeId,
               payload,
               batch,
               backendId: backendIdHelper.get(),
-            }).pipe(
-              Effect.mapError((cause) =>
-                cause._tag === 'InvalidPushError'
-                  ? cause
-                  : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
-              ),
+            })
+
+            const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
+              splitChunkBySize({
+                maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+                maxBytes: MAX_WS_MESSAGE_BYTES,
+                encode: encodePayload,
+              }),
+              Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
             )
+
+            for (const sub of chunksChunk) {
+              yield* rpcClient.SyncWsRpc.Push({
+                storeId,
+                payload,
+                batch: Chunk.toReadonlyArray(sub),
+                backendId: backendIdHelper.get(),
+              }).pipe(
+                Effect.mapError((cause) =>
+                  cause._tag === 'InvalidPushError'
+                    ? cause
+                    : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
+                ),
+              )
+            }
           }).pipe(Effect.withSpan('push')),
         ping,
         metadata: {

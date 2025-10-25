@@ -1,11 +1,11 @@
 import type { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, type Option, Schema, UrlParams } from '@livestore/utils/effect'
+import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+
+import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
 export interface Env {
-  /** Eventlog database */
-  DB: CfTypes.D1Database
   ADMIN_SECRET: string
 }
 
@@ -20,7 +20,19 @@ export type MakeDurableObjectClassOptions = {
     context: { storeId: StoreId; payload?: Schema.JsonValue },
   ) => Effect.SyncOrPromiseOrEffect<void>
   onPullRes?: (message: SyncMessage.PullResponse | InvalidPullError) => Effect.SyncOrPromiseOrEffect<void>
-  // TODO make storage configurable: D1, DO SQLite, later: external SQLite
+  /**
+   * Storage engine for event persistence.
+   * - Default: `{ _tag: 'do-sqlite' }` (Durable Object SQLite)
+   * - D1: `{ _tag: 'd1', binding: string }` where `binding` is the D1 binding name in wrangler.toml.
+   *
+   * If omitted, the runtime defaults to DO SQLite. For backwards-compatibility, if an env binding named
+   * `DB` exists and looks like a D1Database, D1 will be used.
+   *
+   * Trade-offs:
+   * - DO SQLite: simpler deploy, data co-located with DO, not externally queryable
+   * - D1: centralized DB, inspectable with DB tools, extra network hop and JSON size limits
+   */
+  storage?: { _tag: 'do-sqlite' } | { _tag: 'd1'; binding: string }
 
   /**
    * Enabled transports for sync backend
@@ -32,6 +44,26 @@ export type MakeDurableObjectClassOptions = {
    */
   enabledTransports?: Set<'http' | 'ws' | 'do-rpc'>
 
+  /**
+   * Custom HTTP response headers for HTTP transport
+   * These headers will be added to all HTTP RPC responses (Pull, Push, Ping)
+   *
+   * @example
+   * ```ts
+   * {
+   *   http: {
+   *     responseHeaders: {
+   *       'Access-Control-Allow-Origin': '*',
+   *       'Cache-Control': 'no-cache'
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  http?: {
+    responseHeaders?: Record<string, string>
+  }
+
   otel?: {
     baseUrl?: string
     serviceName?: string
@@ -42,31 +74,42 @@ export type StoreId = string
 export type DurableObjectId = string
 
 /**
- * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
+ * CRITICAL: Increment this version whenever you modify the database schema structure.
  *
- * Changing this version number will lead to a "soft reset".
+ * Bump required when:
+ * - Adding/removing/renaming columns in eventlogTable or contextTable (see sqlite.ts)
+ * - Changing column types or constraints
+ * - Modifying primary keys or indexes
+ *
+ * Bump NOT required when:
+ * - Changing query patterns, pagination logic, or streaming behavior
+ * - Adding new tables (as long as existing table schemas remain unchanged)
+ * - Updating implementation details in sync-storage.ts
+ *
+ * Impact: Changing this version triggers a "soft reset" - new table names are created
+ * and old data becomes inaccessible (but remains in storage).
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
-
-export const DEFAULT_SYNC_DURABLE_OBJECT_NAME = 'SYNC_BACKEND_DO'
 
 export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
 export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
 
-export const getSyncRequestSearchParams = (request: CfTypes.Request): Option.Option<typeof SearchParamsSchema.Type> => {
+/**
+ * Extracts the LiveStore sync search parameters from a request. Returns
+ * `undefined` when the request does not carry valid sync metadata so callers
+ * can fall back to custom routing.
+ */
+export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
   const urlParams = UrlParams.fromInput(url.searchParams)
   const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
 
-  return paramsResult
+  if (paramsResult._tag === 'None') {
+    return undefined
+  }
+
+  return paramsResult.value
 }
-
-export const MAX_PULL_EVENTS_PER_MESSAGE = 100
-
-// Cloudflare hibernated WebSocket frames begin failing just below 1MB. Keep our
-// payloads comfortably beneath that ceiling so we don't rely on implementation
-// quirks of local dev servers.
-export const MAX_WS_MESSAGE_BYTES = 900_000
 
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {

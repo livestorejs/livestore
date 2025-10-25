@@ -1,6 +1,10 @@
-name = "livestore-cf-adapter-chat"
-main = "src/cf-worker/index.ts"
+name = "example-cf-chat"
+main = "./src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
+compatibility_flags = [
+  "enable_request_signal",
+  "nodejs_compat",
+]
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
@@ -14,10 +18,50 @@ class_name = "LiveStoreClientDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "cf-chat-demo"
-database_id = "3335b917-2c3f-4c3c-a04f-78d74d46c141"
+[env.prod]
+name = "example-cf-chat"
+
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.preview]
+name = "example-cf-chat-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.dev]
+name = "example-cf-chat-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [observability]
 enabled = true

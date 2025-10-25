@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native'
 import { Platform, StatusBar, useColorScheme } from 'react-native'
 
-import { darkBackground, darkText, magicBlue, mercuryWhite, nordicGray } from '@/constants/Colors.ts'
+import { darkBackground, darkText, magicBlue, mercuryWhite, nordicGray } from '../constants/Colors.ts'
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const isDarkMode = useColorScheme() === 'dark'

@@ -1,20 +1,21 @@
 import { useStore } from '@livestore/react'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import { memo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Avatar } from '@/components/common/avatar'
-import { PriorityMenu } from '@/components/common/priority-menu'
-import { StatusMenu } from '@/components/common/status-menu'
-import { events } from '@/lib/livestore/schema'
-import type { Issue } from '@/types/issue'
-import type { Priority } from '@/types/priority'
-import type { Status } from '@/types/status'
-import { formatDate } from '@/utils/format-date'
-import { getIssueTag } from '@/utils/get-issue-tag'
+import { events } from '../../../livestore/schema/index.ts'
+import type { Issue } from '../../../types/issue.ts'
+import type { Priority } from '../../../types/priority.ts'
+import type { Status } from '../../../types/status.ts'
+import { formatDate } from '../../../utils/format-date.ts'
+import { getIssueTag } from '../../../utils/get-issue-tag.ts'
+import { Avatar } from '../../common/avatar.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
 
 export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {
   const navigate = useNavigate()
   const { store } = useStore()
+  const { storeId } = useParams({ from: '/$storeId' })
 
   const handleChangeStatus = (status: Status) =>
     store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
@@ -30,11 +31,21 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
       role="button"
       tabIndex={0}
       className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-neutral-200 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 dark:border-neutral-700"
-      onClick={() => navigate(`/issue/${issue.id}`)}
+      onClick={() =>
+        navigate({
+          to: '/$storeId/issue',
+          params: { storeId },
+          search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+        })
+      }
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          navigate(`/issue/${issue.id}`)
+          navigate({
+            to: '/$storeId/issue',
+            params: { storeId },
+            search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
+          })
         }
       }}
       style={style}

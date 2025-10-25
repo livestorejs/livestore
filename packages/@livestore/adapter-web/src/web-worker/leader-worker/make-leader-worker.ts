@@ -19,6 +19,7 @@ import {
   LogLevel,
   OtelTracer,
   Scheduler,
+  type Schema,
   Stream,
   TaskTracing,
   WorkerRunner,
@@ -33,6 +34,7 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
   }
@@ -102,9 +104,9 @@ const makeWorkerRunnerOuter = (
       }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
-const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
+const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
-    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayload }) =>
+    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
@@ -137,6 +139,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           yield* cleanupOldStateDbFiles({
             vfs: dbState.metadata.vfs,
             currentSchema: schema,
+            opfsDirectory: dbState.metadata.persistenceInfo.opfsDirectory,
           })
         }
 
@@ -153,7 +156,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayloadEncoded,
+          syncPayloadSchema,
         })
       }).pipe(
         Effect.tapCauseLogPretty,
@@ -230,6 +234,21 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
       ),
+    SyncStateStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.syncProcessor.syncState.changes
+      }).pipe(Stream.unwrapScoped),
+    GetNetworkStatus: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return yield* workerCtx.networkStatus
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+    NetworkStatusStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.networkStatus.changes
+      }).pipe(Stream.unwrapScoped),
     Shutdown: () =>
       Effect.gen(function* () {
         yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')

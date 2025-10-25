@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@biomejs/biome": "^2.2.2",
-    "@effect/language-service": "^0.40.0",
+    "@biomejs/biome": "^2.2.7",
+    "@effect/language-service": "^0.41.1",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -15,12 +15,14 @@
     "vitest": "catalog:",
     "yaml": "^2.8.1"
   },
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.17.1",
   "pnpm": {
     "patchedDependencies": {
-      "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
+      "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
+      "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
     },
     "onlyBuiltDependencies": [
+      "@mixedbread/cli",
       "@parcel/watcher",
       "@tailwindcss/oxide",
       "dtrace-provider",
@@ -29,7 +31,10 @@
       "protobufjs",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "syncpack>effect": "3.18.0"
+    }
   },
   "resolutions": {
     "@livestore/adapter-cloudflare": "workspace:*",
@@ -39,7 +44,7 @@
     "@livestore/cli": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.8",
+    "@livestore/devtools-vite": "0.4.0-dev.14",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
@@ -63,7 +68,7 @@
     "build:clean": "bash -c \"find {examples,packages,tests,docs} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
-    "prepare": "husky",
+    "prepare": "husky && effect-language-service patch || true",
     "test": "CI=1 pnpm --parallel run test",
     "update-lockfile": "CI=1 pnpm install --lockfile-only"
   }

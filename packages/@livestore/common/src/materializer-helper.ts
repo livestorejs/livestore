@@ -5,7 +5,7 @@ import type { SqliteDb } from './adapter-types.ts'
 import { SessionIdSymbol } from './adapter-types.ts'
 import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.ts'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent.ts'
-import { getEventDef, type LiveStoreSchema } from './schema/schema.ts'
+import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
@@ -87,7 +87,18 @@ export const makeMaterializerHash =
   ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
   (event: LiveStoreEvent.AnyEncoded): Option.Option<number> => {
     if (isDevEnv()) {
-      const { eventDef, materializer } = getEventDef(schema, event.name)
+      // Hashing is only needed during dev-mode diagnostics. Skip work entirely for
+      // unknown events (no definition/materializer) so we do not introduce noisy
+      // warnings while still returning `Option.none()` to disable hash checks.
+      const eventDef = schema.eventsDefsMap.get(event.name)
+      const materializer = schema.state.materializers.get(event.name)
+      if (eventDef === undefined || materializer === undefined) {
+        return Option.none()
+      }
+      // For known events we replay the materializer with the encoded payload and
+      // hash the resulting SQL statements. This lets us cheaply detect
+      // side-effects or logic drift between leader/client materializers without
+      // mutating the underlying state.
       const materializerResults = getExecStatementsFromMaterializer({
         eventDef,
         materializer,

@@ -1,0 +1,61 @@
+---
+title: Store
+sidebar:
+  order: 3
+---
+
+import CommitEventSnippet from '../../_assets/code/reference/store/commit-event.ts?snippet'
+import CreateStoreSnippet from '../../_assets/code/reference/store/create-store.ts?snippet'
+import QueryDataSnippet from '../../_assets/code/reference/store/query-data.ts?snippet'
+import ShutdownSnippet from '../../_assets/code/reference/store/shutdown.ts?snippet'
+import SubscribeSnippet from '../../_assets/code/reference/store/subscribe.ts?snippet'
+
+The `Store` is the most common way to interact with LiveStore from your application code. It provides a way to query data, commit events, and subscribe to data changes.
+
+## Creating a store
+
+For how to create a store in React, see the [React integration docs](/reference/framework-integrations/react-integration). The following example shows how to create a store manually:
+
+<CreateStoreSnippet />
+
+## Using a store
+
+### Querying data
+
+<QueryDataSnippet />
+
+### Subscribing to data
+
+<SubscribeSnippet />
+
+### Committing events
+
+<CommitEventSnippet />
+
+### Shutting down a store
+
+LiveStore provides two APIs for shutting down a store:
+
+<ShutdownSnippet />
+
+## Multiple Stores
+
+You can create and use multiple stores in the same app. This can be useful when breaking up your data model into smaller pieces.
+
+## Development/debugging helpers
+
+A store instance also exposes a `_dev` property that contains some helpful methods for development. For convenience you can access a store on `globalThis`/`window` like via `__debugLiveStore.default._dev` (`default` is the store id):
+
+```ts
+// Download the SQLite database
+__debugLiveStore.default._dev.downloadDb()
+
+// Download the eventlog database
+__debugLiveStore.default._dev.downloadEventlogDb()
+
+// Reset the store
+__debugLiveStore.default._dev.hardReset()
+
+// See the current sync state
+__debugLiveStore.default._dev.syncStates()
+```   

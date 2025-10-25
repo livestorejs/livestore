@@ -28,9 +28,12 @@ Ranges:
 // const __dirname = import.meta.dirname // use this once supported broadly
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
+// Only include actual packages (directories that contain a package.json)
+// This avoids accidentally treating placeholder/moved folders as local packages
 const localPackages = fs
   .readdirSync(path.join(__dirname, './packages/@livestore'))
   .filter((dir) => fs.statSync(path.join(__dirname, './packages/@livestore', dir)).isDirectory())
+  .filter((dir) => fs.existsSync(path.join(__dirname, './packages/@livestore', dir, 'package.json')))
   .map((dir) => `@livestore/${dir}`)
 
 /** @type {import("syncpack").RcFile} */

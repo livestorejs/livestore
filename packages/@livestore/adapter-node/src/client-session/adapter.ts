@@ -32,6 +32,7 @@ import {
   Schedule,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   Worker,
   WorkerError,
@@ -137,7 +138,8 @@ const makeAdapterImpl = ({
 }): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema, schema } =
+        adapterArgs
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -204,7 +206,8 @@ const makeAdapterImpl = ({
               storage,
               ...omitUndefineds({
                 syncOptions: leaderThreadInput.sync,
-                syncPayload,
+                syncPayloadEncoded,
+                syncPayloadSchema,
                 testing,
               }),
             }).pipe(UnexpectedError.mapToUnexpectedError)
@@ -218,7 +221,7 @@ const makeAdapterImpl = ({
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
-              syncPayload,
+              syncPayloadEncoded,
             })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -244,6 +247,7 @@ const makeAdapterImpl = ({
         isLeader: true,
         // Not really applicable for node as there is no "reload the app" concept
         registerBeforeUnload: (_onBeforeUnload) => () => {},
+        origin: undefined,
       })
 
       return clientSession
@@ -287,7 +291,8 @@ const makeLocalLeaderThread = ({
   schema,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   storage,
   devtools,
   testing,
@@ -298,7 +303,8 @@ const makeLocalLeaderThread = ({
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any>
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
@@ -312,7 +318,8 @@ const makeLocalLeaderThread = ({
         schema,
         syncOptions,
         storage,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtools,
         makeSqliteDb,
         ...omitUndefineds({ testing: testing?.overrides }),
@@ -320,7 +327,8 @@ const makeLocalLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -343,8 +351,9 @@ const makeLocalLeaderThread = ({
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
-          getSyncState: syncProcessor.syncState,
+          syncState: syncProcessor.syncState,
           sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
       )
@@ -365,7 +374,7 @@ const makeWorkerLeaderThread = ({
   storage,
   devtools,
   bootStatusQueue,
-  syncPayload,
+  syncPayloadEncoded,
   testing,
 }: {
   shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
@@ -377,7 +386,7 @@ const makeWorkerLeaderThread = ({
   storage: WorkerSchema.StorageType
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   testing?: {
     overrides?: TestingOverrides
   }
@@ -398,7 +407,7 @@ const makeWorkerLeaderThread = ({
           clientId,
           storage,
           devtools,
-          syncPayload,
+          syncPayloadEncoded,
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),
@@ -490,15 +499,22 @@ const makeWorkerLeaderThread = ({
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
-        ),
+        syncState: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
+          ),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+        }),
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
       },
       {
         ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }),

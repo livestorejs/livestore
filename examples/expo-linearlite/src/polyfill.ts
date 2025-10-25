@@ -1,8 +1,8 @@
 import { getRandomValues } from 'expo-crypto'
 
-globalThis.crypto = globalThis.crypto ?? {}
+// Minimal, typed shims required by a few deps under React Native
+globalThis.crypto ??= {} as Crypto
+globalThis.crypto.getRandomValues ??= getRandomValues as Crypto['getRandomValues']
 
-globalThis.crypto.getRandomValues = (arr) => getRandomValues(arr as any)
-
-globalThis.performance.mark = globalThis.performance.mark ?? (() => {})
-globalThis.performance.measure = globalThis.performance.measure ?? (() => {})
+globalThis.performance.mark ??= () => {}
+globalThis.performance.measure ??= () => {}

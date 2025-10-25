@@ -23,7 +23,7 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0, isClient: false, rebaseGeneration: 1 }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
-      rebaseGeneration: 0,
+      rebaseGeneration: 1,
     })
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0, isClient: true, rebaseGeneration: 1 }).seqNum).toStrictEqual({
       global: 0,
@@ -35,7 +35,7 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.nextPair({ seqNum: e_0_0_g1, isClient: false }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
-      rebaseGeneration: 0,
+      rebaseGeneration: 2,
     })
   })
 
@@ -44,12 +44,12 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.toString(EventSequenceNumber.make({ global: 0, client: 0, rebaseGeneration: 1 }))).toBe(
       'e0r1',
     )
-    expect(EventSequenceNumber.toString(EventSequenceNumber.make({ global: 0, client: 1 }))).toBe('e0+1')
+    expect(EventSequenceNumber.toString(EventSequenceNumber.make({ global: 0, client: 1 }))).toBe('e0.1')
     expect(EventSequenceNumber.toString(EventSequenceNumber.make({ global: 0, client: 1, rebaseGeneration: 1 }))).toBe(
-      'e0+1r1',
+      'e0.1r1',
     )
     expect(EventSequenceNumber.toString(EventSequenceNumber.make({ global: 5, client: 3, rebaseGeneration: 2 }))).toBe(
-      'e5+3r2',
+      'e5.3r2',
     )
   })
 
@@ -59,11 +59,11 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(EventSequenceNumber.fromString('e0r1')).toStrictEqual(
       EventSequenceNumber.make({ global: 0, client: 0, rebaseGeneration: 1 }),
     )
-    expect(EventSequenceNumber.fromString('e0+1')).toStrictEqual(EventSequenceNumber.make({ global: 0, client: 1 }))
-    expect(EventSequenceNumber.fromString('e0+1r1')).toStrictEqual(
+    expect(EventSequenceNumber.fromString('e0.1')).toStrictEqual(EventSequenceNumber.make({ global: 0, client: 1 }))
+    expect(EventSequenceNumber.fromString('e0.1r1')).toStrictEqual(
       EventSequenceNumber.make({ global: 0, client: 1, rebaseGeneration: 1 }),
     )
-    expect(EventSequenceNumber.fromString('e5+3r2')).toStrictEqual(
+    expect(EventSequenceNumber.fromString('e5.3r2')).toStrictEqual(
       EventSequenceNumber.make({ global: 5, client: 3, rebaseGeneration: 2 }),
     )
 
@@ -74,7 +74,7 @@ Vitest.describe('EventSequenceNumber', () => {
     expect(() => EventSequenceNumber.fromString('eabc')).toThrow(
       'Invalid event sequence number string: invalid number format',
     )
-    expect(() => EventSequenceNumber.fromString('e0+abc')).toThrow(
+    expect(() => EventSequenceNumber.fromString('e0.abc')).toThrow(
       'Invalid event sequence number string: invalid number format',
     )
     expect(() => EventSequenceNumber.fromString('e0rabc')).toThrow(

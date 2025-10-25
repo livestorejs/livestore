@@ -1,6 +1,3 @@
-/// <reference lib="dom" />
-/// <reference path="./types.d.ts" />
-
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, queryDb } from '@livestore/livestore'
@@ -47,9 +44,7 @@ class TodoListElement extends HTMLElement {
   connectedCallback(): void {
     this.renderTodos(Array.from(store.query(tables.todos.where({ deletedAt: null }))))
 
-    store.subscribe(visibleTodos$, {
-      onUpdate: (todos) => this.renderTodos(todos),
-    })
+    store.subscribe(visibleTodos$, (todos) => this.renderTodos(todos))
   }
 
   private renderTodos(todos: ReadonlyArray<typeof tables.todos.Type>): void {
@@ -73,10 +68,11 @@ class TodoListElement extends HTMLElement {
       const row = document.createElement('div')
       row.style.display = 'flex'
       row.style.alignItems = 'center'
-      row.append(item, deleteButton)
+      row.appendChild(item)
+      row.appendChild(deleteButton)
 
       const wrapper = document.createElement('li')
-      wrapper.append(row)
+      wrapper.appendChild(row)
       return wrapper
     })
 

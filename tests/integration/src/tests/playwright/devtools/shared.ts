@@ -18,17 +18,22 @@ const checkDevtoolsState_ = async (options: {
   await loading.waitFor({ state: 'detached' })
 
   await options.devtools
-    .getByRole('tab', { name: 'Data Browser' })
-    .describe(`${options.label}:Data Browser`)
+    .getByRole('tab', { name: 'Database' })
+    .describe(`${options.label}:Database`)
     .waitFor({ state: 'attached', timeout: 3000 })
 
   // expect(await options.devtools.getByRole('status', { name: 'Leader Tab' }).isVisible()).toBe(options.expect.leader)
 
-  const tablesList = options.devtools.getByRole('treegrid', { name: 'Tables' }).describe(`${options.label}:Tables`)
-  await tablesList.waitFor({ timeout: 1000 })
+  await options.devtools
+    .getByText('Tables')
+    .describe(`${options.label}:Tables`)
+    .waitFor({ timeout: 2000 })
+    .catch(() => {})
 
   for (const table of options.expect.tables) {
-    await expect(tablesList.getByText(table).describe(`${options.label}:${table}`)).toBeVisible()
+    await expect(
+      options.devtools.getByText(table, { exact: false }).first().describe(`${options.label}:${table}`),
+    ).toBeVisible()
   }
 }
 

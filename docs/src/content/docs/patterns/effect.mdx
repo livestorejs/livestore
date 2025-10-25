@@ -4,14 +4,23 @@ sidebar:
   order: 21
 ---
 
-import { Code } from '@astrojs/starlight/components';
-import atomsCode from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet';
-import queriesCode from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet';
-import userListCode from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet';
-import servicesCode from '../../_assets/code/patterns/effect/store-setup/services.tsx?snippet';
-import optimisticCode from '../../_assets/code/patterns/effect/optimistic-example/optimistic.ts?snippet';
-import derivedCode from '../../_assets/code/patterns/effect/derived-example/derived.ts?snippet';
-import batchCode from '../../_assets/code/patterns/effect/batch-example/batch.ts?snippet';
+import AtomsSnippet from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet';
+import QueriesSnippet from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet';
+import UserListSnippet from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet';
+import ServicesSnippet from '../../_assets/code/patterns/effect/store-setup/services.tsx?snippet';
+import OptimisticSnippet from '../../_assets/code/patterns/effect/optimistic-example/optimistic.ts?snippet';
+import DerivedSnippet from '../../_assets/code/patterns/effect/derived-example/derived.ts?snippet';
+import BatchSnippet from '../../_assets/code/patterns/effect/batch-example/batch.ts?snippet';
+
+export const SNIPPETS = {
+  atoms: AtomsSnippet,
+  queries: QueriesSnippet,
+  userList: UserListSnippet,
+  services: ServicesSnippet,
+  optimistic: OptimisticSnippet,
+  derived: DerivedSnippet,
+  batch: BatchSnippet,
+}
 
 LiveStore itself is built on top of [Effect](https://effect.website) which is a powerful library to write production-grade TypeScript code. It's also possible (and recommended) to use Effect directly in your application code.
 
@@ -45,7 +54,7 @@ pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
 
 Create a LiveStore-backed atom store with persistence and worker support using the `AtomLivestore.Tag` pattern:
 
-<Code lang="ts" code={atomsCode} meta="twoslash" title="atoms.ts" />
+<SNIPPETS.atoms />
 
 The `StoreTag` class provides the following static methods:
 - `StoreTag.runtime` - Access to Effect runtime
@@ -59,19 +68,19 @@ The `StoreTag` class provides the following static methods:
 
 Create reactive query atoms that automatically update when the underlying data changes:
 
-<Code lang="ts" code={queriesCode} meta="twoslash" title="queries.ts" />
+<SNIPPETS.queries />
 
 ### Using Queries in React Components
 
 Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
-<Code lang="tsx" code={userListCode} meta="twoslash" title="UserList.tsx" />
+<SNIPPETS.userList />
 
 ### Integrating Effect Services
 
 Combine Effect services with LiveStore operations using the store's runtime:
 
-<Code lang="tsx" code={servicesCode} meta="twoslash" title="services.tsx" />
+<SNIPPETS.services />
 
 ### Advanced Patterns
 
@@ -79,19 +88,19 @@ Combine Effect services with LiveStore operations using the store's runtime:
 
 Combine local state with LiveStore for optimistic UI updates. When using `StoreTag.makeQueryUnsafe`, the data is directly available:
 
-<Code lang="ts" code={optimisticCode} meta="twoslash" title="optimistic.ts" />
+<SNIPPETS.optimistic />
 
 #### Derived State
 
 Create computed atoms based on LiveStore queries. When using the non-unsafe API, handle the Result type:
 
-<Code lang="ts" code={derivedCode} meta="twoslash" title="derived.ts" />
+<SNIPPETS.derived />
 
 #### Batch Operations
 
 Perform multiple commits efficiently (commits are synchronous):
 
-<Code lang="ts" code={batchCode} meta="twoslash" title="batch.ts" />
+<SNIPPETS.batch />
 
 ### Best Practices
 

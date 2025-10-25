@@ -1,7 +1,7 @@
 import type React from 'react'
-import { MobileMenu } from '@/components/layout/sidebar/mobile-menu'
-import { Toolbar } from '@/components/layout/toolbar'
-import { useFrontendState } from '@/lib/livestore/queries'
+import { useFrontendState } from '../../livestore/queries.ts'
+import { MobileMenu } from './sidebar/mobile-menu.tsx'
+import { Toolbar } from './toolbar/index.tsx'
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [frontendState] = useFrontendState()

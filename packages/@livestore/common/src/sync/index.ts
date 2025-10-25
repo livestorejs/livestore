@@ -1,4 +1,6 @@
 export * from './ClientSessionSyncProcessor.ts'
 export * from './mock-sync-backend.ts'
 export * from './sync.ts'
+export { NetworkStatus } from './sync-backend.ts'
+export * from './transport-chunking.ts'
 export * from './validate-push-payload.ts'

@@ -4,6 +4,9 @@ sidebar:
   order: 4
 ---
 
+import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
+import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
+
 ## Event definitions
 
 There are two types of events:
@@ -17,21 +20,7 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 ### Example
 
-```ts
-// livestore/schema.ts
-import { Events, Schema, sql } from '@livestore/livestore'
-
-export const events = {
-  todoCreated: Events.synced({
-    name: 'v1.TodoCreated',
-    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-  }),
-  todoCompleted: Events.synced({
-    name: 'v1.TodoCompleted',
-    schema: Schema.Struct({ id: Schema.String }),
-  }),
-}
-```
+<EventSchemaSnippet />
 
 ### Best Practices
 
@@ -41,6 +30,25 @@ export const events = {
 - TODO: mention AI linting (either manually or via a CI step)
   - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not
 - It's recommended to avoid `DELETE` events and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
+
+### Unknown events
+
+Older clients might receive events that were introduced in newer app versions. Configure the behaviour centrally via `unknownEventHandling` when constructing the schema:
+
+```ts
+const schema = makeSchema({
+  events,
+  state,
+  unknownEventHandling: {
+    strategy: 'callback',
+    onUnknownEvent: (event, error) => {
+      console.warn('LiveStore saw an unknown event', { event, reason: error.reason })
+    },
+  },
+})
+```
+
+Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new events until the client updates, `'fail'` to halt immediately, or `'callback'` to delegate to custom logging/telemetry while continuing to process the log.
 
 ### Schema evolution \{#schema-evolution\}
 
@@ -54,14 +62,7 @@ export const events = {
 
 ## Commiting events
 
-```ts
-// somewhere in your app
-import { events } from './livestore/schema.js'
-
-store.commit(
-	events.todoCreated({ id: '1', text: 'Buy milk' })
-)
-```
+<CommitEventSnippet />
 
 ## Eventlog
 

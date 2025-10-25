@@ -7,12 +7,12 @@ import { omitUndefineds } from '@livestore/utils'
 import type React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
-import { Footer } from './components/Footer.js'
-import { Header } from './components/Header.js'
-import { MainSection } from './components/MainSection.js'
+import { Footer } from './components/Footer.tsx'
+import { Header } from './components/Header.tsx'
+import { MainSection } from './components/MainSection.tsx'
 import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
-import { schema } from './livestore/schema.js'
-import { makeTracer } from './otel.js'
+import { schema } from './livestore/schema.ts'
+import { makeTracer } from './otel.ts'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">

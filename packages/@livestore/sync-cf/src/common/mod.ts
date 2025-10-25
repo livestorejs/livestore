@@ -1,9 +1,11 @@
+import { OversizeChunkItemError, splitChunkBySize } from '@livestore/common/sync'
 import { Schema } from '@livestore/utils/effect'
 
 export type { CfTypes } from '@livestore/common-cf'
-
+export * from './constants.ts'
 export { SyncHttpRpc } from './http-rpc-schema.ts'
 export * as SyncMessage from './sync-message-types.ts'
+export { OversizeChunkItemError, splitChunkBySize }
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,

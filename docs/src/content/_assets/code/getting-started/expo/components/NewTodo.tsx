@@ -1,6 +1,3 @@
-/// <reference lib="dom" />
-/// <reference path="../types.d.ts" />
-
 import { useQuery, useStore } from '@livestore/react'
 import type { FC } from 'react'
 import { Button, TextInput, View } from 'react-native'

@@ -26,7 +26,9 @@ const CONSTANTS = {
 }
 
 export function isMacOS(): boolean {
-  return navigator?.platform.toUpperCase().includes('MAC')
+  if (typeof navigator === 'undefined') return false
+  const platform = navigator.platform ?? ''
+  return /(Mac|iPhone|iPod|iPad)/i.test(platform)
 }
 
 export function Search() {
@@ -36,13 +38,12 @@ export function Search() {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isMac, setIsMac] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const focusableLinksRef = useRef<HTMLAnchorElement[]>([])
-
-  const isMac = isMacOS()
 
   const trimmedQuery = searchQuery.trim()
   const showClearButton = trimmedQuery.length > 0
@@ -82,16 +83,6 @@ export function Search() {
     onStateChange: handleSearchStateChange,
   })
 
-  const handleSearchInput = useCallback((value: string) => {
-    setSearchQuery(value)
-    setSelectedIndex(-1)
-  }, [])
-
-  // Effect to trigger search when debounced query changes
-  useEffect(() => {
-    searchWithDeduplication(debouncedQuery)
-  }, [debouncedQuery, searchWithDeduplication])
-
   const openModal = useCallback(() => {
     setIsModalOpen(true)
     document.body.style.overflow = 'hidden'
@@ -101,6 +92,35 @@ export function Search() {
       searchInputRef.current?.setSelectionRange(searchQuery.length, searchQuery.length)
     }, CONSTANTS.MODAL_ANIMATION_DELAY)
   }, [searchQuery])
+
+  const handleSearchInput = useCallback((value: string) => {
+    setSearchQuery(value)
+    setSelectedIndex(-1)
+  }, [])
+
+  useEffect(() => {
+    // Check for macOS
+    if (isMacOS()) setIsMac(true)
+    // Check for showSearch param in URL
+    const searchParams = new URLSearchParams(window.location.search)
+    const showSearch = searchParams.get('showSearch')
+    if (showSearch) {
+      // If showSearch is true, open the modal
+      if (showSearch === 'true') openModal()
+      // Delete showSearch param from URL
+      searchParams.delete('showSearch')
+      let newUrl = window.location.pathname
+      if (searchParams.values.length > 0) {
+        newUrl += `?${searchParams.toString()}`
+      }
+      window.history.replaceState(null, '', newUrl)
+    }
+  }, [openModal])
+
+  // Effect to trigger search when debounced query changes
+  useEffect(() => {
+    searchWithDeduplication(debouncedQuery)
+  }, [debouncedQuery, searchWithDeduplication])
 
   const resetStates = useCallback(() => {
     setSearchQuery('')
@@ -144,7 +164,10 @@ export function Search() {
       if (newIndex !== selectedIndex) {
         setSelectedIndex(newIndex)
         links[newIndex]?.focus()
-        links[newIndex]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        links[newIndex]?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth',
+        })
 
         // Announce to screen readers
         const linkText = links[newIndex]?.textContent || ''

@@ -1,12 +1,15 @@
 import path from 'node:path'
 import { SyncBackend, UnexpectedError } from '@livestore/common'
+import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
 import {
+  Chunk,
   Effect,
   Layer,
   Option,
   RpcClient,
   RpcSerialization,
+  type Schedule,
   Socket,
   Stream,
   SubscriptionRef,
@@ -20,26 +23,49 @@ export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
 
-export const layer: SyncProviderLayer = Layer.scoped(
-  SyncProviderImpl,
-  Effect.gen(function* () {
-    const server = yield* WranglerDevServerService
+const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
+  Layer.scoped(
+    SyncProviderImpl,
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServerService
 
-    return {
-      makeProvider: makeProxyDoRpcSync({ port: server.port }),
-      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
-      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-      providerSpecific: {},
-    }
+      return {
+        makeProvider: (args, options) =>
+          makeProxyDoRpcSync({
+            port: server.port,
+            pingSchedule: options?.pingSchedule,
+          })(args),
+        turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+        turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+        providerSpecific: {},
+      }
+    }),
+  ).pipe(
+    Layer.provide(
+      WranglerDevServerService.Default({
+        cwd: path.join(import.meta.dirname, 'cloudflare'),
+        wranglerConfigPath: config?.wranglerConfigPath,
+      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+    ),
+    UnexpectedError.mapToUnexpectedErrorLayer,
+  )
+
+export const d1 = {
+  name: `${name} (D1)`,
+  layer: makeLayer({
+    label: 'D1',
+    wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-d1.toml'),
   }),
-).pipe(
-  Layer.provide(
-    WranglerDevServerService.Default({
-      cwd: path.join(import.meta.dirname, 'cloudflare'),
-    }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
-  ),
-  UnexpectedError.mapToUnexpectedErrorLayer,
-)
+  prepare,
+}
+export const doSqlite = {
+  name: `${name} (DO)`,
+  layer: makeLayer({
+    wranglerConfigPath: path.join(import.meta.dirname, 'cloudflare', 'wrangler-do-sqlite.toml'),
+    label: 'DO',
+  }),
+  prepare,
+}
 
 /**
  * Given we can't use the DO RPC sync provider client only within a Durable Object,
@@ -58,10 +84,22 @@ export const layer: SyncProviderLayer = Layer.scoped(
  *        └────────────────────────┤layerRpcServerWebsocket│ ◀─── DO RPC ──▶ │  (Server Layer)    │
  *                                 └───────────────────────┘                 └────────────────────┘
  */
-const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackendConstructor<any> =>
+const makeProxyDoRpcSync = ({
+  port,
+  pingSchedule,
+}: {
+  port: number
+  pingSchedule?: Schedule.Schedule<unknown> | undefined
+}): SyncBackend.SyncBackendConstructor<any> =>
   // TODO pass through clientId, payload, storeId to worker/DO
   Effect.fn(function* ({ clientId, storeId, payload }) {
-    const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
+    const socketConnectionRef = yield* SubscriptionRef.make(false)
+
+    const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
+      url: `ws://localhost:${port}/do-rpc-ws-proxy`,
+      isConnected: socketConnectionRef,
+      pingSchedule,
+    }).pipe(
       Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}/do-rpc-ws-proxy`)),
       Layer.provide(Socket.layerWebSocketConstructorGlobal),
       Layer.provide(RpcSerialization.layerJson),
@@ -106,9 +144,33 @@ const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackend
             Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
           ),
       push: (batch) =>
-        client
-          .Push({ clientId, storeId, payload, batch })
-          .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+        Effect.gen(function* () {
+          if (batch.length === 0) {
+            return
+          }
+
+          const chunkedBatches = yield* Chunk.fromIterable(batch).pipe(
+            splitChunkBySize({
+              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+              encode: (items) => ({
+                clientId,
+                storeId,
+                payload,
+                batch: items,
+              }),
+            }),
+          )
+
+          for (const chunk of chunkedBatches) {
+            yield* client.Push({
+              clientId,
+              storeId,
+              payload,
+              batch: Chunk.toReadonlyArray(chunk),
+            })
+          }
+        }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie),
       ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       metadata,
       supports: {

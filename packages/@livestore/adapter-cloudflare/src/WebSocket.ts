@@ -1,6 +1,6 @@
+import type { CfTypes } from '@livestore/common-cf'
 import type { Schedule, Scope } from '@livestore/utils/effect'
 import { Effect, Exit, identity, WebSocket } from '@livestore/utils/effect'
-import type * as CfWorker from './cf-types.ts'
 
 // TODO refactor using Effect socket implementation
 // https://github.com/Effect-TS/effect/blob/main/packages%2Fexperimental%2Fsrc%2FDevTools%2FClient.ts#L113
@@ -18,10 +18,10 @@ export const makeWebSocket = ({
   durableObject,
 }: {
   /** CF Sync Backend DO with `/sync` endpoint */
-  durableObject: CfWorker.DurableObjectStub
+  durableObject: CfTypes.DurableObjectStub
   url: URL
   reconnect?: Schedule.Schedule<unknown> | false
-}): Effect.Effect<CfWorker.WebSocket, WebSocket.WebSocketError, Scope.Scope> =>
+}): Effect.Effect<CfTypes.WebSocket, WebSocket.WebSocketError, Scope.Scope> =>
   Effect.gen(function* () {
     // yield* validateUrl(url)
 
@@ -31,7 +31,7 @@ export const makeWebSocket = ({
           if (!res.webSocket) {
             throw new Error('WebSocket upgrade failed')
           }
-          return res.webSocket as CfWorker.WebSocket
+          return res.webSocket as CfTypes.WebSocket
         }),
       catch: (cause) => new WebSocket.WebSocketError({ cause }),
     }).pipe(reconnect ? Effect.retry(reconnect) : identity, Effect.withSpan('make-websocket-durable-object'))
@@ -60,7 +60,7 @@ export const makeWebSocket = ({
             socket.close(1000)
           }
         } catch (error) {
-          yield* Effect.die(new WebSocket.WebSocketError({ cause: error }))
+          return yield* Effect.die(new WebSocket.WebSocketError({ cause: error }))
         }
       }),
     )

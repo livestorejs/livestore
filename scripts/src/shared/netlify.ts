@@ -1,17 +1,45 @@
-import { Effect, Schema } from '@livestore/utils/effect'
+import { readFileSync } from 'node:fs'
+import os from 'node:os'
+import { join } from 'node:path'
+
+import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
 import { cmdText } from '@livestore/utils-dev/node'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
   message: Schema.String,
+  cause: Schema.optional(Schema.Unknown),
 }) {}
 
-const netlifyDeployResultSchema = Schema.Struct({
+const NetlifyDeployResultSchema = Schema.Struct({
   site_id: Schema.String,
   site_name: Schema.String,
   deploy_id: Schema.String,
   deploy_url: Schema.String,
   logs: Schema.String,
+})
+
+const NetlifyCliUserSchema = Schema.Struct({
+  auth: Schema.optional(
+    Schema.Struct({
+      token: Schema.String,
+    }),
+  ),
+})
+
+const NetlifyCliConfigSchema = Schema.Struct({
+  users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
+})
+
+// Hardcoded site ids for reliability (slug → id)
+const NETLIFY_SITE_IDS: Readonly<Record<string, string>> = {
+  'livestore-docs-dev': 'e02ba783-ea85-4be1-8b7f-c1b2b4d0d307',
+  'livestore-docs': 'abeae053-d336-480a-a0fe-f0aaaacaa74e',
+}
+
+const NetlifyPurgeRequestSchema = Schema.Struct({
+  site_id: Schema.optional(Schema.String),
+  site_slug: Schema.optional(Schema.String),
 })
 
 export type Target =
@@ -28,18 +56,34 @@ export type Target =
 
 const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 
+const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
+
+/**
+ * Deploy docs using the Netlify CLI by uploading the prebuilt directory.
+ *
+ * Assumptions:
+ * - Astro already built the site (mono docs build) into ./docs/dist
+ * - We want Edge Functions registered/activated without triggering another app build
+ */
 export const deployToNetlify = ({
   site,
-  dir,
   target,
   cwd,
-  filter,
+  message,
+  dir,
+  debug,
+  env,
 }: {
   site: string
-  dir: string
   target: Target
   cwd: string
-  filter?: string
+  message?: string
+  /** Absolute or docs-relative path to the built output directory. */
+  dir: string
+  /** When true, passes --debug to Netlify CLI and increases logging. */
+  debug?: boolean
+  /** Additional environment to pass to the Netlify CLI (e.g. STARLIGHT_*). */
+  env?: Record<string, string | undefined>
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -49,6 +93,15 @@ export const deployToNetlify = ({
     }
 
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
+    const debugEnabled =
+      debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
+    // Resolve site id to avoid team ambiguity when multiple teams exist.
+    // Prefer explicit NETLIFY_SITE_ID if provided, otherwise discover via sites:list.
+    const resolvedSiteArg = (process.env.NETLIFY_SITE_ID ??
+      env?.NETLIFY_SITE_ID ??
+      NETLIFY_SITE_IDS[site] ??
+      site) as string
+    yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
     const deployCommand = cmdText(
       [
         'pnpm',
@@ -58,25 +111,213 @@ export const deployToNetlify = ({
         // 'bunx',
         // 'netlify-cli',
         'deploy',
-        '--no-build',
-        '--json',
+        // In debug mode, omit --json so we get full build logs in stdout/stderr
+        debugEnabled ? undefined : '--json',
+        debugEnabled ? '--debug' : undefined,
         `--dir=${dir}`,
-        `--site=${site}`,
-        filter ? `--filter=${filter}` : undefined,
+        `--site=${resolvedSiteArg}`,
+        message ? `--message=${message}` : undefined,
         // Either use `--prod` or `--alias`
         target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
       ],
       {
         cwd,
-        env: { CI: '1' }, // Prevent netlify from using TTY
+        // Pipe stderr into stdout so the returned string includes build errors
+        stderr: 'pipe',
+        env: {
+          CI: '1', // Prevent netlify from using TTY
+          // Force the CLI to read the docs-local Netlify config so Edge Functions
+          // mapping is consistently applied in CI and locally.
+          NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+          // Ensure Astro/rehype-mermaid can find Playwright browsers when running
+          // inside the Netlify CLI build step (direnv provides this in our dev shells).
+          PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
+          // Preserve workspace root path required by various scripts/utilities
+          // in the docs build (set by direnv in dev/CI environments).
+          WORKSPACE_ROOT: process.env.WORKSPACE_ROOT,
+          // Preserve PATH/HOME to ensure bun/pnpm and caches are available to the build
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          ...(env ?? {}),
+        },
       },
     )
 
-    const result = yield* deployCommand.pipe(
-      Effect.tap((result) => Effect.logDebug(`[deploy-to-netlify] Deploy result for ${site}: ${result}`)),
-      Effect.andThen(Schema.decode(Schema.parseJson(netlifyDeployResultSchema))),
-      Effect.mapError((error) => new NetlifyError({ message: error.message, reason: 'unknown' })),
+    // Capture raw CLI output first so we can include it in error logs if JSON
+    // parsing fails (Netlify sometimes prints human-readable errors instead).
+    const rawOutput = yield* deployCommand.pipe(
+      Effect.tap((out) => Effect.logDebug(`[deploy-to-netlify] Deploy raw output for ${site}: ${out}`)),
+    )
+
+    const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          // Log the problematic output to aid debugging, then fail with a
+          // structured error that includes both the parse error and raw text.
+          yield* Effect.logError(
+            `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
+          )
+          yield* Effect.logError(rawOutput)
+          return yield* new NetlifyError({
+            message: 'Failed to decode Netlify deploy result',
+            reason: 'unknown',
+            cause: { error, raw: rawOutput },
+          })
+        }),
+      ),
     )
 
     return result
   })
+
+const resolveNetlifyAuthToken = Effect.gen(function* () {
+  const envToken = process.env.NETLIFY_AUTH_TOKEN
+  if (envToken !== undefined && envToken !== '') {
+    return envToken
+  }
+
+  const homeDirectory = os.homedir()
+  if (!homeDirectory) {
+    return yield* new NetlifyError({
+      message: 'Unable to determine home directory for Netlify auth token lookup',
+      reason: 'auth',
+    })
+  }
+
+  const configCandidates = determineNetlifyConfigCandidates(homeDirectory)
+
+  let configPath: string | undefined
+  let configContent: string | undefined
+
+  for (const candidate of configCandidates) {
+    const readResult = yield* Effect.try({
+      try: () => readFileSync(candidate, 'utf8'),
+      catch: (error) => error as NodeJS.ErrnoException,
+    }).pipe(Effect.either)
+
+    if (readResult._tag === 'Right') {
+      configContent = readResult.right
+      configPath = candidate
+      break
+    }
+
+    const readError = readResult.left
+    if (isFileMissingError(readError)) {
+      continue
+    }
+
+    return yield* new NetlifyError({
+      message: `Failed to read Netlify CLI config at ${candidate}`,
+      reason: 'auth',
+      cause: readError,
+    })
+  }
+
+  if (!configContent || !configPath) {
+    return yield* new NetlifyError({
+      message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
+      reason: 'auth',
+    })
+  }
+
+  const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
+    Effect.mapError(
+      (error) =>
+        new NetlifyError({
+          message: `Failed to parse Netlify CLI config at ${configPath}`,
+          reason: 'auth',
+          cause: error,
+        }),
+    ),
+  )
+
+  const resolvedToken = config.users
+    ? Object.values(config.users)
+        .map((user) => user.auth?.token)
+        .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+    : undefined
+
+  if (!resolvedToken) {
+    return yield* new NetlifyError({
+      message: `Netlify auth token not found in ${configPath}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
+      reason: 'auth',
+    })
+  }
+
+  return resolvedToken
+})
+
+export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlug?: string }) =>
+  Effect.gen(function* () {
+    if (!siteId && !siteSlug) {
+      return yield* new NetlifyError({
+        message: 'A site identifier is required to purge the Netlify CDN cache',
+        reason: 'unknown',
+      })
+    }
+
+    const token = yield* resolveNetlifyAuthToken
+    yield* Effect.log(`Purging Netlify CDN cache for ${siteSlug ?? siteId ?? 'site'}`)
+
+    const httpClient = yield* HttpClient.HttpClient
+
+    yield* HttpClientRequest.schemaBodyJson(NetlifyPurgeRequestSchema)(
+      HttpClientRequest.post(NETLIFY_API_URL).pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`)),
+      {
+        site_id: siteId,
+        site_slug: siteSlug,
+      },
+    ).pipe(
+      Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+      Effect.mapError(
+        (error) =>
+          new NetlifyError({
+            message: 'Failed to purge Netlify CDN cache',
+            reason: 'unknown',
+            cause: error,
+          }),
+      ),
+    )
+
+    yield* Effect.log(`Requested Netlify CDN purge for ${siteSlug ?? siteId ?? 'site'}`)
+  })
+
+const determineNetlifyConfigCandidates = (homeDirectory: string): readonly string[] => {
+  const configPaths = [] as string[]
+
+  const primaryDirectory = resolveOsConfigDirectory(homeDirectory)
+  configPaths.push(join(primaryDirectory, 'config.json'))
+  configPaths.push(join(homeDirectory, '.netlify', 'config.json'))
+
+  return configPaths
+}
+
+const resolveOsConfigDirectory = (homeDirectory: string): string => {
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA
+    if (appData && appData !== '') {
+      return join(appData, 'netlify')
+    }
+    return join(homeDirectory, 'AppData', 'Roaming', 'netlify')
+  }
+
+  if (process.platform === 'darwin') {
+    return join(homeDirectory, 'Library', 'Preferences', 'netlify')
+  }
+
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME
+  if (xdgConfigHome && xdgConfigHome !== '') {
+    return join(xdgConfigHome, 'netlify')
+  }
+
+  return join(homeDirectory, '.config', 'netlify')
+}
+
+const isFileMissingError = (error: unknown): error is NodeJS.ErrnoException => {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+
+  const maybeError = error as NodeJS.ErrnoException
+  return maybeError.code === 'ENOENT' || maybeError.code === 'ENOTDIR'
+}

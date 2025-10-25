@@ -1,5 +1,3 @@
-/// <reference path="../types.d.ts" />
-
 import { useQuery, useStore } from '@livestore/react'
 import { type FC, useCallback } from 'react'
 import { Button, ScrollView, Text, View } from 'react-native'

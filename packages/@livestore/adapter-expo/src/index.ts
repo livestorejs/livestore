@@ -62,11 +62,13 @@ export type MakeDbOptions = {
   resetPersistence?: boolean
 }
 
-declare global {
-  var RN$Bridgeless: boolean | undefined
-}
-
-const IS_NEW_ARCH = globalThis.RN$Bridgeless === true
+// Expo Go with the New Architecture enables Fabric and TurboModules, but may not run in "bridgeless" mode.
+// Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
+const IS_NEW_ARCH =
+  // Fabric global – set when the new renderer is enabled
+  Boolean((globalThis as any).nativeFabricUIManager) ||
+  // TurboModule proxy – indicates new arch TurboModules
+  Boolean((globalThis as any).__turboModuleProxy)
 
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
@@ -81,7 +83,8 @@ export const makePersistedAdapter =
         })
       }
 
-      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
+      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema } =
+        adapterArgs
 
       const {
         storage,
@@ -114,7 +117,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = getDevtoolsUrl().toString()
+      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -125,7 +128,8 @@ export const makePersistedAdapter =
         storage: storage ?? {},
         devtoolsEnabled,
         bootStatusQueue,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtoolsUrl,
       })
 
@@ -157,6 +161,7 @@ export const makePersistedAdapter =
 
           return () => {}
         },
+        origin: undefined,
       })
 
       return clientSession
@@ -171,7 +176,8 @@ const makeLeaderThread = ({
   storage,
   devtoolsEnabled,
   bootStatusQueue: bootStatusQueueClientSession,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   devtoolsUrl,
 }: {
   storeId: string
@@ -184,7 +190,8 @@ const makeLeaderThread = ({
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
@@ -218,7 +225,8 @@ const makeLeaderThread = ({
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 
@@ -230,6 +238,7 @@ const makeLeaderThread = ({
         extraIncomingMessagesQueue,
         initialState,
         bootStatusQueue,
+        networkStatus,
       } = yield* LeaderThreadCtx
 
       const bootStatusFiber = yield* Queue.takeBetween(bootStatusQueue, 1, 1000).pipe(
@@ -267,8 +276,9 @@ const makeLeaderThread = ({
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
-        getSyncState: syncProcessor.syncState,
+        syncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        networkStatus,
       })
 
       const initialSnapshot = db.export()

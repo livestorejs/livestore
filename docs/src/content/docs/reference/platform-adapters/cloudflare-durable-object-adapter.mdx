@@ -1,0 +1,132 @@
+---
+title: Cloudflare Durable Object Adapter
+sidebar:
+  order: 20
+---
+
+import EnvSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/env.ts?snippet'
+import SyncBackendSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/sync-backend.ts?snippet'
+import ClientDoSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/client-do.ts?snippet'
+import WorkerSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/worker.ts?snippet'
+import ResetSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/reset.ts?snippet'
+import HelperSnippet from '../../../_assets/code/reference/platform-adapters/cloudflare/shared.ts?snippet'
+
+export const SNIPPETS = {
+  env: EnvSnippet,
+  helper: HelperSnippet,
+  syncBackend: SyncBackendSnippet,
+  clientDo: ClientDoSnippet,
+  worker: WorkerSnippet,
+  reset: ResetSnippet,
+}
+
+The Cloudflare Durable Object adapter enables running LiveStore applications on Cloudflare Workers with stateful Durable Objects for synchronized real-time data.
+
+## Installation
+
+```bash
+pnpm add @livestore/adapter-cloudflare @livestore/sync-cf
+```
+
+## Configuration
+
+### Wrangler configuration
+
+Configure your `wrangler.toml` with the required Durable Object bindings:
+
+```toml
+name = "my-livestore-app"
+main = "./src/worker.ts"
+compatibility_date = "2025-05-07"
+compatibility_flags = [
+  "enable_request_signal", # Required for HTTP RPC streams
+]
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-livestore-db"
+database_id = "your-database-id"
+```
+
+### Environment types
+
+Define your Worker bindings so TypeScript can guide you when wiring Durable Objects:
+
+<SNIPPETS.env />
+
+We also use a small helper to extract the store identifier from incoming requests:
+
+<SNIPPETS.helper />
+
+## Basic setup
+
+### 1. Create the sync backend Durable Object
+
+The sync backend handles pushing and pulling events between clients:
+
+<SNIPPETS.syncBackend />
+
+### 2. Create the client Durable Object
+
+Each client Durable Object hosts a LiveStore instance and exposes DO RPC callbacks:
+
+<SNIPPETS.clientDo />
+
+### 3. Worker fetch handler
+
+The worker routes incoming requests either to the sync backend or to the client Durable Object:
+
+<SNIPPETS.worker />
+
+## API reference
+
+### `createStoreDoPromise(options)`
+
+Creates a LiveStore instance inside a Durable Object.
+
+**Options:**
+- `schema` – LiveStore schema definition
+- `storeId` – Unique identifier for the store
+- `clientId` – Client identifier
+- `sessionId` – Session identifier (use `nanoid()`)
+- `durableObject` – Context about the Durable Object hosting the store:
+  - `state` – Durable Object state handle (for example `this.ctx`)
+  - `env` – Environment bindings for the Durable Object
+  - `bindingName` – Name other workers use to reach this Durable Object
+- `syncBackendStub` – Durable Object stub used to reach the sync backend
+- `livePull` – Enable real-time updates (default: `false`)
+- `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)
+
+### `syncUpdateRpc(payload)`
+
+Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the payload to `handleSyncUpdateRpc` (see the client Durable Object example above).
+
+## Resetting LiveStore persistence (development only)
+
+When iterating locally, you can instruct the adapter to wipe the Durable Object’s LiveStore databases before booting by enabling `resetPersistence`. Guard this behind a protected route or admin token.
+
+<SNIPPETS.reset />
+
+:::caution
+Resetting persistence deletes all LiveStore state and eventlog data stored inside the Durable Object. Only expose this behaviour in guarded development flows and never to production traffic.
+:::
+
+## Advanced features
+
+- Use `livePull: true` to receive push-based updates via Durable Object RPC callbacks.
+- Subscribe to data changes inside the Durable Object to trigger side effects (see the client Durable Object example).
+- Wire additional routes in the worker fetch handler to expose debugging endpoints or admin operations.
+
+For sync backend-related APIs like `makeDurableObject`, `handleSyncRequest`, and `matchSyncRequest`, see the [Cloudflare sync provider documentation](/reference/syncing/sync-provider/cloudflare/).

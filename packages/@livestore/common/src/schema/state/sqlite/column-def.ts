@@ -185,6 +185,10 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     if (typeof value === 'boolean') return SqliteDsl.boolean({ nullable })
   }
 
+  if (isLiteralUnionOf(coreAst, (value): value is string => typeof value === 'string')) {
+    return SqliteDsl.text({ schema: coreSchema, nullable })
+  }
+
   // Literals based on their encoded type
   if (SchemaAST.isLiteral(encodedAst)) {
     const value = encodedAst.literal
@@ -199,6 +203,10 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     }
   }
 
+  if (isLiteralUnionOf(encodedAst, (value): value is string => typeof value === 'string')) {
+    return SqliteDsl.text({ schema: coreSchema, nullable })
+  }
+
   // Everything else needs JSON encoding
   return SqliteDsl.json({ schema: coreSchema, nullable })
 }
@@ -206,10 +214,26 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
 const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
   if (!SchemaAST.isUnion(ast)) return ast
 
-  // Find non-null/undefined type
-  const core = ast.types.find(
+  // Filter out null/undefined members while preserving any annotations on the union
+  const coreTypes = ast.types.filter(
     (type) => !(SchemaAST.isLiteral(type) && type.literal === null) && !SchemaAST.isUndefinedKeyword(type),
   )
 
-  return core || ast
+  if (coreTypes.length === 0 || coreTypes.length === ast.types.length) {
+    return ast
+  }
+
+  if (coreTypes.length === 1) {
+    return coreTypes[0]!
+  }
+
+  return SchemaAST.Union.make(coreTypes, ast.annotations)
 }
+
+const isLiteralUnionOf = <T extends SchemaAST.LiteralValue>(
+  ast: SchemaAST.AST,
+  predicate: (value: SchemaAST.LiteralValue) => value is T,
+): ast is SchemaAST.Union & { types: ReadonlyArray<SchemaAST.Literal & { literal: T }> } =>
+  SchemaAST.isUnion(ast) &&
+  ast.types.length > 0 &&
+  ast.types.every((type) => SchemaAST.isLiteral(type) && predicate(type.literal))

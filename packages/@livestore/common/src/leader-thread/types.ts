@@ -111,6 +111,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
+    networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
   }
 >() {}
 

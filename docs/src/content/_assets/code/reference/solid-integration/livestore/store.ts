@@ -1,5 +1,3 @@
-/// <reference path="../types.d.ts" />
-
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { getStore } from '@livestore/solid'
@@ -13,7 +11,7 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-export const store = await getStore<typeof schema>({
+export const store = await getStore({
   adapter,
   schema,
   storeId: 'default',

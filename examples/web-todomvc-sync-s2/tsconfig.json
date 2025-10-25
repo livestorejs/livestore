@@ -24,10 +24,7 @@
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
 
-    "types": ["vite/client"],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["./src"],
   "exclude": ["node_modules", "./src/server/api.ts"]

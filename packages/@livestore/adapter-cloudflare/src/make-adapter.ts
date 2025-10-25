@@ -8,11 +8,11 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import type * as CfWorker from './cf-types.ts'
 
 export const makeAdapter =
   ({
@@ -22,7 +22,7 @@ export const makeAdapter =
     sessionId,
     resetPersistence = false,
   }: {
-    storage: CfWorker.DurableObjectStorage
+    storage: CfTypes.DurableObjectStorage
     clientId: string
     syncOptions: SyncOptions
     sessionId: string
@@ -30,7 +30,13 @@ export const makeAdapter =
   }): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, /* devtoolsEnabled, shutdown, bootStatusQueue,  */ syncPayload, schema } = adapterArgs
+      const {
+        storeId,
+        /* devtoolsEnabled, shutdown, bootStatusQueue,  */
+        syncPayloadEncoded,
+        syncPayloadSchema,
+        schema,
+      } = adapterArgs
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
 
@@ -85,12 +91,14 @@ export const makeAdapter =
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayloadEncoded,
+          syncPayloadSchema,
         }),
       )
 
       const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {
-        const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+        const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+          yield* LeaderThreadCtx
 
         const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
         // const initialLeaderHead = EventSequenceNumber.ROOT
@@ -108,8 +116,9 @@ export const makeAdapter =
             initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
-            getSyncState: syncProcessor.syncState,
+            syncState: syncProcessor.syncState,
             sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+            networkStatus,
           },
           {
             // overrides: testing?.overrides?.clientSession?.leaderThreadProxy
@@ -146,6 +155,7 @@ export const makeAdapter =
         isLeader: true,
         // Not really applicable for node as there is no "reload the app" concept
         registerBeforeUnload: (_onBeforeUnload) => () => {},
+        origin: undefined,
       })
 
       return clientSession
@@ -163,7 +173,7 @@ const resetDurableObjectPersistence = ({
   storeId,
   dbFileNames,
 }: {
-  storage: CfWorker.DurableObjectStorage
+  storage: CfTypes.DurableObjectStorage
   storeId: string
   dbFileNames: ReadonlyArray<string>
 }) =>
@@ -186,7 +196,7 @@ const resetDurableObjectPersistence = ({
     Effect.withSpan('@livestore/adapter-cloudflare:resetPersistence', { attributes: { storeId } }),
   )
 
-const safeSqlExec = (storage: CfWorker.DurableObjectStorage, query: string, binding: string) => {
+const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, binding: string) => {
   try {
     storage.sql.exec(query, binding)
   } catch (error) {

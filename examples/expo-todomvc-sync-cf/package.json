@@ -3,35 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@expo/vector-icons": "14.1.0",
-    "@livestore/adapter-expo": "0.4.0-dev.8",
-    "@livestore/devtools-expo": "0.4.0-dev.8",
-    "@livestore/livestore": "0.4.0-dev.8",
-    "@livestore/peer-deps": "0.4.0-dev.8",
-    "@livestore/react": "0.4.0-dev.8",
-    "@livestore/sync-cf": "0.4.0-dev.8",
-    "babel-preset-expo": "13.2.3",
-    "expo": "53.0.22",
-    "expo-application": "6.1.5",
-    "expo-asset": "11.1.7",
-    "expo-crypto": "14.1.5",
-    "expo-sqlite": "15.2.14",
-    "expo-status-bar": "2.2.3",
-    "react": "19.0.0",
-    "react-native": "0.79.6"
+    "@expo/vector-icons": "15.0.2",
+    "@livestore/adapter-expo": "0.4.0-dev.14",
+    "@livestore/devtools-expo": "0.4.0-dev.14",
+    "@livestore/livestore": "0.4.0-dev.14",
+    "@livestore/peer-deps": "0.4.0-dev.14",
+    "@livestore/react": "0.4.0-dev.14",
+    "@livestore/sync-cf": "0.4.0-dev.14",
+    "babel-preset-expo": "54.0.3",
+    "expo": "54.0.12",
+    "expo-application": "7.0.7",
+    "expo-asset": "12.0.9",
+    "expo-crypto": "15.0.7",
+    "expo-sqlite": "16.0.8",
+    "expo-status-bar": "3.0.8",
+    "react": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@babel/plugin-syntax-import-attributes": "^7.27.1",
     "@babel/runtime": "^7.28.2",
-    "@types/react": "^19.1.11",
+    "@types/react": "^19.1.13",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eas-cli": "^16.17.4",
+    "eas-cli": "^16.19.3",
     "typescript": "^5.9.2",
-    "wrangler": "^4.33.0"
+    "wrangler": "^4.42.2"
   },
   "engines": {
-    "node": ">=23.0.0"
+    "node": ">=24.0.0"
   },
   "main": "./src/AppEntry.ts",
   "scripts": {

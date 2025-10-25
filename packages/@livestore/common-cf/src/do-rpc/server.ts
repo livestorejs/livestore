@@ -215,8 +215,8 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     // Get the stream schemas for proper chunk-level encoding
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
     const chunkEncoder = Option.isSome(streamSchemas)
-      ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success))
-      : Schema.encodeUnknown(Schema.Array(Schema.Any))
+      ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+      : Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -279,7 +279,6 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        // @ts-expect-error - Complex context requirements but functionality works correctly
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
     }) as any as CfTypes.ReadableStream

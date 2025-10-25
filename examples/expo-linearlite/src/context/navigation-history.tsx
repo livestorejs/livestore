@@ -2,8 +2,8 @@ import { useQuery, useStore } from '@livestore/react'
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useEffect } from 'react'
 
-import { uiState$ } from '@/livestore/queries.ts'
-import { events } from '@/livestore/schema.ts'
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
 
 export const NavigationHistoryTracker = () => {
   const pathname = usePathname()

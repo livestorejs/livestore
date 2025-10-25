@@ -1,0 +1,37 @@
+---
+import { loadLlmsDocs, toLlmsEntries } from '../utils/llms.ts'
+
+/**
+ * Embeddable LLMS summary section for MDX pages; render-free for `curl` thanks
+ * to the markdown route wiring.
+ */
+
+type TProps = {
+  readonly showHeading?: boolean
+}
+
+const { showHeading = true } = Astro.props as TProps
+const docs = await loadLlmsDocs()
+const entries = toLlmsEntries({ docs, site: Astro.site ?? null })
+---
+<section>
+  {showHeading ? <h2>LiveStore Documentation for LLMs</h2> : null}
+  {showHeading ? (
+    <blockquote>
+      LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.
+    </blockquote>
+  ) : null}
+  <h3>Notes</h3>
+  <ul>
+    <li>Most LiveStore APIs are synchronous and don't need <code>await</code></li>
+  </ul>
+  <h3>Docs</h3>
+  <ul>
+    {entries.map((entry) => (
+      <li>
+        <a href={entry.href}>{entry.title}</a>
+        {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+      </li>
+    ))}
+  </ul>
+</section>

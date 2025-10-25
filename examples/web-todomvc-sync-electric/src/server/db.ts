@@ -12,6 +12,10 @@ export const makeDb = (storeId: string) => {
     host: 'localhost',
   })
 
+  /**
+   * ⚠️  IMPORTANT: Any changes to this table schema require bumping PERSISTENCE_FORMAT_VERSION
+   * in packages/@livestore/sync-electric/src/make-electric-url.ts
+   */
   const migrate = () =>
     sql`
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (

@@ -16,6 +16,7 @@ export type MakeBrowserContextParams = {
   extensionPath?: string
   // NOTE empty string is also supported here (Playwright will create a temporary directory in that case)
   persistentContextPath: string
+  headless?: boolean
   launchOptions?: Omit<PW.LaunchOptions, 'headless'>
 }
 
@@ -34,9 +35,14 @@ export const handlePageConsole = ({
     Effect.withSpan(`handlePageConsole-${name}`),
   )
 
-export const browserContext = ({ extensionPath, persistentContextPath, launchOptions }: MakeBrowserContextParams) =>
+export const browserContext = ({
+  extensionPath,
+  persistentContextPath,
+  launchOptions,
+  headless: headlessOption,
+}: MakeBrowserContextParams) =>
   Effect.gen(function* () {
-    const headless = envTruish(process.env.PLAYWRIGHT_HEADLESS)
+    const headless = headlessOption ?? envTruish(process.env.PLAYWRIGHT_HEADLESS)
     let browserContext: PW.BrowserContext
     // let backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
 
@@ -214,6 +220,9 @@ export const pageConsole = ({
               message.type === 'error' &&
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+              ) === false &&
+              message.message.includes(
+                'Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)',
               ) === false &&
               message.message.includes('All fibers interrupted without errors') === false
             ) {

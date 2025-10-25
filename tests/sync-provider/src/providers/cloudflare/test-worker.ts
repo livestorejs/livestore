@@ -6,9 +6,9 @@ import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@l
 import type { CfDeclare } from '@livestore/common-cf/declare'
 import {
   type CfTypes,
-  getSyncRequestSearchParams,
   handleSyncRequest,
   makeDurableObject,
+  matchSyncRequest,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
@@ -43,6 +43,12 @@ export class SyncBackendDO extends makeDurableObject({
   // onPull: async (message) => {
   //   console.log('onPull', message)
   // },
+  http: {
+    responseHeaders: {
+      'X-Custom-Header': 'test-value',
+      'X-LiveStore-Version': '1.0.0',
+    },
+  },
 }) {}
 
 const DurableObjectBase = DurableObject as any as new (
@@ -164,13 +170,14 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
 export default {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
-    const requestParamsResult = getSyncRequestSearchParams(request)
-    if (requestParamsResult._tag === 'Some') {
+    const searchParams = matchSyncRequest(request)
+    if (searchParams !== undefined) {
       return handleSyncRequest({
         request,
-        searchParams: requestParamsResult.value,
+        searchParams,
         env,
         ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
       })
     }
 

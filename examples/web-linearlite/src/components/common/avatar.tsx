@@ -1,4 +1,4 @@
-import { getAcronym } from '@/utils/get-acronym'
+import { getAcronym } from '../../utils/get-acronym.ts'
 
 export const Avatar = ({ name }: { name?: string }) => {
   if (!name) name = 'Me'

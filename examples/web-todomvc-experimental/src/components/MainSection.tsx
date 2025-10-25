@@ -4,8 +4,8 @@ import { useStore } from '@livestore/react'
 import { LiveList } from '@livestore/react/experimental'
 import React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
 
 type Todo = typeof tables.todos.Type
 

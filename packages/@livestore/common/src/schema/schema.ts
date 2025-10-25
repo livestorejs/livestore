@@ -4,11 +4,15 @@ import type { MigrationOptions } from '../adapter-types.ts'
 import type { EventDef, EventDefRecord, Materializer } from './EventDef.ts'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
-import { stateSystemTables } from './state/sqlite/system-tables.ts'
+import { stateSystemTables } from './state/sqlite/system-tables/state-tables.ts'
 import type { TableDef } from './state/sqlite/table-def.ts'
+import type { UnknownEvents } from './unknown-events.ts'
+import { normalizeUnknownEventHandling } from './unknown-events.ts'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
+
+export const UNKNOWN_EVENT_SCHEMA_HASH = -1
 
 export interface LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
@@ -22,6 +26,7 @@ export interface LiveStoreSchema<
 
   readonly state: InternalState
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
+  readonly unknownEventHandling: UnknownEvents.HandlingConfig
   readonly devtools: {
     /** @default 'default' */
     readonly alias: string
@@ -30,6 +35,30 @@ export interface LiveStoreSchema<
 
 export namespace LiveStoreSchema {
   export type Any = LiveStoreSchema<any, any>
+}
+
+/**
+ * Runtime type guard for LiveStoreSchema.
+ *
+ * The guard intentionally performs lightweight structural checks that are
+ * stable across implementations. It verifies the identifying symbol marker
+ * and the presence of core maps/state used at runtime.
+ */
+export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any, any> => {
+  if (typeof value !== 'object' || value === null) return false
+
+  const v: any = value
+
+  // Identity marker must match exactly
+  if (v.LiveStoreSchemaSymbol !== LiveStoreSchemaSymbol) return false
+
+  // Core structures used at runtime
+  const hasEventsMap = v.eventsDefsMap instanceof Map
+  const hasStateSqliteTables = v.state?.sqlite?.tables instanceof Map
+  const hasStateMaterializers = v.state?.materializers instanceof Map
+  const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
+
+  return hasEventsMap && hasStateSqliteTables && hasStateMaterializers && hasDevtoolsAlias
 }
 
 // TODO abstract this further away from sqlite/tables
@@ -55,6 +84,10 @@ export interface InputSchema {
      */
     readonly alias?: string
   }
+  /**
+   * Configures how unknown events should be handled. Defaults to `{ strategy: 'warn' }`.
+   */
+  readonly unknownEventHandling?: UnknownEvents.HandlingConfig
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -89,12 +122,15 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
+  const unknownEventHandling = normalizeUnknownEventHandling(inputSchema.unknownEventHandling)
+
   return {
     LiveStoreSchemaSymbol,
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
     state,
     eventsDefsMap,
+    unknownEventHandling,
     devtools: {
       alias: inputSchema.devtools?.alias ?? 'default',
     },

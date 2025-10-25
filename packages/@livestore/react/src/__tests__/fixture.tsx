@@ -8,7 +8,7 @@ import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import * as LiveStoreReact from '../mod.js'
+import * as LiveStoreReact from '../mod.ts'
 
 export type Todo = {
   id: string
@@ -95,15 +95,13 @@ export const tables = { todos, app, userInfo, AppRouterSchema, kv }
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })
 
-export const makeTodoMvcReact: ({
-  otelTracer,
-  otelContext,
-  strictMode,
-}?: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
-}) => Effect.Effect<
+export type MakeTodoMvcReactOptions = {
+  otelTracer?: otel.Tracer | undefined
+  otelContext?: otel.Context | undefined
+  strictMode?: boolean | undefined
+}
+
+export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect<
   {
     wrapper: ({ children }: any) => React.JSX.Element
     store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreReact.ReactApi
@@ -111,16 +109,9 @@ export const makeTodoMvcReact: ({
   },
   UnexpectedError,
   Scope.Scope
-> = ({
-  otelTracer,
-  otelContext,
-  strictMode,
-}: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
-} = {}) =>
+> = (opts: MakeTodoMvcReactOptions = {}) =>
   Effect.gen(function* () {
+    const { strictMode } = opts
     const makeRenderCount = () => {
       let val = 0
 
@@ -164,4 +155,4 @@ export const makeTodoMvcReact: ({
     const renderCount = makeRenderCount()
 
     return { wrapper, store: storeWithReactApi, renderCount }
-  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer })))
+  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: opts.otelContext, otelTracer: opts.otelTracer })))

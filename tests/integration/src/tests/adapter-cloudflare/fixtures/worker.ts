@@ -6,9 +6,9 @@ import { liveStoreStorageFormatVersion } from '@livestore/common'
 import type { Store } from '@livestore/livestore'
 import {
   type CfTypes,
-  getSyncRequestSearchParams,
   handleSyncRequest,
   makeDurableObject,
+  matchSyncRequest,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
@@ -130,7 +130,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
     if (shouldRecreate) {
       if (this.cachedStore !== undefined) {
-        await this.cachedStore.shutdown()
+        await this.cachedStore.shutdownPromise()
       }
 
       const buildStore = () =>
@@ -139,10 +139,8 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
           storeId,
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
-          storage: this.ctx.storage,
-          syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-          durableObjectId: this.ctx.id.toString(),
-          bindingName: 'TEST_STORE_DO',
+          durableObject: { ctx: this.ctx as CfTypes.DurableObjectState, env: this.env, bindingName: 'TEST_STORE_DO' },
+          syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
 
@@ -230,10 +228,16 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
 export default {
   async fetch(request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) {
-    const syncParams = getSyncRequestSearchParams(request)
+    const syncParams = matchSyncRequest(request)
 
-    if (syncParams._tag === 'Some') {
-      return handleSyncRequest({ request, searchParams: syncParams.value, env, ctx })
+    if (syncParams !== undefined) {
+      return handleSyncRequest({
+        request,
+        searchParams: syncParams,
+        env,
+        ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+      })
     }
 
     const url = new URL(request.url)

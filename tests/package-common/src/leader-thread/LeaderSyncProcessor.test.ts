@@ -21,6 +21,7 @@ import {
   Chunk,
   Context,
   Deferred,
+  Duration,
   Effect,
   FetchHttpClient,
   Layer,
@@ -69,7 +70,7 @@ const withTestCtx = (
 
 const makeEventFactory = EventFactory.makeFactory(events)
 
-Vitest.describe.concurrent('LeaderSyncProcessor', () => {
+Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -95,6 +96,48 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
+
+      // Create an event with a stale rebase generation to mimic a client that cached an outdated head.
+      const baseEvent = testContext.eventFactory.todoCreated.next({
+        id: 'local-old-gen',
+        text: 'y',
+        completed: false,
+      })
+
+      const staleSeq = EventSequenceNumber.make({
+        global: (syncStateBefore.localHead.global + 1) as any,
+        client: EventSequenceNumber.clientDefault,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
+      })
+
+      const staleParent = EventSequenceNumber.make({
+        ...syncStateBefore.localHead,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
+      })
+
+      // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
+      const staleEvent = LiveStoreEvent.EncodedWithMeta.make({
+        ...LiveStoreEvent.encodedFromGlobal(baseEvent),
+        seqNum: staleSeq,
+        parentSeqNum: staleParent,
+      })
+
+      const leaderAheadError = yield* leaderThreadCtx.syncProcessor
+        .push([staleEvent], { waitForProcessing: true })
+        .pipe(Effect.flip)
+
+      expect(leaderAheadError._tag).toBe('LeaderAheadError')
+      expect(leaderAheadError.minimumExpectedNum).toEqual(syncStateBefore.localHead)
+      expect(leaderAheadError.providedNum).toEqual(staleSeq)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -217,6 +260,65 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
     ),
   )
 
+  /**
+   * Session A pushes e1…e6 through the public `push` API while session B (same
+   * client, different session) wakes with stale state and enqueues [e2, e7, e8]. The leader should
+   * reject the batch with `LeaderAheadError`, forcing session B to rebase locally.
+   */
+  Vitest.scopedLive('leader push API rejects stale batch from secondary session', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      const sessionAFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-A'),
+        startSeq: 1,
+        initialParent: 'root',
+      })
+
+      const sessionBFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-shared', 'session-B'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      const sessionAEvents = [
+        sessionAFactory.todoCreated.next({ id: 'A-1', text: 'A-1', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-2', text: 'A-2', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-3', text: 'A-3', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-4', text: 'A-4', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-5', text: 'A-5', completed: false }),
+        sessionAFactory.todoCreated.next({ id: 'A-6', text: 'A-6', completed: false }),
+      ]
+
+      // Session A floods the leader with six optimistic events (e1…e6)
+      yield* testContext.pushEncoded(...sessionAEvents)
+
+      const staleEventB = sessionBFactory.todoCreated.next({ id: 'B-stale', text: 'B-stale', completed: false })
+      sessionBFactory.todoCreated.advanceTo(7, 6) // Make sure we rebase to e7
+      const followUpB1 = sessionBFactory.todoCreated.next({ id: 'B-follow-7', text: 'B-follow-7', completed: false })
+      const followUpB2 = sessionBFactory.todoCreated.next({ id: 'B-follow-8', text: 'B-follow-8', completed: false })
+
+      // Session B resumes with a stale pending mutation followed by two fresh events
+      const pushResult = yield* testContext
+        .pushEncoded(staleEventB, followUpB1, followUpB2)
+        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+
+      expect(pushResult._tag).toBe('Left')
+      if (pushResult._tag !== 'Left') {
+        return
+      }
+
+      const error = pushResult.left
+      expect(error._tag).toBe('LeaderAheadError')
+      if (error._tag !== 'LeaderAheadError') {
+        return
+      }
+
+      expect(EventSequenceNumber.toString(error.minimumExpectedNum)).toBe('e6')
+      expect(EventSequenceNumber.toString(error.providedNum)).toBe('e2')
+    }).pipe(withTestCtx()(test)),
+  )
+
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
@@ -263,6 +365,44 @@ Vitest.describe.concurrent('LeaderSyncProcessor', () => {
   //   2) pulling from backend -> causes rebase (rebase generation 1)
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
+
+  Vitest.scopedLive('accepts rebased client events when generation increases', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+
+      const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.nextPair({
+        seqNum: syncStateBefore.localHead,
+        isClient: true,
+        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration + 1,
+      })
+
+      const rebasedClientEvent = LiveStoreEvent.EncodedWithMeta.make({
+        name: 'app_configSet',
+        args: { id: 'session-a', value: { theme: 'dark' } },
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+        clientId: leaderThreadCtx.clientId,
+        sessionId: 'session-a',
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([rebasedClientEvent])
+
+      const pendingStateOption = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.some((event) => event.name === 'app_configSet')),
+        Stream.take(1),
+        Stream.runHead,
+        Effect.timeout('1 seconds'),
+      )
+
+      expect(pendingStateOption._tag).toBe('Some')
+      if (pendingStateOption._tag !== 'Some') {
+        return
+      }
+
+      expect(pendingStateOption.value.pending.some((event) => event.name === 'app_configSet')).toBe(true)
+    }).pipe(withTestCtx()(test)),
+  )
 
   // Regression test for push fiber stalling when livePull=false and backend push errors occur
   Vitest.scopedLive('recovers from backend push errors without live pull', (test) =>
@@ -363,7 +503,8 @@ const LeaderThreadCtxLive = ({
       schema,
       storeId: 'test',
       clientId: 'test',
-      syncPayload: undefined,
+      syncPayloadEncoded: undefined,
+      syncPayloadSchema: undefined,
       makeSqliteDb,
       syncOptions: {
         backend:

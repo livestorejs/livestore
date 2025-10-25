@@ -12,7 +12,6 @@ import {
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
@@ -26,6 +25,7 @@ import {
   Queue,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   WebLock,
   Worker,
@@ -39,9 +39,7 @@ import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
-
-// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = loadSqlite3Wasm()
+import { loadSqlite3 } from './sqlite-loader.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
@@ -140,13 +138,29 @@ export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, storeId, devtoolsEnabled, debugInstanceId, bootStatusQueue, shutdown, syncPayload } = adapterArgs
+      const {
+        schema,
+        storeId,
+        devtoolsEnabled,
+        debugInstanceId,
+        bootStatusQueue,
+        shutdown,
+        syncPayloadSchema: _syncPayloadSchema,
+        syncPayloadEncoded,
+      } = adapterArgs
+
+      // NOTE: The schema travels with the worker bundle (developers call
+      // `makeWorker({ schema, syncPayloadSchema })`). We only keep the
+      // destructured value here to document availability on the client session
+      // side—structured cloning the Effect schema into the worker is not
+      // possible, so we intentionally do not forward it.
+      void _syncPayloadSchema
 
       yield* ensureBrowserRequirements
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
-      const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
+      const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
       const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
@@ -202,21 +216,6 @@ export const makePersistedAdapter =
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorkerRequest.Type>({
         size: 1,
         concurrency: 100,
-        initialMessage: () =>
-          new WorkerSchema.SharedWorkerInitialMessage({
-            liveStoreVersion,
-            payload: {
-              _tag: 'FromClientSession',
-              initialMessage: new WorkerSchema.LeaderWorkerInnerInitialMessage({
-                storageOptions,
-                storeId,
-                clientId,
-                devtoolsEnabled,
-                debugInstanceId,
-                syncPayload,
-              }),
-            },
-          }),
       }).pipe(
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
@@ -272,10 +271,25 @@ export const makePersistedAdapter =
         yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorkerUpdateMessagePort({ port: mc.port2 })).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
-        )
+        yield* sharedWorker
+          .executeEffect(
+            new WorkerSchema.SharedWorkerUpdateMessagePort({
+              port: mc.port2,
+              liveStoreVersion,
+              initial: new WorkerSchema.LeaderWorkerInnerInitialMessage({
+                storageOptions,
+                storeId,
+                clientId,
+                devtoolsEnabled,
+                debugInstanceId,
+                syncPayloadEncoded,
+              }),
+            }),
+          )
+          .pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+          )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
@@ -467,16 +481,23 @@ export const makePersistedAdapter =
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
-        getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
-        ),
+        syncState: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
+          ),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+        }),
 
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
       }
 
       const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
@@ -487,10 +508,11 @@ export const makePersistedAdapter =
         lockStatus,
         clientId,
         sessionId,
-        // isLeader: gotLocky, // TODO update when leader is changing
-        isLeader: true,
+        isLeader: gotLocky,
         leaderThread,
         webmeshMode: 'direct',
+        // Can be undefined in Node.js
+        origin: globalThis.location?.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           connectWebmeshNodeClientSession({ webmeshNode, sessionInfo, sharedWorker, devtoolsEnabled, schema }),
         registerBeforeUnload: (onBeforeUnload) => {

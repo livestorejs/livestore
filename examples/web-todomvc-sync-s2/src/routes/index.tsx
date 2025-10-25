@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Footer } from '@/components/Footer.js'
-import { Header } from '@/components/Header.js'
-import { MainSection } from '@/components/MainSection.js'
+import { Footer } from '../components/Footer.tsx'
+import { Header } from '../components/Header.tsx'
+import { MainSection } from '../components/MainSection.tsx'
 
 const Home = () => {
   return (

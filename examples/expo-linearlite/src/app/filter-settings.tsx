@@ -3,10 +3,10 @@ import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
-import { RowPropertySwitch } from '@/components/RowPropertySwitch.tsx'
-import { ThemedText } from '@/components/ThemedText.tsx'
-import { darkSecondary } from '@/constants/Colors.ts'
-import { tables } from '@/livestore/schema.ts'
+import { RowPropertySwitch } from '../components/RowPropertySwitch.tsx'
+import { ThemedText } from '../components/ThemedText.tsx'
+import { darkSecondary } from '../constants/Colors.ts'
+import { tables } from '../livestore/schema.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
 const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']

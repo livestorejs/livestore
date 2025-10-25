@@ -1,14 +1,27 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, liveStoreVersion } from '@livestore/livestore'
-import { events, schema, tables } from './livestore/schema.js'
+import { makeWsSync } from '@livestore/sync-cf/client'
+import { events, SyncPayload, schema, tables } from './livestore/schema.ts'
 
 // Or use makePersistedAdapter for OPFS storage
 const adapter = makeInMemoryAdapter({
   devtools: { sharedWorker: LiveStoreSharedWorker },
+  sync: {
+    backend: makeWsSync({ url: `${globalThis.location.origin}/sync` }),
+    initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
+  },
 })
 
-const store = await createStorePromise({ adapter, schema, storeId: 'store-1' })
+const syncPayload = { authToken: 'insecure-token-change-me' }
+
+const store = await createStorePromise({
+  adapter,
+  schema,
+  storeId: 'store-1',
+  syncPayloadSchema: SyncPayload,
+  syncPayload,
+})
 
 // Add version badge
 console.log(`LiveStore v${liveStoreVersion}`)
@@ -36,15 +49,13 @@ store.commit(events.todoCompleted({ id: '1' }))
 const todos = store.query(tables.todos)
 console.table(todos)
 
-store.subscribe(tables.todos, {
-  onUpdate: (todos) => {
-    document.body.innerHTML = `
+store.subscribe(tables.todos, (todos) => {
+  document.body.innerHTML = `
   <h1>Todos</h1>
   <ul>
     ${todos.map((todo) => `<li>${todo.text} ${todo.completed ? '✅' : '❌'}</li>`).join('')}
   </ul>
 `
-  },
 })
 
 let i = 0

@@ -1,11 +1,11 @@
-import type { Effect, Stream } from '@livestore/utils/effect'
+import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnexpectedError } from './errors.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
-import type { LeaderAheadError } from './sync/sync.ts'
+import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
 
 export interface ClientSessionLeaderThreadProxy {
@@ -43,9 +43,14 @@ export interface ClientSessionLeaderThreadProxy {
   }
   export: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
   getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
-  getSyncState: Effect.Effect<SyncState, UnexpectedError>
+  syncState: Subscribable.Subscribable<SyncState, UnexpectedError>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
   sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
+  /**
+   * Reactive stream describing the connectivity between the leader and its upstream sync backend.
+   * Includes raw connection state, last transition timestamp, and devtools overrides (latch state).
+   */
+  networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
 }
 
 export const of = (

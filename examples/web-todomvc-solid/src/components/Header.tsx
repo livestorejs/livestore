@@ -1,9 +1,9 @@
 import { query } from '@livestore/solid'
 import type { Component } from 'solid-js'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events } from '../livestore/schema.js'
-import { store } from '../livestore/store.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
+import { store } from '../livestore/store.ts'
 
 export const Header: Component = () => {
   const newRow = query(uiState$, { filter: 'all', newTodoText: '' })

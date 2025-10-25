@@ -71,6 +71,8 @@
 :root {
   --custom-outline-color: var(--color-accent-200);
 
+  --ls-twoslash-tooltip-z: calc(var(--sl-z-index-navbar, 10) + 20);
+
   --sl-font: var(--font-sans);
   --sl-font-mono: var(--font-mono);
 
@@ -114,6 +116,15 @@
     --sl-color-accent: var(--color-accent-600);
     --sl-color-accent-high: var(--color-accent-900);
   }
+}
+
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
+}
+
+/* Hide Twoslash popup container on initial load (still works on hover) */
+.expressive-code .twoslash-popup-container {
+  display: none;
 }
 
 /* @media (prefers-reduced-motion: no-preference) {

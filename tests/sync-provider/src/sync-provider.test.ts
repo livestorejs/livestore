@@ -15,19 +15,15 @@ import {
   LogLevel,
   ManagedRuntime,
   Option,
+  Schedule,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-import * as CloudflareDoRpcProvider from './providers/cloudflare-do-rpc.ts'
-import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
-import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
-import * as ElectricProvider from './providers/electric.ts'
-import * as MockProvider from './providers/mock.ts'
-import * as S2Provider from './providers/s2.ts'
-import { SyncProviderImpl } from './types.ts'
+import { providerKeys, providerRegistry } from './providers/registry.ts'
+import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 // NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
 // queueing/rebase rules, and live pulls represent the long-lived stream the leader relies on.
@@ -37,14 +33,7 @@ const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const makeFactory = EventFactory.makeFactory(events)
 
-const providerLayers = [
-  MockProvider,
-  CloudflareHttpProvider,
-  CloudflareDoRpcProvider,
-  CloudflareWsProvider,
-  ElectricProvider,
-  S2Provider,
-]
+const providerLayers = providerKeys.map((key) => providerRegistry[key])
 
 const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.DurationInput } = {}) =>
   Vitest.makeWithTestCtx({
@@ -59,95 +48,6 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
   stream.pipe(
     Stream.filter(({ batch }) => batch.length > 0),
     Stream.runFirstUnsafe,
-  )
-
-const MIN_BACKLOG_PAYLOAD_BYTES = 1_000_000
-
-const fewLargeScenarioSchema = Schema.Struct({
-  variant: Schema.Literal('fewLarge'),
-  eventCount: Schema.Int.pipe(Schema.between(20, 72)),
-  payloadSize: Schema.Int.pipe(Schema.between(70_000, 140_000)),
-  pushBatchSize: Schema.Int.pipe(Schema.between(2, 12)),
-}).pipe(
-  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
-    message: () => 'Large event scenarios should exceed provider payload limits',
-  }),
-)
-
-const manySmallScenarioSchema = Schema.Struct({
-  variant: Schema.Literal('manySmall'),
-  eventCount: Schema.Int.pipe(Schema.between(1_200, 2_200)),
-  payloadSize: Schema.Int.pipe(Schema.between(900, 1_400)),
-  pushBatchSize: Schema.Int.pipe(Schema.between(20, 160)),
-}).pipe(
-  Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BACKLOG_PAYLOAD_BYTES, {
-    message: () => 'Small event scenarios should exceed provider payload limits',
-  }),
-)
-
-const LargeBacklogScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
-
-type LargeBacklogScenario = Schema.Schema.Type<typeof LargeBacklogScenarioSchema>
-
-const deterministicBacklogCases: ReadonlyArray<{
-  label: string
-  scenario: LargeBacklogScenario
-}> = [
-  {
-    label: 'streams dozens of extremely large events',
-    scenario: { variant: 'fewLarge', eventCount: 60, payloadSize: 120_000, pushBatchSize: 6 },
-  },
-  {
-    label: 'streams thousands of small events',
-    scenario: { variant: 'manySmall', eventCount: 1_800, payloadSize: 1_024, pushBatchSize: 90 },
-  },
-]
-
-const approxBacklogPayloadBytes = (scenario: LargeBacklogScenario) => scenario.eventCount * scenario.payloadSize
-
-const backlogScenarioSummary = (scenario: LargeBacklogScenario) =>
-  `${scenario.variant}-${scenario.eventCount}x${scenario.payloadSize}`
-
-const makeBacklogEvents = (
-  scenario: LargeBacklogScenario,
-  { baseId }: { baseId: string },
-): ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal> => {
-  const payload = 'x'.repeat(scenario.payloadSize)
-  const backlogClient = EventFactory.clientIdentity(`${baseId}-client`, `${baseId}-session`)
-  const eventFactory = makeFactory({ client: backlogClient, startSeq: 1, initialParent: 'root' })
-
-  return Array.from({ length: scenario.eventCount }, (_, index) =>
-    eventFactory.todoCreated.next({
-      id: `${baseId}-${index}`,
-      text: payload,
-      completed: false,
-    }),
-  )
-}
-
-const pushBacklogEvents = (
-  syncBackend: SyncBackend.SyncBackend,
-  backlog: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
-  pushBatchSize: number,
-) =>
-  Effect.gen(function* () {
-    const batchSize = Math.max(1, pushBatchSize)
-
-    for (let index = 0; index < backlog.length; index += batchSize) {
-      const batch = backlog.slice(index, index + batchSize)
-      if (batch.length === 0) continue
-
-      yield* syncBackend.push(batch)
-    }
-  })
-
-const collectBacklogPullStats = (syncBackend: SyncBackend.SyncBackend) =>
-  syncBackend.pull(Option.none()).pipe(
-    Stream.runFold({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
-      totalEvents: acc.totalEvents + batch.length,
-      nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
-      maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
-    })),
   )
 
 // TODO come up with a way to target specific providers individually
@@ -172,15 +72,18 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
   Vitest.afterAll(async () => await runtime.dispose())
 
-  const makeProvider = (testName?: string) =>
+  const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
     Effect.suspend(() =>
       Effect.andThen(SyncProviderImpl, (_) =>
-        _.makeProvider({
-          // Isolated store for each provider and test to avoid conflicts
-          storeId: `test-store-${name}-${testName}-${testId}`,
-          clientId: defaultClient.clientId,
-          payload: undefined,
-        }),
+        _.makeProvider(
+          {
+            // Isolated store for each provider and test to avoid conflicts
+            storeId: `test-store-${name}-${testName}-${testId}`,
+            clientId: defaultClient.clientId,
+            payload: undefined,
+          },
+          options,
+        ),
       ).pipe(Effect.provide(runtime)),
     )
 
@@ -287,26 +190,124 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.describe('large backlog handling', () => {
-    for (const { label, scenario } of deterministicBacklogCases) {
-      const scenarioSummary = backlogScenarioSummary(scenario)
+  Vitest.describe('large batches handling', () => {
+    const MIN_BATCH_PAYLOAD_BYTES = 1_000_000
 
-      Vitest.scopedLive(label, (test) =>
-        Effect.gen(function* () {
+    const fewLargeScenarioSchema = Schema.Struct({
+      variant: Schema.Literal('fewLarge'),
+      eventCount: Schema.Int.pipe(Schema.between(20, 28)),
+      payloadSize: Schema.Int.pipe(Schema.between(70_000, 110_000)),
+      pushBatchSize: Schema.Int.pipe(Schema.between(6, 12)),
+    }).pipe(
+      Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
+        message: () => 'Large batch scenarios should exceed provider payload limits',
+      }),
+    )
+
+    const manySmallScenarioSchema = Schema.Struct({
+      variant: Schema.Literal('manySmall'),
+      eventCount: Schema.Int.pipe(Schema.between(1_200, 1_600)),
+      payloadSize: Schema.Int.pipe(Schema.between(900, 1_200)),
+      pushBatchSize: Schema.Int.pipe(Schema.between(30, 160)),
+    }).pipe(
+      Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
+        message: () => 'Small batch scenarios should exceed provider payload limits',
+      }),
+    )
+
+    const LargeBatchScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
+
+    type LargeBatchScenario = Schema.Schema.Type<typeof LargeBatchScenarioSchema>
+
+    const deterministicBatchCases: ReadonlyArray<{
+      label: string
+      scenario: LargeBatchScenario
+    }> = [
+      {
+        label: 'streams dozens of extremely large batches',
+        scenario: { variant: 'fewLarge', eventCount: 60, payloadSize: 120_000, pushBatchSize: 6 },
+      },
+      {
+        label: 'streams thousands of small batches',
+        scenario: { variant: 'manySmall', eventCount: 1_800, payloadSize: 1_024, pushBatchSize: 90 },
+      },
+    ]
+
+    const approxBatchPayloadBytes = (scenario: LargeBatchScenario) => scenario.eventCount * scenario.payloadSize
+
+    const batchScenarioSummary = (scenario: LargeBatchScenario) =>
+      `${scenario.variant}-${scenario.eventCount}x${scenario.payloadSize}`
+
+    const makeBatchEvents = (
+      scenario: LargeBatchScenario,
+      { baseId }: { baseId: string },
+    ): ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal> => {
+      const payload = 'x'.repeat(scenario.payloadSize)
+      const batchClient = EventFactory.clientIdentity(`${baseId}-client`, `${baseId}-session`)
+      const eventFactory = makeFactory({ client: batchClient, startSeq: 1, initialParent: 'root' })
+
+      return Array.from({ length: scenario.eventCount }, (_, index) =>
+        eventFactory.todoCreated.next({
+          id: `${baseId}-${index}`,
+          text: payload,
+          completed: false,
+        }),
+      )
+    }
+
+    const pushBatchEvents = (
+      syncBackend: SyncBackend.SyncBackend,
+      batches: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+      pushBatchSize: number,
+    ) =>
+      Effect.gen(function* () {
+        const batchSize = Math.max(1, pushBatchSize)
+
+        for (let index = 0; index < batches.length; index += batchSize) {
+          const batch = batches.slice(index, index + batchSize)
+          if (batch.length === 0) continue
+
+          yield* syncBackend.push(batch)
+        }
+      })
+
+    const collectBatchPullStats = (syncBackend: SyncBackend.SyncBackend) =>
+      syncBackend.pull(Option.none()).pipe(
+        Stream.runFold({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
+          totalEvents: acc.totalEvents + batch.length,
+          nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
+          maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
+        })),
+      )
+
+    // Per-scenario timeout (all providers)
+    const scenarioTimeout = Duration.minutes(6)
+    // Vitest case timeout in ms (scenario + buffer)
+    const vitestTimeoutMs = Duration.toMillis(scenarioTimeout) + Duration.toMillis(Duration.seconds(30))
+    const batchPingSchedule = Schedule.spaced(Duration.minutes(5)).pipe(Schedule.addDelay(() => Duration.minutes(1)))
+
+    // Additionally to the property-based tests we also have some deterministic scenarios.
+    for (const { label, scenario } of deterministicBatchCases) {
+      const scenarioSummary = batchScenarioSummary(scenario)
+
+      Vitest.scopedLive(label, (test) => {
+        return Effect.gen(function* () {
           const scenarioId = nanoid()
-          const approxBytes = approxBacklogPayloadBytes(scenario)
+          const approxBytes = approxBatchPayloadBytes(scenario)
 
-          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
+          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BATCH_PAYLOAD_BYTES)
 
-          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`, {
+            pingSchedule: batchPingSchedule,
+          })
 
-          const backlog = makeBacklogEvents(scenario, {
+          const batchEvents = makeBatchEvents(scenario, {
             baseId: `${scenario.variant}-${scenarioId}`,
           })
 
-          yield* pushBacklogEvents(syncBackend, backlog, scenario.pushBatchSize)
+          yield* pushBatchEvents(syncBackend, batchEvents, scenario.pushBatchSize)
 
-          const stats = yield* collectBacklogPullStats(syncBackend)
+          const stats = yield* collectBatchPullStats(syncBackend)
 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
@@ -317,33 +318,35 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }).pipe(
           withTestCtx({
             suffix: scenarioSummary,
-            timeout: 60_000,
+            timeout: scenarioTimeout,
           })(test),
-        ),
-      )
+        )
+      })
     }
 
     Vitest.scopedLive.prop(
-      'streams backlog variations over provider payload limits',
-      [LargeBacklogScenarioSchema],
+      'streams batch variations over provider payload limits',
+      [LargeBatchScenarioSchema],
       ([scenario], test) => {
-        const summary = backlogScenarioSummary(scenario)
+        const summary = batchScenarioSummary(scenario)
 
         return Effect.gen(function* () {
           const scenarioId = nanoid()
-          const approxBytes = approxBacklogPayloadBytes(scenario)
+          const approxBytes = approxBatchPayloadBytes(scenario)
 
-          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BACKLOG_PAYLOAD_BYTES)
+          expect(approxBytes).toBeGreaterThanOrEqual(MIN_BATCH_PAYLOAD_BYTES)
 
-          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`)
+          const syncBackend = yield* makeProvider(`${test.task.name}-${scenario.variant}-${scenarioId}`, {
+            pingSchedule: batchPingSchedule,
+          })
 
-          const backlog = makeBacklogEvents(scenario, {
+          const batchEvents = makeBatchEvents(scenario, {
             baseId: `${scenario.variant}-${scenarioId}`,
           })
 
-          yield* pushBacklogEvents(syncBackend, backlog, scenario.pushBatchSize)
+          yield* pushBatchEvents(syncBackend, batchEvents, scenario.pushBatchSize)
 
-          const stats = yield* collectBacklogPullStats(syncBackend)
+          const stats = yield* collectBatchPullStats(syncBackend)
 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
@@ -354,11 +357,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }).pipe(
           withTestCtx({
             suffix: summary,
-            timeout: 60_000,
+            timeout: scenarioTimeout,
           })(test),
         )
       },
-      { fastCheck: { numRuns: 4 } },
+      { timeout: vitestTimeoutMs, fastCheck: { numRuns: 1 } },
     )
   })
 

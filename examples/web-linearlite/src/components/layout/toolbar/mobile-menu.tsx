@@ -1,10 +1,10 @@
 import { ChevronUpIcon } from '@heroicons/react/16/solid'
 import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
-import { ResetButton } from '@/components/layout/toolbar/reset-button'
-import { SeedInput } from '@/components/layout/toolbar/seed-input'
-import { UserInput } from '@/components/layout/toolbar/user-input'
+import { ResetButton } from './reset-button.tsx'
+import { SeedInput } from './seed-input.tsx'
 import { ShareButton } from './share-button.tsx'
 import { SyncToggle } from './sync-toggle.tsx'
+import { UserInput } from './user-input.tsx'
 
 export const MobileMenu = () => {
   return (

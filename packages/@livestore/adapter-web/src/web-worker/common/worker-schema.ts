@@ -4,6 +4,7 @@ import {
   LeaderAheadError,
   liveStoreVersion,
   MigrationsReport,
+  SyncBackend,
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
@@ -64,7 +65,7 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       storeId: Schema.String,
       clientId: Schema.String,
       debugInstanceId: Schema.String,
-      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+      syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -162,6 +163,33 @@ export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<Le
   },
 ) {}
 
+export class LeaderWorkerInnerSyncStateStream extends Schema.TaggedRequest<LeaderWorkerInnerSyncStateStream>()(
+  'SyncStateStream',
+  {
+    payload: {},
+    success: SyncState.SyncState,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
+  'GetNetworkStatus',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerNetworkStatusStream>()(
+  'NetworkStatusStream',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
 export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
   payload: {},
   success: Schema.Void,
@@ -190,32 +218,29 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerGetRecreateSnapshot,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerSyncStateStream,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
   WebmeshWorker.Schema.CreateConnection,
 )
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
-export class SharedWorkerInitialMessagePayloadFromClientSession extends Schema.TaggedStruct('FromClientSession', {
-  initialMessage: LeaderWorkerInnerInitialMessage,
-}) {}
-
-export class SharedWorkerInitialMessage extends Schema.TaggedRequest<SharedWorkerInitialMessage>()('InitialMessage', {
-  payload: {
-    payload: Schema.Union(SharedWorkerInitialMessagePayloadFromClientSession, Schema.TaggedStruct('FromWebBridge', {})),
-    // To guard against scenarios where a client session is already running a newer version of LiveStore
-    // We should probably find a better way to handle those cases once they become more common.
-    liveStoreVersion: Schema.Literal(liveStoreVersion),
-  },
-  success: Schema.Void,
-  failure: UnexpectedError,
-}) {}
-
 export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
   'UpdateMessagePort',
   {
     payload: {
       port: Transferable.MessagePort,
+      // Version gate to prevent mixed LiveStore builds talking to the same SharedWorker
+      liveStoreVersion: Schema.Literal(liveStoreVersion),
+      /**
+       * Initial configuration for the leader worker. This replaces the previous
+       * two-phase SharedWorker handshake and is sent under the tab lock by the
+       * elected leader. Subsequent calls can omit changes and will simply rebind
+       * the port (join) without reinitializing the store.
+       */
+      initial: LeaderWorkerInnerInitialMessage,
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -223,7 +248,6 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
 ) {}
 
 export class SharedWorkerRequest extends Schema.Union(
-  SharedWorkerInitialMessage,
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
@@ -236,6 +260,9 @@ export class SharedWorkerRequest extends Schema.Union(
   LeaderWorkerInnerExportEventlog,
   LeaderWorkerInnerGetLeaderHead,
   LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerSyncStateStream,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
 

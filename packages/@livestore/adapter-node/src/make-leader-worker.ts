@@ -17,7 +17,6 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
   Effect,
   FetchHttpClient,
-  identity,
   Layer,
   Logger,
   LogLevel,
@@ -36,6 +35,7 @@ import * as WorkerSchema from './worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
     /** @default 'livestore-node-leader-thread' */
@@ -60,6 +60,13 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
+  // Merge the runtime dependencies once so we can provide them together without chaining Effect.provide.
+  const runtimeLayer = Layer.mergeAll(
+    FetchHttpClient.layer,
+    PlatformNode.NodeFileSystem.layer,
+    TracingLive ?? Layer.empty,
+  )
+
   return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
     InitialMessage: (args) =>
       Effect.gen(function* () {
@@ -73,6 +80,8 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           schema: options.schema,
           testing: options.testing,
           makeSqliteDb,
+          syncPayloadEncoded: args.syncPayloadEncoded,
+          syncPayloadSchema: options.syncPayloadSchema,
         })
       }).pipe(Layer.unwrapScoped),
     PushToLeader: ({ batch }) =>
@@ -113,6 +122,21 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:worker:GetLeaderSyncState'),
       ),
+    SyncStateStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.syncProcessor.syncState.changes
+      }).pipe(Stream.unwrapScoped),
+    GetNetworkStatus: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return yield* workerCtx.networkStatus
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:GetNetworkStatus')),
+    NetworkStatusStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.networkStatus.changes
+      }).pipe(Stream.unwrapScoped),
     GetRecreateSnapshot: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -159,9 +183,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     // TODO bring back with Effect 4 once it's easier to work with replacing loggers.
     // We basically only want to provide this logger if it's replacing the default logger, not if there's a custom logger already provided.
     // Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
-    Effect.provide(FetchHttpClient.layer),
-    Effect.provide(PlatformNode.NodeFileSystem.layer),
-    TracingLive ? Effect.provide(TracingLive) : identity,
+    Effect.provide(runtimeLayer),
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )
 }

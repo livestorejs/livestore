@@ -13,13 +13,18 @@ import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnexpectedError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
-import type { IsOfflineError, SyncError } from './sync/index.js'
+import type { IsOfflineError, SyncError } from './sync/index.ts'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'
 export * from './errors.ts'
 export * from './sqlite-types.ts'
 
+/**
+ * Runtime handle to an active LiveStore client session within the current process.
+ * Provides direct access to the embedded SQLite database, leader thread bridge,
+ * and lifecycle controls useful for application-level coordination.
+ */
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
@@ -133,5 +138,7 @@ export interface AdapterArgs {
    *
    * @default undefined
    */
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
+  syncPayloadEncoded: Schema.JsonValue | undefined
 }
