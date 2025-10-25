@@ -11,21 +11,114 @@ interface EventsVisualizerProps {
 }
 
 interface ParsedEvent {
+  /** Entire notation string, for example `B:e5'/e3'`. */
   fullNotation: string
+  /** Segment being parsed, for example `B:e5'` before origin expansion. */
   segmentNotation: string
+  /** Client prefix such as `A` in `A:e3'`. */
   clientLabel?: string
+  /** Global event number, for example `5` in `e5.1`. */
   globalSequenceNumber: number
+  /** Client-local counter, for example `1` in `e5.1`. */
   clientSequenceNumber?: number
+  /** Rebase generation indicator, for example `2` in `e4r2`. */
   rebaseGeneration?: number
+  /** Whether the event is unconfirmed, as shown by the trailing `'` in `e3'`. */
   isUnconfirmed: boolean
+  /** Context hint extracted from braces, for example `userCreated` in `e2{userCreated}`. */
   context?: string
+  /** Context path split into segments, for example `['user', '123']` for `{user.123}`. */
   contextSegments: string[]
+  /** Parsed origin segments, for example the `e3'` part of `B:e5'/e3'`. */
   originChain: ParsedEvent[]
+  /** Error message when parsing fails, for example when the sequence number is missing. */
   parseError?: string
 }
 
 interface EventProps {
   event: ParsedEvent
+}
+
+const baseEventClassList = [
+  'min-w-8',
+  'h-8',
+  'flex',
+  'items-center',
+  'border-2',
+  'rounded',
+  'border-black',
+  'dark:border-white',
+  'justify-center',
+  'text-xs',
+  'px-2',
+  'text-slate-900',
+  'cursor-default',
+]
+
+const clientLabelClassMap: Record<string, string[]> = {
+  A: ['bg-orange-500', 'text-white'],
+  B: ['bg-emerald-500', 'text-white'],
+  C: ['bg-amber-500', 'text-white'],
+}
+
+const getClientLabelClasses = (label: string | undefined): string[] => {
+  if (!label) {
+    return []
+  }
+
+  const normalizedLabel = label.trim()
+  if (normalizedLabel.length === 0) {
+    return []
+  }
+
+  const mappedClasses = clientLabelClassMap[normalizedLabel]
+  if (mappedClasses) {
+    return mappedClasses
+  }
+
+  return ['bg-slate-500', 'text-white']
+}
+
+const buildEventClassNames = (event: ParsedEvent): string => {
+  const classes = [...baseEventClassList]
+
+  if (event.isUnconfirmed) {
+    classes.push('border-dashed', 'opacity-80')
+  } else {
+    classes.push('border-solid')
+  }
+
+  if (event.clientLabel) {
+    classes.push(...getClientLabelClasses(event.clientLabel))
+  }
+
+  if (event.parseError) {
+    classes.push('bg-red-600', 'text-white')
+  }
+
+  return classes.join(' ')
+}
+
+const renderBaseNotation = (event: ParsedEvent): string => {
+  if (Number.isNaN(event.globalSequenceNumber)) {
+    return event.segmentNotation || event.fullNotation
+  }
+
+  let notation = `e${event.globalSequenceNumber}`
+
+  if (typeof event.clientSequenceNumber === 'number') {
+    notation += `.${event.clientSequenceNumber}`
+  }
+
+  if (typeof event.rebaseGeneration === 'number') {
+    notation += `r${event.rebaseGeneration}`
+  }
+
+  if (event.isUnconfirmed) {
+    notation += "'"
+  }
+
+  return notation
 }
 
 const parseEventSegment = (segment: string): ParsedEvent => {
@@ -159,9 +252,42 @@ const parseEventNotation = (notation: string): ParsedEvent => {
 }
 
 const Event: FC<EventProps> = ({ event }) => {
+  const className = buildEventClassNames(event)
+  const displayNotation = renderBaseNotation(event)
+
   return (
-    <div className="min-w-8 h-8 flex items-center border-2 rounded border-sl-color-gray-5 justify-center text-xs">
-      {event.fullNotation}
+    <div className="relative group">
+      <div className={className}>{displayNotation}</div>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-[5px] hidden group-hover:block bg-white text-black text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
+        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+          {event.context && (
+            <>
+              <div className="font-semibold">Context:</div>
+              <div>{event.context}</div>
+            </>
+          )}
+          {event.clientLabel && (
+            <>
+              <div className="font-semibold">Client label:</div>
+              <div>{event.clientLabel}</div>
+            </>
+          )}
+          {!Number.isNaN(event.globalSequenceNumber) && (
+            <>
+              <div className="font-semibold">Global sequence:</div>
+              <div>{event.globalSequenceNumber}</div>
+            </>
+          )}
+          {event.clientSequenceNumber !== undefined && (
+            <>
+              <div className="font-semibold">Client sequence:</div>
+              <div>{event.clientSequenceNumber}</div>
+            </>
+          )}
+          <div className="font-semibold">Confirmed:</div>
+          <div>{event.isUnconfirmed ? 'No' : 'Yes'}</div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -172,8 +298,8 @@ export const EventsVisualizer: FC<EventsVisualizerProps> = ({ title, events }) =
   }
 
   return (
-    <div className="not-content">
-      {title && <div className="font-semibold text-sm pb-2">{title}</div>}
+    <div className="not-content pl-6 flex items-center">
+      {title && <div className="font-semibold text-sm w-28">{title}</div>}
       <div className="flex gap-2 flex-wrap items-center">
         {events.map((event, index) => {
           const parsedEvent = parseEventNotation(event)

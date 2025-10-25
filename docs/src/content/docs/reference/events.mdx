@@ -51,9 +51,9 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
     - Merges event into local SyncState with state pending
     - Pushes event to leader thread
 
-<EventsVisualizer title='Client Session' events={["e1", "e2", "e3'"]} />
-<EventsVisualizer title='Client Leader' events={["e1", "e2'"]} />
-<EventsVisualizer title='Sync Backend' events={["e1"]} />
+<EventsVisualizer title='Client Session' events={["A:e1{todoCreated}", "A:e1.1", "A:e2r1", "A:e3'"]} />
+<EventsVisualizer title='Client Leader' events={["A:e1", "A:e2'"]} />
+<EventsVisualizer title='Sync Backend' events={["A:e1", "B:e2"]} />
 
 2. Leader thread persists the event
     - Materializes event
