@@ -47,80 +47,77 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 ### Event commit (happy path)
 
-1. Client commits an event
-    - Merges event into local SyncState with state pending
-    - Pushes event to leader thread
+1. Client session commits an event
+    - Client session merges the new event `e3` into its local `SyncState` as pending
+    - Client session pushes the pending event to the client leader thread; the leader still shows the previous head until it persists the event
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3'{todoCreated}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
 
-<EventsVisualizer title='Client Session' events={["A:e1{todoCreated}", "A:e1.1", "A:e2r1", "A:e3'"]} />
-<EventsVisualizer title='Client Leader' events={["A:e1", "A:e2'"]} />
-<EventsVisualizer title='Sync Backend' events={["A:e1", "B:e2"]} />
-
-2. Leader thread persists the event
-    - Materializes event
-    - Writes row to EventLog table
+2. Client leader persists the event
+    - Client leader materializes the event and writes it to `EventLog`
+    - Event `e3` remains unconfirmed from the leader's perspective because the backend has not acknowledged it yet
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3'{todoCreated}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
 
 3. Leader thread emits signal back to subscribed clients
-    - On receipt client merges new event into SyncState
-    - Event in client goes from pending to confirmed
-    - Client syncState and leader head now at same location
+    - Client session merges the authoritative event from the leader
+    - Event transitions from pending to confirmed on the client while the leader still waits for backend confirmation
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
 
-4. Leader thread pushes event to backend
-    - Event still marked as pending in leader thread
+4. Leader thread pushes the event to the backend
+    - Leader pushes the pending event upstream; it stays marked as unconfirmed in the client leader's eventlog until the backend acknowledges receipt
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
 
-6. Backend pulls event from leader thread
-    - Notifies leader thread of receipt
-    - Leader thread marks event as confirmed
-    - Backend head advances
-    - Event confirmed on all levels and heads at same location
+5. Sync backend pulls the event from the client leader
+    - Sync backend acknowledges the event and advances its head
+    - Client leader receives the acknowledgement and marks the event as confirmed
+    - All heads align on the confirmed sequence
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3{todoCreated}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "A:e3{todoCreated}"]} />
 
 ### Event rebase (conflict resolution)
 
-This can happen in on client and leader level
+This example shows how a client session rebases its pending events when new authoritative events arrive from upstream. Client `A` owns the local work that gets rebased, while client `B` introduces the authoritative change. Colors follow the client IDs so lineage remains visible, and origin notation tracks the rebased event.
 
-1. Leader thread detects incoming events that conflict with the clients pending chain
-    - Local events are compared to upstream events to find point of divergence
+1. Client session has local pending work while upstream advances
+    - Client session holds pending event `A:e3'{todoRenamed}` built on top of shared history `e1 → e2`
+    - Sync backend publishes authoritative event `B:e3{todoRenamed}` that replaces the client’s local change
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoRenamed}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoRenamed}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
 
-2. Client rolls back changes until divergence point
-    - Each event has a SQLite changeset which is used to revert the applied changes in reverse order
-    - Database state is now restored to point where events diverged
+2. Client leader pulls authoritative events from the sync backend
+    - Client compares its pending chain with upstream events and spots the divergence at `e2`
+    - Client rolls back events and state to the point of divergence
+    <EventsVisualizer title='Client Session' events={["e1", "e2"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
 
-3. Client applies upstream canonical events
-    - Previous events in syncstate are replaced by new events
-    - Original pending events are stored so their changesets can be cleaned up (rollbackEvents)
+3. Client applies authoritative upstream events
+    - Client session and leader apply the authoritative upstream events and advances their heads to `e3`
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
 
-4. Client replays its own pending events on top of new head
-    - Stored original events (rollbackEvents) keep their original payload but their sequence number gets updated to follow upstream head
+4. Client replays its local pending events on top of the new head
+    - Stored original events keep their payload but their sequence number gets updated to follow upstream head
     - Each newly numbered event is re-appplied (materialized) to store database
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4'{todoRenamed}/e3"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
 
-5. Leader and backend stay in sync
-    - Leader applies same rollback/replay cycle if the backend event forces the rebase first
-    - After replay both leader head and client syncstate head are aligned
-
-### What happens to an event during rebase?
-
-1. Before conflict
-    - Client pending list: e42 (rename todo)
-    - Leader `eventlog`: … e41, e42
-    - Backend has not seen e42 yet
-
-2. Upstream sends a rebase (Step 1)
-    - Leader receives canonical history that replaces e42 with a different event
-
-3. Rollback (Step 2)
-    - Leader runs `rollback` and deletes the old e42 row from `eventlog`
-    - Client `SyncState.pending` drops e42
-
-4. Apply upstream events (Step 3)
-    - Leader inserts the canonical e42 from upstream
-    - Client applies the same canonical e42
-
-5. Replay local work (Step 4)
-    - Client rename event is re-enqueued as e43 and materialized
-    - Client `SyncState.pending` now holds e43; leader `eventlog` shows … e41, e42 (canonical), e43
-
-Result: the original e42 is gone; the sequence jumps from the upstream e42 straight to the rebased local e43.
-
-A gap in the leader event log (e1, e3) is never possible unless an upstream rebase deletes a row and never replaces it. Because the backend is sync only this should never happen.
+5. Client pushes its local pending events to sync backend
+    - Upon receipt local pending events are marked as confirmed and the client leader advances its head to `e4`
+    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
+    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
+    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
 
 ### Unknown events
 

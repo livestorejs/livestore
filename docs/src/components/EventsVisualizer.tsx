@@ -53,11 +53,13 @@ const baseEventClassList = [
   'px-2',
   'text-slate-900',
   'cursor-default',
+  'bg-gray-600',
+  'text-white',
 ]
 
 const clientLabelClassMap: Record<string, string[]> = {
-  A: ['bg-orange-500', 'text-white'],
-  B: ['bg-emerald-500', 'text-white'],
+  A: ['bg-orange-600', 'text-white'],
+  B: ['bg-green-500', 'text-white'],
   C: ['bg-amber-500', 'text-white'],
 }
 
