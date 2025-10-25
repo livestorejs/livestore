@@ -300,7 +300,7 @@ const Event: FC<EventProps> = ({ event }) => {
   )
 }
 
-export const EventsVisualizer: FC<EventsVisualizerProps> = ({ title, events }) => {
+const EventsNode: FC<EventsVisualizerProps> = ({ title, events }) => {
   if (events.length === 0) {
     return null
   }
@@ -314,6 +314,22 @@ export const EventsVisualizer: FC<EventsVisualizerProps> = ({ title, events }) =
           return <Event key={`event-${index}-${event}`} event={parsedEvent} />
         })}
       </div>
+    </div>
+  )
+}
+
+interface EventsVisualizerGroupProps {
+  client?: string[]
+  leader?: string[]
+  backend?: string[]
+}
+
+export const EventsVisualizer: FC<EventsVisualizerGroupProps> = ({ client, leader, backend }) => {
+  return (
+    <div className="flex flex-col gap-1 pt-6">
+      {client && client.length > 0 && <EventsNode title="Client Session" events={client} />}
+      {leader && leader.length > 0 && <EventsNode title="Client Leader" events={leader} />}
+      {backend && backend.length > 0 && <EventsNode title="Sync Backend" events={backend} />}
     </div>
   )
 }

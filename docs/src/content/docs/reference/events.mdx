@@ -25,6 +25,10 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 <EventSchemaSnippet />
 
+### Commiting events
+
+<CommitEventSnippet />
+
 ### Best Practices
 
 - It's strongly recommended to use past-tense event names (e.g. `todoCreated`/`createdTodo` instead of `todoCreate`/`createTodo`) to indicate something already occurred.
@@ -34,9 +38,10 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
   - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not
 - It's recommended to avoid `DELETE` events and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
 
-### Nodes in the LiveStore system
+## Nodes in the LiveStore system
 
 <div class="bg-gray-800 dark:bg-transparent rounded-lg p-4">
+  {/* Diagram: https://www.tldraw.com/f/aR50x7vdQmBUGx4k7WIEf?d=v-253.-969.2541.1856.BfMH9wpQWHX7Ss2oP9TbE */}
   <Image src={eventNodesImg} alt="Event nodes diagram" />
 </div>
 
@@ -51,81 +56,91 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 #### Sync backend
 - `EventLog`: Any storage solution that supports pushing and pulling events. Append only storage.
 
-### Event commit (happy path)
+### Happy event path
 
 1. Client session commits an event
     - Client session merges the new event `e3` into its local `SyncState` as pending
     - Client session pushes the pending event to the client leader thread; the leader still shows the previous head until it persists the event
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3'{todoCreated}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3'{todoCreated}"]}
+      leader={["e1", "e2"]}
+      backend={["e1", "e2"]} />
 
 2. Client leader persists the event
     - Client leader materializes the event and writes it to `EventLog`
     - Event `e3` remains unconfirmed from the leader's perspective because the backend has not acknowledged it yet
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3'{todoCreated}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3'{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
 
 3. Leader thread emits signal back to subscribed clients
     - Client session merges the authoritative event from the leader
     - Event transitions from pending to confirmed on the client while the leader still waits for backend confirmation
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
 
-4. Leader thread pushes the event to the backend
+4. Leader thread pushes the event to the sync backend
     - Leader pushes the pending event upstream; it stays marked as unconfirmed in the client leader's eventlog until the backend acknowledges receipt
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoCreated}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
 
 5. Sync backend pulls the event from the client leader
     - Sync backend acknowledges the event and advances its head
     - Client leader receives the acknowledgement and marks the event as confirmed
     - All heads align on the confirmed sequence
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoCreated}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3{todoCreated}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "A:e3{todoCreated}"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3{todoCreated}"]}
+      backend={["e1", "e2", "A:e3{todoCreated}"]} />
 
-### Event rebase (conflict resolution)
+### Conflict resolution
 
 This example shows how a client session rebases its pending events when new authoritative events arrive from upstream. Client `A` owns the local work that gets rebased, while client `B` introduces the authoritative change. Colors follow the client IDs so lineage remains visible, and origin notation tracks the rebased event.
 
 1. Client session has local pending work while upstream advances
     - Client session holds pending event `A:e3'{todoRenamed}` built on top of shared history `e1 → e2`
-    - Sync backend publishes authoritative event `B:e3{todoRenamed}` that replaces the client’s local change
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "A:e3{todoRenamed}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "A:e3'{todoRenamed}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    - Sync backend publishes authoritative event `B:e3{todoRenamed}` that replaces the client's local change
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoRenamed}"]}
+      leader={["e1", "e2", "A:e3'{todoRenamed}"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
 
 2. Client leader pulls authoritative events from the sync backend
     - Client compares its pending chain with upstream events and spots the divergence at `e2`
     - Client rolls back events and state to the point of divergence
-    <EventsVisualizer title='Client Session' events={["e1", "e2"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    <EventsVisualizer
+      client={["e1", "e2"]}
+      leader={["e1", "e2"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
 
 3. Client applies authoritative upstream events
     - Client session and leader apply the authoritative upstream events and advances their heads to `e3`
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
 
 4. Client replays its local pending events on top of the new head
     - Stored original events keep their payload but their sequence number gets updated to follow upstream head
     - Each newly numbered event is re-appplied and materialized to state in both client session and client leader
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4'{todoRenamed}/e3"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}", "A:e4'{todoRenamed}/e3"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
 
 5. Client pushes its local pending events to sync backend
     - Upon receipt local pending events are marked as confirmed and the client leader advances its head to `e4`
-    <EventsVisualizer title='Client Session' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
-    <EventsVisualizer title='Client Leader' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
-    <EventsVisualizer title='Sync Backend' events={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
 
-### Unknown events
+## Unknown events
 
 Older clients might receive events that were introduced in newer app versions. Configure the behaviour centrally via `unknownEventHandling` when constructing the schema:
 
@@ -144,7 +159,7 @@ const schema = makeSchema({
 
 Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new events until the client updates, `'fail'` to halt immediately, or `'callback'` to delegate to custom logging/telemetry while continuing to process the log.
 
-### Schema evolution \{#schema-evolution\}
+## Schema evolution \{#schema-evolution\}
 
 - Event definitions can't be removed after they were added to your app.
 - Event schema definitions can be evolved as long as the changes are forward-compatible.
@@ -153,10 +168,6 @@ Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new
     - for structs ...
       - you can add new fields if they have default values or are optional
       - you can remove fields
-
-## Commiting events
-
-<CommitEventSnippet />
 
 ## Eventlog
 
