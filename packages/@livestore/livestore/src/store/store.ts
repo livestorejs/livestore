@@ -19,14 +19,8 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import {
-  EventSequenceNumber,
-  getEventDef,
-  LiveStoreEvent,
-  resolveEventDef,
-  SystemTables,
-} from '@livestore/common/schema'
-import { assertNever, casesHandled, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -34,7 +28,6 @@ import {
   Exit,
   Fiber,
   Inspectable,
-  identity,
   Option,
   OtelTracer,
   Runtime,
@@ -822,7 +815,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     return Effect.gen(function* () {
       // Only events confirmed by backend
 
-      const leaderSyncState = yield* leaderThreadProxy.syncState
+      const _leaderSyncState = yield* leaderThreadProxy.syncState
       // From dev branch: syncState = yield* leaderThreadProxy.syncState
       // What happens when we reach the end? Restart with the same head value?
       // If there is semantically a clear end (until) we should end at that cursor
