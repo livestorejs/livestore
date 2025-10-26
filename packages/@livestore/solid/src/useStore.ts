@@ -1,10 +1,9 @@
 import type { Store } from '@livestore/livestore'
-
+import { useContext } from 'solid-js'
 import type { SolidApi } from './LiveStoreContext.ts'
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
-import { useContext } from 'solid-js'
 
 export const withSolidApi = (store: Store): Store & SolidApi => {
   // @ts-expect-error TODO properly implement this

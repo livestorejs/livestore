@@ -7,21 +7,15 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
-import { beforeEach, expect, it } from 'vitest'
-
-import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.js'
-import type * as LiveStoreSolid from './mod.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
 import { createSignal, For } from 'solid-js'
+import { expect, it } from 'vitest'
+import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
+import type * as LiveStoreSolid from './mod.ts'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
 // NOTE running tests concurrently doesn't work with the default global db graph
 Vitest.describe('useClientDocument', () => {
-  beforeEach(() => {
-    __resetUseRcResourceCache()
-  })
-
   Vitest.scopedLive('should update the data based on component key', () =>
     Effect.gen(function* () {
       const { wrapper, store } = yield* makeTodoMvcSolid({})
@@ -116,7 +110,7 @@ Vitest.describe('useClientDocument', () => {
         return (
           <div>
             <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
-            <div role="current-id">Current Task Id: {state().currentTaskId ?? '-'}</div>
+            <div role="group">Current Task Id: {state().currentTaskId ?? '-'}</div>
             {state().currentTaskId ? (
               <TaskDetails id={state().currentTaskId} />
             ) : (
@@ -141,7 +135,7 @@ Vitest.describe('useClientDocument', () => {
           LiveStore.queryDb(tables.todos.where({ id: props.id }).first(), { deps: props.id }),
         )
 
-        return <div role="content">{JSON.stringify(todo())}</div>
+        return <div role="group">{JSON.stringify(todo())}</div>
       }
 
       const { getByRole } = SolidTesting.render(() => <AppRouter />, { wrapper })

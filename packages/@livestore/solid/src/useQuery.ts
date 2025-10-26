@@ -1,15 +1,13 @@
-import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
+import type { LiveQuery, LiveQueryDef, StackInfo, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
-import * as otel from '@opentelemetry/api'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
+import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
+import * as otel from '@opentelemetry/api'
+import { type Accessor, createMemo, createSignal, on, onCleanup, useContext } from 'solid-js'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
-import { useRcResource } from './useRcResource.ts'
 import { originalStackLimit } from './utils/stack-info.ts'
-import { createEffect, createMemo, onCleanup, useContext, type Accessor } from 'solid-js'
-import { createWritable } from './utils/create-writable.ts'
-import { resolve, type AccessorMaybe } from './utils.ts'
+import { type AccessorMaybe, resolve } from './utils.ts'
 
 /**
  * Returns the result of a query and subscribes to future updates.
@@ -59,9 +57,8 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     return extractStackInfoFromStackTrace(stack)
   })()
 
-  const resource = useRcResource(
-    rcRefKey,
-    () => {
+  const resource = createMemo(
+    on(rcRefKey, () => {
       const queryDefLabel = resolve(queryDef).label
 
       const span = store.otel.tracer.startSpan(
@@ -74,40 +71,80 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
 
       const queryRcRef = resolve(queryDef).make(store.reactivityGraph.context!, otelContext)
 
-      return { queryRcRef, span, otelContext }
-    },
-    // We need to keep the queryRcRef alive a bit longer, so we have a second `useRcResource` below
-    // which takes care of disposing the queryRcRef
-    () => {},
+      const [valueRef, setValueRef] = createSignal<LiveQueries.GetResult<TQuery>>(
+        getInitialResult(queryRcRef.value, otelContext, stackInfo),
+      )
+
+      // TODO double check whether we still need `activeSubscriptions`
+      queryRcRef.value.activeSubscriptions.add(stackInfo)
+
+      // Dynamic queries only set their actual label after they've been run the first time,
+      // so we're also updating the span name here.
+      span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${queryRcRef.value.label}`)
+
+      const cleanup = store.subscribe(
+        queryRcRef.value,
+        (newValue) => {
+          // SOLID  - I wonder if this has implications if we would do setStore({reconcile})
+          //          because then the proxy is mutated, which might be backed by the original LiveStore-object
+          // NOTE: we return a reference to the result object within LiveStore;
+          // this implies that app code must not mutate the results, or else
+          // there may be weird reactivity bugs.
+          if (deepEqual(newValue, valueRef()) === false) {
+            setValueRef(newValue)
+          }
+        },
+        {
+          onUnsubsubscribe: () => {
+            queryRcRef.value.activeSubscriptions.delete(stackInfo)
+          },
+          label: queryRcRef.value.label,
+          otelContext,
+        },
+      )
+
+      onCleanup(() => {
+        queryRcRef.deref()
+        span.end()
+        cleanup()
+      })
+
+      return { valueRef, queryRcRef }
+    }),
   )
 
-  // if (queryRcRef.value._tag === 'signal') {
-  //   const  queryRcRef.value.get()
-  // }
+  return {
+    valueRef() {
+      return resource().valueRef()
+    },
+    queryRcRef() {
+      return resource().queryRcRef
+    },
+  }
+}
 
-  const query$ = () => resource().queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>>
-
-  // React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
-  // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)
-
-  const initialResult = createMemo(() => {
-    try {
-      return query$().run({
-        otelContext: resource().otelContext,
-        debugRefreshReason: {
-          _tag: 'react',
-          api: 'useQuery',
-          label: `useQuery:initial-run:${query$().label}`,
-          stackInfo,
-        },
-      })
-    } catch (cause: any) {
-      console.error('[@livestore/react:useQuery] Error running query', cause)
-      throw new Error(
-        `\
+function getInitialResult<TQuery extends LiveQueryDef.Any>(
+  query$: LiveQuery<LiveQueries.GetResult<TQuery>>,
+  otelContext: otel.Context,
+  stackInfo: StackInfo,
+) {
+  try {
+    return query$.run({
+      otelContext,
+      debugRefreshReason: {
+        _tag: 'react',
+        api: 'useQuery',
+        label: `useQuery:initial-run:${query$.label}`,
+        stackInfo,
+      },
+    })
+  } catch (cause: any) {
+    console.error('[@livestore/react:useQuery] Error running query', cause)
+    throw new Error(
+      `\
 [@livestore/react:useQuery] Error running query: ${cause.name}
 
-Query: ${query$().label}
+Query: ${query$.label}
 
 React trace:
 
@@ -115,59 +152,7 @@ ${indent(stackInfoToString(stackInfo), 4)}
 
 Stack trace:
 `,
-        { cause },
-      )
-    }
-  })
-
-  // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [valueRef, setValue] = createWritable<LiveQueries.GetResult<TQuery>>(initialResult)
-
-  // TODO we probably need to change the order of `useEffect` calls, so we destroy the query at the end
-  // before calling the LS `onEffect` on it
-
-  // Subscribe to future updates for this query
-  createEffect(() => {
-    // TODO double check whether we still need `activeSubscriptions`
-    query$().activeSubscriptions.add(stackInfo)
-
-    // Dynamic queries only set their actual label after they've been run the first time,
-    // so we're also updating the span name here.
-    resource().span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${query$().label}`)
-
-    const cleanup = store.subscribe(
-      query$(),
-      (newValue) => {
-        // SOLID  - I wonder if this has implications if we would do setStore({reconcile})
-        //          because then the proxy is mutated, which might be backed by the original LiveStore-object
-        // NOTE: we return a reference to the result object within LiveStore;
-        // this implies that app code must not mutate the results, or else
-        // there may be weird reactivity bugs.
-        if (deepEqual(newValue, valueRef()) === false) {
-          setValue(newValue)
-        }
-      },
-      {
-        onUnsubsubscribe: () => {
-          query$().activeSubscriptions.delete(stackInfo)
-        },
-        label: query$().label,
-        otelContext: resource().otelContext,
-      },
+      { cause },
     )
-
-    onCleanup(cleanup)
-  })
-
-  useRcResource(
-    rcRefKey,
-    () => ({ queryRcRef: resource().queryRcRef, span: resource().span }),
-    ({ queryRcRef, span }) => {
-      // console.debug('deref', queryRcRef.value.id, queryRcRef.value.label)
-      queryRcRef.deref()
-      span.end()
-    },
-  )
-
-  return { valueRef, queryRcRef: () => resource().queryRcRef }
+  }
 }

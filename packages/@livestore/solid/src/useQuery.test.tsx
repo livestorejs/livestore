@@ -8,13 +8,11 @@ import * as SolidTesting from '@solidjs/testing-library'
 import { createMemo, createSignal, For } from 'solid-js'
 import { expect } from 'vitest'
 
-import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
 
 Vitest.describe('useQuery', () => {
   Vitest.afterEach(() => {
     RG.__resetIds()
-    __resetUseRcResourceCache()
   })
 
   Vitest.scopedLive('simple', () =>
