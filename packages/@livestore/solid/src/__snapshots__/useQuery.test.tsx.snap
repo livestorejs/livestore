@@ -297,7 +297,7 @@ exports[`useQuery > filtered dependency query 2`] = `
         "node-1",
       ],
       "super": [
-        "node-10",
+        "node-9",
       ],
     },
     {
@@ -322,8 +322,8 @@ exports[`useQuery > filtered dependency query 2`] = `
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-10",
-      "invocations": 1,
+      "id": "node-9",
+      "invocations": 2,
       "isDestroyed": false,
       "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
       "sub": [
@@ -464,7 +464,7 @@ exports[`useQuery > filtered dependency query 3`] = `
         "node-1",
       ],
       "super": [
-        "node-11",
+        "node-9",
       ],
     },
     {
@@ -489,8 +489,8 @@ exports[`useQuery > filtered dependency query 3`] = `
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-11",
-      "invocations": 1,
+      "id": "node-9",
+      "invocations": 3,
       "isDestroyed": false,
       "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
       "sub": [
@@ -737,7 +737,7 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 2: a
         "node-1",
       ],
       "super": [
-        "node-8",
+        "node-7",
       ],
     },
   ],
@@ -745,8 +745,8 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 2: a
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-8",
-      "invocations": 1,
+      "id": "node-7",
+      "invocations": 2,
       "isDestroyed": false,
       "label": "subscribe:libraryTracksView1",
       "sub": [
@@ -776,7 +776,7 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 3: a
       "refreshes": 2,
       "sub": [],
       "super": [
-        "node-9",
+        "node-8",
       ],
     },
     {
@@ -849,7 +849,7 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 3: a
     },
     {
       "_tag": "thunk",
-      "id": "node-9",
+      "id": "node-8",
       "isDestroyed": false,
       "isDirty": false,
       "label": "libraryTracksView2:results",
@@ -860,12 +860,12 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 3: a
         "_tag": "Some",
         "value": "[{"id":"t2","text":"buy eggs","completed":false}]",
       },
-      "recomputations": 2,
+      "recomputations": 1,
       "sub": [
         "node-1",
       ],
       "super": [
-        "node-10",
+        "node-9",
       ],
     },
   ],
@@ -873,12 +873,12 @@ exports[`useQuery > same \`useQuery\` hook invoked with different queries > 3: a
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-10",
+      "id": "node-9",
       "invocations": 1,
       "isDestroyed": false,
       "label": "subscribe:libraryTracksView2",
       "sub": [
-        "node-9",
+        "node-8",
       ],
     },
   ],
@@ -1121,7 +1121,7 @@ exports[`useQuery > simple 2`] = `
         "node-1",
       ],
       "super": [
-        "node-8",
+        "node-7",
       ],
     },
   ],
@@ -1129,8 +1129,8 @@ exports[`useQuery > simple 2`] = `
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-8",
-      "invocations": 1,
+      "id": "node-7",
+      "invocations": 2,
       "isDestroyed": false,
       "label": "subscribe:select * from todos",
       "sub": [

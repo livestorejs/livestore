@@ -432,7 +432,7 @@ exports[`useClientDocument > should update the data based on component key 2`] =
         "_tag": "Some",
         "value": "{"username":"username_u2","text":""}",
       },
-      "recomputations": 2,
+      "recomputations": 1,
       "sub": [
         "node-3",
       ],
