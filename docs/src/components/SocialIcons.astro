@@ -1,7 +1,7 @@
 ---
 import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
 import { liveStoreVersion } from '@livestore/common'
-import { IS_MAIN_BRANCH } from '../data/data.ts'
+import { IS_MAIN_BRANCH } from '../../data.js'
 
 const devUrl = 'https://dev.docs.livestore.dev'
 const latestUrl = 'https://docs.livestore.dev'
@@ -29,9 +29,7 @@ const links = Object.entries({
 			<option value={latestUrl} selected={IS_MAIN_BRANCH}
 				>Version: {IS_MAIN_BRANCH ? liveStoreVersion : 'latest'}</option
 			>
-			<option value={devUrl} selected={!IS_MAIN_BRANCH}
-				>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option
-			>
+			<option value={devUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
 		</select>
 	</div>
 </div>
@@ -90,7 +88,7 @@ const links = Object.entries({
 	.version-select-wrapper select {
 		appearance: none;
 		background-color: transparent;
-		background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E');
+		background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 		background-repeat: no-repeat;
 		background-position: right 0.5rem center;
 
@@ -117,7 +115,7 @@ const links = Object.entries({
 	/* fixes dropdown icon in light mode */
 	:root[data-theme='light'] {
 		.version-select-wrapper select {
-			background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E');
+			background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 		}
 	}
 
@@ -143,18 +141,18 @@ const links = Object.entries({
 		if (!(versionSelect instanceof HTMLSelectElement)) return
 
 		versionSelect.addEventListener('change', () => {
-			const targetUrl = versionSelect.value;
-			if (targetUrl === undefined || targetUrl === null) return;
+			const targetUrl = versionSelect.value
+			if (targetUrl === undefined || targetUrl === null) return
 
 			// Get current path and search params
-			const currentPath = window.location.pathname;
-			const currentSearch = window.location.search;
+			const currentPath = window.location.pathname
+			const currentSearch = window.location.search
 
 			// Construct new URL with the same path
-			const newUrl = new URL(currentPath + currentSearch, targetUrl);
+			const newUrl = new URL(currentPath + currentSearch, targetUrl)
 
 			// Navigate to the new URL
-			window.location.href = newUrl.toString();
-		});
-	});
+			window.location.href = newUrl.toString()
+		})
+	})
 </script>
