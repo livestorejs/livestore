@@ -780,14 +780,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
   ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
-    const { syncProcessor, schema, clientSession, params } = this
+    const { schema, clientSession, params } = this
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
     // Apply defaults
-    const minSyncLevel = options?.minSyncLevel ?? 'client'
     const cursor = options?.cursor ?? EventSequenceNumber.ROOT
-    const snapshotOnly = options?.snapshotOnly ?? false
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
     // Helper function to check if event matches all filter criteria
@@ -795,15 +793,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       // Apply name filter if specified
       if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
         return false
-      }
-
-      // Check client-only filter (for backwards compatibility)
-      if (options?.includeClientOnly !== undefined) {
-        const eventDef = getEventDef(schema, eventEncoded.name)
-        const isClientOnly = eventDef.eventDef.options.clientOnly ?? false
-        if (options.includeClientOnly === false && isClientOnly) {
-          return false
-        }
       }
 
       // Apply clientId filter
@@ -831,131 +820,31 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // Create the appropriate stream based on minSyncLevel
     return Effect.gen(function* () {
-      switch (minSyncLevel) {
-        case 'backend': {
-          // Only events confirmed by backend
+      // Only events confirmed by backend
 
-          const leaderSyncState = yield* leaderThreadProxy.syncState
-          // From dev branch: syncState = yield* leaderThreadProxy.syncState
-          // What happens when we reach the end? Restart with the same head value?
-          // If there is semantically a clear end (until) we should end at that cursor
-          // If there is not we should keep streaming
-          // -> Get rid of snapshotOnly for now (until we realize we needed it)
-          const backendHead = leaderSyncState.upstreamHead
+      const leaderSyncState = yield* leaderThreadProxy.syncState
+      // From dev branch: syncState = yield* leaderThreadProxy.syncState
+      // What happens when we reach the end? Restart with the same head value?
+      // If there is semantically a clear end (until) we should end at that cursor
+      // If there is not we should keep streaming
+      // -> Get rid of snapshotOnly for now (until we realize we needed it)
+      // const backendHead = leaderSyncState.upstreamHead
 
-          // Stream from leader, but only up to backend head
-          return leaderThreadProxy.events
-            .stream({
-              since: cursor,
-              until: backendHead,
-              ...omitUndefineds({
-                filter: options?.filter as ReadonlyArray<string> | undefined,
-                clientIds: options?.clientIds,
-                sessionIds: options?.sessionIds,
-              }),
-              batchSize,
-            })
-            .pipe(
-              Stream.filter(matchesFilters),
-              Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
-            )
-        }
-
-        case 'leader': {
-          // Events confirmed by leader (exclude client pending)
-          return leaderThreadProxy.events
-            .stream({
-              since: cursor,
-              ...omitUndefineds({
-                until: options?.until,
-                filter: options?.filter as ReadonlyArray<string>,
-                clientIds: options?.clientIds,
-                sessionIds: options?.sessionIds,
-              }),
-              batchSize,
-            })
-            .pipe(
-              Stream.filter(matchesFilters),
-              Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
-              snapshotOnly ? Stream.takeUntil(() => true) : identity,
-            )
-        }
-
-        case 'client': {
-          // Merge leader stream with client pending events
-
-          // First, determine where to split between leader and client
-          const leaderSyncState = yield* leaderThreadProxy.syncState
-          const leaderHead = leaderSyncState.localHead
-
-          // Create leader stream up to its head
-          const leaderStream =
-            EventSequenceNumber.compare(cursor, leaderHead) < 0
-              ? leaderThreadProxy.events
-                  .stream({
-                    since: cursor,
-                    until: leaderHead,
-                    ...omitUndefineds({
-                      filter: options?.filter as ReadonlyArray<string>,
-                      clientIds: options?.clientIds,
-                      sessionIds: options?.sessionIds,
-                    }),
-                    batchSize,
-                  })
-                  .pipe(
-                    Stream.filter(matchesFilters),
-                    Stream.map(
-                      (eventEncoded) =>
-                        Schema.decodeSync(eventSchema)(eventEncoded) as LiveStoreEvent.ForSchema<TSchema>,
-                    ),
-                  )
-              : Stream.empty
-
-          // Create pending events stream
-          const pendingStream = Stream.asyncPush<LiveStoreEvent.ForSchema<TSchema>>((emit) =>
-            Effect.gen(function* () {
-              const currentState = yield* syncProcessor.syncState
-
-              // Emit current pending events that are after cursor
-              for (const eventEncoded of currentState.pending) {
-                if (EventSequenceNumber.compare(eventEncoded.seqNum, cursor) > 0 && matchesFilters(eventEncoded)) {
-                  const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                  emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
-                }
-              }
-
-              if (!snapshotOnly) {
-                // Continue with live updates
-                let lastSeenHead = currentState.localHead
-                yield* syncProcessor.syncState.changes.pipe(
-                  Stream.tapSync((newState) => {
-                    for (const eventEncoded of newState.pending) {
-                      if (
-                        EventSequenceNumber.compare(eventEncoded.seqNum, lastSeenHead) > 0 &&
-                        matchesFilters(eventEncoded)
-                      ) {
-                        const decodedEvent = Schema.decodeSync(eventSchema)(eventEncoded)
-                        emit.single(decodedEvent as LiveStoreEvent.ForSchema<TSchema>)
-                      }
-                    }
-                    lastSeenHead = newState.localHead
-                  }),
-                  Stream.runDrain,
-                )
-              } else {
-                // When snapshotOnly is true, we need to end the stream after emitting the current pending events
-                emit.end()
-              }
-            }),
-          )
-
-          // Merge the streams
-          return Stream.concat(leaderStream, pendingStream)
-        }
-        default: {
-          return casesHandled(minSyncLevel)
-        }
-      }
+      // Stream from leader, but only up to backend head
+      return leaderThreadProxy.events
+        .stream({
+          since: cursor,
+          ...omitUndefineds({
+            filter: options?.filter as ReadonlyArray<string> | undefined,
+            clientIds: options?.clientIds,
+            sessionIds: options?.sessionIds,
+          }),
+          batchSize,
+        })
+        .pipe(
+          Stream.filter(matchesFilters),
+          Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+        )
     }).pipe(
       Stream.unwrap,
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),

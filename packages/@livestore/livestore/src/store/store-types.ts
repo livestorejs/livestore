@@ -128,26 +128,6 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    */
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
   /**
-   * Minimum sync level required for events to be included.
-   * - 'client': Include all events (including pending in client session)
-   * - 'leader': Only include events confirmed by the leader thread
-   * - 'backend': Only include events confirmed by the sync backend
-   * @default 'client'
-   */
-  minSyncLevel?: 'client' | 'leader' | 'backend'
-  /**
-   * Whether to include client-only events
-   * @default true
-   * @deprecated Use minSyncLevel instead for more granular control
-   */
-  includeClientOnly?: boolean
-  /**
-   * Exclude own events that have not been pushed to the sync backend yet
-   * @default false
-   * @deprecated Use minSyncLevel: 'backend' instead
-   */
-  excludeUnpushed?: boolean
-  /**
    * Only include events after this logical timestamp (exclusive)
    * @default undefined (no lower bound)
    */
@@ -157,12 +137,6 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    * @default undefined (no upper bound)
    */
   until?: EventSequenceNumber.EventSequenceNumber
-  /**
-   * If true, only returns a snapshot of existing events and completes.
-   * If false, continues streaming new events as they arrive.
-   * @default false (live streaming)
-   */
-  snapshotOnly?: boolean
   /**
    * Only include events from specific client IDs
    * @default undefined (include all clients)
@@ -180,6 +154,9 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   eventQueryBatchSize?: number
 
   // Future filtering ideas (not implemented yet):
+  // - syncLevel: Filte by client, leader or backend (requires supporting unconfirmed events)
+  // - unconfirmedEvents: Filter by unconfirmed events (requires supporting unconfirmed events)
+  // - includeClientOnly: Whether to include client-only events (only relevant when syncLevel supported)
   // - parentEventId: Filter by parent event
   // - argPattern: Pattern matching on event arguments
   // - aggregation: Count events by type, time buckets, etc.

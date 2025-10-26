@@ -17,7 +17,6 @@ Returns an async iterable that yields events from the store.
   - `cursor?: EventSequenceNumber` - Starting position in the event stream. Use `EventSequenceNumber.ROOT` to get all events from the beginning
   - `filter?: string[]` - Array of event names to include. If not specified, all events are included
   - `includeClientOnly?: boolean` - Whether to include client-only events (default: true)
-  - `excludeUnpushed?: boolean` - Whether to exclude events that haven't been pushed to the sync backend yet (default: false)
 
 **Returns:** `AsyncIterable<LiveStoreEvent>`
 
