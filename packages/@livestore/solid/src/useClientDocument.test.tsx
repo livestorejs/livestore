@@ -110,7 +110,7 @@ Vitest.describe('useClientDocument', () => {
         return (
           <div>
             <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
-            <div role="current-id">Current Task Id: {state().currentTaskId ?? '-'}</div>
+            <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
             <Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
               {(id) => <TaskDetails id={id()} />}
             </Show>
@@ -133,7 +133,7 @@ Vitest.describe('useClientDocument', () => {
           LiveStore.queryDb(tables.todos.where({ id: props.id }).first(), { deps: props.id }),
         )
 
-        return <div role="content">{JSON.stringify(todo())}</div>
+        return <div role={'content' as any}>{JSON.stringify(todo())}</div>
       }
 
       const { getByRole } = SolidTesting.render(() => <AppRouter />, { wrapper })
