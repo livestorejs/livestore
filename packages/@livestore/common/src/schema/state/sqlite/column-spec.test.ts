@@ -56,9 +56,9 @@ describe('makeColumnSpec', () => {
     )
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(`"'order' integer not null  , 'group' text   "`)
-    expect(result).toContain("'order'")
-    expect(result).toContain("'group'")
+    expect(result).toMatchInlineSnapshot(`""order" integer   not null , "group" text    "`)
+    expect(result).toContain('"order"')
+    expect(result).toContain('"group"')
   })
 
   it('should handle basic columns with primary keys', () => {
@@ -69,8 +69,7 @@ describe('makeColumnSpec', () => {
     )
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(`"'id' text not null  , 'name' text   , PRIMARY KEY ('id')"`)
-    expect(result).toContain("PRIMARY KEY ('id')")
+    expect(result).toMatchInlineSnapshot(`""id" text primary key   , "name" text    "`)
   })
 
   it('should handle multi-column primary keys', () => {
@@ -85,9 +84,9 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'tenant_id' text not null  , 'user_id' text not null  , PRIMARY KEY ('tenant_id', 'user_id')"`,
+      `""tenant_id" text   not null , "user_id" text   not null , PRIMARY KEY ("tenant_id", "user_id")"`,
     )
-    expect(result).toContain("PRIMARY KEY ('tenant_id', 'user_id')")
+    expect(result).toContain('PRIMARY KEY ("tenant_id", "user_id")')
   })
 
   it('should handle auto-increment columns', () => {
@@ -101,9 +100,9 @@ describe('makeColumnSpec', () => {
     )
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(`"'id' integer not null autoincrement , 'title' text   , PRIMARY KEY ('id')"`)
+    expect(result).toMatchInlineSnapshot(`""id" integer primary key autoincrement  , "title" text    "`)
     expect(result).toContain('autoincrement')
-    expect(result).toContain("PRIMARY KEY ('id')")
+    expect(result).not.toContain("PRIMARY KEY ('id')")
   })
 
   it('should handle columns with default values', () => {
@@ -121,7 +120,7 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'id' integer not null  , 'name' text not null  , 'price' real   default 0, 'active' integer   default true, 'description' text   default 'No description', PRIMARY KEY ('id')"`,
+      `""id" integer primary key   , "name" text   not null , "price" real    default 0, "active" integer    default true, "description" text    default 'No description'"`,
     )
     expect(result).toContain('default 0')
     expect(result).toContain('default true')
@@ -141,7 +140,7 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'id' integer not null  , 'created_at' text   default CURRENT_TIMESTAMP, 'random_value' real   default RANDOM(), PRIMARY KEY ('id')"`,
+      `""id" integer primary key   , "created_at" text    default CURRENT_TIMESTAMP, "random_value" real    default RANDOM()"`,
     )
     expect(result).toContain('default CURRENT_TIMESTAMP')
     expect(result).toContain('default RANDOM()')
@@ -159,7 +158,7 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'id' integer not null  , 'optional_text' text   default null, PRIMARY KEY ('id')"`,
+      `""id" integer primary key   , "optional_text" text    default null"`,
     )
     expect(result).toContain('default null')
   })
@@ -190,7 +189,7 @@ describe('makeColumnSpec', () => {
 
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(
-      `"'id' integer not null autoincrement , 'name' text not null  default 'Unnamed', 'created_at' text not null  default CURRENT_TIMESTAMP, 'status' text   default 'pending', PRIMARY KEY ('id')"`,
+      `""id" integer primary key autoincrement  , "name" text   not null default 'Unnamed', "created_at" text   not null default CURRENT_TIMESTAMP, "status" text    default 'pending'"`,
     )
   })
 
@@ -213,7 +212,7 @@ describe('makeColumnSpec', () => {
     const result = makeColumnSpec(table)
     // The makeColumnSpec function only generates column specifications, not indexes
     expect(result).toMatchInlineSnapshot(
-      `"'id' integer not null autoincrement , 'email' text not null  , 'username' text not null  , 'created_at' text   default CURRENT_TIMESTAMP, PRIMARY KEY ('id')"`,
+      `""id" integer primary key autoincrement  , "email" text   not null , "username" text   not null , "created_at" text    default CURRENT_TIMESTAMP"`,
     )
     // Verify the table has the indexes (even though they're not in the column spec)
     expect(table.indexes).toHaveLength(3)
