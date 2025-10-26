@@ -7,7 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createSignal, For } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { expect, it } from 'vitest'
 import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
@@ -110,12 +110,10 @@ Vitest.describe('useClientDocument', () => {
         return (
           <div>
             <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
-            <div role="group">Current Task Id: {state().currentTaskId ?? '-'}</div>
-            {state().currentTaskId ? (
-              <TaskDetails id={state().currentTaskId} />
-            ) : (
-              <div>Click on a task to see details</div>
-            )}
+            <div role="current-id">Current Task Id: {state().currentTaskId ?? '-'}</div>
+            <Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
+              {(id) => <TaskDetails id={id()} />}
+            </Show>
           </div>
         )
       }
@@ -135,7 +133,7 @@ Vitest.describe('useClientDocument', () => {
           LiveStore.queryDb(tables.todos.where({ id: props.id }).first(), { deps: props.id }),
         )
 
-        return <div role="group">{JSON.stringify(todo())}</div>
+        return <div role="content">{JSON.stringify(todo())}</div>
       }
 
       const { getByRole } = SolidTesting.render(() => <AppRouter />, { wrapper })

@@ -166,7 +166,7 @@ describe('LiveStoreProvider', () => {
       return (
         <div id={instanceId}>
           <div role="heading">{instanceId}</div>
-          <div role="group">{JSON.stringify(todos())}</div>
+          <div role="content">{JSON.stringify(todos())}</div>
           <button onClick={() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))}>
             create todo {instanceId}
           </button>
