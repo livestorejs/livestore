@@ -1,0 +1,26 @@
+// @ts-check
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// const __dirname = import.meta.dirname
+
+// https://vitejs.dev/config
+export default defineConfig({
+  server: {
+    port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+    fs: {
+      strict: false,
+    },
+  },
+  worker: { format: 'es' },
+  optimizeDeps: {
+    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+    exclude: [
+      '@livestore/wa-sqlite',
+      'lightningcss', // Avoid wasm branch looking for missing ../pkg (lightningcss#701)
+    ],
+  },
+  plugins: [tanstackStart(), viteReact(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
+})

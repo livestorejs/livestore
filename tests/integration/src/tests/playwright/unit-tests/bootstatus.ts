@@ -2,9 +2,9 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
-
-import LiveStoreWorker from './livestore.worker?worker'
-import { Bridge, schema } from './shared.js'
+import { ResultBootStatus } from './bridge.ts'
+import LiveStoreWorker from './livestore.worker.ts?worker'
+import { schema } from './schema.ts'
 
 export const test = () =>
   Effect.gen(function* () {
@@ -22,7 +22,8 @@ export const test = () =>
       shutdown: () => Effect.void,
       connectDevtoolsToStore: () => Effect.void,
       debugInstanceId: 'test',
-      syncPayload: undefined,
+      syncPayloadEncoded: undefined,
+      syncPayloadSchema: undefined,
     })
 
     // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in
@@ -37,7 +38,7 @@ export const test = () =>
     Effect.tapCauseLogPretty,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeSync(Bridge.ResultBootStatus)(Bridge.ResultBootStatus.make({ exit })))
+      window.postMessage(Schema.encodeSync(ResultBootStatus)(ResultBootStatus.make({ exit })))
     }),
     Effect.scoped,
     Effect.runPromise,

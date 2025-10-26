@@ -2,8 +2,11 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   test: {
-    // Needed for React hook tests
-    environment: 'jsdom',
+    // Try node environment with DOM globals for React tests
+    environment: 'node',
+    setupFiles: ['./test/setup.ts'],
+    // Setup DOM globals in Node environment
+    globals: true,
   },
   esbuild: {
     // TODO remove once `using` keyword supported OOTB with Vite https://github.com/vitejs/vite/issues/15464#issuecomment-1872485703

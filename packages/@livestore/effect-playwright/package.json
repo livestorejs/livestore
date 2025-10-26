@@ -4,20 +4,17 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "@types/node": "^22.15.17"
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:"
   },
   "peerDependencies": {
-    "@playwright/test": "~1.52.0"
+    "@playwright/test": "^1.56.0"
   },
   "scripts": {
     "test": "echo 'No tests'"

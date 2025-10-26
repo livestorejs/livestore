@@ -1,137 +1,159 @@
-import '../global.js'
+import '../global.ts'
 
 export {
-  Scope,
-  Ref,
-  SynchronizedRef,
-  Queue,
-  Fiber,
-  FiberId,
-  FiberSet,
-  FiberMap,
-  FiberHandle,
-  Inspectable,
-  RuntimeFlags,
-  PubSub,
-  Exit,
-  Cause,
-  Runtime,
-  FiberRef,
-  FiberRefs,
-  FiberRefsPatch,
-  Deferred,
-  Metric,
-  MetricState,
-  Request,
-  Tracer,
-  Context,
-  Data,
-  Either,
-  Brand,
-  Hash,
-  Equal,
-  Chunk,
-  Duration,
-  Array as ReadonlyArray,
-  Record as ReadonlyRecord,
-  SortedMap,
-  HashMap,
-  HashSet,
-  ManagedRuntime,
-  MutableHashSet,
-  MutableHashMap,
-  TQueue,
-  Option,
-  LogLevel,
-  // Logger,
-  Config,
-  Layer,
-  STM,
-  TRef,
-  Channel,
-  Predicate,
-  // Subscribable,
-  pipe,
-  identity,
-  GlobalValue,
-  Match,
-  TestServices,
-  Mailbox,
-  ExecutionStrategy,
-  PrimaryKey,
-  Types,
-  Cache,
-} from 'effect'
-
-export * as StandardSchema from '@standard-schema/spec'
-
-export { dual } from 'effect/Function'
-
-export * as Stream from './Stream.js'
-
-export * as BucketQueue from './BucketQueue.js'
-
-export * as SubscriptionRef from './SubscriptionRef.js'
-export * as Subscribable from './Subscribable.js'
-
-export * as Logger from './Logger.js'
-
-export * as WebChannel from './WebChannel/mod.js'
-export * as WebSocket from './WebSocket.js'
-
-export * as SchemaAST from 'effect/SchemaAST'
-export { TreeFormatter } from 'effect/ParseResult'
-export { ParseResult, Pretty } from 'effect'
-export type { Serializable, SerializableWithResult } from 'effect/Schema'
-export * as Schema from './Schema/index.js'
-export * as OtelTracer from '@effect/opentelemetry/Tracer'
-export * as TaskTracing from './TaskTracing.js'
-
+  AiError,
+  LanguageModel,
+  LanguageModel as AiLanguageModel,
+  McpSchema,
+  McpServer,
+  Model,
+  Model as AiModel,
+  Prompt,
+  Tool,
+  Tool as AiTool,
+  Toolkit,
+  Toolkit as AiToolkit,
+} from '@effect/ai'
+// export { DevTools as EffectDevtools } from '@effect/experimental'
+export { Sse } from '@effect/experimental'
+export * as Otlp from '@effect/opentelemetry/Otlp'
 export {
-  Rpc,
-  RpcGroup,
-  RpcClient,
-  RpcMessage,
-  RpcSchema,
-  RpcMiddleware,
-  RpcServer,
-  RpcSerialization,
-  RpcTest,
-  RpcWorker,
-} from '@effect/rpc'
-
-export {
-  Transferable,
+  Command,
+  CommandExecutor,
+  Error as PlatformError,
+  FetchHttpClient,
   FileSystem,
-  Worker,
-  WorkerError,
-  WorkerRunner,
-  Terminal,
-  HttpServer,
+  Headers,
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApp,
   HttpClient,
   HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
-  FetchHttpClient,
-  Socket,
-  UrlParams,
-  HttpServerRequest,
-  Headers,
   HttpMiddleware,
   HttpRouter,
+  HttpServer,
+  HttpServerRequest,
   HttpServerResponse,
-  Command,
-  CommandExecutor,
   KeyValueStore,
-  Error as PlatformError,
+  MsgPack,
+  Socket,
+  Terminal,
+  Transferable,
+  UrlParams,
+  Worker,
+  WorkerError,
+  WorkerRunner,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
-
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-
-export * as Effect from './Effect.js'
-export * as Schedule from './Schedule.js'
-export * as Scheduler from './Scheduler.js'
-export * from './Error.js'
-export * as ServiceContext from './ServiceContext.js'
-export * as WebLock from './WebLock.js'
+export {
+  Rpc,
+  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
+  RpcClientError,
+  RpcGroup,
+  RpcMessage,
+  RpcMiddleware,
+  RpcSchema,
+  RpcSerialization,
+  RpcServer,
+  RpcTest,
+  RpcWorker,
+} from '@effect/rpc'
+export * as StandardSchema from '@standard-schema/spec'
+export {
+  Array as ReadonlyArray,
+  Brand,
+  Cache,
+  Cause,
+  Channel,
+  Chunk,
+  Config,
+  ConfigError,
+  ConfigProvider,
+  Console,
+  Context,
+  Data,
+  Deferred,
+  Duration,
+  Either,
+  Equal,
+  ExecutionStrategy,
+  Exit,
+  FastCheck,
+  Fiber,
+  FiberHandle,
+  FiberId,
+  FiberMap,
+  FiberRef,
+  FiberRefs,
+  FiberRefsPatch,
+  FiberSet,
+  GlobalValue,
+  Hash,
+  HashMap,
+  HashSet,
+  Inspectable,
+  identity,
+  Layer,
+  List,
+  LogLevel,
+  LogSpan,
+  Mailbox,
+  ManagedRuntime,
+  Match,
+  Metric,
+  MetricState,
+  MutableHashMap,
+  MutableHashSet,
+  Option,
+  ParseResult,
+  Predicate,
+  Pretty,
+  PrimaryKey,
+  PubSub,
+  // Subscribable,
+  pipe,
+  Queue,
+  Record as ReadonlyRecord,
+  Ref,
+  Request,
+  Runtime,
+  RuntimeFlags,
+  Scope,
+  ScopedRef,
+  Sink,
+  SortedMap,
+  STM,
+  SynchronizedRef,
+  TestServices,
+  TQueue,
+  TRef,
+  Tracer,
+  Types,
+} from 'effect'
+export type { NonEmptyArray } from 'effect/Array'
+export { constVoid, dual } from 'effect/Function'
+export * as Graph from 'effect/Graph'
+export { TreeFormatter } from 'effect/ParseResult'
+export type { Serializable, SerializableWithResult } from 'effect/Schema'
+export * as SchemaAST from 'effect/SchemaAST'
+export * as BucketQueue from './BucketQueue.ts'
+export * as Effect from './Effect.ts'
+export * from './Error.ts'
+export * as Logger from './Logger.ts'
+export * as OtelTracer from './OtelTracer.ts'
+export * as RpcClient from './RpcClient.ts'
+export * as Schedule from './Schedule.ts'
+export * as Scheduler from './Scheduler.ts'
+export * as Schema from './Schema/index.ts'
+export * as ServiceContext from './ServiceContext.ts'
+export * as Stream from './Stream.ts'
+export * as Subscribable from './Subscribable.ts'
+export * as SubscriptionRef from './SubscriptionRef.ts'
+export * as TaskTracing from './TaskTracing.ts'
+export * as WebChannel from './WebChannel/mod.ts'
+export * as WebLock from './WebLock.ts'
+export * as WebSocket from './WebSocket.ts'

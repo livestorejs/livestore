@@ -14,7 +14,9 @@ export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
+  // NOTE empty string is also supported here (Playwright will create a temporary directory in that case)
   persistentContextPath: string
+  headless?: boolean
   launchOptions?: Omit<PW.LaunchOptions, 'headless'>
 }
 
@@ -33,13 +35,20 @@ export const handlePageConsole = ({
     Effect.withSpan(`handlePageConsole-${name}`),
   )
 
-export const browserContext = ({ extensionPath, persistentContextPath, launchOptions }: MakeBrowserContextParams) =>
+export const browserContext = ({
+  extensionPath,
+  persistentContextPath,
+  launchOptions,
+  headless: headlessOption,
+}: MakeBrowserContextParams) =>
   Effect.gen(function* () {
-    const headless = envTruish(process.env.PLAYWRIGHT_HEADLESS)
+    const headless = headlessOption ?? envTruish(process.env.PLAYWRIGHT_HEADLESS)
     let browserContext: PW.BrowserContext
     // let backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
 
     if (extensionPath === undefined) {
+      // TODO keep browser open on error
+      // Persistent context is needed for some browser APIs to work (e.g. OPFS)
       browserContext = yield* Effect.promise(() =>
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
@@ -82,7 +91,7 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
   Effect.tryPromise({
     try: () => f(),
     catch: (cause) => new SiteError({ label: options?.label ?? f.toString(), messages: cause }),
-  }).pipe(Effect.withSpan('withPage:' + (options?.label ?? f.toString())))
+  }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
 export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
   type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
@@ -201,11 +210,19 @@ export const pageConsole = ({
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-              emit.fail(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))
+              emit.fail(
+                new SiteError({
+                  label,
+                  messages: errorGroupRef.current.errorMessages,
+                }),
+              )
             } else if (
               message.type === 'error' &&
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+              ) === false &&
+              message.message.includes(
+                'Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)',
               ) === false &&
               message.message.includes('All fibers interrupted without errors') === false
             ) {

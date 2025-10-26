@@ -1,0 +1,126 @@
+---
+title: MCP Integration
+description: Model Context Protocol integration for AI assistants like Claude.
+---
+
+LiveStore includes MCP (Model Context Protocol) integration that allows AI assistants like Claude to access LiveStore documentation, examples, and development tools.
+
+:::caution[Experimental]
+The MCP integration is experimental and under active development. Features may change.
+:::
+
+For installation and general CLI usage, see the [LiveStore CLI](/reference/cli) documentation.
+
+## What is MCP?
+
+MCP (Model Context Protocol) is a standard for providing AI assistants with access to external resources and tools. LiveStore's MCP server gives AI assistants access to:
+
+- LiveStore documentation and guides
+- Schema examples for common app types
+- Development tools and utilities
+
+## Usage
+
+Start the MCP server:
+
+```bash
+bunx @livestore/cli mcp
+```
+
+## Available Commands
+
+### `bunx @livestore/cli mcp coach`
+Starts an AI coaching assistant with access to LiveStore documentation and best practices.
+
+### `bunx @livestore/cli mcp tools`
+Provides development tools and utilities for working with LiveStore projects.
+
+### LiveStore Runtime Tools
+
+- `livestore_instance_connect`
+  - Connects a single in-process LiveStore instance by dynamically importing a module that exports `schema` and a `syncBackend` factory (and optionally `syncPayload`).
+  - Notes:
+    - Only one instance can be active at a time; connecting again shuts down and replaces the previous instance.
+    - Reconnecting creates a fresh, in-memory client database. The visible state is populated by your backend's initial sync. Until sync completes, queries may return empty or partial results.
+  - Module contract (generic example):
+    ```ts
+    import { makeWsSync } from '@livestore/sync-cf/client' // or another provider
+    export { schema } from './src/livestore/schema.ts'
+    export const syncBackend = makeWsSync({ url: process.env.LIVESTORE_SYNC_URL ?? 'ws://localhost:8787' })
+    export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN ?? 'insecure-token-change-me' }
+    ```
+  - Params example: `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+  - Returns example:
+    `{ "storeId": "<store-id>", "clientId": "client-123", "sessionId": "session-abc", "schemaInfo": { "tableNames": ["..."], "eventNames": ["..."] } }`
+
+- `livestore_instance_query`
+  - Executes raw SQL against the client database (read-only).
+  - Notes:
+    - SQLite dialect; use valid SQLite syntax.
+    - `bindValues` must be an array (positional `?`) or a record (named `$key`). Do not pass stringified JSON.
+  - Params example (positional): `{ "sql": "SELECT * FROM my_table WHERE userId = ?", "bindValues": ["u1"] }`
+  - Params example (named): `{ "sql": "SELECT * FROM my_table WHERE userId = $userId", "bindValues": { "userId": "u1" } }`
+  - Returns example: `{ "rows": [{ "col": "value" }], "rowCount": 1 }`
+
+- `livestore_instance_commit_events`
+  - Commits one or more events defined by your connected schema.
+  - Notes:
+    - Use the canonical event name declared in your schema (e.g., `v1.EntityCreated`).
+    - `args` must be a non-stringified JSON object matching the event schema. Date fields typically accept ISO 8601 strings.
+  - Params example: `{ "events": [{ "name": "v1.EntityCreated", "args": { "id": "e1", "title": "Hello", "createdAt": "2024-01-01T00:00:00.000Z" } }] }`
+  - Returns example: `{ "committed": 1 }`
+
+- `livestore_instance_status`
+  - Reports instance/runtime info.
+  - Returns example (connected): `{ "_tag": "connected", "storeId": "<store-id>", "clientId": "client-123", "sessionId": "session-abc", "tableCounts": { "my_table": 12 } }`
+  - Returns example (not connected): `{ "_tag": "disconnected" }`
+
+- `livestore_instance_disconnect`
+  - Disconnects the current LiveStore instance and releases resources.
+  - Returns: `{ "_tag": "disconnected" }`
+
+## Local Cloudflare Sync (dev)
+
+Run a local Cloudflare sync backend:
+
+1. Start the sync worker (wrangler):
+   - `cd tests/integration/src/tests/adapter-cloudflare/fixtures`
+   - `wrangler dev`
+   - You should see an info page at `http://localhost:8787/`.
+
+2. Start the MCP server in another terminal:
+   - `bunx @livestore/cli mcp server`
+
+3. From your MCP client (e.g., Claude Desktop), call tools:
+   - Use your own MCP module path and storeId. The repo also provides an example: `examples/cf-chat/mcp.ts`.
+   - Connect: `livestore_instance_connect` with `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+   - Commit: `livestore_instance_commit_events` with `[ { "name": "v1.EntityCreated", "args": { "id": "e1", "title": "Hello", "createdAt": "2024-01-01T00:00:00.000Z" } } ]`
+   - Query: `livestore_instance_query` with `{ "sql": "SELECT * FROM my_table ORDER BY createdAt DESC LIMIT 5" }`
+   - Status: `livestore_instance_status`
+   - Disconnect: `livestore_instance_disconnect`
+
+## Adding to Claude
+
+To use with Claude Desktop, add the MCP server to your Claude configuration:
+
+```json
+{
+  "mcpServers": {
+    "livestore": {
+      "command": "bunx",
+      "args": ["@livestore/cli", "mcp"]
+    }
+  }
+}
+```
+
+## Available Resources
+
+The MCP server provides access to:
+
+- **Documentation**: Overview, features, getting started guides
+- **Architecture**: Technical design and principles  
+- **Schema Examples**: Pre-built schemas for todo, blog, e-commerce, and social apps
+- **Development Tools**: Project scaffolding and utilities
+
+This enables AI assistants to provide context-aware help with LiveStore development.

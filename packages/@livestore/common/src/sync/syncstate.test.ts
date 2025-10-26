@@ -1,18 +1,20 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import { describe, expect, it } from 'vitest'
 
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import * as SyncState from './syncstate.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import * as SyncState from './syncstate.ts'
 
 class TestEvent extends LiveStoreEvent.EncodedWithMeta {
-  constructor(
-    seqNum: EventSequenceNumber.EventSequenceNumber | typeof EventSequenceNumber.EventSequenceNumber.Encoded,
-    parentSeqNum: EventSequenceNumber.EventSequenceNumber,
-    public readonly payload: string,
-    public readonly isLocal: boolean,
-  ) {
-    super({
+  public payload = 'uninitialized'
+  public isClient = false
+
+  static new = (
+    seqNum: EventSequenceNumber.EventSequenceNumberInput,
+    parentSeqNum: EventSequenceNumber.EventSequenceNumberInput,
+    payload: string,
+    isClient: boolean,
+  ) => {
+    const event = new TestEvent({
       seqNum: EventSequenceNumber.make(seqNum),
       parentSeqNum: EventSequenceNumber.make(parentSeqNum),
       name: 'a',
@@ -20,10 +22,13 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
       clientId: 'static-local-id',
       sessionId: 'static-session-id',
     })
+    event.payload = payload
+    event.isClient = isClient
+    return event
   }
 
-  rebase_ = (parentSeqNum: EventSequenceNumber.EventSequenceNumber) => {
-    return this.rebase(parentSeqNum, this.isLocal)
+  rebase_ = (parentSeqNum: EventSequenceNumber.EventSequenceNumber, rebaseGeneration: number) => {
+    return this.rebase({ parentSeqNum, isClient: this.isClient, rebaseGeneration })
   }
 
   // Only used for Vitest printing
@@ -31,17 +36,17 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
   // toString = () => this.toJSON()
 }
 
-const e0_1 = new TestEvent({ global: 0, client: 1 }, EventSequenceNumber.ROOT, 'a', true)
-const e1_0 = new TestEvent({ global: 1, client: 0 }, EventSequenceNumber.ROOT, 'a', false)
-const e1_1 = new TestEvent({ global: 1, client: 1 }, e1_0.seqNum, 'a', true)
-const e1_2 = new TestEvent({ global: 1, client: 2 }, e1_1.seqNum, 'a', true)
-const e1_3 = new TestEvent({ global: 1, client: 3 }, e1_2.seqNum, 'a', true)
-const e2_0 = new TestEvent({ global: 2, client: 0 }, e1_0.seqNum, 'a', false)
-const e2_1 = new TestEvent({ global: 2, client: 1 }, e2_0.seqNum, 'a', true)
+const e0_1 = TestEvent.new({ global: 0, client: 1 }, EventSequenceNumber.ROOT, 'a', true)
+const e1_0 = TestEvent.new({ global: 1, client: 0 }, EventSequenceNumber.ROOT, 'a', false)
+const e1_1 = TestEvent.new({ global: 1, client: 1 }, e1_0.seqNum, 'a', true)
+const e1_2 = TestEvent.new({ global: 1, client: 2 }, e1_1.seqNum, 'a', true)
+const e1_3 = TestEvent.new({ global: 1, client: 3 }, e1_2.seqNum, 'a', true)
+const e2_0 = TestEvent.new({ global: 2, client: 0 }, e1_0.seqNum, 'a', false)
+const e2_1 = TestEvent.new({ global: 2, client: 1 }, e2_0.seqNum, 'a', true)
 
 const isEqualEvent = LiveStoreEvent.isEqualEncoded
 
-const isClientEvent = (event: LiveStoreEvent.EncodedWithMeta) => (event as TestEvent).isLocal
+const isClientEvent = (event: LiveStoreEvent.EncodedWithMeta) => (event as TestEvent).isClient
 
 describe('syncstate', () => {
   describe('merge', () => {
@@ -62,8 +67,8 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.ROOT,
           localHead: e2_0.seqNum,
         })
-        const e1_0_e2_0 = e1_0.rebase_(e2_0.seqNum)
-        const e1_1_e2_1 = e1_1.rebase_(e1_0_e2_0.seqNum)
+        const e1_0_e2_0 = e1_0.rebase_(e2_0.seqNum, 0)
+        const e1_1_e2_1 = e1_1.rebase_(e1_0_e2_0.seqNum, 0)
         const result = merge({
           syncState,
           payload: SyncState.PayloadUpstreamRebase.make({
@@ -71,7 +76,7 @@ describe('syncstate', () => {
             newEvents: [e1_0_e2_0, e1_1_e2_1],
           }),
         })
-        const e2_0_e3_0 = e2_0.rebase_(e1_0_e2_0.seqNum)
+        const e2_0_e3_0 = e2_0.rebase_(e1_0_e2_0.seqNum, 1)
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e2_0_e3_0])
         expect(result.newSyncState.upstreamHead).toMatchObject(e1_1_e2_1.seqNum)
@@ -86,7 +91,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.ROOT,
           localHead: e2_0.seqNum,
         })
-        const e1_1_e2_0 = e1_1.rebase_(e1_0.seqNum)
+        const e1_1_e2_0 = e1_1.rebase_(e1_0.seqNum, 0)
         const result = merge({
           syncState,
           payload: SyncState.PayloadUpstreamRebase.make({
@@ -94,7 +99,7 @@ describe('syncstate', () => {
             rollbackEvents: [e1_1],
           }),
         })
-        const e2_0_e3_0 = e2_0.rebase_(e1_1_e2_0.seqNum)
+        const e2_0_e3_0 = e2_0.rebase_(e1_1_e2_0.seqNum, 1)
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e2_0_e3_0])
         expect(result.newSyncState.upstreamHead).toMatchObject(e1_1_e2_0.seqNum)
@@ -326,7 +331,7 @@ describe('syncstate', () => {
         })
         const result = merge({ syncState, payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e1_1] }) })
 
-        const e1_0_e1_2 = e1_0.rebase_(e1_1.seqNum)
+        const e1_0_e1_2 = e1_0.rebase_(e1_1.seqNum, 1)
 
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e1_0_e1_2])
@@ -337,14 +342,14 @@ describe('syncstate', () => {
       })
 
       it('should rebase different event with same id', () => {
-        const e2_0_b = new TestEvent({ global: 1, client: 0 }, e1_0.seqNum, '1_0_b', false)
+        const e2_0_b = TestEvent.new({ global: 1, client: 0 }, e1_0.seqNum, '1_0_b', false)
         const syncState = new SyncState.SyncState({
           pending: [e2_0_b],
           upstreamHead: EventSequenceNumber.ROOT,
           localHead: e2_0_b.seqNum,
         })
         const result = merge({ syncState, payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e2_0] }) })
-        const e2_0_e3_0 = e2_0_b.rebase_(e2_0.seqNum)
+        const e2_0_e3_0 = e2_0_b.rebase_(e2_0.seqNum, 1)
 
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e2_0_e3_0])
@@ -365,7 +370,7 @@ describe('syncstate', () => {
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e1_1, e1_2, e1_3, e2_0] }),
         })
 
-        const e1_0_e3_0 = e1_0.rebase_(e2_0.seqNum)
+        const e1_0_e3_0 = e1_0.rebase_(e2_0.seqNum, 1)
 
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e1_0_e3_0])
@@ -384,7 +389,7 @@ describe('syncstate', () => {
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e1_0, e1_2, e1_3, e2_0] }),
         })
 
-        const e1_1_e2_1 = e1_1.rebase_(e2_0.seqNum)
+        const e1_1_e2_1 = e1_1.rebase_(e2_0.seqNum, 1)
 
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e1_1_e2_1])
@@ -405,8 +410,8 @@ describe('syncstate', () => {
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e1_1, e1_2, e1_3, e2_0] }),
         })
 
-        const e1_0_e2_1 = e1_0.rebase_(e2_0.seqNum)
-        const e1_1_e2_2 = e1_1.rebase_(e1_0_e2_1.seqNum)
+        const e1_0_e2_1 = e1_0.rebase_(e2_0.seqNum, 1)
+        const e1_1_e2_2 = e1_1.rebase_(e1_0_e2_1.seqNum, 1)
 
         expectRebase(result)
         expectEventArraysEqual(result.newSyncState.pending, [e1_0_e2_1, e1_1_e2_2])
@@ -435,6 +440,48 @@ describe('syncstate', () => {
             expect(result.newSyncState.localHead).toMatchObject(e1_3.seqNum)
             expectEventArraysEqual(result.newEvents, [e1_1, e1_2, e1_3])
             expectEventArraysEqual(result.confirmedEvents, [])
+          })
+
+          // Leaders can choose to ignore client-only events while still returning them for broadcast.
+          // Ensure pending/local head only reflects events that must be pushed upstream.
+          it('keeps pending empty when pushing only client-only events that are being ignored', () => {
+            const syncState = new SyncState.SyncState({
+              pending: [],
+              upstreamHead: EventSequenceNumber.ROOT,
+              localHead: EventSequenceNumber.ROOT,
+            })
+
+            const result = merge({
+              syncState,
+              payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1] }),
+              ignoreClientEvents: true,
+            })
+
+            expectAdvance(result)
+            expectEventArraysEqual(result.newSyncState.pending, [])
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(EventSequenceNumber.ROOT)
+            expectEventArraysEqual(result.newEvents, [e0_1])
+          })
+
+          it('appends only upstream-bound events to pending when ignoring client-only pushes', () => {
+            const syncState = new SyncState.SyncState({
+              pending: [],
+              upstreamHead: EventSequenceNumber.ROOT,
+              localHead: EventSequenceNumber.ROOT,
+            })
+
+            const result = merge({
+              syncState,
+              payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1, e1_0] }),
+              ignoreClientEvents: true,
+            })
+
+            expectAdvance(result)
+            expectEventArraysEqual(result.newSyncState.pending, [e1_0])
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(e1_0.seqNum)
+            expectEventArraysEqual(result.newEvents, [e0_1, e1_0])
           })
         })
 

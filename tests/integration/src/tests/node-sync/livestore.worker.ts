@@ -1,24 +1,23 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
-import { OtelLiveDummy } from '@livestore/utils/node'
+import { Effect, Layer } from '@livestore/utils/effect'
+import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-
-import { schema } from './schema.js'
+import { makeFileLogger } from './fixtures/file-logger.ts'
+import { schema } from './schema.ts'
 
 const argv = getWorkerArgs()
+const syncUrl = (argv.extraArgs as { syncUrl: string }).syncUrl
+
+const layer = Layer.mergeAll(
+  IS_CI
+    ? OtelLiveDummy
+    : OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true }),
+  makeFileLogger(`livestore-worker-${argv.clientId}`),
+)
 
 makeWorkerEffect({
-  sync: {
-    backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
-  },
+  sync: { backend: makeWsSync({ url: syncUrl }) },
   schema,
-}).pipe(
-  Effect.provide(
-    IS_CI
-      ? OtelLiveDummy
-      : OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true }),
-  ),
-  Effect.runFork,
-)
+}).pipe(Effect.provide(layer), PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }))

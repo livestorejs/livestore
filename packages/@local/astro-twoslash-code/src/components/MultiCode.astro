@@ -1,0 +1,451 @@
+---
+import { type MultiCodeProps, prepareMultiCodeData } from './multi-code.ts'
+import { loadMultiCodeClientModule } from './multi-code-client-inline.ts'
+
+/**
+ * Server component that renders the multi-file code block shell.
+ *
+ * Orchestration:
+ *   - Inject global Twoslash assets (base/theme styles + modules) the first time a page renders a bundle.
+ *   - Lay out tabs, diagnostics summary, and copy controls using the prepared snippet metadata.
+ *   - Emit panel HTML (or an error fallback) alongside JSON diagnostics for the client runtime.
+ *   - Defer interactive behaviour to `multi-code-client.ts`, loaded exactly once per page.
+ */
+
+const prepared = prepareMultiCodeData(Astro.props as MultiCodeProps)
+const hasAnyDiagnostics = prepared.panels.some((panel) => panel.diagnostics.length > 0)
+const activePanelDiagnostics = prepared.panels[0]?.diagnostics ?? []
+const initialDiagnosticsLabel =
+  activePanelDiagnostics.length === 0
+    ? ''
+    : activePanelDiagnostics.length === 1
+      ? '1 diagnostic'
+      : `${activePanelDiagnostics.length} diagnostics`
+const initialDiagnosticsTitle = activePanelDiagnostics.join('\n')
+const shouldHideStatus = initialDiagnosticsLabel.length === 0
+const globalBaseStyles = prepared.globals.baseStyles
+const globalThemeStyles = prepared.globals.themeStyles
+// Snippet manifest generation patches `setupTooltip`, so the runtime modules can be
+// forwarded as-is here.
+const globalJsModules = prepared.globals.jsModules
+
+/** Inline the transpiled client runtime exactly once per page render.
+ *
+ * The previous `?url` delivery shipped raw TypeScript in production. We now
+ * transform the module server-side and cache the result in `Astro.locals`,
+ * preventing duplicate `<script>` tags when multiple multi-code blocks are
+ * present.
+ */
+const clientScriptRegistryKey = '__lsTwoslashClientScript'
+let shouldRenderClientScript = true
+let clientModuleSource: string | null = null
+
+type TwoslashGlobalsRegistry = {
+  base: Set<string>
+  theme: Set<string>
+  modules: Set<string>
+}
+
+let shouldRenderBaseStyles = Boolean(globalBaseStyles)
+let shouldRenderThemeStyles = Boolean(globalThemeStyles)
+let jsModulesToRender = globalJsModules
+
+const localsRecord = (Astro as unknown as { locals?: Record<string, unknown> }).locals
+if (localsRecord) {
+  const registryKey = '__lsTwoslashGlobals'
+  if (localsRecord[registryKey] === undefined) {
+    localsRecord[registryKey] = {
+      base: new Set<string>(),
+      theme: new Set<string>(),
+      modules: new Set<string>(),
+    }
+  }
+  const registry = localsRecord[registryKey] as TwoslashGlobalsRegistry
+
+  if (globalBaseStyles) {
+    if (registry.base.has(globalBaseStyles)) {
+      shouldRenderBaseStyles = false
+    } else {
+      registry.base.add(globalBaseStyles)
+    }
+  }
+
+  if (globalThemeStyles) {
+    if (registry.theme.has(globalThemeStyles)) {
+      shouldRenderThemeStyles = false
+    } else {
+      registry.theme.add(globalThemeStyles)
+    }
+  }
+
+  if (globalJsModules.length > 0) {
+    jsModulesToRender = globalJsModules.filter((moduleCode) => {
+      if (registry.modules.has(moduleCode)) {
+        return false
+      }
+      registry.modules.add(moduleCode)
+      return true
+    })
+  }
+
+  if (localsRecord[clientScriptRegistryKey] === true) {
+    shouldRenderClientScript = false
+  } else {
+    localsRecord[clientScriptRegistryKey] = true
+  }
+}
+
+if (shouldRenderClientScript) {
+  clientModuleSource = await loadMultiCodeClientModule()
+}
+---
+
+{shouldRenderBaseStyles && globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles} />}
+{shouldRenderThemeStyles && globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles} />}
+{
+  jsModulesToRender.map((moduleCode, index) => (
+    <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode} />
+  ))
+}
+
+<div class={prepared.containerClass} data-ls-multi-code data-ls-multi-code-id={prepared.baseId}>
+  <div class="ls-multi-code__frame">
+    <div class="ls-multi-code__toolbar">
+      <div class="ls-multi-code__tablist" role="tablist">
+        {
+          prepared.panels.map((file, index) => {
+            const diagCount = file.diagnostics.length
+            const diagLabel = diagCount === 1 ? '1 diagnostic' : `${diagCount} diagnostics`
+
+            return (
+              <button
+                type="button"
+                class={`ls-multi-code__tab${index === 0 ? ' ls-multi-code__tab--active' : ''}`}
+                role="tab"
+                aria-selected={index === 0 ? 'true' : 'false'}
+                aria-controls={`${prepared.baseId}-panel-${index}`}
+                id={`${prepared.baseId}-tab-${index}`}
+                tabindex={index === 0 ? '0' : '-1'}
+                data-active={index === 0 ? '' : undefined}
+                title={file.filename}
+                data-index={index}
+                aria-label={diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined}
+                data-has-diagnostics={diagCount > 0 ? '' : undefined}
+              >
+                <span class="ls-multi-code__tab-label">{file.baseName}</span>
+                {diagCount > 0 && <span class="ls-multi-code__tab-indicator" aria-hidden="true" />}
+              </button>
+            )
+          })
+        }
+      </div>
+      <div
+        class="ls-multi-code__status"
+        data-ls-multi-code-diagnostics
+        aria-live="polite"
+        hidden={shouldHideStatus ? true : undefined}
+        title={initialDiagnosticsTitle.length > 0 ? initialDiagnosticsTitle : undefined}
+      >
+        {initialDiagnosticsLabel}
+      </div>
+    </div>
+    <div class="ls-multi-code__panels">
+      {
+        prepared.panels.map((file, index) => (
+          <div
+            role="tabpanel"
+            id={`${prepared.baseId}-panel-${index}`}
+            aria-labelledby={`${prepared.baseId}-tab-${index}`}
+            class={`ls-multi-code__panel${index === 0 ? ' ls-multi-code__panel--active' : ''}`}
+            data-active={index === 0 ? '' : undefined}
+            hidden={index === 0 ? undefined : true}
+            data-index={index}
+          >
+            {/* Diagnostics are parsed client-side to surface per-tab status without inflating the markup. */}
+            {file.diagnostics.length > 0 && (
+              <script
+                type="application/json"
+                data-ls-multi-code-panel-diagnostics
+                set:html={JSON.stringify(file.diagnostics)}
+              />
+            )}
+            {file.html !== null ? (
+              <>
+                {file.styles.length > 0 && (
+                  <style
+                    data-ls-twoslash-style={`${prepared.baseId}-style-${index}`}
+                    set:html={file.styles.join('\n')}
+                  />
+                )}
+                <div class="ls-multi-code__html" set:html={file.html} />
+              </>
+            ) : (
+              <div class="ls-multi-code__error" role="alert" data-ls-multi-code-error="">
+                <p class="ls-multi-code__error-title">Unable to render Twoslash snippet</p>
+                <p class="ls-multi-code__error-details">
+                  {`Check the diagnostics below for ${file.baseName ?? file.filename}.`}
+                </p>
+                {file.diagnostics.length > 0 ? (
+                  <ul class="ls-multi-code__error-list">
+                    {file.diagnostics.map((diagnostic) => (
+                      <li class="ls-multi-code__error-item">{diagnostic}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="ls-multi-code__error-details">No diagnostics were provided.</p>
+                )}
+              </div>
+            )}
+          </div>
+        ))
+      }
+    </div>
+
+    {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
+    {shouldRenderClientScript && clientModuleSource && <script type="module" is:inline set:html={clientModuleSource} />}
+  </div>
+</div>
+
+<style>
+  .ls-multi-code {
+    display: block;
+    --ls-multi-code-frame-shadow: color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.32)) 55%, transparent);
+    --ec-frm-frameBoxShdCssVal: 0 14px 32px var(--ls-multi-code-frame-shadow);
+  }
+
+  .ls-multi-code__frame {
+    display: flex;
+    flex-direction: column;
+    border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+    /* overflow: hidden; */
+  }
+
+  .ls-multi-code__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    background: linear-gradient(
+        to top,
+        var(--ec-frm-edTabBarBrdBtmCol, rgba(148, 163, 184, 0.35)) var(--ec-brdWd, 1px),
+        transparent var(--ec-brdWd, 1px)
+      ),
+      linear-gradient(
+        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent))),
+        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent)))
+      );
+    border: var(--ec-brdWd, 1px) solid var(--ec-frm-edTabBarBrdCol, rgba(148, 163, 184, 0.35));
+    border-bottom: none;
+    border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
+  }
+
+  .ls-multi-code__tablist {
+    display: inline-flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .ls-multi-code__tab {
+    position: relative;
+    appearance: none;
+    border: var(--ec-brdWd, 1px) solid transparent;
+    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 65%, transparent);
+    color: var(--ec-codeFg, inherit);
+    font: inherit;
+    font-size: calc(var(--ec-uiFontSize, 0.9rem) * 0.92);
+    padding: calc(var(--ec-uiPadBlk, 0.6rem) + var(--ec-frm-edActTabIndHt, 0.2rem) * 0.5) var(--ec-uiPadInl, 1rem);
+    border-radius: calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
+    cursor: pointer;
+    margin: 0 !important;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  .ls-multi-code__tab:hover,
+  .ls-multi-code__tab:focus-visible {
+    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 85%, transparent);
+    outline: none;
+  }
+
+  .ls-multi-code__tab--active {
+    background: var(--ec-frm-edActTabBg, var(--ec-codeBg, #1e1e1e));
+    color: var(--ec-frm-edActTabFg, inherit);
+    border-color: var(--ec-frm-edActTabBrdCol, transparent);
+  }
+
+  .ls-multi-code__tab--active::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    inset: 0;
+    border-top: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndTopCol, transparent);
+    border-bottom: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndBtmCol, transparent);
+  }
+
+  .ls-multi-code__tab-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .ls-multi-code__tab-indicator {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--sl-color-text-destructive, #ef4444);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ec-codeBg, #1e1e1e) 90%, transparent);
+  }
+
+  .ls-multi-code__status {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--ec-codeFg, #cbd5f5) 70%, transparent);
+    padding-bottom: var(--ec-uiPadBlk, 0.6rem);
+  }
+
+  .ls-multi-code__panels {
+    position: relative;
+    background: var(--ec-frm-edBg, var(--ec-codeBg, #1e1e1e));
+    margin: 0 !important; /* prevent starlight content margins */
+    border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+  }
+
+  .ls-multi-code__panel {
+    display: block;
+    margin: 0 !important; /* prevent starlight content margins */
+  }
+
+  .ls-multi-code__panel[hidden] {
+    display: none;
+  }
+
+  .ls-multi-code__panel--active {
+    display: block;
+  }
+
+  .ls-multi-code__html {
+    position: relative;
+  }
+
+  .ls-multi-code__html :global(.expressive-code) {
+    position: relative;
+    display: block;
+    --ec-frm-frameBoxShdCssVal: 0 16px 34px
+      color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
+  }
+
+  /*
+    Expressive Code injects the copy button inside the snippet frame. Nudge it upward
+    so it floats above the code block consistently across themes.
+  */
+  .ls-multi-code__html :global(.copy) {
+    transform: translate3d(0, calc(var(--ec-codePadBlk, 1rem) * -1.7), 0);
+  }
+
+  /*
+    Reinstate the frame shadow and rounded corners after Expressive Code inlines the
+    snippet so the snippet still looks like a floating panel.
+  */
+  .ls-multi-code__html :global(.frame) {
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
+    border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+  }
+
+  /*
+    Twoslash tooltips are re-parented to document.body, so they no longer match the
+    original `.expressive-code .twoslash-popup-container` selector shipped by
+    Expressive Code. Recreate the base chrome here so the popup retains its panel
+    styling after we hoist it out of the snippet frame.
+  */
+  :global(.twoslash-popup-container) {
+    background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
+    border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-radius: 4px;
+    box-shadow: 0 16px 32px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%, transparent);
+    color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
+    font-size: 0.9em;
+    margin-top: 0.5rem;
+    max-width: min(38ch, 90vw);
+    overflow-wrap: normal !important;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap !important;
+    width: max-content !important;
+    word-break: normal !important;
+  }
+
+  /*
+    The popup arrow also loses its styling without the `.expressive-code` ancestor.
+    Mirror the upstream colours so the arrow blends into the restored panel.
+  */
+  :global(.twoslash-popup-container::before) {
+    background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
+    border-right: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-top: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+  }
+
+  /*
+    Diagnostic metadata (`.twoslash-popup-docs`) scrolls behind the snippet when it
+    has no background. Give it a subtle panel surface, border, and standard code
+    styling so paragraphs and tags stay legible in both themes.
+  */
+  :global(.twoslash-popup-docs) {
+    background: color-mix(in srgb, var(--ec-twoSlash-bg, #1f2937) 96%, transparent);
+    border-top: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
+    display: block;
+    margin-top: 0.35rem;
+    max-width: min(38ch, 90vw);
+    padding: 0.4rem 0.75rem 0.5rem;
+    white-space: normal;
+  }
+
+  :global(.twoslash-popup-docs > *:last-child) {
+    margin-bottom: 0;
+  }
+
+  :global(.twoslash-popup-docs code) {
+    background: var(--ec-frm-edBg, color-mix(in srgb, #0f172a 80%, transparent)) !important;
+    border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem !important;
+  }
+
+  .ls-multi-code__error {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 40%, transparent);
+    background: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 8%, transparent);
+    color: var(--sl-color-text-destructive, var(--sl-color-red));
+  }
+
+  .ls-multi-code__error-title {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .ls-multi-code__error-details {
+    margin: 0;
+    color: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 80%, transparent);
+  }
+
+  .ls-multi-code__error-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .ls-multi-code__error-item {
+    list-style: disc;
+  }
+</style>

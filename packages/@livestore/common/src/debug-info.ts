@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { ParseResult, Schema } from '@livestore/utils/effect'
 
-import { BoundArray } from './bounded-collections.js'
-import { PreparedBindValues } from './util.js'
+import { BoundArray } from './bounded-collections.ts'
+import { PreparedBindValues } from './util.ts'
 
 export type SlowQueryInfo = {
   queryStr: string
@@ -22,6 +22,15 @@ export const SlowQueryInfo = Schema.Struct({
   startTimePerfNow: Schema.Number,
 })
 
+const getSizeLimit = (value: unknown): number =>
+  typeof (value as { sizeLimit?: number }).sizeLimit === 'number'
+    ? (value as { sizeLimit: number }).sizeLimit
+    : Number.POSITIVE_INFINITY
+
+const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
+  value instanceof BoundArray ||
+  (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
+
 const BoundArraySchemaFromSelf = <A, I, R>(
   item: Schema.Schema<A, I, R>,
 ): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
@@ -29,16 +38,17 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     [item],
     {
       decode: (item) => (input, parseOptions, ast) => {
-        if (input instanceof BoundArray) {
+        if (isBoundArrayLike(input)) {
           const elements = ParseResult.decodeUnknown(Schema.Array(item))([...input], parseOptions)
-          return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(input.sizeLimit, as))
+          return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
         }
         return ParseResult.fail(new ParseResult.Type(ast, input))
       },
       encode: (item) => (input, parseOptions, ast) => {
-        if (input instanceof BoundArray) {
-          const elements = ParseResult.encodeUnknown(Schema.Array(item))([...input], parseOptions)
-          return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(input.sizeLimit, is))
+        if (isBoundArrayLike(input)) {
+          const items = [...input]
+          const elements = ParseResult.encodeUnknown(Schema.Array(item))(items, parseOptions)
+          return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(getSizeLimit(input), is))
         }
         return ParseResult.fail(new ParseResult.Type(ast, input))
       },
@@ -47,7 +57,28 @@ const BoundArraySchemaFromSelf = <A, I, R>(
       description: `BoundArray<${Schema.format(item)}>`,
       pretty: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
-      equivalence: () => (a, b) => a === b,
+      equivalence: () => {
+        const elementEquivalence = Schema.equivalence(item)
+        return (a: unknown, b: unknown) => {
+          if (a === b) {
+            return true
+          }
+          if (!isBoundArrayLike(a) || !isBoundArrayLike(b)) {
+            return false
+          }
+          if (getSizeLimit(a) !== getSizeLimit(b) || a.length !== b.length) {
+            return false
+          }
+          const itemsA = [...a]
+          const itemsB = [...b]
+          for (let i = 0; i < itemsA.length; i++) {
+            if (!elementEquivalence(itemsA[i] as any, itemsB[i] as any)) {
+              return false
+            }
+          }
+          return true
+        }
+      },
     },
   )
 

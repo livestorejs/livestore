@@ -1,12 +1,12 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from './adapter-types.js'
-import type { MaterializeEvent } from './leader-thread/mod.js'
-import type { EventDef, LiveStoreSchema } from './schema/mod.js'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from './schema/mod.js'
-import type { PreparedBindValues } from './util.js'
-import { sql } from './util.js'
+import { type SqliteDb, UnexpectedError } from './adapter-types.ts'
+import type { MaterializeEvent } from './leader-thread/mod.ts'
+import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
+import type { PreparedBindValues } from './util.ts'
+import { sql } from './util.ts'
 
 export const rematerializeFromEventlog = ({
   dbEventlog,
@@ -31,18 +31,45 @@ export const rematerializeFromEventlog = ({
 
     const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
-        const eventDef = getEventDef(schema, row.name)
+        const args = JSON.parse(row.argsJson)
+        const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
+          name: row.name,
+          args,
+          seqNum: {
+            global: row.seqNumGlobal,
+            client: row.seqNumClient,
+            rebaseGeneration: row.seqNumRebaseGeneration,
+          },
+          parentSeqNum: {
+            global: row.parentSeqNumGlobal,
+            client: row.parentSeqNumClient,
+            rebaseGeneration: row.parentSeqNumRebaseGeneration,
+          },
+          clientId: row.clientId,
+          sessionId: row.sessionId,
+        })
 
-        if (hashEventDef(eventDef.eventDef) !== row.schemaHash) {
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:rematerializeFromEventlog:processEvent',
+          event: eventEncoded,
+        }).pipe(UnexpectedError.mapToUnexpectedError)
+
+        if (resolution._tag === 'unknown') {
+          // Old snapshots can contain newer events. Skip until the runtime has
+          // been updated; the event stays in the log for future replays.
+          return
+        }
+
+        const { eventDef } = resolution
+
+        if (hashEventDef(eventDef) !== row.schemaHash) {
           yield* Effect.logWarning(
             `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
           )
         }
 
-        const args = JSON.parse(row.argsJson)
-
         // Checking whether the schema has changed in an incompatible way
-        yield* Schema.decodeUnknown(eventDef.eventDef.schema)(args).pipe(
+        yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
           Effect.mapError((cause) =>
             UnexpectedError.make({
               cause,
@@ -54,15 +81,6 @@ This likely means the schema has changed in an incompatible way.
             }),
           ),
         )
-
-        const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
-          seqNum: { global: row.seqNumGlobal, client: row.seqNumClient },
-          parentSeqNum: { global: row.parentSeqNumGlobal, client: row.parentSeqNumClient },
-          name: row.name,
-          args,
-          clientId: row.clientId,
-          sessionId: row.sessionId,
-        })
 
         yield* materializeEvent(eventEncoded, { skipEventlog: true })
       }).pipe(Effect.withSpan(`@livestore/common:rematerializeFromEventlog:processEvent`))
@@ -79,9 +97,9 @@ LIMIT ${CHUNK_SIZE}
     let processedEvents = 0
 
     yield* Stream.unfoldChunk<
-      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial ' },
+      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
       SystemTables.EventlogMetaRow
-    >({ _tag: 'Initial ' }, (item) => {
+    >({ _tag: 'Initial' }, (item) => {
       // End stream if no more rows
       if (Chunk.isChunk(item) && item.length === 0) return Option.none()
 

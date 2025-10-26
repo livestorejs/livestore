@@ -1,13 +1,14 @@
 import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
 import { Effect, Hash } from '@livestore/utils/effect'
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
-import { makeInMemoryDb } from '../in-memory-vfs.js'
-import { makeSqliteDb } from '../make-sqlite-db.js'
-import type { AccessHandlePoolVFS } from './opfs/AccessHandlePoolVFS.js'
-import { makeOpfsDb } from './opfs/index.js'
+import { makeInMemoryDb } from '../in-memory-vfs.ts'
+import { makeSqliteDb } from '../make-sqlite-db.ts'
+import type { AccessHandlePoolVFS } from './opfs/AccessHandlePoolVFS.ts'
+import { makeOpfsDb } from './opfs/index.ts'
 
-export * from './opfs/opfs-sah-pool.js'
+export * from './opfs/opfs-sah-pool.ts'
 
 export type WebDatabaseMetadataInMemory = {
   _tag: 'in-memory'

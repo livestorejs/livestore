@@ -1,0 +1,118 @@
+name: Set up environment
+description: Minimal setup using Nix + devenv (GitHub Actions integration).
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+
+    - name: Enable devenv Cachix cache
+      if: ${{ env.CACHIX_AUTH_TOKEN != '' }}
+      uses: cachix/cachix-action@v16
+      with:
+        # https://app.cachix.org/cache/livestore (requires auth)
+        name: livestore
+        authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile add nixpkgs#devenv
+    
+    - name: Warmup devenv (skip setup)
+      shell: bash
+      run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+
+    - name: Get pnpm store directory
+      # This is needed because pnpm's store path is not fixed and can vary based on the environment.
+      id: pnpm-store
+      shell: bash
+      # We use `devenv shell` because the `pnpm` CLI is installed via Nix.
+      # But we still skip the setup step as it would call `pnpm install` which we don't want to do here yet.
+      # Write to $GITHUB_ENV so subsequent steps can read it as env
+      run: |
+        PNPM_STORE_PATH=$(DEVENV_SKIP_SETUP=1 devenv shell --quiet pnpm store path --silent 2>/dev/null | tail -n 1 | tr -d '\r')
+        echo "PNPM_STORE_PATH=${PNPM_STORE_PATH}" >> "$GITHUB_ENV"
+
+    - name: Cache pnpm store
+      uses: actions/cache@v4
+      with:
+       # We only should cache the pnpm store, and not the node_modules directory. Caching it duplicates effort since the
+       # pnpm store already covers the package contents, and leads to issues with package resolution.
+       path: ${{ env.PNPM_STORE_PATH }}
+       key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+       restore-keys: ${{ runner.os }}-pnpm-store-
+    
+    # Calls `pnpm install` and other setup steps.
+    - name: Run devenv setup script
+      shell: bash
+      run: devenv shell --verbose env
+
+    - name: Collect and log runner machine info
+      shell: bash
+      run: |
+        echo "::group::Runner machine info"
+        set -euo pipefail
+
+        uname -a || true
+        echo "Date (UTC): $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+        # CPU
+        CPU_COUNT=$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN || echo "")
+        CPU_MODEL=$(lscpu 2>/dev/null | awk -F: '/Model name/ {sub(/^[ \t]+/, "", $2); print $2; exit}')
+        if [ -z "${CPU_MODEL:-}" ]; then
+          CPU_MODEL=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
+        fi
+        CPU_MHZ=$(lscpu 2>/dev/null | awk -F: '/CPU MHz/ {sub(/^[ \t]+/, "", $2); print $2; exit}')
+        CPU_MAX_MHZ=$(lscpu 2>/dev/null | awk -F: '/CPU max MHz/ {sub(/^[ \t]+/, "", $2); print $2; exit}')
+
+        # Memory
+        MEM_TOTAL_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo "")
+        MEM_AVAILABLE_KB=$(awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || echo "")
+
+        # Load averages
+        if [ -r /proc/loadavg ]; then
+          read LOAD1 LOAD5 LOAD15 _ < /proc/loadavg
+        else
+          LOAD1=""; LOAD5=""; LOAD15="";
+        fi
+        if [ -n "${CPU_COUNT}" ] && [ -n "${LOAD1}" ]; then
+          LOAD1_PER_CORE=$(awk -v l="${LOAD1}" -v c="${CPU_COUNT}" 'BEGIN { if (c+0>0) printf "%.2f", l/c }')
+        else
+          LOAD1_PER_CORE=""
+        fi
+
+        # Human-friendly summary
+        echo "OS: $(uname -s) $(uname -r) $(uname -m)"
+        echo "CPU: ${CPU_MODEL:-unknown} (cores: ${CPU_COUNT:-unknown})"
+        if [ -n "${CPU_MAX_MHZ}" ]; then
+          echo "Frequency: ${CPU_MHZ:-n/a} MHz (max ${CPU_MAX_MHZ} MHz)"
+        elif [ -n "${CPU_MHZ}" ]; then
+          echo "Frequency: ${CPU_MHZ} MHz"
+        fi
+        if [ -n "${MEM_TOTAL_KB}" ]; then
+          MEM_TOTAL_GB=$(awk -v k="${MEM_TOTAL_KB}" 'BEGIN { printf "%.2f", k/1024/1024 }')
+          MEM_AVAIL_GB=$(awk -v k="${MEM_AVAILABLE_KB}" 'BEGIN { printf "%.2f", k/1024/1024 }')
+          echo "Memory: total ${MEM_TOTAL_GB} GB, available ${MEM_AVAIL_GB} GB"
+        fi
+        if [ -n "${LOAD1}" ]; then
+          echo "Load avg: 1=${LOAD1} 5=${LOAD5} 15=${LOAD15} (1m per-core=${LOAD1_PER_CORE})"
+        fi
+
+        # Node’s view (optional; won’t fail the step)
+        node -e "const os=require('os'); const c=os.cpus(); console.log('Node view:', JSON.stringify({os:{type:os.type(),platform:os.platform(),release:os.release(),arch:os.arch()}, cpu:{count:c?.length, model:c?.[0]?.model, speedMHz:c?.[0]?.speed}, loadAvg:os.loadavg(), mem:{total:os.totalmem(), free:os.freemem()}}, null, 2));" || true
+
+        echo "::endgroup::"
+
+        # Export to env for downstream steps
+        {
+          [ -n "${CPU_COUNT}" ] && echo "RUNNER_CPU_COUNT=${CPU_COUNT}";
+          [ -n "${CPU_MODEL}" ] && echo "RUNNER_CPU_MODEL=${CPU_MODEL}";
+          [ -n "${CPU_MHZ}" ] && echo "RUNNER_CPU_MHZ=${CPU_MHZ}";
+          [ -n "${CPU_MAX_MHZ}" ] && echo "RUNNER_CPU_MAX_MHZ=${CPU_MAX_MHZ}";
+          [ -n "${MEM_TOTAL_KB}" ] && echo "RUNNER_MEM_TOTAL_KB=${MEM_TOTAL_KB}";
+          [ -n "${MEM_AVAILABLE_KB}" ] && echo "RUNNER_MEM_AVAILABLE_KB=${MEM_AVAILABLE_KB}";
+          [ -n "${LOAD1}" ] && echo "RUNNER_LOAD_1=${LOAD1}";
+          [ -n "${LOAD5}" ] && echo "RUNNER_LOAD_5=${LOAD5}";
+          [ -n "${LOAD15}" ] && echo "RUNNER_LOAD_15=${LOAD15}";
+          [ -n "${LOAD1_PER_CORE}" ] && echo "RUNNER_LOAD1_PER_CORE=${LOAD1_PER_CORE}";
+        } >> "$GITHUB_ENV"

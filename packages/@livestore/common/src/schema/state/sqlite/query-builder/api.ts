@@ -1,11 +1,11 @@
 import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
-import type { SessionIdSymbol } from '../../../../adapter-types.js'
-import type { SqlValue } from '../../../../util.js'
-import type { ClientDocumentTableDef } from '../client-document-def.js'
-import type { SqliteDsl } from '../db-schema/mod.js'
-import type { TableDefBase } from '../table-def.js'
+import type { SessionIdSymbol } from '../../../../adapter-types.ts'
+import type { SqlValue } from '../../../../util.ts'
+import type { ClientDocumentTableDef, ClientDocumentTableDefSymbol } from '../client-document-def.ts'
+import type { SqliteDsl } from '../db-schema/mod.ts'
+import type { TableDefBase } from '../table-def.ts'
 
 export type QueryBuilderAst =
   | QueryBuilderAst.SelectQuery
@@ -19,7 +19,11 @@ export namespace QueryBuilderAst {
   export interface SelectQuery {
     readonly _tag: 'SelectQuery'
     readonly columns: string[]
-    readonly pickFirst: false | { fallback: () => any } | 'throws'
+    readonly pickFirst:
+      | { _tag: 'disabled' }
+      | { _tag: 'enabled'; behaviour: 'undefined' }
+      | { _tag: 'enabled'; behaviour: 'error' }
+      | { _tag: 'enabled'; behaviour: 'fallback'; fallback: () => any }
     readonly select: {
       columns: ReadonlyArray<string>
     }
@@ -118,7 +122,7 @@ export type QueryBuilder<
   readonly [QueryBuilderTypeId]: QueryBuilderTypeId
   readonly [QueryBuilderAstSymbol]: QueryBuilderAst
   readonly ResultType: TResult
-  readonly asSql: () => { query: string; bindValues: SqlValue[] }
+  readonly asSql: () => { query: string; bindValues: SqlValue[]; usedTables: Set<string> }
   readonly toString: () => string
 } & Omit<QueryBuilder.ApiFull<TResult, TTableDef, TWithout>, TWithout>
 
@@ -166,6 +170,21 @@ export namespace QueryBuilder {
     col: keyof TTableDef['sqliteDef']['columns'] & string
     direction: 'asc' | 'desc'
   }>
+
+  export type FirstQueryBehaviour<TResult, TFallback> =
+    | {
+        /** Will error if no matching row was found */
+        behaviour: 'error'
+      }
+    | {
+        /** Will return `undefined` if no matching row was found */
+        behaviour: 'undefined'
+      }
+    | {
+        /** Will return a fallback value if no matching row was found */
+        behaviour: 'fallback'
+        fallback: () => TResult | TFallback
+      }
 
   export type ApiFull<TResult, TTableDef extends TableDefBase, TWithout extends ApiFeature> = {
     /**
@@ -245,14 +264,15 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.orderBy('createdAt', 'desc')
+     * db.todos.orderBy([{ col: 'createdAt', direction: 'desc' }])
      * ```
      */
     readonly orderBy: {
-      <TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
+      <const TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
         col: TColName,
         direction: 'asc' | 'desc',
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
-      <TParams extends QueryBuilder.OrderByParams<TTableDef>>(
+      <const TParams extends QueryBuilder.OrderByParams<TTableDef>>(
         params: TParams,
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
     }
@@ -285,16 +305,27 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.first()
-     * db.todos.where('id', '123').first()
+     * db.todos.where('id', '123').first() // will return `undefined` if no rows are returned
+     * db.todos.where('id', '123').first({ behaviour: 'error' }) // will throw if no rows are returned
+     * db.todos.first({ behaviour: 'fallback', fallback: () => ({ id: '123', text: 'Buy milk', status: 'active' }) })
      * ```
      *
-     * Query will throw if no rows are returned and no fallback is provided.
+     * Behaviour:
+     * - `undefined`: Will return `undefined` if no rows are returned (default behaviour)
+     * - `error`: Will throw if no rows are returned
+     * - `fallback`: Will return a fallback value if no rows are returned
      */
-    readonly first: <TFallback = never>(options?: {
-      /** @default 'throws' */
-      fallback?: (() => TFallback | GetSingle<TResult>) | 'throws'
-    }) => QueryBuilder<
-      TFallback | GetSingle<TResult>,
+    readonly first: <
+      TBehaviour extends QueryBuilder.FirstQueryBehaviour<GetSingle<TResult>, TFallback>,
+      TFallback = never,
+    >(
+      behaviour?: QueryBuilder.FirstQueryBehaviour<GetSingle<TResult>, TFallback> & TBehaviour,
+    ) => QueryBuilder<
+      TBehaviour extends { behaviour: 'fallback' }
+        ? ReturnType<TBehaviour['fallback']> | GetSingle<TResult>
+        : TBehaviour extends { behaviour: 'undefined' }
+          ? undefined | GetSingle<TResult>
+          : GetSingle<TResult>,
       TTableDef,
       TWithout | 'row' | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where' | 'returning' | 'onConflict'
     >
@@ -406,7 +437,12 @@ export namespace QueryBuilder {
 
 export namespace RowQuery {
   export type GetOrCreateOptions<TTableDef extends ClientDocumentTableDef.TraitAny> = {
-    default: Partial<TTableDef['Value']>
+    /**
+     * Default value to use instead of the default value from the table definition
+     */
+    default: TTableDef[ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
+      ? TTableDef['Value']
+      : Partial<TTableDef['Value']>
   }
 
   // TODO get rid of this

@@ -2,7 +2,7 @@ import type { LiveQueryDef } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
 import React from 'react'
 
-import { useQuery } from '../../useQuery.js'
+import { useQuery } from '../../useQuery.ts'
 
 /*
 TODO:
@@ -81,7 +81,7 @@ const ItemWrapperMemo = React.memo(
   ItemWrapper,
   (prev, next) =>
     prev.itemKey === next.itemKey &&
-    prev.renderItem === prev.renderItem &&
+    prev.renderItem === next.renderItem &&
     prev.opts.index === next.opts.index &&
     prev.opts.isInitialListRender === next.opts.isInitialListRender,
 ) as typeof ItemWrapper

@@ -2,9 +2,9 @@ import { Effect } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { makeTodoMvc } from '../utils/tests/fixture.js'
-import { computed } from './computed.js'
-import { signal } from './signal.js'
+import { makeTodoMvc } from '../utils/tests/fixture.ts'
+import { computed } from './computed.ts'
+import { signal } from './signal.ts'
 
 Vitest.describe('signal', () => {
   Vitest.scopedLive('should be able to create a signal', () =>

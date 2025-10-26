@@ -1,28 +1,40 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../adapter-types.js'
-import { sql } from '../../../util.js'
-import type { EventDef, Materializer } from '../../EventDef.js'
-import { defineEvent, defineMaterializer } from '../../EventDef.js'
-import { SqliteDsl } from './db-schema/mod.js'
-import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.js'
-import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.js'
-import type { TableDef, TableDefBase } from './table-def.js'
-import { table } from './table-def.js'
+import { SessionIdSymbol } from '../../../adapter-types.ts'
+import { sql } from '../../../util.ts'
+import type { EventDef, Materializer } from '../../EventDef.ts'
+import { defineEvent, defineMaterializer } from '../../EventDef.ts'
+import { SqliteDsl } from './db-schema/mod.ts'
+import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
+import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
+import type { TableDef, TableDefBase } from './table-def.ts'
+import { table } from './table-def.ts'
 
 /**
  * Special:
  * - Synced across client sessions (e.g. tabs) but not across different clients
  * - Derived setters
  *   - Emits client-only events
- *   - Has implicit setter-reducers
+ *   - Has implicit setter-materializers
  * - Similar to `React.useState` (except it's persisted)
  *
  * Careful:
  * - When changing the table definitions in a non-backwards compatible way, the state might be lost without
- *   explicit reducers to handle the old auto-generated events
+ *   explicit materializers to handle the old auto-generated events
+ *
+ * Usage:
+ *
+ * ```ts
+ * // Querying data
+ * // `'some-id'` can be ommited for SessionIdSymbol
+ * store.queryDb(clientDocumentTable.get('some-id'))
+ *
+ * // Setting data
+ * // Again, `'some-id'` can be ommited for SessionIdSymbol
+ * store.commit(clientDocumentTable.set({ someField: 'some-value' }, 'some-id'))
+ * ```
  */
 export const clientDocument = <
   TName extends string,
@@ -50,9 +62,16 @@ export const clientDocument = <
     },
   } satisfies ClientDocumentTableOptions<TType>
 
+  // Column needs optimistic schema to read historical data formats
+  const optimisticColumnSchema = createOptimisticEventSchema({
+    valueSchema,
+    defaultValue: options.default.value,
+    partialSet: false, // Column always stores full documents
+  })
+
   const columns = {
     id: SqliteDsl.text({ primaryKey: true }),
-    value: SqliteDsl.json({ schema: valueSchema }),
+    value: SqliteDsl.json({ schema: optimisticColumnSchema }),
   }
 
   const tableDef = table({ name, columns })
@@ -109,7 +128,7 @@ export const clientDocument = <
   return clientDocumentTableDef
 }
 
-const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
+export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {
   if (
     typeof defaultValues !== 'object' ||
     typeof explicitDefaultValues !== 'object' ||
@@ -119,10 +138,112 @@ const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T =>
     return explicitDefaultValues
   }
 
-  return Object.keys(defaultValues as any).reduce((acc, key) => {
+  // Get all unique keys from both objects
+  const allKeys = new Set([...Object.keys(defaultValues as any), ...Object.keys(explicitDefaultValues as any)])
+
+  return Array.from(allKeys).reduce((acc, key) => {
     acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
   }, {} as any)
+}
+
+/**
+ * Creates an optimistic schema that accepts historical event formats
+ * and transforms them to the current schema, preserving data and intent.
+ *
+ * Decision Matrix for Schema Changes:
+ *
+ * | Change Type         | Partial Set         | Full Set                        | Strategy                |
+ * |---------------------|---------------------|----------------------------------|-------------------------|
+ * | **Compatible Changes**                                                                                 |
+ * | Add optional field  | Preserve existing   | Preserve existing, new field undefined | Direct decode or merge   |
+ * | Add required field  | Preserve existing   | Preserve existing, new field from default | Merge with defaults      |
+ * | **Incompatible Changes**                                                                              |
+ * | Remove field        | Drop removed field  | Drop removed field, preserve others     | Filter & decode         |
+ * | Type change         | Use default for field | Use default for changed field         | Selective merge         |
+ * | Rename field        | Use default         | Use default (can't detect rename)       | Fall back to default    |
+ * | **Edge Cases**                                                                                       |
+ * | Empty event         | Return {}           | Return full default                     | Fallback handling       |
+ * | Invalid structure   | Return {}           | Return full default                     | Fallback handling       |
+ */
+export const createOptimisticEventSchema = ({
+  valueSchema,
+  defaultValue,
+  partialSet,
+}: {
+  valueSchema: Schema.Schema<any, any>
+  defaultValue: any
+  partialSet: boolean
+}) => {
+  const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
+
+  return Schema.transform(
+    Schema.Unknown, // Accept any historical event structure
+    targetSchema, // Output current schema
+    {
+      decode: (eventValue) => {
+        // Try direct decode first (for current schema events)
+        try {
+          return Schema.decodeUnknownSync(targetSchema)(eventValue)
+        } catch {
+          // Optimistic decoding for historical events
+
+          // Handle null/undefined/non-object cases
+          if (typeof eventValue !== 'object' || eventValue === null) {
+            console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
+            return partialSet ? {} : defaultValue
+          }
+
+          if (partialSet) {
+            // For partial sets: only preserve fields that exist in new schema
+            const partialResult: Record<string, unknown> = {}
+            let hasValidFields = false
+
+            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+              if (key in defaultValue) {
+                partialResult[key] = value
+                hasValidFields = true
+              }
+              // Drop fields that don't exist in new schema
+            }
+
+            if (hasValidFields) {
+              try {
+                return Schema.decodeUnknownSync(targetSchema)(partialResult)
+              } catch {
+                // Even filtered fields don't match schema
+                console.warn('Client document: Partial fields incompatible, returning empty partial')
+                return {}
+              }
+            }
+            return {}
+          } else {
+            // Full set: merge old data with new defaults
+            const merged: Record<string, unknown> = { ...defaultValue }
+
+            // Override defaults with valid fields from old event
+            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+              if (key in defaultValue) {
+                merged[key] = value
+              }
+              // Drop fields that don't exist in new schema
+            }
+
+            // Try to decode the merged value
+            try {
+              return Schema.decodeUnknownSync(valueSchema)(merged)
+            } catch {
+              // Merged value still doesn't match (e.g., type changes)
+              // Fall back to pure defaults
+              console.warn('Client document: Could not preserve event data, using defaults')
+              return defaultValue
+            }
+          }
+        }
+      },
+      encode: (value) => value, // Pass-through for encoding
+    },
+  )
 }
 
 export const deriveEventAndMaterializer = ({
@@ -140,7 +261,7 @@ export const deriveEventAndMaterializer = ({
     name: `${name}Set`,
     schema: Schema.Struct({
       id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
-      value: partialSet ? Schema.partial(valueSchema) : valueSchema,
+      value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
     }).annotations({ title: `${name}Set:Args` }),
     clientOnly: true,
     derived: true,
@@ -152,7 +273,7 @@ export const deriveEventAndMaterializer = ({
     }
 
     // Override the full value if it's not an object or no partial set is allowed
-    const schemaProps = SchemaAST.getPropertySignatures(valueSchema.ast)
+    const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
       const valueColJsonSchema = Schema.parseJson(valueSchema)
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
@@ -266,8 +387,14 @@ export namespace ClientDocumentTableOptions {
     }
   }
 
+  type IsStructLike<T> = T extends {} ? true : false
+
   export type WithDefaults<TInput extends Input<any>> = {
-    partialSet: TInput['partialSet'] extends false ? false : true
+    partialSet: TInput['partialSet'] extends false
+      ? false
+      : IsStructLike<TInput['default']['value']> extends true
+        ? true
+        : false
     default: {
       id: TInput['default']['id'] extends string | SessionIdSymbol ? TInput['default']['id'] : undefined
       value: TInput['default']['value']
@@ -386,37 +513,49 @@ export namespace ClientDocumentTableDef {
     }
   }
 
-  export type GetOptions<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions> ? TOptions : never
+  export type GetOptions<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions
+    : never
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type DefaultIdType<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
-      ? TOptions['default']['id'] extends SessionIdSymbol | string
-        ? TOptions['default']['id']
-        : never
+  export type DefaultIdType<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions['default']['id'] extends SessionIdSymbol | string
+      ? TOptions['default']['id']
       : never
+    : never
 
-  export type SetEventDefLike<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> =
-    // Helper to create partial event
-    (TOptions['default']['id'] extends undefined
-      ? (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }
-      : (
-          args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
-          id?: string | SessionIdSymbol,
-        ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+  export type SetEventDefLike<
+    TName extends string,
+    TType,
+    TOptions extends ClientDocumentTableOptions<TType>,
+  > = (TOptions['default']['id'] extends undefined // Helper to create partial event
+    ? (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }
+    : (
+        args: TOptions['partialSet'] extends false ? TType : Partial<TType>,
+        id?: string | SessionIdSymbol,
+      ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
+    readonly name: `${TName}Set`
+    readonly schema: Schema.Schema<any>
+    readonly Event: {
       readonly name: `${TName}Set`
-      readonly schema: Schema.Schema<any>
-      readonly Event: {
-        readonly name: `${TName}Set`
-        readonly args: { id: string; value: TType }
-      }
-      readonly options: { derived: true; clientOnly: true; facts: undefined }
+      readonly args: { id: string; value: TType }
     }
+    readonly options: { derived: true; clientOnly: true; facts: undefined }
+  }
 
   export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<
     TName,

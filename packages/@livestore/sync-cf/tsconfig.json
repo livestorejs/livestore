@@ -1,12 +1,12 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "target": "es2022",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["@cloudflare/workers-types"]
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../common" }, { "path": "../utils" }]
+  "references": [{ "path": "../common" }, { "path": "../utils" }, { "path": "../common-cf" }]
 }

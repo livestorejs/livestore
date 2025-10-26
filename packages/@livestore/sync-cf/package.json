@@ -1,32 +1,18 @@
 {
   "name": "@livestore/sync-cf",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.14",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/sync-impl/mod.d.ts",
-      "default": "./dist/sync-impl/mod.js"
-    },
-    "./cf-worker": {
-      "types": "./dist/cf-worker/mod.d.ts",
-      "default": "./dist/cf-worker/mod.js"
-    },
-    "./cf-worker/durable-object": {
-      "types": "./dist/cf-worker/durable-object.d.ts",
-      "default": "./dist/cf-worker/durable-object.js"
-    },
-    "./cf-worker/worker": {
-      "types": "./dist/cf-worker/worker.d.ts",
-      "default": "./dist/cf-worker/worker.js"
-    }  
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts",
+    "./cf-worker": "./src/cf-worker/mod.ts"
   },
   "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250702.0"
   },
   "files": [
     "dist",
@@ -36,7 +22,12 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js"
+    }
   },
   "scripts": {
     "test": "echo 'No tests yet'"

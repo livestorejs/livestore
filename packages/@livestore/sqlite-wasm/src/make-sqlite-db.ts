@@ -6,9 +6,10 @@ import type {
   SqliteDbChangeset,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
+import { EventSequenceNumber } from '@livestore/common/schema'
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
-
-import { makeInMemoryDb } from './in-memory-vfs.js'
+import { makeInMemoryDb } from './in-memory-vfs.ts'
 
 export const makeSqliteDb = <
   TMetadata extends {
@@ -32,6 +33,10 @@ export const makeSqliteDb = <
   const sqliteDb: SqliteDb<TMetadata> = {
     _tag: 'SqliteDb',
     metadata,
+    debug: {
+      // Setting initially to root but will be set to correct value shortly after
+      head: EventSequenceNumber.ROOT,
+    },
     prepare: (queryStr) => {
       try {
         const stmts = sqlite3.statements(dbPointer, queryStr.trim(), { unscoped: true })
@@ -75,10 +80,9 @@ export const makeSqliteDb = <
 
             try {
               // NOTE `column_names` only works for `SELECT` statements, ignoring other statements for now
-              let columns = undefined
+              let columns: string[] | undefined
               try {
                 columns = sqlite3.column_names(stmt)
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
               } catch (_e) {}
 
               while (sqlite3.step(stmt) === SqliteConstants.SQLITE_ROW) {
@@ -129,7 +133,7 @@ export const makeSqliteDb = <
         })
       }
     },
-    export: () => sqlite3.serialize(dbPointer, 'main'),
+    export: SqliteDbHelper.makeExport(() => sqlite3.serialize(dbPointer, 'main')),
     execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
       const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
@@ -172,15 +176,48 @@ export const makeSqliteDb = <
       // if (readOnly === true) {
       //   sqlite3.deserialize(db, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
       // } else {
+      const ensureSuccess = (rc: number, operation: string) => {
+        if (rc !== SqliteConstants.SQLITE_OK) {
+          throw new SqliteError({
+            code: rc,
+            cause: new Error(`${operation} failed with rc=${rc}`),
+            note: 'Snapshot import failed during SQLite copy',
+          })
+        }
+      }
+
       if (source instanceof Uint8Array) {
+        const WAL_FILE_FORMAT = 2
+        if (source.length >= 24 && (source[18] === WAL_FILE_FORMAT || source[19] === WAL_FILE_FORMAT)) {
+          throw new SqliteError({
+            code: SqliteConstants.SQLITE_CANTOPEN,
+            cause: new Error('WAL snapshots are not supported'),
+            note: 'Import expects rollback-journal snapshots (journal_mode=DELETE). Please convert snapshot before importing.',
+          })
+        }
+
         const tmpDb = makeInMemoryDb(sqlite3)
         // TODO find a way to do this more efficiently with sqlite to avoid either of the deserialize + backup call
         // Maybe this can be done via the VFS API
-        sqlite3.deserialize(tmpDb.dbPointer, 'main', source, source.length, source.length, FREE_ON_CLOSE | RESIZEABLE)
-        sqlite3.backup(dbPointer, 'main', tmpDb.dbPointer, 'main')
-        sqlite3.close(tmpDb.dbPointer)
+        const rcDeserialize = sqlite3.deserialize(
+          tmpDb.dbPointer,
+          'main',
+          source,
+          source.length,
+          source.length,
+          FREE_ON_CLOSE | RESIZEABLE,
+        )
+        ensureSuccess(rcDeserialize, 'sqlite3.deserialize')
+
+        try {
+          const rcBackup = sqlite3.backup(dbPointer, 'main', tmpDb.dbPointer, 'main')
+          ensureSuccess(rcBackup, 'sqlite3.backup')
+        } finally {
+          sqlite3.close(tmpDb.dbPointer)
+        }
       } else {
-        sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
+        const rcBackup = sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
+        ensureSuccess(rcBackup, 'sqlite3.backup')
       }
 
       metadata.configureDb(sqliteDb)
@@ -209,7 +246,7 @@ export const makeSqliteDb = <
           try {
             sqlite3.changeset_apply(dbPointer, data)
             // @ts-expect-error data should be garbage collected after use
-            // biome-ignore lint/style/noParameterAssign:
+            // biome-ignore lint/style/noParameterAssign: ...
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

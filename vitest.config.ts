@@ -15,11 +15,19 @@ const rootPackages = fs
 
 export default defineConfig({
   test: {
-    workspace: [
+    projects: [
       ...rootPackages,
       // path.join(rootDir, 'tests/'),
+      path.join(rootDir, 'packages/@local/astro-twoslash-code/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/node-misc/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/adapter-cloudflare/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/adapter-web/vitest.config.ts'),
+      path.join(rootDir, 'tests/sync-provider/vitest.config.ts'),
       path.join(rootDir, 'tests/package-common'),
+      path.join(rootDir, 'tests/wa-sqlite/vitest.config.ts'),
+      path.join(rootDir, 'docs/vitest.config.ts'),
+      path.join(rootDir, 'scripts'),
     ],
   },
 })

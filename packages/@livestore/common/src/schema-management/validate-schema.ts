@@ -1,9 +1,9 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
-import { UnexpectedError } from '../adapter-types.js'
-import type { EventDef } from '../schema/EventDef.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import type { EventDefInfo, SchemaManager } from './common.js'
+import { UnexpectedError } from '../adapter-types.ts'
+import type { EventDef } from '../schema/EventDef.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { EventDefInfo, SchemaManager } from './common.ts'
 
 export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaManager) =>
   Effect.gen(function* () {
@@ -15,7 +15,7 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
     )
 
     if (missingEventDefs.length > 0) {
-      yield* new UnexpectedError({
+      return yield* new UnexpectedError({
         cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.eventName).join(', ')}`,
       })
     }

@@ -1,34 +1,28 @@
 {
   "name": "@livestore/utils-dev",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.14",
   "type": "module",
   "sideEffects": [
-    "./dist/node-vitest/polyfill.js"
+    "./src/node-vitest/global.ts",
+    "./dist/node-vitest/global.js"
   ],
   "exports": {
-    "./node": {
-      "types": "./dist/node/mod.d.ts",
-      "default": "./dist/node/mod.js"
-    },
-    "./node-vitest": {
-      "types": "./dist/node-vitest/mod.d.ts",
-      "default": "./dist/node-vitest/mod.js"
-    },
-    "./node-vitest-polyfill": {
-      "types": "./dist/node-vitest/polyfill.d.ts",
-      "default": "./dist/node-vitest/polyfill.js"
-    }
+    "./node": "./src/node/mod.ts",
+    "./node-vitest": "./src/node-vitest/mod.ts",
+    "./wrangler": "./src/wrangler/mod.ts"
   },
   "dependencies": {
-    "@effect/opentelemetry": "0.48.4",
-    "@effect/vitest": "0.22.2",
+    "@effect/opentelemetry": "catalog:",
+    "@effect/vitest": "0.26.0",
+    "@iarna/toml": "2.2.5",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.200.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
-    "@opentelemetry/sdk-metrics": "2.0.0",
-    "@opentelemetry/sdk-trace-base": "2.0.0",
-    "@opentelemetry/sdk-trace-node": "2.0.0"
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/sdk-metrics": "2.0.1",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/sdk-trace-node": "2.0.1",
+    "wrangler": "catalog:"
   },
   "devDependencies": {},
   "files": [
@@ -39,7 +33,12 @@
   "license": "Apache-2.0",
   "peerDependencies": {},
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./node": "./dist/node/mod.js",
+      "./node-vitest": "./dist/node-vitest/mod.js",
+      "./wrangler": "./dist/wrangler/mod.js"
+    }
   },
   "scripts": {
     "test": "echo 'No tests for utils-dev'"

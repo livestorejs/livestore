@@ -1,9 +1,10 @@
+/** biome-ignore-all lint/a11y: testing */
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
 
 const visibleTodos$ = queryDb(
   (get) => {
@@ -38,7 +39,7 @@ export const MainSection: React.FC = () => {
               <button
                 className="destroy"
                 onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-              ></button>
+              />
             </div>
           </li>
         ))}

@@ -10,76 +10,139 @@ export const GlobalEventSequenceNumber = Schema.fromBrand(globalEventSequenceNum
 
 export const clientDefault = 0 as any as ClientEventSequenceNumber
 
+export const rebaseGenerationDefault = 0
+
 /**
  * LiveStore event sequence number value consisting of a globally unique event sequence number
  * and a client sequence number.
  *
- * The client sequence number is only used for clientOnly events and starts from 0 for each global sequence number.
+ * The client sequence number is only used for client-local events and starts from 0 for each global sequence number.
+ *
+ * For event notation documentation, see: contributor-docs/events-notation.md
  */
 export type EventSequenceNumber = {
   global: GlobalEventSequenceNumber
   client: ClientEventSequenceNumber
   /**
-   * TODO add generation number in favour of LEADER_MERGE_COUNTER_TABLE
+   * Generation integer that is incremented whenever the client rebased.
+   * Remains constant for all subsequent events until another rebase occurs.
    */
-  // generation: number
+  rebaseGeneration: number
 }
 
-// export const EventSequenceNumber = Schema.Struct({})
-// export const EventSequenceNumber = Schema.Struct({})
-// export const ClientEventSequenceNumber = Schema.Struct({})
-// export const GlobalEventSequenceNumber = Schema.Struct({})
+export type EventSequenceNumberInput =
+  | EventSequenceNumber
+  | (Omit<typeof EventSequenceNumber.Encoded, 'rebaseGeneration'> & { rebaseGeneration?: number })
 
+// TODO adjust name to `ClientEventSequenceNumber`
 /**
  * NOTE: Client mutation events with a non-0 client id, won't be synced to the sync backend.
  */
 export const EventSequenceNumber = Schema.Struct({
   global: GlobalEventSequenceNumber,
-  /** Only increments for clientOnly events */
+  /** Only increments for client-local events */
   client: ClientEventSequenceNumber,
 
   // TODO also provide a way to see "confirmation level" of event (e.g. confirmed by leader/sync backend)
 
-  // TODO: actually add this field
   // Client only
-  // generation: Schema.Number.pipe(Schema.optional),
-}).annotations({ title: 'LiveStore.EventSequenceNumber' })
+  rebaseGeneration: Schema.Int,
+}).annotations({
+  title: 'LiveStore.EventSequenceNumber',
+  pretty: () => (seqNum) => toString(seqNum),
+})
 
 /**
  * Compare two event sequence numbers i.e. checks if the first event sequence number is less than the second.
+ * Comparison hierarchy: global > client > rebaseGeneration
  */
 export const compare = (a: EventSequenceNumber, b: EventSequenceNumber) => {
   if (a.global !== b.global) {
     return a.global - b.global
   }
-  return a.client - b.client
+  if (a.client !== b.client) {
+    return a.client - b.client
+  }
+  return a.rebaseGeneration - b.rebaseGeneration
 }
 
 /**
  * Convert an event sequence number to a string representation.
+ *
+ * For notation documentation, see: contributor-docs/events-notation.md
  */
-export const toString = (seqNum: EventSequenceNumber) =>
-  seqNum.client === 0 ? `e${seqNum.global}` : `e${seqNum.global}+${seqNum.client}`
+export const toString = (seqNum: EventSequenceNumber) => {
+  const rebaseGenerationStr = seqNum.rebaseGeneration > 0 ? `r${seqNum.rebaseGeneration}` : ''
+  return seqNum.client === 0
+    ? `e${seqNum.global}${rebaseGenerationStr}`
+    : `e${seqNum.global}.${seqNum.client}${rebaseGenerationStr}`
+}
 
 /**
  * Convert a string representation of an event sequence number to an event sequence number.
+ * Parses strings in the format: e{global}[.{client}][r{rebaseGeneration}]
+ * Examples: "e0", "e0r1", "e0.1", "e0.1r1"
+ *
+ * For full notation documentation, see: contributor-docs/events-notation.md
  */
 export const fromString = (str: string): EventSequenceNumber => {
-  const [global, client] = str.slice(1, -1).split(',').map(Number)
-  if (global === undefined || client === undefined) {
-    throw new Error('Invalid event sequence number string')
+  if (!str.startsWith('e')) {
+    throw new Error('Invalid event sequence number string: must start with "e"')
   }
-  return { global, client } as EventSequenceNumber
+
+  // Remove the 'e' prefix
+  const remaining = str.slice(1)
+
+  // Parse rebase generation if present
+  let rebaseGeneration = rebaseGenerationDefault
+  let withoutRebase = remaining
+  const rebaseMatch = remaining.match(/r(\d+)$/)
+  if (rebaseMatch !== null) {
+    rebaseGeneration = Number.parseInt(rebaseMatch[1]!, 10)
+    withoutRebase = remaining.slice(0, -rebaseMatch[0].length)
+  }
+
+  // Parse global and client parts
+  const parts = withoutRebase.split('.')
+
+  // Validate that parts contain only digits (and possibly empty for client)
+  if (parts[0] === '' || !/^\d+$/.test(parts[0]!)) {
+    throw new Error('Invalid event sequence number string: invalid number format')
+  }
+
+  if (parts.length > 1 && parts[1] !== undefined && (parts[1] === '' || !/^\d+$/.test(parts[1]))) {
+    throw new Error('Invalid event sequence number string: invalid number format')
+  }
+
+  const global = Number.parseInt(parts[0]!, 10)
+  const client = parts.length > 1 && parts[1] !== undefined ? Number.parseInt(parts[1], 10) : 0
+
+  if (Number.isNaN(global) || Number.isNaN(client) || Number.isNaN(rebaseGeneration)) {
+    throw new TypeError('Invalid event sequence number string: invalid number format')
+  }
+
+  return {
+    global: global as any as GlobalEventSequenceNumber,
+    client: client as any as ClientEventSequenceNumber,
+    rebaseGeneration,
+  }
 }
 
+export const fromGlobal = (seqNum: GlobalEventSequenceNumber) => ({
+  global: seqNum,
+  client: clientDefault,
+  rebaseGeneration: rebaseGenerationDefault,
+})
+
 export const isEqual = (a: EventSequenceNumber, b: EventSequenceNumber) =>
-  a.global === b.global && a.client === b.client
+  a.global === b.global && a.client === b.client && a.rebaseGeneration === b.rebaseGeneration
 
 export type EventSequenceNumberPair = { seqNum: EventSequenceNumber; parentSeqNum: EventSequenceNumber }
 
 export const ROOT = {
   global: 0 as any as GlobalEventSequenceNumber,
   client: clientDefault,
+  rebaseGeneration: rebaseGenerationDefault,
 } satisfies EventSequenceNumber
 
 export const isGreaterThan = (a: EventSequenceNumber, b: EventSequenceNumber) => {
@@ -101,21 +164,45 @@ export const diff = (a: EventSequenceNumber, b: EventSequenceNumber) => {
   }
 }
 
-export const make = (seqNum: EventSequenceNumber | typeof EventSequenceNumber.Encoded): EventSequenceNumber => {
-  return Schema.is(EventSequenceNumber)(seqNum) ? seqNum : Schema.decodeSync(EventSequenceNumber)(seqNum)
+export const make = (seqNum: EventSequenceNumberInput): EventSequenceNumber => {
+  return Schema.is(EventSequenceNumber)(seqNum)
+    ? seqNum
+    : Schema.decodeSync(EventSequenceNumber)({
+        ...seqNum,
+        rebaseGeneration: seqNum.rebaseGeneration ?? rebaseGenerationDefault,
+      })
 }
 
-export const nextPair = (seqNum: EventSequenceNumber, isLocal: boolean): EventSequenceNumberPair => {
-  if (isLocal) {
+/**
+ * Computes the next event sequence/parent pair.
+ */
+export const nextPair = ({
+  seqNum,
+  isClient,
+  rebaseGeneration,
+}: {
+  seqNum: EventSequenceNumber
+  isClient: boolean
+  rebaseGeneration?: number
+}): EventSequenceNumberPair => {
+  if (isClient) {
     return {
-      seqNum: { global: seqNum.global, client: (seqNum.client + 1) as any as ClientEventSequenceNumber },
+      seqNum: {
+        global: seqNum.global,
+        client: (seqNum.client + 1) as any as ClientEventSequenceNumber,
+        rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
+      },
       parentSeqNum: seqNum,
     }
   }
 
   return {
-    seqNum: { global: (seqNum.global + 1) as any as GlobalEventSequenceNumber, client: clientDefault },
-    // NOTE we always point to `client: 0` for non-clientOnly events
-    parentSeqNum: { global: seqNum.global, client: clientDefault },
+    seqNum: {
+      global: (seqNum.global + 1) as any as GlobalEventSequenceNumber,
+      client: clientDefault,
+      rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
+    },
+    // NOTE we always point to `client: 0` for non-client-local events
+    parentSeqNum: { global: seqNum.global, client: clientDefault, rebaseGeneration: seqNum.rebaseGeneration },
   }
 }

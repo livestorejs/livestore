@@ -1,0 +1,69 @@
+name = "websocket-server"
+main = "./src/cf-worker/index.ts"
+compatibility_date = "2024-05-12"
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "livestore-sync-cf-demo"
+database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+# database_id = "${LIVESTORE_CF_SYNC_DATABASE_ID}"
+
+[env.prod]
+name = "websocket-server"
+
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "livestore-sync-cf-demo"
+database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+
+[env.preview]
+name = "websocket-server-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "livestore-sync-cf-demo"
+database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+
+[env.dev]
+name = "websocket-server-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "livestore-sync-cf-demo"
+database_id = "1c9b5dae-f1fa-49d8-83fa-7bd5b39c4121"
+
+[vars]
+# should be set via CF dashboard (as secret)
+# ADMIN_SECRET = "..."

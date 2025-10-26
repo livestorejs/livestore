@@ -1,62 +1,75 @@
 import {
+  type Bindable,
   type ClientSession,
   type ClientSessionSyncProcessor,
-  type ParamsObject,
-  type PreparedBindValues,
-  type QueryBuilder,
-  UnexpectedError,
-} from '@livestore/common'
-import {
   Devtools,
-  getDurationMsFromSpan,
   getExecStatementsFromMaterializer,
   getResultSchema,
   hashMaterializerResults,
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializeError,
+  MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
+  type PreparedBindValues,
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { getEventDef, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented } from '@livestore/utils'
+import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Fiber, Inspectable, Option, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Inspectable,
+  Option,
+  OtelTracer,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
+import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
+import { makeReactivityGraph } from '../live-queries/base-class.ts'
+import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
+import { queryDb } from '../live-queries/db-query.ts'
+import type { Ref } from '../reactive.ts'
+import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
+import { ReferenceCountedSet } from '../utils/data-structures.ts'
+import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
 import type {
-  LiveQuery,
-  LiveQueryDef,
-  ReactivityGraph,
-  ReactivityGraphContext,
-  SignalDef,
-} from '../live-queries/base-class.js'
-import { makeReactivityGraph } from '../live-queries/base-class.js'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.js'
-import { queryDb } from '../live-queries/db-query.js'
-import type { Ref } from '../reactive.js'
-import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { ReferenceCountedSet } from '../utils/data-structures.js'
-import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
-import type { StackInfo } from '../utils/stack-info.js'
-import type {
+  Queryable,
   RefreshReason,
   StoreCommitOptions,
   StoreEventsOptions,
   StoreOptions,
   StoreOtel,
+  SubscribeOptions,
   Unsubscribe,
-} from './store-types.js'
+} from './store-types.ts'
+
+type SubscribeFn = {
+  <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
+  ): Unsubscribe
+  <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): AsyncIterable<TResult>
+}
 
 if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> extends Inspectable.Class {
+export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper
@@ -65,10 +78,31 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   context: TContext
   otel: StoreOtel
   /**
+   * Reactive connectivity updates emitted by the backing sync backend.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Stream } from 'effect'
+   *
+   * const status = await store.networkStatus.pipe(Effect.runPromise)
+   *
+   * await store.networkStatus.changes.pipe(
+   *   Stream.tap((next) => console.log('network status update', next)),
+   *   Stream.runDrain,
+   *   Effect.scoped,
+   *   Effect.runPromise,
+   * )
+   * ```
+   */
+  readonly networkStatus: ClientSession['leaderThread']['networkStatus']
+  /**
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
   tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
+
+  /** Tracks whether the store has been shut down */
+  private isShutdown = false
 
   private effectContext: {
     runtime: Runtime.Runtime<Scope.Scope>
@@ -105,6 +139,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
 
@@ -116,70 +151,91 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       schema,
       clientSession,
       runtime: effectContext.runtime,
-      materializeEvent: (eventDecoded, { otelContext, withChangeset, materializerHashLeader }) => {
-        const { eventDef, materializer } = getEventDef(schema, eventDecoded.name)
+      materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
+        (eventEncoded, { withChangeset, materializerHashLeader }) =>
+          // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
+          Effect.gen(this, function* () {
+            const resolution = yield* resolveEventDef(schema, {
+              operation: '@livestore/livestore:store:materializeEvent',
+              event: eventEncoded,
+            })
 
-        const execArgsArr = getExecStatementsFromMaterializer({
-          eventDef,
-          materializer,
-          dbState: this.sqliteDbWrapper,
-          event: { decoded: eventDecoded, encoded: undefined },
-        })
-
-        const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
-
-        if (
-          materializerHashLeader._tag === 'Some' &&
-          materializerHash._tag === 'Some' &&
-          materializerHashLeader.value !== materializerHash.value
-        ) {
-          void this.shutdown(
-            Cause.fail(
-              UnexpectedError.make({
-                cause: `Materializer hash mismatch detected for event "${eventDecoded.name}".`,
-                note: `Please make sure your event materializer is a pure function without side effects.`,
-              }),
-            ),
-          )
-        }
-
-        const writeTablesForEvent = new Set<string>()
-
-        const exec = () => {
-          for (const {
-            statementSql,
-            bindValues,
-            writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
-          } of execArgsArr) {
-            try {
-              this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
-            } catch (cause) {
-              throw UnexpectedError.make({
-                cause,
-                note: `Error executing materializer for event "${eventDecoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
-              })
+            if (resolution._tag === 'unknown') {
+              // Runtime schema doesn't know this event yet; skip materialization but
+              // keep the log entry so upgraded clients can replay it later.
+              return {
+                writeTables: new Set<string>(),
+                sessionChangeset: { _tag: 'no-op' as const },
+                materializerHash: Option.none(),
+              }
             }
 
-            // durationMsTotal += durationMs
-            for (const table of writeTables) {
-              writeTablesForEvent.add(table)
+            const { eventDef, materializer } = resolution
+
+            const execArgsArr = getExecStatementsFromMaterializer({
+              eventDef,
+              materializer,
+              dbState: this.sqliteDbWrapper,
+              event: { decoded: undefined, encoded: eventEncoded },
+            })
+
+            const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+
+            // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
+            // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
+            // will never be met. The check happens when the same event comes back from the leader during sync,
+            // allowing us to compare the leader's computed hash with our local re-materialization hash.
+            if (
+              materializerHashLeader._tag === 'Some' &&
+              materializerHash._tag === 'Some' &&
+              materializerHashLeader.value !== materializerHash.value
+            ) {
+              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
             }
-          }
-        }
 
-        let sessionChangeset:
-          | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
-          | { _tag: 'no-op' }
-          | { _tag: 'unset' } = { _tag: 'unset' }
+            const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        if (withChangeset === true) {
-          sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
-        } else {
-          exec()
-        }
+            const writeTablesForEvent = new Set<string>()
 
-        return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-      },
+            const exec = () => {
+              for (const {
+                statementSql,
+                bindValues,
+                writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
+              } of execArgsArr) {
+                try {
+                  this.sqliteDbWrapper.cachedExecute(statementSql, bindValues, { otelContext, writeTables })
+                } catch (cause) {
+                  // TOOD refactor with `SqliteError`
+                  throw UnexpectedError.make({
+                    cause,
+                    note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                  })
+                }
+
+                // durationMsTotal += durationMs
+                for (const table of writeTables) {
+                  writeTablesForEvent.add(table)
+                }
+
+                this.sqliteDbWrapper.debug.head = eventEncoded.seqNum
+              }
+            }
+
+            let sessionChangeset:
+              | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
+              | { _tag: 'no-op' }
+              | { _tag: 'unset' } = { _tag: 'unset' }
+            if (withChangeset === true) {
+              sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
+            } else {
+              exec()
+            }
+
+            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
+          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
+      ),
       rollback: (changeset) => {
         this.sqliteDbWrapper.rollback(changeset)
       },
@@ -194,7 +250,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       },
       span: syncSpan,
       params: {
-        leaderPushBatchSize: params.leaderPushBatchSize,
+        ...omitUndefineds({
+          leaderPushBatchSize: params.leaderPushBatchSize,
+        }),
+        ...(params.simulation?.clientSessionSyncProcessor !== undefined
+          ? { simulation: params.simulation.clientSessionSyncProcessor }
+          : {}),
       },
       confirmUnsavedChanges,
     })
@@ -281,40 +342,57 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     return this.clientSession.clientId
   }
 
+  private checkShutdown = (operation: string): void => {
+    if (this.isShutdown) {
+      throw new UnexpectedError({
+        cause: `Store has been shut down (while performing "${operation}").`,
+        note: `You cannot perform this operation after the store has been shut down.`,
+      })
+    }
+  }
+
   /**
-   * Subscribe to the results of a query
-   * Returns a function to cancel the subscription.
+   * Subscribe to the results of a query.
+   *
+   * - When providing an `onUpdate` callback it returns an {@link Unsubscribe} function.
+   * - Without a callback it returns an {@link AsyncIterable} that yields query results.
    *
    * @example
    * ```ts
-   * const unsubscribe = store.subscribe(query$, { onUpdate: (result) => console.log(result) })
+   * const unsubscribe = store.subscribe(query$, (result) => console.log(result))
+   * ```
+   *
+   * @example
+   * ```ts
+   * for await (const result of store.subscribe(query$)) {
+   *   console.log(result)
+   * }
    * ```
    */
-  subscribe = <TResult>(
-    query: LiveQueryDef<TResult, 'def' | 'signal-def'> | LiveQuery<TResult> | QueryBuilder<TResult, any, any>,
-    options: {
-      /** Called when the query result has changed */
-      onUpdate: (value: TResult) => void
-      onSubscribe?: (query$: LiveQuery<TResult>) => void
-      /** Gets called after the query subscription has been removed */
-      onUnsubsubscribe?: () => void
-      label?: string
-      /**
-       * Skips the initial `onUpdate` callback
-       * @default false
-       */
-      skipInitialRun?: boolean
-      otelContext?: otel.Context
-      /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
-      stackInfo?: StackInfo
-    },
-  ): Unsubscribe =>
-    this.otel.tracer.startActiveSpan(
+  subscribe = (<TResult>(
+    query: Queryable<TResult>,
+    onUpdateOrOptions?: ((value: TResult) => void) | SubscribeOptions<TResult>,
+    maybeOptions?: SubscribeOptions<TResult>,
+  ): Unsubscribe | AsyncIterable<TResult> => {
+    if (typeof onUpdateOrOptions === 'function') {
+      return this.subscribeWithCallback(query, onUpdateOrOptions, maybeOptions)
+    }
+
+    return this.subscribeAsAsyncIterable(query, onUpdateOrOptions)
+  }) as SubscribeFn
+
+  private subscribeWithCallback = <TResult>(
+    query: Queryable<TResult>,
+    onUpdate: (value: TResult) => void,
+    options?: SubscribeOptions<TResult>,
+  ): Unsubscribe => {
+    this.checkShutdown('subscribe')
+
+    return this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
       { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
-        // console.debug('store sub', query$.id, query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const queryRcRef = isQueryBuilder(query)
@@ -329,8 +407,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
         const label = `subscribe:${options?.label}`
         const effect = this.reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) =>
-            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
           { label },
         )
 
@@ -342,13 +419,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
         this.activeQueries.add(query$ as LiveQuery<TResult>)
 
-        // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
         }
 
         const unsubscribe = () => {
-          // console.debug('store unsub', query$.id, query$.label)
           try {
             this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
@@ -368,11 +446,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         return unsubscribe
       },
     )
+  }
 
-  subscribeStream = <TResult>(
-    query$: LiveQueryDef<TResult>,
-    options?: { label?: string; skipInitialRun?: boolean } | undefined,
-  ): Stream.Stream<TResult> =>
+  private subscribeAsAsyncIterable = <TResult>(
+    query: Queryable<TResult>,
+    options?: SubscribeOptions<TResult>,
+  ): AsyncIterable<TResult> => {
+    this.checkShutdown('subscribe')
+
+    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+  }
+
+  subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
@@ -382,10 +467,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query$, {
-              onUpdate: (result) => emit.single(result),
+            this.subscribe(query, (result) => emit.single(result), {
+              ...(options ?? {}),
               otelContext,
-              label: options?.label,
             }),
           ),
           (unsub) => Effect.sync(() => unsub()),
@@ -408,18 +492,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   query = <TResult>(
-    query:
-      | QueryBuilder<TResult, any, any>
-      | LiveQuery<TResult>
-      | LiveQueryDef<TResult>
-      | SignalDef<TResult>
-      | { query: string; bindValues: ParamsObject },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
+    this.checkShutdown('query')
+
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
-        otelContext: options?.otelContext,
+      const res = this.sqliteDbWrapper.cachedSelect(query.query, prepareBindValues(query.bindValues, query.query), {
+        ...omitUndefineds({ otelContext: options?.otelContext }),
       }) as any
+      if (query.schema) {
+        return Schema.decodeSync(query.schema)(res)
+      }
+      return res
     } else if (isQueryBuilder(query)) {
       const ast = query[QueryBuilderAstSymbol]
       if (ast._tag === 'RowQuery') {
@@ -433,12 +518,30 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
+
+      // Replace SessionIdSymbol in bind values before executing the query
+      if (sqlRes.bindValues) {
+        replaceSessionIdSymbol(sqlRes.bindValues, this.clientSession.sessionId)
+      }
+
       const rawRes = this.sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
-        otelContext: options?.otelContext,
+        ...omitUndefineds({ otelContext: options?.otelContext }),
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
 
-      return Schema.decodeSync(schema)(rawRes)
+      const decodeResult = Schema.decodeEither(schema)(rawRes)
+      if (decodeResult._tag === 'Right') {
+        return decodeResult.right
+      } else {
+        return shouldNeverHappen(
+          `Failed to decode query result with for schema:`,
+          schema.toString(),
+          'raw result:',
+          rawRes,
+          'decode error:',
+          decodeResult.left,
+        )
+      }
     } else if (query._tag === 'def') {
       const query$ = query.make(this.reactivityGraph.context!)
       const result = this.query(query$.value, options)
@@ -448,7 +551,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       const signal$ = query.make(this.reactivityGraph.context!)
       return signal$.value.get()
     } else {
-      return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
+      return query.run({
+        ...omitUndefineds({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason }),
+      })
     }
   }
 
@@ -468,6 +573,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   setSignal = <T>(signalDef: SignalDef<T>, value: T | ((prev: T) => T)): void => {
+    this.checkShutdown('setSignal')
+
     const signalRef = signalDef.make(this.reactivityGraph.context!)
     const newValue: T = typeof value === 'function' ? (value as any)(signalRef.value.get()) : value
     signalRef.value.set(newValue)
@@ -552,86 +659,80 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       ) => void,
     ): void
   } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    this.checkShutdown('commit')
+
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    for (const event of events) {
-      replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
-    }
+    Effect.gen(this, function* () {
+      const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)
+      commitsSpan?.addEvent('commit')
+      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      commitsSpan?.addLink({ context: currentSpan.spanContext() })
 
-    if (events.length === 0) return
+      for (const event of events) {
+        replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
+      }
 
-    const skipRefresh = options?.skipRefresh ?? false
+      if (events.length === 0) return
 
-    const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)!
-    commitsSpan.addEvent('commit')
+      const localRuntime = yield* Effect.runtime()
 
-    // console.group('LiveStore.commit', { skipRefresh })
-    // events.forEach((_) => console.debug(_.name, _.args))
-    // console.groupEnd()
+      const materializeEventsTx = Effect.try({
+        try: () => {
+          const runMaterializeEvents = () => {
+            return this.syncProcessor.push(events).pipe(Runtime.runSync(localRuntime))
+          }
 
-    let durationMs: number
+          if (events.length > 1) {
+            return this.sqliteDbWrapper.txn(runMaterializeEvents)
+          } else {
+            return runMaterializeEvents()
+          }
+        },
+        catch: (cause) => UnexpectedError.make({ cause }),
+      })
 
-    return this.otel.tracer.startActiveSpan(
-      'LiveStore:commit',
-      {
+      // Materialize events to state
+      const { writeTables } = yield* materializeEventsTx
+
+      const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
+      for (const tableName of writeTables) {
+        const tableRef = this.tableRefs[tableName]
+        assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+        tablesToUpdate.push([tableRef!, null])
+      }
+
+      const debugRefreshReason: RefreshReason = {
+        _tag: 'commit',
+        events,
+        writeTables: Array.from(writeTables),
+      }
+      const skipRefresh = options?.skipRefresh ?? false
+
+      // Update all table refs together in a batch, to only trigger one reactive update
+      this.reactivityGraph.setRefs(tablesToUpdate, {
+        debugRefreshReason,
+        skipRefresh,
+        otelContext: otel.trace.setSpan(otel.context.active(), currentSpan),
+      })
+    }).pipe(
+      Effect.withSpan('LiveStore:commit', {
+        root: true,
         attributes: {
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
-          'livestore.commitLabel': options?.label,
+          ...(options?.label && { 'livestore.commitLabel': options.label }),
         },
-        links: options?.spanLinks,
-      },
-      options?.otelContext ?? this.otel.commitsSpanContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-        try {
-          // Materialize events to state
-          const { writeTables } = (() => {
-            try {
-              const materializeEvents = () => this.syncProcessor.push(events, { otelContext })
-
-              if (events.length > 1) {
-                return this.sqliteDbWrapper.txn(materializeEvents)
-              } else {
-                return materializeEvents()
-              }
-            } catch (e: any) {
-              console.error(e)
-              span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-              throw e
-            } finally {
-              span.end()
-            }
-          })()
-
-          const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
-          for (const tableName of writeTables) {
-            const tableRef = this.tableRefs[tableName]
-            assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-            tablesToUpdate.push([tableRef!, null])
-          }
-
-          const debugRefreshReason = {
-            _tag: 'commit' as const,
-            events,
-            writeTables: Array.from(writeTables),
-          }
-
-          // Update all table refs together in a batch, to only trigger one reactive update
-          this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
-        } catch (e: any) {
-          console.error(e)
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-          throw e
-        } finally {
-          span.end()
-
-          durationMs = getDurationMsFromSpan(span)
-        }
-
-        return { durationMs }
-      },
+        links: [
+          // Span link to LiveStore:commits
+          OtelTracer.makeSpanLink({ context: otel.trace.getSpanContext(this.otel.commitsSpanContext)! }),
+          // User-provided span links
+          ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
+        ],
+      }),
+      Effect.tapErrorCause(Effect.logError),
+      Effect.catchAllCause((cause) => Effect.fork(this.shutdown(cause))),
+      Runtime.runSync(this.effectContext.runtime),
     )
   }
   // #endregion commit
@@ -655,10 +756,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('events')
+
     return notYetImplemented(`store.events() is not yet implemented but planned soon`)
   }
 
   eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+    this.checkShutdown('eventsStream')
+
     return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
   }
 
@@ -667,6 +772,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * We might need a better solution for this. Let's see.
    */
   manualRefresh = (options?: { label?: string }) => {
+    this.checkShutdown('manualRefresh')
+
     const { label } = options ?? {}
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
@@ -685,10 +792,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = async (cause?: Cause.Cause<UnexpectedError>) => {
-    await this.clientSession
-      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
-      .pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+  shutdownPromise = async (cause?: UnexpectedError) => {
+    this.checkShutdown('shutdownPromise')
+
+    this.isShutdown = true
+    await this.shutdown(cause ? Cause.fail(cause) : undefined).pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+  }
+
+  /**
+   * Shuts down the store and closes the client session.
+   *
+   * This is called automatically when the store was created using the React or Effect API.
+   */
+  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializeError>): Effect.Effect<void> => {
+    this.isShutdown = true
+    return this.clientSession.shutdown(
+      cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
+    )
   }
 
   /**
@@ -734,12 +854,22 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         .pipe(this.runEffectFork)
     },
 
-    syncStates: () => {
+    syncStates: () =>
       Effect.gen(this, function* () {
         const session = yield* this.syncProcessor.syncState
-        console.log('Session sync state:', session.toJSON())
-        const leader = yield* this.clientSession.leaderThread.getSyncState
-        console.log('Leader sync state:', leader.toJSON())
+        const leader = yield* this.clientSession.leaderThread.syncState
+        return { session, leader }
+      }).pipe(this.runEffectPromise),
+
+    printSyncStates: () => {
+      Effect.gen(this, function* () {
+        const session = yield* this.syncProcessor.syncState
+        yield* Effect.log(
+          `Session sync state: ${session.localHead} (upstream: ${session.upstreamHead})`,
+          session.toJSON(),
+        )
+        const leader = yield* this.clientSession.leaderThread.syncState
+        yield* Effect.log(`Leader sync state: ${leader.localHead} (upstream: ${leader.upstreamHead})`, leader.toJSON())
       }).pipe(this.runEffectFork)
     },
 
@@ -762,6 +892,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       Effect.tapCauseLogPretty,
       Runtime.runFork(this.effectContext.runtime),
     )
+
+  private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this.effectContext.runtime))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,

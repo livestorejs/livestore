@@ -4,13 +4,13 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
-    "noEmit": true,
-    "types": ["bun-types"]
+    "noEmit": true
   },
-  "include": ["./**/*.ts"],
+  "include": ["./src", "./standalone"],
   "references": [
     { "path": "../packages/@livestore/utils" },
     { "path": "../packages/@livestore/utils-dev" },
+    { "path": "../tests/sync-provider" },
     { "path": "../packages/@livestore/common" },
     { "path": "../tests/integration" }
   ]

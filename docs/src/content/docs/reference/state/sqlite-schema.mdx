@@ -4,20 +4,58 @@ sidebar:
   order: 2
 ---
 
-import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
-import schemaCode from '../../../../../../examples/standalone/web-todomvc/src/livestore/schema.ts?raw'
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import SchemaSnippet from '../../../../../../examples/web-todomvc/src/livestore/schema.ts?snippet'
+import ClientDocumentBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-basic.tsx?snippet'
+import ClientDocumentKvSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-kv.tsx?snippet'
+import JsonStructSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/json-struct.ts?snippet'
+import TableBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/table-basic.ts?snippet'
 
-LiveStore provides a schema definition language for defining your database tables and mutation definitions. LiveStore automatically migrates your database schema when you change your schema definitions.
+LiveStore provides a schema definition language for defining your database tables and mutation definitions using explicit column configurations. LiveStore automatically migrates your database schema when you change your schema definitions.
+
+> **Alternative Approach**: You can also define tables using [Effect Schema with annotations](/reference/state/sqlite-schema-effect) for type-safe schema definitions.
 
 ### Example
 
-
 <Tabs syncKey="package-manager">
   <TabItem label="schema.ts">
-    <Code lang="ts" code={schemaCode} />
+    <SchemaSnippet />
   </TabItem>
 </Tabs>
 
+## Defining Tables
+
+Define SQLite tables using explicit column definitions:
+
+<TableBasicSnippet />
+
+Use the optional `indexes` array to declare secondary indexes or enforce uniqueness (set `isUnique: true`).
+
+## Column Types
+
+You can use these column types when defining tables:
+
+### Core SQLite column types
+
+- `State.SQLite.text`: A text field, returns `string`.
+- `State.SQLite.integer`: An integer field, returns `number`.
+- `State.SQLite.real`: A real field (floating point number), returns `number`.
+- `State.SQLite.blob`: A blob field (binary data), returns `Uint8Array`.
+
+### Higher level column types
+
+- `State.SQLite.boolean`: An integer field that stores `0` for `false` and `1` for `true` and returns a `boolean`.
+- `State.SQLite.json`: A text field that stores a stringified JSON object and returns a decoded JSON value.
+- `State.SQLite.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
+- `State.SQLite.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
+
+### Custom column schemas
+
+You can also provide a custom schema for a column which is used to automatically encode and decode the column value.
+
+### Example: JSON-encoded struct
+
+<JsonStructSnippet />
 
 ### Schema migrations
 
@@ -26,7 +64,7 @@ Migration strategies:
 - `auto`: Automatically migrate the database to the newest schema and rematerializes the state from the eventlog.
 - `manual`: Manually migrate the database to the newest schema.
 
-### Client documents
+## Client documents
 
 - Meant for convenience
 - Client-only
@@ -37,7 +75,19 @@ Migration strategies:
   - Table with `id` and `value` columns
   - `${MyTable}Set` event + materializer (which are auto-registered)
 
-### Column types
+### Basic usage
+
+<ClientDocumentBasicSnippet />
+
+### KV-style client document
+
+Sometimes you want a simple key-value store for arbitrary values without partial merging. You can model this by using `Schema.Any` as the value schema. With `Schema.Any`, updates fully replace the stored value (no partial merge semantics).
+
+<ClientDocumentKvSnippet />
+
+## Column Types
+
+You can use these column types:
 
 #### Core SQLite column types
 
@@ -53,32 +103,32 @@ Migration strategies:
 - `State.SQLite.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
 - `State.SQLite.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
 
-
 #### Custom column schemas
 
 You can also provide a custom schema for a column which is used to automatically encode and decode the column value.
 
 #### Example: JSON-encoded struct
 
-```ts
-import { State, Schema } from '@livestore/livestore'
-
-export const UserMetadata = Schema.Struct({ 
-  petName: Schema.String,
-  favoriteColor: Schema.Literal('red', 'blue', 'green'),
- })
-
-export const userTable = State.SQLite.table({
-  name: 'user',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }),
-    name: State.SQLite.text(),
-    metadata: State.SQLite.json({ schema: UserMetadata }),
-  }
-})
-```
+<JsonStructSnippet />
 
 ## Best Practices
+
+### Column Configuration
+
+- Use appropriate SQLite column types for your data (text, integer, real, blob)
+- Set `primaryKey: true` for primary key columns
+- Use `nullable: true` for columns that can contain NULL values
+- Provide meaningful `default` values where appropriate
+- Add unique constraints via table `indexes` using `isUnique: true`
+
+### Schema Design
+
+- Choose column types that match your data requirements
+- Use custom schemas with `State.SQLite.json()` for complex data structures
+- Group related table definitions in the same module
+- Use descriptive table and column names
+
+### General Practices
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
 	- This means you'll rarely use `React.useState` when using LiveStore

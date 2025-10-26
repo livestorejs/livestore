@@ -1,6 +1,7 @@
-import { type Option, Schema } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
+import { type Option, Schema, SchemaAST } from '@livestore/utils/effect'
 
-import { hashCode } from '../hash.js'
+import { hashCode } from '../hash.ts'
 
 export namespace ColumnType {
   export type ColumnType = Text | Null | Real | Integer | Blob
@@ -22,6 +23,7 @@ export type Column = {
   type: ColumnType.ColumnType
   primaryKey: boolean
   nullable: boolean
+  autoIncrement: boolean
   default: Option.Option<any>
   schema: Schema.Schema<any>
 }
@@ -44,9 +46,7 @@ export const index = (
 ): Index => ({
   _tag: 'index',
   columns,
-  name,
-  unique,
-  primaryKey,
+  ...omitUndefineds({ name, unique, primaryKey }),
 })
 
 export type ForeignKey = {
@@ -84,7 +84,19 @@ export type DbSchema = {
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
 
 /**
- * NOTE we're only including SQLite-relevant information in the hash (which excludes the schema mapping)
+ * Helper to detect if a column is a JSON column (has parseJson transformation)
+ */
+const isJsonColumn = (column: Column): boolean => {
+  if (column.type._tag !== 'text') return false
+
+  // Check if the schema AST is a parseJson transformation
+  const ast = column.schema.ast
+  return ast._tag === 'Transformation' && ast.annotations.schemaId === SchemaAST.ParseJsonSchemaId
+}
+
+/**
+ * NOTE we're now including JSON schema information for JSON columns
+ * to detect client document schema changes
  */
 export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number =>
   hashCode(JSON.stringify(trimInfoForHasing(obj)))
@@ -100,14 +112,24 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
       }
     }
     case 'column': {
-      return {
+      const baseInfo: Record<string, any> = {
         _tag: 'column',
         name: obj.name,
         type: obj.type._tag,
         primaryKey: obj.primaryKey,
         nullable: obj.nullable,
+        autoIncrement: obj.autoIncrement,
         default: obj.default,
       }
+
+      // NEW: Include schema hash for JSON columns
+      // This ensures that changes to the JSON schema are detected
+      if (isJsonColumn(obj) && obj.schema) {
+        // Use Effect's Schema.hash for consistent hashing
+        baseInfo.jsonSchemaHash = Schema.hash(obj.schema)
+      }
+
+      return baseInfo
     }
     case 'index': {
       return {

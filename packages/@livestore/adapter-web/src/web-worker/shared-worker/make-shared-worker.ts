@@ -1,4 +1,4 @@
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -25,12 +25,27 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
+
+// Extract from `livestore-shared-worker-${storeId}`
+const storeId = self.name.replace('livestore-shared-worker-', '')
+
+// We acquire a lock that is held as long as this shared worker is alive.
+// This way, when the shared worker is terminated (e.g. by the browser when the page is closed),
+// the lock is released and any thread waiting for the lock can be notified.
+const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
+navigator.locks.request(
+  LIVESTORE_SHARED_WORKER_TERMINATION_LOCK,
+  { steal: true },
+  // We use a never-resolving promise to hold the lock
+  async () => new Promise(() => {}),
+)
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    blobUrl: (buffer: Uint8Array) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+    blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
+      URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
@@ -39,28 +54,27 @@ if (isDevEnv()) {
 const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
-        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInner.Request>
+        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
         scope: Scope.CloseableScope
       }
     | undefined
   >(undefined)
 
-  const initialMessagePayloadDeferredRef = yield* Deferred.make<
-    typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type
-  >().pipe(Effect.andThen(Ref.make))
-
   const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
+  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
-  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
-    ? Effect.Effect<A, UnexpectedError, never>
-    : never =>
+  ): Effect.Effect<
+    Schema.WithResult.Success<TReq>,
+    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Context<TReq>
+  > =>
+    // Forward the request to the active worker and normalize platform errors into UnexpectedError.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
-      Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, never>),
+      Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, unknown>),
       // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
       // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
       Effect.interruptible,
@@ -77,17 +91,23 @@ const makeWorkerRunner = Effect.gen(function* () {
       ),
       Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
       Effect.tapCauseLogPretty,
-    ) as any
+    ) as Effect.Effect<
+      Schema.WithResult.Success<TReq>,
+      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Context<TReq>
+    >
 
-  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
+  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
     req: TReq,
-  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
-    ? Stream.Stream<A, UnexpectedError, never>
-    : never =>
+  ): Stream.Stream<
+    Schema.WithResult.Success<TReq>,
+    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Context<TReq>
+  > =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker.execute(req) as Stream.Stream<unknown, unknown, never>
+      const stream = worker.execute(req) as Stream.Stream<unknown, unknown, unknown>
 
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
@@ -108,7 +128,11 @@ const makeWorkerRunner = Effect.gen(function* () {
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
       UnexpectedError.mapToUnexpectedErrorStream,
-    ) as any
+    ) as Stream.Stream<
+      Schema.WithResult.Success<TReq>,
+      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Context<TReq>
+    >
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
     const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)
@@ -127,62 +151,59 @@ const makeWorkerRunner = Effect.gen(function* () {
     }
   }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:resetCurrentWorkerCtx'))
 
-  // const devtoolsWebBridge = yield* makeDevtoolsWebBridge
-
   const reset = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
-
-    const initialMessagePayloadDeferred =
-      yield* Deferred.make<typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type>()
-    yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
-
+    // Clear cached invariants so a fresh configuration can be accepted after shutdown
+    yield* Ref.set(invariantsRef, undefined)
+    // Tear down current leader worker context
     yield* resetCurrentWorkerCtx
-    // yield* devtoolsWebBridge.reset
   })
 
-  return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
-    InitialMessage: (message) =>
-      Effect.gen(function* () {
-        if (message.payload._tag === 'FromWebBridge') return
+  // Cache first-applied invariants to enforce stability across leader transitions
+  const InvariantsSchema = Schema.Struct({
+    storeId: Schema.String,
+    storageOptions: WorkerSchema.StorageType,
+    syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
+    liveStoreVersion: Schema.Literal(liveStoreVersion),
+    devtoolsEnabled: Schema.Boolean,
+  })
+  type Invariants = typeof InvariantsSchema.Type
+  const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
+  const sameInvariants = Schema.equivalence(InvariantsSchema)
 
-        const initialMessagePayloadDeferred = yield* Ref.get(initialMessagePayloadDeferredRef)
-        const deferredAlreadyDone = yield* Deferred.isDone(initialMessagePayloadDeferred)
-        const initialMessage = message.payload.initialMessage
-
-        if (deferredAlreadyDone) {
-          const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
-          const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(
-            Schema.omit('devtoolsEnabled', 'debugInstanceId'),
-          )
-          const isEqual = Schema.equivalence(messageSchema)
-          if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
-            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)
-
-            yield* new UnexpectedError({
-              cause: 'Initial message already sent and was different now',
-              payload: {
-                diff,
-                previousInitialMessage: previousInitialMessage.initialMessage,
-                newInitialMessage: initialMessage,
-              },
-            })
-          }
-        } else {
-          yield* Deferred.succeed(initialMessagePayloadDeferred, message.payload)
-        }
-      }),
+  return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
     // Whenever the client session leader changes (and thus creates a new leader thread), the new client session leader
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
-    UpdateMessagePort: ({ port }) =>
+    UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
       Effect.gen(function* () {
-        const initialMessagePayload = yield* initialMessagePayloadDeferredRef.get.pipe(Effect.andThen(Deferred.await))
+        // Enforce invariants: storeId, storageOptions, syncPayloadEncoded, liveStoreVersion must remain stable
+        const invariants: Invariants = {
+          storeId: initial.storeId,
+          storageOptions: initial.storageOptions,
+          syncPayloadEncoded: initial.syncPayloadEncoded,
+          liveStoreVersion: clientLiveStoreVersion,
+          devtoolsEnabled: initial.devtoolsEnabled,
+        }
+        const prev = yield* Ref.get(invariantsRef)
+        // Early return on mismatch to keep happy path linear
+        if (prev !== undefined && !sameInvariants(prev, invariants)) {
+          const diff = Schema.debugDiff(InvariantsSchema)(prev, invariants)
+          return yield* new UnexpectedError({
+            cause: 'Store invariants changed across leader transitions',
+            payload: { diff, previous: prev, next: invariants },
+          })
+        }
+        // First writer records invariants
+        if (prev === undefined) {
+          yield* Ref.set(invariantsRef, invariants)
+        }
 
         yield* resetCurrentWorkerCtx
 
         const scope = yield* Scope.make()
 
         yield* Effect.gen(function* () {
-          const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
+          const shutdownChannel = yield* makeShutdownChannel(initial.storeId)
 
           yield* shutdownChannel.listen.pipe(
             Stream.flatten(),
@@ -194,10 +215,10 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
 
-          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInner.Request>({
+          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
             size: 1,
             concurrency: 100,
-            initialMessage: () => initialMessagePayload.initialMessage,
+            initialMessage: () => initial,
           }).pipe(
             Effect.provide(workerLayer),
             Effect.withSpan('@livestore/adapter-web:shared-worker:makeWorkerProxyFromPort'),
@@ -205,7 +226,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           // Prepare the web mesh connection for leader worker to be able to connect to the devtools
           const { node } = yield* WebmeshWorker.CacheService
-          const { storeId, clientId } = initialMessagePayload.initialMessage
+          const { storeId, clientId } = initial
 
           yield* DevtoolsWeb.connectViaWorker({
             node,
@@ -230,7 +251,10 @@ const makeWorkerRunner = Effect.gen(function* () {
     ExportEventlog: forwardRequest,
     Setup: forwardRequest,
     GetLeaderSyncState: forwardRequest,
+    SyncStateStream: forwardRequestStream,
     GetLeaderHead: forwardRequest,
+    GetNetworkStatus: forwardRequest,
+    NetworkStatusStream: forwardRequestStream,
     Shutdown: forwardRequest,
     ExtraDevtoolsMessage: forwardRequest,
 
@@ -240,8 +264,11 @@ const makeWorkerRunner = Effect.gen(function* () {
 }).pipe(Layer.unwrapScoped)
 
 export const makeWorker = () => {
-  // Extract from `livestore-shared-worker-${storeId}`
-  const storeId = self.name.replace('livestore-shared-worker-', '')
+  const layer = Layer.mergeAll(
+    Logger.prettyWithThread(self.name),
+    FetchHttpClient.layer,
+    WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) }),
+  )
 
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
@@ -250,9 +277,7 @@ export const makeWorker = () => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.prettyWithThread(self.name)),
-    Effect.provide(FetchHttpClient.layer),
-    Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) })),
+    Effect.provide(layer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     (_) => _ as any as Effect.Effect<void, any>,

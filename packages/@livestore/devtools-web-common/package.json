@@ -1,17 +1,11 @@
 {
   "name": "@livestore/devtools-web-common",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.14",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./web-channel": {
-      "types": "./dist/web-channel/index.d.ts",
-      "default": "./dist/web-channel/index.js"
-    },
-    "./worker": {
-      "types": "./dist/worker/mod.d.ts",
-      "default": "./dist/worker/mod.js"
-    }
+    "./web-channel": "./src/web-channel/index.ts",
+    "./worker": "./src/worker/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -26,7 +20,11 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./web-channel": "./dist/web-channel/index.js",
+      "./worker": "./dist/worker/mod.js"
+    }
   },
   "scripts": {
     "test": "echo No tests yet"

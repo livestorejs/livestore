@@ -2,9 +2,11 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { type CmdError, cmd } from '@livestore/utils-dev/node'
+import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
+import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
@@ -12,7 +14,18 @@ const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).
   Cli.Options.withDefault('headless'),
 )
 
-const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
+export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(
+  Cli.Options.withDefault(false),
+)
+
+const viteDevServer = ({
+  useWorkspacePort,
+  useDevtoolsLocalPreview,
+}: {
+  app: 'todomvc'
+  useWorkspacePort: boolean
+  useDevtoolsLocalPreview: boolean
+}) =>
   Effect.gen(function* () {
     const devPort = useWorkspacePort
       ? '4444'
@@ -22,6 +35,7 @@ const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
       env: {
         // Relative to vite config
         TEST_LIVESTORE_SCHEMA_PATH_JSON: JSON.stringify('./devtools/todomvc/livestore/schema.ts'),
+        LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview ? '1' : undefined,
       },
       cwd,
     }).pipe(Effect.forkScoped)
@@ -32,18 +46,24 @@ const viteDevServer = (app: 'todomvc', useWorkspacePort: boolean) =>
 export const miscTest: Cli.Command.Command<
   'misc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'misc',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
-      const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
+    function* ({ mode, localDevtoolsPreview }) {
+      const { devPort } = yield* viteDevServer({
+        app: 'todomvc',
+        useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
+      })
 
       yield* cmd(
         ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
@@ -64,37 +84,27 @@ export const miscTest: Cli.Command.Command<
   ),
 )
 
-export const nodeSyncTest: Cli.Command.Command<
-  'node-sync',
-  CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
-  {}
-> = Cli.Command.make(
-  'node-sync',
-  {},
-  Effect.fn(function* () {
-    yield* cmd(['vitest', 'src/tests/node-sync/node-sync.test.ts'], {
-      cwd,
-      env: { CI: '1' },
-    })
-  }),
-)
-
 export const todomvcTest: Cli.Command.Command<
   'todomvc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'todomvc',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
-      const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
+    function* ({ mode, localDevtoolsPreview }) {
+      const { devPort } = yield* viteDevServer({
+        app: 'todomvc',
+        useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
+      })
 
       yield* cmd(
         ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
@@ -114,21 +124,46 @@ export const todomvcTest: Cli.Command.Command<
   ),
 )
 
+export const setupDevtools: Cli.Command.Command<
+  'setup-devtools',
+  CommandExecutor.CommandExecutor,
+  UnexpectedError | PlatformError.PlatformError,
+  {}
+> = Cli.Command.make(
+  'setup-devtools',
+  {},
+  Effect.fn(function* () {
+    const targetDir = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+
+    yield* downloadChromeExtension({
+      targetDir,
+    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
+
+    yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
+  }, UnexpectedError.mapToUnexpectedError),
+)
+
 export const devtoolsTest: Cli.Command.Command<
   'devtools',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
+    readonly localDevtoolsPreview: boolean
   }
 > = Cli.Command.make(
   'devtools',
   {
     mode: modeOption,
+    localDevtoolsPreview: localDevtoolsPreviewOption,
   },
   Effect.fn(
-    function* ({ mode }) {
-      const { devPort } = yield* viteDevServer('todomvc', mode === 'dev-server')
+    function* ({ mode, localDevtoolsPreview }) {
+      const { devPort } = yield* viteDevServer({
+        app: 'todomvc',
+        useWorkspacePort: mode === 'dev-server',
+        useDevtoolsLocalPreview: localDevtoolsPreview,
+      })
 
       const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.map((span) => JSON.stringify(span.spanContext())),
@@ -136,7 +171,7 @@ export const devtoolsTest: Cli.Command.Command<
       )
 
       if (mode === 'dev-server') {
-        yield* Effect.never
+        return yield* Effect.never
       } else {
         yield* cmd(
           ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
@@ -158,43 +193,16 @@ export const devtoolsTest: Cli.Command.Command<
   ),
 )
 
-export const runAll: Cli.Command.Command<
-  'all',
-  CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
-  {
-    readonly concurrency: 'sequential' | 'parallel'
-  }
-> = Cli.Command.make(
-  'all',
-  {
-    concurrency: Cli.Options.choice('concurrency', ['sequential', 'parallel']).pipe(
-      Cli.Options.withDefault('parallel'),
-    ),
-  },
-  Effect.fn(function* ({ concurrency }) {
-    yield* Effect.all(
-      [
-        miscTest.handler({ mode: 'headless' }),
-        nodeSyncTest.handler({}),
-        todomvcTest.handler({ mode: 'headless' }),
-        devtoolsTest.handler({ mode: 'headless' }),
-      ],
-      { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
-    )
-  }),
-)
-
-export const commands = [miscTest, nodeSyncTest, todomvcTest, devtoolsTest, runAll] as const
+export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as const
 
 export const command: Cli.Command.Command<
-  'integration',
+  'integration-misc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnexpectedError | PlatformError.PlatformError | CmdError,
   {
     readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
   }
-> = Cli.Command.make('integration').pipe(Cli.Command.withSubcommands(commands))
+> = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
 
 if (import.meta.main) {
   const cli = Cli.Command.run(command, {
@@ -204,8 +212,7 @@ if (import.meta.main) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(PlatformNode.NodeContext.layer),
-    Effect.provide(Logger.prettyWithThread('cli-run-tests')),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-run-tests'))),
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

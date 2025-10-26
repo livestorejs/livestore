@@ -1,8 +1,9 @@
+/** biome-ignore-all lint/a11y: testing */
 import { useStore } from '@livestore/react'
-import React from 'react'
+import type React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
@@ -30,7 +31,7 @@ export const Header: React.FC = () => {
             todoCreated()
           }
         }}
-      ></input>
+      />
     </header>
   )
 }

@@ -1,0 +1,76 @@
+name = "cloudflare-todomvc"
+main = "./src/index.ts"
+compatibility_date = "2025-05-07"
+compatibility_flags = [
+  "enable_request_signal", # Needed for HTTP RPC streams
+]
+
+[build]
+# Enable source maps for better debugging
+command = ""
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.prod]
+name = "cloudflare-todomvc"
+
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.preview]
+name = "cloudflare-todomvc-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[env.dev]
+name = "cloudflare-todomvc-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.durable_objects.bindings]]
+name = "CLIENT_DO"
+class_name = "LiveStoreClientDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+
+[vars]
+# should be set via CF dashboard (as secret)
+# ADMIN_SECRET = "..."
+SYNC_BACKEND_URL = "http://localhost:8787"
+
+
+[triggers] # bootstrap ping every minute
+crons = ["*/1 * * * *"]

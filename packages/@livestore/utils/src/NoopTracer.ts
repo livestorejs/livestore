@@ -1,4 +1,4 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
+/** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 import type * as otel from '@opentelemetry/api'
 
 export const makeNoopSpan = () => {
@@ -9,6 +9,7 @@ export const makeNoopSpan = () => {
     setAttribute: () => null,
     setAttributes: () => null,
     addEvent: () => null,
+    addLink: () => null,
     setStatus: () => null,
     updateName: () => null,
     recordException: () => null,
@@ -48,7 +49,7 @@ export class NoopTracer {
     fn: F,
   ): ReturnType<F>
   startActiveSpan<F extends (span: otel.Span) => ReturnType<F>>(
-    name: string,
+    _name: string,
     arg2?: F | otel.SpanOptions,
     arg3?: F | otel.Context,
     arg4?: F,

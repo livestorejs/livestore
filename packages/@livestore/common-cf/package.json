@@ -1,0 +1,37 @@
+{
+  "name": "@livestore/common-cf",
+  "version": "0.4.0-dev.14",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./declare": "./src/declare/mod.ts"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./declare": "./dist/declare/mod.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

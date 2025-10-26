@@ -1,0 +1,130 @@
+import { ChevronRightIcon } from '@heroicons/react/16/solid'
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
+import { Button } from 'react-aria-components'
+import { events, tables } from '../../../livestore/schema/index.ts'
+import type { Priority } from '../../../types/priority.ts'
+import type { Status } from '../../../types/status.ts'
+import { formatDate } from '../../../utils/format-date.ts'
+import { getIssueTag } from '../../../utils/get-issue-tag.ts'
+import { Avatar } from '../../common/avatar.tsx'
+import { MenuButton } from '../../common/menu-button.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
+import { BackButton } from './back-button.tsx'
+import { CommentInput } from './comment-input.tsx'
+import { Comments } from './comments.tsx'
+import { DeleteButton } from './delete-button.tsx'
+import { DescriptionInput } from './description-input.tsx'
+import { TitleInput } from './title-input.tsx'
+
+export const Issue = ({ issueId }: { issueId: number }) => {
+  const navigate = useNavigate()
+  const router = useRouter()
+  const { store } = useStore()
+  const { storeId } = useParams({ from: '/$storeId' })
+  const issue = store.useQuery(
+    queryDb(tables.issue.where({ id: issueId }).first({ behaviour: 'error' }), { deps: [issueId] }),
+  )
+
+  const close = () => {
+    if (window.history.length > 2) {
+      router.history.back()
+    } else {
+      navigate({ to: '/$storeId', params: { storeId }, search: (prev) => ({ ...prev, issueId: undefined }) })
+    }
+  }
+
+  const handleChangeStatus = (status: Status) => {
+    store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
+  }
+
+  const handleChangePriority = (priority: Priority) => {
+    store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
+  }
+
+  const handleChangeDescription = (body: string) => {
+    store.commit(events.updateDescription({ id: issue.id, body }))
+  }
+
+  const description = store.useQuery(
+    queryDb(
+      tables.description
+        .select('body')
+        .where({ id: issue.id })
+        .first({ behaviour: 'fallback', fallback: () => '' }),
+      { deps: [issue.id] },
+    ),
+  )
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="h-12 shrink-0 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
+        <div className="flex items-center gap-1 lg:gap-2 text-sm">
+          <MenuButton className="lg:hidden" />
+          <Button
+            aria-label="Back to issues"
+            className="font-medium hover:text-neutral-800 dark:hover:text-neutral-100 focus:outline-none ml-2 lg:ml-0"
+            onPress={close}
+          >
+            Issues
+          </Button>
+          <ChevronRightIcon className="size-3.5" />
+          <div className="text-neutral-500 dark:text-neutral-400">{getIssueTag(issueId)}</div>
+        </div>
+        <div className="flex items-center gap-px">
+          <DeleteButton issueId={issue.id} close={close} className="hidden lg:block" />
+          <BackButton close={close} />
+        </div>
+      </div>
+      <div className="flex flex-col lg:flex-row h-[calc(100%-3rem)]">
+        <div className="flex lg:hidden flex-wrap justify-between gap-2 p-4 border-b border-neutral-200 dark:border-neutral-700">
+          <div className="flex items-center gap-px">
+            <StatusMenu showLabel status={issue.status} onStatusChange={handleChangeStatus} />
+            <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-neutral-500 dark:text-neutral-400 text-xs">{formatDate(new Date(issue.created))}</div>
+            <Avatar name={issue.creator} />
+          </div>
+        </div>
+        <div className="grow overflow-y-auto">
+          <div className="p-4 lg:p-14 border-b border-neutral-200 dark:border-neutral-700">
+            <TitleInput issue={issue} className="lg:mb-4" />
+            <DescriptionInput description={description} setDescription={handleChangeDescription} />
+          </div>
+          <div className="p-4 lg:p-14">
+            <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mb-4">
+              Comments
+            </h2>
+            <CommentInput issueId={issue.id} />
+            <Comments issueId={issue.id} />
+          </div>
+        </div>
+        <div className="hidden lg:block w-64 py-16 px-8 border-l border-neutral-200 dark:border-neutral-700 space-y-px">
+          <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mb-4">
+            Properties
+          </h2>
+          <div className="flex items-center h-8">
+            <div className="w-16 -mr-0.5 shrink-0">Creator:</div>
+            <Avatar name={issue.creator} />
+            <div className="font-medium ml-2.5 mr-2">{issue.creator}</div>
+          </div>
+          <div className="flex items-center h-8">
+            <div className="w-16 shrink-0">Created:</div>
+            <div>{formatDate(new Date(issue.created))}</div>
+          </div>
+          <div className="flex items-center h-8">
+            <div className="w-14 shrink-0">Status:</div>
+            <StatusMenu showLabel status={issue.status} onStatusChange={handleChangeStatus} />
+          </div>
+          <div className="flex items-center h-8">
+            <div className="w-14 shrink-0">Priority:</div>
+            <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -4,8 +4,8 @@ sidebar:
   order: 6
 ---
 
-import { DISCORD_INVITE_URL } from '../../../../../CONSTANTS.js'
-import { officeHours } from '../../../../data.js'
+import { DISCORD_INVITE_URL } from '@local/shared'
+import { officeHours } from '../../../data/data.ts'
 
 ## Discord
 
@@ -30,8 +30,10 @@ You can join future office hour events [here](https://lu.ma/livestore).
   ))
 }
 
-{/* TODO add conference talks */}
-{/* ## Conference talks */}
+## Conference talks & podcasts
+
+- [Sync different: Event sourcing in local-first apps](https://www.youtube.com/watch?v=nyPl84BopKc)
+- [From Prisma Founder to LiveStore: Building local-first apps with Johannes Schickling (Aaron Francis interview)](https://www.youtube.com/watch?v=aKTbGIrkrLE)
 
 ## RFX: Request for exploration \{#rfx\}
 
@@ -85,3 +87,8 @@ Here are some app ideas:
 - Explore and improve multi-store ergonomics
 - Diff queries in SQLite
 - IVM
+
+## Notable LiveStore projects (Open-source)
+
+- [WorkSquared](https://github.com/sociotechnica-org/work-squared): An AI-haunted workplace to coordinate, plan, and execute.
+- [Cheffect](https://github.com/tim-smart/cheffect): Local-first recipe management app built with LiveStore and Effect

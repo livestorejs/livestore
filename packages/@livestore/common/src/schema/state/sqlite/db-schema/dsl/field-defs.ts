@@ -9,15 +9,21 @@ export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly nullable: boolean
   /** @default false */
   readonly primaryKey: boolean
+  /** @default false */
+  readonly autoIncrement: boolean
 }
 
-export const isColumnDefinition = (value: unknown): value is ColumnDefinition<any, any> => {
+export declare namespace ColumnDefinition {
+  export type Any = ColumnDefinition<any, any>
+}
+
+export const isColumnDefinition = (value: unknown): value is ColumnDefinition.Any => {
   const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
   return (
     typeof value === 'object' &&
     value !== null &&
     'columnType' in value &&
-    validColumnTypes.includes(value['columnType'] as any)
+    validColumnTypes.includes(value.columnType as any)
   )
 }
 
@@ -26,6 +32,7 @@ export type ColumnDefinitionInput = {
   readonly default?: unknown | NoDefault
   readonly nullable?: boolean
   readonly primaryKey?: boolean
+  readonly autoIncrement?: boolean
 }
 
 export const NoDefault = Symbol.for('NoDefault')
@@ -36,7 +43,7 @@ export type SqlDefaultValue = {
 }
 
 export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
-  return typeof value === 'object' && value !== null && 'sql' in value && typeof value['sql'] === 'string'
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof value.sql === 'string'
 }
 
 export type ColDefFn<TColumnType extends FieldColumnType> = {
@@ -46,6 +53,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     default: Option.None<never>
     nullable: false
     primaryKey: false
+    autoIncrement: false
   }
   <
     TEncoded extends DefaultEncodedForColumnType<TColumnType>,
@@ -53,11 +61,13 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     const TNullable extends boolean = false,
     const TDefault extends TDecoded | SqlDefaultValue | NoDefault | (TNullable extends true ? null : never) = NoDefault,
     const TPrimaryKey extends boolean = false,
+    const TAutoIncrement extends boolean = false,
   >(args: {
     schema?: Schema.Schema<TDecoded, TEncoded>
     default?: TDefault
     nullable?: TNullable
     primaryKey?: TPrimaryKey
+    autoIncrement?: TAutoIncrement
   }): {
     columnType: TColumnType
     schema: TNullable extends true
@@ -66,6 +76,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<NoInfer<TDefault>>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
+    autoIncrement: NoInfer<TAutoIncrement>
   }
 }
 
@@ -83,6 +94,7 @@ const makeColDef =
       default: default_,
       nullable,
       primaryKey: def?.primaryKey ?? false,
+      autoIncrement: def?.autoIncrement ?? false,
     } as any
   }
 
@@ -115,12 +127,14 @@ export type SpecializedColDefFn<
     default: Option.None<never>
     nullable: false
     primaryKey: false
+    autoIncrement: false
   }
   <
     TDecoded = TBaseDecoded,
     const TNullable extends boolean = false,
     const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
     const TPrimaryKey extends boolean = false,
+    const TAutoIncrement extends boolean = false,
   >(
     args: TAllowsCustomSchema extends true
       ? {
@@ -128,11 +142,13 @@ export type SpecializedColDefFn<
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
+          autoIncrement?: TAutoIncrement
         }
       : {
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
+          autoIncrement?: TAutoIncrement
         },
   ): {
     columnType: TColumnType
@@ -142,6 +158,7 @@ export type SpecializedColDefFn<
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
+    autoIncrement: NoInfer<TAutoIncrement>
   }
 }
 
@@ -176,6 +193,7 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (de
     default: default_,
     nullable,
     primaryKey: def?.primaryKey ?? false,
+    autoIncrement: def?.autoIncrement ?? false,
   } as any
 }
 
@@ -214,7 +232,7 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
     : TColumnType extends 'real'
       ? number
       : TColumnType extends 'blob'
-        ? Uint8Array
+        ? Uint8Array<ArrayBuffer>
         : never
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(

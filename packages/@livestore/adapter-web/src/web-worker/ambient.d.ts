@@ -26,15 +26,16 @@ interface FileSystemFileHandle {
 //   export default sharedWorkerConstructor
 // }
 
-interface ImportMeta {
-  env: {
-    DEV: boolean | undefined
-    VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
-  }
+declare interface ImportMetaEnv {
+  readonly SSR?: string | boolean
+  readonly DEV: boolean | undefined
+  readonly VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
 }
 
-// eslint-disable-next-line no-var
+declare interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare var __debugLiveStoreUtils: any
 
-// eslint-disable-next-line no-var
 declare var LIVESTORE_DEVTOOLS_PATH: string | undefined

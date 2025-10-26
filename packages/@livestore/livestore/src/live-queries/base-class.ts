@@ -1,11 +1,11 @@
 import { isNotNil } from '@livestore/utils'
-import { Predicate } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import * as RG from '../reactive.js'
-import type { Store } from '../store/store.js'
-import type { QueryDebugInfo, RefreshReason } from '../store/store-types.js'
-import type { StackInfo } from '../utils/stack-info.js'
+import * as RG from '../reactive.ts'
+import type { Store } from '../store/store.ts'
+import type { QueryDebugInfo, RefreshReason } from '../store/store-types.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
 
 export type ReactivityGraph = RG.ReactiveGraph<RefreshReason, QueryDebugInfo, ReactivityGraphContext>
 
@@ -23,14 +23,15 @@ export type ReactivityGraphContext = {
   effectsWrapper: (run: () => void) => void
 }
 
-export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any | SignalDef<any>> =
-  TQuery extends LiveQuery<infer TResult>
+export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any | SignalDef<any>> = TQuery extends LiveQuery<
+  infer TResult
+>
+  ? TResult
+  : TQuery extends LiveQueryDef<infer TResult>
     ? TResult
-    : TQuery extends LiveQueryDef<infer TResult>
+    : TQuery extends SignalDef<infer TResult>
       ? TResult
-      : TQuery extends SignalDef<infer TResult>
-        ? TResult
-        : unknown
+      : unknown
 
 let queryIdCounter = 0
 
@@ -40,6 +41,8 @@ export interface SignalDef<T> extends LiveQueryDef<T, 'signal-def'> {
   hash: string
   label: string
   make: (ctx: ReactivityGraphContext) => RcRef<ISignal<T>>
+  [Equal.symbol](that: SignalDef<T>): boolean
+  [Hash.symbol](): number
 }
 
 export interface ISignal<T> extends LiveQuery<T> {
@@ -76,6 +79,8 @@ export interface LiveQueryDef<TResult, TTag extends string = 'def'> {
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult> | ISignal<TResult>>
   label: string
   hash: string
+  [Equal.symbol](that: LiveQueryDef<TResult, TTag>): boolean
+  [Hash.symbol](): number
 }
 
 export namespace LiveQueryDef {
@@ -161,10 +166,13 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
 
   // subscribe = (
   //   onNewValue: (value: TResult) => void,
-  //   onUnsubsubscribe?: () => void,
-  //   options?: { label?: string; otelContext?: otel.Context } | undefined,
+  //   options?: {
+  //     label?: string
+  //     otelContext?: otel.Context
+  //     onUnsubsubscribe?: () => void
+  //   },
   // ): (() => void) =>
-  //   this.reactivityGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ??
+  //   this.reactivityGraph.context?.store.subscribe(this, onNewValue, options) ??
   //   RG.throwContextNotSetError(this.reactivityGraph)
 }
 

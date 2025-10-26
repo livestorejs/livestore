@@ -1,0 +1,150 @@
+---
+title: SQLite State Schema (Effect Schema)
+sidebar:
+  order: 3
+---
+
+import AdvancedProductSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/advanced-product.ts?snippet'
+import AutoIncrementSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/auto-increment.ts?snippet'
+import BasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/basic.ts?snippet'
+import CombiningAnnotationsSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/combining-annotations.ts?snippet'
+import CustomColumnTypesSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/custom-column-types.ts?snippet'
+import CustomIndexesSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/custom-indexes.ts?snippet'
+import DefaultValuesSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/default-values.ts?snippet'
+import PrimaryKeyNullableSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/primary-key-nullable.ts?snippet'
+import PrimaryKeySnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/primary-key.ts?snippet'
+import SchemaClassSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/schema-class.ts?snippet'
+import TableNameAnnotationsSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/table-name-annotations.ts?snippet'
+import TableNameExplicitSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/table-name-explicit.ts?snippet'
+import UniqueConstraintsSnippet from '../../../_assets/code/reference/state/sqlite-schema/effect/unique-constraints.ts?snippet'
+
+LiveStore supports defining SQLite tables using Effect Schema with annotations for database constraints. This approach provides strong type safety, composability, and automatic type mapping from TypeScript to SQLite.
+
+> **Note**: This approach will become the default once Effect Schema v4 is released. See [livestore#382](https://github.com/livestorejs/livestore/issues/382) for details.
+>
+> For the traditional column-based approach, see [SQLite State Schema](/reference/state/sqlite-schema).
+
+## Basic Usage
+
+Define tables using Effect Schema with database constraint annotations:
+
+<BasicSnippet />
+
+## Schema Annotations
+
+You can annotate schema fields with database constraints:
+
+### Primary Keys
+
+<PrimaryKeySnippet />
+
+**Important**: Primary key columns cannot be nullable. This will throw an error:
+
+<PrimaryKeyNullableSnippet />
+
+### Auto-Increment
+
+<AutoIncrementSnippet />
+
+### Default Values
+
+<DefaultValuesSnippet />
+
+### Unique Constraints
+
+<UniqueConstraintsSnippet />
+
+Unique annotations automatically create unique indexes.
+
+### Custom Column Types
+
+Override the automatically inferred SQLite column type:
+
+<CustomColumnTypesSnippet />
+
+### Combining Annotations
+
+Annotations can be chained together:
+
+<CombiningAnnotationsSnippet />
+
+## Table Naming
+
+You can specify table names in several ways:
+
+### Using Schema Annotations
+
+<TableNameAnnotationsSnippet />
+
+### Explicit Name
+
+<TableNameExplicitSnippet />
+
+**Note**: Title annotation takes precedence over identifier annotation.
+
+## Type Mapping
+
+Effect Schema types are automatically mapped to SQLite column types:
+
+| Schema Type | SQLite Type | TypeScript Type |
+|-------------|-------------|-----------------|
+| `Schema.String` | `text` | `string` |
+| `Schema.Number` | `real` | `number` |
+| `Schema.Int` | `integer` | `number` |
+| `Schema.Boolean` | `integer` | `boolean` |
+| `Schema.Date` | `text` | `Date` |
+| `Schema.BigInt` | `text` | `bigint` |
+| Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
+| `Schema.optional(T)` | Nullable column | `T \| undefined` |
+| `Schema.NullOr(T)` | Nullable column | `T \| null` |
+
+## Advanced Examples
+
+### Complex Schema with Multiple Constraints
+
+<AdvancedProductSnippet />
+
+### Working with Schema.Class
+
+<SchemaClassSnippet />
+
+### Custom Indexes
+
+<CustomIndexesSnippet />
+
+## Best Practices
+
+### Schema Design
+
+- Always use `withPrimaryKey` for primary key columns - never combine it with nullable types
+- Use `Schema.optional()` for truly optional fields that can be undefined
+- Use `Schema.NullOr()` for fields that can explicitly be set to null
+- Leverage schema annotations like `title` or `identifier` to avoid repeating table names
+- Group related schemas in the same module for better organization
+
+### Type Safety
+
+- Let TypeScript infer table types rather than explicitly typing them
+- Use Effect Schema's refinements and transformations for data validation
+- Prefer Effect Schema's built-in types (`Schema.Int`, `Schema.Date`) over generic types where appropriate
+
+### Performance
+
+- Be mindful of complex types stored as JSON - they can impact query performance
+- Use appropriate indexes for frequently queried columns
+- Consider using `withColumnType` to optimize storage for specific use cases
+
+## When to Use This Approach
+
+**Use Effect Schema-based tables when:**
+- You already have Effect Schema definitions to reuse
+- You prefer Effect Schema's composability and transformations
+- Your schemas are shared across different parts of your application
+- You want automatic type mapping and strong type safety
+- You plan to migrate to Effect Schema v4 when it becomes available
+
+**Consider column-based tables when:**
+- You need precise control over SQLite column types
+- You're migrating from existing SQLite schemas
+- You prefer explicit column configuration
+- You're not already using Effect Schema extensively in your project

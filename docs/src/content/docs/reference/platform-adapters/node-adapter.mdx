@@ -1,0 +1,34 @@
+---
+title: Node Adapter
+sidebar:
+  order: 2
+---
+
+import NodeAdapterSnippet from '../../../_assets/code/reference/platform-adapters/node-adapter/adapter.ts?snippet'
+import NodeResetPersistenceSnippet from '../../../_assets/code/reference/platform-adapters/node-adapter/reset-persistence.ts?snippet'
+import NodeWorkerMainSnippet from '../../../_assets/code/reference/platform-adapters/node-adapter/worker-main.ts?snippet'
+import NodeWorkerWorkerSnippet from '../../../_assets/code/reference/platform-adapters/node-adapter/worker-worker.ts?snippet'
+
+Works with Node.js, Bun and Deno.
+
+## Example
+
+<NodeAdapterSnippet />
+
+## Resetting local persistence
+
+During development you can instruct the adapter to wipe the locally persisted state and eventlog databases on startup:
+
+<NodeResetPersistenceSnippet />
+
+:::caution
+This will delete all local data for the given `storeId` and `clientId`. It only clears local persistence and does not reset any connected sync backend. Only enable it for debugging scenarios.
+:::
+
+### Worker adapter
+
+The worker adapter can be used for more advanced scenarios where it's preferable to reduce the load of the main thread and run persistence/syncing in a worker thread.
+
+<NodeWorkerMainSnippet />
+
+<NodeWorkerWorkerSnippet />

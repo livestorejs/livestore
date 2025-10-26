@@ -5,9 +5,9 @@ import { Effect, FileSystem } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
-import { makeInMemoryDb } from '../in-memory-vfs.js'
-import { makeSqliteDb } from '../make-sqlite-db.js'
-import { NodeFS } from './NodeFS.js'
+import { makeInMemoryDb } from '../in-memory-vfs.ts'
+import { makeSqliteDb } from '../make-sqlite-db.ts'
+import { NodeFS } from './NodeFS.ts'
 
 export type NodeDatabaseMetadataInMemory = {
   _tag: 'in-memory'
@@ -96,8 +96,6 @@ export const sqliteDbFactory = ({
       }),
   )
 
-const nodeFsVfsMap = new Map<string, NodeFS>()
-
 const makeNodeFsDb = ({
   sqlite3,
   fileName,
@@ -113,12 +111,11 @@ const makeNodeFsDb = ({
     // NOTE to keep the filePath short, we use the directory name in the vfs name
     // If this is becoming a problem, we can use a hashed version of the directory name
     const vfsName = `node-fs-${directory}`
-    if (nodeFsVfsMap.has(vfsName) === false) {
+    if (sqlite3.vfs_registered.has(vfsName) === false) {
       // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of NodeFS
       const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
       // @ts-expect-error TODO fix types
       sqlite3.vfs_register(nodeFsVfs, false)
-      nodeFsVfsMap.set(vfsName, nodeFsVfs)
     }
 
     yield* fs.makeDirectory(directory, { recursive: true })
@@ -131,7 +128,5 @@ const makeNodeFsDb = ({
     // NOTE SQLite will return a "disk I/O error" if the file path is too long.
     const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
 
-    const vfs = nodeFsVfsMap.get(vfsName)!
-
-    return { dbPointer, vfs }
+    return { dbPointer, vfs: {} as UNUSED<'only needed in web adapter currently and should longer-term be removed'> }
   }).pipe(UnexpectedError.mapToUnexpectedError)

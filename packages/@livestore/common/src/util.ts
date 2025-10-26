@@ -4,11 +4,16 @@ import type { Brand } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 export type ParamsObject = Record<string, SqlValue>
-export type SqlValue = string | number | Uint8Array | null
+export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
 export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
 
-export const SqlValueSchema = Schema.Union(Schema.String, Schema.Number, Schema.Uint8Array, Schema.Null)
+export const SqlValueSchema = Schema.Union(
+  Schema.String,
+  Schema.Number,
+  Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
+  Schema.Null,
+)
 
 export const PreparedBindValues = Schema.Union(
   Schema.Array(SqlValueSchema),
@@ -30,7 +35,6 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
     str += template[i] + String(arg)
   }
 
-  // eslint-disable-next-line unicorn/prefer-at
   return str + template[template.length - 1]
 }
 

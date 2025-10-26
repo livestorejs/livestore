@@ -1,6 +1,6 @@
-import type { SqliteDb } from '../adapter-types.js'
-import type { ParamsObject } from '../util.js'
-import { prepareBindValues } from '../util.js'
+import { type SqliteDb, SqliteError } from '../adapter-types.ts'
+import type { ParamsObject } from '../util.ts'
+import { prepareBindValues } from '../util.ts'
 
 // TODO bring back statement caching
 // will require proper scope-aware cleanup etc (for testing and apps with multiple LiveStore instances)
@@ -15,9 +15,16 @@ export const dbExecute = (db: SqliteDb, queryStr: string, bindValues?: ParamsObj
 
   const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
 
-  stmt.execute(preparedBindValues)
+  try {
+    stmt.execute(preparedBindValues)
 
-  stmt.finalize()
+    stmt.finalize()
+  } catch (cause) {
+    throw new SqliteError({
+      cause,
+      query: { sql: queryStr, bindValues: preparedBindValues ?? {} },
+    })
+  }
 }
 
 export const dbSelect = <T>(db: SqliteDb, queryStr: string, bindValues?: ParamsObject) => {

@@ -9,17 +9,17 @@ import {
   SessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
-import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { Thunk } from '../reactive.js'
-import { isThunk, NOT_REFRESHED_YET } from '../reactive.js'
-import type { RefreshReason } from '../store/store-types.js'
-import { isValidFunctionString } from '../utils/function-string.js'
-import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
-import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.js'
+import type { Thunk } from '../reactive.ts'
+import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
+import type { RefreshReason } from '../store/store-types.ts'
+import { isValidFunctionString } from '../utils/function-string.ts'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
+import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.ts'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
@@ -124,13 +124,18 @@ export const queryDb: {
         reactivityGraph: ctx.reactivityGraph.deref()!,
         queryInput,
         label,
-        map: options?.map,
-        otelContext,
         def,
+        ...omitUndefineds({ map: options?.map, otelContext }),
       })
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
@@ -314,8 +319,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
 
-    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => (a: TResult, b: TResult) =>
-      a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : Schema.equivalence(resultSchema)(a, b)
+    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
+      // Creating the equivalence function eagerly in outer scope as it might be expensive
+      const eq = Schema.equivalence(resultSchema)
+      return (a: TResult, b: TResult) => (a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b))
+    }
 
     // NOTE we try to create the equality function eagerly as it might be expensive
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
@@ -420,7 +428,11 @@ Result:`,
             return result
           },
         ),
-      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.result' }, equal: resultsEqual },
+      {
+        label: `${label}:results`,
+        meta: { liveStoreThunkType: 'db.result' },
+        ...omitUndefineds({ equal: resultsEqual }),
+      },
     )
 
     this.results$ = results$

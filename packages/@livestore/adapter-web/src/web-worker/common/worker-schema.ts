@@ -2,9 +2,9 @@ import {
   BootStatus,
   Devtools,
   LeaderAheadError,
-  LeaderPullCursor,
   liveStoreVersion,
   MigrationsReport,
+  SyncBackend,
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
@@ -44,160 +44,209 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
-export namespace LeaderWorkerOuter {
-  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
+export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
+  'InitialMessage',
+  {
     payload: { port: Transferable.MessagePort, storeId: Schema.String, clientId: Schema.String },
     success: Schema.Void,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class Request extends Schema.Union(InitialMessage) {}
-}
+export class LeaderWorkerOuterRequest extends Schema.Union(LeaderWorkerOuterInitialMessage) {}
 
 // TODO unify this code with schema from node adapter
-export namespace LeaderWorkerInner {
-  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
+export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(
+  'InitialMessage',
+  {
     payload: {
       storageOptions: StorageType,
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
       clientId: Schema.String,
       debugInstanceId: Schema.String,
-      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
+      syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
     },
     success: Schema.Void,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class BootStatusStream extends Schema.TaggedRequest<BootStatusStream>()('BootStatusStream', {
+export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerBootStatusStream>()(
+  'BootStatusStream',
+  {
     payload: {},
     success: BootStatus,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
+export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushToLeader>()(
+  'PushToLeader',
+  {
     payload: {
       batch: Schema.Array(LiveStoreEvent.AnyEncoded),
     },
     success: Schema.Void,
     failure: Schema.Union(UnexpectedError, LeaderAheadError),
-  }) {}
+  },
+) {}
 
-  export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
-    payload: {
-      cursor: LeaderPullCursor,
-    },
+export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
+  payload: {
+    cursor: EventSequenceNumber.EventSequenceNumber,
+  },
+  success: Schema.Struct({
+    payload: SyncState.PayloadUpstream,
+  }),
+  failure: UnexpectedError,
+}) {}
+
+export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
+  payload: {},
+  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+  failure: UnexpectedError,
+}) {}
+
+export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<LeaderWorkerInnerExportEventlog>()(
+  'ExportEventlog',
+  {
+    payload: {},
+    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<LeaderWorkerInnerGetRecreateSnapshot>()(
+  'GetRecreateSnapshot',
+  {
+    payload: {},
     success: Schema.Struct({
-      payload: SyncState.PayloadUpstream,
-      mergeCounter: Schema.Number,
-    }),
-    failure: UnexpectedError,
-  }) {}
-
-  export class Export extends Schema.TaggedRequest<Export>()('Export', {
-    payload: {},
-    success: Transferable.Uint8Array,
-    failure: UnexpectedError,
-  }) {}
-
-  export class ExportEventlog extends Schema.TaggedRequest<ExportEventlog>()('ExportEventlog', {
-    payload: {},
-    success: Transferable.Uint8Array,
-    failure: UnexpectedError,
-  }) {}
-
-  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
-    payload: {},
-    success: Schema.Struct({
-      snapshot: Transferable.Uint8Array,
+      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class GetLeaderHead extends Schema.TaggedRequest<GetLeaderHead>()('GetLeaderHead', {
+export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderHead>()(
+  'GetLeaderHead',
+  {
     payload: {},
     success: EventSequenceNumber.EventSequenceNumber,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
+export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderSyncState>()(
+  'GetLeaderSyncState',
+  {
     payload: {},
     success: SyncState.SyncState,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
+export class LeaderWorkerInnerSyncStateStream extends Schema.TaggedRequest<LeaderWorkerInnerSyncStateStream>()(
+  'SyncStateStream',
+  {
     payload: {},
-    success: Schema.Void,
+    success: SyncState.SyncState,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class ExtraDevtoolsMessage extends Schema.TaggedRequest<ExtraDevtoolsMessage>()('ExtraDevtoolsMessage', {
+export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
+  'GetNetworkStatus',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerNetworkStatusStream>()(
+  'NetworkStatusStream',
+  {
+    payload: {},
+    success: SyncBackend.NetworkStatus,
+    failure: UnexpectedError,
+  },
+) {}
+
+export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
+  payload: {},
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
+
+export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<LeaderWorkerInnerExtraDevtoolsMessage>()(
+  'ExtraDevtoolsMessage',
+  {
     payload: {
       message: Devtools.Leader.MessageToApp,
     },
     success: Schema.Void,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export const Request = Schema.Union(
-    InitialMessage,
-    BootStatusStream,
-    PushToLeader,
-    PullStream,
-    Export,
-    ExportEventlog,
-    GetRecreateSnapshot,
-    GetLeaderHead,
-    GetLeaderSyncState,
-    Shutdown,
-    ExtraDevtoolsMessage,
-    WebmeshWorker.Schema.CreateConnection,
-  )
-  export type Request = typeof Request.Type
-}
+export const LeaderWorkerInnerRequest = Schema.Union(
+  LeaderWorkerInnerInitialMessage,
+  LeaderWorkerInnerBootStatusStream,
+  LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerExport,
+  LeaderWorkerInnerExportEventlog,
+  LeaderWorkerInnerGetRecreateSnapshot,
+  LeaderWorkerInnerGetLeaderHead,
+  LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerSyncStateStream,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
+  LeaderWorkerInnerShutdown,
+  LeaderWorkerInnerExtraDevtoolsMessage,
+  WebmeshWorker.Schema.CreateConnection,
+)
+export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
-export namespace SharedWorker {
-  export class InitialMessagePayloadFromClientSession extends Schema.TaggedStruct('FromClientSession', {
-    initialMessage: LeaderWorkerInner.InitialMessage,
-  }) {}
-
-  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
-    payload: {
-      payload: Schema.Union(InitialMessagePayloadFromClientSession, Schema.TaggedStruct('FromWebBridge', {})),
-      // To guard against scenarios where a client session is already running a newer version of LiveStore
-      // We should probably find a better way to handle those cases once they become more common.
-      liveStoreVersion: Schema.Literal(liveStoreVersion),
-    },
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
-
-  export class UpdateMessagePort extends Schema.TaggedRequest<UpdateMessagePort>()('UpdateMessagePort', {
+export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
+  'UpdateMessagePort',
+  {
     payload: {
       port: Transferable.MessagePort,
+      // Version gate to prevent mixed LiveStore builds talking to the same SharedWorker
+      liveStoreVersion: Schema.Literal(liveStoreVersion),
+      /**
+       * Initial configuration for the leader worker. This replaces the previous
+       * two-phase SharedWorker handshake and is sent under the tab lock by the
+       * elected leader. Subsequent calls can omit changes and will simply rebind
+       * the port (join) without reinitializing the store.
+       */
+      initial: LeaderWorkerInnerInitialMessage,
     },
     success: Schema.Void,
     failure: UnexpectedError,
-  }) {}
+  },
+) {}
 
-  export class Request extends Schema.Union(
-    InitialMessage,
-    UpdateMessagePort,
+export class SharedWorkerRequest extends Schema.Union(
+  SharedWorkerUpdateMessagePort,
 
-    // Proxied requests
-    LeaderWorkerInner.BootStatusStream,
-    LeaderWorkerInner.PushToLeader,
-    LeaderWorkerInner.PullStream,
-    LeaderWorkerInner.Export,
-    LeaderWorkerInner.GetRecreateSnapshot,
-    LeaderWorkerInner.ExportEventlog,
-    LeaderWorkerInner.GetLeaderHead,
-    LeaderWorkerInner.GetLeaderSyncState,
-    LeaderWorkerInner.Shutdown,
-    LeaderWorkerInner.ExtraDevtoolsMessage,
+  // Proxied requests
+  LeaderWorkerInnerBootStatusStream,
+  LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerExport,
+  LeaderWorkerInnerGetRecreateSnapshot,
+  LeaderWorkerInnerExportEventlog,
+  LeaderWorkerInnerGetLeaderHead,
+  LeaderWorkerInnerGetLeaderSyncState,
+  LeaderWorkerInnerSyncStateStream,
+  LeaderWorkerInnerGetNetworkStatus,
+  LeaderWorkerInnerNetworkStatusStream,
+  LeaderWorkerInnerShutdown,
+  LeaderWorkerInnerExtraDevtoolsMessage,
 
-    WebmeshWorker.Schema.CreateConnection,
-  ) {}
-}
+  WebmeshWorker.Schema.CreateConnection,
+) {}

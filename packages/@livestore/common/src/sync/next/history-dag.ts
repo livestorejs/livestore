@@ -1,6 +1,6 @@
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import { factsToString, validateFacts } from './facts.js'
-import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import { factsToString, validateFacts } from './facts.ts'
+import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.ts'
 
 export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skipFactsCheck: boolean }) => {
   if (options?.skipFactsCheck !== true) {
@@ -18,7 +18,9 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
   const dag = emptyHistoryDag()
 
-  dagNodes.forEach((node) => dag.addNode(EventSequenceNumber.toString(node.seqNum), node))
+  dagNodes.forEach((node) => {
+    dag.addNode(EventSequenceNumber.toString(node.seqNum), node)
+  })
 
   dagNodes.forEach((node) => {
     if (EventSequenceNumber.toString(node.parentSeqNum) !== EventSequenceNumber.toString(rootParentNum)) {

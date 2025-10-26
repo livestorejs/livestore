@@ -5,7 +5,10 @@ const TEST_LIVESTORE_SCHEMA_PATH_JSON = process.env.TEST_LIVESTORE_SCHEMA_PATH_J
 
 // https://vitejs.dev/config
 export default defineConfig({
-  server: { fs: { strict: false } },
+  server: {
+    host: '0.0.0.0',
+    fs: { strict: false },
+  },
   root: import.meta.dirname,
   optimizeDeps: {
     // TODO remove @livestore/wa-sqlite once fixed https://github.com/vitejs/vite/issues/8427

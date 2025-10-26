@@ -1,6 +1,5 @@
+/** biome-ignore-all lint/a11y: test files need a11y disabled */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { sql } from '@livestore/common'
-import { rawSqlEvent } from '@livestore/common/schema'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import * as ReactTesting from '@testing-library/react'
@@ -8,9 +7,9 @@ import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { describe, expect, it } from 'vitest'
 
-import { events, schema, tables } from './__tests__/fixture.js'
-import { LiveStoreProvider } from './LiveStoreProvider.js'
-import * as LiveStoreReact from './mod.js'
+import { events, schema, tables } from './__tests__/fixture.tsx'
+import { LiveStoreProvider } from './LiveStoreProvider.tsx'
+import * as LiveStoreReact from './mod.ts'
 
 describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) => {
   const WithStrictMode = strictMode ? React.StrictMode : React.Fragment
@@ -33,15 +32,11 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
 
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
       const bootCb = React.useCallback(
-        (store: Store) =>
-          store.commit(
-            rawSqlEvent({
-              sql: sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-            }),
-          ),
+        (store: Store) => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })),
         [],
       )
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+
+      // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate is used to force a re-render
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
         <WithStrictMode>
@@ -95,16 +90,11 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
     }
 
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
-      const bootCb = React.useCallback(
-        (store: Store) =>
-          store.commit(
-            rawSqlEvent({
-              sql: sql`INSERT OR IGNORE INTO todos_missing_table (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-            }),
-          ),
-        [],
-      )
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const bootCb = React.useCallback((_store: Store) => {
+        // This should trigger an error because we're trying to insert invalid data
+        throw new Error('Simulated boot error')
+      }, [])
+      // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate is used to force a re-render
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
         <WithStrictMode>

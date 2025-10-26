@@ -1,0 +1,9 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "@astrojs/astro-types"],
+    "jsx": "preserve",
+    "jsxImportSource": "astro"
+  },
+  "include": ["astro.config.mjs", "src", "scripts", "tests", "playwright.config.ts"]
+}

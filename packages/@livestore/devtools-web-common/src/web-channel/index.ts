@@ -5,12 +5,11 @@ import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/e
 import type { MeshNode } from '@livestore/webmesh'
 import { WebmeshSchema } from '@livestore/webmesh'
 
-import * as WorkerSchema from '../worker/schema.js'
+import * as WorkerSchema from '../worker/schema.ts'
 
-export * as WorkerSchema from '../worker/schema.js'
+export * as WorkerSchema from '../worker/schema.ts'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __debugWebmeshNode: any
 }
 
@@ -47,9 +46,8 @@ export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSess
 export const makeStaticClientSessionChannel = {
   contentscriptMain: Effect.suspend(() =>
     WebChannel.windowChannel({
-      // eslint-disable-next-line unicorn/prefer-global-this
       listenWindow: window,
-      // eslint-disable-next-line unicorn/prefer-global-this
+
       sendWindow: window,
       schema: { listen: ClientSessionContentscriptMainReq, send: ClientSessionContentscriptMainRes },
       ids: { own: 'contentscript-main-static', other: 'client-session-static' },
@@ -57,9 +55,8 @@ export const makeStaticClientSessionChannel = {
   ),
   clientSession: Effect.suspend(() =>
     WebChannel.windowChannel({
-      // eslint-disable-next-line unicorn/prefer-global-this
       listenWindow: window,
-      // eslint-disable-next-line unicorn/prefer-global-this
+
       sendWindow: window,
       schema: { listen: ClientSessionContentscriptMainRes, send: ClientSessionContentscriptMainReq },
       ids: { own: 'client-session-static', other: 'contentscript-main-static' },

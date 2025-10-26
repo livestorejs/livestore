@@ -1,6 +1,6 @@
 import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-import * as eventsDefs from './events.js'
+import * as eventsDefs from './events.ts'
 
 const items = State.SQLite.table({
   name: 'items',
@@ -44,7 +44,7 @@ const materializers = State.SQLite.materializers(events, {
 
     const updates = []
     for (let i = 0; i < allItems.length; i += 10) {
-      updates.push(items.update({ label: allItems[i]!.label + ' !!!' }).where({ id: allItems[i]!.id }))
+      updates.push(items.update({ label: `${allItems[i]!.label} !!!` }).where({ id: allItems[i]!.id }))
     }
 
     return updates

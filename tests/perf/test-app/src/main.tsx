@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/nursery: testing */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider, useQuery, useStore } from '@livestore/react'
@@ -5,10 +7,10 @@ import React, { StrictMode } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
-import LiveStoreWorker from './livestore.worker.js?worker'
-import { allItems$, uiState$ } from './queries.js'
-import { events, type Item, type Items, schema } from './schema.js'
-import { makeTracer } from './otel.js'
+import LiveStoreWorker from './livestore.worker.ts?worker'
+import { makeTracer } from './otel.ts'
+import { allItems$, uiState$ } from './queries.ts'
+import { events, type Item, type Items, schema } from './schema.ts'
 
 const A = [
   'pretty',
@@ -103,7 +105,7 @@ const ItemRow = React.memo(({ item }: { item: Item }) => {
           {RemoveIcon}
         </Button>
       </td>
-      <td></td>
+      <td />
     </tr>
   )
 })

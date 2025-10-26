@@ -1,7 +1,46 @@
 packages:
   - scripts
   - docs
+  - docs/src/content/_assets/code
   - packages/@livestore/*
-  - examples/src/*
-  - examples/standalone/*
+  - packages/@local/*
+  - packages/@local/astro-twoslash-code/example
+  - examples/*
   - tests/*
+
+catalog:
+  # Type packages
+  "@types/react": 19.1.13
+  "@types/react-dom": 19.1.9
+  "@types/node": 24.5.2
+  "@types/chrome": 0.1.4
+
+  # Build tools
+  typescript: 5.9.2
+  vite: 7.1.7
+  vitest: 3.2.4
+  "@vitest/ui": 3.2.4
+  "@vitejs/plugin-react": 5.0.3
+
+  # Styling
+  tailwindcss: 4.1.13
+  "@tailwindcss/vite": 4.1.13
+
+  # React ecosystem
+  react: 19.1.0
+  "react-dom": 19.1.0
+
+  # Testing
+  "@playwright/test": 1.56.0
+
+  # Effect/OpenTelemetry
+  effect: 3.18.0
+  "@effect/opentelemetry": 0.58.0
+  "@opentelemetry/api": 1.9.0
+
+  # Common utilities
+  graphql: 16.11.0
+
+  # Cloudflare tools
+  wrangler: 4.42.2
+  "@cloudflare/workers-types": 4.20250923.0

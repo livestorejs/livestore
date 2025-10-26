@@ -2,8 +2,8 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import { createStore } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
-
-import { Bridge, schema } from './shared.js'
+import { ResultStoreBootError } from './bridge.ts'
+import { schema } from './schema.ts'
 
 export const test = () =>
   Effect.gen(function* () {
@@ -15,7 +15,7 @@ export const test = () =>
     Effect.tapCauseLogPretty,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeSync(Bridge.ResultStoreBootError)(Bridge.ResultStoreBootError.make({ exit })))
+      window.postMessage(Schema.encodeSync(ResultStoreBootError)(ResultStoreBootError.make({ exit })))
     }),
     Effect.scoped,
     provideOtel({}),

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.7/schema.json",
+  // WORKAROUND: Biome 2.1.x nested root configuration issue
+  // Prevents "Found a nested root configuration" errors in parent repo
+  // TODO: Remove "root": false once Biome properly supports git submodules
+  // "root": false,
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "packages/**",
+      "!packages/@livestore/wa-sqlite",
+      "examples/**",
+      "!**/routeTree.gen.ts",
+      "docs/**",
+      "!docs/**/.astro",
+      "tests/**",
+      "scripts/**",
+      "contributor-docs/**",
+      "*.{json,jsonc,js,ts,md}"
+    ],
+    "ignoreUnknown": true,
+    "experimentalScannerIgnores": [
+      "node_modules",
+      "dist",
+      ".wrangler",
+      ".vercel",
+      ".netlify",
+      ".astro",
+      ".nitro",
+      ".tanstack",
+      ".direnv",
+      "playwright-report",
+      "test-results",
+      "nix",
+      "wip",
+      "patches"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "lineWidth": 120
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noShadowRestrictedNames": "off"
+      },
+      "style": {
+        "noUselessElse": "off",
+        "noNonNullAssertion": "off",
+        "noUnusedTemplateLiteral": "off",
+        "noParameterAssign": "error",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error"
+      },
+      "complexity": {
+        "useArrowFunction": "error",
+        "noBannedTypes": "off",
+        "noUselessTernary": "off"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "useImportExtensions": "error",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error",
+        "noUnusedLabels": {
+          "level": "warn"
+        },
+        "useYield": "off"
+      },
+      "nursery": {}
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded"
+    }
+  },
+  "json": {
+    "formatter": {}
+  },
+  "overrides": [
+    {
+      // Disable noUnusedVariables for Astro files due to false positives
+      // Biome only analyzes frontmatter, not template usage
+      // See: https://github.com/biomejs/biome/discussions/1254
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      // Disable noUnknownAtRules for CSS files that use Tailwind CSS
+      // Tailwind uses custom at-rules like @apply, @config, @theme, @custom-variant
+      // See: https://github.com/biomejs/biome/discussions/3195
+      "includes": ["**/*.css", "**/tailwind.css", "**/style.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+name = "web-linearlite-sync"
+main = "./src/server.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = [
+  "enable_request_signal",      # Needed for HTTP RPC streams
+  "nodejs_compat",              # needed for @opentelemetry/*
+  "enable_nodejs_http_modules", # Required for node:http module resolution in dev server
+]
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.prod]
+name = "web-linearlite-sync"
+
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.preview]
+name = "web-linearlite-sync-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.dev]
+name = "web-linearlite-sync-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[vars]
+# should be set via CF dashboard (as secret)
+# ADMIN_SECRET = "..."

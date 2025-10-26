@@ -1,0 +1,48 @@
+name = "example-web-todomvc-sync-cf"
+main = "./src/cf-worker/index.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = [
+  "enable_request_signal",
+  "nodejs_compat",
+]
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.prod]
+name = "example-web-todomvc-sync-cf"
+
+[[env.prod.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.preview]
+name = "example-web-todomvc-sync-cf-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.preview.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]
+
+[env.dev]
+name = "example-web-todomvc-sync-cf-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO"]

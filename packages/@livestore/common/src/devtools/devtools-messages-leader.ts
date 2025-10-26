@@ -1,9 +1,9 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { EventSequenceNumber } from '../schema/mod.js'
-import * as SyncState from '../sync/syncstate.js'
-import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import { EventSequenceNumber } from '../schema/mod.ts'
+import * as SyncState from '../sync/syncstate.ts'
+import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.ts'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
@@ -71,12 +71,12 @@ export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
 export class SnapshotReq extends LSDReqResMessage('LSD.Leader.SnapshotReq', {}) {}
 
 export class SnapshotRes extends LSDReqResMessage('LSD.Leader.SnapshotRes', {
-  snapshot: Transferable.Uint8Array,
+  snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
 }) {}
 
 export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile', {
   payload: {
-    data: Transferable.Uint8Array,
+    data: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
   },
   success: {},
   error: {
@@ -103,7 +103,7 @@ export class CommitEventRes extends LSDReqResMessage('LSD.Leader.CommitEventRes'
 export class EventlogReq extends LSDReqResMessage('LSD.Leader.EventlogReq', {}) {}
 
 export class EventlogRes extends LSDReqResMessage('LSD.Leader.EventlogRes', {
-  eventlog: Transferable.Uint8Array,
+  eventlog: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
 }) {}
 
 export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}

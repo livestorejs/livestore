@@ -1,10 +1,11 @@
 import type { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
 
-import type { LiveStoreContextProps } from '../store/create-store.js'
-import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.js'
+import type { LiveStoreContextProps } from '../store/create-store.ts'
+import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'
 
 export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,
@@ -15,6 +16,8 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
   disableDevtools,
   onBootStatus,
   batchUpdates,
+  syncPayload,
+  syncPayloadSchema,
 }: LiveStoreContextProps<TSchema, TContext>): Effect.Effect<
   LiveStoreContextRunning['Type'],
   UnexpectedError | Cause.TimeoutException,
@@ -25,17 +28,14 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
       const store = yield* createStore({
         schema,
         storeId,
-        context,
-        boot,
         adapter,
-        disableDevtools,
-        onBootStatus,
         batchUpdates,
+        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
       })
 
       globalThis.__debugLiveStore ??= {}
       if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-        globalThis.__debugLiveStore['_'] = store
+        globalThis.__debugLiveStore._ = store
       }
       globalThis.__debugLiveStore[storeId] = store
 

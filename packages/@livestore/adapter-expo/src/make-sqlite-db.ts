@@ -6,12 +6,9 @@ import {
   SqliteDbHelper,
   SqliteError,
 } from '@livestore/common'
-import { shouldNeverHappen } from '@livestore/utils'
+import { EventSequenceNumber } from '@livestore/common/schema'
+import { ensureUint8ArrayBuffer, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-// TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
-// // @ts-expect-error package misses `exports`
-// import * as ExpoFs from 'expo-file-system/src/next'
-// import * as ExpoFs from 'expo-file-system'
 import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
@@ -37,7 +34,7 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
   Effect.gen(function* () {
     // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
-      const db = SQLite.openDatabaseSync(':memory:')
+      const db = SQLite.openDatabaseSync(':memory:', { useNewConnection: true })
 
       return makeSqliteDb_({
         db,
@@ -77,6 +74,10 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
   const sqliteDb: SqliteDb<TMetadata> = {
     metadata,
     _tag: 'SqliteDb',
+    debug: {
+      // Setting initially to root but will be set to correct value shortly after
+      head: EventSequenceNumber.ROOT,
+    },
     prepare: (queryStr) => {
       try {
         const dbStmt = db.prepareSync(queryStr)
@@ -117,9 +118,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         stmt.finalizeSync()
       }
     }),
-    export: () => {
-      return db.serializeSync()
-    },
+    export: SqliteDbHelper.makeExport(() => ensureUint8ArrayBuffer(db.serializeSync())),
     select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
@@ -169,7 +168,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       const session = db.createSessionSync()
       session.attachSync(null)
       return {
-        changeset: () => session.createChangesetSync(),
+        changeset: () => ensureUint8ArrayBuffer(session.createChangesetSync()),
         finish: () => session.closeSync(),
       }
     },
@@ -179,7 +178,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       // apply an inverted changeset
       return {
         invert: () => {
-          const inverted = session.invertChangesetSync(data)
+          const inverted = ensureUint8ArrayBuffer(session.invertChangesetSync(data))
           return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {

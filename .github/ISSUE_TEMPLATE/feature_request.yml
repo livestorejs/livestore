@@ -1,0 +1,89 @@
+name: ✨ Feature Request
+description: Propose a new feature or enhancement for LiveStore
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to propose a new feature! Please describe your idea as clearly as possible.
+        
+        **Before you start:** Please search [existing issues](https://github.com/livestorejs/livestore/issues) and [discussions](https://github.com/livestorejs/livestore/discussions) to see if your feature has already been requested.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve? What use case does it address?
+        A clear description of the problem helps us understand the context and motivation.
+      placeholder: |
+        Example: "I'm always frustrated when..."
+        Example: "It would be helpful if..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe the solution you'd like to see. Be as specific as possible about the API, behavior, or functionality.
+      placeholder: |
+        Describe your proposed solution in detail:
+        - What should the API look like?
+        - How should it behave?
+        - What would the developer experience be?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: |
+        Have you considered any alternative approaches or workarounds?
+        This helps us understand the full scope of possible solutions.
+      placeholder: |
+        Describe any alternative solutions or features you've considered:
+        - What other approaches could solve this problem?
+        - Are there existing workarounds?
+        - What are the trade-offs of different approaches?
+
+  - type: input
+    id: package
+    attributes:
+      label: Which package(s) would this affect?
+      description: List the affected packages, or specify "New package" or "Documentation"
+      placeholder: e.g., @livestore/react, @livestore/adapter-web, or "New package"
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority/Impact
+      description: How important is this feature to you?
+      options:
+        - "Nice to have"
+        - "Would be helpful"
+        - "Important for my use case"
+        - "Critical/blocking"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context, screenshots, examples, or links about the feature request here.
+        
+        **Tip:** You can attach images by clicking this area to highlight it and then dragging files in.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues and discussions to ensure this feature hasn't been requested before
+          required: true
+        - label: I have clearly described the problem this feature would solve
+          required: true

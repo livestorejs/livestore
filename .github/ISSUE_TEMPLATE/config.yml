@@ -1,0 +1,13 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Discussion
+    url: https://github.com/livestorejs/livestore/discussions
+    about: Ask questions, discuss ideas, share projects, and get help from the community
+
+  - name: 📖 Documentation
+    url: https://livestore.dev
+    about: Check the official documentation for guides and examples
+
+  - name: 🎮 Discord Community
+    url: https://discord.gg/your-discord-invite
+    about: Join our Discord server for real-time help and community chat

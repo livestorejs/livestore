@@ -2,8 +2,8 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
-import { shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
@@ -61,13 +61,19 @@ export const queryGraphQL = <
         document,
         genVariableValues,
         label,
-        map,
+        ...omitUndefineds({ map }),
         reactivityGraph: ctx.reactivityGraph.deref()!,
         def,
       })
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueries.LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
@@ -139,7 +145,9 @@ export class LiveStoreGraphQLQuery<
             : shouldNeverHappen(`Invalid map function ${map}`)
 
     // TODO don't even create a thunk if variables are static
-    let variableValues$OrvariableValues
+    let variableValues$OrvariableValues:
+      | TVariableValues
+      | ReactiveGraph.Thunk<TVariableValues, LiveQueries.ReactivityGraphContext, RefreshReason>
 
     if (typeof genVariableValues === 'function') {
       variableValues$OrvariableValues = this.reactivityGraph.makeThunk(
@@ -230,6 +238,7 @@ export class LiveStoreGraphQLQuery<
         for (const error of res.errors) {
           console.error(error)
         }
+        // biome-ignore lint/suspicious/noDebugger: debug
         debugger
         shouldNeverHappen(`GraphQL error: ${res.errors.join('\n')}`)
       }

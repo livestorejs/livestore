@@ -1,12 +1,12 @@
 import { Schema } from '@livestore/utils/effect'
 
-import type { EventDef } from '../../../schema/EventDef.js'
-import { defineEvent, defineFacts } from '../../../schema/EventDef.js'
-import * as EventSequenceNumber from '../../../schema/EventSequenceNumber.js'
-import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.js'
-import { historyDagFromNodes } from '../history-dag.js'
-import type { HistoryDagNode } from '../history-dag-common.js'
-import { rootEventNode } from '../history-dag-common.js'
+import type { EventDef } from '../../../schema/EventDef.ts'
+import { defineEvent, defineFacts } from '../../../schema/EventDef.ts'
+import * as EventSequenceNumber from '../../../schema/EventSequenceNumber.ts'
+import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.ts'
+import { historyDagFromNodes } from '../history-dag.ts'
+import type { HistoryDagNode } from '../history-dag-common.ts'
+import { rootEventNode } from '../history-dag-common.ts'
 
 export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
   seqNum: EventSequenceNumber.toString(seqNum),
@@ -144,7 +144,10 @@ export const toEventNodes = (
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const eventDef = eventDefs[partialEvent.name]!
-    const eventNum = EventSequenceNumber.nextPair(currentEventSequenceNumber, eventDef.options.clientOnly).seqNum
+    const eventNum = EventSequenceNumber.nextPair({
+      seqNum: currentEventSequenceNumber,
+      isClient: eventDef.options.clientOnly,
+    }).seqNum
     currentEventSequenceNumber = eventNum
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
@@ -221,8 +224,14 @@ const getParentNum = (eventNum: EventSequenceNumber.EventSequenceNumber): EventS
   const clientParentNum = eventNum.client - 1
 
   if (clientParentNum < 0) {
-    return EventSequenceNumber.make({ global: globalParentNum - 1, client: EventSequenceNumber.clientDefault })
+    return EventSequenceNumber.make({
+      global: globalParentNum - 1,
+      client: EventSequenceNumber.clientDefault,
+    })
   }
 
-  return EventSequenceNumber.make({ global: globalParentNum, client: clientParentNum })
+  return EventSequenceNumber.make({
+    global: globalParentNum,
+    client: clientParentNum,
+  })
 }

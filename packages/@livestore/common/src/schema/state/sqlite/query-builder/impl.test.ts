@@ -1,9 +1,9 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { State } from '../../../mod.js'
-import type { QueryBuilder } from './api.js'
-import { getResultSchema } from './impl.js'
+import { State } from '../../../mod.ts'
+import type { QueryBuilder } from './api.ts'
+import { getResultSchema } from './impl.ts'
 
 const todos = State.SQLite.table({
   name: 'todos',
@@ -55,7 +55,7 @@ const UiStateWithDefaultId = State.SQLite.clientDocument({
   },
 })
 
-export const issue = State.SQLite.table({
+const issue = State.SQLite.table({
   name: 'issue',
   columns: {
     id: State.SQLite.integer({ primaryKey: true }),
@@ -116,11 +116,23 @@ describe('query builder', () => {
             1,
           ],
           "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string } | undefined> <-> { readonly id: string; readonly text: string } | undefined)",
+        }
+      `)
+
+      expect(dump(db.todos.select('id', 'text').first({ behaviour: 'error' }))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+          ],
+          "query": "SELECT id, text FROM 'todos' LIMIT ?",
           "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
         }
       `)
 
-      expect(dump(db.todos.select('id', 'text').first({ fallback: () => undefined }))).toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.select('id', 'text').first({ behaviour: 'fallback', fallback: () => undefined })),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
@@ -166,8 +178,9 @@ describe('query builder', () => {
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "2024-01-01T00:00:00.000Z",
@@ -176,8 +189,9 @@ describe('query builder', () => {
             "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
           }
         `)
-      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "active",
@@ -186,14 +200,34 @@ describe('query builder', () => {
             "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
           }
         `)
-      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "active",
               "completed",
             ],
             "query": "SELECT id, text FROM 'todos' WHERE status NOT IN (?, ?)",
+            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+          }
+        `)
+
+      expect(
+        dump(
+          db.todos
+            .select('id', 'text')
+            .where({ completed: false })
+            .where({ status: { op: 'IN', value: ['active'] } })
+            .where({ deletedAt: undefined }),
+        ),
+      ).toMatchInlineSnapshot(`
+          {
+            "bindValues": [
+              0,
+              "active",
+            ],
+            "query": "SELECT id, text FROM 'todos' WHERE completed = ? AND status IN (?)",
             "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
           }
         `)
@@ -375,8 +409,7 @@ describe('query builder', () => {
     })
 
     it('should handle INSERT queries with undefined values', () => {
-      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active', completed: undefined })))
-        .toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -443,8 +476,7 @@ describe('query builder', () => {
     })
 
     it('should handle UPDATE queries with undefined values', () => {
-      expect(dump(db.todos.update({ status: undefined, text: 'some text' }).where({ id: '123' })))
-        .toMatchInlineSnapshot(`
+      expect(dump(db.todos.update({ text: 'some text' }).where({ id: '123' }))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "some text",
@@ -483,8 +515,9 @@ describe('query builder', () => {
     })
 
     it('should handle INSERT with ON CONFLICT', () => {
-      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -516,8 +549,9 @@ describe('query builder', () => {
         }
       `)
 
-      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -547,8 +581,9 @@ describe('query builder', () => {
     })
 
     it('should handle RETURNING clause', () => {
-      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "123",
@@ -560,8 +595,9 @@ describe('query builder', () => {
           }
         `)
 
-      expect(dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')))
-        .toMatchInlineSnapshot(`
+      expect(
+        dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "completed",
@@ -580,6 +616,191 @@ describe('query builder', () => {
           "query": "DELETE FROM 'todos' WHERE status = ? RETURNING id",
           "schema": "ReadonlyArray<{ readonly id: string }>",
         }
+      `)
+    })
+
+    it('should handle where().delete() - preserving where clauses', () => {
+      expect(dump(db.todos.where({ status: 'completed' }).delete())).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ?",
+          "schema": "number",
+        }
+      `)
+
+      // Multiple where clauses
+      expect(dump(db.todos.where({ status: 'completed' }).where({ deletedAt: null }).delete())).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ? AND deletedAt IS NULL",
+          "schema": "number",
+        }
+      `)
+    })
+
+    it('should handle where().update() - preserving where clauses', () => {
+      expect(dump(db.todos.where({ id: '123' }).update({ status: 'completed' }))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+          "schema": "number",
+        }
+      `)
+
+      // Multiple where clauses
+      expect(
+        dump(db.todos.where({ id: '123' }).where({ deletedAt: null }).update({ status: 'completed' })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ? AND deletedAt IS NULL",
+          "schema": "number",
+        }
+      `)
+    })
+
+    it('should have equivalent behavior for both delete patterns', () => {
+      const pattern1 = dump(db.todos.where({ status: 'completed', id: '123' }).delete())
+      const pattern2 = dump(db.todos.delete().where({ status: 'completed', id: '123' }))
+
+      expect(pattern1).toEqual(pattern2)
+    })
+
+    it('should have equivalent behavior for both update patterns', () => {
+      const pattern1 = dump(db.todos.where({ id: '123' }).update({ status: 'completed', text: 'Updated' }))
+      const pattern2 = dump(db.todos.update({ status: 'completed', text: 'Updated' }).where({ id: '123' }))
+
+      expect(pattern1).toEqual(pattern2)
+    })
+  })
+
+  describe('schema transforms', () => {
+    const Flat = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      contactFirstName: Schema.String,
+      contactLastName: Schema.String,
+      contactEmail: Schema.String.pipe(State.SQLite.withUnique),
+    })
+
+    const Nested = Schema.transform(
+      Flat,
+      Schema.Struct({
+        id: Schema.String,
+        contact: Schema.Struct({
+          firstName: Schema.String,
+          lastName: Schema.String,
+          email: Schema.String,
+        }),
+      }),
+      {
+        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+          id,
+          contact: {
+            firstName: contactFirstName,
+            lastName: contactLastName,
+            email: contactEmail,
+          },
+        }),
+        encode: ({ id, contact }) => ({
+          id,
+          contactFirstName: contact.firstName,
+          contactLastName: contact.lastName,
+          contactEmail: contact.email,
+        }),
+      },
+    )
+
+    const makeContactsTable = () =>
+      State.SQLite.table({
+        name: 'contacts',
+        schema: Nested,
+        // schema: Flat,
+      })
+
+    it('exposes flattened insert type while schema type is nested', () => {
+      const contactsTable = makeContactsTable()
+
+      type InsertInput = Parameters<(typeof contactsTable)['insert']>[0]
+      type NestedType = Schema.Schema.Type<typeof Nested>
+
+      type Assert<T extends true> = T
+
+      type InsertKeys = keyof InsertInput
+      type NestedKeys = keyof NestedType
+
+      type _InsertHasFlattenedColumns = Assert<
+        'contactFirstName' extends InsertKeys
+          ? 'contactLastName' extends InsertKeys
+            ? 'contactEmail' extends InsertKeys
+              ? true
+              : false
+            : false
+          : false
+      >
+
+      type _InsertDoesNotExposeNested = Assert<Extract<'contact', InsertKeys> extends never ? true : false>
+
+      type _SchemaTypeIsNested = Assert<'contact' extends NestedKeys ? true : false>
+
+      void contactsTable
+    })
+
+    it('fails to encode nested inserts because flat columns are required', () => {
+      const contactsTable = makeContactsTable()
+
+      expect(
+        contactsTable
+          // TODO in the future we should use decoded types here instead of encoded
+          .insert({
+            id: 'person-1',
+            contactFirstName: 'Ada',
+            contactLastName: 'Lovelace',
+            contactEmail: 'ada@example.com',
+          })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "person-1",
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+          ],
+          "query": "INSERT INTO 'contacts' (id, contactFirstName, contactLastName, contactEmail) VALUES (?, ?, ?, ?)",
+          "usedTables": Set {
+            "contacts",
+          },
+        }
+      `)
+    })
+
+    it('fails to encode nested inserts because flat columns are required', () => {
+      const contactsTable = makeContactsTable()
+
+      expect(() =>
+        contactsTable
+          .insert({
+            id: 'person-1',
+            // @ts-expect-error
+            contact: {
+              firstName: 'Ada',
+              lastName: 'Lovelace',
+              email: 'ada@example.com',
+            },
+          })
+          .asSql(),
+      ).toThrowErrorMatchingInlineSnapshot(`
+        [ParseError: contacts\n└─ ["contactFirstName"]\n   └─ is missing]
       `)
     })
   })

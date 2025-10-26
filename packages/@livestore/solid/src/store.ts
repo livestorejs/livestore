@@ -1,15 +1,14 @@
-import { type IntentionalShutdownCause, provideOtel, StoreInterrupted } from '@livestore/common'
+import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type SyncError } from '@livestore/common'
 import type {
   BootStatus,
   CreateStoreOptions,
-  LiveStoreContext as StoreContext_,
-  LiveStoreContextRunning,
   LiveStoreSchema,
   ShutdownDeferred,
   Store,
+  LiveStoreContext as StoreContext_,
 } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
-import { LS_DEV } from '@livestore/utils'
+import { LS_DEV, omitUndefineds } from '@livestore/utils'
 import { Cause, Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 
@@ -53,7 +52,12 @@ const [, setInternalStore] = Solid.createSignal<{
   counter: number
 }>(storeValue)
 
-export const [storeToExport, setStoreToExport] = Solid.createSignal<LiveStoreContextRunning['store']>()
+// TODO remove `any` store type
+// this will require fixing: error TS2742: The inferred type of 'storeToExport' cannot be named without a reference to '../node_modules/@livestore/common/src/schema/state/sqlite/db-schema/dsl/mod.ts'. This is likely not portable. A type annotation is necessary.
+export const [storeToExport, setStoreToExport]: [
+  Solid.Accessor<Store<any> | undefined>,
+  Solid.Setter<Store<any> | undefined>,
+] = Solid.createSignal<Store<LiveStoreSchema> | undefined>()
 
 const setupStore = async ({
   schema,
@@ -106,10 +110,8 @@ const setupStore = async ({
         const store = yield* createStore({
           schema,
           storeId,
-          boot,
           adapter,
-          batchUpdates,
-          disableDevtools,
+          ...omitUndefineds({ boot, batchUpdates, disableDevtools }),
           onBootStatus: (status) => {
             if (storeValue.value.stage === 'running' || storeValue.value.stage === 'error') return
             setContextValue(status)
@@ -120,12 +122,14 @@ const setupStore = async ({
         setupDone()
       }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
-      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted) =>
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) =>
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/solid] shutdown', Cause.pretty(cause))),
-        Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
+        Effect.tap((intentionalShutdown) => shutdownContext(intentionalShutdown)),
+        Effect.catchTag('InvalidPullError', (cause) => shutdownContext(cause)),
+        Effect.catchTag('InvalidPushError', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),

@@ -76,11 +76,11 @@ const textEncoder = new TextEncoder()
  * Encodes a given Uint8Array, ArrayBuffer or string into RFC4648 base64 representation
  * @param data
  */
-export const encode = (data: Uint8Array | string): string => {
+export const encode = (data: Uint8Array<ArrayBuffer> | string): string => {
   const uint8 =
     typeof data === 'string' ? textEncoder.encode(data) : data instanceof Uint8Array ? data : new Uint8Array(data)
-  let result = '',
-    i
+  let result = ''
+  let i: number
   const l = uint8.length
   for (i = 2; i < l; i += 3) {
     result += base64abc[uint8[i - 2]! >> 2]
@@ -113,7 +113,6 @@ export const decode = (b64: string): Uint8Array => {
   const size = binString.length
   const bytes = new Uint8Array(size)
   for (let i = 0; i < size; i++) {
-    // eslint-disable-next-line unicorn/prefer-code-point
     bytes[i] = binString.charCodeAt(i)
   }
   return bytes

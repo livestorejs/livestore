@@ -1,22 +1,25 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
-import type { MigrationOptions } from '../../../adapter-types.js'
-import { type Materializer, rawSqlEvent, rawSqlMaterializer } from '../../EventDef.js'
-import type { InternalState } from '../../schema.js'
-import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
-import { SqliteAst } from './db-schema/mod.js'
-import { stateSystemTables } from './system-tables.js'
-import { type TableDef, type TableDefBase } from './table-def.js'
+import type { MigrationOptions } from '../../../adapter-types.ts'
+import type { Materializer } from '../../EventDef.ts'
+import type { InternalState } from '../../schema.ts'
+import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
+import { SqliteAst } from './db-schema/mod.ts'
+import { stateSystemTables } from './system-tables/state-tables.ts'
+import type { TableDef, TableDefBase } from './table-def.ts'
 
-export * from './table-def.js'
+export * from '../../EventDef.ts'
 export {
-  ClientDocumentTableDefSymbol,
-  tableIsClientDocumentTable,
-  clientDocument,
   type ClientDocumentTableDef,
+  ClientDocumentTableDefSymbol,
   type ClientDocumentTableOptions,
-} from './client-document-def.js'
-export * from '../../EventDef.js'
+  clientDocument,
+  createOptimisticEventSchema,
+  tableIsClientDocumentTable,
+} from './client-document-def.ts'
+export * from './column-annotations.ts'
+export * from './column-spec.ts'
+export * from './table-def.ts'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
@@ -43,8 +46,6 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
   for (const [name, materializer] of Object.entries(inputSchema.materializers)) {
     materializers.set(name, materializer)
   }
-
-  materializers.set(rawSqlEvent.name, rawSqlMaterializer)
 
   for (const tableDef of inputTables) {
     if (tableIsClientDocumentTable(tableDef)) {

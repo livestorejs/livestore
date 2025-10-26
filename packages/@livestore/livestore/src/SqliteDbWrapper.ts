@@ -1,7 +1,9 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
 import {
+  BoundArray,
+  BoundMap,
   type DebugInfo,
+  getDurationMsFromSpan,
+  getStartTimeHighResFromSpan,
   type MutableDebugInfo,
   type PreparedBindValues,
   type PreparedStatement,
@@ -9,19 +11,13 @@ import {
   type SqliteDbChangeset,
   SqliteDbHelper,
   type SqliteDbSession,
-} from '@livestore/common'
-import {
-  BoundArray,
-  BoundMap,
-  getDurationMsFromSpan,
-  getStartTimeHighResFromSpan,
-  sql,
   SqliteError,
+  sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
-import QueryCache from './QueryCache.js'
+import QueryCache from './QueryCache.ts'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),
@@ -68,11 +64,16 @@ export class SqliteDbWrapper implements SqliteDb {
 
     configureSQLite(this)
   }
-  metadata: any
+  get debug() {
+    return this.db.debug
+  }
+  get metadata() {
+    return this.db.metadata
+  }
   prepare(queryStr: string): PreparedStatement {
     return this.db.prepare(queryStr)
   }
-  import(data: Uint8Array<ArrayBufferLike> | SqliteDb<any, any>) {
+  import(data: Uint8Array<ArrayBuffer> | SqliteDb<any, any>) {
     return this.db.import(data)
   }
   close(): void {
@@ -84,7 +85,7 @@ export class SqliteDbWrapper implements SqliteDb {
   session(): SqliteDbSession {
     return this.db.session()
   }
-  makeChangeset(data: Uint8Array): SqliteDbChangeset {
+  makeChangeset(data: Uint8Array<ArrayBuffer>): SqliteDbChangeset {
     return this.db.makeChangeset(data)
   }
 
@@ -111,7 +112,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   withChangeset<TRes>(callback: () => TRes): {
     result: TRes
-    changeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    changeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
   } {
     const session = this.db.session()
     const result = callback()
@@ -125,7 +126,7 @@ export class SqliteDbWrapper implements SqliteDb {
     }
   }
 
-  rollback(changeset: Uint8Array) {
+  rollback(changeset: Uint8Array<ArrayBuffer>) {
     const invertedChangeset = this.db.makeChangeset(changeset).invert()
     invertedChangeset.apply()
   }
@@ -214,7 +215,7 @@ export class SqliteDbWrapper implements SqliteDb {
           span.recordException(cause)
           span.end()
           if (LS_DEV) {
-            // biome-ignore lint/suspicious/noDebugger: <explanation>
+            // biome-ignore lint/suspicious/noDebugger: debug
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })

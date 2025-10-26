@@ -1,9 +1,7 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-
+import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
-
-import { FacadeVFS } from '../../FacadeVFS.js'
+import { FacadeVFS } from '../../FacadeVFS.ts'
 
 const SECTOR_SIZE = 4096
 
@@ -22,7 +20,33 @@ const HEADER_OFFSET_DATA = SECTOR_SIZE
 const PERSISTENT_FILE_TYPES =
   VFS.SQLITE_OPEN_MAIN_DB | VFS.SQLITE_OPEN_MAIN_JOURNAL | VFS.SQLITE_OPEN_SUPER_JOURNAL | VFS.SQLITE_OPEN_WAL
 
-const DEFAULT_CAPACITY = 6
+// OPFS file pool capacity must be predicted rather than dynamically increased because
+// capacity expansion (addCapacity) is async while SQLite operations are synchronous.
+// We cannot await in the middle of sqlite3.step() calls without making the API async.
+//
+// We over-allocate because:
+// 1. SQLite’s temporary file usage is not part of its API contract.
+//    Future SQLite versions may create additional temporary files without notice.
+//    See: https://www.sqlite.org/tempfiles.html
+// 2. In the future, we may change how we operate the SQLite DBs,
+//    which may increase the number of files needed.
+//    e.g. enabling the WAL mode, using multi-DB transactions, etc.
+//
+// TRADEOFF: Higher capacity means the VFS opens and keeps more file handles, consuming
+// browser resources. Lower capacity risks "SQLITE_CANTOPEN" errors during operations.
+//
+// CAPACITY CALCULATION:
+// - 2 main databases (state + eventlog) × 4 files each (main, journal, WAL, shm) = 8 files
+// - Up to 5 SQLite temporary files (super-journal, temp DB, materializations,
+//   transient indices, VACUUM temp DB) = 5 files
+// - Transient state database archival operations = 1 file
+// - Safety buffer for future SQLite versions and unpredictable usage = 6 files
+// Total: 20 files
+//
+// References:
+// - https://sqlite.org/forum/info/a3da1e34d8
+// - https://www.sqlite.org/tempfiles.html
+const DEFAULT_CAPACITY = 20
 
 /**
  * This VFS uses the updated Access Handle API with all synchronous methods
@@ -66,6 +90,48 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     const path = this.#getPath(zName)
     const accessHandle = this.#mapPathToAccessHandle.get(path)!
     return this.#mapAccessHandleToName.get(accessHandle)!
+  }
+
+  /**
+   * Reads the SQLite payload (without the OPFS header) for the given file.
+   *
+   * @privateRemarks
+   *
+   * Since the file's access handle is a FileSystemSyncAccessHandle — which
+   * acquires an exclusive lock — we don't need to handle short reads as
+   * the file cannot be modified by other threads.
+   */
+  readFilePayload(zName: string): ArrayBuffer {
+    const path = this.#getPath(zName)
+    const accessHandle = this.#mapPathToAccessHandle.get(path)
+
+    if (accessHandle === undefined) {
+      throw new OpfsError({
+        path,
+        cause: new Error('Cannot read payload for untracked OPFS path'),
+      })
+    }
+
+    const fileSize = accessHandle.getSize()
+    if (fileSize <= HEADER_OFFSET_DATA) {
+      throw new OpfsError({
+        path,
+        cause: new Error(
+          `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
+        ),
+      })
+    }
+
+    const payloadSize = fileSize - HEADER_OFFSET_DATA
+    const payload = new Uint8Array(payloadSize)
+    const bytesRead = accessHandle.read(payload, { at: HEADER_OFFSET_DATA })
+    if (bytesRead !== payloadSize) {
+      throw new OpfsError({
+        path,
+        cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
+      })
+    }
+    return payload.buffer
   }
 
   resetAccessHandle(zName: string) {
@@ -121,9 +187,11 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.read(pData.subarray(), { at: HEADER_OFFSET_DATA + iOffset })
+    const nBytes = file.accessHandle.read(pData.subarray(), {
+      at: HEADER_OFFSET_DATA + iOffset,
+    })
     if (nBytes < pData.byteLength) {
       pData.fill(0, nBytes, pData.byteLength)
       return VFS.SQLITE_IOERR_SHORT_READ
@@ -131,9 +199,11 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.write(pData.subarray(), { at: HEADER_OFFSET_DATA + iOffset })
+    const nBytes = file.accessHandle.write(pData.subarray(), {
+      at: HEADER_OFFSET_DATA + iOffset,
+    })
     return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
   }
 
@@ -164,7 +234,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 
-  jAccess(zName: string, flags: number, pResOut: DataView): number {
+  jAccess(zName: string, _flags: number, pResOut: DataView): number {
     const path = this.#getPath(zName)
     pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
     return VFS.SQLITE_OK
@@ -214,13 +284,29 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   /**
+   * Get all currently tracked SQLite file paths.
+   * This can be used by higher-level components for file management operations.
+   *
+   * @returns Array of currently active SQLite file paths
+   */
+  getTrackedFilePaths(): string[] {
+    return Array.from(this.#mapPathToAccessHandle.keys())
+  }
+
+  /**
    * Increase the capacity of the file system by n.
    */
   async addCapacity(n: number): Promise<number> {
     for (let i = 0; i < n; ++i) {
       const name = Math.random().toString(36).replace('0.', '')
-      const handle = await this.#directoryHandle!.getFileHandle(name, { create: true })
-      const accessHandle = await handle.createSyncAccessHandle()
+      const handle = await this.#directoryHandle!.getFileHandle(name, {
+        create: true,
+      })
+
+      const accessHandle = await Effect.tryPromise({
+        try: () => handle.createSyncAccessHandle(),
+        catch: (cause) => new OpfsError({ cause, path: name }),
+      }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
       this.#mapAccessHandleToName.set(accessHandle, name)
 
       this.#setAssociatedPath(accessHandle, '', 0)
@@ -236,7 +322,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   async removeCapacity(n: number): Promise<number> {
     let nRemoved = 0
     for (const accessHandle of Array.from(this.#availableAccessHandles)) {
-      if (nRemoved == n || this.getSize() === this.getCapacity()) return nRemoved
+      if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
       const name = this.#mapAccessHandleToName.get(accessHandle)!
       accessHandle.close()
@@ -253,14 +339,17 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     const files = [] as [string, FileSystemFileHandle][]
     for await (const [name, handle] of this.#directoryHandle!) {
       if (handle.kind === 'file') {
-        files.push([name, handle])
+        files.push([name, handle as FileSystemFileHandle])
       }
     }
 
     // Open access handles in parallel, separating associated and unassociated.
     await Promise.all(
       files.map(async ([name, handle]) => {
-        const accessHandle = await handle.createSyncAccessHandle()
+        const accessHandle = await Effect.tryPromise({
+          try: () => handle.createSyncAccessHandle(),
+          catch: (cause) => new OpfsError({ cause, path: name }),
+        }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
         this.#mapAccessHandleToName.set(accessHandle, name)
         const path = this.#getAssociatedPath(accessHandle)
         if (path) {
@@ -402,3 +491,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }
   }
 }
+
+export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
+  cause: Schema.Defect,
+  path: Schema.String,
+}) {}

@@ -2,38 +2,49 @@ import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE 
 import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
+  Cause,
   Deferred,
+  Duration,
   Effect,
   Exit,
   FiberHandle,
+  Layer,
   Option,
   OtelTracer,
   Queue,
   ReadonlyArray,
+  Schedule,
   Stream,
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-
-import type { SqliteDb } from '../adapter-types.js'
-import { UnexpectedError } from '../adapter-types.js'
-import { makeMaterializerHash } from '../materializer-helper.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventSequenceNumber, getEventDef, LiveStoreEvent, SystemTables } from '../schema/mod.js'
-import { LeaderAheadError } from '../sync/sync.js'
-import * as SyncState from '../sync/syncstate.js'
-import { sql } from '../util.js'
-import * as Eventlog from './eventlog.js'
-import { rollback } from './materialize-event.js'
-import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.js'
-import { LeaderThreadCtx } from './types.js'
+import {
+  type IntentionalShutdownCause,
+  type MaterializeError,
+  type SqliteDb,
+  UnexpectedError,
+} from '../adapter-types.ts'
+import { makeMaterializerHash } from '../materializer-helper.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import {
+  type InvalidPullError,
+  type InvalidPushError,
+  type IsOfflineError,
+  LeaderAheadError,
+  type SyncBackend,
+} from '../sync/sync.ts'
+import * as SyncState from '../sync/syncstate.ts'
+import { sql } from '../util.ts'
+import * as Eventlog from './eventlog.ts'
+import { rollback } from './materialize-event.ts'
+import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
+import { LeaderThreadCtx } from './types.ts'
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
-  /** Used to determine whether the batch has become invalid due to a rejected local push batch */
-  generation: number,
 ]
 
 /**
@@ -58,32 +69,29 @@ type LocalPushQueueItem = [
  * - The latch closes on pull receipt and re-opens post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
- * Currently we're advancing the db read model and eventlog in lockstep, but we could also decouple this in the future
+ * Currently we're advancing the state db and eventlog in lockstep, but we could also decouple this in the future
  *
  * Tricky concurrency scenarios:
  * - Queued local push batches becoming invalid due to a prior local push item being rejected.
  *   Solution: Introduce a generation number for local push batches which is used to filter out old batches items in case of rejection.
  *
+ * See ClientSessionSyncProcessor for how the leader and session sync processors are similar/different.
  */
 export const makeLeaderSyncProcessor = ({
   schema,
-  dbEventlogMissing,
-  dbEventlog,
   dbState,
-  dbStateMissing,
   initialBlockingSyncContext,
+  initialSyncState,
   onError,
+  livePull,
   params,
   testing,
 }: {
   schema: LiveStoreSchema
-  /** Only used to know whether we can safely query dbEventlog during setup execution */
-  dbEventlogMissing: boolean
-  dbEventlog: SqliteDb
   dbState: SqliteDb
-  /** Only used to know whether we can safely query dbState during setup execution */
-  dbStateMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
+  /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
+  initialSyncState: SyncState.SyncState
   onError: 'shutdown' | 'ignore'
   params: {
     /**
@@ -95,6 +103,11 @@ export const makeLeaderSyncProcessor = ({
      */
     backendPushBatchSize?: number
   }
+  /**
+   * Whether the sync backend should reactively pull new events from the sync backend
+   * When `false`, the sync processor will only do an initial pull
+   */
+  livePull: boolean
   testing: {
     delays?: {
       localPushProcessing?: Effect.Effect<void>
@@ -103,29 +116,15 @@ export const makeLeaderSyncProcessor = ({
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.EncodedWithMeta>()
-    const localPushBatchSize = params.localPushBatchSize ?? 10
-    const backendPushBatchSize = params.backendPushBatchSize ?? 50
+    const localPushBatchSize = params.localPushBatchSize ?? 1
+    const backendPushBatchSize = params.backendPushBatchSize ?? 2
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) => {
-      const { eventDef } = getEventDef(schema, eventEncoded.name)
-      return eventDef.options.clientOnly
-    }
+    const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+      schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
-
-    /**
-     * Tracks generations of queued local push events.
-     * If a local-push batch is rejected, all subsequent push queue items with the same generation are also rejected,
-     * even if they would be valid on their own.
-     */
-    // TODO get rid of this in favour of the `mergeGeneration` event sequence number field
-    const currentLocalPushGenerationRef = { current: 0 }
-
-    type MergeCounter = number
-    const mergeCounterRef = { current: dbStateMissing ? 0 : yield* getMergeCounterFromDb(dbState) }
-    const mergePayloads = new Map<MergeCounter, typeof SyncState.PayloadUpstream.Type>()
 
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
     const ctxRef = {
@@ -150,7 +149,7 @@ export const makeLeaderSyncProcessor = ({
      * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
      * - client session B also pushes e1 (which should be rejected)
      *
-     * Thus the purpoe of the pushHeadRef is the guard the integrity of the local push queue
+     * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
      */
     const pushHeadRef = { current: EventSequenceNumber.ROOT }
     const advancePushHead = (eventNum: EventSequenceNumber.EventSequenceNumber) => {
@@ -162,25 +161,24 @@ export const makeLeaderSyncProcessor = ({
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
+        // console.debug('push', newEvents)
+
         yield* validatePushBatch(newEvents, pushHeadRef.current)
 
         advancePushHead(newEvents.at(-1)!.seqNum)
 
         const waitForProcessing = options?.waitForProcessing ?? false
-        const generation = currentLocalPushGenerationRef.current
 
         if (waitForProcessing) {
           const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
-          const items = newEvents.map(
-            (eventEncoded, i) => [eventEncoded, deferreds[i], generation] as LocalPushQueueItem,
-          )
+          const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
           yield* BucketQueue.offerAll(localPushesQueue, items)
 
           yield* Effect.all(deferreds)
         } else {
-          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined, generation] as LocalPushQueueItem)
+          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
@@ -198,14 +196,32 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const { eventDef } = getEventDef(schema, name)
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
+          event: {
+            name,
+            args,
+            clientId,
+            sessionId,
+            seqNum: syncState.localHead,
+          },
+        }).pipe(UnexpectedError.mapToUnexpectedError)
+
+        if (resolution._tag === 'unknown') {
+          // Ignore partial pushes for unrecognised events – they are still
+          // persisted server-side once a schema update ships.
+          return
+        }
 
         const eventEncoded = new LiveStoreEvent.EncodedWithMeta({
           name,
           args,
           clientId,
           sessionId,
-          ...EventSequenceNumber.nextPair(syncState.localHead, eventDef.options.clientOnly),
+          ...EventSequenceNumber.nextPair({
+            seqNum: syncState.localHead,
+            isClient: resolution.eventDef.options.clientOnly,
+          }),
         })
 
         yield* push([eventEncoded])
@@ -225,38 +241,16 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
-      const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
-
-      const initialBackendHead = dbEventlogMissing
-        ? EventSequenceNumber.ROOT.global
-        : Eventlog.getBackendHeadFromDb(dbEventlog)
-
-      if (initialBackendHead > initialLocalHead.global) {
-        return shouldNeverHappen(
-          `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
-        )
-      }
-
-      const pendingEvents = dbEventlogMissing
-        ? []
-        : yield* Eventlog.getEventsSince({ global: initialBackendHead, client: EventSequenceNumber.clientDefault })
-
-      const initialSyncState = new SyncState.SyncState({
-        pending: pendingEvents,
-        upstreamHead: { global: initialBackendHead, client: EventSequenceNumber.clientDefault },
-        localHead: initialLocalHead,
-      })
-
       /** State transitions need to happen atomically, so we use a Ref to track the state */
       yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
       // Rehydrate sync queue
-      if (pendingEvents.length > 0) {
-        const globalPendingEvents = pendingEvents
-          // Don't sync clientOnly events
+      if (initialSyncState.pending.length > 0) {
+        const globalPendingEvents = initialSyncState.pending
+          // Don't sync client-local events
           .filter((eventEncoded) => {
-            const { eventDef } = getEventDef(schema, eventEncoded.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
 
         if (globalPendingEvents.length > 0) {
@@ -264,12 +258,31 @@ export const makeLeaderSyncProcessor = ({
         }
       }
 
-      const shutdownOnError = (cause: unknown) =>
+      const maybeShutdownOnError = (
+        cause: Cause.Cause<
+          | UnexpectedError
+          | IntentionalShutdownCause
+          | IsOfflineError
+          | InvalidPushError
+          | InvalidPullError
+          | MaterializeError
+        >,
+      ) =>
         Effect.gen(function* () {
-          if (onError === 'shutdown') {
-            yield* shutdownChannel.send(UnexpectedError.make({ cause }))
-            yield* Effect.die(cause)
+          if (onError === 'ignore') {
+            if (LS_DEV) {
+              yield* Effect.logDebug(
+                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+                Cause.pretty(cause),
+              )
+            }
+            return
           }
+
+          const errorToSend = Cause.isFailType(cause) ? cause.error : UnexpectedError.make({ cause })
+          yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+
+          return yield* Effect.die(cause)
         })
 
       yield* backgroundApplyLocalPushes({
@@ -281,28 +294,24 @@ export const makeLeaderSyncProcessor = ({
         schema,
         isClientEvent,
         otelSpan,
-        currentLocalPushGenerationRef,
         connectedClientSessionPullQueues,
-        mergeCounterRef,
-        mergePayloads,
         localPushBatchSize,
         testing: {
           delay: testing?.delays?.localPushProcessing,
         },
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
+      }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
-      const backendPushingFiberHandle = yield* FiberHandle.make()
+      const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
         syncBackendPushQueue,
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError))
+      }).pipe(Effect.catchAllCause(maybeShutdownOnError))
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
-        initialBackendHead,
         isClientEvent,
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
@@ -319,17 +328,26 @@ export const makeLeaderSyncProcessor = ({
         syncStateSref,
         localPushesLatch,
         pullLatch,
+        livePull,
         dbState,
         otelSpan,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         connectedClientSessionPullQueues,
-        mergeCounterRef,
-        mergePayloads,
         advancePushHead,
-      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
+      }).pipe(
+        Effect.retry({
+          // We want to retry pulling if we've lost connection to the sync backend
+          while: (cause) => cause._tag === 'IsOfflineError',
+        }),
+        Effect.catchAllCause(maybeShutdownOnError),
+        // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
+        // This might be a bug in Effect. Only seems to happen in the browser.
+        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.forkScoped,
+      )
 
-      return { initialLeaderHead: initialLocalHead }
+      return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
     const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
@@ -338,34 +356,23 @@ export const makeLeaderSyncProcessor = ({
         return Stream.fromQueue(queue)
       }).pipe(Stream.unwrapScoped)
 
+    /*
+    Notes for a potential new `LeaderSyncProcessor.pull` implementation:
+
+    - Doesn't take cursor but is "atomically called" in the leader during the snapshot phase
+      - TODO: how is this done "atomically" in the web adapter where the snapshot is read optimistically?
+    - Would require a new kind of "boot-phase" API which is stream based:
+      - initial message: state snapshot + seq num head
+      - subsequent messages: sync state payloads
+
+    - alternative: instead of session pulling sync state payloads from leader, we could send
+      - events in the "advance" case
+      - full new state db snapshot in the "rebase" case
+        - downside: importing the snapshot is expensive
+    */
     const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) => {
       const runtime = ctxRef.current?.runtime ?? shouldNeverHappen('Not initialized')
-      return Effect.gen(function* () {
-        const queue = yield* connectedClientSessionPullQueues.makeQueue
-        const payloadsSinceCursor = Array.from(mergePayloads.entries())
-          .map(([mergeCounter, payload]) => ({ payload, mergeCounter }))
-          .filter(({ mergeCounter }) => mergeCounter > cursor.mergeCounter)
-          .toSorted((a, b) => a.mergeCounter - b.mergeCounter)
-          .map(({ payload, mergeCounter }) => {
-            if (payload._tag === 'upstream-advance') {
-              return {
-                payload: {
-                  _tag: 'upstream-advance' as const,
-                  newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
-                    EventSequenceNumber.isGreaterThanOrEqual(cursor.eventNum, eventEncoded.seqNum),
-                  ),
-                },
-                mergeCounter,
-              }
-            } else {
-              return { payload, mergeCounter }
-            }
-          })
-
-        yield* queue.offerAll(payloadsSinceCursor)
-
-        return queue
-      }).pipe(Effect.provide(runtime))
+      return connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))
     }
 
     const syncState = Subscribable.make({
@@ -384,7 +391,6 @@ export const makeLeaderSyncProcessor = ({
       pushPartial,
       boot,
       syncState,
-      getMergeCounter: () => mergeCounterRef.current,
     } satisfies LeaderSyncProcessor
   })
 
@@ -397,10 +403,7 @@ const backgroundApplyLocalPushes = ({
   schema,
   isClientEvent,
   otelSpan,
-  currentLocalPushGenerationRef,
   connectedClientSessionPullQueues,
-  mergeCounterRef,
-  mergePayloads,
   localPushBatchSize,
   testing,
 }: {
@@ -412,10 +415,7 @@ const backgroundApplyLocalPushes = ({
   schema: LiveStoreSchema
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   otelSpan: otel.Span | undefined
-  currentLocalPushGenerationRef: { current: number }
   connectedClientSessionPullQueues: PullQueueSet
-  mergeCounterRef: { current: number }
-  mergePayloads: Map<number, typeof SyncState.PayloadUpstream.Type>
   localPushBatchSize: number
   testing: {
     delay: Effect.Effect<void> | undefined
@@ -435,23 +435,50 @@ const backgroundApplyLocalPushes = ({
       // Prevent backend pull processing until this local push is finished
       yield* pullLatch.close
 
-      // Since the generation might have changed since enqueuing, we need to filter out items with older generation
-      // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
-      const filteredBatchItems = batchItems
-        .filter(([_1, _2, generation]) => generation === currentLocalPushGenerationRef.current)
-        .map(([eventEncoded, deferred]) => [eventEncoded, deferred] as const)
+      const syncState = yield* syncStateSref
+      if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-      if (filteredBatchItems.length === 0) {
-        // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
-        // Allow the backend pulling to start
+      const currentRebaseGeneration = syncState.localHead.rebaseGeneration
+
+      // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
+      // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
+      const [droppedItems, filteredItems] = ReadonlyArray.partition(
+        batchItems,
+        ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
+      )
+
+      if (droppedItems.length > 0) {
+        otelSpan?.addEvent(`push:drop-old-generation`, {
+          droppedCount: droppedItems.length,
+          currentRebaseGeneration,
+        })
+
+        /**
+         * Dropped pushes may still have a deferred awaiting completion.
+         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
+         */
+        yield* Effect.forEach(
+          droppedItems.filter(
+            (item): item is [LiveStoreEvent.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError>] =>
+              item[1] !== undefined,
+          ),
+          ([eventEncoded, deferred]) =>
+            Deferred.fail(
+              deferred,
+              LeaderAheadError.make({
+                minimumExpectedNum: syncState.localHead,
+                providedNum: eventEncoded.seqNum,
+              }),
+            ),
+        )
+      }
+
+      if (filteredItems.length === 0) {
         yield* pullLatch.open
         continue
       }
 
-      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredBatchItems)
-
-      const syncState = yield* syncStateSref
-      if (syncState === undefined) return shouldNeverHappen('Not initialized')
+      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
       const mergeResult = SyncState.merge({
         syncState,
@@ -460,29 +487,25 @@ const backgroundApplyLocalPushes = ({
         isEqualEvent: LiveStoreEvent.isEqualEncoded,
       })
 
-      const mergeCounter = yield* incrementMergeCounter(mergeCounterRef)
-
       switch (mergeResult._tag) {
         case 'unexpected-error': {
-          otelSpan?.addEvent(`[${mergeCounter}]:push:unexpected-error`, {
+          otelSpan?.addEvent(`push:unexpected-error`, {
             batchSize: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* Effect.fail(mergeResult.cause)
+          return yield* new UnexpectedError({ cause: mergeResult.message })
         }
         case 'rebase': {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
         }
         case 'reject': {
-          otelSpan?.addEvent(`[${mergeCounter}]:push:reject`, {
+          otelSpan?.addEvent(`push:reject`, {
             batchSize: newEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
           // TODO: how to test this?
-          currentLocalPushGenerationRef.current++
-
-          const nextGeneration = currentLocalPushGenerationRef.current
+          const nextRebaseGeneration = currentRebaseGeneration + 1
 
           const providedNum = newEvents.at(0)!.seqNum
           // All subsequent pushes with same generation should be rejected as well
@@ -490,13 +513,13 @@ const backgroundApplyLocalPushes = ({
           // from the next generation which we preserve in the queue
           const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
             localPushesQueue,
-            (item) => item[2] >= nextGeneration,
+            ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= nextRebaseGeneration,
           )
 
           // TODO we still need to better understand and handle this scenario
           if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
             console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
-            // biome-ignore lint/suspicious/noDebugger: <explanation>
+            // biome-ignore lint/suspicious/noDebugger: debugging
             debugger
           }
 
@@ -508,11 +531,7 @@ const backgroundApplyLocalPushes = ({
           yield* Effect.forEach(allDeferredsToReject, (deferred) =>
             Deferred.fail(
               deferred,
-              LeaderAheadError.make({
-                minimumExpectedNum: mergeResult.expectedMinimumId,
-                providedNum,
-                // nextGeneration,
-              }),
+              LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum }),
             ),
           )
 
@@ -535,19 +554,18 @@ const backgroundApplyLocalPushes = ({
 
       yield* connectedClientSessionPullQueues.offer({
         payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
-        mergeCounter,
+        leaderHead: mergeResult.newSyncState.localHead,
       })
-      mergePayloads.set(mergeCounter, SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }))
 
-      otelSpan?.addEvent(`[${mergeCounter}]:push:advance`, {
+      otelSpan?.addEvent(`push:advance`, {
         batchSize: newEvents.length,
         mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
       })
 
-      // Don't sync clientOnly events
+      // Don't sync client-local events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-        const { eventDef } = getEventDef(schema, eventEncoded.name)
-        return eventDef.options.clientOnly === false
+        const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+        return eventDef === undefined ? true : eventDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -566,7 +584,7 @@ type MaterializeEventsBatch = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
-}) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
+}) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
@@ -606,26 +624,22 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
       attributes: { batchSize: batchItems.length },
     }),
     Effect.tapCauseLogPretty,
-    UnexpectedError.mapToUnexpectedError,
   )
 
 const backgroundBackendPulling = ({
-  initialBackendHead,
   isClientEvent,
   restartBackendPushing,
   otelSpan,
   dbState,
   syncStateSref,
   localPushesLatch,
+  livePull,
   pullLatch,
   devtoolsLatch,
   initialBlockingSyncContext,
   connectedClientSessionPullQueues,
-  mergeCounterRef,
-  mergePayloads,
   advancePushHead,
 }: {
-  initialBackendHead: EventSequenceNumber.GlobalEventSequenceNumber
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
@@ -635,11 +649,10 @@ const backgroundBackendPulling = ({
   dbState: SqliteDb
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
+  livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
   connectedClientSessionPullQueues: PullQueueSet
-  mergeCounterRef: { current: number }
-  mergePayloads: Map<number, typeof SyncState.PayloadUpstream.Type>
   advancePushHead: (eventNum: EventSequenceNumber.EventSequenceNumber) => void
 }) =>
   Effect.gen(function* () {
@@ -647,7 +660,7 @@ const backgroundBackendPulling = ({
 
     if (syncBackend === undefined) return
 
-    const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], remaining: number) =>
+    const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], pageInfo: SyncBackend.PullResPageInfo) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -672,16 +685,14 @@ const backgroundBackendPulling = ({
           ignoreClientEvents: true,
         })
 
-        const mergeCounter = yield* incrementMergeCounter(mergeCounterRef)
-
         if (mergeResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
         } else if (mergeResult._tag === 'unexpected-error') {
-          otelSpan?.addEvent(`[${mergeCounter}]:pull:unexpected-error`, {
+          otelSpan?.addEvent(`pull:unexpected-error`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* Effect.fail(mergeResult.cause)
+          return yield* new UnexpectedError({ cause: mergeResult.message })
         }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
@@ -689,7 +700,7 @@ const backgroundBackendPulling = ({
         Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
-          otelSpan?.addEvent(`[${mergeCounter}]:pull:rebase`, {
+          otelSpan?.addEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
             rollbackCount: mergeResult.rollbackEvents.length,
@@ -697,8 +708,8 @@ const backgroundBackendPulling = ({
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const { eventDef } = getEventDef(schema, event.name)
-            return eventDef.options.clientOnly === false
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -711,30 +722,26 @@ const backgroundBackendPulling = ({
           }
 
           yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.PayloadUpstreamRebase.make({
-              newEvents: mergeResult.newEvents,
-              rollbackEvents: mergeResult.rollbackEvents,
-            }),
-            mergeCounter,
+            payload: SyncState.payloadFromMergeResult(mergeResult),
+            leaderHead: mergeResult.newSyncState.localHead,
           })
-          mergePayloads.set(
-            mergeCounter,
-            SyncState.PayloadUpstreamRebase.make({
-              newEvents: mergeResult.newEvents,
-              rollbackEvents: mergeResult.rollbackEvents,
-            }),
-          )
         } else {
-          otelSpan?.addEvent(`[${mergeCounter}]:pull:advance`, {
+          otelSpan?.addEvent(`pull:advance`, {
             newEventsCount: newEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
-          yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
-            mergeCounter,
+          // Ensure push fiber is active after advance by restarting with current pending (non-client) events
+          const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
+            const eventDef = schema.eventsDefsMap.get(event.name)
+            return eventDef === undefined ? true : eventDef.options.clientOnly === false
           })
-          mergePayloads.set(mergeCounter, SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }))
+          yield* restartBackendPushing(globalPendingEvents)
+
+          yield* connectedClientSessionPullQueues.offer({
+            payload: SyncState.payloadFromMergeResult(mergeResult),
+            leaderHead: mergeResult.newSyncState.localHead,
+          })
 
           if (mergeResult.confirmedEvents.length > 0) {
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
@@ -744,7 +751,7 @@ const backgroundBackendPulling = ({
                 EventSequenceNumber.isEqual(event.seqNum, confirmedEvent.seqNum),
               ),
             )
-            yield* Eventlog.updateSyncMetadata(confirmedNewEvents)
+            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnexpectedError.mapToUnexpectedError)
           }
         }
 
@@ -758,18 +765,20 @@ const backgroundBackendPulling = ({
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         // Allow local pushes to be processed again
-        if (remaining === 0) {
+        if (pageInfo._tag === 'NoMore') {
           yield* localPushesLatch.open
         }
       })
 
-    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo(initialBackendHead)
+    const syncState = yield* syncStateSref
+    if (syncState === undefined) return shouldNeverHappen('Not initialized')
+    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
 
-    yield* syncBackend.pull(cursorInfo).pipe(
+    yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
-      Stream.tap(({ batch, remaining }) =>
+      Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {
           // yield* Effect.spanEvent('batch', {
           //   attributes: {
@@ -777,29 +786,31 @@ const backgroundBackendPulling = ({
           //     batch: TRACE_VERBOSE ? batch : undefined,
           //   },
           // })
-
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
-
           yield* onNewPullChunk(
             batch.map((_) =>
               LiveStoreEvent.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
-                materializerHashLeader: hashMaterializerResult(_.eventEncoded),
+                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
+                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
+                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.encodedFromGlobal(_.eventEncoded)),
                 materializerHashSession: Option.none(),
               }),
             ),
-            remaining,
+            pageInfo,
           )
-
-          yield* initialBlockingSyncContext.update({ processed: batch.length, remaining })
+          yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
         }),
       ),
       Stream.runDrain,
       Effect.interruptible,
     )
+
+    // Should only ever happen when livePull is false
+    yield* Effect.logDebug('backend-pulling finished', { livePull })
   }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'))
 
 const backgroundBackendPushing = ({
@@ -833,17 +844,53 @@ const backgroundBackendPushing = ({
         batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
       })
 
-      // TODO handle push errors (should only happen during concurrent pull+push)
-      const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+      // Push with declarative retry/backoff using Effect schedules
+      // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
+      // - Delay clamped at 30s (continues retrying at 30s)
+      // - Resets automatically after successful push
+      // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
-      if (pushResult._tag === 'Left') {
-        if (LS_DEV) {
-          yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
+      // Only retry for transient UnexpectedError cases
+      const isRetryable = (err: InvalidPushError | IsOfflineError) =>
+        err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnexpectedError'
+
+      // Input: InvalidPushError | IsOfflineError, Output: Duration
+      const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
+        Schedule.exponential(Duration.seconds(1)).pipe(
+          Schedule.andThenEither(Schedule.spaced(Duration.seconds(30))), // clamp at 30 second intervals
+          Schedule.compose(Schedule.elapsed),
+          Schedule.whileInput(isRetryable),
+        )
+
+      yield* Effect.gen(function* () {
+        const iteration = yield* Schedule.CurrentIterationMetadata
+
+        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+
+        const retries = iteration.recurrence
+        if (retries > 0 && pushResult._tag === 'Right') {
+          otelSpan?.addEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }
-        otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
-        // wait for interrupt caused by background pulling which will then restart pushing
-        return yield* Effect.never
-      }
+
+        if (pushResult._tag === 'Left') {
+          otelSpan?.addEvent('backend-push-error', {
+            error: pushResult.left.toString(),
+            retries,
+            batchSize: queueItems.length,
+          })
+          const error = pushResult.left
+          if (
+            error._tag === 'IsOfflineError' ||
+            (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError')
+          ) {
+            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
+            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
+            return yield* Effect.never
+          }
+
+          return yield* error
+        }
+      }).pipe(Effect.retry(retrySchedule))
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pushing'))
 
@@ -854,19 +901,25 @@ const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.EventSeque
 }
 
 interface PullQueueSet {
-  makeQueue: Effect.Effect<
-    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
+  makeQueue: (
+    cursor: EventSequenceNumber.EventSequenceNumber,
+  ) => Effect.Effect<
+    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>,
     UnexpectedError,
     Scope.Scope | LeaderThreadCtx
   >
   offer: (item: {
     payload: typeof SyncState.PayloadUpstream.Type
-    mergeCounter: number
+    leaderHead: EventSequenceNumber.EventSequenceNumber
   }) => Effect.Effect<void, UnexpectedError>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
-  const set = new Set<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>>()
+  const set = new Set<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>>()
+
+  type StringifiedSeqNum = string
+  // NOTE this could grow unbounded for long running sessions
+  const cachedPayloads = new Map<StringifiedSeqNum, (typeof SyncState.PayloadUpstream.Type)[]>()
 
   yield* Effect.addFinalizer(() =>
     Effect.gen(function* () {
@@ -878,21 +931,81 @@ const makePullQueueSet = Effect.gen(function* () {
     }),
   )
 
-  const makeQueue: PullQueueSet['makeQueue'] = Effect.gen(function* () {
-    const queue = yield* Queue.unbounded<{
-      payload: typeof SyncState.PayloadUpstream.Type
-      mergeCounter: number
-    }>().pipe(Effect.acquireRelease(Queue.shutdown))
+  const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
+    Effect.gen(function* () {
+      const queue = yield* Queue.unbounded<{
+        payload: typeof SyncState.PayloadUpstream.Type
+      }>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-    yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
+      yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-    set.add(queue)
+      const payloadsSinceCursor = Array.from(cachedPayloads.entries())
+        .flatMap(([seqNumStr, payloads]) =>
+          payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
+        )
+        .filter(({ seqNum }) => EventSequenceNumber.isGreaterThan(seqNum, cursor))
+        .toSorted((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
+        .map(({ payload }) => {
+          if (payload._tag === 'upstream-advance') {
+            return {
+              payload: {
+                _tag: 'upstream-advance' as const,
+                newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
+                  EventSequenceNumber.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
+                ),
+              },
+            }
+          } else {
+            return { payload }
+          }
+        })
 
-    return queue
-  })
+      // console.debug(
+      //   'seeding new queue',
+      //   {
+      //     cursor,
+      //   },
+      //   '\n  mergePayloads',
+      //   ...Array.from(cachedPayloads.entries())
+      //     .flatMap(([seqNumStr, payloads]) =>
+      //       payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
+      //     )
+      //     .map(({ payload, seqNum }) => [
+      //       seqNum,
+      //       payload._tag,
+      //       'newEvents',
+      //       ...payload.newEvents.map((_) => _.toJSON()),
+      //       'rollbackEvents',
+      //       ...(payload._tag === 'upstream-rebase' ? payload.rollbackEvents.map((_) => _.toJSON()) : []),
+      //     ]),
+      //   '\n  payloadsSinceCursor',
+      //   ...payloadsSinceCursor.map(({ payload }) => [
+      //     payload._tag,
+      //     'newEvents',
+      //     ...payload.newEvents.map((_) => _.toJSON()),
+      //     'rollbackEvents',
+      //     ...(payload._tag === 'upstream-rebase' ? payload.rollbackEvents.map((_) => _.toJSON()) : []),
+      //   ]),
+      // )
+
+      yield* queue.offerAll(payloadsSinceCursor)
+
+      set.add(queue)
+
+      return queue
+    })
 
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
+      const seqNumStr = EventSequenceNumber.toString(item.leaderHead)
+      if (cachedPayloads.has(seqNumStr)) {
+        cachedPayloads.get(seqNumStr)!.push(item.payload)
+      } else {
+        cachedPayloads.set(seqNumStr, [item.payload])
+      }
+
+      // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
+
       // Short-circuit if the payload is an empty upstream advance
       if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
         return
@@ -909,24 +1022,11 @@ const makePullQueueSet = Effect.gen(function* () {
   }
 })
 
-const incrementMergeCounter = (mergeCounterRef: { current: number }) =>
-  Effect.gen(function* () {
-    const { dbState } = yield* LeaderThreadCtx
-    mergeCounterRef.current++
-    dbState.execute(
-      sql`INSERT OR REPLACE INTO ${SystemTables.LEADER_MERGE_COUNTER_TABLE} (id, mergeCounter) VALUES (0, ${mergeCounterRef.current})`,
-    )
-    return mergeCounterRef.current
-  })
-
-const getMergeCounterFromDb = (dbState: SqliteDb) =>
-  Effect.gen(function* () {
-    const result = dbState.select<{ mergeCounter: number }>(
-      sql`SELECT mergeCounter FROM ${SystemTables.LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
-    )
-    return result[0]?.mergeCounter ?? 0
-  })
-
+/**
+ * Validate a client-provided batch before it is admitted to the leader queue.
+ * Ensures the numbers form a strictly increasing chain and that the first
+ * event sits ahead of the current push head.
+ */
 const validatePushBatch = (
   batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
   pushHead: EventSequenceNumber.EventSequenceNumber,
@@ -936,12 +1036,16 @@ const validatePushBatch = (
       return
     }
 
-    // Make sure batch is monotonically increasing
+    // Example: session A already enqueued e1…e6 while session B (same client, different
+    // session) still believes the head is e1 and submits [e2, e7, e8]. The numbers look
+    // monotonic from B’s perspective, but we must reject and force B to rebase locally
+    // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
-        shouldNeverHappen(
-          `Events must be ordered in monotonically ascending order by eventNum. Received: [${batch.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-        )
+        return yield* LeaderAheadError.make({
+          minimumExpectedNum: batch[i - 1]!.seqNum,
+          providedNum: batch[i]!.seqNum,
+        })
       }
     }
 

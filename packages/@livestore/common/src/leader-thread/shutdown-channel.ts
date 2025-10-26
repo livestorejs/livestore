@@ -1,9 +1,23 @@
 import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import { IntentionalShutdownCause, UnexpectedError } from '../index.js'
+import {
+  IntentionalShutdownCause,
+  InvalidPullError,
+  InvalidPushError,
+  IsOfflineError,
+  MaterializeError,
+  UnexpectedError,
+} from '../index.ts'
 
-export class All extends Schema.Union(IntentionalShutdownCause, UnexpectedError) {}
+export class All extends Schema.Union(
+  IntentionalShutdownCause,
+  UnexpectedError,
+  IsOfflineError,
+  InvalidPushError,
+  InvalidPullError,
+  MaterializeError,
+) {}
 
 /**
  * Used internally by an adapter to shutdown gracefully.

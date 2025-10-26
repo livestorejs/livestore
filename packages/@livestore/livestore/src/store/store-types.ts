@@ -1,12 +1,26 @@
-import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
+import {
+  type ClientSession,
+  type ClientSessionSyncProcessorSimulationParams,
+  type IntentionalShutdownCause,
+  type InvalidPullError,
+  type IsOfflineError,
+  isQueryBuilder,
+  type MaterializeError,
+  type QueryBuilder,
+  type StoreInterrupted,
+  type SyncError,
+  type UnexpectedError,
+} from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
-import { Deferred } from '@livestore/utils/effect'
+import { Deferred, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { StackInfo } from '../utils/stack-info.js'
-import type { Store } from './store.js'
+import type { LiveQuery, LiveQueryDef, SignalDef } from '../live-queries/base-class.ts'
+import { TypeId } from '../live-queries/base-class.ts'
+import type { DebugRefreshReasonBase } from '../reactive.ts'
+import type { StackInfo } from '../utils/stack-info.ts'
+import type { Store } from './store.ts'
 
 export type LiveStoreContext =
   | LiveStoreContextRunning
@@ -16,13 +30,16 @@ export type LiveStoreContext =
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted
+      cause: IntentionalShutdownCause | StoreInterrupted | SyncError
     }
 
-export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
+export type ShutdownDeferred = Deferred.Deferred<
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+>
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
-  void,
-  UnexpectedError | IntentionalShutdownCause | StoreInterrupted
+  IntentionalShutdownCause,
+  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >()
 
 export type LiveStoreContextRunning = {
@@ -35,7 +52,7 @@ export type OtelOptions = {
   rootSpanContext: otel.Context
 }
 
-export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> = {
+export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = {
   clientSession: ClientSession
   schema: TSchema
   storeId: string
@@ -49,6 +66,9 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    simulation?: {
+      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
+    }
   }
   __runningInDevtools: boolean
 }
@@ -119,3 +139,70 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
 }
 
 export type Unsubscribe = () => void
+
+export type SubscribeOptions<TResult> = {
+  onSubscribe?: (query$: LiveQuery<TResult>) => void
+  onUnsubsubscribe?: () => void
+  label?: string
+  skipInitialRun?: boolean
+  otelContext?: otel.Context
+  stackInfo?: StackInfo
+}
+
+/** All query definitions or instances the store can execute or subscribe to. */
+export type Queryable<TResult> =
+  | LiveQueryDef<TResult>
+  | SignalDef<TResult>
+  | LiveQuery<TResult>
+  | QueryBuilder<TResult, any, any>
+
+/**
+ * Helper types for `Queryable`.
+ *
+ * Provides type-level utilities to work with `Queryable` values.
+ */
+export namespace Queryable {
+  /**
+   * Extracts the result type from a `Queryable`.
+   *
+   * Example:
+   * - `Queryable.Result<LiveQueryDef<number>>` → `number`
+   * - `Queryable.Result<SignalDef<string>>` → `string`
+   * - `Queryable.Result<LiveQuery<{ id: string }>>` → `{ id: string }`
+   * - `Queryable.Result<LiveQueryDef<A> | SignalDef<B>>` → `A | B`
+   */
+  export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
+}
+
+const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  if (!('_tag' in value)) {
+    return false
+  }
+
+  const tag = (value as LiveQueryDef<any> | SignalDef<any>)._tag
+  if (tag !== 'def' && tag !== 'signal-def') {
+    return false
+  }
+
+  const candidate = value as LiveQueryDef<any>
+  if (typeof candidate.make !== 'function') {
+    // The store calls make() to turn the definition into a live query instance.
+    return false
+  }
+
+  if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
+    // Both identifiers must be present so the store can cache and log the query.
+    return false
+  }
+
+  return true
+}
+
+const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
+
+export const isQueryable = (value: unknown): value is Queryable<unknown> =>
+  isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)

@@ -1,5 +1,5 @@
-import { docsSchema } from '@astrojs/starlight/schema'
 import { defineCollection } from 'astro:content'
+import { docsSchema } from '@astrojs/starlight/schema'
 import { autoSidebarLoader } from 'starlight-auto-sidebar/loader'
 import { autoSidebarSchema } from 'starlight-auto-sidebar/schema'
 

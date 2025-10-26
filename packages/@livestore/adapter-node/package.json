@@ -1,44 +1,27 @@
 {
   "name": "@livestore/adapter-node",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.14",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./devtools": {
-      "types": "./dist/devtools/mod.d.ts",
-      "default": "./dist/devtools/mod.js"
-    },
-    "./worker": {
-      "types": "./dist/make-leader-worker.d.ts",
-      "default": "./dist/make-leader-worker.js"
-    }
-  },
-  "types": "./dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "./devtools": [
-        "./dist/devtools/mod.d.ts"
-      ]
-    }
+    ".": "./src/index.ts",
+    "./devtools": "./src/devtools/mod.ts",
+    "./worker": "./src/make-leader-worker.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.3.1",
+    "@livestore/devtools-vite": "0.4.0-dev.14",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "1.9.0",
-    "vite": "6.3.4"
+    "@opentelemetry/api": "catalog:",
+    "vite": "catalog:"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.3",
-    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.35.0"
+    "rollup": "^4.49.0"
   },
   "files": [
     "package.json",
@@ -47,7 +30,12 @@
   ],
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./devtools": "./dist/devtools/mod.js",
+      "./worker": "./dist/make-leader-worker.js"
+    }
   },
   "scripts": {
     "test": "echo No tests yet"

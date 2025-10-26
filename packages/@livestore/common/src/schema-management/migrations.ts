@@ -1,21 +1,55 @@
-import { memoizeByStringifyArgs } from '@livestore/utils'
-import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
+/**
+ * AUTOMATIC HASH-BASED SCHEMA MIGRATIONS
+ *
+ * This module implements automatic schema versioning using hash-based change detection.
+ *
+ * ⚠️  CRITICAL DISTINCTION:
+ * - STATE TABLES (safe to modify): Changes trigger rematerialization from eventlog
+ * - EVENTLOG TABLES (NEVER modify): Changes cause data loss - need manual versioning!
+ *
+ * How it works:
+ * 1. Each table's schema is hashed using SqliteAst.hash()
+ * 2. Hashes are stored in SCHEMA_META_TABLE after successful migrations
+ * 3. On app start, current schema hashes are compared with stored hashes
+ * 4. Mismatches trigger migrations:
+ *    - State tables: Recreated and repopulated from eventlog (safe, no data loss)
+ *    - Eventlog tables: Uses 'create-if-not-exists' (UNSAFE - causes data loss!)
+ *
+ * State Table Changes (SAFE):
+ * - User-defined tables are rebuilt from eventlog
+ * - System tables (schemaMetaTable, etc.) are recreated
+ * - Data preserved through rematerializeFromEventlog()
+ *
+ * Eventlog Table Changes (UNSAFE):
+ * - eventlogMetaTable, syncStatusTable changes cause "soft reset"
+ * - Old table becomes inaccessible (but remains in DB)
+ * - No automatic migration - effectively data loss
+ * - TODO: Implement proper EVENTLOG_PERSISTENCE_FORMAT_VERSION system
+ *
+ * See system-tables/state-tables.ts and system-tables/eventlog-tables.ts for detailed documentation on each table type.
+ */
 
-import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { SqliteAst, SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
-import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables.js'
+import { memoizeByStringifyArgs } from '@livestore/utils'
+import { Effect } from '@livestore/utils/effect'
+
+import type { SqliteDb } from '../adapter-types.ts'
+import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
+import type { UnexpectedError } from '../errors.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { makeColumnSpec } from '../schema/state/sqlite/column-spec.ts'
+import { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
+import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import {
   isStateSystemTable,
   SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
   schemaEventDefsMetaTable,
   stateSystemTables,
-} from '../schema/state/sqlite/system-tables.js'
-import { sql } from '../util.js'
-import type { SchemaManager } from './common.js'
-import { dbExecute, dbSelect } from './common.js'
-import { validateSchema } from './validate-schema.js'
+} from '../schema/state/sqlite/system-tables/state-tables.ts'
+import { sql } from '../util.ts'
+import type { SchemaManager } from './common.ts'
+import { dbExecute, dbSelect } from './common.ts'
+import { validateSchema } from './validate-schema.ts'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
@@ -167,35 +201,5 @@ export const migrateTable = ({
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''
-  return sql`create ${uniqueStr} index if not exists '${index.name}' on '${tableName}' (${index.columns.join(', ')})`
-}
-
-export const makeColumnSpec = (tableAst: SqliteAst.Table) => {
-  const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => `'${_.name}'`)
-  const columnDefStrs = tableAst.columns.map(toSqliteColumnSpec)
-  if (primaryKeys.length > 0) {
-    columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
-  }
-
-  return columnDefStrs.join(', ')
-}
-
-/** NOTE primary keys are applied on a table level not on a column level to account for multi-column primary keys */
-const toSqliteColumnSpec = (column: SqliteAst.Column) => {
-  const columnTypeStr = column.type._tag
-  const nullableStr = column.nullable === false ? 'not null' : ''
-  const defaultValueStr = (() => {
-    if (column.default._tag === 'None') return ''
-
-    if (column.default.value === null) return 'default null'
-    if (SqliteDsl.isSqlDefaultValue(column.default.value)) return `default ${column.default.value.sql}`
-
-    const encodeValue = EffectSchema.encodeSync(column.schema)
-    const encodedDefaultValue = encodeValue(column.default.value)
-
-    if (columnTypeStr === 'text') return `default '${encodedDefaultValue}'`
-    return `default ${encodedDefaultValue}`
-  })()
-
-  return `'${column.name}' ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
+  return sql`create ${uniqueStr} index if not exists '${index.name}' on '${tableName}' (${index.columns.map((col) => `'${col}'`).join(', ')})`
 }

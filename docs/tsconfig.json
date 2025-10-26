@@ -1,3 +1,20 @@
+// https://github.com/withastro/astro/blob/main/packages/astro/tsconfigs/base.json
 {
-  "extends": "astro/tsconfigs/strict"
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ESNext",
+    "jsx": "preserve",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["src"],
+  "exclude": ["src/content/_assets/code/**/*"],
+  "references": [{ "path": "../packages/@local/shared" }, { "path": "../packages/@local/astro-twoslash-code" }]
 }

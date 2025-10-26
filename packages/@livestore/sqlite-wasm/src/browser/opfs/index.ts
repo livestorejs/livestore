@@ -1,7 +1,7 @@
 import { Effect } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 
-import { AccessHandlePoolVFS } from './AccessHandlePoolVFS.js'
+import { AccessHandlePoolVFS } from './AccessHandlePoolVFS.ts'
 
 const semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
 const opfsVfsMap = new Map<string, AccessHandlePoolVFS>()

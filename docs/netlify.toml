@@ -1,0 +1,31 @@
+# Netlify configuration for docs deployment
+#
+# Important: In CI the Netlify CLI often resolves the project from the Git
+# toplevel. Declaring an explicit publish path anchors the site to the docs app
+# so edge bundling and route mapping work reliably.
+#
+# This file also configures Netlify's Image CDN to allow remote image
+# transformations from the hosted asset service used for example screenshots.
+
+[images]
+# Allow image transformations from gitbucket.schickling.dev
+# This is needed for example screenshots to display properly in production
+# The domain is double-escaped as required by Netlify's regex configuration
+remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
+
+# Build & publish
+# Let the Netlify CLI run the build so it can bundle and attach Edge Functions
+# reliably in CI. Astro's static/SSR build does not emit the final edge bundle;
+# Netlify's build phase does. We also anchor publish to the docs app so the CLI
+# resolves paths consistently in monorepos.
+[build]
+command = "bunx astro build"
+publish = "docs/dist"
+edge_functions = "docs/netlify/edge-functions"
+
+# Edge Function configuration. The Edge runtime bundles the file(s) below and
+# attaches them at the CDN layer during the Netlify build phase.
+
+[[edge_functions]]
+function = "markdown-negotiation"
+path = "/*"

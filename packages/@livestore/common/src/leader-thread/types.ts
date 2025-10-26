@@ -12,21 +12,21 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
+import type { MigrationsReport } from '../defs.ts'
+import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
   LeaderAheadError,
   MakeSqliteDb,
-  MigrationsReport,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
   UnexpectedError,
-} from '../index.js'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
-import type * as SyncState from '../sync/syncstate.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
+} from '../index.ts'
+import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.ts'
+import type * as SyncState from '../sync/syncstate.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -43,7 +43,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventSequenceNumber.EventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -98,7 +98,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     shutdownChannel: ShutdownChannel
     eventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
-    syncBackend: SyncBackend | undefined
+    syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {
@@ -111,6 +111,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
+    networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
   }
 >() {}
 
@@ -122,30 +123,26 @@ export type MaterializeEvent = (
   },
 ) => Effect.Effect<
   {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
     hash: Option.Option<number>
   },
-  SqliteError | UnexpectedError
+  MaterializeError
 >
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
-  update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
+  update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
 }
 
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    cursor: LeaderPullCursor
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: LeaderPullCursor
-  }) => Effect.Effect<
-    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
-    UnexpectedError,
-    Scope.Scope
-  >
+    cursor: EventSequenceNumber.EventSequenceNumber
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnexpectedError, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -154,6 +151,7 @@ export interface LeaderSyncProcessor {
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
+       * `true` doesn't mean the events have been pushed to the sync backend.
        * @default false
        */
       waitForProcessing?: boolean
@@ -173,5 +171,4 @@ export interface LeaderSyncProcessor {
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  getMergeCounter: () => number
 }

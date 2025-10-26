@@ -1,7 +1,8 @@
-import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
-import type { BindValues } from './sql-queries.js'
-import * as SqlQueries from './sql-queries.js'
-import type * as ClientTypes from './types.js'
+import { omitUndefineds } from '@livestore/utils'
+import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
+import type { BindValues } from './sql-queries.ts'
+import * as SqlQueries from './sql-queries.ts'
+import type * as ClientTypes from './types.ts'
 
 export type SqlQuery = [stmt: string, bindValues: BindValues, tableName: string]
 
@@ -16,7 +17,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     limit?: number
   }): [string, BindValues, TTableName] => {
     const columns = schema[tableName]!.columns
-    const [stmt, bindValues] = SqlQueries.findManyRows({ columns, tableName, where, limit })
+    const [stmt, bindValues] = SqlQueries.findManyRows({ columns, tableName, where, ...omitUndefineds({ limit }) })
     return [stmt, bindValues, tableName]
   }
 

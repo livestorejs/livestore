@@ -1,13 +1,12 @@
 /// <reference types="node" />
 
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import * as fs from 'node:fs'
 import path from 'node:path'
 
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
-import { FacadeVFS } from '../FacadeVFS.js'
+import { FacadeVFS } from '../FacadeVFS.ts'
 
 interface NodeFsFile {
   pathname: string
@@ -17,6 +16,7 @@ interface NodeFsFile {
 
 export class NodeFS extends FacadeVFS {
   private mapIdToFile = new Map<number, NodeFsFile>()
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: for debugging
   private lastError: Error | null = null
   private readonly directory: string
   constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string) {
@@ -65,7 +65,7 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
       if (!file?.fileHandle) return VFS.SQLITE_IOERR_READ
@@ -85,7 +85,7 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
       if (!file?.fileHandle) return VFS.SQLITE_IOERR_WRITE

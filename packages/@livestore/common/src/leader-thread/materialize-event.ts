@@ -1,16 +1,17 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from '../adapter-types.js'
-import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.js'
-import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventSequenceNumber, getEventDef, SystemTables } from '../schema/mod.js'
-import { insertRow } from '../sql-queries/index.js'
-import { sql } from '../util.js'
-import { execSql, execSqlPrepared } from './connection.js'
-import * as Eventlog from './eventlog.js'
-import type { MaterializeEvent } from './types.js'
+import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
+import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
+import { insertRow } from '../sql-queries/index.ts'
+import { sql } from '../util.ts'
+import { execSql, execSqlPrepared } from './connection.ts'
+import * as Eventlog from './eventlog.ts'
+import type { MaterializeEvent } from './types.ts'
 
+// TODO refactor `makeMaterializeEvent` to not return an Effect for the constructor as it's not needed
 export const makeMaterializeEvent = ({
   schema,
   dbState,
@@ -19,7 +20,7 @@ export const makeMaterializeEvent = ({
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent, UnexpectedError> =>
+}): Effect.Effect<MaterializeEvent> =>
   Effect.gen(function* () {
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -32,8 +33,34 @@ export const makeMaterializeEvent = ({
       Effect.gen(function* () {
         const skipEventlog = options?.skipEventlog ?? false
 
-        const eventName = eventEncoded.name
-        const { eventDef, materializer } = getEventDef(schema, eventName)
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:leader-thread:materializeEvent',
+          event: eventEncoded,
+        })
+
+        if (resolution._tag === 'unknown') {
+          // Unknown events still enter the eventlog so newer clients can replay
+          // them once they learn the schema. We skip materialization to keep the
+          // local state consistent with the knowledge of the current client.
+          if (skipEventlog === false) {
+            yield* Eventlog.insertIntoEventlog(
+              eventEncoded,
+              dbEventlog,
+              UNKNOWN_EVENT_SCHEMA_HASH,
+              eventEncoded.clientId,
+              eventEncoded.sessionId,
+            )
+          }
+
+          dbState.debug.head = eventEncoded.seqNum
+
+          return {
+            sessionChangeset: { _tag: 'no-op' as const },
+            hash: Option.none(),
+          }
+        }
+
+        const { eventDef, materializer } = resolution
 
         const execArgsArr = getExecStatementsFromMaterializer({
           eventDef,
@@ -49,10 +76,7 @@ export const makeMaterializeEvent = ({
           eventEncoded.meta.materializerHashSession._tag === 'Some' &&
           eventEncoded.meta.materializerHashSession.value !== materializerHash.value
         ) {
-          yield* UnexpectedError.make({
-            cause: `Materializer hash mismatch detected for event "${eventEncoded.name}".`,
-            note: `Please make sure your event materializer is a pure function without side effects.`,
-          })
+          return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
         }
 
         // NOTE we might want to bring this back if we want to debug no-op events
@@ -74,6 +98,8 @@ export const makeMaterializeEvent = ({
           yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
+        dbState.debug.head = eventEncoded.seqNum
+
         const changeset = session.changeset()
         session.finish()
 
@@ -86,6 +112,7 @@ export const makeMaterializeEvent = ({
             values: {
               seqNumGlobal: eventEncoded.seqNum.global,
               seqNumClient: eventEncoded.seqNum.client,
+              seqNumRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
               // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
               debug: LS_DEV ? execArgsArr : null,
@@ -123,6 +150,7 @@ export const makeMaterializeEvent = ({
           hash: materializerHash,
         }
       }).pipe(
+        Effect.mapError((cause) => MaterializeError.make({ cause })),
         Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {
           attributes: {
             eventName: eventEncoded.name,
@@ -149,7 +177,11 @@ export const rollback = ({
         sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
       .map((_) => ({
-        seqNum: { global: _.seqNumGlobal, client: _.seqNumClient },
+        seqNum: {
+          global: _.seqNumGlobal,
+          client: _.seqNumClient,
+          rebaseGeneration: -1, // unused in this code path
+        },
         changeset: _.changeset,
         debug: _.debug,
       }))

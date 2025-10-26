@@ -19,20 +19,22 @@ import {
   LogLevel,
   OtelTracer,
   Scheduler,
+  type Schema,
   Stream,
   TaskTracing,
   WorkerRunner,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import { getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import * as WorkerSchema from '../common/worker-schema.js'
+import * as OpfsUtils from '../../opfs-utils.ts'
+import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
+import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import * as WorkerSchema from '../common/worker-schema.ts'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
+  syncPayloadSchema?: Schema.Schema<any>
   otelOptions?: {
     tracer?: otel.Tracer
   }
@@ -41,7 +43,8 @@ export type WorkerOptions = {
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
     opfs: OpfsUtils,
-    blobUrl: (buffer: Uint8Array) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+    blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
+      URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
@@ -58,16 +61,16 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
+  const layer = Layer.mergeAll(Logger.prettyWithThread(self.name), FetchHttpClient.layer, TracingLive ?? Layer.empty)
+
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.prettyWithThread(self.name)),
-    Effect.provide(FetchHttpClient.layer),
+    Effect.provide(layer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    TracingLive ? Effect.provide(TracingLive) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
@@ -81,7 +84,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
 const makeWorkerRunnerOuter = (
   workerOptions: WorkerOptions,
 ): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuter.InitialMessage, {
+  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuterInitialMessage, {
     // Port coming from client session and forwarded via the shared worker
     InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
       Effect.gen(function* () {
@@ -101,9 +104,9 @@ const makeWorkerRunnerOuter = (
       }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
-const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayload }) =>
+const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
+  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
+    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
@@ -130,6 +133,16 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           concurrency: 2,
         })
 
+        // Clean up old state database files after successful database creation
+        // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
+        if (dbState.metadata._tag === 'opfs') {
+          yield* cleanupOldStateDbFiles({
+            vfs: dbState.metadata.vfs,
+            currentSchema: schema,
+            opfsDirectory: dbState.metadata.persistenceInfo.opfsDirectory,
+          })
+        }
+
         const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
         const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -143,7 +156,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
-          syncPayload,
+          syncPayloadEncoded,
+          syncPayloadSchema,
         })
       }).pipe(
         Effect.tapCauseLogPretty,
@@ -211,6 +225,21 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
       ),
+    SyncStateStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.syncProcessor.syncState.changes
+      }).pipe(Stream.unwrapScoped),
+    GetNetworkStatus: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return yield* workerCtx.networkStatus
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+    NetworkStatusStream: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return workerCtx.networkStatus.changes
+      }).pipe(Stream.unwrapScoped),
     Shutdown: () =>
       Effect.gen(function* () {
         yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')

@@ -1,13 +1,13 @@
 /* Replace when fixed https://github.com/withastro/starlight/issues/2862 */
 @layer theme, base, components, utilities;
 
-@import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/utilities.css' layer(utilities);
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
   --font-sans:
-    Poppins, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
 
   --color-gray-100: #f5f6f5;
   --color-gray-200: #eceeec;
@@ -71,6 +71,8 @@
 :root {
   --custom-outline-color: var(--color-accent-200);
 
+  --ls-twoslash-tooltip-z: calc(var(--sl-z-index-navbar, 10) + 20);
+
   --sl-font: var(--font-sans);
   --sl-font-mono: var(--font-mono);
 
@@ -94,7 +96,7 @@
     outline: solid 1px var(--custom-outline-color);
   }
 
-  &[data-theme='light'] {
+  &[data-theme="light"] {
     --custom-outline-color: var(--color-accent-600);
 
     /* Light mode Starlight theme variables */
@@ -114,6 +116,15 @@
     --sl-color-accent: var(--color-accent-600);
     --sl-color-accent-high: var(--color-accent-900);
   }
+}
+
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
+}
+
+/* Hide Twoslash popup container on initial load (still works on hover) */
+.expressive-code .twoslash-popup-container {
+  display: none;
 }
 
 /* @media (prefers-reduced-motion: no-preference) {

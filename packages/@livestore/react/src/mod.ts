@@ -1,12 +1,13 @@
-export { LiveStoreContext, type ReactApi } from './LiveStoreContext.js'
-export { useStore, withReactApi } from './useStore.js'
-export { LiveStoreProvider } from './LiveStoreProvider.js'
-export { useStackInfo } from './utils/stack-info.js'
-export { useQuery, useQueryRef } from './useQuery.js'
+export { LiveStoreContext, type ReactApi } from './LiveStoreContext.ts'
+export { LiveStoreProvider } from './LiveStoreProvider.tsx'
 export {
-  useClientDocument,
-  type StateSetters,
-  type SetStateAction,
   type Dispatch,
-  type UseRowResult as UseStateResult,
-} from './useClientDocument.js'
+  type SetStateAction,
+  type SetStateActionPartial,
+  type StateSetters,
+  type UseClientDocumentResult,
+  useClientDocument,
+} from './useClientDocument.ts'
+export { useQuery, useQueryRef } from './useQuery.ts'
+export { useStore, withReactApi } from './useStore.ts'
+export { useStackInfo } from './utils/stack-info.ts'

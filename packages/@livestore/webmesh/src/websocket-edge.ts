@@ -5,6 +5,7 @@ import {
   Either,
   Exit,
   Layer,
+  MsgPack,
   Queue,
   Schedule,
   Schema,
@@ -14,8 +15,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import * as WebmeshSchema from './mesh-schema.js'
-import type { MeshNode } from './node.js'
+import * as WebmeshSchema from './mesh-schema.ts'
+import type { MeshNode } from './node.ts'
 
 export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
   from: Schema.String,
@@ -28,7 +29,7 @@ export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
 
 export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
 
-export const MessageMsgPack = Schema.MsgPack(WSEdgeMessage)
+export const MessageMsgPack = MsgPack.schema(WSEdgeMessage)
 
 export type SocketType =
   | {
@@ -77,7 +78,7 @@ export const makeWebSocketEdge = ({
 }: {
   socket: Socket.Socket
   socketType: SocketType
-  debug?: { id?: string }
+  debug?: { id?: string } | undefined
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>

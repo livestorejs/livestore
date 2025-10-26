@@ -4,14 +4,16 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./examples": "./examples/mod.ts"
+    "./release": "./src/commands/release.ts"
   },
   "devDependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
+    "@local/astro-twoslash-code": "workspace:*",
     "@local/tests-integration": "workspace:*",
-    "@types/node": "^22.15.17",
-    "bun-types": "^1.2.4"
+    "@local/tests-sync-provider": "workspace:*",
+    "@types/bun": "^1.2.21",
+    "@types/node": "catalog:"
   }
 }

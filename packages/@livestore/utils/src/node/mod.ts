@@ -1,23 +1,23 @@
 import * as http from 'node:http'
-
+import * as PlatformNode from '@effect/platform-node'
+import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
-
-import { OtelTracer, UnknownError } from '../effect/index.js'
-import { makeNoopTracer } from '../NoopTracer.js'
+import { OtelTracer, UnknownError } from '../effect/index.ts'
+import { makeNoopTracer } from '../NoopTracer.ts'
 
 export * as Cli from '@effect/cli'
-export * as PlatformNode from '@effect/platform-node'
 export * as SocketServer from '@effect/platform/SocketServer'
+export * as PlatformNode from '@effect/platform-node'
 
-export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.js'
-export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.js'
+export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'
+export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
 
 // Enable debug logging for OpenTelemetry
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
 
 // export const OtelLiveHttp = (args: any): Layer.Layer<never> => Layer.empty
 
-export const getFreePort = Effect.async<number, UnknownError>((cb, signal) => {
+export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<number, UnknownError>((cb, signal) => {
   const server = http.createServer()
 
   signal.addEventListener('abort', () => {
@@ -37,8 +37,8 @@ export const getFreePort = Effect.async<number, UnknownError>((cb, signal) => {
   })
 
   // Error handling in case the server encounters an error
-  server.on('error', (err) => {
-    server.close(() => cb(Effect.fail(new UnknownError({ cause: err }))))
+  server.on('error', (cause) => {
+    server.close(() => cb(Effect.fail(new UnknownError({ cause, payload: 'Failed to get a free port' }))))
   })
 })
 
@@ -47,7 +47,14 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 
   const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
     Layer.provideMerge(OtelTracerLive),
-  ) as any as Layer.Layer<OtelTracer.OtelTracer>
+  )
 
   return TracingLive
 })
+
+/**
+ * Layer that enables recursive file watching by combining the Node filesystem implementation with
+ * the Parcel-based watch backend. Mirrored from Effect’s platform-node Parcel watcher layer:
+ * https://github.com/Effect-TS/effect/blob/main/packages/platform-node/src/NodeFileSystem/ParcelWatcher.ts
+ */
+export const NodeRecursiveWatchLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, ParcelWatcherLayer)

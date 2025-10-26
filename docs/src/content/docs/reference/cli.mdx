@@ -1,0 +1,60 @@
+---
+title: LiveStore CLI
+description: Command-line interface for LiveStore project scaffolding and development tools.
+---
+
+The LiveStore CLI provides tools for creating new projects and integrating with AI assistants through MCP (Model Context Protocol).
+
+:::caution[Experimental - Not Production Ready]
+The LiveStore CLI is an experimental preview and not ready for production use. APIs, commands, and functionality may change significantly. Use for development and evaluation purposes only.
+:::
+
+## Installation
+
+You can use the LiveStore CLI in several ways:
+
+```bash
+# Recommended: Use bunx (no installation needed)
+bunx @livestore/cli --help
+
+# Alternative options:
+npm install -g @livestore/cli        # Global install
+npm install -D @livestore/cli        # Project install  
+npx @livestore/cli --help            # Use with npx
+```
+
+## Commands
+
+### `bunx @livestore/cli new-project`
+Create a new LiveStore project from available examples.
+
+```bash
+# Interactive selection
+bunx @livestore/cli new-project
+
+# Specify example and path
+bunx @livestore/cli new-project --example web-todomvc my-project
+
+# Use specific branch
+bunx @livestore/cli new-project --branch dev
+```
+
+### `bunx @livestore/cli mcp`
+MCP server tools for AI assistant integration. See [MCP Integration](/reference/mcp) for details.
+
+```bash
+# Start MCP server
+bunx @livestore/cli mcp
+
+# Available subcommands
+bunx @livestore/cli mcp coach    # AI coaching assistant (requires API key env var)
+bunx @livestore/cli mcp tools    # Development tools server
+
+# Coach command requires API key - check implementation for specific variable name
+# Example: OPENAI_API_KEY=your_key bunx @livestore/cli mcp coach
+```
+
+## Global Options
+
+- `--verbose` - Enable verbose logging
+- `--help` - Show command help

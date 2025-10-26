@@ -1,16 +1,14 @@
-import { sql } from '@livestore/common'
-import { rawSqlEvent } from '@livestore/common/schema'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
-import * as RG from '../reactive.js'
-import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
-import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
-import { computed } from './computed.js'
-import { queryDb } from './db-query.js'
+import * as RG from '../reactive.ts'
+import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '../utils/tests/otel.ts'
+import { computed } from './computed.ts'
+import { queryDb } from './db-query.ts'
 
 /*
 TODO write tests for:
@@ -65,7 +63,7 @@ Vitest.describe('otel', () => {
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       [
@@ -85,7 +83,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -119,7 +118,7 @@ Vitest.describe('otel', () => {
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
@@ -141,7 +140,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -155,7 +155,9 @@ Vitest.describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => ({ completed: false }))
-      const query$ = queryDb((get) => tables.todos.where(get(filter)).first({ fallback: () => defaultTodo }))
+      const query$ = queryDb((get) =>
+        tables.todos.where(get(filter)).first({ behaviour: 'fallback', fallback: () => defaultTodo }),
+      )
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -165,7 +167,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -183,7 +185,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -197,18 +200,18 @@ Vitest.describe('otel', () => {
       const callbackResults: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
-      const unsubscribe = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults.push(result)
-        },
+      const unsubscribe = store.subscribe(queryBuilder, (result) => {
+        callbackResults.push(result)
       })
 
       expect(callbackResults).toHaveLength(1)
       expect(callbackResults[0]).toMatchObject(defaultTodo)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(callbackResults).toHaveLength(2)
       expect(callbackResults[1]).toMatchObject({
@@ -226,7 +229,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -241,31 +245,29 @@ Vitest.describe('otel', () => {
       const callbackResults2: any[] = []
       const defaultTodo = { id: '', text: '', completed: false }
 
-      const queryBuilder = tables.todos.where({ completed: false }).first({ fallback: () => defaultTodo })
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
 
-      const unsubscribe1 = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults1.push(result)
-        },
+      const unsubscribe1 = store.subscribe(queryBuilder, (result) => {
+        callbackResults1.push(result)
       })
 
-      const unsubscribe2 = store.subscribe(queryBuilder, {
-        onUpdate: (result) => {
-          callbackResults2.push(result)
-        },
+      const unsubscribe2 = store.subscribe(queryBuilder, (result) => {
+        callbackResults2.push(result)
       })
 
       expect(callbackResults1).toHaveLength(1)
       expect(callbackResults2).toHaveLength(1)
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)` }))
+      store.commit(events.todoCreated({ id: 't3', text: 'read book', completed: false }))
 
       expect(callbackResults1).toHaveLength(2)
       expect(callbackResults2).toHaveLength(2)
 
       unsubscribe1()
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)` }))
+      store.commit(events.todoCreated({ id: 't4', text: 'cook dinner', completed: false }))
 
       expect(callbackResults1).toHaveLength(2)
       expect(callbackResults2).toHaveLength(3)
@@ -279,7 +281,56 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
+  Vitest.scopedLive('QueryBuilder subscription - async iterator', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const defaultTodo = { id: '', text: '', completed: false }
+
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
+
+      yield* Effect.promise(async () => {
+        const iterator = store.subscribe(queryBuilder)[Symbol.asyncIterator]()
+
+        const initial = await iterator.next()
+        expect(initial.done).toBe(false)
+        expect(initial.value).toMatchObject(defaultTodo)
+
+        store.commit(events.todoCreated({ id: 't-async', text: 'write tests', completed: false }))
+
+        const update = await iterator.next()
+        expect(update.done).toBe(false)
+        expect(update.value).toMatchObject({
+          id: 't-async',
+          text: 'write tests',
+          completed: false,
+        })
+
+        const doneResult = await iterator.return?.()
+        assert(doneResult)
+        expect(doneResult.done).toBe(true)
+      })
+
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),
@@ -292,16 +343,14 @@ Vitest.describe('otel', () => {
 
       const callbackResults: any[] = []
 
-      const unsubscribe = store.subscribe(tables.todos, {
-        onUpdate: (result) => {
-          callbackResults.push(result)
-        },
+      const unsubscribe = store.subscribe(tables.todos, (result) => {
+        callbackResults.push(result)
       })
 
       expect(callbackResults).toHaveLength(1)
       expect(callbackResults[0]).toEqual([])
 
-      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)` }))
+      store.commit(events.todoCreated({ id: 't5', text: 'clean house', completed: true }))
 
       expect(callbackResults).toHaveLength(2)
       expect(callbackResults[1]).toHaveLength(1)
@@ -320,7 +369,8 @@ Vitest.describe('otel', () => {
       Effect.tap(({ exporter, provider }) =>
         Effect.promise(async () => {
           await provider.forceFlush()
-          expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
           await provider.shutdown()
         }),
       ),

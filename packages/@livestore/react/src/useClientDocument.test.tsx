@@ -1,16 +1,18 @@
+/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
-import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as ReactTesting from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
-import type * as LiveStoreReact from './mod.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
+import type * as LiveStoreReact from './mod.ts'
+import { __resetUseRcResourceCache } from './useRcResource.ts'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
@@ -152,13 +154,7 @@ Vitest.describe('useClientDocument', () => {
 
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() =>
-        store.commit(
-          LiveStore.rawSqlEvent({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-          }),
-        ),
-      )
+      ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
       expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
@@ -225,6 +221,34 @@ Vitest.describe('useClientDocument', () => {
       expect(renderCount.val).toBe(2)
 
       unmount()
+    }),
+  )
+
+  Vitest.scopedLive('kv client document overwrites value (Schema.Any, no partial merge)', () =>
+    Effect.gen(function* () {
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
+
+      const { result } = ReactTesting.renderHook(
+        (id: string) => {
+          renderCount.inc()
+
+          const [state, setState] = store.useClientDocument(tables.kv, id)
+          return { state, setState, id }
+        },
+        { wrapper, initialProps: 'k1' },
+      )
+
+      expect(result.current.id).toBe('k1')
+      expect(result.current.state).toBe(null)
+      expect(renderCount.val).toBe(1)
+
+      ReactTesting.act(() => result.current.setState(1))
+      expect(result.current.state).toEqual(1)
+      expect(renderCount.val).toBe(2)
+
+      ReactTesting.act(() => result.current.setState({ b: 2 }))
+      expect(result.current.state).toEqual({ b: 2 })
+      expect(renderCount.val).toBe(3)
     }),
   )
 
@@ -299,7 +323,8 @@ Vitest.describe('useClientDocument', () => {
           })
         }
 
-        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+        expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+        expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
 
         await provider.shutdown()
       },

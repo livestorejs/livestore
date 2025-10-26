@@ -1,9 +1,10 @@
+import { Equal, Hash } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type * as RG from '../reactive.js'
-import type { RefreshReason } from '../store/store-types.js'
-import type { ISignal, ReactivityGraph, ReactivityGraphContext, SignalDef } from './base-class.js'
-import { LiveStoreQueryBase, withRCMap } from './base-class.js'
+import type * as RG from '../reactive.ts'
+import type { RefreshReason } from '../store/store-types.ts'
+import type { ISignal, ReactivityGraph, ReactivityGraphContext, SignalDef } from './base-class.ts'
+import { LiveStoreQueryBase, withRCMap } from './base-class.ts'
 
 export const signal = <T>(
   defaultValue: T,
@@ -27,6 +28,12 @@ export const signal = <T>(
           def,
         }),
     ),
+    [Equal.symbol](that: SignalDef<T>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def

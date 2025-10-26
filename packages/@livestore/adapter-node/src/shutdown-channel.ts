@@ -1,8 +1,10 @@
 import { ShutdownChannel } from '@livestore/common/leader-thread'
+import type { Effect, Scope } from '@livestore/utils/effect'
+import { makeBroadcastChannel } from './webchannel.ts'
 
-import { makeBroadcastChannel } from './webchannel.js'
-
-export const makeShutdownChannel = (storeId: string) =>
+export const makeShutdownChannel = (
+  storeId: string,
+): Effect.Effect<ShutdownChannel.ShutdownChannel, never, Scope.Scope> =>
   makeBroadcastChannel({
     channelName: `livestore.shutdown.${storeId}`,
     schema: ShutdownChannel.All,

@@ -78,9 +78,9 @@
       }
     },
     {
-      "label": "dev:ts",
+      "label": "dev:ts:watch",
       "type": "shell",
-      "command": "direnv exec . pnpm dev:ts",
+      "command": "direnv exec . mono ts --clean --watch",
       "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {
@@ -93,25 +93,18 @@
     },
     {
       "label": "dev:example",
-      "dependsOn": [
-        "dev:example:todomvc",
-        "dev:example:todomvc-custom-elements",
-        "dev:example:linearlite",
-      ],
-      "problemMatcher": [],
+      "dependsOn": ["dev:example:todomvc", "dev:example:todomvc-custom-elements", "dev:example:linearlite"],
+      "problemMatcher": []
     },
     {
       "label": "dev:example:todomvc",
-      "dependsOn": [
-        "dev:ts",
-        "dev:proxy",
-      ],
+      "dependsOn": ["dev:ts:watch", "dev:proxy"],
       "type": "shell",
       "command": "direnv exec . pnpm dev",
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-todomvc"
+        "cwd": "${workspaceFolder}/examples/web-todomvc"
       },
       "presentation": {
         "focus": false,
@@ -123,16 +116,13 @@
     },
     {
       "label": "dev:example:todomvc-custom-elements",
-      "dependsOn": [
-        "dev:ts",
-        "dev:proxy",
-      ],
+      "dependsOn": ["dev:ts:watch", "dev:proxy"],
       "type": "shell",
       "command": "direnv exec . pnpm dev",
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-todomvc-custom-elements"
+        "cwd": "${workspaceFolder}/examples/web-todomvc-custom-elements"
       },
       "presentation": {
         "focus": false,
@@ -144,16 +134,13 @@
     },
     {
       "label": "dev:example:linearlite",
-      "dependsOn": [
-        "dev:ts",
-        "dev:proxy",
-      ],
+      "dependsOn": ["dev:ts:watch", "dev:proxy"],
       "type": "shell",
       "command": "direnv exec . pnpm dev",
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/src/web-linearlite"
+        "cwd": "${workspaceFolder}/examples/web-linearlite"
       },
       "presentation": {
         "focus": false,
@@ -166,10 +153,42 @@
     {
       "label": "lint",
       "type": "shell",
-      "command": "direnv exec . pnpm lint:check",
-      "problemMatcher": "$eslint-stylish",
+      "command": "direnv exec . mono lint",
+      // TODO add biome problem matcher once available https://github.com/biomejs/biome-vscode/discussions/121
+      // "problemMatcher": [],
+      "problemMatcher": {
+        "owner": "biome",
+        "source": "biome",
+        "pattern": [
+          {
+            "regexp": "^::(?<severity>\\S+)\\s+title=(?<title>.+),file=(?<file>.+),line=(?<line>\\d+),endLine=(?<endLine>\\d+),col=(?<col>\\d+),endColumn=(?<endColumn>\\d+)::(?<message>.+)$",
+            "kind": "location",
+            "severity": 1,
+            "code": 2,
+            "file": 3,
+            "line": 4,
+            "endLine": 5,
+            "column": 6,
+            "endColumn": 7,
+            "message": 8
+          }
+        ]
+      },
       "presentation": {
         "focus": false,
+        "panel": "shared",
+        "group": "dev:lint",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "lint:fix",
+      "type": "shell",
+      "command": "direnv exec . mono lint --fix",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
         "panel": "shared",
         "group": "dev:lint",
         "showReuseMessage": false,
@@ -188,6 +207,6 @@
         "showReuseMessage": false,
         "clear": true
       }
-    }
+    },
   ]
 }

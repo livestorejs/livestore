@@ -1,13 +1,14 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { provideOtel } from '@livestore/common'
+import { provideOtel, type UnexpectedError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
-import type { Store } from '@livestore/livestore'
+import type { LiveStoreSchema, SqliteDsl, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { omitUndefineds } from '@livestore/utils'
+import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import * as LiveStoreReact from '../mod.js'
+import * as LiveStoreReact from '../mod.ts'
 
 export type Todo = {
   id: string
@@ -60,6 +61,12 @@ const AppRouterSchema = State.SQLite.clientDocument({
   },
 })
 
+const kv = State.SQLite.clientDocument({
+  name: 'Kv',
+  schema: Schema.Any,
+  default: { value: null },
+})
+
 export const events = {
   todoCreated: Events.synced({
     name: 'todoCreated',
@@ -75,28 +82,36 @@ export const events = {
   }),
   AppRouterSet: AppRouterSchema.set,
   UserInfoSet: userInfo.set,
+  KvSet: kv.set,
 }
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
-  todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
+  todoUpdated: ({ id, text, completed }) => todos.update({ ...omitUndefineds({ completed, text }) }).where({ id }),
 })
 
-export const tables = { todos, app, userInfo, AppRouterSchema }
+export const tables = { todos, app, userInfo, AppRouterSchema, kv }
 
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })
 
-export const makeTodoMvcReact = ({
-  otelTracer,
-  otelContext,
-  strictMode,
-}: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
-} = {}) =>
+export type MakeTodoMvcReactOptions = {
+  otelTracer?: otel.Tracer | undefined
+  otelContext?: otel.Context | undefined
+  strictMode?: boolean | undefined
+}
+
+export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect<
+  {
+    wrapper: ({ children }: any) => React.JSX.Element
+    store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreReact.ReactApi
+    renderCount: { readonly val: number; inc: () => void }
+  },
+  UnexpectedError,
+  Scope.Scope
+> = (opts: MakeTodoMvcReactOptions = {}) =>
   Effect.gen(function* () {
+    const { strictMode } = opts
     const makeRenderCount = () => {
       let val = 0
 
@@ -140,4 +155,4 @@ export const makeTodoMvcReact = ({
     const renderCount = makeRenderCount()
 
     return { wrapper, store: storeWithReactApi, renderCount }
-  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))
+  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: opts.otelContext, otelTracer: opts.otelTracer })))

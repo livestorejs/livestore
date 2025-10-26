@@ -1,12 +1,17 @@
+import { omitUndefineds } from '@livestore/utils'
 import { identity } from '@livestore/utils/effect'
 import type { Attributes } from '@opentelemetry/api'
 import type { InMemorySpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base'
+
 type SimplifiedNestedSpan = { _name: string; attributes: any; children: SimplifiedNestedSpan[] }
 
-export const getSimplifiedRootSpan = (
+type NestedSpan = { span: ReadableSpan; children: NestedSpan[] }
+
+const buildSimplifiedRootSpans = (
   exporter: InMemorySpanExporter,
+  rootSpanName: string,
   mapAttributes?: (attributes: Attributes) => Attributes,
-): SimplifiedNestedSpan => {
+): SimplifiedNestedSpan[] => {
   const spans = exporter.getFinishedSpans()
   const spansMap = new Map<string, NestedSpan>(spans.map((span) => [span.spanContext().spanId, { span, children: [] }]))
 
@@ -20,14 +25,12 @@ export const getSimplifiedRootSpan = (
     }
   })
 
-  type NestedSpan = { span: ReadableSpan; children: NestedSpan[] }
-  const createStoreSpanData = spans.find((_) => _.name === 'createStore')
-  if (createStoreSpanData === undefined) {
+  const rootSpanDataList = spans.filter((_) => _.name === rootSpanName)
+  if (rootSpanDataList.length === 0) {
     throw new Error(
-      "Could not find the root span named 'createStore'. Available spans: " + spans.map((s) => s.name).join(', '),
+      `Could not find any root spans named '${rootSpanName}'. Available spans: ${spans.map((s) => s.name).join(', ')}`,
     )
   }
-  const rootSpan = spansMap.get(createStoreSpanData.spanContext().spanId)!
 
   const simplifySpanRec = (span: NestedSpan): SimplifiedNestedSpan =>
     omitEmpty({
@@ -39,20 +42,29 @@ export const getSimplifiedRootSpan = (
         .map(simplifySpanRec),
     })
 
-  // console.log('rootSpan', rootSpan.span)
+  return rootSpanDataList.map((rootSpanData) => {
+    const rootSpan = spansMap.get(rootSpanData.spanContext().spanId)!
+    return simplifySpanRec(rootSpan)
+  })
+}
 
-  // console.dir(
-  //   spans.map((_) => [_.spanContext().spanId, _.name, _.attributes, _.parentSpanId]),
-  //   { depth: 10 },
-  // )
+export const getSimplifiedRootSpan = (
+  exporter: InMemorySpanExporter,
+  rootSpanName: string,
+  mapAttributes?: (attributes: Attributes) => Attributes,
+): SimplifiedNestedSpan => {
+  const results = buildSimplifiedRootSpans(exporter, rootSpanName, mapAttributes)
+  const firstResult = results[0]
+  if (!firstResult) throw new Error(`Could not find the root span named '${rootSpanName}'.`)
+  return firstResult
+}
 
-  const simplifiedRootSpan = simplifySpanRec(rootSpan)
-
-  // console.log('simplifiedRootSpan', simplifiedRootSpan)
-
-  // writeFileSync('tmp/trace.json', JSON.stringify(toTraceFile(spans), null, 2))
-
-  return simplifiedRootSpan
+export const getAllSimplifiedRootSpans = (
+  exporter: InMemorySpanExporter,
+  rootSpanName: string,
+  mapAttributes?: (attributes: Attributes) => Attributes,
+): SimplifiedNestedSpan[] => {
+  return buildSimplifiedRootSpans(exporter, rootSpanName, mapAttributes)
 }
 
 // const compareHrTime = (a: [number, numndber], b: [number, number]) => {
@@ -95,7 +107,7 @@ export const toTraceFile = (spans: ReadableSpan[]) => {
             spans: spans.map((span) => ({
               traceId: span.spanContext().traceId,
               spanId: span.spanContext().spanId,
-              ...(span.parentSpanContext?.spanId ? { parentSpanId: span.parentSpanContext.spanId } : {}),
+              ...omitUndefineds({ parentSpanId: span.parentSpanContext?.spanId }),
               // traceState: span.spanContext().traceState ?? '',
               name: span.name,
               kind: 'SPAN_KIND_INTERNAL',

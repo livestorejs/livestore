@@ -1,6 +1,7 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { createStore, makeSchema, State } from '@livestore/livestore'
+import { createStore, Events, makeSchema, State } from '@livestore/livestore'
+import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
@@ -37,8 +38,23 @@ export const app = State.SQLite.clientDocument({
 
 export const tables = { todos, app }
 
-export const state = State.SQLite.makeState({ tables, materializers: {} })
-export const schema = makeSchema({ state, events: {} })
+export const events = {
+  todoCreated: Events.synced({
+    name: 'todo.created',
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String,
+      completed: Schema.Boolean,
+    }),
+  }),
+}
+
+const materializers = State.SQLite.materializers(events, {
+  'todo.created': ({ id, text, completed }) => tables.todos.insert({ id, text, completed }),
+})
+
+export const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ state, events })
 
 export const makeTodoMvc = ({
   otelTracer,
@@ -56,4 +72,4 @@ export const makeTodoMvc = ({
     })
 
     return store
-  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer: otelTracer }))
+  }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer: otelTracer })))

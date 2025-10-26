@@ -7,7 +7,7 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -16,16 +16,22 @@ import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/ut
 import { Effect } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
-import { makeShutdownChannel } from './shutdown-channel.js'
-import type * as WorkerSchema from './worker-schema.js'
+import { makeShutdownChannel } from './shutdown-channel.ts'
+import type * as WorkerSchema from './worker-schema.ts'
 
 export type TestingOverrides = {
   clientSession?: {
-    leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
+    leaderThreadProxy?: (
+      original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
+    ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
   }
-  makeLeaderThread?: {
-    dbEventlog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
-  }
+  makeLeaderThread?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<
+    {
+      dbEventlog: SqliteDb
+      dbState: SqliteDb
+    },
+    UnexpectedError
+  >
 }
 
 export interface MakeLeaderThreadArgs {
@@ -34,9 +40,10 @@ export interface MakeLeaderThreadArgs {
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
   makeSqliteDb: MakeNodeSqliteDb
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   schema: LiveStoreSchema
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   testing: TestingOverrides | undefined
 }
 
@@ -48,7 +55,8 @@ export const makeLeaderThread = ({
   storage,
   devtools,
   schema,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   testing,
 }: MakeLeaderThreadArgs): Effect.Effect<
   Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
@@ -62,8 +70,10 @@ export const makeLeaderThread = ({
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread?.dbEventlog && kind === 'eventlog') {
-        return testing.makeLeaderThread.dbEventlog(makeSqliteDb)
+      if (testing?.makeLeaderThread) {
+        return testing
+          .makeLeaderThread(makeSqliteDb)
+          .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
       }
 
       return storage.type === 'in-memory'
@@ -86,6 +96,11 @@ export const makeLeaderThread = ({
     // Might involve some async work, so we're running them concurrently
     const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
 
+    if (storage.type === 'in-memory' && storage.importSnapshot !== undefined) {
+      dbState.import(storage.importSnapshot)
+      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+    }
+
     const devtoolsOptions = yield* makeDevtoolsOptions({ devtools, dbState, dbEventlog, storeId, clientId })
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
@@ -100,7 +115,8 @@ export const makeLeaderThread = ({
       dbEventlog,
       devtoolsOptions,
       shutdownChannel,
-      syncPayload,
+      syncPayloadEncoded,
+      syncPayloadSchema,
     })
   }).pipe(
     Effect.tapCauseLogPretty,
@@ -123,7 +139,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtools.enabled === false) {
@@ -136,7 +152,7 @@ const makeDevtoolsOptions = ({
       enabled: true,
       boot: Effect.gen(function* () {
         // Lazy import to improve startup time
-        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.js'))
+        const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.ts'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
         if (devtools.useExistingDevtoolsServer === false) {
@@ -148,6 +164,7 @@ const makeDevtoolsOptions = ({
               sessionId: 'static', // TODO make this dynamic
               schemaAlias: devtools.schemaAlias,
               isLeader: true,
+              origin: undefined,
             }),
             port: devtools.port,
             host: devtools.host,

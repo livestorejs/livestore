@@ -1,5 +1,3 @@
-/* eslint-disable unicorn/prefer-global-this */
-
 import { createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider } from '@tanstack/react-router'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -9,7 +7,15 @@ const NoLivestore = () => {
 }
 
 const DynamicIndexHtml = () => {
+  // React strict mode mounts components twice to help detect side effects.
+  // We don't want to execute the imported test code twice, but we also don't want
+  // to disable React strict mode. This ref ensures the code only runs once.
+  const hasRun = React.useRef(false)
+
   React.useEffect(() => {
+    if (hasRun.current) return
+    hasRun.current = true
+
     const main = async () => {
       const modules = import.meta.glob('../**/*.ts')
 
@@ -42,15 +48,19 @@ const routes = [
   },
   {
     path: '/devtools/two-stores',
-    component: React.lazy(() => import('./devtools/two-stores/Root.jsx').then((m) => ({ default: m.Root }))),
+    component: React.lazy(() => import('./devtools/two-stores/Root.tsx').then((m) => ({ default: m.Root }))),
   },
   {
     path: '/devtools/todomvc',
-    component: React.lazy(() => import('./devtools/todomvc/Root.jsx').then((m) => ({ default: m.App }))),
+    component: React.lazy(() => import('./devtools/todomvc/Root.tsx').then((m) => ({ default: m.App }))),
   },
   {
     path: '/devtools/no-livestore',
     component: NoLivestore,
+  },
+  {
+    path: '/adapter-web/concurrent-boot',
+    component: React.lazy(() => import('./adapter-web/Root.tsx').then((m) => ({ default: m.Root }))),
   },
 ]
 
@@ -98,7 +108,7 @@ const rootElement = document.getElementById('root')
 if (rootElement !== null && rootElement !== undefined) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <RouterProvider router={router}></RouterProvider>
+      <RouterProvider router={router} />
     </React.StrictMode>,
   )
 } else {

@@ -1,11 +1,11 @@
 import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
 
-export class WebSocketServer extends makeDurableObject({
-  // onPush: async (message) => {
-  //   console.log('cf-worker:onPush', message)
+export class SyncBackendDO extends makeDurableObject({
+  // onPush: async (message, context) => {
+  //   console.log('cf-worker:onPush', message, 'storeId:', context.storeId, 'payload:', context.payload)
   // },
-  // onPull: async (message) => {
-  //   console.log('cf-worker:onPull', message)
+  // onPull: async (message, context) => {
+  //   console.log('cf-worker:onPull', message, 'storeId:', context.storeId, 'payload:', context.payload)
   // },
   // onPushRes: async (message) => {
   //   console.log('cf-worker:onPushRes', message._tag)
@@ -19,4 +19,6 @@ export class WebSocketServer extends makeDurableObject({
   // },
 }) {}
 
-export default makeWorker()
+export default makeWorker({
+  syncBackendBinding: 'SYNC_BACKEND_DO',
+})

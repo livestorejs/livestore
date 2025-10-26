@@ -1,0 +1,16 @@
+name = "example-web-todomvc"
+main = "./src/cf-worker/index.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = [
+  "enable_request_signal",
+  "nodejs_compat",
+]
+
+[env.prod]
+name = "example-web-todomvc"
+
+[env.preview]
+name = "example-web-todomvc-preview"
+
+[env.dev]
+name = "example-web-todomvc-dev"

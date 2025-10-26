@@ -1,10 +1,11 @@
+/** biome-ignore-all lint/a11y: testing */
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import React from 'react'
+import type React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
-import type { Filter } from '../types.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
+import type { Filter } from '../types.ts'
 
 const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',

@@ -1,11 +1,11 @@
 import type { EventDefFacts } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
 
-import { compactEvents } from '../compact-events.js'
-import { historyDagFromNodes } from '../history-dag.js'
-import type { HistoryDagNode } from '../history-dag-common.js'
-import { EMPTY_FACT_VALUE } from '../history-dag-common.js'
-import { events as eventDefs, printEvent, toEventNodes } from './event-fixtures.js'
+import { compactEvents } from '../compact-events.ts'
+import { historyDagFromNodes } from '../history-dag.ts'
+import type { HistoryDagNode } from '../history-dag-common.ts'
+import { EMPTY_FACT_VALUE } from '../history-dag-common.ts'
+import { events as eventDefs, printEvent, toEventNodes } from './event-fixtures.ts'
 
 const customStringify = (value: any): string => {
   if (value === null) {
@@ -64,7 +64,7 @@ const factsSetToString = (facts: EventDefFacts, prefix: string) =>
 export const customSerializer = {
   test: (val: unknown) => Array.isArray(val),
   print: (val: unknown[], _serialize: (item: unknown) => string) => {
-    return '[\n' + (val as any[]).map((item) => '  ' + customStringify(item)).join('\n') + '\n]'
+    return `[\n${(val as any[]).map((item) => `  ${customStringify(item)}`).join('\n')}\n]`
   },
 } as any
 

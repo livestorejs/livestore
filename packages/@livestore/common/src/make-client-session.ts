@@ -9,12 +9,11 @@ import type {
   LockStatus,
   SqliteDb,
   UnexpectedError,
-} from './adapter-types.js'
-import * as Devtools from './devtools/mod.js'
-import { liveStoreVersion } from './version.js'
+} from './adapter-types.ts'
+import * as Devtools from './devtools/mod.ts'
+import { liveStoreVersion } from './version.ts'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __debugWebmeshNode: any
 }
 
@@ -34,12 +33,13 @@ export const makeClientSession = <R>({
   webmeshMode,
   registerBeforeUnload,
   debugInstanceId,
+  origin,
 }: AdapterArgs & {
   clientId: string
   sessionId: string
   isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  leaderThread: ClientSessionLeaderThreadProxy
+  leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy
   sqliteDb: SqliteDb
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
@@ -47,6 +47,8 @@ export const makeClientSession = <R>({
   }) => Effect.Effect<void, UnexpectedError, Scope.Scope | R>
   webmeshMode: 'direct' | 'proxy'
   registerBeforeUnload: (onBeforeUnload: () => void) => () => void
+  /** Browser origin of the client session; used for origin-scoped DevTools mesh channels */
+  origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] = devtoolsEnabled
@@ -68,11 +70,14 @@ export const makeClientSession = <R>({
           sessionId,
           schemaAlias,
           isLeader,
+          origin,
         })
 
         yield* connectWebmeshNode({ webmeshNode, sessionInfo })
 
-        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode)
+        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode, {
+          origin,
+        })
 
         yield* Devtools.SessionInfo.provideSessionInfo({
           webChannel: sessionInfoBroadcastChannel,
@@ -133,4 +138,4 @@ export const makeClientSession = <R>({
       shutdown,
       debugInstanceId,
     } satisfies ClientSession
-  })
+  }).pipe(Effect.withSpan('@livestore/common:make-client-session'))
