@@ -2357,7 +2357,7 @@ importers:
         version: 1.9.0
       '@solid-primitives/deep':
         specifier: ^0.3.3
-        version: 0.3.3(solid-js@1.9.9)
+        version: 0.3.3(solid-js@1.9.10)
     devDependencies:
       '@livestore/adapter-web':
         specifier: workspace:*
@@ -23757,6 +23757,11 @@ snapshots:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.10)
       solid-js: 1.9.10
 
+  '@solid-primitives/deep@0.3.3(solid-js@1.9.10)':
+    dependencies:
+      '@solid-primitives/memo': 1.4.3(solid-js@1.9.10)
+      solid-js: 1.9.10
+
   '@solid-primitives/event-listener@2.4.3(solid-js@1.9.10)':
     dependencies:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.10)
@@ -23774,6 +23779,12 @@ snapshots:
       '@solid-primitives/event-listener': 2.4.3(solid-js@1.9.10)
       '@solid-primitives/rootless': 1.5.2(solid-js@1.9.10)
       '@solid-primitives/static-store': 0.1.2(solid-js@1.9.10)
+      '@solid-primitives/utils': 6.3.2(solid-js@1.9.10)
+      solid-js: 1.9.10
+
+  '@solid-primitives/memo@1.4.3(solid-js@1.9.10)':
+    dependencies:
+      '@solid-primitives/scheduled': 1.5.2(solid-js@1.9.10)
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.10)
       solid-js: 1.9.10
 
