@@ -1692,6 +1692,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../livestore
+      '@livestore/peer-deps':
+        specifier: workspace:*
+        version: link:../peer-deps
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../sync-cf
