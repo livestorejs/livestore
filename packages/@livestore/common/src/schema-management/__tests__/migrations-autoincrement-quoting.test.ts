@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vitest'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
-
-import { migrateTable } from '../migrations.ts'
-import type { PreparedBindValues } from '../../util.ts'
-import type { PreparedStatement, SqliteDb } from '../../sqlite-types.ts'
+import { describe, expect, it } from 'vitest'
 import { SqliteAst } from '../../schema/state/sqlite/db-schema/mod.ts'
+import type { PreparedStatement, SqliteDb } from '../../sqlite-types.ts'
+import type { PreparedBindValues } from '../../util.ts'
+import { migrateTable } from '../migrations.ts'
 
 const makeStubDb = () => {
   const executed: string[] = []
@@ -28,7 +27,7 @@ const makeStubDb = () => {
     close: () => {},
     destroy: () => {},
     session: () => ({ changeset: () => undefined, finish: () => {} }),
-    makeChangeset: () => ({ invert: () => ({ invert: () => ({} as any), apply: () => {} } as any), apply: () => {} }),
+    makeChangeset: () => ({ invert: () => ({ invert: () => ({}) as any, apply: () => {} }) as any, apply: () => {} }),
   }
 
   return { db, executed }
@@ -82,6 +81,6 @@ describe('migrateTable - quoting and autoincrement', () => {
     expect(createStmt!).toContain('"id" integer primary key autoincrement')
     expect(createStmt!).toContain(" default ''")
     expect(createStmt!).not.toContain("PRIMARY KEY ('id')")
-    expect(createStmt!).not.toMatch(/'todos'|\'id\'|\'text\'/)
+    expect(createStmt!).not.toMatch(/'todos'|'id'|'text'/)
   })
 })

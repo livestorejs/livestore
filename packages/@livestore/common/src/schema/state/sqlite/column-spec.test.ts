@@ -157,9 +157,7 @@ describe('makeColumnSpec', () => {
     )
 
     const result = makeColumnSpec(table)
-    expect(result).toMatchInlineSnapshot(
-      `""id" integer primary key   , "optional_text" text    default null"`,
-    )
+    expect(result).toMatchInlineSnapshot(`""id" integer primary key   , "optional_text" text    default null"`)
     expect(result).toContain('default null')
   })
 
