@@ -1,15 +1,15 @@
+import { when } from '@bigmistqke/solid-whenever'
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { type Accessor, createMemo, createRenderEffect, mergeProps, useContext } from 'solid-js'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
-import { createMemo, createRenderEffect, mergeProps, useContext, type Accessor } from 'solid-js'
-import { when } from '@bigmistqke/solid-whenever'
-import { resolve, type AccessorMaybe } from './utils.ts'
+import { type AccessorMaybe, resolve } from './utils.ts'
 
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: Accessor<TTableDef['Value']>,

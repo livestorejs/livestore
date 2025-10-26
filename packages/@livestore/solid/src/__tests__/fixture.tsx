@@ -6,9 +6,9 @@ import { createStore } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import { type JSX } from 'solid-js'
+import type { JSX } from 'solid-js'
 
-import * as LiveStoreSolid from '../mod.js'
+import * as LiveStoreSolid from '../mod.ts'
 
 export type Todo = {
   id: string

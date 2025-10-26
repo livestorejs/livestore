@@ -24,6 +24,7 @@ import {
   TaskTracing,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
+import { trackDeep } from '@solid-primitives/deep'
 import {
   batch,
   createComputed,
@@ -33,11 +34,11 @@ import {
   on,
   onCleanup,
   type ParentProps,
-  splitProps,
   Switch,
+  splitProps,
 } from 'solid-js'
 import { createStore as createSolidStore, reconcile } from 'solid-js/store'
-import { trackDeep } from '@solid-primitives/deep'
+
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import type { MakeOptional } from './utils.ts'
 

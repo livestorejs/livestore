@@ -6,9 +6,9 @@ import * as SolidTesting from '@solidjs/testing-library'
 import { onMount } from 'solid-js'
 import { describe, expect, it } from 'vitest'
 
-import { events, schema, tables } from './__tests__/fixture.js'
-import { LiveStoreProvider } from './LiveStoreProvider.js'
-import * as LiveStoreSolid from './mod.js'
+import { events, schema, tables } from './__tests__/fixture.tsx'
+import { LiveStoreProvider } from './LiveStoreProvider.tsx'
+import * as LiveStoreSolid from './mod.ts'
 
 describe('LiveStoreProvider', () => {
   it('simple', async () => {
@@ -166,7 +166,7 @@ describe('LiveStoreProvider', () => {
       return (
         <div id={instanceId}>
           <div role="heading">{instanceId}</div>
-          <div role="content">{JSON.stringify(todos())}</div>
+          <div role="group">{JSON.stringify(todos())}</div>
           <button onClick={() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))}>
             create todo {instanceId}
           </button>

@@ -1,8 +1,8 @@
 import type { LiveStoreContextRunning } from '@livestore/livestore'
+import { createContext } from 'solid-js'
 
 import type { useClientDocument } from './useClientDocument.ts'
 import type { useQuery } from './useQuery.ts'
-import { createContext } from 'solid-js'
 
 export type SolidApi = {
   useQuery: typeof useQuery
