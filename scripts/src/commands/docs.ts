@@ -280,33 +280,17 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             message: buildMessage(contextLabelFor(prod, alias)),
-            // Split deploy: avoid Netlify build and rely on config-driven publish
           })
 
-          // Verify markdown negotiation on the deployed URL using Effect HttpClient.
-          // Prefer '/' with Accept: text/markdown, fallback to '/index.md'.
-          const acceptsMarkdown = (value: string | undefined) =>
-            typeof value === 'string' && value.toLowerCase().includes('text/markdown')
+          // Verify root returns Markdown on Accept negotiation
+          const rootContentType = yield* HttpClient.execute(
+            HttpClientRequest.get(`${finalDeploy.deploy_url}/`).pipe(
+              HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
+            ),
+          ).pipe(Effect.map((res) => res.headers['content-type']))
 
-          const http = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
-
-          const reqWithAccept = (url: string) =>
-            HttpClientRequest.get(url).pipe(HttpClientRequest.setHeaders({ Accept: 'text/markdown' }))
-
-          const resRoot = yield* http.execute(reqWithAccept(`${finalDeploy.deploy_url}/`))
-          const ctRoot = resRoot.headers['content-type']
-
-          if (!acceptsMarkdown(ctRoot)) {
-            const resIndex = yield* http.execute(reqWithAccept(`${finalDeploy.deploy_url}/index.md`))
-            const ctIndex = resIndex.headers['content-type']
-            if (ctIndex && acceptsMarkdown(ctIndex)) {
-              yield* Effect.logWarning(
-                'Markdown available at /index.md but root (/) did not return markdown with Accept: text/markdown.',
-              )
-            } else {
-              yield* Effect.logError('Markdown negotiation check failed: neither / nor /index.md returned markdown')
-              return shouldNeverHappen('Docs deploy validation failed: markdown negotiation check')
-            }
+          if (!rootContentType?.toLowerCase().includes('text/markdown')) {
+            return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
           }
 
           if (purgeCdn) {

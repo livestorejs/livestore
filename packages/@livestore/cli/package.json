@@ -14,6 +14,7 @@
     "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
