@@ -2,7 +2,7 @@ import fs from 'node:fs'
 
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
@@ -183,12 +183,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        purgeCdn: Cli.Options.boolean('purge-cdn')
-          .pipe(Cli.Options.withDefault(false))
-          .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
+        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        ),
+        build: Cli.Options.boolean('build').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.optional,
+          Cli.Options.withDescription('Build the docs before deploying (split flow)'),
+        ),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -263,19 +269,45 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
+          // Split mode: build first only when requested via --build
+          const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          if (shouldBuild) {
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
+          }
+
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             message: buildMessage(contextLabelFor(prod, alias)),
-            dir: `${docsPath}/dist`,
-            // Pass through build-time flags so the Netlify CLI build includes
-            // API docs and has sufficient memory headroom.
-            env: {
-              STARLIGHT_INCLUDE_API_DOCS: '1',
-              NODE_OPTIONS: '--max_old_space_size=4096',
-            },
+            // Split deploy: avoid Netlify build and rely on config-driven publish
           })
+
+          // Verify markdown negotiation on the deployed URL using Effect HttpClient.
+          // Prefer '/' with Accept: text/markdown, fallback to '/index.md'.
+          const acceptsMarkdown = (value: string | undefined) =>
+            typeof value === 'string' && value.toLowerCase().includes('text/markdown')
+
+          const http = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
+
+          const reqWithAccept = (url: string) =>
+            HttpClientRequest.get(url).pipe(HttpClientRequest.setHeaders({ Accept: 'text/markdown' }))
+
+          const resRoot = yield* http.execute(reqWithAccept(`${finalDeploy.deploy_url}/`))
+          const ctRoot = resRoot.headers['content-type']
+
+          if (!acceptsMarkdown(ctRoot)) {
+            const resIndex = yield* http.execute(reqWithAccept(`${finalDeploy.deploy_url}/index.md`))
+            const ctIndex = resIndex.headers['content-type']
+            if (ctIndex && acceptsMarkdown(ctIndex)) {
+              yield* Effect.logWarning(
+                'Markdown available at /index.md but root (/) did not return markdown with Accept: text/markdown.',
+              )
+            } else {
+              yield* Effect.logError('Markdown negotiation check failed: neither / nor /index.md returned markdown')
+              return shouldNeverHappen('Docs deploy validation failed: markdown negotiation check')
+            }
+          }
 
           if (purgeCdn) {
             const purgeSiteId = finalDeploy.site_id
