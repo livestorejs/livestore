@@ -130,28 +130,23 @@ Vitest.describe('useQuery', () => {
         return <div role="listitem">{String(res())}</div>
       }
 
-      let numItems = 1
+      const [numItems, setNumItems] = createSignal(1)
+
       const ListWrapper = () => {
-        const ids = Array.from({ length: numItems }, (_, i) => i).reverse()
         return (
           <div>
-            {ids.map((id) => (
-              <ListItem id={id} />
-            ))}
+            <For each={Array.from({ length: numItems() }, (_, i) => i).reverse()}>{(id) => <ListItem id={id} />}</For>
           </div>
         )
       }
 
-      const { container, unmount } = SolidTesting.render(() => <ListWrapper />, { wrapper })
+      const { container } = SolidTesting.render(() => <ListWrapper />, { wrapper })
 
       expect(container.textContent).toBe('0')
 
-      // Test query swapping by remounting with different numItems
-      unmount()
-      numItems = 3
-      const { container: container2 } = SolidTesting.render(() => <ListWrapper />, { wrapper })
+      setNumItems(3)
 
-      expect(container2.textContent).toBe('210')
+      expect(container.textContent).toBe('210')
     }),
   )
 
