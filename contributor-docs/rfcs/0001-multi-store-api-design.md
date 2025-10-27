@@ -721,18 +721,6 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 - **TanStack Query**: `gcTime: 5 minutes` (cache time for query data)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds` (cache time for query data)
 
-### Suspend via `useStore()`
-
-Rather than returning `{ store, status }`, the hook integrates with Suspense by throwing promises during load and errors during failure. This aligns with React 18 patterns and keeps component code free of manual loading branches.
-
-### Configuration Cascade (Registry Defaults → `storeOptions`)
-
-Two layers control configuration:
-1. `new StoreRegistry({ defaultOptions })` for app-wide policies (batching, auth payloads, default `gcTime`).
-2. `storeOptions({ ... })` for per-store overrides (dynamic `storeId`, specialized `gcTime`, `boot`).
-
-If both specify the same key, the `storeOptions` value wins.
-
 ## Open Questions
 
 ### 1. How Should We Reconcile The Single Store API With Multi-Store?
