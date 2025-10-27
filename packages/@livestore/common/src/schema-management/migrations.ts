@@ -168,10 +168,10 @@ export const migrateTable = ({
 
     if (behaviour === 'drop-and-recreate') {
       // TODO need to possibly handle cascading deletes due to foreign keys
-      dbExecute(db, sql`drop table if exists '${tableName}'`)
-      dbExecute(db, sql`create table if not exists '${tableName}' (${columnSpec}) strict`)
+      dbExecute(db, sql`drop table if exists "${tableName}"`)
+      dbExecute(db, sql`create table if not exists "${tableName}" (${columnSpec}) strict`)
     } else if (behaviour === 'create-if-not-exists') {
-      dbExecute(db, sql`create table if not exists '${tableName}' (${columnSpec}) strict`)
+      dbExecute(db, sql`create table if not exists "${tableName}" (${columnSpec}) strict`)
     }
 
     for (const index of tableAst.indexes) {
@@ -201,5 +201,7 @@ export const migrateTable = ({
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''
-  return sql`create ${uniqueStr} index if not exists '${index.name}' on '${tableName}' (${index.columns.map((col) => `'${col}'`).join(', ')})`
+  return sql`create ${uniqueStr} index if not exists "${index.name}" on "${tableName}" (${index.columns
+    .map((col) => `"${col}"`)
+    .join(', ')})`
 }
