@@ -45,13 +45,11 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
 
       // Re-check to avoid racing with a new subscription
       if (this.#subscribers.size > 0) return
+
       void this.#shutdown().finally(() => {
         // Double-check again just in case shutdown was slow
         if (this.#subscribers.size === 0) this.#cache.delete(this.#storeId)
       })
-
-      void this.#shutdown()
-      this.#cache.delete(this.#storeId)
     }, effectiveGcTime)
   }
 
