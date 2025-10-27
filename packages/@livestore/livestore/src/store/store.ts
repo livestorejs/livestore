@@ -811,35 +811,61 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       return true
     }
 
-    // Create the appropriate stream based on minSyncLevel
-    return Effect.gen(function* () {
-      // Only events confirmed by backend
-
-      const _leaderSyncState = yield* leaderThreadProxy.syncState
-      // From dev branch: syncState = yield* leaderThreadProxy.syncState
-      // What happens when we reach the end? Restart with the same head value?
-      // If there is semantically a clear end (until) we should end at that cursor
-      // If there is not we should keep streaming
-      // -> Get rid of snapshotOnly for now (until we realize we needed it)
-      // const backendHead = leaderSyncState.upstreamHead
-
-      // Stream from leader, but only up to backend head
-      return leaderThreadProxy.events
-        .stream({
-          since: cursor,
-          ...omitUndefineds({
-            filter: options?.filter as ReadonlyArray<string> | undefined,
-            clientIds: options?.clientIds,
-            sessionIds: options?.sessionIds,
-          }),
-          batchSize,
-        })
-        .pipe(
-          Stream.filter(matchesFilters),
-          Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+    const headStream = Stream.unwrap(
+      Effect.gen(function* () {
+        const initialState = yield* leaderThreadProxy.syncState.get
+        return Stream.concat(
+          Stream.make(initialState.upstreamHead),
+          leaderThreadProxy.syncState.changes.pipe(Stream.map((state) => state.upstreamHead)),
         )
-    }).pipe(
-      Stream.unwrap,
+      }),
+    ).pipe(Stream.skipRepeated(EventSequenceNumber.isEqual))
+
+    return headStream.pipe(
+      Stream.mapAccum<
+        // Sequence number representing the current cursor state.
+        EventSequenceNumber.EventSequenceNumber,
+        // Sequence number that becomes the updated cursor after processing the head.
+        EventSequenceNumber.EventSequenceNumber,
+        // Stream of decoded events emitted for the processed head interval.
+        Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError>
+      >(cursor, (currentCursor, nextHead) => {
+        if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
+          return [currentCursor, Stream.empty]
+        }
+
+        if (EventSequenceNumber.isGreaterThan(nextHead, currentCursor) === false) {
+          return [currentCursor, Stream.empty]
+        }
+
+        const effectiveHead =
+          options?.until && EventSequenceNumber.isGreaterThan(nextHead, options.until) ? options.until : nextHead
+
+        if (EventSequenceNumber.isGreaterThan(effectiveHead, currentCursor) === false) {
+          return [currentCursor, Stream.empty]
+        }
+
+        const nextCursor = effectiveHead
+
+        const streamSegment = leaderThreadProxy.events
+          .stream({
+            since: currentCursor,
+            until: effectiveHead,
+            ...omitUndefineds({
+              filter: options?.filter as ReadonlyArray<string> | undefined,
+              clientIds: options?.clientIds,
+              sessionIds: options?.sessionIds,
+            }),
+            batchSize,
+          })
+          .pipe(
+            Stream.filter(matchesFilters),
+            Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+          )
+
+        return [nextCursor, streamSegment]
+      }),
+      Stream.flatMap((segment) => segment),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
   }
