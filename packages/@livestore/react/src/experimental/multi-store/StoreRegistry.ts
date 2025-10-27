@@ -8,25 +8,57 @@ type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
 
+const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+
 /**
- * Minimal cache entry that tracks store state and subscribers.
- *
  * @typeParam TSchema - The schema for this entry's store.
  * @internal
  */
 class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
+  readonly #storeId: StoreId
+  readonly #cache: StoreCache
+
   #state: StoreEntryState<TSchema> = { status: 'idle' }
+
+  #gcTime?: number
+  #gcTimeout?: ReturnType<typeof setTimeout> | null
 
   /**
    * Set of subscriber callbacks to notify on state changes.
    */
-  #subscribers = new Set<() => void>()
+  readonly #subscribers = new Set<() => void>()
 
-  /**
-   * The number of active subscribers for this entry.
-   */
-  get subscriberCount() {
-    return this.#subscribers.size
+  constructor(storeId: StoreId, cache: StoreCache) {
+    this.#storeId = storeId
+    this.#cache = cache
+  }
+
+  #scheduleGC = (): void => {
+    this.#cancelGC()
+
+    const effectiveGcTime = this.#gcTime === undefined ? DEFAULT_GC_TIME : this.#gcTime
+
+    if (effectiveGcTime === Number.POSITIVE_INFINITY) return // Infinity disables GC
+
+    this.#gcTimeout = setTimeout(() => {
+      this.#gcTimeout = null
+
+      // Re-check to avoid racing with a new subscription
+      if (this.#subscribers.size > 0) return
+      void this.#shutdown().finally(() => {
+        // Double-check again just in case shutdown was slow
+        if (this.#subscribers.size === 0) this.#cache.delete(this.#storeId)
+      })
+
+      void this.#shutdown()
+      this.#cache.delete(this.#storeId)
+    }, effectiveGcTime)
+  }
+
+  #cancelGC = (): void => {
+    if (!this.#gcTimeout) return
+    clearTimeout(this.#gcTimeout)
+    this.#gcTimeout = null
   }
 
   /**
@@ -54,11 +86,6 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     this.#notify()
   }
 
-  #reset = (): void => {
-    this.#state = { status: 'idle' }
-    this.#notify()
-  }
-
   /**
    * Notifies all subscribers of state changes.
    *
@@ -82,9 +109,12 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * @returns Unsubscribe function
    */
   subscribe = (listener: () => void): Unsubscribe => {
+    this.#cancelGC()
     this.#subscribers.add(listener)
     return () => {
       this.#subscribers.delete(listener)
+      // If no more subscribers remain, schedule GC
+      if (this.#subscribers.size === 0) this.#scheduleGC()
     }
   }
 
@@ -101,6 +131,8 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * - Invokes onSettle callback for GC scheduling when needed
    */
   getOrLoad = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
+    if (options.gcTime !== undefined) this.#gcTime = Math.max(this.#gcTime ?? 0, options.gcTime)
+
     if (this.#state.status === 'success') return this.#state.store
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
@@ -114,17 +146,21 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
         this.#setError(error)
         throw error
       })
+      .finally(() => {
+        // The store entry may have become inactive (no subscribers) while loading the store
+        if (this.#subscribers.size === 0) this.#scheduleGC()
+      })
 
     this.#setPromise(promise)
 
     return promise
   }
 
-  shutdown = async (): Promise<void> => {
+  #shutdown = async (): Promise<void> => {
     if (this.#state.status !== 'success') return
-    await this.#state.store.shutdownPromise()
-
-    this.#reset()
+    await this.#state.store.shutdownPromise().catch((reason) => {
+      console.warn(`Store ${this.#storeId} failed to shutdown cleanly during GC:`, reason)
+    })
   }
 }
 
@@ -147,7 +183,7 @@ class StoreCache {
     let entry = this.#entries.get(storeId) as StoreEntry<TSchema> | undefined
 
     if (!entry) {
-      entry = new StoreEntry<TSchema>()
+      entry = new StoreEntry<TSchema>(storeId, this)
       this.#entries.set(storeId, entry as unknown as StoreEntry)
     }
 
@@ -158,19 +194,11 @@ class StoreCache {
    * Removes an entry from the cache.
    *
    * @param storeId - The ID of the store to remove
-   *
-   * @remarks
-   * - Invokes shutdown on the store before removal.
    */
-  remove = (storeId: StoreId): void => {
-    const entry = this.#entries.get(storeId)
-    if (!entry) return
-    void entry.shutdown()
+  delete = (storeId: StoreId): void => {
     this.#entries.delete(storeId)
   }
 }
-
-const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 type DefaultStoreOptions = Partial<
   Pick<
@@ -208,7 +236,6 @@ type StoreRegistryConfig = {
  */
 export class StoreRegistry {
   readonly #cache = new StoreCache()
-  readonly #gcTimeouts = new Map<StoreId, ReturnType<typeof setTimeout>>()
   readonly #defaultOptions: DefaultStoreOptions
 
   constructor({ defaultOptions = {} }: StoreRegistryConfig = {}) {
@@ -221,23 +248,6 @@ export class StoreRegistry {
     ...this.#defaultOptions,
     ...options,
   })
-
-  #scheduleGC = (id: StoreId): void => {
-    this.#cancelGC(id)
-    const timer = setTimeout(() => {
-      this.#gcTimeouts.delete(id)
-      this.#cache.remove(id)
-    }, DEFAULT_GC_TIME)
-    this.#gcTimeouts.set(id, timer)
-  }
-
-  #cancelGC = (id: StoreId): void => {
-    const t = this.#gcTimeouts.get(id)
-    if (t) {
-      clearTimeout(t)
-      this.#gcTimeouts.delete(id)
-    }
-  }
 
   /**
    * Get or load a store, returning it directly if loaded or a promise if loading.
@@ -256,18 +266,9 @@ export class StoreRegistry {
     options: CachedStoreOptions<TSchema>,
   ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
-    const entry = this.#cache.ensure<TSchema>(optionsWithDefaults.storeId)
+    const storeEntry = this.#cache.ensure<TSchema>(optionsWithDefaults.storeId)
 
-    const storeOrPromise = entry.getOrLoad(optionsWithDefaults)
-
-    if (storeOrPromise instanceof Promise) {
-      return storeOrPromise.finally(() => {
-        // If no subscribers remain after load settles, schedule GC
-        if (entry.subscriberCount === 0) this.#scheduleGC(optionsWithDefaults.storeId)
-      })
-    }
-
-    return storeOrPromise
+    return storeEntry.getOrLoad(optionsWithDefaults)
   }
 
   /**
@@ -290,15 +291,7 @@ export class StoreRegistry {
 
   subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {
     const entry = this.#cache.ensure<TSchema>(storeId)
-    // Active subscriber: cancel any scheduled GC
-    this.#cancelGC(storeId)
 
-    const unsubscribe = entry.subscribe(listener)
-
-    return () => {
-      unsubscribe()
-      // If no more subscribers remain, schedule GC
-      if (entry.subscriberCount === 0) this.#scheduleGC(storeId)
-    }
+    return entry.subscribe(listener)
   }
 }
