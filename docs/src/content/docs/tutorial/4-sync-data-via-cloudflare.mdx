@@ -5,14 +5,14 @@ sidebar:
   order: 4
 ---
 
-In this step, you are going to introduce a [sync](/reference/syncing/) backend. This sync backend will:
+In this step, you're going to introduce a [sync](/reference/syncing/) backend. This sync backend will:
 
-- have a "live connection" (via WebSockets) to _all_ the clients that are running your app
-- propagate events to _all_ other clients whenever a particular client emits an event
+- Have a "live connection" (via WebSockets) to _all_ the clients that are running your app.
+- Propagate events to _all_ other clients whenever a particular client emits an event.
 
-Notice how you'll achieve this by only changing the data layer of your application! You won't need to touch the actual application code you've already implemented in `main.tsx` and `App.tsx`, all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
+Notice how you'll achieve this by only changing the data layer of your application! You won't need to touch the actual application code you've already implemented in `main.tsx` and `App.tsx`—all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
 
-You are going to implement the sync backend using [Cloudflare Workers](https://developers.cloudflare.com/workers/) and [Durable Objects](https://developers.cloudflare.com/durable-objects/), using the [@livestore/sync-cf](/reference/syncing/sync-provider/cloudflare/) package.
+You're going to implement the sync backend using [Cloudflare Workers](https://developers.cloudflare.com/workers/) and [Durable Objects](https://developers.cloudflare.com/durable-objects/), using the [@livestore/sync-cf](/reference/syncing/sync-provider/cloudflare/) package.
 
 ## Install the Cloudflare sync provider package
 
@@ -24,7 +24,7 @@ pnpm add @livestore/sync-cf@0.4.0-dev.14
 
 ## Create the sync backend
 
-Now, create a new `sync` directory called and a new file for the sync backend:
+Now, create a new `sync` directory and a new file for the sync backend:
 
 ```bash
 mkdir src/sync
@@ -109,9 +109,9 @@ enabled = true
 
 Here's a quick rundown of the changes:
 
-- `main`: Since you're now introducing a "backend", your app needs to be reconfigured. It now has a dedicated entry-point in `./src/sync/client-ws.ts`. When your Worker receives a request, this file's exported handlers are executed. In your case, it points to the WebSocket sync backend implementation.
+- `main`: Since you're now introducing a "backend", your app needs to be reconfigured. It now has a dedicated entry point in `./src/sync/client-ws.ts`. When your Worker receives a request, this file's exported handlers are executed. In your case, it points to the WebSocket sync backend implementation.
 - `durable_objects.bindings`: This configures the bindings for your Durable Object. You'll be able to inspect it in the Cloudflare Dashboard by its name `SYNC_BACKEND_DO`.
-- `migrations`: Whenever you introduce a new Durable Object that supports [SQLite storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#create-sqlite-backed-durable-object-class) (or update an existing one), you need to add a migration referencing the new/updates Durable Object class. 
+- `migrations`: Whenever you introduce a new Durable Object that supports [SQLite storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#create-sqlite-backed-durable-object-class) (or update an existing one), you need to add a migration referencing the new or updated Durable Object class. 
 
 You're now ready to run and deploy the app:
 
@@ -188,6 +188,6 @@ Current Version ID: 8860dd68-6082-4da9-9407-dea670cd8b23
 
 Feel free to test the new behaviour locally or using the deployed version. This time, data syncing will work across browsers and even devices!
 
-Here's GIF demonstrating how a regular Chrome tab, an incognitoe Chrome tab and a Safari tab are staying in sync automatically:
+Here's a GIF demonstrating how a regular Chrome tab, an incognito Chrome tab and a Safari tab are staying in sync automatically:
 
-![](../../../assets/tutorial/section-4/1-livestore-cf-sync.gif)
+![](../../../assets/tutorial/chapter-4/1-livestore-cf-sync.gif)

@@ -15,7 +15,7 @@ You'll do this in these steps:
     3. Add a materializer to update the DB after one of the two above events happened.
 2. Update the UI with a checkbox element for each todo which sends the above events when toggled.
 
-## Upate your LiveStore schema
+## Update your LiveStore schema
 
 Open your `schema.ts` file and update it with a new column, two events (for completing and uncompleting a todo) with two corresponding materializers:
 
@@ -180,6 +180,6 @@ export default App
 
 If you run or deploy the app, the UI will now look as follows:
 
-![](../../../assets/tutorial/section-5/0-completed-ui.png)
+![](../../../assets/tutorial/chapter-5/0-completed-ui.png)
 
-Becuase the `completed` field is also being persisted in the database, it also auto-syncs across browser sessions and devices.
+Because the `completed` field is also being persisted in the database, it also auto-syncs across browser sessions and devices.

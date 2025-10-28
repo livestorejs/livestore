@@ -5,10 +5,10 @@ sidebar:
   order: 6
 ---
 
-As we saw in the beginning of the tutorial, the state of an application is typically divived into two categories:
+As you saw in the beginning of the tutorial, the state of an application is typically divided into two categories:
 
-- App state: State that represents the _application data_ a user needs to achieve their goals with the app; in your current case, that's the list of todos. App state is typically lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
-- UI state: UI state that is only relevant for a particular browser session.
+- **App state**: State that represents the _application data_ a user needs to achieve their goals with the app; in your current case, that's the list of todos. App state typically lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
+- **UI state**: UI state that is only relevant for a particular browser session.
 
 Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). The site reloads for some reason and they have to start over! With LiveStore, this problem is easily solved!
 
@@ -142,7 +142,7 @@ export default App
 
 If you run the app now, it'll look similar to this:
 
-![](../../../assets/tutorial/section-6/0-tabbed-filter-element.png)
+![](../../../assets/tutorial/chapter-6/0-tabbed-filter-element.png)
 
 You can switch between tabs and see how the tabbed component updates the currently active tab. Just like `input`, this uses local React state:
 
@@ -183,11 +183,11 @@ export const tables = {
 
 On this table, you define:
 
-- name for this client document
-- the structure of the client document via `schema`; in your case: 
-    - the current state of the `input` text field for adding a new todo
-    - the `filter` that'll be used to filter the todos according to their `completed` status
-- default values for this client document
+- A name for this client document.
+- The structure of the client document via `schema`; in your case: 
+    - The current state of the `input` text field for adding a new todo.
+    - The `filter` that'll be used to filter the todos according to their `completed` status.
+- Default values for this client document.
 
 Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add this predefined event to your `events` object:
 
@@ -239,16 +239,16 @@ import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
 ```
 
-Instead of using `useState` for managing the UI state, you're now comitting it into your local SQLite DB via LiveStore as well.
+Instead of using `useState` for managing the UI state, you're now committing it into your local SQLite DB via LiveStore as well.
 
 Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `App` component where they are used:
 
 - `setInput` → `updatedInput`
 - `setFilter` → `updatedFilter`
 
-You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state now is persisted and survives page refreshs.
+You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state is now persisted and survives page refreshes.
 
-![](../../../assets/tutorial/section-6/1-persist-ui-state.gif)
+![](../../../assets/tutorial/chapter-6/1-persist-ui-state.gif)
 
 :::note[Tables vs Client documents]
 
@@ -429,12 +429,12 @@ export default App
 
 ## Deploy and test the app
 
-As before, you can deplot the app with the deploy script:
+As before, you can deploy the app with the deploy script:
 
 ```bash
 pnpm run deploy
 ```
 
-The filters now will be applied and upate the list of todos when changed:
+The filters now will be applied and update the list of todos when changed:
 
-![](../../../assets/tutorial/section-6/2-final-app.gif)
+![](../../../assets/tutorial/chapter-6/2-final-app.gif)

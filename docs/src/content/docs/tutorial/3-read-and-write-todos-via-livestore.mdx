@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshs and dev server reloads.
+Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshes and dev server reloads.
 
 :::note[Help improve LiveStore]
 Remember that LiveStore is still early and its developer surface and API not yet fully optimized. Bear with us through the setup and boilerplate code that's needed for a running application—it'll be worth it!
@@ -134,7 +134,7 @@ import { schema } from './schema.ts'
 makeWorker({ schema })
 ```
 
-This is boilerplate code that you'll almost necver need to touch. (In this tutorial, it'll only be edited once when we introduce syncing data to Cloudflare.)
+This is boilerplate code that you'll almost never need to touch. (In this tutorial, it'll only be edited once when we introduce syncing data to Cloudflare.)
 
 :::note[Special syntax for importing Worker files in Vite]
 When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
@@ -142,7 +142,7 @@ When importing this file, make sure to add the `?worker` extension to the import
 
 Next, update `main.tsx` to create an adapter and wrap your `App` component inside the `LiveStoreProvider`:
 
-```tsx title="main.tsx"
+```tsx title="src/main.tsx"
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
@@ -212,9 +212,9 @@ export default defineConfig({
 })
 ```
 
-Now, your app is set up to starting reading and writing data in a local SQLite database via LiveStore. If you run the app via `pnpm dev`, you'll briefly see a loading screen (implemented via the `renderLoading` prop on the `LiveStoreProvider`) before the todo list UI from the previous steps will appear again:
+Now, your app is set up to start reading and writing data in a local SQLite database via LiveStore. If you run the app via `pnpm dev`, you'll briefly see a loading screen (implemented via the `renderLoading` prop on the `LiveStoreProvider`) before the todo list UI from the previous steps will appear again:
 
-![](../../../assets/tutorial/section-3/0-livestore-loading.gif)
+![](../../../assets/tutorial/chapter-3/0-livestore-loading.gif)
 
 The todos themselves are not yet persisted because you haven't modified the logic for managing state in `App.tsx`. That's what you'll do next.
 
@@ -224,9 +224,9 @@ The current version of the app still stores the todos _in-memory_ via the state 
 
 In order to read todos, you need to define a LiveStore query. LiveStore queries are _reactive_, meaning they will automatically update your UI components when the underlying data changes.
 
-Here's you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, we'll provide the full snippet at the end of this section):
+Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
 
-```diff title="App.tsx" lang="ts"
+```diff title="src/App.tsx" lang="ts"
 function App() {
 
 +  const { store } = useStore()
@@ -247,9 +247,9 @@ function App() {
 
 With this change, you're now reading the `todos` from LiveStore (where they're persisted) instead of using React's ephemeral state.
 
-This was only half of the job though: Right now your code would throw a type error because it still uses `setTodos` to update the local state. You need to update this to use an the `todoCreated` and `todoDeleted` events you defined in `src/livestore/schema.ts`:
+This was only half of the job though: Right now your code would throw a type error because it still uses `setTodos` to update the local state. You need to update this to use the `todoCreated` and `todoDeleted` events you defined in `src/livestore/schema.ts`:
 
-```diff title="App.tsx" lang="ts"
+```diff title="src/App.tsx" lang="ts"
 function App() {
 
   const { store } = useStore()
@@ -292,7 +292,7 @@ Let's follow it from the first time the app is started:
 
 Now try it out! Here's the full code for `App.tsx` that you can copy and paste:
 
-```ts title="App.tsx"
+```ts title="src/App.tsx"
 import { useState } from 'react'
 import { useStore } from '@livestore/react'
 import { tables, events } from './livestore/schema'
@@ -385,44 +385,44 @@ export default App
 
 Try adding a few todos and then refresh the browser (or restart your development server):
 
-![](../../../assets/tutorial/section-3/1-livestore-persistence.gif)
+![](../../../assets/tutorial/chapter-3/1-livestore-persistence.gif)
 
 In addition to the persistence, you can now observe the following behaviour:
 
-- you can open multiple browser tabs/windows, make edits to the todo list and see live updates when you make changes in one of them
-- you can stop and restart the local version of your app and the todos will be persisted
-- if you open the app in an incognito tab or a different browser, the list of todos will be empty again; that's because the _Shared web worker_ only works in the same browser "session"; incognito tabs and different browsers use a different session
+- You can open multiple browser tabs/windows, make edits to the todo list and see live updates when you make changes in one of them.
+- You can stop and restart the local version of your app and the todos will be persisted.
+- If you open the app in an incognito tab or a different browser, the list of todos will be empty again; that's because the _Shared web worker_ only works in the same browser "session"; incognito tabs and different browsers use a different session.
 
 <details>
 <summary>Expand to learn about browser isolation/sessions</summary>
 
 **Regular browser windows**
 
-- All regular windows share the same browser context
-- SharedWorker is shared across all these tabs/windows
-- OPFS storage is shared across the origin
-- ✅ Real-time sync works because they're all using the same SharedWorker and storage
+- All regular windows share the same browser context.
+- SharedWorker is shared across all these tabs/windows.
+- OPFS storage is shared across the origin.
+- ✅ Real-time sync works because they're all using the same SharedWorker and storage.
 
 **Incognito windows**
 
-- Incognito mode creates a **separate session** from regular browsing
+- Incognito mode creates a **separate session** from regular browsing.
 - However, **multiple incognito windows opened in the same incognito session** still share:
-- The same SharedWorker instance
-- The same OPFS storage (within that incognito session)
-- Each incognito **session** gets isolated storage, but windows within that session are NOT isolated from each other
+  - The same SharedWorker instance.
+  - The same OPFS storage (within that incognito session).
+- Each incognito **session** gets isolated storage, but windows within that session are NOT isolated from each other.
 
 Think of it this way:
 
-- Regular windows = Session A (all windows share the same data)
-- Incognito windows = Session B (all incognito windows share the same data)
+- Regular windows = Session A (all windows share the same data).
+- Incognito windows = Session B (all incognito windows share the same data).
 
 **To get true isolation**
 
 If you want completely isolated instances, you'd need to use:
 
-- **different browser profiles** - Chrome profiles are truly isolated
-- **different browsers** - Chrome vs Firefox vs Safari
-- **different devices** (only possible with the deployed app) - Your computer vs your phone
+- **Different browser profiles** - Chrome profiles are truly isolated.
+- **Different browsers** - Chrome vs Firefox vs Safari.
+- **Different devices** (only possible with the deployed app) - Your computer vs your phone.
 
 </details>
 
@@ -434,11 +434,11 @@ pnpm run deploy
 
 Here's a little GIF demonstrating the current state of the live updates via browser isolation:
 
-![](../../../assets/tutorial/section-3/3-livestore-sync-local-480.gif)
+![](../../../assets/tutorial/chapter-3/3-livestore-sync-local-480.gif)
 
 To recap, here's a visualization of the data flow in the app at this point:
 
-![](../../../assets/tutorial/section-3/2-livestore-data-flow.png)
+![](../../../assets/tutorial/chapter-3/2-livestore-data-flow.png)
 
 ## Set up LiveStore DevTools
 
@@ -489,7 +489,7 @@ export default defineConfig({
 
 Now, in the developer console of your browser, you can find the **LiveStore** tab with details about the current LiveStore internals:
 
-![](../../../assets/tutorial/section-3/4-livestore-devtools.png)
+![](../../../assets/tutorial/chapter-3/4-livestore-devtools.png)
 
 There are several tabs in the LiveStore DevTools:
 
