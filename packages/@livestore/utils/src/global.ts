@@ -3,7 +3,7 @@ declare global {
   export type UNUSED<_Reason extends string = 'unknown'> = any
 
   interface ImportMeta {
-    readonly main: boolean
+    main: boolean
   }
 }
 

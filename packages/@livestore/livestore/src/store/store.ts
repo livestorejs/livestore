@@ -36,7 +36,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
-
 import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
@@ -141,6 +140,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.params = params
     this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
@@ -811,6 +811,39 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       return true
     }
 
+    const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
+      return encodedEvent.seqNum.client <= 0
+    }
+
+    // return Effect.gen(function* () {
+    //   const leaderSyncState = yield* leaderThreadProxy.syncState
+    //   const backendHead = leaderSyncState.upstreamHead
+
+    //   console.log('since', cursor)
+    //   console.log('backendHead', backendHead)
+
+    //   // Stream from leader, but only up to backend head
+    //   return leaderThreadProxy.events
+    //     .stream({
+    //       since: cursor,
+    //       until: backendHead,
+    //       ...omitUndefineds({
+    //         filter: options?.filter as ReadonlyArray<string> | undefined,
+    //         clientIds: options?.clientIds,
+    //         sessionIds: options?.sessionIds,
+    //       }),
+    //       batchSize,
+    //     })
+    //     .pipe(
+    //       Stream.filter(includeClientOnly),
+    //       Stream.filter(matchesFilters),
+    //       Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+    //     )
+    // }).pipe(
+    //   Stream.unwrap,
+    //   Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+    // )
+
     const headStream = Stream.unwrap(
       Effect.gen(function* () {
         const initialState = yield* leaderThreadProxy.syncState.get
@@ -830,6 +863,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         // Stream of decoded events emitted for the processed head interval.
         Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError>
       >(cursor, (currentCursor, nextHead) => {
+        console.log('currentCursor', currentCursor)
+        console.log('nextHead', nextHead)
+
         if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
           return [currentCursor, Stream.empty]
         }
@@ -859,6 +895,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             batchSize,
           })
           .pipe(
+            Stream.filter(includeClientOnly),
             Stream.filter(matchesFilters),
             Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
           )

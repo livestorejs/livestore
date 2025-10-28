@@ -27,6 +27,14 @@ export const MainSection: React.FC = () => {
 
   const visibleTodos = store.useQuery(visibleTodos$)
 
+  React.useEffect(() => {
+    void (async () => {
+      for await (const event of store.events()) {
+        console.log('event', event)
+      }
+    })()
+  })
+
   return (
     <section className="main">
       <ul className="todo-list">
