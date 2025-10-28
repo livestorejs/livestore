@@ -844,15 +844,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     //   Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     // )
 
-    const headStream = Stream.unwrap(
-      Effect.gen(function* () {
-        const initialState = yield* leaderThreadProxy.syncState.get
-        return Stream.concat(
-          Stream.make(initialState.upstreamHead),
-          leaderThreadProxy.syncState.changes.pipe(Stream.map((state) => state.upstreamHead)),
-        )
-      }),
-    ).pipe(Stream.skipRepeated(EventSequenceNumber.isEqual))
+    const headStream = leaderThreadProxy.syncState.changes.pipe(
+      Stream.map((state) => state.upstreamHead),
+      Stream.skipRepeated(EventSequenceNumber.isEqual),
+    )
 
     return headStream.pipe(
       Stream.mapAccum<
@@ -863,9 +858,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         // Stream of decoded events emitted for the processed head interval.
         Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError>
       >(cursor, (currentCursor, nextHead) => {
-        console.log('currentCursor', currentCursor)
-        console.log('nextHead', nextHead)
-
         if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
           return [currentCursor, Stream.empty]
         }
