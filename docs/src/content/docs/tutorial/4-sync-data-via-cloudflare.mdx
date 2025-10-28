@@ -1,0 +1,16 @@
+---
+title: 4. Sync data to Cloudflare
+sidebar:
+  label: 4. Sync data to Cloudflare
+  order: 4
+---
+
+In this step, you are going to introduce a [sync](/reference/syncing/) backend. This sync backend will:
+
+- have a "live connection" (via WebSockets) to _all_ the clients that are running your app
+- propagate events to _all_ other clients whenever a particular client emits an event
+
+Notice how you'll achieve this by only changing the data layer of your application! You won't need to touch the actual application code you've already implemented in `main.tsx` and `App.tsx`, all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
+
+You are going to implement the sync backend using [Cloudflare Workers](https://developers.cloudflare.com/workers/) and [Durable Objects](https://developers.cloudflare.com/durable-objects/), using the [@livestore/sync-cf](/reference/syncing/sync-provider/cloudflare/) package.
+
