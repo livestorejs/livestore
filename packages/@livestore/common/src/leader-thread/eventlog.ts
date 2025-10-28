@@ -1,13 +1,11 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema, Stream } from '@livestore/utils/effect'
-
 import type { SqliteDb } from '../adapter-types.ts'
 import type { UnexpectedError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import {
   EVENTLOG_META_TABLE,
-  type EventlogMetaRow,
   eventlogMetaTable,
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
@@ -125,44 +123,44 @@ export const streamEventsFromEventlog = ({
 
   return Stream.asyncPush<LiveStoreEvent.EncodedWithMeta>((emit) =>
     Effect.gen(function* () {
-      // Build WHERE conditions for filtering
-      const whereConditions: string[] = [`seqNumGlobal > ${options.since.global}`]
-      const bindValues: any[] = []
+      const makeQuery = (offset: number) => {
+        let query = eventlogMetaTable.where('seqNumGlobal', '>', options.since.global)
 
-      if (options.until) {
-        whereConditions.push(`seqNumGlobal <= ${options.until.global}`)
+        if (options.until) {
+          query = query.where('seqNumGlobal', '<=', options.until.global)
+        }
+
+        if (options.filter && options.filter.length > 0) {
+          query = query.where({ name: { op: 'IN', value: options.filter } })
+        }
+
+        if (options.clientIds && options.clientIds.length > 0) {
+          query = query.where({ clientId: { op: 'IN', value: options.clientIds } })
+        }
+
+        if (options.sessionIds && options.sessionIds.length > 0) {
+          query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
+        }
+
+        return query
+          .orderBy([
+            { col: 'seqNumGlobal', direction: 'asc' },
+            { col: 'seqNumClient', direction: 'asc' },
+          ])
+          .offset(offset)
+          .limit(batchSize)
       }
-
-      if (options.filter && options.filter.length > 0) {
-        const placeholders = options.filter.map(() => '?').join(', ')
-        whereConditions.push(`name IN (${placeholders})`)
-        bindValues.push(...options.filter)
-      }
-
-      if (options.clientIds && options.clientIds.length > 0) {
-        const placeholders = options.clientIds.map(() => '?').join(', ')
-        whereConditions.push(`clientId IN (${placeholders})`)
-        bindValues.push(...options.clientIds)
-      }
-
-      if (options.sessionIds && options.sessionIds.length > 0) {
-        const placeholders = options.sessionIds.map(() => '?').join(', ')
-        whereConditions.push(`sessionId IN (${placeholders})`)
-        bindValues.push(...options.sessionIds)
-      }
-
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
       // Stream events in batches
       let offset = 0
       let hasMore = true
 
       while (hasMore) {
-        const query = `SELECT * FROM ${EVENTLOG_META_TABLE} ${whereClause} ORDER BY seqNumGlobal ASC, seqNumClient ASC LIMIT ${batchSize} OFFSET ${offset}`
-
-        const eventlogEvents = dbEventlog.select<EventlogMetaRow>(query, bindValues as any)
+        console.log(makeQuery(offset).asSql())
+        const eventlogEvents = dbEventlog.select(makeQuery(offset))
 
         if (eventlogEvents.length === 0) {
+          console.log('break')
           hasMore = false
           break
         }
@@ -174,6 +172,8 @@ export const streamEventsFromEventlog = ({
         const maxSeqNum = Math.max(
           ...eventlogEvents.map((e) => e.seqNumGlobal),
         ) as EventSequenceNumber.GlobalEventSequenceNumber
+
+        console.log('minSeqNum', minSeqNum, 'maxSeqNum', maxSeqNum)
 
         const sessionChangesetRowsDecoded = dbState.select(
           sessionChangesetMetaTable.where('seqNumGlobal', '>=', minSeqNum).where('seqNumGlobal', '<=', maxSeqNum),
