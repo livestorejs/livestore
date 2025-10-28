@@ -5,8 +5,6 @@ sidebar:
   order: 2
 ---
 
-## Configure Wrangler
-
 In this tutorial, you're going to use Cloudflare for deployment. 
 
 :::note[Skip if you don't care about deployment]
@@ -15,15 +13,138 @@ If you're only interested in learning about concepts of LiveStore and don't care
 **That being said, we recommend that you deploy the app so that you can experience first-hand the power of _syncing data across devices_ later in the tutorial.**
 :::
 
+## Configure the Vite plugin for Cloudflare
+
+First, you're going to install [Cloudflare's Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/):
+
+```bash
+pnpm add -D @cloudflare/vite-plugin
+```
+
+Now, add it to your `vite.config.ts`:
+
+```diff title="vite.config.ts" lang="ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
++import { cloudflare } from '@cloudflare/vite-plugin'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
++    cloudflare(),
+  ],
+})
+```
+
+## Configure Wrangler
+
 Cloudflare deployments can be managed via [Wrangler](https://developers.cloudflare.com/workers/wrangler/), so you'll first need to install the Wrangler CLI:
 
 ```bash
 pnpm add wrangler -D
 ```
 
-Now, create a `wrangler.toml` with the following contents:
+Now, create a `wrangler.toml`:
 
 ```bash
 touch wrangler.toml
 ```
+
+Add the following contents to it:
+
+```toml title="wrangler.toml"
+name = "livestore-todo-app"
+compatibility_date = "2024-10-28"
+
+[observability]
+enabled = true
+```
+
+## Configure `deploy` script
+
+In your `package.json`, add a new script called `deploy` that looks as follows:
+
+```diff title="package.json" lang="js"
+// ... other properties
+"scripts": {
+  "dev": "vite",
+  "build": "tsc -b && vite build",
+  "lint": "eslint .",
+  "preview": "vite preview",
++  "deploy": "pnpm run build && wrangler deploy"
+},
+// ... other properties
+
+```
+
+## Deploy the app
+
+Deploy the app by running the `deploy` script:
+
+```bash
+pnpm run deploy
+```
+
+<details>
+<summary>Expand to view the expected command output</summary>
+
+Here's the exepected output:
+
+
+```
+➜  livestore-todo-app git:(main) ✗ pnpm run deploy
+
+> livestore-todo-app@0.0.0 deploy /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app
+> pnpm run build && wrangler deploy
+
+
+> livestore-todo-app@0.0.0 build /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app
+> tsc -b && vite build
+
+vite v7.1.12 building for production...
+✓ 29 modules transformed.
+dist/.assetsignore                0.02 kB
+dist/index.html                   0.47 kB │ gzip:  0.30 kB
+dist/wrangler.json                1.15 kB │ gzip:  0.56 kB
+dist/assets/index-DEkdisv2.css    9.64 kB │ gzip:  2.74 kB
+dist/assets/index-COIOT0yp.js   196.04 kB │ gzip: 61.45 kB
+✓ built in 319ms
+
+ ⛅️ wrangler 4.45.1
+───────────────────
+Using redirected Wrangler configuration.
+ - Configuration being used: "dist/wrangler.json"
+ - Original user's configuration: "wrangler.toml"
+ - Deploy configuration file: ".wrangler/deploy/config.json"
+🌀 Building list of assets...
+✨ Read 7 files from the assets directory /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app/dist
+🌀 Starting asset upload...
+🌀 Found 4 new or modified static assets to upload. Proceeding with upload...
++ /index.html
++ /assets/index-COIOT0yp.js
++ /livestore.svg
++ /assets/index-DEkdisv2.css
+Uploaded 1 of 4 assets
+Uploaded 2 of 4 assets
+Uploaded 4 of 4 assets
+✨ Success! Uploaded 4 files (2.67 sec)
+
+Total Upload: 0.34 KiB / gzip: 0.23 KiB
+Uploaded livestore-todo-app (13.40 sec)
+Deployed livestore-todo-app triggers (4.40 sec)
+  https://livestore-todo-app.nikolas-burk.workers.dev
+Current Version ID: 37ce16a4-0bfd-4ecb-829e-a2737c84d9cf
+```
+
+</details>
+
+If everything worked as epected, your app is now running at: `https://livestore-todo-app.USERNAME.workers.dev`
+
+Find your specific URL in the terminal output or navigate to the **Workers & Pages** section in your [Cloudflare Dashboard](https://dash.cloudflare.com/) to find the project and the URL.
+
+The app should look and behave exactly like the local version from the previous step:
+
+![](../../../assets/tutorial/section-2/0-deployed-todo-list.png)
 
