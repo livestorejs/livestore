@@ -104,6 +104,10 @@ export default defineConfig({
                 autogenerate: { directory: 'getting-started' },
               },
               {
+                label: 'Tutorial',
+                autogenerate: { directory: 'tutorial' },
+              },
+              {
                 label: 'Evaluating LiveStore',
                 autogenerate: { directory: 'evaluation' },
               },
