@@ -14,3 +14,180 @@ Notice how you'll achieve this by only changing the data layer of your applicati
 
 You are going to implement the sync backend using [Cloudflare Workers](https://developers.cloudflare.com/workers/) and [Durable Objects](https://developers.cloudflare.com/durable-objects/), using the [@livestore/sync-cf](/reference/syncing/sync-provider/cloudflare/) package.
 
+## Install the Cloudflare sync provider package
+
+Run the following command in your terminal:
+
+```bash
+pnpm add @livestore/sync-cf@0.4.0-dev.14
+```
+
+## Create the sync backend
+
+Now, create a new `sync` directory called and a new file for the sync backend:
+
+```bash
+mkdir src/sync
+touch src/sync/client-ws.ts
+```
+
+Now, add the following code to it:
+
+```ts title="src/sync/client-ws.ts"
+import { makeDurableObject } from '@livestore/sync-cf/cf-worker'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
+import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+
+export class SyncBackendDO extends makeDurableObject({
+  onPush: async (message, context) => {
+    console.log('client-ws.ts: onPush', message, context)
+  },
+  onPull: async (message, context) => {
+    console.log('client-ws.ts: onPull', message, context)
+  },
+}) {}
+
+export default {
+  async fetch(request: CfTypes.Request, _env: SyncBackend.Env, ctx: CfTypes.ExecutionContext) {
+    const searchParams = SyncBackend.matchSyncRequest(request)
+    console.log('client-ws.ts: fetch in  with searchParams', searchParams)
+    if (searchParams !== undefined) {
+      return SyncBackend.handleSyncRequest({
+        request,
+        searchParams,
+        ctx,
+        syncBackendBinding: 'SYNC_BACKEND_DO',
+      })
+    }
+
+    return new Response('Not Found', { status: 404 })
+  },
+}
+```
+
+This code will be deployed as a Durable Object (think of it as a "Cloudflare Worker" with WebSocket capabilities and attached storage).
+
+In this tutorial, you won't need to go beyond this basic boilerplate. However, in more advanced scenarios, here's how you can hook into the connection between your client apps and the sync backend. This could e.g. be useful when your app requires authentication and you need to send along an auth token.
+
+Next, you need to slightly modify the code for your LiveStore web worker in `/src/livestore/livestore.worker.ts`:
+
+```diff title="/src/livestore/livestore.worker.ts" lang="ts"
+import { makeWorker } from '@livestore/adapter-web/worker'
++import { makeWsSync } from '@livestore/sync-cf/client'
+
+import { schema } from './schema.ts'
+
+makeWorker({ 
+  schema,
++  sync: {
++    backend: makeWsSync({ url: `${location.origin}/sync` }),
++  }
+})
+```
+
+Finally, you need to update your `wrangler.toml` to ensure Vite and Cloudflare know about the new sync backend:
+
+```diff title="wrangler.toml" lang="toml"
+name = "livestore-todo-app"
+compatibility_date = "2024-10-28"
++main = "./src/sync/client-ws.ts"
++compatibility_flags = [
++  "nodejs_compat",
++]
+
+[observability]
+enabled = true
+
++[[durable_objects.bindings]]
++name = "SYNC_BACKEND_DO"
++class_name = "SyncBackendDO"
+
++[[migrations]]
++tag = "v1"
++new_sqlite_classes = ["SyncBackendDO"]
+```
+
+Here's a quick rundown of the changes:
+
+- `main`: Since you're now introducing a "backend", your app needs to be reconfigured. It now has a dedicated entry-point in `./src/sync/client-ws.ts`. When your Worker receives a request, this file's exported handlers are executed. In your case, it points to the WebSocket sync backend implementation.
+- `durable_objects.bindings`: This configures the bindings for your Durable Object. You'll be able to inspect it in the Cloudflare Dashboard by its name `SYNC_BACKEND_DO`.
+- `migrations`: Whenever you introduce a new Durable Object that supports [SQLite storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#create-sqlite-backed-durable-object-class) (or update an existing one), you need to add a migration referencing the new/updates Durable Object class. 
+
+You're now ready to run and deploy the app:
+
+```bash
+pnpm run deploy
+```
+
+<details>
+<summary>Expand to view the expected output</summary>
+
+```
+✗ pnpm run deploy
+
+> livestore-todo-app@0.0.0 deploy /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app
+> pnpm run build && wrangler deploy
+
+
+> livestore-todo-app@0.0.0 build /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app
+> tsc -b && vite build
+
+vite v7.1.12 building SSR bundle for production...
+✓ 1085 modules transformed.
+dist/livestore_todo_app/.vite/manifest.json      0.16 kB
+dist/livestore_todo_app/wrangler.json            1.37 kB
+dist/livestore_todo_app/index.js             1,021.14 kB
+✓ built in 1.31s
+vite v7.1.12 building for production...
+✓ 1119 modules transformed.
+dist/client/index.html                               0.47 kB │ gzip:   0.30 kB
+dist/client/assets/make-shared-worker-CbM93UVL.js  363.01 kB
+dist/client/assets/livestore.worker-DbNV_so_.js    594.87 kB
+dist/client/assets/wa-sqlite-CLgeTS2u.wasm         618.93 kB │ gzip: 303.78 kB
+dist/client/assets/index-DNxhg8nM.css               11.76 kB │ gzip:   3.12 kB
+dist/client/assets/index-BhsI_Uw7.js               760.04 kB │ gzip: 238.67 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.29s
+
+ ⛅️ wrangler 4.45.1
+───────────────────
+Using redirected Wrangler configuration.
+ - Configuration being used: "dist/livestore_todo_app/wrangler.json"
+ - Original user's configuration: "wrangler.toml"
+ - Deploy configuration file: ".wrangler/deploy/config.json"
+🌀 Building list of assets...
+✨ Read 8 files from the assets directory /Users/nikolasburk/Projects/LiveStore/plain-react-tutorial/livestore-todo-app/dist/client
+🌀 Starting asset upload...
+🌀 Found 4 new or modified static assets to upload. Proceeding with upload...
++ /index.html
++ /assets/index-BhsI_Uw7.js
++ /assets/index-DNxhg8nM.css
++ /assets/livestore.worker-DbNV_so_.js
+Uploaded 1 of 4 assets
+Uploaded 2 of 4 assets
+Uploaded 4 of 4 assets
+✨ Success! Uploaded 4 files (3 already uploaded) (4.31 sec)
+
+Total Upload: 997.21 KiB / gzip: 208.73 KiB
+Worker Startup Time: 47 ms
+Your Worker has access to the following bindings:
+Binding                                  Resource            
+env.SYNC_BACKEND_DO (SyncBackendDO)      Durable Object      
+
+Uploaded livestore-todo-app (17.72 sec)
+Deployed livestore-todo-app triggers (9.82 sec)
+  https://livestore-todo-app.nikolas-burk.workers.dev
+Current Version ID: 8860dd68-6082-4da9-9407-dea670cd8b23
+```
+
+</details>
+
+Feel free to test the new behaviour locally or using the deployed version. This time, data syncing will work across browsers and even devices!
+
+Here's GIF demonstrating how a regular Chrome tab, an incognitoe Chrome tab and a Safari tab are staying in sync automatically:
+
+![](../../../assets/tutorial/section-4/1-livestore-cf-sync.gif)

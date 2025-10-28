@@ -1,0 +1,440 @@
+---
+title: 6. Persist UI state
+sidebar:
+  label: 6. Persist UI state
+  order: 6
+---
+
+As we saw in the beginning of the tutorial, the state of an application is typically divived into two categories:
+
+- App state: State that represents the _application data_ a user needs to achieve their goals with the app; in your current case, that's the list of todos. App state is typically lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
+- UI state: UI state that is only relevant for a particular browser session.
+
+Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). The site reloads for some reason and they have to start over! With LiveStore, this problem is easily solved!
+
+LiveStore also allows you to persist _UI state_ (e.g. form inputs, active tabs, custom UI elements, and pretty much anything you'd otherwise manage via `React.useState`). This means users can always pick up exactly where they left off.
+
+## Add another UI element
+
+First, update `App.tsx` to look as follows:
+
+```diff title="src/App.tsx" lang="tsx"
+import { useState } from 'react'
+import { useStore } from '@livestore/react'
+import { tables, events } from './livestore/schema'
+import { queryDb } from '@livestore/livestore'
+
+function App() {
+
+  const { store } = useStore()
+
+  const todos$ = queryDb(() => tables.todos.select())
+  const todos = store.useQuery(todos$)
+
+  const [input, setInput] = useState('')
++  const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
+
+  const addTodo = () => {
+    if (input.trim()) {
+      store.commit(
+        events.todoCreated({ id: Date.now(), text: input }),
+      )
+      setInput('')
+    }
+  }
+
+  const deleteTodo = (id: number) => {
+    store.commit(
+      events.todoDeleted({ id }),
+    )
+  }
+
+  const toggleTodo = (id: number, completed: boolean) => {
+    store.commit(
+      completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
+    )
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addTodo()
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">
+          Todo List
+        </h1>
+
+        <div className="flex gap-3 mb-8">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter a todo..."
+            className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={addTodo}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+
++        <div className="flex gap-1 mb-4 border-b border-gray-200 justify-center">
++          {(['All', 'Active', 'Completed'] as const).map((tab) => (
++            <button
++              key={tab}
++              onClick={() => setFilter(tab)}
++              className={`px-5 py-2.5 text-sm bg-transparent border-0 -mb-px cursor-pointer outline-none transition-colors ${filter === tab
++                  ? 'text-blue-500 font-semibold'
++                  : 'text-gray-600 hover:text-gray-800'
++                }`}
++            >
++              {tab}
++            </button>
++          ))}
++        </div>
+
+        <div className="space-y-3">
+          {todos.map(todo => (
+            <div
+              key={todo.id}
+              className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => toggleTodo(todo.id, todo.completed)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span className={`text-gray-700 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+                  {todo.text}
+                </span>
+              </div>
+              <button
+                onClick={() => deleteTodo(todo.id)}
+                className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {todos.length === 0 && (
+          <p className="text-center text-gray-400 mt-8">
+            No todos yet. Add one above!
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default App
+```
+
+If you run the app now, it'll look similar to this:
+
+![](../../../assets/tutorial/section-6/0-tabbed-filter-element.png)
+
+You can switch between tabs and see how the tabbed component updates the currently active tab. Just like `input`, this uses local React state:
+
+```ts
+const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
+```
+
+This state is ephemeral, meaning it won't survive page refreshes. In a small app like this tutorial app, this won't really matter—but when you're building a complex UI where users will lose a lot of work when the state suddenly resets, being able to persist this state can be a real life-saver (including things like scroll positions, input forms, and any other relevant state that's important to your users)!
+
+With LiveStore, you can persist the state of the currently active tab across browser refreshes. Let's do it!
+
+## Update the LiveStore schema with a client document
+
+In your `schema.ts` file, add another table definition to the `tables` object. This time, it won't be of type `State.SQLite.table` though, but rather use LiveStore's special [`clientDocument`](/api/livestore/livestore/namespaces/state/namespaces/sqlite/variables/clientdocument/) type for this:
+
+```diff title="src/livestore/schema.ts" lang="ts"
++import { Events, makeSchema, Schema, State, SessionIdSymbol } from '@livestore/livestore'
+
++export const Filter = Schema.Literal('All', 'Active', 'Completed')
++export type Filter = typeof Filter.Type
+
+export const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.integer({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+      completed: State.SQLite.boolean({ default: false }),
+    },
+  }),
++  uiState: State.SQLite.clientDocument({
++    name: 'uiState',
++    schema: Schema.Struct({ input: Schema.String, filter: Filter }),
++    default: { id: SessionIdSymbol, value: { input: '', filter: 'All' } },
++  }),
+}
+```
+
+On this table, you define:
+
+- name for this client document
+- the structure of the client document via `schema`; in your case: 
+    - the current state of the `input` text field for adding a new todo
+    - the `filter` that'll be used to filter the todos according to their `completed` status
+- default values for this client document
+
+Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add this predefined event to your `events` object:
+
+```diff title="src/livestore/schema.ts" lang="ts"
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.Number, text: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.Number }),
+  }),
+  // Add these two events
+  todoCompleted: Events.synced({
+    name: 'v1.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.Number }),
+  }),
+  todoUncompleted: Events.synced({
+    name: 'v1.TodoUncompleted',
+    schema: Schema.Struct({ id: Schema.Number }),
+  }),
++  uiStateSet: tables.uiState.set,
+}
+```
+
+## Implement local state with LiveStore
+
+In this step, you need to add the local state for the tabbed UI element to the `App` component. Additionally, you're going to replace the `useState` hook that you currently use for the `input` state with LiveStore's approach as well.
+
+Remove the two lines where you're using `useState` for `input` and `filter` with the following:
+
+```diff title="src/App.tsx" lang="tsx"
++const uiState$ = queryDb(() => tables.uiState.get())
++const { input, filter } = store.useQuery(uiState$)
+
++const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
++const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
+-const [input, setInput] = useState('')
+-const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
+```
+
+Don't forget to update the imports to include `Filter` type and drop `useState`:
+
+```diff title="src/App.tsx" lang="tsx"
+-import { useState } from 'react'
+import { useStore } from '@livestore/react'
++import { tables, events, Filter } from './livestore/schema'
+import { queryDb } from '@livestore/livestore'
+```
+
+Instead of using `useState` for managing the UI state, you're now comitting it into your local SQLite DB via LiveStore as well.
+
+Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `App` component where they are used:
+
+- `setInput` → `updatedInput`
+- `setFilter` → `updatedFilter`
+
+You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state now is persisted and survives page refreshs.
+
+![](../../../assets/tutorial/section-6/1-persist-ui-state.gif)
+
+:::note[Tables vs Client documents]
+
+Unlike the regular tables (of type `State.SQLite.table`), client documents (of type `State.SQLite.clientDocument`) are not synced across browser sessions and devices. 
+
+:::
+
+## Implement filter logic
+
+The last step in this tutorial is to actually update the list based on which tab is currently selected.
+
+With all your current knowledge, you could think that the implementation would need to look something like this:
+
+```tsx title="src/App.tsx"
+const todos$ = queryDb(() => tables.todos.where({
+  completed:
+    filter === 'Completed' ? true
+      : filter === 'Active' ? false
+        : undefined // if `undefined` is passed to `where`, no filtering happens
+}))
+const todos = store.useQuery(todos$)
+```
+
+If you try that out though, you'll notice that this works _once_ (when your browser loads for the first time). However, when you switch tabs, the list will not actually update.
+
+That's because the query isn't updated with the new value `filter` value when it changes. Here's how you need to do it instead:
+
+```tsx title="src/App.tsx"
+const todos$ = queryDb((
+  (get) => {
+    const { filter } = get(uiState$)
+    return tables.todos.where({
+      completed: filter === 'Completed' ? true
+        : filter === 'Active' ? false
+          : undefined
+    })
+  }
+), { label: 'todos' })
+const todos = store.useQuery(todos$)
+```
+
+This is the final code for the `App` component:
+
+```tsx title="src/App.tsx"
+import { useState } from 'react'
+import { useStore } from '@livestore/react'
+import { tables, events, Filter } from './livestore/schema'
+import { queryDb } from '@livestore/livestore'
+
+
+function App() {
+
+  const { store } = useStore()
+
+  const todos$ = queryDb((
+    (get) => {
+      const { filter } = get(uiState$)
+      return tables.todos.where({
+        completed: filter === 'Completed' ? true
+          : filter === 'Active' ? false
+            : undefined
+      })
+    }
+  ), { label: 'todos' })
+  const todos = store.useQuery(todos$)
+
+  const uiState$ = queryDb(() => tables.uiState.get())
+  const { input, filter } = store.useQuery(uiState$)
+  
+  const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
+  const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
+
+  const addTodo = () => {
+    if (input.trim()) {
+      store.commit(
+        events.todoCreated({ id: Date.now(), text: input }),
+      )
+      updatedInput('')
+    }
+  }
+
+  const deleteTodo = (id: number) => {
+    store.commit(
+      events.todoDeleted({ id }),
+    )
+  }
+
+  const toggleTodo = (id: number, completed: boolean) => {
+    store.commit(
+      completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
+    )
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addTodo()
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-start justify-center p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">
+          Todo List
+        </h1>
+
+        <div className="flex gap-3 mb-8">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => updatedInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter a todo..."
+            className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={addTodo}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+
+        <div className="flex gap-1 mb-4 border-b border-gray-200 justify-center">
+          {(['All', 'Active', 'Completed'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => updatedFilter(tab)}
+              className={`px-5 py-2.5 text-sm bg-transparent border-0 -mb-px cursor-pointer outline-none transition-colors ${filter === tab
+                  ? 'text-blue-500 font-semibold'
+                  : 'text-gray-600 hover:text-gray-800'
+                }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-3 min-h-[200px]">
+          {todos.map(todo => (
+            <div
+              key={todo.id}
+              className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => toggleTodo(todo.id, todo.completed)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span className={`text-gray-700 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+                  {todo.text}
+                </span>
+              </div>
+              <button
+                onClick={() => deleteTodo(todo.id)}
+                className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {todos.length === 0 && (
+          <p className="text-center text-gray-400 mt-8">
+            No todos yet. Add one above!
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default App
+```
+
+## Deploy and test the app
+
+As before, you can deplot the app with the deploy script:
+
+```bash
+pnpm run deploy
+```
+
+The filters now will be applied and upate the list of todos when changed:
+
+![](../../../assets/tutorial/section-6/2-final-app.gif)
