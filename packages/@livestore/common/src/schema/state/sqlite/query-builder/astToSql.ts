@@ -225,7 +225,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
   if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
 
-  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
+  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, limitStmt, offsetStmt]
     .map((clause) => clause.trim())
     .filter((clause) => clause.length > 0)
     .join(' ')
