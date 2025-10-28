@@ -19,9 +19,15 @@ If you just want to see LiveStore in action and play around with it, consider se
 
 ## Prerequisites
 
+### Useful knowledge
+
 While the tutorial is aimed at LiveStore newcomers, it will be helpful to have some knowledge in basic areas of web development, such as of React, TypeScript and event-driven architectures.
 
-You'll deploy the application to Cloudflare. If you don't have an account there yet, you can sign up for a free one [here](https://dash.cloudflare.com/sign-up) (or skip the deployment steps in the tutorial).
+### Technical setup
+
+- The tutorial assumes that you're using a Unix-based shell, e.g. by using commands like `touch` for creating files.
+- It uses `pnpm` as the package manager.
+- You'll deploy the application to Cloudflare. If you don't have an account there yet, you can sign up for a free one [here](https://dash.cloudflare.com/sign-up) (or skip the deployment steps in the tutorial).
 
 ## What you'll do
 
@@ -33,12 +39,12 @@ Here's an overview of the steps you'll take in the tutorial:
     - You'll also already deploy the application to Cloudflare so that you can observe the evolution in behaviour as you're adding LiveStore.
 2. Add LiveStore to the project
     - You'll add LiveStore dependencies to the project and implement persisting the tods so that they survive a page refresh.
-3. Sync data via Cloudflare Workers and Durable Objects
+3. Automatically sync data to Cloudflare
     - You'll use LiveStore to set up syncing of the todo list data via Cloudflare Workers and Durable Objects in the background. 
     - Now your todos will not only survive a page refresh, but also automatically sync across browser sessions and even devices.
 4. Expand the business logic with more LiveStore events
     - You'll learn how to use LiveStore events to expand the business logic of the todo app.
-5. Persists UI state
+5. Persist UI state
     - LiveStore can also be used to persist UI state, such as the text from an input field or a filter selection.
 
 

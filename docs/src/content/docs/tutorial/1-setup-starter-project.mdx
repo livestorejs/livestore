@@ -27,6 +27,8 @@ The project currently is set up as follows:
 - Using TailwindCSS for styling
 - Has basic functionality for adding and deleting todos via local `React.useState`
 
+## Understand the current project state
+
 Run the app with:
 
 ```bash
@@ -78,8 +80,9 @@ For any React developer, this is a very familiar setup:
 
 
 We have two pieces of state:
-- application state: `todos: Todo[]`
-- UI state: `input: string`
+- application state: `todos: Todo[]` → manipulated by the `addTodo` and `deleteTodo` functions
+- UI state: `input: string` → manipulated when the text in the input field changes
+
 
 The "problem" with this code is that the todo items are not _persisted_, meaning they vanish when:
 - the page is refreshed in the browser
@@ -87,4 +90,4 @@ The "problem" with this code is that the todo items are not _persisted_, meaning
 
 In the next steps, you'll learn how to persist the todos in the list, so that they'll "survive" both actions. 
 
-Even more: They will not only persist, they will automatically sync across multiple browsers tabs/windows, and even across devices—without you needing to do anything. That's the power of LiveStore!
+Even more: They will not only persist, they will automatically sync across multiple browsers tabs/windows, and even across devices—without you needing to think about the syncing logic and managing remote state. That's the power of LiveStore!

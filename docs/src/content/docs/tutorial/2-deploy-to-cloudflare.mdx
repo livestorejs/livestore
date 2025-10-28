@@ -1,0 +1,29 @@
+---
+title: 2. Deploy to Cloudflare Workers
+sidebar:
+  label: 2. Deploy to Cloudflare
+  order: 2
+---
+
+## Configure Wrangler
+
+In this tutorial, you're going to use Cloudflare for deployment. 
+
+:::note[Skip if you don't care about deployment]
+If you're only interested in learning about concepts of LiveStore and don't care about deployment, you can skip this step and move to the next chapter.
+
+**That being said, we recommend that you deploy the app so that you can experience first-hand the power of _syncing data across devices_ later in the tutorial.**
+:::
+
+Cloudflare deployments can be managed via [Wrangler](https://developers.cloudflare.com/workers/wrangler/), so you'll first need to install the Wrangler CLI:
+
+```bash
+pnpm add wrangler -D
+```
+
+Now, create a `wrangler.toml` with the following contents:
+
+```bash
+touch wrangler.toml
+```
+
