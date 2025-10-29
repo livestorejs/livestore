@@ -44,7 +44,6 @@ import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
-import { DEFAULT_PARAMS } from './store-constants.ts'
 import type {
   Queryable,
   RefreshReason,
@@ -67,6 +66,11 @@ type SubscribeFn = {
 
 if (isDevEnv()) {
   exposeDebugUtils()
+}
+
+export const DEFAULT_PARAMS = {
+  leaderPushBatchSize: 100,
+  eventQueryBatchSize: 1000,
 }
 
 export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
