@@ -73,7 +73,8 @@
       "complexity": {
         "useArrowFunction": "error",
         "noBannedTypes": "off",
-        "noUselessTernary": "off"
+        "noUselessTernary": "off",
+        "noFlatMapIdentity": "off"
       },
       "a11y": {
         "useKeyWithClickEvents": "off"

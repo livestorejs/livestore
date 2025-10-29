@@ -740,7 +740,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events.
+   * Returns an async iterable of events confirmed by backend.
    *
    * @example
    * ```ts
@@ -761,7 +761,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const stream = this.eventsStream(options)
     return {
       async *[Symbol.asyncIterator]() {
-        // Convert the stream to an async iterable
         const iterator = Stream.toAsyncIterable(stream)
         for await (const event of iterator) {
           yield event
@@ -814,35 +813,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
       return encodedEvent.seqNum.client <= 0
     }
-
-    // return Effect.gen(function* () {
-    //   const leaderSyncState = yield* leaderThreadProxy.syncState
-    //   const backendHead = leaderSyncState.upstreamHead
-
-    //   console.log('since', cursor)
-    //   console.log('backendHead', backendHead)
-
-    //   // Stream from leader, but only up to backend head
-    //   return leaderThreadProxy.events
-    //     .stream({
-    //       since: cursor,
-    //       until: backendHead,
-    //       ...omitUndefineds({
-    //         filter: options?.filter as ReadonlyArray<string> | undefined,
-    //         clientIds: options?.clientIds,
-    //         sessionIds: options?.sessionIds,
-    //       }),
-    //       batchSize,
-    //     })
-    //     .pipe(
-    //       Stream.filter(includeClientOnly),
-    //       Stream.filter(matchesFilters),
-    //       Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
-    //     )
-    // }).pipe(
-    //   Stream.unwrap,
-    //   Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
-    // )
 
     const headStream = leaderThreadProxy.syncState.changes.pipe(
       Stream.map((state) => state.upstreamHead),
