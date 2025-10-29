@@ -36,24 +36,27 @@ Vitest.describe('Store events API', () => {
       })
 
       const collected: Array<LiveStoreEvent.ForSchema<typeof schema>> = []
-      const streamFiber = yield* store.eventsStream({ filter: ['todo.created'] as const }).pipe(
+      const streamFiber = yield* store.eventsStream({ filter: ['todo.completed'] as const }).pipe(
         Stream.tap((event) => Effect.sync(() => collected.push(event))),
         Stream.take(2),
         Stream.runDrain,
         Effect.forkScoped,
       )
 
-      yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
-      yield* mockSyncBackend.advance(eventFactory.todoCompleted.next({ id: '1' }))
-      yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
+      yield* mockSyncBackend.advance(
+        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+        eventFactory.todoCompleted.next({ id: '1' }),
+        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
+        eventFactory.todoCompleted.next({ id: '2' }),
+      )
 
       yield* Fiber.join(streamFiber).pipe(Effect.timeout('5 seconds'))
 
       expect(collected).toHaveLength(2)
-      expect(collected[0]?.name).toEqual('todo.created')
-      expect(collected[0]?.args).toMatchObject({ id: '1', text: 't1', completed: false })
-      expect(collected[1]?.name).toEqual('todo.created')
-      expect(collected[1]?.args).toMatchObject({ id: '2', text: 't2', completed: false })
+      expect(collected[0]?.name).toEqual('todo.completed')
+      expect(collected[0]?.args).toMatchObject({ id: '1' })
+      expect(collected[1]?.name).toEqual('todo.completed')
+      expect(collected[1]?.args).toMatchObject({ id: '2' })
     }).pipe(withTestCtx(test)),
   )
 })
