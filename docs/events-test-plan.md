@@ -2,21 +2,7 @@
 
 ## Important notice for first version of event streaming api
 
-We have decided to exclude all unconfirmed events in the first version of the event streaming API. The practical implication of this is that we only allow streaming events confimed by the sync backend Including unconfirmed events would need to pay careful attention to a shifting event log due to rebasing mid-stream and comes with implications affecting both implementation and usage of the api.
-
-### Issues to consider
-
-**Only streaming confirmed events**
-
-Streaming only confirmed events as discussed removes the current value of minSyncLevel client (which merges pending events) and leaves backend as the only level that guarantees confirmation which is not useful in offline scenarios.
-
-**Dynamically pushing `until` marker to align with upstream head**
-
-Users expect a backend-level stream to follow the advancing head without manual restarts. Today `until` is fixed at stream start.
-
-**Starting stream from local head**
-
-Starting from the local head already works via a `since` cursor, but it would probably be beneficial to document how this can be done since I can imagine it being a common scenario where users wants to take actions only on new events and not the entire event log.
+Unconfirmed events are excluded in the first version of the event streaming API. The practical implication of this is that we only allow streaming events confimed by the sync backend. Including unconfirmed events would need to pay careful attention to a shifting event log due to rebasing particularly when considered in combination with batch SQL queries.
 
 ## Scenarios that can occur
 
@@ -30,7 +16,7 @@ Starting from the local head already works via a `since` cursor, but it would pr
 
 NOTE:
 Convert into dynamic ranges for a more "fuzzing" like approach:
-tests/integration/src/tests/node-sync/node-sync.test.ts
+Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
 
 - Batch size: [0, 1-20, 1000-10000]
 - Number of events: [0, 1-20, 1000-100000]
@@ -38,8 +24,14 @@ tests/integration/src/tests/node-sync/node-sync.test.ts
 
 ## Deterministic scenarios
 
-- Interruption mid-stream
-- Stream progression as upstream head advances
+- Stream progresses as upstream head advances
+- Only confirmed events are included in the stream
+- Stream stops when backend connection is lost and resumes when reconnected
+- Events streamed since local head doesn't include local head
+- Events streamed until specific upstream head includes it then finalizes
+- Events get filtered by name
+- Events get filtered by client ID
+- Events get filtered by session ID
 
 ## Use cases
 
