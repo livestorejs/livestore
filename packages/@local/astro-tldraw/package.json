@@ -1,0 +1,24 @@
+{
+  "name": "@local/astro-tldraw",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./integration": "./src/integration.ts",
+    "./vite": "./src/vite-plugin.ts",
+    "./components/TldrawDiagram.astro": "./src/components/TldrawDiagram.astro"
+  },
+  "dependencies": {
+    "@kitschpatrol/tldraw-cli": "5.0.0",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "astro": "^5.13.4",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "astro": "^5.0.0"
+  }
+}

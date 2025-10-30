@@ -6,6 +6,8 @@
     { "path": "./docs" },
     { "path": "./docs/src/content/_assets/code" },
     { "path": "./scripts" },
+    { "path": "./packages/@local/astro-tldraw" },
+    { "path": "./packages/@local/astro-twoslash-code" },
     { "path": "./tests/integration" },
     { "path": "./tests/package-common" },
     { "path": "./tests/perf" },

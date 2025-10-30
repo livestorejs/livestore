@@ -19,6 +19,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@local/astro-tldraw": "workspace:*",
     "@local/astro-twoslash-code": "workspace:*",
     "@local/shared": "workspace:*",
     "@mixedbread/cli": "1.2.1",

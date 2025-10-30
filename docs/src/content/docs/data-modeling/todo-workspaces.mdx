@@ -7,6 +7,7 @@ sidebar:
 ---
 
 import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
+import EventlogModelingDiagram from '../../_assets/diagrams/eventlog-modeling.tldr?tldraw';
 
 Let's consider a fairly common application scenario: An app (in this case a todo app) with shared workspaces. For the sake of this guide, we'll keep things simple but you should be able to nicely extend this to a more complex app.
 
@@ -50,7 +51,7 @@ And the following state model:
 
 Note that the `workspaceCreated` event is used both in the `workspace` and the `user` store. This is because each eventlog should be "self-sufficient" and not rely on other eventlogs to be present to fulfill its purpose.
 
-![](https://share.cleanshot.com/yCbKjvRP+)
+<EventlogModelingDiagram class="my-8" />
 
 ## Schema
 
