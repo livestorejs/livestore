@@ -5,21 +5,29 @@ sidebar:
   order: 1
 ---
 
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
 ## Set up a starter project with React, Vite & Tailwind
 
 We have prepared a [starter project](https://github.com/livestorejs/livestore/tree/dev/examples/tutorial-starter) for you that you can use as a starting point for the tutorial. Download it via the following command:
 
-```bash
-pnpm dlx @livestore/cli@dev create \
-  --example tutorial-starter livestore-todo-app
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bunx @livestore/cli@dev create \\\n  --example tutorial-starter livestore-todo-app`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm dlx @livestore/cli@dev create \\\n  --example tutorial-starter livestore-todo-app`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 Once you've downloaded the project, you can navigate to the project directory and install the dependencies:
-
-```bash
-cd livestore-todo-app
-pnpm install
-```
 
 The project currently is set up as follows:
 - Minimal project created via [`vite create`](https://vite.dev/guide/#scaffolding-your-first-vite-project) using React and TypeScript.
@@ -30,9 +38,21 @@ The project currently is set up as follows:
 
 Run the app with:
 
-```bash
-pnpm dev
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun dev`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm dev`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 Here's the UI you're going to see after adding a few todos:
 

@@ -5,6 +5,8 @@ sidebar:
   order: 6
 ---
 
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
 As you saw in the beginning of the tutorial, the state of an application is typically divided into two categories:
 
 - **App state**: State that represents the _application data_ a user needs to achieve their goals with your app. In your current case, that's the list of todos. App state _typically_ lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
@@ -431,9 +433,21 @@ export default App
 
 As before, you can deploy the app with the deploy script:
 
-```bash
-pnpm run deploy
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun run deploy`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm run deploy`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 The filters now will be applied and update the list of todos when changed:
 

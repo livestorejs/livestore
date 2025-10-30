@@ -5,6 +5,8 @@ sidebar:
   order: 4
 ---
 
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
 In this step, you're going to introduce a [sync](/reference/syncing/) backend. This sync backend will:
 
 - Have a "live connection" (via WebSockets) to _all_ the clients that are running your app.
@@ -20,9 +22,21 @@ You're going to implement the sync backend using [Cloudflare Workers](https://de
 
 Run the following command in your terminal:
 
-```bash
-pnpm add @livestore/sync-cf@0.4.0-dev.14
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun add @livestore/sync-cf@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm add @livestore/sync-cf@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 ## Create the sync backend
 
@@ -119,9 +133,21 @@ Here's a quick rundown of the changes:
 
 You're now ready to run and deploy the app:
 
-```bash
-pnpm run deploy
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun run deploy`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm run deploy`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 <details>
 <summary>Expand to view the expected output</summary>

@@ -5,6 +5,8 @@ sidebar:
   order: 3
 ---
 
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
 Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshes and dev server reloads.
 
 :::note[Help improve LiveStore]
@@ -17,14 +19,31 @@ Also: If you have ideas for improving the developer experience for LiveStore, pl
 
 Start by installing the necessary dependencies:
 
-```bash
-pnpm add \
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun add \
   @livestore/livestore@0.4.0-dev.14 \
   @livestore/wa-sqlite@0.4.0-dev.14 \
   @livestore/adapter-web@0.4.0-dev.14 \
   @livestore/react@0.4.0-dev.14 \
-  @livestore/peer-deps@0.4.0-dev.14
-```
+  @livestore/peer-deps@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm add \
+  @livestore/livestore@0.4.0-dev.14 \
+  @livestore/wa-sqlite@0.4.0-dev.14 \
+  @livestore/adapter-web@0.4.0-dev.14 \
+  @livestore/react@0.4.0-dev.14 \
+  @livestore/peer-deps@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 <details>
 <summary>Expand to view details about the packages</summary>
@@ -426,9 +445,21 @@ If you want completely isolated instances, you'd need to use:
 
 Now, you can also deploy the app:
 
-```bash
-pnpm run deploy
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun run deploy`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm run deploy`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 Here's a little GIF demonstrating the current state of the live updates via browser isolation. On the left, we have two regular Chrome windows, on the right, two Safari windows.
 
@@ -461,9 +492,21 @@ LiveStore can only exist thanks to its generous sponsors, please consider becomi
 
 To start using DevTools, first install the package for the web adapter you're using:
 
-```bash
- pnpm add @livestore/devtools-vite@0.4.0-dev.14
-```
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun add @livestore/devtools-vite@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm add @livestore/devtools-vite@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
 
 Next, update your Vite Config to add the `livestoreDevtoolsPlugin`. It should look as follows:
 
