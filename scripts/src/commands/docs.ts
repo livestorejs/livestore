@@ -5,6 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { buildDiagrams } from '@local/astro-tldraw'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
@@ -16,6 +17,20 @@ const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
+
+const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () =>
+  Effect.gen(function* () {
+    yield* Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))
+  }),
+).pipe(
+  Cli.Command.withSubcommands([
+    Cli.Command.make('build', {}, () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))
+      }),
+    ),
+  ]),
+)
 
 type NetlifyDeploySummary = {
   site_id: string
@@ -120,6 +135,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     ),
     docsBuildCommand,
     docsSnippetsCommand,
+    docsDiagramsCommand,
     Cli.Command.make(
       'preview',
       {
