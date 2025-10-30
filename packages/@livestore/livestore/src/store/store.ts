@@ -30,6 +30,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
+  type ParseResult,
   Runtime,
   Schema,
   Stream,
@@ -775,7 +776,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
-  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
+  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, ParseResult.ParseError | UnexpectedError> => {
     const { schema, clientSession, params } = this
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
@@ -823,6 +824,28 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Stream.skipRepeated(EventSequenceNumber.isEqual),
     )
 
+    const eventStreamSegment = (
+      since: EventSequenceNumber.EventSequenceNumber,
+      until: EventSequenceNumber.EventSequenceNumber,
+    ) =>
+      leaderThreadProxy.events
+        .stream({
+          since,
+          until,
+          ...omitUndefineds({
+            filter: options?.filter as ReadonlyArray<string> | undefined,
+            clientIds: options?.clientIds,
+            sessionIds: options?.sessionIds,
+          }),
+          batchSize,
+        })
+        .pipe(
+          Stream.filter(includeClientOnly),
+          Stream.filter(matchesFilters),
+          // Look up chunking in streams
+          Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
+        )
+
     return headStream.pipe(
       Stream.mapAccum<
         // Sequence number representing the current cursor state.
@@ -830,7 +853,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         // Sequence number that becomes the updated cursor after processing the head.
         EventSequenceNumber.EventSequenceNumber,
         // Stream of decoded events emitted for the processed head interval.
-        Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError>
+        Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, ParseResult.ParseError | UnexpectedError>
       >(cursor, (currentCursor, nextHead) => {
         if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
           return [currentCursor, Stream.empty]
@@ -849,24 +872,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         const nextCursor = effectiveHead
 
-        const streamSegment = leaderThreadProxy.events
-          .stream({
-            since: currentCursor,
-            until: effectiveHead,
-            ...omitUndefineds({
-              filter: options?.filter as ReadonlyArray<string> | undefined,
-              clientIds: options?.clientIds,
-              sessionIds: options?.sessionIds,
-            }),
-            batchSize,
-          })
-          .pipe(
-            Stream.filter(includeClientOnly),
-            Stream.filter(matchesFilters),
-            Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
-          )
-
-        return [nextCursor, streamSegment]
+        return [nextCursor, eventStreamSegment(currentCursor, effectiveHead)]
       }),
       Stream.flatMap((segment) => segment),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
