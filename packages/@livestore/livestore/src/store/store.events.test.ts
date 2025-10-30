@@ -1,7 +1,7 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
 import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnexpectedError } from '@livestore/common'
-import { LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
+import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
@@ -125,6 +125,42 @@ Vitest.describe('Store events API', () => {
       const resumedEvent = yield* Queue.take(eventsQueue)
       expect(resumedEvent.name).toEqual('todo.created')
       expect(resumedEvent.args).toMatchObject({ id: '2' })
+    }).pipe(withTestCtx(test)),
+  )
+  Vitest.scopedLive('should finalise when reaching until event', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      yield* mockSyncBackend.connect
+
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
+
+      store.commit(
+        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
+        eventFactory.todoCreated.next({ id: '3', text: 't3', completed: false }),
+      )
+
+      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
+      yield* store.eventsStream({ until: EventSequenceNumber.fromString('e2') }).pipe(
+        Stream.tap((event) => Queue.offer(eventsQueue, event)),
+        Stream.runDrain,
+        Effect.forkScoped,
+      )
+
+      yield* Queue.take(eventsQueue)
+      yield* Queue.take(eventsQueue)
+      // yield* Queue.take(eventsQueue)
+
+      // yield* Fiber.join(streamFiber)
+      // const collected = yield* Queue.takeAll(eventsQueue)
+      // expect(Chunk.size(collected)).toEqual(2)
+      // expect(Chunk.toReadonlyArray(collected)).toMatchObject([
+      //   { name: 'todo.created', args: { id: '1', text: 't1', completed: false } },
+      //   { name: 'todo.created', args: { id: '2', text: 't2', completed: false } },
+      // ])
     }).pipe(withTestCtx(test)),
   )
 })
