@@ -636,6 +636,29 @@ describe('getColumnDefForSchema', () => {
           table2.sqliteDef.columns.count.default._tag === 'Some' && table2.sqliteDef.columns.count.default.value,
         ).toBe(0)
       })
+
+      it('should support thunk defaults without eager evaluation', () => {
+        let counter = 0
+        const UserSchema = Schema.Struct({
+          id: Schema.String.pipe(
+            withDefault(() => {
+              counter += 1
+              return `user-${counter}`
+            }),
+          ),
+        })
+
+        const table = State.SQLite.table({ name: 'users_with_thunk', schema: UserSchema })
+
+        expect(counter).toBe(0)
+        expect(table.sqliteDef.columns.id.default._tag).toBe('Some')
+        if (table.sqliteDef.columns.id.default._tag === 'Some') {
+          const defaultThunk = table.sqliteDef.columns.id.default.value
+          expect(typeof defaultThunk).toBe('function')
+          expect(defaultThunk()).toBe('user-1')
+          expect(defaultThunk()).toBe('user-2')
+        }
+      })
     })
 
     describe('withUnique', () => {

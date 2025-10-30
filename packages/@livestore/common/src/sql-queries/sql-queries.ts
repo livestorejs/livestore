@@ -247,7 +247,15 @@ export const createTable = ({
     .map(([columnName, _]) => columnName)
   const columnDefStrs = Object.entries(table.columns).map(([columnName, columnDef]) => {
     const nullModifier = columnDef.nullable === true ? '' : 'NOT NULL'
-    const defaultModifier = columnDef.default._tag === 'None' ? '' : `DEFAULT ${columnDef.default.value}`
+    const defaultModifier = (() => {
+      if (columnDef.default._tag === 'None') return ''
+      const defaultValue = columnDef.default.value
+      if (typeof defaultValue === 'function') return ''
+      if (defaultValue && typeof defaultValue === 'object' && 'sql' in defaultValue) {
+        return `DEFAULT ${defaultValue.sql}`
+      }
+      return `DEFAULT ${defaultValue}`
+    })()
     return sql`${columnName} ${columnDef.columnType} ${nullModifier} ${defaultModifier}`
   })
 
