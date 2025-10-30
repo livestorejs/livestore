@@ -142,7 +142,7 @@ jobs:
         run: mono test integration sync-provider --provider ${{ matrix.provider }}
       - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
         if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
-        run: echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
+        run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
 
   test-integration-playwright:
     strategy:
