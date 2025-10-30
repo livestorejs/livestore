@@ -10,7 +10,9 @@ In this step, you're going to introduce a [sync](/reference/syncing/) backend. T
 - Have a "live connection" (via WebSockets) to _all_ the clients that are running your app.
 - Propagate events to _all_ other clients whenever a particular client emits an event.
 
-Notice how you'll achieve this by only changing the data layer of your application! You won't need to touch the actual application code you've already implemented in `main.tsx` and `App.tsx`—all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
+Notice how you'll achieve this by _only_ changing the data layer of your application! 
+
+You won't need to touch the code that you've already written in `main.tsx` and `App.tsx`—all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
 
 You're going to implement the sync backend using [Cloudflare Workers](https://developers.cloudflare.com/workers/) and [Durable Objects](https://developers.cloudflare.com/durable-objects/), using the [@livestore/sync-cf](/reference/syncing/sync-provider/cloudflare/) package.
 
@@ -65,9 +67,11 @@ export default {
 }
 ```
 
-This code will be deployed as a Durable Object (think of it as a "Cloudflare Worker" with WebSocket capabilities and attached storage).
+This code will be deployed as a Durable Object (think of it as a "Cloudflare Worker with WebSocket capabilities and attached storage").
 
-In this tutorial, you won't need to go beyond this basic boilerplate. However, in more advanced scenarios, here's how you can hook into the connection between your client apps and the sync backend. This could e.g. be useful when your app requires authentication and you need to send along an auth token.
+In this tutorial, you won't need to go beyond the following basic boilerplate code for syncing. 
+
+However, in more advanced scenarios, there are way for you to hook into the connection between your client apps and the sync backend. This could e.g. be useful when your app requires authentication and you need to send along an auth token.
 
 Next, you need to slightly modify the code for your LiveStore web worker in `/src/livestore/livestore.worker.ts`:
 

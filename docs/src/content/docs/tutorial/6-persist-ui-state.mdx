@@ -7,12 +7,12 @@ sidebar:
 
 As you saw in the beginning of the tutorial, the state of an application is typically divided into two categories:
 
-- **App state**: State that represents the _application data_ a user needs to achieve their goals with the app; in your current case, that's the list of todos. App state typically lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
+- **App state**: State that represents the _application data_ a user needs to achieve their goals with your app. In your current case, that's the list of todos. App state _typically_ lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
 - **UI state**: UI state that is only relevant for a particular browser session.
 
-Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). The site reloads for some reason and they have to start over! With LiveStore, this problem is easily solved!
+Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). Then, the site reloads for some reason and they have to start over! 
 
-LiveStore also allows you to persist _UI state_ (e.g. form inputs, active tabs, custom UI elements, and pretty much anything you'd otherwise manage via `React.useState`). This means users can always pick up exactly where they left off.
+With LiveStore, this problem is easily solved: It allows you to persist _UI state_ (e.g. form inputs, active tabs, custom UI elements, and pretty much anything you'd otherwise manage via `React.useState`). This means users can always pick up exactly where they left off.
 
 ## Add another UI element
 
@@ -246,13 +246,13 @@ Since you've renamed the functions to update the values of `input` and `filter` 
 - `setInput` → `updatedInput`
 - `setFilter` → `updatedFilter`
 
-You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state is now persisted and survives page refreshes.
+You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state is now persisted and survives page refreshes:
 
 ![](../../../assets/tutorial/chapter-6/1-persist-ui-state.gif)
 
 :::note[Tables vs Client documents]
 
-Unlike the regular tables (of type `State.SQLite.table`), client documents (of type `State.SQLite.clientDocument`) are not synced across browser sessions and devices. 
+Unlike the regular tables (of type `State.SQLite.table`), client documents (of type `State.SQLite.clientDocument`) are not synced across browser sessions and devices. They are only persisted withing a single browser session.
 
 :::
 

@@ -23,9 +23,9 @@ pnpm install
 ```
 
 The project currently is set up as follows:
-- Minimal project created via `vite create` using React and TypeScript.
-- Using Tailwind CSS for styling.
-- Has basic functionality for adding and deleting todos via local `React.useState`.
+- Minimal project created via [`vite create`](https://vite.dev/guide/#scaffolding-your-first-vite-project) using React and TypeScript.
+- Using [Tailwind CSS](https://tailwindcss.com/) for styling.
+- Has basic functionality for adding and deleting todos via local [`React.useState`](https://react.dev/learn/state-a-components-memory).
 
 ## Understand the current project state
 
@@ -86,6 +86,8 @@ The "problem" with this code is that the todo items are not _persisted_, meaning
 - the page is refreshed in the browser.
 - the development server is restarted.
 
-In the next step, you'll learn how to persist the todos in the list, so that they'll "survive" both actions. 
+In the next chapters, you'll learn how to persist the todos in the list, so that they'll "survive" both actions. 
 
-Even more: They will not only persist, they will automatically sync across multiple browsers tabs/windows, and even across devices—without you needing to think about the syncing logic and managing remote state. That's the power of LiveStore!
+Even more: They will not only persist, they will automatically sync across multiple browsers tabs/windows, and even across devices—without you needing to think about the syncing logic and managing remote state. 
+
+That's the power of LiveStore!

@@ -12,12 +12,12 @@ You'll do this in these steps:
 1. Update your schema to:
     1. Add a `boolean` column to your SQLite table.
     2. Add events to mark a todo as completed and uncompleted.
-    3. Add a materializer to update the DB after one of the two above events happened.
-2. Update the UI with a checkbox element for each todo which sends the above events when toggled.
+    3. Add a materializer to update the DB when one of these events happens.
+2. Update the UI with a checkbox element for each todo which sends these events when toggled.
 
 ## Update your LiveStore schema
 
-Open your `schema.ts` file and update it with a new column, two events (for completing and uncompleting a todo) with two corresponding materializers:
+Open your `schema.ts` file and update it with a new column, and two events (for completing and uncompleting a todo) with two corresponding materializers:
 
 ```diff title="src/livestore/schema.ts" lang="ts"
 import { Events, makeSchema, Schema, State } from '@livestore/livestore'

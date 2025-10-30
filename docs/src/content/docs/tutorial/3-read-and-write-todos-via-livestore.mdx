@@ -43,7 +43,7 @@ Here's an overview of each of these dependencies:
 
 In this step, you're going to define the [schema](/reference/state/sqlite-schema/) that LiveStore uses to represent the data of your app. The schema is one of the core concepts of LiveStore.
 
-Your LiveStore-related files typically live in a livestore directory in your app, so create that first:
+Your LiveStore-related files typically live in a `livestore` directory in your app, so create that first:
 
 ```bash
 mkdir src/livestore
@@ -110,13 +110,10 @@ To now "connect" LiveStore with your React app, you need to:
 
 1. Create the [LiveStore web worker](/reference/platform-adapters/web-adapter/#web-worker) that is responsible for the logic of persisting data on your file system.
 2. Create a LiveStore [adapter](/reference/platform-adapters/web-adapter/) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
-3. Wrap your root component (in `main.tsx` in your current case) the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
+3. Wrap your root component in `main.tsx` with the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
 4. Update your Vite Config to work with LiveStore.
 
-Notice that there are _two_ distinct "types" of local SQLite instances in this architecture:
-
-- _in-memory_ and sandboxed to each browser session (used via the `@livestore/wa-sqlite` package)
-- _persisted_ via OPFS; the persistence is done by the LiveStore web worker (see below)
+Let's get started!
 
 First, create a new file for the LiveStore web worker:
 
@@ -136,8 +133,8 @@ makeWorker({ schema })
 
 This is boilerplate code that you'll almost never need to touch. (In this tutorial, it'll only be edited once when we introduce syncing data to Cloudflare.)
 
-:::note[Special syntax for importing Worker files in Vite]
-When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
+:::note[Special syntax for importing web worker files in Vite]
+When importing this file, make sure to add the `?worker` extension to the import path to ensure that [Vite treats it as a worker file](https://vite.dev/guide/features.html#web-workers).
 :::
 
 Next, update `main.tsx` to create an adapter and wrap your `App` component inside the `LiveStoreProvider`:
@@ -172,11 +169,10 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
-
 :::note[So many "workers" ...]
 There's some ambiguity with the "worker" terminology in this tutorial. In general, there are three different kinds of Workers at play.
 - The **LiveStore web worker** (`LiveStoreWorker`); this is the Worker you defined in `livestore.worker.ts`. Technically, this is a _browser_ web worker, i.e. a separate JavaScript thread that runs in the browser, isolated from the main UI thread.
--  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker.
+-  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite. 
 - The **Cloudflare Worker** that will automatically sync the data in the background; you'll set this up in the next step.
 
 Note that both the LiveStore web worker and the LiveStore Shared web worker are regular [web workers,](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-web-workers-) not [service workers](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-service-workers-)!
@@ -220,9 +216,9 @@ The todos themselves are not yet persisted because you haven't modified the logi
 
 ## Read and write todos from local SQLite via LiveStore
 
-The current version of the app still stores the todos _in-memory_ via the state of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore.
+The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
 
-In order to read todos, you need to define a LiveStore query. LiveStore queries are _reactive_, meaning they will automatically update your UI components when the underlying data changes.
+In order to read todos, you need to define a LiveStore [query](/reference/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
 
 Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
 
@@ -258,7 +254,8 @@ function App() {
 
   const todos = store.useQuery(todos$)
 
-  // Commit an event to the `store` instead updating local React state
+  // Commit an event to the `store` instead of 
+  // updating local React state.
   const addTodo = () => {
 +    store.commit(
 +      events.todoCreated({ id: Date.now(), text: input }),
@@ -266,7 +263,8 @@ function App() {
     setInput('')
   }
 
-  // Commit an event to the `store` instead updating local React state
+  // Commit an event to the `store` instead of 
+  // updating local React state.
   const deleteTodo = (id: number) => {
 +    store.commit(
 +      events.todoDeleted({ id }),
@@ -282,13 +280,13 @@ See how the data now will flow through the app _unidirectionally_ with this setu
 
 Let's follow it from the first time the app is started:
 
-1. The `App` component registers a "live query" with the store
-1. The query fires initially; the returned `todos` array is empty
-1. The `App` component renders an empty list
-1. A user adds a `todo`; the `todoCreated` event is triggered and committed to the DB
-1. The `v1.TodoCreated` materializer is invoked and writes the data into the DB
-1. The query fires again because the state of the DB changed; the returned `todos` array now contains the new todo
-1. The `App` component renders a single todo
+1. The `App` component registers the `todos$` "live query" with the store.
+1. The query fires initially; the returned `todos` array is empty.
+1. The `App` component renders an empty list.
+1. A user adds a `todo`; the `todoCreated` event is triggered and committed to the DB.
+1. The `v1.TodoCreated` materializer is invoked and writes the data into the DB.
+1. The `todos$` query fires again because the state of the DB changed; the returned `todos` array now contains the newly created todo.
+1. The `App` component renders a single todo. 
 
 Now try it out! Here's the full code for `App.tsx` that you can copy and paste:
 
@@ -396,25 +394,25 @@ In addition to the persistence, you can now observe the following behaviour:
 <details>
 <summary>Expand to learn about browser isolation/sessions</summary>
 
-**Regular browser windows**
+**Regular browser tab/windows**
 
-- All regular windows share the same browser context.
-- SharedWorker is shared across all these tabs/windows.
+- All regular (i.e. "not incognito") tabs/windows share the same browser session.
+- The LiveStore shared web worker is shared across all these tabs/windows.
 - OPFS storage is shared across the origin.
-- ✅ Real-time sync works because they're all using the same SharedWorker and storage.
+- ✅ Real-time sync works because they're all using the same LiveStore shared web worker and storage.
 
 **Incognito windows**
 
-- Incognito mode creates a **separate session** from regular browsing.
-- However, **multiple incognito windows opened in the same incognito session** still share:
-  - The same SharedWorker instance.
+- Incognito mode creates a separate session from regular browsing.
+- However, multiple incognito tabs/windows opened in the same incognito session still share:
+  - The same LiveStore shared web worker instance.
   - The same OPFS storage (within that incognito session).
-- Each incognito **session** gets isolated storage, but windows within that session are NOT isolated from each other.
+- Each incognito session gets isolated storage, but windows within that session are _not_ isolated from each other.
 
 Think of it this way:
 
-- Regular windows = Session A (all windows share the same data).
-- Incognito windows = Session B (all incognito windows share the same data).
+- Regular tabs/windows = Session A (all tabs/windows share the same data).
+- Incognito tabs/windows = Session B (all incognito tabs/windows share the same data).
 
 **To get true isolation**
 
@@ -432,9 +430,12 @@ Now, you can also deploy the app:
 pnpm run deploy
 ```
 
-Here's a little GIF demonstrating the current state of the live updates via browser isolation:
+Here's a little GIF demonstrating the current state of the live updates via browser isolation. On the left, we have two regular Chrome windows, on the right, two Safari windows.
 
 ![](../../../assets/tutorial/chapter-3/3-livestore-sync-local-480.gif)
+
+- When a change is made in one Chrome window, it is automatically reflected in the other Chrome window. 
+- Similarly, when a change is made in one Safari window, it is automatically reflected in the other Safari window.
 
 To recap, here's a visualization of the data flow in the app at this point:
 
@@ -444,7 +445,7 @@ To recap, here's a visualization of the data flow in the app at this point:
 
 You may have wondered: "If the data is persisted, _where_ is it?". If the data is somewhere on your file system, you _should_ be able to spin up a database viewer of your choice and inspect the local SQLite DB file. 
 
-Unfortunately, that's not how OPFS works. While the SQLite files do exist _somewhere_ on your file system, it's hidden in the browser's internals and not easily accessible.
+Unfortunately, that's not how OPFS works. While the SQLite files do exist _somewhere_ on your file system, they are hidden in the browser's internals and not easily accessible.
 
 That being said, there is a convenient way how you can actually see the data on your file system: Using [LiveStore DevTools](/reference/devtools/)!
 
@@ -454,7 +455,7 @@ Our goal is to grow the project in a [sustainable](/misc/sponsoring/#goal-sustai
 
 That being said, we still include them in this tutorial since you'll be able to use them without sponsorship for one week.
 
-LiveStore can only exist thanks to its generous sponsors, please consider becoming one of them if it is of value to you. ❤️
+LiveStore can only exist thanks to its generous sponsors, please consider becoming one of them if the project is of value to you. ❤️
 
 :::
 
