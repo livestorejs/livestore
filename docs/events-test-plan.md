@@ -24,14 +24,14 @@ Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
 
 ## Deterministic scenarios
 
-- Stream progresses as upstream head advances
-- Only confirmed events are included in the stream
-- Stream stops when backend connection is lost and resumes when reconnected
-- Events streamed since local head doesn't include local head
-- Events streamed until specific upstream head includes it then finalizes
-- Events get filtered by name
-- Events get filtered by client ID
-- Events get filtered by session ID
+- [x] Stream progresses as upstream head advances
+- [x] Events get filtered by name
+- [x] Stream stops when backend connection is lost and resumes when reconnected
+- [ ] Stream finishes at until marker when specified
+- [ ] Events streamed since local head doesn't include local head
+- [ ] Events streamed until specific upstream head includes it then finalizes
+- [ ] Events get filtered by client ID
+- [ ] Events get filtered by session ID
 
 ## Use cases
 

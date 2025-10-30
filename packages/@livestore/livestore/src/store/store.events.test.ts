@@ -12,7 +12,6 @@ import {
   Context,
   Effect,
   FetchHttpClient,
-  Fiber,
   Layer,
   Logger,
   LogLevel,
@@ -46,10 +45,35 @@ Vitest.describe('Store events API', () => {
         client: EventFactory.clientIdentity('other-client', 'static-session-id'),
       })
 
-      const collected: Array<LiveStoreEvent.ForSchema<typeof schema>> = []
-      const streamFiber = yield* store.eventsStream({ filter: ['todo.completed'] as const }).pipe(
-        Stream.tap((event) => Effect.sync(() => collected.push(event))),
-        Stream.take(2),
+      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
+      yield* store.eventsStream().pipe(
+        Stream.tap((event) => Queue.offer(eventsQueue, event)),
+        Stream.runDrain,
+        Effect.forkScoped,
+      )
+
+      store.commit(
+        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
+      )
+
+      const collected = yield* Queue.takeBetween(eventsQueue, 2, 2)
+      expect(Chunk.size(collected)).toEqual(2)
+    }).pipe(withTestCtx(test)),
+  )
+  Vitest.scopedLive('should filter events by name', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      yield* mockSyncBackend.connect
+
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
+      })
+
+      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
+      yield* store.eventsStream({ filter: ['todo.completed'] as const }).pipe(
+        Stream.tap((event) => Queue.offer(eventsQueue, event)),
         Stream.runDrain,
         Effect.forkScoped,
       )
@@ -61,13 +85,12 @@ Vitest.describe('Store events API', () => {
         eventFactory.todoCompleted.next({ id: '2' }),
       )
 
-      yield* Fiber.join(streamFiber).pipe(Effect.timeout('5 seconds'))
-
-      expect(collected).toHaveLength(2)
-      expect(collected[0]?.name).toEqual('todo.completed')
-      expect(collected[0]?.args).toMatchObject({ id: '1' })
-      expect(collected[1]?.name).toEqual('todo.completed')
-      expect(collected[1]?.args).toMatchObject({ id: '2' })
+      const collected = yield* Queue.takeBetween(eventsQueue, 2, 2)
+      expect(Chunk.size(collected)).toEqual(2)
+      expect(Chunk.toReadonlyArray(collected)).toMatchObject([
+        { name: 'todo.completed', args: { id: '1' } },
+        { name: 'todo.completed', args: { id: '2' } },
+      ])
     }).pipe(withTestCtx(test)),
   )
   Vitest.scopedLive('should resume when reconnected to sync backend', (test) =>
@@ -80,36 +103,28 @@ Vitest.describe('Store events API', () => {
         client: EventFactory.clientIdentity('other-client', 'static-session-id'),
       })
 
-      const eventQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
+      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
 
       yield* store.eventsStream().pipe(
-        Stream.tapChunk((chunk) => Queue.offerAll(eventQueue, chunk)),
+        Stream.tap((event) => Queue.offer(eventsQueue, event)),
         Stream.runDrain,
         Effect.forkScoped,
       )
 
       store.commit(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
-      yield* Effect.sleep('100 millis')
-      const eventsAfterFirst = yield* Queue.takeAll(eventQueue)
-      const eventsAfterFirstArray = Chunk.toReadonlyArray(eventsAfterFirst)
-      expect(eventsAfterFirstArray).toHaveLength(1)
-      expect(eventsAfterFirstArray[0]?.name).toEqual('todo.created')
-      expect(eventsAfterFirstArray[0]?.args).toMatchObject({ id: '1', text: 't1' })
+      const initialEvent = yield* Queue.take(eventsQueue)
+      expect(initialEvent.name).toEqual('todo.created')
+      expect(initialEvent.args).toMatchObject({ id: '1' })
 
       yield* mockSyncBackend.disconnect
       store.commit(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
-      yield* Effect.sleep('100 millis')
-      const eventsAfterDisconnect = yield* Queue.takeAll(eventQueue)
-      const eventsAfterDisconnectArray = Chunk.toReadonlyArray(eventsAfterDisconnect)
-      expect(eventsAfterDisconnectArray).toHaveLength(0)
+      const maybeWhileDisconnected = yield* Queue.take(eventsQueue).pipe(Effect.timeout('250 millis'), Effect.option)
+      expect(maybeWhileDisconnected._tag).toEqual('None')
 
       yield* mockSyncBackend.connect
-      yield* Effect.sleep('100 millis')
-      const eventsAfterReconnect = yield* Queue.takeAll(eventQueue)
-      const eventsAfterReconnectArray = Chunk.toReadonlyArray(eventsAfterReconnect)
-      expect(eventsAfterReconnectArray).toHaveLength(1)
-      expect(eventsAfterReconnectArray[0]?.name).toEqual('todo.created')
-      expect(eventsAfterReconnectArray[0]?.args).toMatchObject({ id: '2', text: 't2' })
+      const resumedEvent = yield* Queue.take(eventsQueue)
+      expect(resumedEvent.name).toEqual('todo.created')
+      expect(resumedEvent.args).toMatchObject({ id: '2' })
     }).pipe(withTestCtx(test)),
   )
 })
