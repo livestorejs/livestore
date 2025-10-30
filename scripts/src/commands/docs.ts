@@ -2,7 +2,7 @@ import fs from 'node:fs'
 
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
@@ -183,12 +183,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        purgeCdn: Cli.Options.boolean('purge-cdn')
-          .pipe(Cli.Options.withDefault(false))
-          .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
+        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        ),
+        build: Cli.Options.boolean('build').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.optional,
+          Cli.Options.withDescription('Build the docs before deploying (split flow)'),
+        ),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -263,19 +269,29 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
+          // Split mode: build first only when requested via --build
+          const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          if (shouldBuild) {
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
+          }
+
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             message: buildMessage(contextLabelFor(prod, alias)),
-            dir: `${docsPath}/dist`,
-            // Pass through build-time flags so the Netlify CLI build includes
-            // API docs and has sufficient memory headroom.
-            env: {
-              STARLIGHT_INCLUDE_API_DOCS: '1',
-              NODE_OPTIONS: '--max_old_space_size=4096',
-            },
           })
+
+          // Verify root returns Markdown on Accept negotiation
+          const rootContentType = yield* HttpClient.execute(
+            HttpClientRequest.get(`${finalDeploy.deploy_url}/`).pipe(
+              HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
+            ),
+          ).pipe(Effect.map((res) => res.headers['content-type']))
+
+          if (!rootContentType?.toLowerCase().includes('text/markdown')) {
+            return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
+          }
 
           if (purgeCdn) {
             const purgeSiteId = finalDeploy.site_id

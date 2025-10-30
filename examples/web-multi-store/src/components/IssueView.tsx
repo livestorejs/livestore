@@ -1,5 +1,8 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react/experimental'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorFallback } from '@/components/ErrorFallback.tsx'
 import { issueStoreOptions } from '@/stores/issue'
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
 
@@ -33,13 +36,17 @@ export function IssueView({ issueId }: { issueId: string }) {
       </p>
 
       {issue.childIssueIds.length > 0 && (
-        <ul>
-          {issue.childIssueIds.map((id) => (
-            <li key={id}>
-              <IssueView issueId={id} />
-            </li>
-          ))}
-        </ul>
+        <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <Suspense fallback={<div className="loading">Loading sub-issues...</div>}>
+            <ul>
+              {issue.childIssueIds.map((id) => (
+                <li key={id}>
+                  <IssueView issueId={id} />
+                </li>
+              ))}
+            </ul>
+          </Suspense>
+        </ErrorBoundary>
       )}
     </div>
   )
