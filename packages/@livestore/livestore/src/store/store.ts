@@ -842,7 +842,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         .pipe(
           Stream.filter(includeClientOnly),
           Stream.filter(matchesFilters),
-          // Look up chunking in streams
           Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
         )
 
@@ -874,6 +873,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         return [nextCursor, eventStreamSegment(currentCursor, effectiveHead)]
       }),
+      // This kills the previous stream and starts a new one
+      // Only scenarios to kill stream:
+      // When client exists
+      // Rebasing (not relevant yet)
       Stream.flatMap((segment) => segment),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )

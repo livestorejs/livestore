@@ -185,7 +185,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const { syncProcessor } = yield* LeaderThreadCtx
+        const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
         return syncProcessor.pull({ cursor })
       }).pipe(
         Stream.unwrapScoped,
@@ -202,6 +202,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
       Effect.gen(function* () {
+        // MOVE HEADSTREAM HERE
+        // This should be way easier to test
+        // Only need to use mocked sync backend
+        // tests/package-common/src/leader-thread/LeaderSyncProcessor.test.ts
         const { dbEventlog, dbState } = yield* LeaderThreadCtx
         return Eventlog.streamEventsFromEventlog({
           dbEventlog,

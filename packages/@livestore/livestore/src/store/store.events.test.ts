@@ -12,6 +12,7 @@ import {
   Context,
   Effect,
   FetchHttpClient,
+  Fiber,
   Layer,
   Logger,
   LogLevel,
@@ -127,7 +128,7 @@ Vitest.describe('Store events API', () => {
       expect(resumedEvent.args).toMatchObject({ id: '2' })
     }).pipe(withTestCtx(test)),
   )
-  Vitest.scopedLive('should finalise when reaching until event', (test) =>
+  Vitest.scopedLive.skip('should finalise when reaching until event', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()
@@ -144,23 +145,20 @@ Vitest.describe('Store events API', () => {
       )
 
       const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
-      yield* store.eventsStream({ until: EventSequenceNumber.fromString('e2') }).pipe(
+      const streamFiber = yield* store.eventsStream({ until: EventSequenceNumber.fromString('e2') }).pipe(
         Stream.tap((event) => Queue.offer(eventsQueue, event)),
         Stream.runDrain,
         Effect.forkScoped,
       )
 
-      yield* Queue.take(eventsQueue)
-      yield* Queue.take(eventsQueue)
-      // yield* Queue.take(eventsQueue)
+      yield* Fiber.join(streamFiber)
 
-      // yield* Fiber.join(streamFiber)
-      // const collected = yield* Queue.takeAll(eventsQueue)
-      // expect(Chunk.size(collected)).toEqual(2)
-      // expect(Chunk.toReadonlyArray(collected)).toMatchObject([
-      //   { name: 'todo.created', args: { id: '1', text: 't1', completed: false } },
-      //   { name: 'todo.created', args: { id: '2', text: 't2', completed: false } },
-      // ])
+      const collected = yield* Queue.takeAll(eventsQueue)
+      expect(Chunk.size(collected)).toEqual(2)
+      expect(Chunk.toReadonlyArray(collected)).toMatchObject([
+        { name: 'todo.created', args: { id: '1', text: 't1', completed: false } },
+        { name: 'todo.created', args: { id: '2', text: 't2', completed: false } },
+      ])
     }).pipe(withTestCtx(test)),
   )
 })

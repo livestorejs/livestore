@@ -1,5 +1,21 @@
 # LiveStore Events Test Plan
 
+## NOTES
+
+Where can we document the design decisions on the event stream api?
+- JSDoc
+- Write it one reference in others
+- Any other natural default?
+[!] How does this thing work? Why were certain decisions taken
+    - For example why we placed the logic in the leader worker
+
+Test from both store and leader thread perspective
+Store -> More integration type tests
+Leader thread -> Closer to unit-test style
+
+Add note on why Queue's are used in tests -> To allow checking the stream in stages
+
+
 ## Important notice for first version of event streaming api
 
 Unconfirmed events are excluded in the first version of the event streaming API. The practical implication of this is that we only allow streaming events confimed by the sync backend. Including unconfirmed events would need to pay careful attention to a shifting event log due to rebasing particularly when considered in combination with batch SQL queries.
@@ -27,9 +43,8 @@ Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
 - [x] Stream progresses as upstream head advances
 - [x] Events get filtered by name
 - [x] Stream stops when backend connection is lost and resumes when reconnected
-- [ ] Stream finishes at until marker when specified
-- [ ] Events streamed since local head doesn't include local head
 - [ ] Events streamed until specific upstream head includes it then finalizes
+- [ ] Events streamed since local head doesn't include local head
 - [ ] Events get filtered by client ID
 - [ ] Events get filtered by session ID
 

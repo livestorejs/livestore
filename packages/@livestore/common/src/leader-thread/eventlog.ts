@@ -103,6 +103,7 @@ export const getEventsSince = ({
 /**
  * Stream events from the eventlog with advanced filtering options
  */
+// NOTE THAT THE PURPOSE OF THE STREAM IS ONLY FOR DB PAGINATION
 export const streamEventsFromEventlog = ({
   dbEventlog,
   dbState,
