@@ -159,7 +159,7 @@ describe('makeColumnSpec', () => {
     const result = makeColumnSpec(table)
     expect(result).toMatchInlineSnapshot(`""id" integer primary key   , "token" text    "`)
     expect(result).not.toContain('dynamic-token')
-    expect(result).not.toMatch(/token\" text\s+default/i)
+    expect(result).not.toMatch(/token" text\s+default/i)
   })
 
   it('should handle null default values', () => {

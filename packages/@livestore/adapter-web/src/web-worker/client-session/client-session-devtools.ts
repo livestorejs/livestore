@@ -1,4 +1,4 @@
-import { Devtools } from '@livestore/common'
+import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
@@ -29,6 +29,20 @@ export const logDevtoolsUrl = ({
         if (text.includes('<meta name="livestore-devtools" content="true" />')) {
           const url = `${devtoolsBaseUrl}/web/${storeId}/${clientId}/${sessionId}/${schema.devtools.alias}`
           yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}`)
+        }
+
+        // Check for DevTools Chrome extension presence via iframe container the extension injects
+        const hasExt = document.querySelector('[id^="livestore-devtools-iframe-"]') !== null
+        if (!hasExt) {
+          const g = globalThis as { __livestoreDevtoolsChromeNoticeShown?: boolean }
+          if (g.__livestoreDevtoolsChromeNoticeShown !== true) {
+            g.__livestoreDevtoolsChromeNoticeShown = true
+
+            const urlToLog = `https://github.com/livestorejs/livestore/releases/download/v${liveStoreVersion}/livestore-devtools-chrome-${liveStoreVersion}.zip`
+            yield* Effect.log(
+              `[@livestore/adapter-web] LiveStore DevTools Chrome extension not detected. Install v${liveStoreVersion}: ${urlToLog}`,
+            )
+          }
         }
       }
     }
