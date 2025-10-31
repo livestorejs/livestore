@@ -108,6 +108,8 @@ Creates a LiveStore instance inside a Durable Object.
 - `syncBackendStub` – Durable Object stub used to reach the sync backend
 - `livePull` – Enable real-time updates (default: `false`)
 - `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)
+- `logger?` – Optional Effect logger layer to customize formatting/output
+- `logLevel?` – Optional minimum log level (use `LogLevel.None` to disable logs)
 
 ### `syncUpdateRpc(payload)`
 

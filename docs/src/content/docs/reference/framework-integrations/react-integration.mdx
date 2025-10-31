@@ -29,6 +29,26 @@ In order to use LiveStore with React, you need to wrap your application in a `Li
 
 <ReactProviderSnippet />
 
+#### Logging
+
+`LiveStoreProvider` accepts optional logging configuration:
+
+```tsx
+import { Logger, LogLevel } from '@livestore/utils/effect'
+
+<LiveStoreProvider
+  schema={schema}
+  adapter={adapter}
+  batchUpdates={batchUpdates}
+  // Optional: swap the logger implementation
+  logger={Logger.prettyWithThread('app')}
+  // Optional: set minimum log level (use LogLevel.None to disable)
+  logLevel={LogLevel.Info}
+>
+  <App />
+</LiveStoreProvider>
+```
+
 For scenarios where you have an existing store instance, you can manually create a `LiveStoreContext.Provider`:
 
 <ReactContextSnippet />

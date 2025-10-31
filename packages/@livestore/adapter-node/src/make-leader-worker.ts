@@ -8,23 +8,13 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { SyncOptions } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import { LogConfig, UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import {
-  Effect,
-  FetchHttpClient,
-  Layer,
-  Logger,
-  LogLevel,
-  OtelTracer,
-  Schema,
-  Stream,
-  WorkerRunner,
-} from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
 
@@ -42,13 +32,16 @@ export type WorkerOptions = {
     serviceName?: string
   }
   testing?: TestingOverrides
-}
+} & LogConfig.WithLoggerOptions
 
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
   makeWorkerEffect(options).pipe(
-    Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
+    LogConfig.withLoggerConfig(
+      { logger: options.logger, logLevel: options.logLevel },
+      { threadName: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' },
+    ),
     PlatformNode.NodeRuntime.runMain,
   )
 }
@@ -184,6 +177,5 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     // We basically only want to provide this logger if it's replacing the default logger, not if there's a custom logger already provided.
     // Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
     Effect.provide(runtimeLayer),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
   )
 }
