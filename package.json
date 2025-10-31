@@ -9,7 +9,6 @@
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
     "madge": "^8.0.0",
-    "puppeteer": "^24.27.0",
     "syncpack": "^13.0.4",
     "typescript": "catalog:",
     "vite": "catalog:",
