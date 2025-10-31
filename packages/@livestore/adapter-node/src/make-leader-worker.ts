@@ -37,13 +37,7 @@ export type WorkerOptions = {
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(
-    LogConfig.withLoggerConfig(
-      { logger: options.logger, logLevel: options.logLevel },
-      { threadName: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' },
-    ),
-    PlatformNode.NodeRuntime.runMain,
-  )
+  makeWorkerEffect(options).pipe(PlatformNode.NodeRuntime.runMain)
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
@@ -173,6 +167,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread',
       processId: process.pid,
     }),
+    LogConfig.withLoggerConfig(
+      { logger: options.logger, logLevel: options.logLevel },
+      { threadName: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' },
+    ),
     // TODO bring back with Effect 4 once it's easier to work with replacing loggers.
     // We basically only want to provide this logger if it's replacing the default logger, not if there's a custom logger already provided.
     // Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
