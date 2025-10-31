@@ -241,7 +241,7 @@ describe('query builder', () => {
             10,
             10,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? LIMIT ? OFFSET ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -256,7 +256,7 @@ describe('query builder', () => {
             5,
             10,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "query": "SELECT id, text FROM 'todos' WHERE completed = ? LIMIT ? OFFSET ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)

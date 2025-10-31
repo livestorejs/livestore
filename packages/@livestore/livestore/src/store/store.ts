@@ -19,8 +19,8 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -36,7 +36,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
-
 import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
@@ -69,6 +68,11 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
+export const DEFAULT_PARAMS = {
+  leaderPushBatchSize: 100,
+  eventQueryBatchSize: 1000,
+}
+
 export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
@@ -77,6 +81,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   schema: LiveStoreSchema
   context: TContext
   otel: StoreOtel
+  params: StoreOptions<TSchema, TContext>['params']
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -139,6 +144,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.params = params
     this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
@@ -738,7 +744,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events.
+   * Returns an async iterable of events confirmed by backend.
    *
    * @example
    * ```ts
@@ -755,16 +761,116 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * }
    * ```
    */
-  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
-    this.checkShutdown('events')
-
-    return notYetImplemented(`store.events() is not yet implemented but planned soon`)
+  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    const stream = this.eventsStream(options)
+    return {
+      async *[Symbol.asyncIterator]() {
+        const iterator = Stream.toAsyncIterable(stream)
+        for await (const event of iterator) {
+          yield event
+        }
+      },
+    }
   }
 
-  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
-    this.checkShutdown('eventsStream')
+  eventsStream = (
+    options?: StoreEventsOptions<TSchema>,
+  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
+    const { schema, clientSession, params } = this
+    const leaderThreadProxy = clientSession.leaderThread
+    const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
-    return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
+    // Apply defaults
+    const cursor = options?.cursor ?? EventSequenceNumber.ROOT
+    const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
+
+    // Helper function to check if event matches all filter criteria
+    const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
+      // Apply name filter if specified
+      if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
+        return false
+      }
+
+      // Apply clientId filter
+      if (options?.clientIds && !options.clientIds.includes(eventEncoded.clientId)) {
+        return false
+      }
+
+      // Apply sessionId filter
+      if (options?.sessionIds && !options.sessionIds.includes(eventEncoded.sessionId)) {
+        return false
+      }
+
+      // Apply since filter (exclusive)
+      if (options?.since && EventSequenceNumber.compare(eventEncoded.seqNum, options.since) <= 0) {
+        return false
+      }
+
+      // Apply until filter (inclusive)
+      if (options?.until && EventSequenceNumber.compare(eventEncoded.seqNum, options.until) > 0) {
+        return false
+      }
+
+      return true
+    }
+
+    const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
+      return encodedEvent.seqNum.client <= 0
+    }
+
+    const headStream = leaderThreadProxy.syncState.changes.pipe(
+      Stream.map((state) => state.upstreamHead),
+      Stream.skipRepeated(EventSequenceNumber.isEqual),
+    )
+
+    return headStream.pipe(
+      Stream.mapAccum<
+        // Sequence number representing the current cursor state.
+        EventSequenceNumber.EventSequenceNumber,
+        // Sequence number that becomes the updated cursor after processing the head.
+        EventSequenceNumber.EventSequenceNumber,
+        // Stream of decoded events emitted for the processed head interval.
+        Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError>
+      >(cursor, (currentCursor, nextHead) => {
+        if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
+          return [currentCursor, Stream.empty]
+        }
+
+        if (EventSequenceNumber.isGreaterThan(nextHead, currentCursor) === false) {
+          return [currentCursor, Stream.empty]
+        }
+
+        const effectiveHead =
+          options?.until && EventSequenceNumber.isGreaterThan(nextHead, options.until) ? options.until : nextHead
+
+        if (EventSequenceNumber.isGreaterThan(effectiveHead, currentCursor) === false) {
+          return [currentCursor, Stream.empty]
+        }
+
+        const nextCursor = effectiveHead
+
+        const streamSegment = leaderThreadProxy.events
+          .stream({
+            since: currentCursor,
+            until: effectiveHead,
+            ...omitUndefineds({
+              filter: options?.filter as ReadonlyArray<string> | undefined,
+              clientIds: options?.clientIds,
+              sessionIds: options?.sessionIds,
+            }),
+            batchSize,
+          })
+          .pipe(
+            Stream.filter(includeClientOnly),
+            Stream.filter(matchesFilters),
+            Stream.map((eventEncoded) => Schema.decodeSync(eventSchema)(eventEncoded)),
+          )
+
+        return [nextCursor, streamSegment]
+      }),
+      Stream.flatMap((segment) => segment),
+      Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+    )
   }
 
   /**

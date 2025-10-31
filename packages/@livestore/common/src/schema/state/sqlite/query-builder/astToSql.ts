@@ -222,10 +222,10 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   const offsetStmt = ast.offset._tag === 'Some' ? `OFFSET ?` : ''
 
   // Push offset and limit values in the correct order matching the query string
-  if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
   if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
+  if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
 
-  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
+  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, limitStmt, offsetStmt]
     .map((clause) => clause.trim())
     .filter((clause) => clause.length > 0)
     .join(' ')

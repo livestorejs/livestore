@@ -35,16 +35,12 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
-import { Store } from './store.ts'
+import { DEFAULT_PARAMS, Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
-
-export const DEFAULT_PARAMS = {
-  leaderPushBatchSize: 100,
-}
 
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
   LiveStoreContextRunning,
@@ -164,6 +160,7 @@ export interface CreateStoreOptions<
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   params?: {
     leaderPushBatchSize?: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -341,6 +338,7 @@ export const createStore = <
         storeId,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+          eventQueryBatchSize: params?.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize,
           ...omitUndefineds({ simulation: params?.simulation }),
         },
       })

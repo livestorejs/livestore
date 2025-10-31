@@ -7,7 +7,7 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, LS_DEV } from '@livestore/utils'
+import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -198,6 +198,15 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
+    StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
+      Effect.gen(function* () {
+        const { dbEventlog, dbState } = yield* LeaderThreadCtx
+        return Eventlog.streamEventsFromEventlog({
+          dbEventlog,
+          dbState,
+          options: { since, ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }) },
+        })
+      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,

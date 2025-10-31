@@ -266,6 +266,12 @@ const makeLeaderThread = ({
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),
+          stream: (options) =>
+            Eventlog.streamEventsFromEventlog({
+              dbEventlog,
+              dbState,
+              options,
+            }),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),

@@ -27,6 +27,28 @@ export const MainSection: React.FC = () => {
 
   const visibleTodos = store.useQuery(visibleTodos$)
 
+  React.useEffect(() => {
+    let cancelled = false
+    const iterator = store.events()[Symbol.asyncIterator]()
+
+    void (async () => {
+      try {
+        while (!cancelled) {
+          const { value, done } = await iterator.next()
+          if (done) break
+          console.log('event', value)
+        }
+      } finally {
+        await iterator.return?.()
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      void iterator.return?.()
+    }
+  }, [store])
+
   return (
     <section className="main">
       <ul className="todo-list">

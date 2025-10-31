@@ -341,6 +341,12 @@ const makeLocalLeaderThread = ({
                 batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               ),
+            stream: (options) =>
+              Eventlog.streamEventsFromEventlog({
+                dbEventlog,
+                dbState,
+                options,
+              }),
           },
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
           export: Effect.sync(() => dbState.export()),
@@ -481,6 +487,7 @@ const makeWorkerLeaderThread = ({
                 attributes: { batchSize: batch.length },
               }),
             ),
+          stream: (_options) => Stream.empty,
         },
         initialState: {
           leaderHead: initialLeaderHead,
