@@ -1,6 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["ESNext", "DOM", "WebWorker"],
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,

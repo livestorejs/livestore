@@ -86,6 +86,15 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     this.#directoryPath = directoryPath
   }
 
+  /**
+   * Get the OPFS file name that contains the data for the given SQLite file.
+   *
+   * @remarks
+   *
+   * This would be for one of the files in the pool managed by this VFS.
+   * It's not the same as the SQLite file name. It's a randomly-generated
+   * string that is not meaningful to the application.
+   */
   getOpfsFileName(zName: string) {
     const path = this.#getPath(zName)
     const accessHandle = this.#mapPathToAccessHandle.get(path)!
@@ -246,7 +255,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  async close() {
+  close() {
     this.#releaseAccessHandles()
   }
 
