@@ -121,9 +121,6 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.9.2)
-      puppeteer:
-        specifier: ^24.27.0
-        version: 24.27.0(typescript@5.9.2)
       syncpack:
         specifier: ^13.0.4
         version: 13.0.4(typescript@5.9.2)
@@ -29118,22 +29115,6 @@ snapshots:
       - bufferutil
       - react-native-b4a
       - supports-color
-      - utf-8-validate
-
-  puppeteer@24.27.0(typescript@5.9.2):
-    dependencies:
-      '@puppeteer/browsers': 2.10.12
-      chromium-bidi: 10.5.1(devtools-protocol@0.0.1521046)
-      cosmiconfig: 9.0.0(typescript@5.9.2)
-      devtools-protocol: 0.0.1521046
-      puppeteer-core: 24.27.0
-      typed-query-selector: 2.12.0
-    transitivePeerDependencies:
-      - bare-buffer
-      - bufferutil
-      - react-native-b4a
-      - supports-color
-      - typescript
       - utf-8-validate
 
   puppeteer@24.27.0(typescript@5.9.3):
