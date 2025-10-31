@@ -2,9 +2,9 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 
 import { SqliteDsl } from './db-schema/mod.ts'
-import type { TableDef, TableDefBase } from './table-def.ts'
+import type { TableDefBase } from './table-def.ts'
 
-export const getDefaultValuesEncoded = <TTableDef extends TableDef>(
+export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   fallbackValues?: Record<string, any>,
 ) =>
