@@ -1,5 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it } from 'vitest'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -654,7 +654,7 @@ describe('getColumnDefForSchema', () => {
         expect(table.sqliteDef.columns.id.default._tag).toBe('Some')
         if (table.sqliteDef.columns.id.default._tag === 'Some') {
           const defaultThunk = table.sqliteDef.columns.id.default.value
-          expect(typeof defaultThunk).toBe('function')
+          assert(typeof defaultThunk === 'function')
           expect(defaultThunk()).toBe('user-1')
           expect(defaultThunk()).toBe('user-2')
         }
