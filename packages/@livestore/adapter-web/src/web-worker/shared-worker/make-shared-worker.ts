@@ -1,4 +1,4 @@
-import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, LogConfig, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -11,8 +11,6 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  Logger,
-  LogLevel,
   ParseResult,
   Ref,
   Schema,
@@ -263,9 +261,8 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
 }).pipe(Layer.unwrapScoped)
 
-export const makeWorker = () => {
-  const layer = Layer.mergeAll(
-    Logger.prettyWithThread(self.name),
+export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
+  const runtimeLayer = Layer.mergeAll(
     FetchHttpClient.layer,
     WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) }),
   )
@@ -277,11 +274,11 @@ export const makeWorker = () => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(layer),
+    Effect.provide(runtimeLayer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     (_) => _ as any as Effect.Effect<void, any>,
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    LogConfig.withLoggerConfig(options, { threadName: self.name }),
     Effect.runFork,
   )
 }

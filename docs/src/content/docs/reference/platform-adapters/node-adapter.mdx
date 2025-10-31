@@ -32,3 +32,28 @@ The worker adapter can be used for more advanced scenarios where it's preferable
 <NodeWorkerMainSnippet />
 
 <NodeWorkerWorkerSnippet />
+
+#### Logging
+
+You can control what the Node worker logs and how it’s formatted.
+Pass two optional options to `makeWorker`:
+
+- `logger` — where/format of logs (e.g. pretty console output)
+- `logLevel` — how verbose logs are (`LogLevel.None` silences logs)
+
+```ts
+import { Logger, LogLevel } from '@livestore/utils/effect'
+import { makeWorker } from '@livestore/adapter-node'
+
+makeWorker({
+  schema,
+  // readable console output by thread name
+  logger: Logger.prettyWithThread('livestore-node-leader-thread'),
+  // choose verbosity: None | Error | Warning | Info | Debug
+  logLevel: LogLevel.Info,
+})
+
+Tips:
+- Use `LogLevel.None` to keep test output quiet.
+- Keep the default (Debug) when diagnosing issues.
+```
