@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import LivestoreDataFlowDiagram from '../../_assets/diagrams/tutorial-chapter-3-2-livestore-data-flow.tldr?tldraw';
 
 Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshes and dev server reloads.
 
@@ -470,7 +471,7 @@ Here's a little GIF demonstrating the current state of the live updates via brow
 
 To recap, here's a visualization of the data flow in the app at this point:
 
-![](../../../assets/tutorial/chapter-3/2-livestore-data-flow.png)
+<LivestoreDataFlowDiagram class="my-8" />
 
 ## Set up LiveStore DevTools
 

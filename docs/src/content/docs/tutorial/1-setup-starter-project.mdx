@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import StateAndUiDiagram from '../../_assets/diagrams/tutorial-chapter-1-1-state-and-ui.tldr?tldraw';
 
 ## Set up a starter project with React, Vite & Tailwind
 
@@ -95,7 +96,7 @@ function App() {
 
 For any React developer, this is a very familiar setup:
 
-![](../../../assets/tutorial/chapter-1/2-state-and-ui.png)
+<StateAndUiDiagram class="my-8" />
 
 You have two pieces of state:
 - application state: `todos: Todo[]` → manipulated by the `addTodo` and `deleteTodo` functions.
