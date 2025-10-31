@@ -1,10 +1,27 @@
 import { casesHandled } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
+export type SqlDefaultValue = {
+  readonly sql: string
+}
+
+export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof (value as any).sql === 'string'
+}
+
+export type ColumnDefaultThunk<T> = () => T
+
+export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unknown> => typeof value === 'function'
+
+export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
+
+export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
+  isDefaultThunk(value) ? (value as ColumnDefaultThunk<T | null>)() : value
+
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType
   readonly schema: Schema.Schema<TDecoded, TEncoded>
-  readonly default: Option.Option<TEncoded>
+  readonly default: Option.Option<ColumnDefaultValue<TDecoded>>
   /** @default false */
   readonly nullable: boolean
   /** @default false */
@@ -27,9 +44,17 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition.An
   )
 }
 
+type MaybeNull<T, TNullable extends boolean> = T | (TNullable extends true ? null : never)
+
+type ColumnDefaultArg<T, TNullable extends boolean> =
+  | MaybeNull<T, TNullable>
+  | ColumnDefaultThunk<MaybeNull<T, TNullable>>
+  | SqlDefaultValue
+  | NoDefault
+
 export type ColumnDefinitionInput = {
   readonly schema?: Schema.Schema<unknown>
-  readonly default?: unknown | NoDefault
+  readonly default?: ColumnDefaultArg<unknown, boolean>
   readonly nullable?: boolean
   readonly primaryKey?: boolean
   readonly autoIncrement?: boolean
@@ -37,14 +62,6 @@ export type ColumnDefinitionInput = {
 
 export const NoDefault = Symbol.for('NoDefault')
 export type NoDefault = typeof NoDefault
-
-export type SqlDefaultValue = {
-  readonly sql: string
-}
-
-export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
-  return typeof value === 'object' && value !== null && 'sql' in value && typeof value.sql === 'string'
-}
 
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
@@ -59,7 +76,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     TEncoded extends DefaultEncodedForColumnType<TColumnType>,
     TDecoded = DefaultEncodedForColumnType<TColumnType>,
     const TNullable extends boolean = false,
-    const TDefault extends TDecoded | SqlDefaultValue | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TDefault extends ColumnDefaultArg<NoInfer<TDecoded>, TNullable> = NoDefault,
     const TPrimaryKey extends boolean = false,
     const TAutoIncrement extends boolean = false,
   >(args: {
@@ -132,7 +149,7 @@ export type SpecializedColDefFn<
   <
     TDecoded = TBaseDecoded,
     const TNullable extends boolean = false,
-    const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TDefault extends ColumnDefaultArg<NoInfer<TDecoded>, TNullable> = NoDefault,
     const TPrimaryKey extends boolean = false,
     const TAutoIncrement extends boolean = false,
   >(

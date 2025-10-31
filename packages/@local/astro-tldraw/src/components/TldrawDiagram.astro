@@ -1,0 +1,88 @@
+---
+import type { HTMLAttributes } from 'astro/types'
+
+export interface Props extends HTMLAttributes<'div'> {
+  diagram: {
+    lightSvg: string
+    darkSvg: string
+    metadata?: {
+      width?: number
+      height?: number
+    }
+  }
+}
+
+const { diagram, class: className, ...rest } = Astro.props
+const { lightSvg, darkSvg, metadata } = diagram
+
+/* Extract dimensions for container */
+const width = metadata?.width
+const height = metadata?.height
+const aspectRatio = width && height ? `${width} / ${height}` : undefined
+---
+
+<div
+  class:list={['tldraw-diagram', className]}
+  style={{
+    aspectRatio,
+    maxWidth: width ? `${width}px` : undefined,
+  }}
+  {...rest}
+>
+  <div class="tldraw-svg light-svg" set:html={lightSvg} />
+  <div class="tldraw-svg dark-svg" set:html={darkSvg} />
+</div>
+
+<style>
+  .tldraw-diagram {
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .tldraw-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .tldraw-svg :global(svg) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Light theme: show light SVG, hide dark SVG */
+  :root[data-theme='light'] .tldraw-diagram .dark-svg {
+    display: none;
+  }
+  :root[data-theme='light'] .tldraw-diagram .light-svg {
+    display: block;
+  }
+
+  /* Dark theme: show dark SVG, hide light SVG */
+  :root[data-theme='dark'] .tldraw-diagram .light-svg {
+    display: none;
+  }
+  :root[data-theme='dark'] .tldraw-diagram .dark-svg {
+    display: block;
+  }
+
+  /* Fallback for media query preference (when no data-theme attribute) */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .tldraw-diagram .light-svg {
+      display: none;
+    }
+    :root:not([data-theme]) .tldraw-diagram .dark-svg {
+      display: block;
+    }
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) .tldraw-diagram .dark-svg {
+      display: none;
+    }
+    :root:not([data-theme]) .tldraw-diagram .light-svg {
+      display: block;
+    }
+  }
+</style>

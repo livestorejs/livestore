@@ -146,6 +146,22 @@ describe('makeColumnSpec', () => {
     expect(result).toContain('default RANDOM()')
   })
 
+  it('should omit default clause for thunk defaults', () => {
+    const table = SqliteAst.table(
+      'thunks',
+      [
+        createColumn('id', 'integer', { nullable: false, primaryKey: true }),
+        createColumn('token', 'text', { defaultValue: () => 'dynamic-token' }),
+      ],
+      [],
+    )
+
+    const result = makeColumnSpec(table)
+    expect(result).toMatchInlineSnapshot(`""id" integer primary key   , "token" text    "`)
+    expect(result).not.toContain('dynamic-token')
+    expect(result).not.toMatch(/token" text\s+default/i)
+  })
+
   it('should handle null default values', () => {
     const table = SqliteAst.table(
       'nullable_defaults',

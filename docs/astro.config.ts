@@ -4,6 +4,7 @@ import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
+import { createAstroTldrawIntegration } from '@local/astro-tldraw'
 import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
@@ -56,6 +57,7 @@ export default defineConfig({
   },
   integrations: [
     createAstroTwoslashCodeIntegration(),
+    createAstroTldrawIntegration(),
     react(),
     createCopyPageClipboardFallbackIntegration(),
     starlight({
