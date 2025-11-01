@@ -102,8 +102,20 @@ export const getEventsSince = ({
 
 /**
  * Stream events from the eventlog with advanced filtering options
+ *
+ * This stream only paginates over large SQL queries. It is used
+ * downstream by adapters through streamEventsWithSyncState to
+ * allow for active head tracking from syncState.
  */
-// NOTE THAT THE PURPOSE OF THE STREAM IS ONLY FOR DB PAGINATION
+export type StreamEventsFromEventLogOptions = {
+  since: EventSequenceNumber.EventSequenceNumber
+  until?: EventSequenceNumber.EventSequenceNumber
+  filter?: ReadonlyArray<string>
+  clientIds?: ReadonlyArray<string>
+  sessionIds?: ReadonlyArray<string>
+  batchSize?: number
+}
+
 export const streamEventsFromEventlog = ({
   dbEventlog,
   dbState,
@@ -111,14 +123,7 @@ export const streamEventsFromEventlog = ({
 }: {
   dbEventlog: SqliteDb
   dbState: SqliteDb
-  options: {
-    since: EventSequenceNumber.EventSequenceNumber
-    until?: EventSequenceNumber.EventSequenceNumber
-    filter?: ReadonlyArray<string>
-    clientIds?: ReadonlyArray<string>
-    sessionIds?: ReadonlyArray<string>
-    batchSize?: number
-  }
+  options: StreamEventsFromEventLogOptions
 }): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError> => {
   const batchSize = options.batchSize ?? 1000
 

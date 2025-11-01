@@ -213,8 +213,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           dbEventlog,
           dbState,
           syncState: syncProcessor.syncState,
-          since,
-          ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          options: {
+            since,
+            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          },
         })
       }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
     Export: () =>

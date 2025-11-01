@@ -114,8 +114,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           dbEventlog,
           dbState,
           syncState: syncProcessor.syncState,
-          since,
-          ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          options: {
+            since,
+            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          },
         })
       }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-node:worker:StreamEvents')),
     Export: () =>

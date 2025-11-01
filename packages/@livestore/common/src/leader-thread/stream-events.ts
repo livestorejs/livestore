@@ -1,10 +1,10 @@
-import { omitUndefineds } from '@livestore/utils'
 import type { Subscribable } from '@livestore/utils/effect'
 import { Stream } from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
 import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
+import type { StreamEventsFromEventLogOptions } from './eventlog.ts'
 import type { LeaderSqliteDb } from './types.ts'
 
 /**
@@ -29,23 +29,18 @@ export const streamEventsWithSyncState = ({
   dbEventlog,
   dbState,
   syncState,
-  since,
-  until,
-  filter,
-  clientIds,
-  sessionIds,
-  batchSize,
+  options,
 }: {
   dbEventlog: LeaderSqliteDb
   dbState: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  since: EventSequenceNumber.EventSequenceNumber
-  until?: EventSequenceNumber.EventSequenceNumber
-  filter?: ReadonlyArray<string>
-  clientIds?: ReadonlyArray<string>
-  sessionIds?: ReadonlyArray<string>
-  batchSize?: number
+  options: StreamEventsFromEventLogOptions
 }): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError> => {
+  // If options until is specified there is no need to track upstreamHead
+  if (options.until) {
+    return Eventlog.streamEventsFromEventlog({ dbEventlog, dbState, options })
+  }
+
   const headStream = syncState.changes.pipe(
     Stream.map((state) => state.upstreamHead),
     Stream.skipRepeated((a, b) => a.global === b.global && a.client === b.client),
@@ -59,9 +54,9 @@ export const streamEventsWithSyncState = ({
       EventSequenceNumber.EventSequenceNumber,
       // Stream segment for events between cursor and head
       Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
-    >(since, (currentCursor, nextHead) => {
+    >(options.since, (currentCursor, nextHead) => {
       // Check if we've reached the until boundary
-      if (until && currentCursor.global >= until.global) {
+      if (options.until && currentCursor.global >= options.until.global) {
         return [currentCursor, Stream.empty]
       }
 
@@ -71,21 +66,16 @@ export const streamEventsWithSyncState = ({
       }
 
       // Calculate the effective upper bound for this segment
-      const effectiveHead = until && nextHead.global > until.global ? until : nextHead
+      const effectiveHead = options.until && nextHead.global > options.until.global ? options.until : nextHead
 
       // Stream this segment of events from database
       const segment = Eventlog.streamEventsFromEventlog({
         dbEventlog,
         dbState,
         options: {
+          ...options,
           since: currentCursor,
           until: effectiveHead,
-          ...omitUndefineds({
-            filter,
-            clientIds,
-            sessionIds,
-            batchSize,
-          }),
         },
       })
 

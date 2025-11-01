@@ -7,6 +7,7 @@ import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
+import type { StreamEventsFromEventLogOptions } from './leader-thread/eventlog.ts'
 
 export interface ClientSessionLeaderThreadProxy {
   events: {
@@ -25,14 +26,7 @@ export interface ClientSessionLeaderThreadProxy {
       },
     ): Effect.Effect<void, UnexpectedError | LeaderAheadError>
     /** Stream historical events with filtering */
-    stream(options: {
-      since: EventSequenceNumber.EventSequenceNumber
-      until?: EventSequenceNumber.EventSequenceNumber
-      filter?: ReadonlyArray<string> // event names
-      clientIds?: ReadonlyArray<string>
-      sessionIds?: ReadonlyArray<string>
-      batchSize?: number
-    }): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
+    stream(options: StreamEventsFromEventLogOptions): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

@@ -27,6 +27,10 @@ export const events = {
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
   }),
+  todoCompleted: Events.synced({
+    name: 'todoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
   todoDeletedNonPure: Events.synced({
     name: 'todoDeletedNonPure',
     schema: Schema.Struct({ id: Schema.String }),
@@ -35,6 +39,7 @@ export const events = {
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
+  todoCompleted: ({ id }) => todos.update({ completed: true }).where({ id }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
 })

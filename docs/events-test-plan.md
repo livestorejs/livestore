@@ -42,11 +42,14 @@ Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
 
 - [x] Stream progresses as upstream head advances
 - [x] Events get filtered by name
-- [x] Stream stops when backend connection is lost and resumes when reconnected
-- [ ] Events streamed until specific upstream head includes it then finalizes
-- [ ] Events streamed since local head doesn't include local head
-- [ ] Events get filtered by client ID
-- [ ] Events get filtered by session ID
+- [x] Events streamed until specific upstream head includes it then finalizes
+- [x] Events streamed since local head doesn't include local head
+- [x] Events get filtered by client ID
+- [x] Events get filtered by session ID
+
+## Integration tests
+
+- [ ] Stream resumes when reconnected to sync backend
 
 ## Use cases
 
