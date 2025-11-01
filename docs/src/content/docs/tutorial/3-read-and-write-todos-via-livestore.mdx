@@ -1,0 +1,545 @@
+---
+title: 3. Read and write todos via LiveStore
+sidebar:
+  label: 3. Read and write todos via LiveStore
+  order: 3
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import LivestoreDataFlowDiagram from '../../_assets/diagrams/tutorial-chapter-3-2-livestore-data-flow.tldr?tldraw';
+
+Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshes and dev server reloads.
+
+:::note[Help improve LiveStore]
+Remember that LiveStore is still early and its developer surface and API not yet fully optimized. Bear with us through the setup and boilerplate code that's needed for a running application—it'll be worth it!
+
+Also: If you have ideas for improving the developer experience for LiveStore, please [raise an issue](https://github.com/livestorejs/livestore/issues). This project is fully open-source and depends on people like you.
+:::
+
+## Install LiveStore dependencies
+
+Start by installing the necessary dependencies:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun add  \\
+    @livestore/livestore@0.4.0-dev.14 \\
+    @livestore/wa-sqlite@0.4.0-dev.14 \\
+    @livestore/adapter-web@0.4.0-dev.14 \\
+    @livestore/react@0.4.0-dev.14 \\
+    @livestore/peer-deps@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm add \\
+    @livestore/livestore@0.4.0-dev.14 \\
+    @livestore/wa-sqlite@0.4.0-dev.14 \\
+    @livestore/adapter-web@0.4.0-dev.14 \\
+    @livestore/react@0.4.0-dev.14 \\
+    @livestore/peer-deps@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+<details>
+<summary>Expand to view details about the packages</summary>
+
+Here's an overview of each of these dependencies:
+
+- `@livestore/livestore@0.4.0-dev.14` → Implements the core LiveStore functionality (schema, events, queries, ...).
+- `@livestore/wa-sqlite@0.4.0-dev.14` → Implements usage of a [SQLite build in WebAssembly](https://github.com/livestorejs/wa-sqlite), so you can use SQLite inside your browser.
+- `@livestore/adapter-web@0.4.0-dev.14` → Implements the [LiveStore web adapter.](https://dev.docs.livestore.dev/reference/platform-adapters/web-adapter/)
+- `@livestore/react@0.4.0-dev.14` → Provides [LiveStore integration for React](https://github.com/livestorejs/wa-sqlite).
+- `@livestore/peer-deps@0.4.0-dev.14` → Required to [satisfy LiveStore peer dependencies](https://dev.docs.livestore.dev/misc/package-management/#peer-dependencies).
+
+</details>
+
+## Define your LiveStore schema
+
+In this step, you're going to define the [schema](/reference/state/sqlite-schema/) that LiveStore uses to represent the data of your app. The schema is one of the core concepts of LiveStore.
+
+Your LiveStore-related files typically live in a `livestore` directory in your app, so create that first:
+
+```bash
+mkdir src/livestore
+touch src/livestore/schema.ts
+```
+
+The schema contains three major components:
+
+- The [**table**](/reference/state/sqlite-schema/#defining-tables) structures of your local SQLite database.
+- The [**events**](https://dev.docs.livestore.dev/reference/events/) that can be emitted by your app.
+- The [**materializers**](https://dev.docs.livestore.dev/reference/state/materializers/) that use the events to alter the state of your database.
+
+Here's how you define the schema for the current version of the todo app:
+
+```ts title="src/livestore/schema.ts"
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+export const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.integer({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+    },
+  })
+}
+
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.Number, text: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.Number }),
+  }),
+}
+
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text }),
+  'v1.TodoDeleted': ({ id }) => tables.todos.delete().where({ id: id }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ events, state })
+```
+
+Here's a quick summary of the code:
+- `tables` contains the definitions of your SQLite table structures. It currently defines a single `todos` table with two columns called `id` and `text`.
+- `events` defines the types of events that your app can emit. It currently defines the `todoCreated` and `todoDeleted` events with an attached `schema` property which defines the shape of the event.
+- `materializers` are the functions that are invoked for each event. In them, you define what should happen when the event gets fired. Right now, the `v1.TodoCreated` event results in an `insert` operation in the database while `v1.TodoDeleted` will remove a row from the database via a `delete` operation.
+
+The `tables`, `events` and `materializers` are packaged up into a `schema` object that's needed in the parts of your app where you interact with LiveStore.
+
+:::note[Versioning events and materializes]
+You may have noticed that event and materializer names are prefixed with `v1`. 
+
+It's good practice in LiveStore to version your events and materializers to ensure future compatibility between them as your app evolves.
+:::
+
+## Configure your React/Vite app to use LiveStore
+
+To now "connect" LiveStore with your React app, you need to:
+
+1. Create the [LiveStore web worker](/reference/platform-adapters/web-adapter/#web-worker) that is responsible for the logic of persisting data on your file system.
+2. Create a LiveStore [adapter](/reference/platform-adapters/web-adapter/) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
+3. Wrap your root component in `main.tsx` with the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
+4. Update your Vite Config to work with LiveStore.
+
+Let's get started!
+
+First, create a new file for the LiveStore web worker:
+
+```bash
+touch src/livestore/livestore.worker.ts
+```
+
+Then, add the following code to it:
+
+```ts file="src/livestore/livestore.worker.ts"
+import { makeWorker } from '@livestore/adapter-web/worker'
+
+import { schema } from './schema.ts'
+
+makeWorker({ schema })
+```
+
+This is boilerplate code that you'll almost never need to touch. (In this tutorial, it'll only be edited once when we introduce syncing data to Cloudflare.)
+
+:::note[Special syntax for importing web worker files in Vite]
+When importing this file, make sure to add the `?worker` extension to the import path to ensure that [Vite treats it as a worker file](https://vite.dev/guide/features.html#web-workers).
+:::
+
+Next, update `main.tsx` to create an adapter and wrap your `App` component inside the `LiveStoreProvider`:
+
+```tsx title="src/main.tsx"
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+import { makePersistedAdapter } from '@livestore/adapter-web'
+import { LiveStoreProvider } from '@livestore/react'
+import { schema } from './livestore/schema.ts'
+import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+const adapter = makePersistedAdapter({
+  storage: { type: 'opfs' },
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+})
+
+createRoot(document.getElementById('root')!).render(
+  <LiveStoreProvider
+    schema={schema}
+    adapter={adapter}
+    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
+    storeId="todo-db-tutorial"
+    batchUpdates={batchUpdates}
+  >
+    <App />
+  </LiveStoreProvider>
+)
+```
+
+:::note[So many "workers" ...]
+There's some ambiguity with the "worker" terminology in this tutorial. In general, there are three different kinds of Workers at play.
+- The **LiveStore web worker** (`LiveStoreWorker`); this is the Worker you defined in `livestore.worker.ts`. Technically, this is a _browser_ web worker, i.e. a separate JavaScript thread that runs in the browser, isolated from the main UI thread.
+-  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite. 
+- The **Cloudflare Worker** that will automatically sync the data in the background; you'll set this up in the next step.
+
+Note that both the LiveStore web worker and the LiveStore Shared web worker are regular [web workers,](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-web-workers-) not [service workers](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-service-workers-)!
+
+
+Here's how to think about the workers in the context of browser tabs (or windows):
+
+```
+Tab 1 ──┐
+Tab 2 ──┼──→ Shared Worker (tab coordination) ──→ Web Worker (persistence)
+Tab 3 ──┘ 
+```
+
+:::
+
+Finally, update your Vite Config to enable usage of WebAssembly:
+
+```diff title="vite.config.ts" lang="ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    cloudflare(),
+  ],
++  optimizeDeps: {
++    exclude: ['@livestore/wa-sqlite'],
++  },
+})
+```
+
+Now, your app is set up to start reading and writing data in a local SQLite database via LiveStore. If you run the app via `pnpm dev`, you'll briefly see a loading screen (implemented via the `renderLoading` prop on the `LiveStoreProvider`) before the todo list UI from the previous steps will appear again:
+
+![](../../../assets/tutorial/chapter-3/0-livestore-loading.gif)
+
+The todos themselves are not yet persisted because you haven't modified the logic for managing state in `App.tsx`. That's what you'll do next.
+
+## Read and write todos from local SQLite via LiveStore
+
+The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
+
+In order to read todos, you need to define a LiveStore [query](/reference/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
+
+Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
+
+```diff title="src/App.tsx" lang="ts"
+function App() {
+
++  const { store } = useStore()
+
+  // The trailing `$` is a convention to indicate that this
+  // variable is a "live query".
++  const todos$ = queryDb(() => tables.todos.select())
+
+  // `todos` is an array containing all the todos from the DB.
+  // When rendering the component, you can do {todos.map(todo => ...
+  // and access `todo.text` and `todo.id` as before.
++  const todos = store.useQuery(todos$)
+-  const [todos, setTodos] = useState<Todo[]>([])
+
+  // ... remaining code for the `App` component
+}
+```
+
+With this change, you're now reading the `todos` from LiveStore (where they're persisted) instead of using React's ephemeral state.
+
+This was only half of the job though: Right now your code would throw a type error because it still uses `setTodos` to update the local state. You need to update this to use the `todoCreated` and `todoDeleted` events you defined in `src/livestore/schema.ts`:
+
+```diff title="src/App.tsx" lang="ts"
+function App() {
+
+  const { store } = useStore()
+
+  const todos$ = queryDb(() => tables.todos.select())
+
+  const todos = store.useQuery(todos$)
+
+  // Commit an event to the `store` instead of 
+  // updating local React state.
+  const addTodo = () => {
++    store.commit(
++      events.todoCreated({ id: Date.now(), text: input }),
++    )
+    setInput('')
+  }
+
+  // Commit an event to the `store` instead of 
+  // updating local React state.
+  const deleteTodo = (id: number) => {
++    store.commit(
++      events.todoDeleted({ id }),
++    )
+  }
+
+  // ... remaining code for the `App` component
+
+}
+```
+
+See how the data now will flow through the app _unidirectionally_ with this setup?
+
+Let's follow it from the first time the app is started:
+
+1. The `App` component registers the `todos$` "live query" with the store.
+1. The query fires initially; the returned `todos` array is empty.
+1. The `App` component renders an empty list.
+1. A user adds a `todo`; the `todoCreated` event is triggered and committed to the DB.
+1. The `v1.TodoCreated` materializer is invoked and writes the data into the DB.
+1. The `todos$` query fires again because the state of the DB changed; the returned `todos` array now contains the newly created todo.
+1. The `App` component renders a single todo. 
+
+Now try it out! Here's the full code for `App.tsx` that you can copy and paste:
+
+```ts title="src/App.tsx"
+import { useState } from 'react'
+import { useStore } from '@livestore/react'
+import { tables, events } from './livestore/schema'
+import { queryDb } from '@livestore/livestore'
+
+
+function App() {
+
+  const { store } = useStore()
+
+  const todos$ = queryDb(() => tables.todos.select())
+  const todos = store.useQuery(todos$)
+
+  const [input, setInput] = useState('')
+
+  const addTodo = () => {
+    if (input.trim()) {
+      store.commit(
+        events.todoCreated({ id: Date.now(), text: input }),
+      )
+      setInput('')
+    }
+  }
+
+  const deleteTodo = (id: number) => {
+    store.commit(
+      events.todoDeleted({ id }),
+    )
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addTodo()
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">
+          Todo List
+        </h1>
+
+        <div className="flex gap-3 mb-8">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter a todo..."
+            className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={addTodo}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {todos.map(todo => (
+            <div
+              key={todo.id}
+              className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm"
+            >
+              <span className="text-gray-700">{todo.text}</span>
+              <button
+                onClick={() => deleteTodo(todo.id)}
+                className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {todos.length === 0 && (
+          <p className="text-center text-gray-400 mt-8">
+            No todos yet. Add one above!
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default App
+```
+
+Try adding a few todos and then refresh the browser (or restart your development server):
+
+![](../../../assets/tutorial/chapter-3/1-livestore-persistence.gif)
+
+In addition to the persistence, you can now observe the following behaviour:
+
+- You can open multiple browser tabs/windows, make edits to the todo list and see live updates when you make changes in one of them.
+- You can stop and restart the local version of your app and the todos will be persisted.
+- If you open the app in an incognito tab or a different browser, the list of todos will be empty again; that's because the _Shared web worker_ only works in the same browser "session"; incognito tabs and different browsers use a different session.
+
+<details>
+<summary>Expand to learn about browser isolation/sessions</summary>
+
+**Regular browser tab/windows**
+
+- All regular (i.e. "not incognito") tabs/windows share the same browser session.
+- The LiveStore shared web worker is shared across all these tabs/windows.
+- OPFS storage is shared across the origin.
+- ✅ Real-time sync works because they're all using the same LiveStore shared web worker and storage.
+
+**Incognito windows**
+
+- Incognito mode creates a separate session from regular browsing.
+- However, multiple incognito tabs/windows opened in the same incognito session still share:
+  - The same LiveStore shared web worker instance.
+  - The same OPFS storage (within that incognito session).
+- Each incognito session gets isolated storage, but windows within that session are _not_ isolated from each other.
+
+Think of it this way:
+
+- Regular tabs/windows = Session A (all tabs/windows share the same data).
+- Incognito tabs/windows = Session B (all incognito tabs/windows share the same data).
+
+**To get true isolation**
+
+If you want completely isolated instances, you'd need to use:
+
+- **Different browser profiles** - Chrome profiles are truly isolated.
+- **Different browsers** - Chrome vs Firefox vs Safari.
+- **Different devices** (only possible with the deployed app) - Your computer vs your phone.
+
+</details>
+
+Now, you can also deploy the app:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun run deploy`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm run deploy`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+Here's a little GIF demonstrating the current state of the live updates via browser isolation. On the left, we have two regular Chrome windows, on the right, two Safari windows.
+
+![](../../../assets/tutorial/chapter-3/3-livestore-sync-local-480.gif)
+
+- When a change is made in one Chrome window, it is automatically reflected in the other Chrome window. 
+- Similarly, when a change is made in one Safari window, it is automatically reflected in the other Safari window.
+
+To recap, here's a visualization of the data flow in the app at this point:
+
+<LivestoreDataFlowDiagram class="my-8" />
+
+## Set up LiveStore DevTools
+
+You may have wondered: "If the data is persisted, _where_ is it?". If the data is somewhere on your file system, you _should_ be able to spin up a database viewer of your choice and inspect the local SQLite DB file. 
+
+Unfortunately, that's not how OPFS works. While the SQLite files do exist _somewhere_ on your file system, they are hidden in the browser's internals and not easily accessible.
+
+That being said, there is a convenient way how you can actually see the data on your file system: Using [LiveStore DevTools](/reference/devtools/)!
+
+:::note[LiveStore DevTools are a sponsor-only feature]
+
+Our goal is to grow the project in a [sustainable](/misc/sponsoring/#goal-sustainable-open-source) way (e.g. not rely on VC funding), that's why DevTools are currently a [sponsor-only](/misc/sponsoring/) feature. 
+
+That being said, we still include them in this tutorial since you'll be able to use them without sponsorship for one week.
+
+LiveStore can only exist thanks to its generous sponsors, please consider becoming one of them if the project is of value to you. ❤️
+
+:::
+
+To start using DevTools, first install the package for the web adapter you're using:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun add @livestore/devtools-vite@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm add @livestore/devtools-vite@0.4.0-dev.14`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+Next, update your Vite Config to add the `livestoreDevtoolsPlugin`. It should look as follows:
+
+```diff title="vite.config.ts" lang="ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
++import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    cloudflare(),
++    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })
+  ],
+  optimizeDeps: {
+    exclude: ['@livestore/wa-sqlite'],
+  },
+})
+```
+
+Now, in the developer console of your browser, you can find the **LiveStore** tab with details about the current LiveStore internals:
+
+![](../../../assets/tutorial/chapter-3/4-livestore-devtools.png)
+
+There are several tabs in the LiveStore DevTools:
+
+- **Database**: Browse the data that's currently in your DB, send SQL queries, export the database to your file system, and more.
+- **Queries**: Shows the last results of the currently active live queries.
+- **Events**: The [event log](/evaluation/event-sourcing/) that stores all the events emitted by your app.
+
+If you're curious, add and delete a few todos via the UI and observe what's happening in the three tabs.
