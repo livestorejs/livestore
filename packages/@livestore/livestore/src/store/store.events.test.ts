@@ -1,24 +1,13 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
 import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnexpectedError } from '@livestore/common'
-import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import {
-  Chunk,
-  Context,
-  Effect,
-  FetchHttpClient,
-  Fiber,
-  Layer,
-  Logger,
-  LogLevel,
-  Queue,
-  Stream,
-} from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -36,64 +25,6 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 Vitest.describe('Store events API', () => {
-  Vitest.scopedLive('should stream backend confirmed events', (test) =>
-    Effect.gen(function* () {
-      const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore()
-      yield* mockSyncBackend.connect
-
-      const eventFactory = EventFactory.makeFactory(events)({
-        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
-      })
-
-      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
-      yield* store.eventsStream().pipe(
-        Stream.tap((event) => Queue.offer(eventsQueue, event)),
-        Stream.runDrain,
-        Effect.forkScoped,
-      )
-
-      store.commit(
-        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
-        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
-      )
-
-      const collected = yield* Queue.takeBetween(eventsQueue, 2, 2)
-      expect(Chunk.size(collected)).toEqual(2)
-    }).pipe(withTestCtx(test)),
-  )
-  Vitest.scopedLive('should filter events by name', (test) =>
-    Effect.gen(function* () {
-      const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore()
-      yield* mockSyncBackend.connect
-
-      const eventFactory = EventFactory.makeFactory(events)({
-        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
-      })
-
-      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
-      yield* store.eventsStream({ filter: ['todo.completed'] as const }).pipe(
-        Stream.tap((event) => Queue.offer(eventsQueue, event)),
-        Stream.runDrain,
-        Effect.forkScoped,
-      )
-
-      store.commit(
-        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
-        eventFactory.todoCompleted.next({ id: '1' }),
-        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
-        eventFactory.todoCompleted.next({ id: '2' }),
-      )
-
-      const collected = yield* Queue.takeBetween(eventsQueue, 2, 2)
-      expect(Chunk.size(collected)).toEqual(2)
-      expect(Chunk.toReadonlyArray(collected)).toMatchObject([
-        { name: 'todo.completed', args: { id: '1' } },
-        { name: 'todo.completed', args: { id: '2' } },
-      ])
-    }).pipe(withTestCtx(test)),
-  )
   Vitest.scopedLive('should resume when reconnected to sync backend', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
@@ -126,39 +57,6 @@ Vitest.describe('Store events API', () => {
       const resumedEvent = yield* Queue.take(eventsQueue)
       expect(resumedEvent.name).toEqual('todo.created')
       expect(resumedEvent.args).toMatchObject({ id: '2' })
-    }).pipe(withTestCtx(test)),
-  )
-  Vitest.scopedLive.skip('should finalise when reaching until event', (test) =>
-    Effect.gen(function* () {
-      const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore()
-      yield* mockSyncBackend.connect
-
-      const eventFactory = EventFactory.makeFactory(events)({
-        client: EventFactory.clientIdentity('other-client', 'static-session-id'),
-      })
-
-      store.commit(
-        eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
-        eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
-        eventFactory.todoCreated.next({ id: '3', text: 't3', completed: false }),
-      )
-
-      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
-      const streamFiber = yield* store.eventsStream({ until: EventSequenceNumber.fromString('e2') }).pipe(
-        Stream.tap((event) => Queue.offer(eventsQueue, event)),
-        Stream.runDrain,
-        Effect.forkScoped,
-      )
-
-      yield* Fiber.join(streamFiber)
-
-      const collected = yield* Queue.takeAll(eventsQueue)
-      expect(Chunk.size(collected)).toEqual(2)
-      expect(Chunk.toReadonlyArray(collected)).toMatchObject([
-        { name: 'todo.created', args: { id: '1', text: 't1', completed: false } },
-        { name: 'todo.created', args: { id: '2', text: 't2', completed: false } },
-      ])
     }).pipe(withTestCtx(test)),
   )
 })

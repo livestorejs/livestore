@@ -1,20 +1,20 @@
-import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { BootStatus } from '@livestore/common'
+import { SyncState } from '@livestore/common'
+import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
-import { SyncState } from '@livestore/common'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
-  Schema,
-  Stream,
-  SubscriptionRef,
-  Subscribable,
+  Chunk,
   Effect,
   Fiber,
-  Chunk,
-  Queue,
   Option,
+  Queue,
+  Schema,
+  Stream,
+  Subscribable,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -25,6 +25,19 @@ import { events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
 const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
 
+/**
+ * Minimal runtime for exercising `streamEventsWithSyncState` in isolation.
+ *
+ * We intentionally avoid the heavier `withTestCtx` harness used by
+ * `LeaderSyncProcessor.test.ts`. That helper spins up the entire leader layer
+ * (mock sync backend, shutdown plumbing, queues, etc.) because it verifies the
+ * processor end-to-end. Here we only need three pieces:
+ *   1. sqlite eventlog
+ *   2. sqlite state DB (for the session changeset join)
+ *   3. a controllable `syncState` subscription
+ * Pulling those together directly keeps the unit test fast and focused while
+ * still relying on the real persistence layer.
+ */
 const makeTestEnvironment = Effect.gen(function* () {
   const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
   const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
