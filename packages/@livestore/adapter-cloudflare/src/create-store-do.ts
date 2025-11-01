@@ -1,8 +1,9 @@
+import { LogConfig } from '@livestore/common'
 import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
-import { Effect, Logger, LogLevel, Scope } from '@livestore/utils/effect'
+import { Effect, Logger, Scope } from '@livestore/utils/effect'
 import { makeAdapter } from './make-adapter.ts'
 
 export type Env = {
@@ -41,7 +42,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
    * Note: Only use this for development purposes.
    */
   resetPersistence?: boolean
-}
+} & LogConfig.WithLoggerOptions
 
 // TODO Also support in Cloudflare workers outside of a durable object context.
 export const createStoreDo = <
@@ -90,8 +91,10 @@ export const createStoreDoPromise = <
   options: CreateStoreDoOptions<TSchema, TEnv, TState>,
 ) =>
   createStoreDo(options).pipe(
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Logger.consoleWithThread('DoClient')),
+    LogConfig.withLoggerConfig(options, {
+      threadName: 'DoClient',
+      defaultLogger: Logger.consoleWithThread('DoClient'),
+    }),
     Effect.tapCauseLogPretty,
     Effect.runPromise,
   )
