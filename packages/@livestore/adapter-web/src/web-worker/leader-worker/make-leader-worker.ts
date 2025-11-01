@@ -1,7 +1,13 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
@@ -202,15 +208,13 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
       Effect.gen(function* () {
-        // MOVE HEADSTREAM HERE
-        // This should be way easier to test
-        // Only need to use mocked sync backend
-        // tests/package-common/src/leader-thread/LeaderSyncProcessor.test.ts
-        const { dbEventlog, dbState } = yield* LeaderThreadCtx
-        return Eventlog.streamEventsFromEventlog({
+        const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
+        return streamEventsWithSyncState({
           dbEventlog,
           dbState,
-          options: { since, ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }) },
+          syncState: syncProcessor.syncState,
+          since,
+          ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
         })
       }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
     Export: () =>

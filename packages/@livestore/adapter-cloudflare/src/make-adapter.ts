@@ -7,11 +7,18 @@ import {
   type SyncOptions,
   UnexpectedError,
 } from '@livestore/common'
-import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  type DevtoolsOptions,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { omitUndefineds } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 export const makeAdapter =
@@ -113,10 +120,18 @@ export const makeAdapter =
                   { waitForProcessing: true },
                 ),
               stream: (options) =>
-                Eventlog.streamEventsFromEventlog({
+                streamEventsWithSyncState({
                   dbEventlog,
                   dbState,
-                  options,
+                  syncState: syncProcessor.syncState,
+                  since: options.since,
+                  ...omitUndefineds({
+                    until: options.until,
+                    filter: options.filter,
+                    clientIds: options.clientIds,
+                    sessionIds: options.sessionIds,
+                    batchSize: options.batchSize,
+                  }),
                 }),
             },
             initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },

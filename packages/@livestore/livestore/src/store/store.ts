@@ -785,101 +785,26 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const cursor = options?.cursor ?? EventSequenceNumber.ROOT
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
-    // Helper function to check if event matches all filter criteria
-    const matchesFilters = (eventEncoded: LiveStoreEvent.EncodedWithMeta): boolean => {
-      // Apply name filter if specified
-      if (options?.filter && !options.filter.includes(eventEncoded.name as any)) {
-        return false
-      }
-
-      // Apply clientId filter
-      if (options?.clientIds && !options.clientIds.includes(eventEncoded.clientId)) {
-        return false
-      }
-
-      // Apply sessionId filter
-      if (options?.sessionIds && !options.sessionIds.includes(eventEncoded.sessionId)) {
-        return false
-      }
-
-      // Apply since filter (exclusive)
-      if (options?.since && EventSequenceNumber.compare(eventEncoded.seqNum, options.since) <= 0) {
-        return false
-      }
-
-      // Apply until filter (inclusive)
-      if (options?.until && EventSequenceNumber.compare(eventEncoded.seqNum, options.until) > 0) {
-        return false
-      }
-
-      return true
-    }
-
     const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
       return encodedEvent.seqNum.client <= 0
     }
 
-    const headStream = leaderThreadProxy.syncState.changes.pipe(
-      Stream.map((state) => state.upstreamHead),
-      Stream.skipRepeated(EventSequenceNumber.isEqual),
-    )
-
-    const eventStreamSegment = (
-      since: EventSequenceNumber.EventSequenceNumber,
-      until: EventSequenceNumber.EventSequenceNumber,
-    ) =>
-      leaderThreadProxy.events
-        .stream({
-          since,
-          until,
-          ...omitUndefineds({
-            filter: options?.filter as ReadonlyArray<string> | undefined,
-            clientIds: options?.clientIds,
-            sessionIds: options?.sessionIds,
-          }),
+    return leaderThreadProxy.events
+      .stream({
+        since: cursor,
+        ...omitUndefineds({
+          until: options?.until,
+          filter: options?.filter as ReadonlyArray<string> | undefined,
+          clientIds: options?.clientIds,
+          sessionIds: options?.sessionIds,
           batchSize,
-        })
-        .pipe(
-          Stream.filter(includeClientOnly),
-          Stream.filter(matchesFilters),
-          Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
-        )
-
-    return headStream.pipe(
-      Stream.mapAccum<
-        // Sequence number representing the current cursor state.
-        EventSequenceNumber.EventSequenceNumber,
-        // Sequence number that becomes the updated cursor after processing the head.
-        EventSequenceNumber.EventSequenceNumber,
-        // Stream of decoded events emitted for the processed head interval.
-        Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, ParseResult.ParseError | UnexpectedError>
-      >(cursor, (currentCursor, nextHead) => {
-        if (options?.until && EventSequenceNumber.isGreaterThan(currentCursor, options.until)) {
-          return [currentCursor, Stream.empty]
-        }
-
-        if (EventSequenceNumber.isGreaterThan(nextHead, currentCursor) === false) {
-          return [currentCursor, Stream.empty]
-        }
-
-        const effectiveHead =
-          options?.until && EventSequenceNumber.isGreaterThan(nextHead, options.until) ? options.until : nextHead
-
-        if (EventSequenceNumber.isGreaterThan(effectiveHead, currentCursor) === false) {
-          return [currentCursor, Stream.empty]
-        }
-
-        const nextCursor = effectiveHead
-
-        return [nextCursor, eventStreamSegment(currentCursor, effectiveHead)]
-      }),
-      // This kills the previous stream and starts a new one
-      // Only scenarios to kill stream:
-      // When client exists
-      // Rebasing (not relevant yet)
-      Stream.flatMap((segment) => segment),
-      Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
-    )
+        }),
+      })
+      .pipe(
+        Stream.filter(includeClientOnly),
+        Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
+        Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+      )
   }
 
   /**

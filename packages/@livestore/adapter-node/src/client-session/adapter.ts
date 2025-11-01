@@ -13,7 +13,7 @@ import {
   type SyncOptions,
   UnexpectedError,
 } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -342,10 +342,18 @@ const makeLocalLeaderThread = ({
                 { waitForProcessing: true },
               ),
             stream: (options) =>
-              Eventlog.streamEventsFromEventlog({
+              streamEventsWithSyncState({
                 dbEventlog,
                 dbState,
-                options,
+                syncState: syncProcessor.syncState,
+                since: options.since,
+                ...omitUndefineds({
+                  until: options.until,
+                  filter: options.filter,
+                  clientIds: options.clientIds,
+                  sessionIds: options.sessionIds,
+                  batchSize: options.batchSize,
+                }),
               }),
           },
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
@@ -487,7 +495,11 @@ const makeWorkerLeaderThread = ({
                 attributes: { batchSize: batch.length },
               }),
             ),
-          stream: (_options) => Stream.empty,
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
+              Stream.orDie,
+            ),
         },
         initialState: {
           leaderHead: initialLeaderHead,
