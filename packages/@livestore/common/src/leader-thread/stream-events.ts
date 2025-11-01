@@ -1,6 +1,6 @@
 import { omitUndefineds } from '@livestore/utils'
-import { Stream } from '@livestore/utils/effect'
 import type { Subscribable } from '@livestore/utils/effect'
+import { Stream } from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
 import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -8,26 +8,22 @@ import * as Eventlog from './eventlog.ts'
 import type { LeaderSqliteDb } from './types.ts'
 
 /**
- * Streams events from the eventlog with reactive pagination driven by syncState changes.
+ * High-level event streaming helper used by leader-thread adapters.
  *
- * This combines:
- * - Reactive syncState.upstreamHead tracking from LeaderSyncProcessor
- * - Database pagination from Eventlog.streamEventsFromEventlog
+ * ## Why this lives in `leader-thread`
+ * - Needs direct access to leader-owned resources (eventlog DB, state DB, syncState subscription).
+ * - Shared by every adapter (web worker, in-memory, node, cloudflare) to avoid copy/paste of pagination logic.
  *
- * The stream will automatically fetch new event segments as the upstream head advances,
- * making it suitable for long-running event subscriptions that stay up-to-date with sync progress.
+ * ## Usage
+ * - `packages/@livestore/adapter-web/src/in-memory/in-memory-adapter.ts`
+ * - `packages/@livestore/adapter-web/src/web-worker/leader-worker/make-leader-worker.ts`
+ * - `packages/@livestore/adapter-node/src/client-session/adapter.ts`
+ * - `packages/@livestore/adapter-node/src/make-leader-worker.ts`
+ * - `packages/@livestore/adapter-cloudflare/src/make-adapter.ts`
  *
- * @example
- * ```typescript
- * const eventStream = streamEventsWithSyncState({
- *   since: EventSequenceNumber.ROOT,
- *   filter: ['todo.created', 'todo.completed']
- * })
- *
- * for await (const event of Stream.toAsyncIterable(eventStream)) {
- *   console.log(event)
- * }
- * ```
+ * Each caller resolves the dependencies inside the leader scope and passes them in, so the returned stream
+ * is environment-free. This avoids leaking `LeaderThreadCtx` into runtime code paths (e.g. `Store.eventsStream`)
+ * that execute outside the leader’s resource scope.
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
