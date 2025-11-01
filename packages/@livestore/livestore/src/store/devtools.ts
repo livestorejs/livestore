@@ -73,7 +73,21 @@ export const connectDevtoolsToStore = ({
       }
 
       if (decodedMessage._tag === 'LSD.ClientSession.Disconnect') {
-        // console.error('TODO handle disconnect properly in store')
+        // Gracefully tear down all DevTools subscriptions and close the channel.
+        // This prevents background fibers from lingering after DevTools closes
+        // (e.g. when a window is closed without sending explicit unsubs).
+        for (const unsub of reactivityGraphSubcriptions.values()) unsub()
+        reactivityGraphSubcriptions.clear()
+        for (const unsub of liveQueriesSubscriptions.values()) unsub()
+        liveQueriesSubscriptions.clear()
+        for (const unsub of debugInfoHistorySubscriptions.values()) unsub()
+        debugInfoHistorySubscriptions.clear()
+        for (const unsub of syncHeadClientSessionSubscriptions.values()) unsub()
+        syncHeadClientSessionSubscriptions.clear()
+
+        // Signal the WebChannel to shut down; this causes the `listen` stream
+        // to complete and allows the surrounding scoped fiber to exit.
+        storeDevtoolsChannel.shutdown.pipe(Effect.runFork)
         return
       }
 
