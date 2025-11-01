@@ -10,7 +10,7 @@ if (process.execArgv.includes('--inspect')) {
 import type { SyncOptions } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
-import type { EventSequenceNumber, LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -107,14 +107,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       clientIds,
       sessionIds,
       batchSize,
-    }: {
-      since: EventSequenceNumber.EventSequenceNumber
-      until?: EventSequenceNumber.EventSequenceNumber
-      filter?: ReadonlyArray<string>
-      clientIds?: ReadonlyArray<string>
-      sessionIds?: ReadonlyArray<string>
-      batchSize?: number
-    }) =>
+    }: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
         return streamEventsWithSyncState({
