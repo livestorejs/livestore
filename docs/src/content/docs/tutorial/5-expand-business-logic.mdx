@@ -1,0 +1,185 @@
+---
+title: 5. Expand business logic with more events
+sidebar:
+  label: 5. Expand business logic
+  order: 5
+---
+
+In this chapter, you'll expand the business logic of the app by adding a "todo completed" feature.
+
+You'll do this in these steps:
+
+1. Update your schema to:
+    1. Add a `boolean` column to your SQLite table.
+    2. Add events to mark a todo as completed and uncompleted.
+    3. Add a materializer to update the DB when one of these events happens.
+2. Update the UI with a checkbox element for each todo which sends these events when toggled.
+
+## Update your LiveStore schema
+
+Open your `schema.ts` file and update it with a new column, and two events (for completing and uncompleting a todo) with two corresponding materializers:
+
+```diff title="src/livestore/schema.ts" lang="ts"
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+export const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.integer({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
++      completed: State.SQLite.boolean({ default: false }),
+    },
+  })
+}
+
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.Number, text: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.Number }),
+  }),
++  todoCompleted: Events.synced({
++    name: 'v1.TodoCompleted',
++    schema: Schema.Struct({ id: Schema.Number }),
++  }),
++  todoUncompleted: Events.synced({
++    name: 'v1.TodoUncompleted',
++    schema: Schema.Struct({ id: Schema.Number }),
++  }),
+}
+
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text }),
+  'v1.TodoDeleted': ({ id }) => tables.todos.delete().where({ id: id }),
+
++  'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
++  'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ events, state })
+```
+
+## Update the UI and business logic
+
+Next, add a `toggleTodo` function in `App.tsx` in which you're emitting the events that you've just defined and invoke it from a new checkbox element that's added to each todo element:
+
+```diff title="src/App.tsx" lang="ts"
+import { useState } from 'react'
+import { useStore } from '@livestore/react'
+import { tables, events } from './livestore/schema'
+import { queryDb } from '@livestore/livestore'
+
+
+function App() {
+
+  const { store } = useStore()
+
+  const todos$ = queryDb(() => tables.todos.select())
+
+  const todos = store.useQuery(todos$)
+
+  const [input, setInput] = useState('')
+
+  const addTodo = () => {
+    if (input.trim()) {
+      store.commit(
+        events.todoCreated({ id: Date.now(), text: input }),
+      )
+      setInput('')
+    }
+  }
+
+  const deleteTodo = (id: number) => {
+    store.commit(
+      events.todoDeleted({ id }),
+    )
+  }
+
++  const toggleTodo = (id: number, completed: boolean) => {
++    store.commit(
++      completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
++    )
++  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addTodo()
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">
+          Todo List
+        </h1>
+
+        <div className="flex gap-3 mb-8">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter a todo..."
+            className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={addTodo}
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {todos.map(todo => (
++            <div
++            key={todo.id}
++            className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm"
++          >
++            <div className="flex items-center gap-3 flex-1">
++              <input
++                type="checkbox"
++                checked={todo.completed}
++                onChange={() => toggleTodo(todo.id, todo.completed)}
++                className="w-4 h-4 cursor-pointer"
++              />
++              <span className={`text-gray-700 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
++                {todo.text}
++              </span>
++            </div>
++            <button
++              onClick={() => deleteTodo(todo.id)}
++              className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
++            >
++              Delete
++            </button>
++          </div>
+          ))}
+        </div>
+
+        {todos.length === 0 && (
+          <p className="text-center text-gray-400 mt-8">
+            No todos yet. Add one above!
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default App
+```
+
+## Deploy and test
+
+If you run or deploy the app, the UI will now look as follows:
+
+![](../../../assets/tutorial/chapter-5/0-completed-ui.png)
+
+Because the `completed` field is also being persisted in the database, it also auto-syncs across browser sessions and devices.

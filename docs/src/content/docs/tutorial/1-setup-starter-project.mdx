@@ -1,0 +1,113 @@
+---
+title: 1. Set up starter project with React, Vite & Tailwind
+sidebar:
+  label: 1. Set up starter project
+  order: 1
+---
+
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import StateAndUiDiagram from '../../_assets/diagrams/tutorial-chapter-1-1-state-and-ui.tldr?tldraw';
+
+## Set up a starter project with React, Vite & Tailwind
+
+We have prepared a [starter project](https://github.com/livestorejs/livestore/tree/dev/examples/tutorial-starter) for you that you can use as a starting point for the tutorial. Download it via the following command:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bunx @livestore/cli@dev create \\\n  --example tutorial-starter livestore-todo-app`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm dlx @livestore/cli@dev create \\\n  --example tutorial-starter livestore-todo-app`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+Once you've downloaded the project, you can navigate to the project directory and install the dependencies:
+
+The project currently is set up as follows:
+- Minimal project created via [`vite create`](https://vite.dev/guide/#scaffolding-your-first-vite-project) using React and TypeScript.
+- Using [Tailwind CSS](https://tailwindcss.com/) for styling.
+- Has basic functionality for adding and deleting todos via local [`React.useState`](https://react.dev/learn/state-a-components-memory).
+
+## Understand the current project state
+
+Run the app with:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun dev`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm dev`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+Here's the UI you're going to see after adding a few todos:
+
+![](../../../assets/tutorial/chapter-1/0-screenshot-todo-list.png)
+
+Let's take a quick moment to understand how the app is currently implemented:
+
+All relevant code lives in `App.tsx`. Here's a simplified version of it:
+
+```ts
+interface Todo {
+  id: number
+  text: string
+}
+
+function App() {
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [input, setInput] = useState('')
+
+  const addTodo = () => {
+    const newTodo: Todo = {
+      id: Date.now(),
+      text: input
+    }
+    setTodos([...todos, newTodo])
+    setInput('')
+  }
+
+  const deleteTodo = (id: number) => {
+    setTodos(todos.filter(todo => todo.id !== id))
+  }
+
+  return (
+    // Render input text field and todo list ...
+    // ... and invoke `addTodo` and `deleteTodo` 
+    // ... when the buttons are clicked. 
+  )
+}
+```
+
+For any React developer, this is a very familiar setup:
+
+<StateAndUiDiagram class="my-8" />
+
+You have two pieces of state:
+- application state: `todos: Todo[]` → manipulated by the `addTodo` and `deleteTodo` functions.
+- UI state: `input: string` → manipulated when the text in the input field changes.
+
+The "problem" with this code is that the todo items are not _persisted_, meaning they vanish when:
+- the page is refreshed in the browser.
+- the development server is restarted.
+
+In the next chapters, you'll learn how to persist the todos in the list, so that they'll "survive" both actions. 
+
+Even more: They will not only persist, they will automatically sync across multiple browsers tabs/windows, and even across devices—without you needing to think about the syncing logic and managing remote state. 
+
+That's the power of LiveStore!
