@@ -1,29 +1,29 @@
 {
-  "name": "livestore-todo-app",
-  "private": true,
+  "name": "livestore-tutorial-starter",
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "preview": "vite preview"
-  },
+  "private": true,
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.16",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.16"
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.7",
-    "@types/node": "^24.6.0",
-    "@types/react": "^19.1.16",
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.4",
-    "typescript": "~5.9.3",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
     "vite": "^7.1.7"
+  },
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "dev": "vite",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "preview": "vite preview"
   }
 }
