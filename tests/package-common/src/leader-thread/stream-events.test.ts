@@ -172,9 +172,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         const collectedFiber = yield* stream.pipe(Stream.take(2), Stream.runCollect).pipe(Effect.forkScoped)
 
-        for (const event of encodedEvents) {
-          yield* advanceHead(event.seqNum)
-        }
+        yield* advanceHead(encodedEvents.at(-1)!.seqNum)
 
         const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
         expect(emitted.map((event) => event.name)).toEqual(['todoCompleted', 'todoCompleted'])
@@ -244,7 +242,6 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
 
-        yield* advanceHead(first.seqNum)
         yield* advanceHead(second.seqNum)
 
         const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
@@ -284,7 +281,6 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
 
-        yield* advanceHead(eventA.seqNum)
         yield* advanceHead(eventB.seqNum)
 
         const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
@@ -328,7 +324,6 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
 
-        yield* advanceHead(eventSessionOne.seqNum)
         yield* advanceHead(eventSessionTwo.seqNum)
 
         const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
@@ -336,5 +331,75 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
     ),
+  )
+
+  const batchSizeSampleSchema = Schema.Literal(1, 2, 4, 5, 100, 1000, 10_000)
+  const eventCountSampleSchema = Schema.Literal(1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 15, 16, 100, 10_000, 100_000)
+  const batchesPerTickSampleSchema = Schema.Literal(1, 2, 3, 10, 100, 10_000)
+
+  Vitest.asProp(
+    Vitest.scopedLive,
+    'property: streams events across batches',
+    {
+      batchSize: batchSizeSampleSchema,
+      eventCount: eventCountSampleSchema,
+      batchesPerTick: batchesPerTickSampleSchema,
+    },
+    ({ batchSize, eventCount, batchesPerTick }, test, { numRuns, runIndex }) =>
+      withNodeFs(
+        Effect.gen(function* () {
+          console.log(`Run ${runIndex + 1}/${numRuns}`, {
+            batchSize,
+            eventCount,
+            batchesPerTick,
+          })
+
+          const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
+
+          const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+            client: EventFactory.clientIdentity('client-1', 'session-1'),
+          })
+
+          const generatedEvents = Array.from({ length: eventCount }, (_, index) =>
+            toEncodedWithMeta(
+              eventFactory.todoCreated.next({
+                id: `${index + 1}`,
+                text: `todo-${index + 1}`,
+                completed: false,
+              }),
+            ),
+          )
+
+          yield* insertEvents(dbEventlog, generatedEvents)
+
+          const stream = streamEventsWithSyncState({
+            dbEventlog,
+            dbState,
+            syncState,
+            options: {
+              since: EventSequenceNumber.ROOT,
+              batchSize,
+            },
+          })
+
+          const collectFiber = yield* stream.pipe(Stream.take(eventCount), Stream.runCollect).pipe(Effect.forkScoped)
+
+          const tickSize = batchSize * batchesPerTick
+          for (let index = tickSize; index < generatedEvents.length; index += tickSize) {
+            yield* advanceHead(generatedEvents[index - 1]!.seqNum)
+          }
+          yield* advanceHead(generatedEvents.at(-1)!.seqNum)
+
+          const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
+
+          expect(emitted.length).toEqual(eventCount)
+          expect(emitted.map((event) => event.seqNum.global)).toEqual(
+            generatedEvents.map((event) => event.seqNum.global),
+          )
+
+          yield* closeHeads
+        }).pipe(Vitest.withTestCtx(test)),
+      ),
+    { fastCheck: { numRuns: 10 } },
   )
 })

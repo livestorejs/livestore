@@ -3,8 +3,8 @@ import { Stream } from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
 import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
-import * as Eventlog from './eventlog.ts'
 import type { StreamEventsFromEventLogOptions } from './eventlog.ts'
+import * as Eventlog from './eventlog.ts'
 import type { LeaderSqliteDb } from './types.ts'
 
 /**

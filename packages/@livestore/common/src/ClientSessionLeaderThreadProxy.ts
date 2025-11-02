@@ -3,11 +3,11 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnexpectedError } from './errors.ts'
+import type { StreamEventsFromEventLogOptions } from './leader-thread/eventlog.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
-import type { StreamEventsFromEventLogOptions } from './leader-thread/eventlog.ts'
 
 export interface ClientSessionLeaderThreadProxy {
   events: {
