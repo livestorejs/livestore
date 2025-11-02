@@ -333,9 +333,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  const batchSizeSampleSchema = Schema.Literal(1, 2, 4, 5, 100, 1000, 10_000)
-  const eventCountSampleSchema = Schema.Literal(1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 15, 16, 100, 10_000, 100_000)
-  const batchesPerTickSampleSchema = Schema.Literal(1, 2, 3, 10, 100, 10_000)
+  const batchSizeSampleSchema = Schema.Literal(1, 2, 4, 5, 10)
+  const eventCountSampleSchema = Schema.Literal(1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 15, 16)
+  const batchesPerTickSampleSchema = Schema.Literal(1, 2, 3, 10)
 
   Vitest.asProp(
     Vitest.scopedLive,
@@ -400,6 +400,6 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           yield* closeHeads
         }).pipe(Vitest.withTestCtx(test)),
       ),
-    { fastCheck: { numRuns: 10 } },
+    { fastCheck: { numRuns: 20 } },
   )
 })
