@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -127,11 +128,29 @@ const ensurePuppeteerExecutableEnv = (): void => {
     return
   }
 
-  const base = process.env.PLAYWRIGHT_BROWSERS_PATH
-  if (!base || base === '') return
+  // 1) Prefer Playwright-provided browsers via env
+  const pwBase = process.env.PLAYWRIGHT_BROWSERS_PATH
+  if (pwBase && pwBase !== '') {
+    for (const candidate of resolvePlaywrightChromiumCandidates(pwBase)) {
+      if (fsSync.existsSync(candidate)) {
+        process.env.PUPPETEER_EXECUTABLE_PATH = candidate
+        return
+      }
+    }
+  }
 
-  const candidates = resolvePlaywrightChromiumCandidates(base)
-  for (const candidate of candidates) {
+  // 2) Fall back to default Playwright cache directory
+  for (const dir of resolveMsPlaywrightRoots()) {
+    for (const candidate of resolvePlaywrightChromiumCandidates(dir)) {
+      if (fsSync.existsSync(candidate)) {
+        process.env.PUPPETEER_EXECUTABLE_PATH = candidate
+        return
+      }
+    }
+  }
+
+  // 3) Last resort: common system Chrome locations (mainly Linux CI)
+  for (const candidate of resolveSystemChromeCandidates()) {
     if (fsSync.existsSync(candidate)) {
       process.env.PUPPETEER_EXECUTABLE_PATH = candidate
       return
@@ -167,4 +186,40 @@ const resolvePlaywrightChromiumCandidates = (root: string): readonly string[] =>
   }
 
   return entries
+}
+
+const resolveMsPlaywrightRoots = (): readonly string[] => {
+  const roots: string[] = []
+  const home = os.homedir()
+  if (process.platform === 'linux') {
+    const xdg = process.env.XDG_CACHE_HOME
+    roots.push(path.join(xdg && xdg !== '' ? xdg : path.join(home, '.cache'), 'ms-playwright'))
+  } else if (process.platform === 'darwin') {
+    roots.push(path.join(home, 'Library', 'Caches', 'ms-playwright'))
+  } else if (process.platform === 'win32') {
+    const local = process.env.LOCALAPPDATA
+    if (local && local !== '') roots.push(path.join(local, 'ms-playwright'))
+  }
+  return roots
+}
+
+const resolveSystemChromeCandidates = (): readonly string[] => {
+  if (process.platform === 'linux') {
+    return ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium']
+  }
+  if (process.platform === 'darwin') {
+    return [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ]
+  }
+  if (process.platform === 'win32') {
+    const progFiles = process.env.PROGRAMFILES ?? 'C\\Program Files'
+    const progFilesx86 = process.env['PROGRAMFILES(X86)'] ?? 'C\\Program Files (x86)'
+    return [
+      path.join(progFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(progFilesx86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    ]
+  }
+  return []
 }
