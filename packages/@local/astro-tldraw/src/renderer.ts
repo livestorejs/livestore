@@ -3,7 +3,6 @@ import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
 import { shouldNeverHappen } from '@livestore/utils'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
@@ -30,6 +29,32 @@ export const readTldrawFile = async (filePath: string): Promise<{ content: strin
   return { content, hash }
 }
 
+/**
+ * Resolve and cache the tldraw export function after configuring Puppeteer to
+ * use the Playwright Chromium provided via Nix/CI.
+ */
+type TTldrawToImage = (
+  tldrPathOrUrl: string,
+  options?: {
+    format?: 'svg' | 'png' | 'jpg' | 'tldr'
+    output?: string
+    dark?: boolean
+    transparent?: boolean
+    stripStyle?: boolean
+  },
+) => Promise<string[]>
+
+let cachedTldrawToImage: TTldrawToImage | undefined
+const getTldrawToImage = async (): Promise<TTldrawToImage> => {
+  if (cachedTldrawToImage) return cachedTldrawToImage
+  ensurePuppeteerExecutableEnv()
+  const mod = await import('@kitschpatrol/tldraw-cli')
+  const impl = mod.tldrawToImage
+  const wrapped: TTldrawToImage = (tldrPathOrUrl, options) => impl(tldrPathOrUrl, options)
+  cachedTldrawToImage = wrapped
+  return wrapped
+}
+
 /** Render a single SVG with the specified theme */
 const renderSvgWithTheme = async (tldrPath: string, theme: TldrawTheme, tempDir: string): Promise<RenderedSvg> => {
   const isDark = theme === 'dark'
@@ -38,8 +63,8 @@ const renderSvgWithTheme = async (tldrPath: string, theme: TldrawTheme, tempDir:
   const themeDir = path.join(tempDir, theme)
   await fs.mkdir(themeDir, { recursive: true })
 
-  /* Ensure Puppeteer uses Playwright's Chromium when available (avoids downloads in CI) */
-  ensurePuppeteerExecutableEnv()
+  /* Ensure Puppeteer uses Playwright's Chromium when available (avoids downloads in CI). */
+  const tldrawToImage = await getTldrawToImage()
 
   /* Export to theme-specific directory */
   const outputPaths = await tldrawToImage(tldrPath, {
@@ -120,13 +145,8 @@ export const getSvgDimensions = (
 
 /* Try to resolve a Chromium executable from Playwright's browser bundle and set Puppeteer env */
 const ensurePuppeteerExecutableEnv = (): void => {
-  if (!process.env.PUPPETEER_SKIP_DOWNLOAD) {
-    process.env.PUPPETEER_SKIP_DOWNLOAD = '1'
-  }
-
-  if (process.env.PUPPETEER_EXECUTABLE_PATH && process.env.PUPPETEER_EXECUTABLE_PATH !== '') {
-    return
-  }
+  if (!process.env.PUPPETEER_SKIP_DOWNLOAD) process.env.PUPPETEER_SKIP_DOWNLOAD = '1'
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && process.env.PUPPETEER_EXECUTABLE_PATH !== '') return
 
   // 1) Prefer Playwright-provided browsers via env
   const pwBase = process.env.PLAYWRIGHT_BROWSERS_PATH
