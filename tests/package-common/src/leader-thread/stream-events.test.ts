@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+
 import type { BootStatus } from '@livestore/common'
 import { SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
@@ -5,7 +9,19 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import {
+  Chunk,
+  Duration,
+  Effect,
+  Fiber,
+  Option,
+  Queue,
+  Ref,
+  Schema,
+  Stream,
+  Subscribable,
+  type Scope,
+} from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -102,17 +118,16 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const eventHash = Schema.hash(fixtureEvents.todoCreated.schema)
-
         const eventFactory = EventFactory.makeFactory(fixtureEvents)({
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
-        const event1 = toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false }))
-        const event2 = toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false }))
+        const encodedEvents = [
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+        ]
 
-        yield* Eventlog.insertIntoEventlog(event1, dbEventlog, eventHash, event1.clientId, event1.sessionId)
-        yield* Eventlog.insertIntoEventlog(event2, dbEventlog, eventHash, event2.clientId, event2.sessionId)
+        yield* insertEvents(dbEventlog, encodedEvents)
 
         const stream = streamEventsWithSyncState({
           dbEventlog,
@@ -125,7 +140,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         const collectFiber = yield* stream.pipe(Stream.take(2), Stream.runCollect).pipe(Effect.forkScoped)
 
-        yield* advanceHead(event2.seqNum)
+        yield* advanceHead(encodedEvents[1]!.seqNum)
 
         const collected = yield* collectFiber.pipe(Fiber.join)
         const emitted = Chunk.toReadonlyArray(collected)
@@ -345,15 +360,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       eventCount: eventCountSampleSchema,
       batchesPerTick: batchesPerTickSampleSchema,
     },
-    ({ batchSize, eventCount, batchesPerTick }, test, { numRuns, runIndex }) =>
+    ({ batchSize, eventCount, batchesPerTick }, test) =>
       withNodeFs(
         Effect.gen(function* () {
-          console.log(`Run ${runIndex + 1}/${numRuns}`, {
-            batchSize,
-            eventCount,
-            batchesPerTick,
-          })
-
           const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
           const eventFactory = EventFactory.makeFactory(fixtureEvents)({
@@ -402,4 +411,87 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       ),
     { fastCheck: { numRuns: 20 } },
   )
+
+  type SnapshotMetadata = {
+    totalEvents: number
+    streamBatchSize: number
+    eventsPerTick: number
+    targetDurationMs: number
+    firstEventGlobal: number
+    finalSeqNum: {
+      global: number
+      client: number
+      rebaseGeneration: number
+    }
+  }
+
+  const snapshotDir = new URL('./generator/out/', import.meta.url)
+  const snapshotEventCount = 100_000
+  const eventlogSnapshotPath = fileURLToPath(new URL(`eventlog-${snapshotEventCount}.sqlite`, snapshotDir))
+  const stateSnapshotPath = fileURLToPath(new URL(`state-${snapshotEventCount}.sqlite`, snapshotDir))
+  const metadataSnapshotPath = fileURLToPath(new URL(`snapshot-${snapshotEventCount}.json`, snapshotDir))
+  const performanceSnapshotAvailable = [eventlogSnapshotPath, stateSnapshotPath, metadataSnapshotPath].every((path) =>
+    existsSync(path),
+  )
+
+  if (performanceSnapshotAvailable === false) {
+    Vitest.scopedLive.skip('performance: streams 100k events within benchmark', () => Effect.sync(() => undefined))
+  } else {
+    Vitest.scopedLive('performance: streams 100k events within benchmark', (test) => {
+      const effect = withNodeFs(
+        Effect.gen(function* () {
+          const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
+
+          const eventlogBytes = yield* Effect.promise(() => readFile(eventlogSnapshotPath))
+          const stateBytes = yield* Effect.promise(() => readFile(stateSnapshotPath))
+          const metadataRaw = yield* Effect.promise(() => readFile(metadataSnapshotPath, 'utf8'))
+
+          console.log(metadataRaw)
+
+          const metadata: SnapshotMetadata = JSON.parse(metadataRaw) as SnapshotMetadata
+          const finalSeqNum = EventSequenceNumber.make(metadata.finalSeqNum)
+
+          dbEventlog.import(new Uint8Array(eventlogBytes))
+          dbState.import(new Uint8Array(stateBytes))
+
+          Eventlog.updateBackendHead(dbEventlog, finalSeqNum)
+
+          const stream = streamEventsWithSyncState({
+            dbEventlog,
+            dbState,
+            syncState,
+            options: {
+              since: EventSequenceNumber.ROOT,
+              batchSize: metadata.streamBatchSize,
+            },
+          })
+
+          const sampleCount = Math.min(metadata.totalEvents, 1_000)
+          const collectFiber = yield* stream.pipe(Stream.take(sampleCount), Stream.runCollect).pipe(Effect.forkScoped)
+
+          yield* advanceHead(finalSeqNum)
+
+          const emittedChunk = yield* Fiber.join(collectFiber)
+          const emitted = Chunk.toReadonlyArray(emittedChunk)
+
+          expect(emitted.length).toEqual(sampleCount)
+          if (emitted.length > 0) {
+            const firstGlobal = Number(emitted[0]!.seqNum.global)
+            const lastGlobal = Number(emitted[emitted.length - 1]!.seqNum.global)
+            expect(firstGlobal).toEqual(metadata.firstEventGlobal)
+            expect(lastGlobal).toEqual(metadata.firstEventGlobal + sampleCount - 1)
+          }
+
+          yield* closeHeads
+          return undefined
+        }).pipe(
+          Vitest.withTestCtx(test, {
+            timeout: Duration.seconds(120),
+          }),
+        ),
+      )
+
+      return effect as Effect.Effect<void, unknown, Scope.Scope>
+    })
+  }
 })

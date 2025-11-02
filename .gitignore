@@ -48,3 +48,4 @@ backlog
 
 .devenv
 .devenv*
+tests/package-common/src/leader-thread/generator/out/
