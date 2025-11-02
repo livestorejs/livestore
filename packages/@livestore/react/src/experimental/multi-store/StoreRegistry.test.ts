@@ -2,19 +2,21 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { schema } from '../../__tests__/fixture.tsx'
 import { DEFAULT_GC_TIME, StoreRegistry } from './StoreRegistry.ts'
+import { storeOptions } from './storeOptions.js'
 import type { CachedStoreOptions } from './types.ts'
 
-type TestSchema = typeof schema
-
-describe('StoreRegistry', () => {
-  afterEach(() => {
-    vi.clearAllTimers()
-    vi.useRealTimers()
+const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+  storeOptions({
+    storeId: 'test-store',
+    schema,
+    adapter: makeInMemoryAdapter(),
+    ...overrides,
   })
 
+describe('StoreRegistry', () => {
   it('returns a Promise when the store is loading', async () => {
     const registry = new StoreRegistry()
-    const result = registry.getOrLoad(makeOptions())
+    const result = registry.getOrLoad(testStoreOptions())
 
     expect(result).toBeInstanceOf(Promise)
 
@@ -26,12 +28,12 @@ describe('StoreRegistry', () => {
   it('returns cached store synchronously after first load resolves', async () => {
     const registry = new StoreRegistry()
 
-    const initial = registry.getOrLoad(makeOptions())
+    const initial = registry.getOrLoad(testStoreOptions())
     expect(initial).toBeInstanceOf(Promise)
 
     const store = await initial
 
-    const cached = registry.getOrLoad(makeOptions())
+    const cached = registry.getOrLoad(testStoreOptions())
     expect(cached).toBe(store)
     expect(cached).not.toBeInstanceOf(Promise)
 
@@ -41,7 +43,7 @@ describe('StoreRegistry', () => {
 
   it('reuses the same promise for concurrent getOrLoad calls while loading', async () => {
     const registry = new StoreRegistry()
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     const first = registry.getOrLoad(options)
     const second = registry.getOrLoad(options)
@@ -63,7 +65,7 @@ describe('StoreRegistry', () => {
     const registry = new StoreRegistry()
 
     // Create an invalid adapter that will cause an error
-    const badOptions = makeOptions({
+    const badOptions = testStoreOptions({
       // @ts-expect-error - intentionally passing invalid adapter to trigger error
       adapter: null,
     })
@@ -78,7 +80,7 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
     const gcTime = 25
-    const options = makeOptions({ gcTime })
+    const options = testStoreOptions({ gcTime })
 
     const store = await registry.getOrLoad(options)
 
@@ -104,13 +106,13 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
 
-    const options = makeOptions({ gcTime: 10 })
+    const options = testStoreOptions({ gcTime: 10 })
     const unsubscribe = registry.subscribe(options.storeId, () => {})
 
     const store = await registry.getOrLoad(options)
 
     // Call with longer gcTime
-    await registry.getOrLoad(makeOptions({ gcTime: 100 }))
+    await registry.getOrLoad(testStoreOptions({ gcTime: 100 }))
 
     unsubscribe()
 
@@ -135,7 +137,7 @@ describe('StoreRegistry', () => {
     const registry = new StoreRegistry()
 
     // Create invalid options that would cause an error
-    const badOptions = makeOptions({
+    const badOptions = testStoreOptions({
       // @ts-expect-error - intentionally passing invalid adapter to trigger error
       adapter: null,
     })
@@ -150,7 +152,7 @@ describe('StoreRegistry', () => {
   it('does not garbage collect when gcTime is Infinity', async () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
-    const options = makeOptions({ gcTime: Number.POSITIVE_INFINITY })
+    const options = testStoreOptions({ gcTime: Number.POSITIVE_INFINITY })
 
     const store = await registry.getOrLoad(options)
 
@@ -170,7 +172,7 @@ describe('StoreRegistry', () => {
   it('throws the same error instance on multiple synchronous calls after failure', async () => {
     const registry = new StoreRegistry()
 
-    const badOptions = makeOptions({
+    const badOptions = testStoreOptions({
       // @ts-expect-error - intentionally passing invalid adapter to trigger error
       adapter: null,
     })
@@ -201,7 +203,7 @@ describe('StoreRegistry', () => {
 
   it('notifies subscribers when store state changes', async () => {
     const registry = new StoreRegistry()
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     let notificationCount = 0
     const listener = () => {
@@ -231,7 +233,7 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
     const gcTime = 50
-    const options = makeOptions({ gcTime })
+    const options = testStoreOptions({ gcTime })
 
     const store = await registry.getOrLoad(options)
 
@@ -253,7 +255,7 @@ describe('StoreRegistry', () => {
 
   it('swallows errors thrown by subscribers during notification', async () => {
     const registry = new StoreRegistry()
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     let errorListenerCalled = false
     let goodListenerCalled = false
@@ -282,7 +284,7 @@ describe('StoreRegistry', () => {
 
   it('supports concurrent load and subscribe operations', async () => {
     const registry = new StoreRegistry()
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     let notificationCount = 0
     const listener = () => {
@@ -313,7 +315,7 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
     const gcTime = 50
-    const options = makeOptions({ gcTime })
+    const options = testStoreOptions({ gcTime })
 
     const store = await registry.getOrLoad(options)
 
@@ -344,7 +346,7 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
     const gcTime = 50
-    const options = makeOptions({ gcTime })
+    const options = testStoreOptions({ gcTime })
 
     // Start loading without any subscription
     const storePromise = registry.getOrLoad(options)
@@ -366,8 +368,8 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
 
-    const options1 = makeOptions({ storeId: 'store-1', gcTime: 50 })
-    const options2 = makeOptions({ storeId: 'store-2', gcTime: 100 })
+    const options1 = testStoreOptions({ storeId: 'store-1', gcTime: 50 })
+    const options2 = testStoreOptions({ storeId: 'store-2', gcTime: 100 })
 
     const store1 = await registry.getOrLoad(options1)
     const store2 = await registry.getOrLoad(options2)
@@ -416,12 +418,7 @@ describe('StoreRegistry', () => {
       },
     })
 
-    // Construct options without gcTime to use default
-    const options: CachedStoreOptions<TestSchema> = {
-      storeId: 'test-store',
-      schema,
-      adapter: makeInMemoryAdapter(),
-    }
+    const options = testStoreOptions()
 
     const store = await registry.getOrLoad(options)
 
@@ -447,7 +444,7 @@ describe('StoreRegistry', () => {
       },
     })
 
-    const options = makeOptions({
+    const options = testStoreOptions({
       gcTime: 10, // Override with shorter time
     })
 
@@ -465,7 +462,7 @@ describe('StoreRegistry', () => {
 
   it('warms the cache so subsequent getOrLoad is synchronous after preload', async () => {
     const registry = new StoreRegistry()
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     // Preload the store
     await registry.preload(options)
@@ -487,7 +484,7 @@ describe('StoreRegistry', () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
     const gcTime = 50
-    const options = makeOptions({ gcTime })
+    const options = testStoreOptions({ gcTime })
 
     // Preload without subscribing
     await registry.preload(options)
@@ -505,11 +502,4 @@ describe('StoreRegistry', () => {
 
     await nextStore.shutdownPromise()
   })
-})
-
-const makeOptions = (overrides: Partial<CachedStoreOptions<TestSchema>> = {}): CachedStoreOptions<TestSchema> => ({
-  storeId: 'test-store',
-  schema,
-  adapter: makeInMemoryAdapter(),
-  ...overrides,
 })
