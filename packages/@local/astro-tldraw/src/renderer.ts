@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
+import fsSync from 'node:fs'
 import path from 'node:path'
 import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -35,6 +36,9 @@ const renderSvgWithTheme = async (tldrPath: string, theme: TldrawTheme, tempDir:
   /* Create a theme-specific subdirectory to avoid filename conflicts */
   const themeDir = path.join(tempDir, theme)
   await fs.mkdir(themeDir, { recursive: true })
+
+  /* Ensure Puppeteer uses Playwright's Chromium when available (avoids downloads in CI) */
+  ensurePuppeteerExecutableEnv()
 
   /* Export to theme-specific directory */
   const outputPaths = await tldrawToImage(tldrPath, {
@@ -111,4 +115,58 @@ export const getSvgDimensions = (
   }
 
   return undefined
+}
+
+/* Try to resolve a Chromium executable from Playwright's browser bundle and set Puppeteer env */
+const ensurePuppeteerExecutableEnv = (): void => {
+  if (!process.env.PUPPETEER_SKIP_DOWNLOAD) {
+    process.env.PUPPETEER_SKIP_DOWNLOAD = '1'
+  }
+
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && process.env.PUPPETEER_EXECUTABLE_PATH !== '') {
+    return
+  }
+
+  const base = process.env.PLAYWRIGHT_BROWSERS_PATH
+  if (!base || base === '') return
+
+  const candidates = resolvePlaywrightChromiumCandidates(base)
+  for (const candidate of candidates) {
+    if (fsSync.existsSync(candidate)) {
+      process.env.PUPPETEER_EXECUTABLE_PATH = candidate
+      return
+    }
+  }
+}
+
+const resolvePlaywrightChromiumCandidates = (root: string): readonly string[] => {
+  const entries: string[] = []
+
+  /* Collect chromium-* directories, prefer higher revisions first */
+  let chromiumDirs: string[] = []
+  try {
+    chromiumDirs = fsSync
+      .readdirSync(root, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && d.name.startsWith('chromium-'))
+      .map((d) => d.name)
+      .sort()
+      .reverse()
+  } catch {
+    chromiumDirs = []
+  }
+
+  const platform = process.platform
+  for (const dir of chromiumDirs) {
+    if (platform === 'darwin') {
+      entries.push(
+        path.join(root, dir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
+      )
+    } else if (platform === 'linux') {
+      entries.push(path.join(root, dir, 'chrome-linux', 'chrome'))
+    } else if (platform === 'win32') {
+      entries.push(path.join(root, dir, 'chrome-win', 'chrome.exe'))
+    }
+  }
+
+  return entries
 }
