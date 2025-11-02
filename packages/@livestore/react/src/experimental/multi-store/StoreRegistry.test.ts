@@ -5,15 +5,12 @@ import { DEFAULT_GC_TIME, StoreRegistry } from './StoreRegistry.ts'
 import { storeOptions } from './storeOptions.js'
 import type { CachedStoreOptions } from './types.ts'
 
-const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
-  storeOptions({
-    storeId: 'test-store',
-    schema,
-    adapter: makeInMemoryAdapter(),
-    ...overrides,
+describe('StoreRegistry', () => {
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
   })
 
-describe('StoreRegistry', () => {
   it('returns a Promise when the store is loading', async () => {
     const registry = new StoreRegistry()
     const result = registry.getOrLoad(testStoreOptions())
@@ -503,3 +500,11 @@ describe('StoreRegistry', () => {
     await nextStore.shutdownPromise()
   })
 })
+
+const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+  storeOptions({
+    storeId: 'test-store',
+    schema,
+    adapter: makeInMemoryAdapter(),
+    ...overrides,
+  })

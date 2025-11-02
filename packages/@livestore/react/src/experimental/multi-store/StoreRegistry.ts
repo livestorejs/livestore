@@ -8,7 +8,7 @@ type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
 
-const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+export const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 /**
  * @typeParam TSchema - The schema for this entry's store.

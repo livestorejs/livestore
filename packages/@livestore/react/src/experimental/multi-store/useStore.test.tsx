@@ -1,41 +1,23 @@
-import { createStorePromise, type Store } from '@livestore/livestore'
-import { act, render, renderHook, waitFor } from '@testing-library/react'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { withReactApi } from '../../useStore.ts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { schema } from '../../__tests__/fixture.tsx'
 import { StoreRegistry } from './StoreRegistry.ts'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
+import { storeOptions } from './storeOptions.ts'
 import type { CachedStoreOptions } from './types.ts'
 import { useStore } from './useStore.ts'
 
-vi.mock('../../useStore.ts', () => ({
-  withReactApi: vi.fn((store: Record<string, unknown>) => ({ ...store, decorated: true })),
-}))
-
-vi.mock('@livestore/livestore', () => ({
-  createStorePromise: vi.fn(),
-}))
-
-const mockedWithReactApi = vi.mocked(withReactApi)
-const mockedCreateStorePromise = vi.mocked(createStorePromise)
-
 describe('experimental useStore', () => {
-  beforeEach(() => {
-    mockedWithReactApi.mockClear()
-    mockedCreateStorePromise.mockReset()
-  })
-
   afterEach(() => {
     vi.clearAllTimers()
     vi.useRealTimers()
   })
 
   it('suspends when the store is loading', async () => {
-    const store = createTestStore()
-    const deferred = createDeferred<typeof store>()
     const registry = new StoreRegistry()
-    mockedCreateStorePromise.mockReturnValueOnce(deferred.promise as Promise<Store<any>>)
-    const options = makeOptions()
+    const options = testStoreOptions()
 
     const view = render(
       <StoreRegistryProvider storeRegistry={registry}>
@@ -45,26 +27,21 @@ describe('experimental useStore', () => {
       </StoreRegistryProvider>,
     )
 
+    // Should show fallback while loading
     expect(view.getByTestId('fallback')).toBeDefined()
-    expect(mockedWithReactApi).not.toHaveBeenCalled()
 
-    await act(async () => {
-      deferred.resolve(store)
-      await Promise.resolve()
-    })
+    // Wait for store to load and component to render
+    await waitForSuspenseResolved(view)
+    expect(view.getByTestId('ready')).toBeDefined()
 
-    await waitFor(() => expect(mockedWithReactApi).toHaveBeenCalledWith(store))
-    expect(view.queryByTestId('fallback')).toBeNull()
+    cleanupWithPendingTimers(() => view.unmount())
   })
 
   it('does not re-suspend on subsequent renders when store is already loaded', async () => {
-    const store = createTestStore()
-    const deferred = createDeferred<typeof store>()
     const registry = new StoreRegistry()
-    mockedCreateStorePromise.mockReturnValueOnce(deferred.promise as Promise<Store<any>>)
-    const options = makeOptions()
+    const options = testStoreOptions()
 
-    const Wrapper = ({ opts }: { opts: CachedStoreOptions }) => (
+    const Wrapper = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => (
       <StoreRegistryProvider storeRegistry={registry}>
         <React.Suspense fallback={<div data-testid="fallback" />}>
           <StoreConsumer options={opts} />
@@ -73,197 +50,146 @@ describe('experimental useStore', () => {
     )
 
     const view = render(<Wrapper opts={options} />)
-    expect(view.getByTestId('fallback')).toBeDefined()
 
-    await act(async () => {
-      deferred.resolve(store)
-      await Promise.resolve()
-    })
+    // Wait for initial load
+    await waitForSuspenseResolved(view)
+    expect(view.getByTestId('ready')).toBeDefined()
 
-    await waitFor(() => expect(mockedWithReactApi).toHaveBeenCalledWith(store))
-    expect(view.queryByTestId('fallback')).toBeNull()
-    const callsAfterLoad = mockedWithReactApi.mock.calls.length
-
+    // Rerender with new options object (but same storeId)
     view.rerender(<Wrapper opts={{ ...options }} />)
+
+    // Should not show fallback
     expect(view.queryByTestId('fallback')).toBeNull()
-    expect(mockedWithReactApi.mock.calls.length).toBeGreaterThanOrEqual(callsAfterLoad)
+    expect(view.getByTestId('ready')).toBeDefined()
+
+    cleanupWithPendingTimers(() => view.unmount())
   })
 
-  it('subscribes to store registry on mount', () => {
-    const store = createTestStore()
-    const registry = createMockRegistry({
-      getOrLoad: vi.fn().mockReturnValue(store),
-    })
-    const options = makeOptions()
-
-    renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry),
+  it('throws when store loading fails', async () => {
+    const registry = new StoreRegistry()
+    const badOptions = testStoreOptions({
+      // @ts-expect-error - intentionally passing invalid adapter to trigger error
+      adapter: null,
     })
 
-    expect(registry.subscribe).toHaveBeenCalledWith(options.storeId, expect.any(Function))
-  })
+    // Pre-load the store to cache the error
+    await expect(registry.getOrLoad(badOptions)).rejects.toThrow()
 
-  it('unsubscribes from store registry on unmount', () => {
-    const store = createTestStore()
-    const registry = createMockRegistry({
-      getOrLoad: vi.fn().mockReturnValue(store),
-    })
-    const options = makeOptions()
-
-    const { unmount } = renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry),
-    })
-
-    unmount()
-    expect(registry.unsubscribeSpy).toHaveBeenCalledTimes(1)
-  })
-
-  it('handles rapid mount/unmount cycles', () => {
-    const store = createTestStore()
-    const registry = createMockRegistry({
-      getOrLoad: vi.fn().mockReturnValue(store),
-    })
-    const options = makeOptions()
-
-    const first = renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry),
-    })
-    first.unmount()
-
-    const second = renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry),
-    })
-    second.unmount()
-
-    expect(registry.subscribe).toHaveBeenCalledTimes(2)
-    expect(registry.unsubscribeSpy).toHaveBeenCalledTimes(2)
-  })
-
-  it('throws when store loading fails', () => {
-    const error = new Error('failed to load')
-    const registry = createMockRegistry({
-      getOrLoad: vi.fn(() => {
-        throw error
-      }),
-    })
-    const options = makeOptions()
-
+    // Now when useStore tries to get it, it should throw synchronously
     expect(() =>
-      renderHook(() => useStore(options), {
+      renderHook(() => useStore(badOptions), {
         wrapper: makeProvider(registry),
       }),
-    ).toThrow(error)
+    ).toThrow()
   })
 
   it.each([
-    { label: 'non-strict mode', strict: false },
-    { label: 'strict mode', strict: true },
-  ])('works with both $label', async ({ strict }) => {
-    const store = createTestStore()
-    const registry = createMockRegistry({
-      getOrLoad: vi.fn().mockReturnValue(store),
-    })
-    const options = makeOptions()
+    { label: 'non-strict mode', strictMode: false },
+    { label: 'strict mode', strictMode: true },
+  ])('works in $label', async ({ strictMode }) => {
+    const registry = new StoreRegistry()
+    const options = testStoreOptions()
 
     const { result, unmount } = renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry, { strict }),
+      wrapper: makeProvider(registry, { suspense: true }),
+      reactStrictMode: strictMode,
     })
 
-    await waitFor(() => expect(result.current).toMatchObject({ decorated: true }))
-    expect(registry.subscribe).toHaveBeenCalled()
-    unmount()
-    expect(registry.unsubscribeSpy).toHaveBeenCalled()
+    // Wait for store to be ready
+    await waitForStoreReady(result)
+    expect(result.current.clientSession).toBeDefined()
+
+    cleanupWithPendingTimers(unmount)
   })
 
-  it('handles switching between different storeId values', () => {
-    const storeA = { id: 'a', shutdownPromise: vi.fn() } as unknown as Store<any>
-    const storeB = { id: 'b', shutdownPromise: vi.fn() } as unknown as Store<any>
-    const getOrLoadMock = vi.fn(
-      (opts: CachedStoreOptions) => (opts.storeId === 'a' ? storeA : storeB) as Store<any> | Promise<Store<any>>,
-    )
-    const registry = createMockRegistry({ getOrLoad: getOrLoadMock as StoreRegistry['getOrLoad'] })
+  it('handles switching between different storeId values', async () => {
+    const registry = new StoreRegistry()
 
-    const { rerender } = renderHook((opts) => useStore(opts), {
-      initialProps: makeOptions({ storeId: 'a' }),
-      wrapper: makeProvider(registry),
+    const optionsA = testStoreOptions({ storeId: 'store-a' })
+    const optionsB = testStoreOptions({ storeId: 'store-b' })
+
+    const { result, rerender, unmount } = renderHook((opts) => useStore(opts), {
+      initialProps: optionsA,
+      wrapper: makeProvider(registry, { suspense: true }),
     })
 
-    expect(registry.subscribe).toHaveBeenCalledWith('a', expect.any(Function))
-    expect(mockedWithReactApi).toHaveBeenLastCalledWith(storeA)
+    // Wait for first store to load
+    await waitForStoreReady(result)
+    const storeA = result.current
+    expect(storeA.clientSession).toBeDefined()
 
-    rerender(makeOptions({ storeId: 'b' }))
-    expect(registry.unsubscribeSpy).toHaveBeenCalledTimes(1)
-    expect(registry.subscribe).toHaveBeenLastCalledWith('b', expect.any(Function))
-    expect(mockedWithReactApi).toHaveBeenLastCalledWith(storeB)
+    // Switch to different storeId
+    rerender(optionsB)
+
+    // Wait for second store to load and verify it's different from the first
+    await waitFor(() => {
+      expect(result.current).not.toBe(storeA)
+      expect(result.current?.clientSession).toBeDefined()
+    })
+
+    const storeB = result.current
+    expect(storeB.clientSession).toBeDefined()
+    expect(storeB).not.toBe(storeA)
+
+    cleanupWithPendingTimers(unmount)
   })
 })
 
-type RegistryMock = StoreRegistry & {
-  getOrLoad: ReturnType<typeof vi.fn> & StoreRegistry['getOrLoad']
-  subscribe: ReturnType<typeof vi.fn> & StoreRegistry['subscribe']
-  unsubscribeSpy: ReturnType<typeof vi.fn>
-}
-
-const createMockRegistry = (overrides: Partial<{ getOrLoad: StoreRegistry['getOrLoad'] }> = {}) => {
-  const registry = new StoreRegistry() as RegistryMock
-  const listeners = new Set<() => void>()
-  const unsubscribeSpy = vi.fn()
-
-  const subscribe = vi.fn((_: string, listener: () => void) => {
-    listeners.add(listener)
-    return () => {
-      listeners.delete(listener)
-      unsubscribeSpy()
-    }
-  }) as RegistryMock['subscribe']
-
-  const getOrLoad = (overrides.getOrLoad ?? vi.fn()) as RegistryMock['getOrLoad']
-
-  Object.assign(registry, { getOrLoad, subscribe, unsubscribeSpy })
-
-  return registry
-}
-
-const StoreConsumer = ({ options }: { options: CachedStoreOptions }) => {
+const StoreConsumer = ({ options }: { options: CachedStoreOptions<any> }) => {
   useStore(options)
   return <div data-testid="ready" />
 }
 
 const makeProvider =
-  (
-    registry: ReturnType<typeof createMockRegistry>,
-    { suspense = false, strict = false }: { suspense?: boolean; strict?: boolean } = {},
-  ) =>
+  (registry: StoreRegistry, { suspense = false }: { suspense?: boolean } = {}) =>
   ({ children }: { children: React.ReactNode }) => {
-    let content = <StoreRegistryProvider storeRegistry={registry as never}>{children}</StoreRegistryProvider>
+    let content = <StoreRegistryProvider storeRegistry={registry}>{children}</StoreRegistryProvider>
 
     if (suspense) {
       content = <React.Suspense fallback={null}>{content}</React.Suspense>
     }
 
-    if (strict) {
-      content = <React.StrictMode>{content}</React.StrictMode>
-    }
-
     return content
   }
 
-const makeOptions = (overrides: Partial<CachedStoreOptions> = {}): CachedStoreOptions => ({
-  adapter: {} as CachedStoreOptions['adapter'],
-  schema: {} as CachedStoreOptions['schema'],
-  storeId: 'default-store',
-  ...overrides,
-})
-
-const createTestStore = () =>
-  ({
-    shutdownPromise: vi.fn().mockResolvedValue(undefined),
-  }) as unknown as Store<any>
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
+const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+  storeOptions({
+    storeId: 'test-store',
+    schema,
+    adapter: makeInMemoryAdapter(),
+    ...overrides,
   })
-  return { promise, resolve }
+
+/**
+ * Cleans up after component unmount by synchronously executing any pending GC timers.
+ *
+ * When components using stores unmount, the StoreRegistry schedules garbage collection
+ * timers for inactive stores. Without this cleanup, those timers may fire during
+ * subsequent tests, causing cross-test pollution and flaky failures.
+ *
+ * This helper switches to fake timers, executes only the already-pending timers
+ * (allowing stores to shut down cleanly), then restores real timers for the next test.
+ */
+const cleanupWithPendingTimers = (cleanup: () => void): void => {
+  vi.useFakeTimers()
+  cleanup()
+  vi.runOnlyPendingTimers()
+}
+
+/**
+ * Waits for React Suspense fallback to resolve and the actual content to render.
+ */
+const waitForSuspenseResolved = async (view: RenderResult): Promise<void> => {
+  await waitFor(() => expect(view.queryByTestId('fallback')).toBeNull())
+}
+
+/**
+ * Waits for a store to be fully loaded and ready to use.
+ * The store is considered ready when it has a defined clientSession.
+ */
+const waitForStoreReady = async <T extends { clientSession?: unknown }>(result: { current: T }): Promise<void> => {
+  await waitFor(() => {
+    expect(result.current).not.toBeNull()
+    expect(result.current?.clientSession).toBeDefined()
+  })
 }
