@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
 import fsSync from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -158,9 +158,7 @@ const resolvePlaywrightChromiumCandidates = (root: string): readonly string[] =>
   const platform = process.platform
   for (const dir of chromiumDirs) {
     if (platform === 'darwin') {
-      entries.push(
-        path.join(root, dir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
-      )
+      entries.push(path.join(root, dir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'))
     } else if (platform === 'linux') {
       entries.push(path.join(root, dir, 'chrome-linux', 'chrome'))
     } else if (platform === 'win32') {
