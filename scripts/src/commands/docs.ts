@@ -1,5 +1,6 @@
 import fs from 'node:fs'
-
+import fsSync from 'node:fs'
+import path from 'node:path'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
@@ -104,6 +105,40 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify', { cwd: docsPath })
 
+    // Derive Puppeteer's executable from Playwright's Nix-provided bundle so
+    // puppeteer doesn't try to download a browser. Set before Astro spins up
+    // the Vite SSR runner so transitive imports (e.g. tldraw-cli) see it.
+    const derivePuppeteerExecutable = (): string | undefined => {
+      const existing = process.env.PUPPETEER_EXECUTABLE_PATH
+      if (existing && existing !== '') return existing
+      const pwBase = process.env.PLAYWRIGHT_BROWSERS_PATH
+      if (pwBase && pwBase !== '') {
+        try {
+          const entries = fsSync
+            .readdirSync(pwBase, { withFileTypes: true })
+            .filter((d) => d.isDirectory() && d.name.startsWith('chromium-'))
+            .map((d) => d.name)
+            .sort()
+            .reverse()
+          for (const dir of entries) {
+            const candidate = path.join(
+              pwBase,
+              dir,
+              process.platform === 'linux'
+                ? path.join('chrome-linux', 'chrome')
+                : process.platform === 'darwin'
+                  ? path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
+                  : path.join('chrome-win', 'chrome.exe'),
+            )
+            if (fsSync.existsSync(candidate)) return candidate
+          }
+        } catch {}
+      }
+      return undefined
+    }
+
+    const puppeteerExecutable = derivePuppeteerExecutable()
+
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
@@ -113,6 +148,8 @@ const docsBuildCommand = Cli.Command.make(
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        PUPPETEER_SKIP_DOWNLOAD: '1',
+        PUPPETEER_EXECUTABLE_PATH: puppeteerExecutable,
       },
     })
   }),
