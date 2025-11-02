@@ -2,7 +2,7 @@ import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { schema } from '../../__tests__/fixture.tsx'
 import { DEFAULT_GC_TIME, StoreRegistry } from './StoreRegistry.ts'
-import { storeOptions } from './storeOptions.js'
+import { storeOptions } from './storeOptions.ts'
 import type { CachedStoreOptions } from './types.ts'
 
 describe('StoreRegistry', () => {
