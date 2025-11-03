@@ -20,16 +20,10 @@ const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
 const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () =>
-  Effect.gen(function* () {
-    yield* Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))
-  }),
+  Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true })),
 ).pipe(
   Cli.Command.withSubcommands([
-    Cli.Command.make('build', {}, () =>
-      Effect.gen(function* () {
-        yield* Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))
-      }),
-    ),
+    Cli.Command.make('build', {}, () => Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))),
   ]),
 )
 
@@ -163,12 +157,12 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
       },
       ({ open }) =>
-        Effect.gen(function* () {
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+        Effect.asVoid(
+          cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             cwd: docsPath,
             logDir: `${docsPath}/logs`,
-          })
-        }),
+          }),
+        ),
     ),
     docsBuildCommand,
     docsSnippetsCommand,
