@@ -254,17 +254,6 @@ You have now recreated the same functionality from before and are able to switch
 
 ![](../../../assets/tutorial/chapter-6/1-persist-ui-state.gif)
 
-:::note[Tables vs Client documents]
-
-**Regular tables** (of type `State.SQLite.table`) are synced across all clients and devices—any change made by one user is immediately available to all other users.
-
-**Client documents** (of type `State.SQLite.clientDocument`) work differently:
-- Changes are only persisted within the same browser tab.
-- Under the hood, changes are still synced between all client sessions but are filtered by session ID, that's why they're not visible across tabs.
-- Changes are _not_ synced across different devices.
-
-:::
-
 ## Implement filter logic
 
 The last step in this tutorial is to actually update the list based on which tab is currently selected.
