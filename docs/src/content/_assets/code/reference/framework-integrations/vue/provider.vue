@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference path="./vue-livestore.d.ts" />
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 
 import { schema } from './schema.ts'

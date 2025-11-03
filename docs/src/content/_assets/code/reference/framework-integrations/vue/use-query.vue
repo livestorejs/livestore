@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference path="./vue-livestore.d.ts" />
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from 'vue-livestore'
 
