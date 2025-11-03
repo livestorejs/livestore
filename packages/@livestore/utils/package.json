@@ -21,9 +21,9 @@
   "dependencies": {
     "@effect/platform-node": "0.98.0",
     "@standard-schema/spec": "1.0.0",
-    "qrcode-generator": "2.0.4",
     "nanoid": "5.1.5",
-    "pretty-bytes": "7.0.1"
+    "pretty-bytes": "7.0.1",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@effect/ai": "^0.29.0",

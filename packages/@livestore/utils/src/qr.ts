@@ -1,4 +1,5 @@
 import qrcode from 'qrcode-generator'
+
 export { default as QR } from 'qrcode-generator'
 
 export type QRErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H'
@@ -9,8 +10,6 @@ export type PrintQrTerminalOptions = {
   margin?: number
   /** Swap dark/light rendering (default false) */
   invert?: boolean
-  /** Use compact rendering (2 QR rows -> 1 terminal row). Default: true */
-  small?: boolean
   /** Use ANSI colors for compact half-block rendering. Default: auto (true on TTY) */
   useAnsi?: boolean
 }
@@ -44,7 +43,6 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
   const ec: QRErrorCorrectionLevel = options?.errorCorrectionLevel ?? 'M'
   const margin = options?.margin ?? 2
   const invert = options?.invert ?? false
-  const small = options?.small ?? true
   // Auto-enable ANSI on TTY; avoid in browsers
   const useAnsi = options?.useAnsi ?? (typeof process !== 'undefined' && !!(process as any)?.stdout?.isTTY)
 
@@ -68,74 +66,59 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
 
   const lines: string[] = []
 
-  if (small) {
-    // Compact rendering: combine two QR rows into one terminal row using half-blocks.
-    // With ANSI enabled: use `▀` and paint top as FG, bottom as BG (clear and crisp).
-    // Without ANSI: fall back to block chars (`█`, `▀`, `▄`, space).
-    const width = size + 2 * margin
-    const height = size + 2 * margin
+  // Compact rendering: combine two QR rows into one terminal row using half-blocks.
+  // With ANSI enabled: use `▀` and paint top as FG, bottom as BG (clear and crisp).
+  // Without ANSI: fall back to block chars (`█`, `▀`, `▄`, space). Note that the
+  // non-ANSI fallback cannot enforce a white background on dark themes, which may
+  // reduce scanner reliability—prefer ANSI when possible.
+  const width = size + 2 * margin
+  const height = size + 2 * margin
 
-    // ANSI helpers (only used when enabled)
-    // Use bright white for a strong “paper-like” background on dark terminals.
-    const RESET = '\x1b[0m'
-    const FG_BLACK = '\x1b[30m'
-    const FG_WHITE = '\x1b[97m'
-    const BG_BLACK = '\x1b[40m'
-    const BG_WHITE = '\x1b[107m'
+  // ANSI helpers (only used when enabled)
+  // Use bright white for a strong “paper-like” background on dark terminals.
+  const RESET = '\x1b[0m'
+  const FG_BLACK = '\x1b[30m'
+  const FG_WHITE = '\x1b[97m'
+  const BG_BLACK = '\x1b[40m'
+  const BG_WHITE = '\x1b[107m'
 
-    for (let y = 0; y < height; y += 2) {
-      let row = ''
-      let currentStyle = ''
-      const setStyle = (style: string) => {
-        if (style !== currentStyle) {
-          if (currentStyle) row += RESET
-          if (style) row += style
-          currentStyle = style
-        }
+  for (let y = 0; y < height; y += 2) {
+    let row = ''
+    let currentStyle = ''
+    const setStyle = (style: string) => {
+      if (style !== currentStyle) {
+        if (currentStyle) row += RESET
+        if (style) row += style
+        currentStyle = style
       }
+    }
 
-      for (let x = 0; x < width; x++) {
-        const top = isDarkAt(x, y)
-        const bottom = isDarkAt(x, y + 1)
-
-        if (useAnsi) {
-          // Represent two stacked modules with a single `▀` character.
-          // Foreground corresponds to the top pixel; background to the bottom pixel.
-          // Always paint both halves to enforce a white quiet zone even on dark terminals.
-          const fg = top ? FG_BLACK : FG_WHITE
-          const bg = bottom ? BG_BLACK : BG_WHITE
-          setStyle(fg + bg)
-          row += '▀'
-        } else {
-          // No ANSI: approximate using block characters.
-          let ch = ' '
-          if (top && bottom) ch = '█'
-          else if (top && !bottom) ch = '▀'
-          else if (!top && bottom) ch = '▄'
-          row += ch
-        }
-      }
+    for (let x = 0; x < width; x++) {
+      const top = isDarkAt(x, y)
+      const bottom = isDarkAt(x, y + 1)
 
       if (useAnsi) {
-        if (currentStyle) row += RESET
+        // Represent two stacked modules with a single `▀` character.
+        // Foreground corresponds to the top pixel; background to the bottom pixel.
+        // Always paint both halves to enforce a white quiet zone even on dark terminals.
+        const fg = top ? FG_BLACK : FG_WHITE
+        const bg = bottom ? BG_BLACK : BG_WHITE
+        setStyle(fg + bg)
+        row += '▀'
+      } else {
+        // No ANSI: approximate using block characters.
+        let ch = ' '
+        if (top && bottom) ch = '█'
+        else if (top && !bottom) ch = '▀'
+        else if (!top && bottom) ch = '▄'
+        row += ch
       }
-      lines.push(row)
     }
-  } else {
-    // Legacy large rendering: two columns per module (wider output).
-    const dark = invert ? '  ' : '██'
-    const light = invert ? '██' : '  '
-    const border = light.repeat(size + 2 * margin)
-    for (let i = 0; i < margin; i++) lines.push(border)
-    for (let y = 0; y < size; y++) {
-      let row = light.repeat(margin)
-      for (let x = 0; x < size; x++) {
-        row += isDarkAt(x + margin, y + margin) ? dark : light
-      }
-      row += light.repeat(margin)
-      lines.push(row)
+
+    if (useAnsi) {
+      if (currentStyle) row += RESET
     }
-    for (let i = 0; i < margin; i++) lines.push(border)
+    lines.push(row)
   }
 
   console.log(lines.join('\n'))
