@@ -13,6 +13,7 @@ export * from './promise.ts'
 export * from './set.ts'
 export * from './string.ts'
 export * from './time.ts'
+export * as QR from './qr.ts'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
