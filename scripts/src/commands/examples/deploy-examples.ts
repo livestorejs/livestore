@@ -337,9 +337,7 @@ if (import.meta.main) {
     version: '0.0.0',
   })
 
-  Effect.gen(function* () {
-    return yield* cli(process.argv)
-  }).pipe(
+  cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.provide(PlatformNode.NodeContext.layer),
     PlatformNode.NodeRuntime.runMain,

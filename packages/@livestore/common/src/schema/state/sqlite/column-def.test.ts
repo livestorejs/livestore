@@ -552,7 +552,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should work with column type annotation', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Number.pipe(withColumnType('integer')).pipe(withPrimaryKey),
+          id: Schema.Number.pipe(withColumnType('integer'), withPrimaryKey),
           name: Schema.String,
         })
 
@@ -584,7 +584,7 @@ describe('getColumnDefForSchema', () => {
     describe('withAutoIncrement', () => {
       it('should add autoIncrement annotation to schema', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           name: Schema.String,
         })
         const userTable = State.SQLite.table({
@@ -704,7 +704,7 @@ describe('getColumnDefForSchema', () => {
 
     describe('combined annotations', () => {
       it('should work with multiple annotations', () => {
-        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob')).pipe(withPrimaryKey)
+        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob'), withPrimaryKey)
 
         const UserSchema = Schema.Struct({
           id: schema,
@@ -722,7 +722,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should combine all annotations', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           email: Schema.String.pipe(withUnique),
           status: Schema.String.pipe(withDefault('active')),
           metadata: Schema.Unknown.pipe(withColumnType('text')),

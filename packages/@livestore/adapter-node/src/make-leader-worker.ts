@@ -139,6 +139,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Effect.withSpan('@livestore/adapter-node:worker:GetRecreateSnapshot'),
       ),
     Shutdown: () =>
+      // @effect-diagnostics-next-line unnecessaryEffectGen:off
       Effect.gen(function* () {
         // const { db, dbEventlog } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/adapter-node:worker] Shutdown')

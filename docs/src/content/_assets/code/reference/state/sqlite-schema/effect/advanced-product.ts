@@ -1,7 +1,7 @@
 import { Schema, State } from '@livestore/livestore'
 
 const ProductSchema = Schema.Struct({
-  id: Schema.Int.pipe(State.SQLite.withPrimaryKey).pipe(State.SQLite.withAutoIncrement),
+  id: Schema.Int.pipe(State.SQLite.withPrimaryKey, State.SQLite.withAutoIncrement),
   sku: Schema.String.pipe(State.SQLite.withUnique),
   name: Schema.String,
   price: Schema.Number.pipe(State.SQLite.withDefault(0)),
