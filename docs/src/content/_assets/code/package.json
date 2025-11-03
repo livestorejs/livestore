@@ -19,6 +19,7 @@
     "jose": "6.1.0",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-error-boundary": "6.0.0",
     "react-native": "0.81.4",
     "solid-js": "1.9.9"
   }
