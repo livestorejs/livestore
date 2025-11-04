@@ -1,4 +1,4 @@
-import { Events, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 /**
  * Thread Aggregate
@@ -6,14 +6,17 @@ import { Events, Schema, SessionIdSymbol, State } from '@livestore/livestore'
  * Purpose: Core unit for email threads (collections of related messages)
  * Event Log: Variable size (10-100KB per thread)
  *
- * This aggregate handles:
+ * This aggregate is the SOURCE OF TRUTH for:
  * - Email threads and their metadata
  * - Individual messages within threads
- * - Thread-label associations (many-to-many relationship)
- * - Cross-aggregate event emission for label count updates
+ * - Thread-label associations (enforces business rules)
+ *
+ * Cross-aggregate synchronization:
+ * - Thread events are consumed by Labels aggregate to maintain queryable projections
+ * - Labels aggregate maintains threadIndex and threadLabels for efficient filtering
+ * - All label operations must go through this aggregate to enforce consistency
  */
 
-// Tables for Thread Aggregate
 export const threadTables = {
   threads: State.SQLite.table({
     name: 'threads',
@@ -49,29 +52,8 @@ export const threadTables = {
       appliedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
-
-  // Client-only UI state
-  uiState: State.SQLite.clientDocument({
-    name: 'uiState',
-    schema: Schema.Struct({
-      selectedThreadId: Schema.String.pipe(Schema.NullOr),
-      selectedLabelId: Schema.String.pipe(Schema.NullOr), // 'inbox', 'sent', etc.
-      composeDraft: Schema.String,
-      isComposing: Schema.Boolean,
-    }),
-    default: {
-      id: SessionIdSymbol,
-      value: {
-        selectedThreadId: null,
-        selectedLabelId: null,
-        composeDraft: '',
-        isComposing: false,
-      },
-    },
-  }),
 }
 
-// Events for Thread Aggregate
 export const threadEvents = {
   // Thread lifecycle events
   threadCreated: Events.synced({
@@ -138,13 +120,10 @@ export const threadEvents = {
       removedAt: Schema.Date,
     }),
   }),
-
-  // UI state events (client-only)
-  uiStateSet: threadTables.uiState.set,
 }
 
 // Materializers for Thread Aggregate
-export const threadMaterializers = State.SQLite.materializers(threadEvents, {
+export const materializers = State.SQLite.materializers(threadEvents, {
   'v1.ThreadCreated': ({ id, subject, participants, createdAt }) =>
     threadTables.threads.insert({
       id,
@@ -211,3 +190,7 @@ export const threadMaterializers = State.SQLite.materializers(threadEvents, {
 
   'v1.ThreadLabelRemoved': ({ threadId, labelId }) => threadTables.threadLabels.delete().where({ threadId, labelId }),
 })
+
+const state = State.SQLite.makeState({ tables: threadTables, materializers })
+
+export const schema = makeSchema({ events: threadEvents, state, devtools: { alias: 'thread' } })

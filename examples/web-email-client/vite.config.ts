@@ -4,7 +4,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), livestoreDevtoolsPlugin({ schemaPath: 'src/livestore/schema.ts' })],
+  plugins: [
+    react(),
+    tailwindcss(),
+    livestoreDevtoolsPlugin({ schemaPath: ['./src/stores/labels/schema.ts', './src/stores/thread/schema.ts'] }),
+  ],
   optimizeDeps: {
     exclude: ['@livestore/wa-sqlite'],
   },

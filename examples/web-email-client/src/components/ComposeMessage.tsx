@@ -1,5 +1,6 @@
 import React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { useInbox } from '../hooks/useInbox.ts'
+import { useThread } from '../hooks/useThread.ts'
 
 /**
  * ComposeMessage - New message composition interface
@@ -16,7 +17,8 @@ interface ComposeMessageProps {
 }
 
 export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
-  const { uiState, updateComposeDraft, toggleComposing, sendMessage } = useEmailStore()
+  const { uiState, updateComposeDraft, toggleComposing } = useInbox()
+  const { sendMessage } = useThread(threadId)
 
   const [isExpanded, setIsExpanded] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
