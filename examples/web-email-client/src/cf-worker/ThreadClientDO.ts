@@ -55,10 +55,10 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
 
   private async ensureStoreSeeded(store: Store<typeof threadSchema>) {
     // Check if seeding has already been done by looking for existing messages
-    const existingThreadCount = store.query(threadTables.threads.count())
+    const existingThreadCount = store.query(threadTables.thread.count())
 
     if (existingThreadCount > 0) {
-      console.log('📧 Thread aggregate already seeded with', existingThreadCount, 'threads')
+      console.log('📧 Thread aggregate already seeded with', existingThreadCount, 'thread')
       return
     }
 
@@ -71,12 +71,12 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       // Verify seeding completed by checking for expected data
-      const threadCount = store.query(threadTables.threads.count())
+      const threadCount = store.query(threadTables.thread.count())
       const messageCount = store.query(threadTables.messages.count())
       const threadLabelsCount = store.query(threadTables.threadLabels.count())
 
       console.log(
-        `✅ Server-side seeding verified: ${threadCount} threads, ${messageCount} messages, ${threadLabelsCount} thread labels`,
+        `✅ Server-side seeding verified: ${threadCount} thread, ${messageCount} messages, ${threadLabelsCount} thread labels`,
       )
     } catch (error) {
       console.error('❌ Server-side seeding failed:', error)

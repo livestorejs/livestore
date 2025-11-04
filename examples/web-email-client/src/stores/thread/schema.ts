@@ -18,8 +18,8 @@ import { Events, makeSchema, Schema, State } from '@livestore/livestore'
  */
 
 export const threadTables = {
-  threads: State.SQLite.table({
-    name: 'threads',
+  thread: State.SQLite.table({
+    name: 'thread',
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       subject: State.SQLite.text(),
@@ -125,7 +125,7 @@ export const threadEvents = {
 // Materializers for Thread Aggregate
 export const materializers = State.SQLite.materializers(threadEvents, {
   'v1.ThreadCreated': ({ id, subject, participants, createdAt }) =>
-    threadTables.threads.insert({
+    threadTables.thread.insert({
       id,
       subject,
       participants: JSON.stringify(participants),
@@ -144,7 +144,7 @@ export const materializers = State.SQLite.materializers(threadEvents, {
       messageType: 'received',
     }),
     // Update thread activity timestamp
-    threadTables.threads
+    threadTables.thread
       .update({
         lastActivity: timestamp,
       })
@@ -161,7 +161,7 @@ export const materializers = State.SQLite.materializers(threadEvents, {
       timestamp,
       messageType: 'sent',
     }),
-    threadTables.threads
+    threadTables.thread
       .update({
         lastActivity: timestamp,
       })
@@ -178,7 +178,7 @@ export const materializers = State.SQLite.materializers(threadEvents, {
       timestamp,
       messageType: 'draft',
     }),
-    threadTables.threads
+    threadTables.thread
       .update({
         lastActivity: timestamp,
       })
