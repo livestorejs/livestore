@@ -18,7 +18,7 @@ import { threadEvents, threadTables } from '../stores/thread/schema.ts'
  * Use Labels aggregate's threadLabels for browsing/filtering, Thread's for detail view.
  */
 
-const threadsQuery = queryDb(threadTables.threads, { label: 'threads' })
+const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
 const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
 const labelsQuery = queryDb(inboxTables.labels.where({}), { label: 'labels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
@@ -28,7 +28,7 @@ export const useThread = (threadId: string) => {
   const threadStore = useStore(threadStoreOptions(threadId))
 
   // Get data from stores
-  const threads = threadStore.useQuery(threadsQuery)
+  const thread = threadStore.useQuery(threadQuery)
   const messages = threadStore.useQuery(messagesQuery)
   const labels = inboxStore.useQuery(labelsQuery)
 
@@ -283,7 +283,7 @@ export const useThread = (threadId: string) => {
   }
 
   const getCurrentThread = () => {
-    return threads.find((t) => t.id === threadId) || null
+    return thread
   }
 
   // Compute thread message count dynamically
@@ -296,7 +296,7 @@ export const useThread = (threadId: string) => {
     threadStore,
 
     // Data
-    threads,
+    thread,
     messages,
     threadLabels,
 
@@ -318,4 +318,4 @@ export const useThread = (threadId: string) => {
 }
 
 // Export queries for reuse
-export { threadsQuery }
+export { threadQuery }
