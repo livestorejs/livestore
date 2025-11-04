@@ -1,20 +1,29 @@
 import type React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { useInbox } from '../hooks/useInbox.ts'
 
 /**
  * ThreadList - Display list of threads for selected label
  *
  * Shows:
- * - List of threads with subject, participants, message count
+ * - List of threads with subject, participants, last activity
  * - Click to select thread for detailed view
  * - Gmail-inspired thread list design
+ *
+ * Uses Labels aggregate projections (threadIndex + threadLabels) for efficient querying
  */
 
 export const ThreadList: React.FC = () => {
-  const { getCurrentLabel, getThreadsForLabel, selectThread, getThreadMessageCount } = useEmailStore()
+  const { getCurrentLabel, selectThread, threadIndex, threadLabels } = useInbox()
 
   const currentLabel = getCurrentLabel()
-  const threads = currentLabel ? getThreadsForLabel(currentLabel.id) : []
+
+  // Filter threads by current label using Labels aggregate projections
+  const getThreadsForLabel = (labelId: string) => {
+    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
+    return threadIndex.filter((t) => threadIds.includes(t.id))
+  }
+
+  const threadsForLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
 
   if (!currentLabel) {
     return (
@@ -27,7 +36,7 @@ export const ThreadList: React.FC = () => {
     )
   }
 
-  if (threads.length === 0) {
+  if (threadsForLabel.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
@@ -46,9 +55,8 @@ export const ThreadList: React.FC = () => {
     <div className="h-full bg-white">
       {/* Thread List */}
       <div className="divide-y divide-gray-100">
-        {threads.map((thread) => {
+        {threadsForLabel.map((thread) => {
           const participants = JSON.parse(thread.participants) as string[]
-          const messageCount = getThreadMessageCount(thread.id)
 
           return (
             <button
@@ -68,11 +76,6 @@ export const ThreadList: React.FC = () => {
                       ? `${participants.slice(0, 2).join(', ')} +${participants.length - 2} more`
                       : participants.join(', ')}
                   </p>
-
-                  {/* Thread metadata */}
-                  <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                    <span>{messageCount} messages</span>
-                  </div>
                 </div>
 
                 <span className="text-xs text-gray-400">

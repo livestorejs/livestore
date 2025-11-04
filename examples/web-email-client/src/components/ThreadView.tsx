@@ -1,8 +1,13 @@
 import type React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { useInbox } from '../hooks/useInbox.ts'
+import { useThread } from '../hooks/useThread.ts'
 import { ComposeMessage } from './ComposeMessage.tsx'
 import { MessageItem } from './MessageItem.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
+
+type ThreadViewProps = {
+  threadId: string
+}
 
 /**
  * ThreadView - Display single email thread
@@ -13,22 +18,16 @@ import { ThreadActions } from './ThreadActions.tsx'
  * - Compose area for new messages
  * - Thread-level actions (labels, etc.)
  */
+export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
+  const { uiState, toggleComposing } = useInbox()
+  const { getCurrentThread, getMessagesForThread, getUserLabelsForThread, removeUserLabelFromThread } =
+    useThread(threadId)
 
-export const ThreadView: React.FC = () => {
-  const {
-    getCurrentThread,
-    getMessagesForThread,
-    getUserLabelsForThread,
-    removeUserLabelFromThread,
-    uiState,
-    toggleComposing,
-  } = useEmailStore()
+  const thread = getCurrentThread()
+  const messages = getMessagesForThread(threadId)
+  const threadUserLabels = getUserLabelsForThread(threadId)
 
-  const currentThread = getCurrentThread()
-  const messages = currentThread ? getMessagesForThread(currentThread.id) : []
-  const userLabels = currentThread ? getUserLabelsForThread(currentThread.id) : []
-
-  if (!currentThread) {
+  if (!thread) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
@@ -39,7 +38,7 @@ export const ThreadView: React.FC = () => {
     )
   }
 
-  const participants = JSON.parse(currentThread.participants) as string[]
+  const participants = JSON.parse(thread.participants) as string[]
 
   return (
     <div className="h-full flex flex-col">
@@ -47,7 +46,7 @@ export const ThreadView: React.FC = () => {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{currentThread.subject}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">{thread.subject}</h3>
             <div className="flex items-center text-sm text-gray-600 space-x-4">
               <div>
                 <span className="font-medium">Participants:</span> {participants.join(', ')}
@@ -56,14 +55,13 @@ export const ThreadView: React.FC = () => {
                 <span className="font-medium">Messages:</span> {messages.length}
               </div>
               <div>
-                <span className="font-medium">Last activity:</span> {currentThread.lastActivity.toLocaleDateString()}
+                <span className="font-medium">Last activity:</span> {thread.lastActivity.toLocaleDateString()}
               </div>
             </div>
 
-            {/* Thread Labels */}
-            {userLabels.length > 0 && (
+            {threadUserLabels.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {userLabels.map((label) => (
+                {threadUserLabels.map((label) => (
                   <span
                     key={label.id}
                     className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
@@ -74,7 +72,7 @@ export const ThreadView: React.FC = () => {
                   >
                     {label.name}
                     <button
-                      onClick={() => removeUserLabelFromThread(currentThread.id, label.id)}
+                      onClick={() => removeUserLabelFromThread(thread.id, label.id)}
                       type="button"
                       className="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full p-0.5 transition-colors"
                       title={`Remove ${label.name} label`}
@@ -122,7 +120,7 @@ export const ThreadView: React.FC = () => {
           {/* Compose Area */}
           {uiState.isComposing && (
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <ComposeMessage threadId={currentThread.id} />
+              <ComposeMessage threadId={thread.id} />
             </div>
           )}
         </div>

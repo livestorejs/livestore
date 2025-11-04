@@ -7,16 +7,20 @@ name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"
 
 [[durable_objects.bindings]]
-name = "CLIENT_DO"
-class_name = "LiveStoreClientDO"
+name = "INBOX_CLIENT_DO"
+class_name = "InboxClientDO"
+
+[[durable_objects.bindings]]
+name = "THREAD_CLIENT_DO"
+class_name = "ThreadClientDO"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
+new_sqlite_classes = ["SyncBackendDO", "InboxClientDO", "ThreadClientDO"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "email-client-prototype-demo"
+database_name = "web-email"
 database_id = "199c832c-755e-4d4b-ac86-3026b11607e0"
 
 [observability]
