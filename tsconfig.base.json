@@ -29,7 +29,11 @@
       {
         "name": "@effect/language-service",
         "reportSuggestionsAsWarningsInTsc": true,
-        "diagnosticServerity": { "missedPipeableOpportunity": "error" }
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          // "missedPipeableOpportunity": "suggestion",
+          "schemaUnionOfLiterals": "warning"
+        }
       }
     ]
   },

@@ -273,7 +273,7 @@ describe('getColumnDefForSchema', () => {
         INACTIVE: 'inactive',
       })
 
-      const StatusUnion = Schema.Union(Schema.Literal('pending'), Schema.Literal('active'), Schema.Literal('inactive'))
+      const StatusUnion = Schema.Literal('pending', 'active', 'inactive')
 
       expect(State.SQLite.getColumnDefForSchema(StatusEnum).columnType).toBe('text')
       expect(State.SQLite.getColumnDefForSchema(StatusUnion).columnType).toBe('text')
