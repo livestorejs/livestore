@@ -1,40 +1,47 @@
 import { queryDb } from '@livestore/livestore'
-import { useClientDocument, useStore } from '@livestore/react'
-import { events, tables } from '../livestore/schema.ts'
+import { useStore } from '@livestore/react/experimental'
+import { useInboxStore } from '../stores/inbox/index.ts'
+import { inboxTables } from '../stores/inbox/schema.ts'
+import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadEvents, threadTables } from '../stores/thread/schema.ts'
 
 /**
- * Email Store Hook
+ * Thread Hook
  *
- * Provides hooks and actions for email client functionality:
- * - Thread and message management
- * - Label operations
- * - Cross-aggregate actions
- * - UI state management
+ * Provides thread-specific data and operations for a given threadId:
+ * - Thread and message data
+ * - Thread operations (send, trash, archive, etc.)
+ * - Label management for threads
+ *
+ * Note: Queries threadLabels from Thread store (source of truth).
+ * Labels aggregate maintains a synchronized projection for cross-thread filtering.
+ * Use Labels aggregate's threadLabels for browsing/filtering, Thread's for detail view.
  */
 
-// Define queries for email data
-const threadsQuery = queryDb(tables.threads.where({}), { label: 'threads' })
-const messagesQuery = queryDb(tables.messages.where({}), { label: 'messages' })
-const labelsQuery = queryDb(tables.labels.where({}), { label: 'labels' })
-const threadLabelsQuery = queryDb(tables.threadLabels.where({}), { label: 'threadLabels' })
+const threadsQuery = queryDb(threadTables.threads, { label: 'threads' })
+const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
+const labelsQuery = queryDb(inboxTables.labels.where({}), { label: 'labels' })
+const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
 
-export const useEmailStore = () => {
-  const { store } = useStore()
-  const [uiState, setUiState] = useClientDocument(tables.uiState)
+export const useThread = (threadId: string) => {
+  const inboxStore = useInboxStore()
+  const threadStore = useStore(threadStoreOptions(threadId))
 
-  // Get data from store
-  const threads = store.useQuery(threadsQuery)
-  const messages = store.useQuery(messagesQuery)
-  const labels = store.useQuery(labelsQuery)
-  const threadLabels = store.useQuery(threadLabelsQuery)
+  // Get data from stores
+  const threads = threadStore.useQuery(threadsQuery)
+  const messages = threadStore.useQuery(messagesQuery)
+  const labels = inboxStore.useQuery(labelsQuery)
 
-  // Email Actions
+  // Query threadLabels from Thread store (source of truth for this thread's labels)
+  const threadLabels = threadStore.useQuery(threadLabelsQuery)
+
+  // Thread Actions
   const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
-    if (!store || !content.trim()) return
+    if (!threadStore || !content.trim()) return
 
     try {
-      store.commit(
-        events.messageSent({
+      threadStore.commit(
+        threadEvents.messageSent({
           id: crypto.randomUUID(),
           threadId,
           content: content.trim(),
@@ -43,16 +50,13 @@ export const useEmailStore = () => {
           timestamp: new Date(),
         }),
       )
-
-      // Clear compose draft
-      setUiState({ composeDraft: '', isComposing: false })
     } catch (error) {
       console.error('Failed to send message:', error)
     }
   }
 
   const trashThread = (threadId: string) => {
-    if (!store) return
+    if (!threadStore) return
 
     const trashLabel = labels.find((l) => l.name === 'TRASH')
     if (!trashLabel) {
@@ -69,7 +73,7 @@ export const useEmailStore = () => {
       // Remove current system label if exists and it's not already TRASH
       if (currentSystemLabel && currentSystemLabel.id !== trashLabel.id) {
         eventsToCommit.push(
-          events.threadLabelRemoved({
+          threadEvents.threadLabelRemoved({
             threadId,
             labelId: currentSystemLabel.id,
             removedAt: new Date(),
@@ -80,7 +84,7 @@ export const useEmailStore = () => {
       // Add trash label (only if not already applied)
       if (!currentSystemLabel || currentSystemLabel.id !== trashLabel.id) {
         eventsToCommit.push(
-          events.threadLabelApplied({
+          threadEvents.threadLabelApplied({
             threadId,
             labelId: trashLabel.id,
             appliedAt: new Date(),
@@ -90,7 +94,7 @@ export const useEmailStore = () => {
 
       // Atomic commit (only if there are events to commit)
       if (eventsToCommit.length > 0) {
-        store.commit(...eventsToCommit)
+        threadStore.commit(...eventsToCommit)
       }
     } catch (error) {
       console.error('Failed to trash thread:', error)
@@ -98,7 +102,7 @@ export const useEmailStore = () => {
   }
 
   const archiveThread = (threadId: string) => {
-    if (!store) return
+    if (!threadStore) return
 
     const archiveLabel = labels.find((l) => l.name === 'ARCHIVE')
     if (!archiveLabel) {
@@ -115,7 +119,7 @@ export const useEmailStore = () => {
       // Remove current system label if exists and it's not already ARCHIVE
       if (currentSystemLabel && currentSystemLabel.id !== archiveLabel.id) {
         eventsToCommit.push(
-          events.threadLabelRemoved({
+          threadEvents.threadLabelRemoved({
             threadId,
             labelId: currentSystemLabel.id,
             removedAt: new Date(),
@@ -126,7 +130,7 @@ export const useEmailStore = () => {
       // Add archive label (only if not already applied)
       if (!currentSystemLabel || currentSystemLabel.id !== archiveLabel.id) {
         eventsToCommit.push(
-          events.threadLabelApplied({
+          threadEvents.threadLabelApplied({
             threadId,
             labelId: archiveLabel.id,
             appliedAt: new Date(),
@@ -136,7 +140,7 @@ export const useEmailStore = () => {
 
       // Atomic commit (only if there are events to commit)
       if (eventsToCommit.length > 0) {
-        store.commit(...eventsToCommit)
+        threadStore.commit(...eventsToCommit)
       }
     } catch (error) {
       console.error('Failed to archive thread:', error)
@@ -144,7 +148,7 @@ export const useEmailStore = () => {
   }
 
   const moveToInbox = (threadId: string) => {
-    if (!store) return
+    if (!threadStore) return
 
     const inboxLabel = labels.find((l) => l.name === 'INBOX')
     if (!inboxLabel) {
@@ -161,7 +165,7 @@ export const useEmailStore = () => {
       // Remove current system label if exists and it's not already INBOX
       if (currentSystemLabel && currentSystemLabel.id !== inboxLabel.id) {
         eventsToCommit.push(
-          events.threadLabelRemoved({
+          threadEvents.threadLabelRemoved({
             threadId,
             labelId: currentSystemLabel.id,
             removedAt: new Date(),
@@ -172,7 +176,7 @@ export const useEmailStore = () => {
       // Add inbox label (only if not already applied)
       if (!currentSystemLabel || currentSystemLabel.id !== inboxLabel.id) {
         eventsToCommit.push(
-          events.threadLabelApplied({
+          threadEvents.threadLabelApplied({
             threadId,
             labelId: inboxLabel.id,
             appliedAt: new Date(),
@@ -182,7 +186,7 @@ export const useEmailStore = () => {
 
       // Atomic commit (only if there are events to commit)
       if (eventsToCommit.length > 0) {
-        store.commit(...eventsToCommit)
+        threadStore.commit(...eventsToCommit)
       }
     } catch (error) {
       console.error('Failed to move thread to inbox:', error)
@@ -190,7 +194,7 @@ export const useEmailStore = () => {
   }
 
   const applyUserLabelToThread = (threadId: string, labelId: string) => {
-    if (!store) return
+    if (!threadStore) return
 
     const targetLabel = labels.find((l) => l.id === labelId)
     if (!targetLabel) {
@@ -210,8 +214,8 @@ export const useEmailStore = () => {
     }
 
     try {
-      store.commit(
-        events.threadLabelApplied({
+      threadStore.commit(
+        threadEvents.threadLabelApplied({
           threadId,
           labelId: targetLabel.id,
           appliedAt: new Date(),
@@ -223,7 +227,7 @@ export const useEmailStore = () => {
   }
 
   const removeUserLabelFromThread = (threadId: string, labelId: string) => {
-    if (!store) return
+    if (!threadStore) return
 
     const targetLabel = labels.find((l) => l.id === labelId)
     if (!targetLabel) {
@@ -243,8 +247,8 @@ export const useEmailStore = () => {
     }
 
     try {
-      store.commit(
-        events.threadLabelRemoved({
+      threadStore.commit(
+        threadEvents.threadLabelRemoved({
           threadId,
           labelId: targetLabel.id,
           removedAt: new Date(),
@@ -253,23 +257,6 @@ export const useEmailStore = () => {
     } catch (error) {
       console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
     }
-  }
-
-  // UI Actions
-  const selectThread = (threadId: string | null) => {
-    setUiState({ selectedThreadId: threadId })
-  }
-
-  const selectLabel = (labelId: string) => {
-    setUiState({ selectedLabelId: labelId, selectedThreadId: null })
-  }
-
-  const updateComposeDraft = (content: string) => {
-    setUiState({ composeDraft: content })
-  }
-
-  const toggleComposing = () => {
-    setUiState({ isComposing: !uiState.isComposing })
   }
 
   // Helper functions
@@ -295,19 +282,8 @@ export const useEmailStore = () => {
     return systemLabels[0] || null // Return first system label found
   }
 
-  const getThreadsForLabel = (labelId: string) => {
-    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
-
-    return threads.filter((t) => threadIds.includes(t.id))
-  }
-
   const getCurrentThread = () => {
-    if (!uiState.selectedThreadId) return null
-    return threads.find((t) => t.id === uiState.selectedThreadId) || null
-  }
-
-  const getCurrentLabel = () => {
-    return labels.find((l) => l.id === uiState.selectedLabelId) || null
+    return threads.find((t) => t.id === threadId) || null
   }
 
   // Compute thread message count dynamically
@@ -316,13 +292,12 @@ export const useEmailStore = () => {
   }
 
   return {
-    // State
-    uiState,
+    // Store
+    threadStore,
 
     // Data
     threads,
     messages,
-    labels,
     threadLabels,
 
     // Actions
@@ -333,19 +308,14 @@ export const useEmailStore = () => {
     applyUserLabelToThread,
     removeUserLabelFromThread,
 
-    // UI Actions
-    selectThread,
-    selectLabel,
-    updateComposeDraft,
-    toggleComposing,
-
     // Helpers
     getMessagesForThread,
     getLabelsForThread,
     getUserLabelsForThread,
-    getThreadsForLabel,
     getCurrentThread,
-    getCurrentLabel,
     getThreadMessageCount,
   }
 }
+
+// Export queries for reuse
+export { threadsQuery }

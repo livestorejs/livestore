@@ -1,6 +1,5 @@
-import { useStore } from '@livestore/react'
-import React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import type React from 'react'
+import { useInbox } from '../hooks/useInbox.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
@@ -15,24 +14,21 @@ import { ThreadView } from './ThreadView.tsx'
  */
 
 export const EmailLayout: React.FC = () => {
-  const { store } = useStore()
-  const { getCurrentThread, getCurrentLabel, getThreadsForLabel } = useEmailStore()
+  const { getCurrentLabel, getCurrentThreadId, threadIndex, threadLabels } = useInbox()
+  const currentThreadId = getCurrentThreadId()
 
-  const currentThread = getCurrentThread()
   const currentLabel = getCurrentLabel()
-  const threadsInLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
 
-  // Initialize Durable Object connection
-  React.useEffect(() => {
-    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/client-do?storeId=${store.storeId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('Durable Object state initialized:', data)
-      })
-      .catch((error) => {
-        console.error('Failed to initialize Durable Object:', error)
-      })
-  }, [store.storeId])
+  // Get current thread details from Labels' threadIndex projection
+  const currentThread = currentThreadId ? threadIndex.find((t) => t.id === currentThreadId) || null : null
+
+  // Filter threads by current label using Labels aggregate projections
+  const getThreadsForLabel = (labelId: string) => {
+    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
+    return threadIndex.filter((t) => threadIds.includes(t.id))
+  }
+
+  const threadsInLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -61,8 +57,8 @@ export const EmailLayout: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden">
-          {currentThread ? (
-            <ThreadView />
+          {currentThread && currentThreadId ? (
+            <ThreadView threadId={currentThreadId} />
           ) : currentLabel ? (
             <ThreadList />
           ) : (

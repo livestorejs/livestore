@@ -1,5 +1,6 @@
 import type React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { useInbox } from '../hooks/useInbox.ts'
+import { useThread } from '../hooks/useThread.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
 /**
@@ -11,11 +12,14 @@ import { UserLabelPicker } from './UserLabelPicker.tsx'
  */
 
 export const ThreadActions: React.FC = () => {
-  const { getCurrentThread, trashThread, archiveThread } = useEmailStore()
+  const { getCurrentThreadId } = useInbox()
+  const currentThreadId = getCurrentThreadId()
+
+  if (!currentThreadId) throw new Error('No current thread selected')
+
+  const { getCurrentThread, trashThread, archiveThread } = useThread(currentThreadId)
 
   const currentThread = getCurrentThread()
-
-  if (!currentThread) throw new Error('No current thread selected')
 
   return (
     <div className="flex items-center space-x-2">

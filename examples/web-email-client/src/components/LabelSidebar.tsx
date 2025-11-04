@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEmailStore } from '../hooks/useEmailStore.ts'
+import { useInbox } from '../hooks/useInbox.ts'
 
 /**
  * LabelSidebar - System labels navigation
@@ -18,7 +18,7 @@ const labelIcons: Record<string, string> = {
 }
 
 export const LabelSidebar: React.FC = () => {
-  const { labels, uiState, selectLabel } = useEmailStore()
+  const { labels, uiState, selectLabel } = useInbox()
 
   return (
     <div className="p-4">
