@@ -10,6 +10,12 @@ import ReactProviderSnippet from '../../../_assets/code/reference/framework-inte
 import ReactUseClientDocumentSnippet from '../../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
 import ReactUseQuerySnippet from '../../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
 import ReactUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
+import MultiStoreOptionsSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/store.ts?snippet'
+import MultiStoreRegistrySnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/App.tsx?snippet'
+import MultiStoreUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueView.tsx?snippet'
+import MultiStorePreloadSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/PreloadedIssue.tsx?snippet'
+import MultiStoreInstanceSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueList.tsx?snippet'
+import { getBranchName } from "../../../../data/data.ts";
 
 While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
 
@@ -82,6 +88,121 @@ LiveStore has a first-class integration with Expo / React Native via `@livestore
 ### Next.js
 
 Given various Next.js limitations, LiveStore doesn't yet work with Next.js out of the box.
+
+## Multi-Store
+
+The multi-store API enables managing multiple stores within a single React application. This is useful for:
+
+- **Partial data synchronization** - Load only the data you need, when you need it
+- **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
+
+:::caution[Experimental API]
+The Multi-Store API is still early in its development.
+
+If you have feedback or questions about this API, please don't hesitate to comment on the [RFC](https://github.com/livestorejs/livestore/pull/585)
+:::
+
+### Core Concepts
+
+The multi-store API introduces four main primitives:
+
+- **StoreRegistry** - Manages and caches all store instances with automatic garbage collection
+- **useStore()** - Suspense-enabled hook for accessing individual store instances
+- **storeOptions()** - Type-safe way to define reusable store configurations
+
+Stores are cached by their `storeId` and automatically disposed after being inactive for a configurable duration.
+
+### Setting Up
+
+First, define your re-usable store configuration using `storeOptions()`:
+
+<MultiStoreOptionsSnippet />
+
+Then create a `StoreRegistry` and provide it to your app:
+
+<MultiStoreRegistrySnippet />
+
+### Using Stores
+
+Use the `useStore()` hook to load or get a store instance. It suspends until the store is loaded:
+
+<MultiStoreUseStoreSnippet />
+
+### Multiple Instances
+
+You can create multiple instances of the same store type by using different `storeId` values:
+
+<MultiStoreInstanceSnippet />
+
+Each store instance is completely isolated with its own data, event log, and synchronization state.
+
+### Preloading
+
+When you know a store will be needed soon, you can preload it in advance:
+
+<MultiStorePreloadSnippet />
+
+This warms up the cache so the store is ready when the user navigates to it.
+
+### StoreId Guidelines
+
+When creating `storeId` values:
+
+- **Use namespaces** - Prefix with the entity type (e.g., `workspace:abc-123`, `issue:456`) to avoid collisions between different store types and improve debugging
+- **Globally unique** - Prefer globally unique IDs (e.g., nanoid) to prevent collisions
+- **Keep them stable** - The same entity should always use the same `storeId` across renders
+- **Sanitize user input** - If incorporating user data, be sure to validate/sanitize to prevent injection attacks
+- **Document your conventions** - Document your conventions and special IDs like `current-user` as they're part of your API contract
+
+### API Reference
+
+#### `storeOptions(options)`
+
+Defines reusable store configuration with type safety. Returns options that can be passed to `useStore()` or `registry.preload()`.
+
+Options:
+- `storeId` - Unique identifier for this store instance (required)
+- `schema` - The LiveStore schema (required)
+- `adapter` - The platform adapter (required)
+- `gcTime` - Time in milliseconds to keep inactive stores in memory (default: 60_000 in browser, infinity in non-browser)
+- `boot` - Function called when the store is first loaded
+- `batchUpdates` - Function for batching React updates
+- And other `CreateStoreOptions`
+
+#### `new StoreRegistry(config?)`
+
+Creates a registry that manages store instances.
+
+Config:
+- `defaultOptions` - Default options applied to all stores (can be overridden per-store)
+
+#### `StoreRegistryProvider`
+
+React context provider that supplies the registry to components.
+
+Props:
+- `storeRegistry` - The registry instance (required)
+- `children` - React nodes (required)
+
+#### `useStore(options)`
+
+Hook that returns a store instance, suspending until it's loaded.
+
+- Throws a Promise during loading (for React Suspense)
+- Throws an Error if loading fails (for Error Boundaries)
+- Returns the loaded store when ready
+
+#### `useStoreRegistry()`
+
+Returns the current `StoreRegistry` from context. Useful for advanced operations like preloading.
+
+#### `registry.preload(options)`
+
+Starts loading a store without suspending. Returns a Promise that resolves when loading completes (or rejects on error). This is a fire-and-forget operation.
+
+### Complete Example
+
+See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples/web-multi-store`}>Multi-Store example</a> for a complete working application demonstrating various multi-store patterns.
 
 ## Technical notes
 
