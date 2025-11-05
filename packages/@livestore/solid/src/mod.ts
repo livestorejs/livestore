@@ -1,2 +1,7 @@
-export { query } from './query.ts'
-export { getStore } from './store.ts'
+// old funtions
+export { getStore } from "./store.ts";
+export { query } from "./query.ts";
+
+// new functions
+export { useStore } from "./useStore.ts";
+export { useQuery } from "./useQuery.ts";
