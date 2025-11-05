@@ -118,16 +118,6 @@ export type StoreCommitOptions = {
 
 export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   /**
-   * Starting position in the event stream.
-   * @default EventSequenceNumber.ROOT (all events from the beginning)
-   */
-  cursor?: EventSequenceNumber.EventSequenceNumber
-  /**
-   * Only include events of the given names
-   * @default undefined (include all)
-   */
-  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
-  /**
    * Only include events after this logical timestamp (exclusive)
    * @default undefined (no lower bound)
    */
@@ -137,6 +127,11 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    * @default undefined (no upper bound)
    */
   until?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events of the given names
+   * @default undefined (include all)
+   */
+  filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
   /**
    * Only include events from specific client IDs
    * @default undefined (include all clients)

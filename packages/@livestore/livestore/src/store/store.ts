@@ -782,7 +782,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
     // Apply defaults
-    const cursor = options?.cursor ?? EventSequenceNumber.ROOT
+    const since = options?.since ?? EventSequenceNumber.ROOT
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
     const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
@@ -791,7 +791,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return leaderThreadProxy.events
       .stream({
-        since: cursor,
+        since,
         ...omitUndefineds({
           until: options?.until,
           filter: options?.filter as ReadonlyArray<string> | undefined,
