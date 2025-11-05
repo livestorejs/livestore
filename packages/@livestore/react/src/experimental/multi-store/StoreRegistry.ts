@@ -8,7 +8,15 @@ type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
 
-const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+/**
+ * Default garbage collection time for inactive stores.
+ *
+ * - Browser: 60 seconds (60,000ms)
+ * - SSR: Infinity (disables GC to avoid disposing stores before server render completes)
+ *
+ * @internal Exported primarily for testing purposes.
+ */
+export const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 /**
  * @typeParam TSchema - The schema for this entry's store.
