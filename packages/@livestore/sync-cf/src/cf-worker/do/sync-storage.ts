@@ -218,16 +218,18 @@ export const makeStorage = (
           ? `SELECT COUNT(*) as total FROM "${dbName}"`
           : `SELECT COUNT(*) as total FROM "${dbName}" WHERE seqNum > ?`
 
-      let total = 0
-      try {
-        const cursorIter =
-          cursor === undefined ? ctx.storage.sql.exec(selectCountSql) : ctx.storage.sql.exec(selectCountSql, cursor)
-        for (const row of cursorIter) {
-          total = Number((row as any).total ?? 0)
-        }
-      } catch (error) {
-        return yield* Effect.fail(new UnexpectedError({ cause: error, payload: { dbName, stage: 'count' } }))
-      }
+      const total = yield* Effect.try({
+        try: () => {
+          const cursorIter =
+            cursor === undefined ? ctx.storage.sql.exec(selectCountSql) : ctx.storage.sql.exec(selectCountSql, cursor)
+          let computed = 0
+          for (const row of cursorIter) {
+            computed = Number((row as any).total ?? 0)
+          }
+          return computed
+        },
+        catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'count' } }),
+      })
 
       type State = { cursor: number | undefined }
       type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }

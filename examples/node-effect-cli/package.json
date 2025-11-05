@@ -4,14 +4,14 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.4.0-dev.14",
-    "@livestore/common": "0.4.0-dev.14",
-    "@livestore/livestore": "0.4.0-dev.14",
-    "@livestore/sync-cf": "0.4.0-dev.14",
-    "@livestore/utils": "0.4.0-dev.14"
+    "@livestore/adapter-node": "0.4.0-dev.16",
+    "@livestore/common": "0.4.0-dev.16",
+    "@livestore/livestore": "0.4.0-dev.16",
+    "@livestore/sync-cf": "0.4.0-dev.16",
+    "@livestore/utils": "0.4.0-dev.16"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "0.4.0-dev.14",
+    "@livestore/utils-dev": "0.4.0-dev.16",
     "typescript": "^5.9.2"
   },
   "engines": {

@@ -7,6 +7,7 @@ import {
   type IntentionalShutdownCause,
   type InvalidPullError,
   type IsOfflineError,
+  LogConfig,
   type MaterializeError,
   type MigrationsReport,
   provideOtel,
@@ -23,8 +24,6 @@ import {
   Fiber,
   identity,
   Layer,
-  Logger,
-  LogLevel,
   OtelTracer,
   Queue,
   Runtime,
@@ -113,7 +112,7 @@ export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
-> {
+> extends LogConfig.WithLoggerOptions {
   schema: TSchema
   adapter: Adapter
   storeId: string
@@ -202,8 +201,7 @@ export const createStorePromise = async <
     provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
-    Effect.provide(Logger.prettyWithThread('window')),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    LogConfig.withLoggerConfig(options, { threadName: 'window' }),
     Effect.runPromise,
   )
 

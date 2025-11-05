@@ -26,7 +26,9 @@ import { checkDevtoolsState } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
-const makeTabPair = (url: string, tabName: string) =>
+type AdapterKind = 'persisted' | 'inmemory'
+
+const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -60,7 +62,8 @@ const makeTabPair = (url: string, tabName: string) =>
 
     usedPages.add(page)
 
-    yield* Effect.tryPromise(() => page.goto(`${url}?sessionId=${tabName}`))
+    const sep = url.includes('?') ? '&' : '?'
+    yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
 
     const devtools =
       browserContext.pages().filter(isUnused).find(isDevtools) ??
@@ -183,235 +186,241 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
     })
   }).pipe(Layer.unwrapEffect)
 
-test(
-  'single tab',
-  runTest(
-    Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(
-        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
-        'tab-1',
-      )
-
-      yield* Effect.tryPromise(async () => {
-        const el = tab1.page.locator('.new-todo')
-        await el.waitFor({ timeout: 10_000 })
-
-        await el.fill('Buy milk')
-        await el.press('Enter')
-
-        await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
-
-        await checkDevtoolsState({
-          devtools: tab1.liveStoreDevtools,
-          label: 'devtools-tab-1',
-          expect: {
-            leader: true,
-            alreadyLoaded: false,
-            tables: ['todos (1)'],
-          },
-        })
-      }).pipe(
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tab1.pageConsoleFiber,
-            tab1.devtoolsConsoleFiber,
-            // TODO bring back background
-            // backgroundPageConsoleFiber!,
-          ]),
-        ),
-      )
-    }),
-    // .pipe(Effect.retry({ times: 2 })),
-  ),
-)
-
-test.skip(
-  'single tab (two stores)',
-  runTest(
-    Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(
-        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
-        'tab-1',
-      )
-
-      yield* Effect.tryPromise(async () => {
-        await tab1.page.getByText('Notes').waitFor()
-        await tab1.page.getByText('Todos').waitFor()
-
-        // await checkDevtoolsState({
-        //   devtools: tab1.liveStoreDevtools,
-        //   expect: { leader: true, alreadyLoaded: false, tables: ['uiState (1)', 'todos (1)'] },
-        // })
-      }).pipe(
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tab1.pageConsoleFiber,
-            tab1.devtoolsConsoleFiber,
-            // TODO bring back background
-            // backgroundPageConsoleFiber!,
-          ]),
-        ),
-      )
-    }),
-    // .pipe(Effect.retry({ times: 2 })),
-  ),
-)
-
-// Flaky error case:
-// NotReadableError: The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.
-test(
-  'two tabs',
-  runTest(
-    Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(
-        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
-        'tab-1',
-      )
-      const tab2 = yield* makeTabPair(
-        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
-        'tab-2',
-      )
-
-      yield* Effect.tryPromise(async () => {
-        await tab1.page.focus('body')
-
-        const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
-        await el.waitFor({ timeout: 10_000 })
-
-        await el.fill('Buy milk')
-        await el.press('Enter')
-
-        await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
-        await tab2.page.locator('.todo-list li label:text("Buy milk")').describe('tab-2:Buy milk').waitFor()
-
-        const tables = ['uiState (2)', 'todos (1)']
-
-        await checkDevtoolsState({
-          devtools: tab1.liveStoreDevtools,
-          label: 'devtools-tab-1',
-          expect: { leader: true, alreadyLoaded: false, tables },
-        })
-        await checkDevtoolsState({
-          devtools: tab2.liveStoreDevtools,
-          label: 'devtools-tab-2',
-          expect: { leader: false, alreadyLoaded: false, tables },
-        })
-
-        await test.step('tab-1:reload', async () => {
-          await tab1.page.reload()
-        })
-
-        await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
-
-        await test.step('devtools-tab-2:reload', async () => {
-          await tab2.devtools.reload()
-        })
-
-        tab2.liveStoreDevtools = await getLiveStoreDevtoolsFrame(tab2.devtools, 'devtools-tab-2').pipe(
-          Effect.runPromise,
+;(['persisted', 'inmemory'] as const).forEach((adapter) => {
+  test(
+    `single tab (adapter=${adapter})`,
+    runTest(
+      Effect.gen(function* () {
+        const tab1 = yield* makeTabPair(
+          `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+          'tab-1',
+          adapter,
         )
 
-        await checkDevtoolsState({
-          devtools: tab1.liveStoreDevtools,
-          label: 'devtools-tab-1',
-          expect: { leader: false, alreadyLoaded: false, tables },
-        })
-        await checkDevtoolsState({
-          devtools: tab2.liveStoreDevtools,
-          label: 'devtools-tab-2',
-          expect: { leader: true, alreadyLoaded: false, tables },
-        })
-      }).pipe(
-        process.env.CI
-          ? identity
-          : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tab1.pageConsoleFiber,
-            tab1.devtoolsConsoleFiber,
-            tab2.pageConsoleFiber,
-            tab2.devtoolsConsoleFiber,
-            // TODO bring back background
-            // backgroundPageConsoleFiber!,
-          ]),
-        ),
-      )
-    }),
-    // .pipe(Effect.retry({ times: 2 })),
-  ),
-)
+        yield* Effect.tryPromise(async () => {
+          const el = tab1.page.locator('.new-todo')
+          await el.waitFor({ timeout: 10_000 })
 
-test(
-  'sessions list is origin isolated',
-  runTest(
-    Effect.gen(function* () {
-      const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
-      if (!port) {
-        return yield* Effect.fail(new Error('LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set'))
-      }
+          await el.fill('Buy milk')
+          await el.press('Enter')
 
-      // Open two tabs on different origins
-      const tabLocalhost = yield* makeTabPair(`http://localhost:${port}/devtools/todomvc`, 'tab-localhost')
-      const tabLoopback = yield* makeTabPair(`http://127.0.0.1:${port}/devtools/todomvc`, 'tab-127')
+          await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-      yield* Effect.tryPromise(async () => {
-        // Ensure both apps are ready and activate a session
-        const input1 = tabLocalhost.page.locator('.new-todo').describe('tab-localhost:new-todo')
-        await input1.waitFor({ timeout: 20_000 })
-        const input2 = tabLoopback.page.locator('.new-todo').describe('tab-127:new-todo')
-        await input2.waitFor({ timeout: 20_000 })
+          await checkDevtoolsState({
+            devtools: tab1.liveStoreDevtools,
+            label: 'devtools-tab-1',
+            expect: {
+              leader: true,
+              alreadyLoaded: false,
+              tables: ['todos (1)'],
+            },
+          })
+        }).pipe(
+          Effect.raceFirst(
+            Fiber.joinAll([
+              tab1.pageConsoleFiber,
+              tab1.devtoolsConsoleFiber,
+              // TODO bring back background
+              // backgroundPageConsoleFiber!,
+            ]),
+          ),
+        )
+      }),
+      // .pipe(Effect.retry({ times: 2 })),
+    ),
+  )
 
-        await input1.fill('Buy milk')
-        await input1.press('Enter')
-        await tabLocalhost.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+  test.skip(
+    `single tab (two stores) (adapter=${adapter})`,
+    runTest(
+      Effect.gen(function* () {
+        const tab1 = yield* makeTabPair(
+          `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+          'tab-1',
+          adapter,
+        )
 
-        // Derive labels used in the session links
-        const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string]>(() => [
-          (window as any).__debugLiveStore.default.clientId,
-          (window as any).__debugLiveStore.default.clientSession.sessionId,
-        ])
-        const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string]>(() => [
-          (window as any).__debugLiveStore.default.clientId,
-          (window as any).__debugLiveStore.default.clientSession.sessionId,
-        ])
+        yield* Effect.tryPromise(async () => {
+          await tab1.page.getByText('Notes').waitFor()
+          await tab1.page.getByText('Todos').waitFor()
 
-        const localLabel = `${localClientId}:${localSessionId}`
-        const loopLabel = `${loopClientId}:${loopSessionId}`
+          // await checkDevtoolsState({
+          //   devtools: tab1.liveStoreDevtools,
+          //   expect: { leader: true, alreadyLoaded: false, tables: ['uiState (1)', 'todos (1)'] },
+          // })
+        }).pipe(
+          Effect.raceFirst(
+            Fiber.joinAll([
+              tab1.pageConsoleFiber,
+              tab1.devtoolsConsoleFiber,
+              // TODO bring back background
+              // backgroundPageConsoleFiber!,
+            ]),
+          ),
+        )
+      }),
+      // .pipe(Effect.retry({ times: 2 })),
+    ),
+  )
 
-        // Navigate DevTools frames to the sessions index route
-        const toIndexUrl = (u: string) => {
-          const cur = new URL(u)
-          const base = new URL('/_livestore/browser-extension/', cur.origin)
-          const tabId = cur.searchParams.get('tabId')
-          if (tabId) base.searchParams.set('tabId', tabId)
-          return base.toString()
+  // Flaky error case:
+  // NotReadableError: The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.
+  test(
+    `two tabs (adapter=${adapter})`,
+    runTest(
+      Effect.gen(function* () {
+        const tab1 = yield* makeTabPair(
+          `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+          'tab-1',
+          adapter,
+        )
+        const tab2 = yield* makeTabPair(
+          `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+          'tab-2',
+          adapter,
+        )
+
+        yield* Effect.tryPromise(async () => {
+          await tab1.page.focus('body')
+
+          const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
+          await el.waitFor({ timeout: 10_000 })
+
+          await el.fill('Buy milk')
+          await el.press('Enter')
+
+          await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+          await tab2.page.locator('.todo-list li label:text("Buy milk")').describe('tab-2:Buy milk').waitFor()
+
+          const tables = ['uiState (2)', 'todos (1)']
+
+          await checkDevtoolsState({
+            devtools: tab1.liveStoreDevtools,
+            label: 'devtools-tab-1',
+            expect: { leader: true, alreadyLoaded: false, tables },
+          })
+          await checkDevtoolsState({
+            devtools: tab2.liveStoreDevtools,
+            label: 'devtools-tab-2',
+            expect: { leader: false, alreadyLoaded: false, tables },
+          })
+
+          await test.step('tab-1:reload', async () => {
+            await tab1.page.reload()
+          })
+
+          await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+
+          await test.step('devtools-tab-2:reload', async () => {
+            await tab2.devtools.reload()
+          })
+
+          tab2.liveStoreDevtools = await getLiveStoreDevtoolsFrame(tab2.devtools, 'devtools-tab-2').pipe(
+            Effect.runPromise,
+          )
+
+          await checkDevtoolsState({
+            devtools: tab1.liveStoreDevtools,
+            label: 'devtools-tab-1',
+            expect: { leader: false, alreadyLoaded: false, tables },
+          })
+          await checkDevtoolsState({
+            devtools: tab2.liveStoreDevtools,
+            label: 'devtools-tab-2',
+            expect: { leader: true, alreadyLoaded: false, tables },
+          })
+        }).pipe(
+          process.env.CI
+            ? identity
+            : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
+          Effect.raceFirst(
+            Fiber.joinAll([
+              tab1.pageConsoleFiber,
+              tab1.devtoolsConsoleFiber,
+              tab2.pageConsoleFiber,
+              tab2.devtoolsConsoleFiber,
+              // TODO bring back background
+              // backgroundPageConsoleFiber!,
+            ]),
+          ),
+        )
+      }),
+      // .pipe(Effect.retry({ times: 2 })),
+    ),
+  )
+
+  test(
+    `sessions list is origin isolated (adapter=${adapter})`,
+    runTest(
+      Effect.gen(function* () {
+        const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
+        if (!port) {
+          return yield* Effect.fail(new Error('LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set'))
         }
-        await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))
-        await tabLoopback.liveStoreDevtools.goto(toIndexUrl(tabLoopback.liveStoreDevtools.url()))
 
-        // Isolation assertions: specific items must appear / not appear
-        await expect(tabLocalhost.liveStoreDevtools.getByText(localLabel, { exact: false }).first()).toBeVisible({
-          timeout: 60_000,
-        })
-        await expect(tabLocalhost.liveStoreDevtools.getByText(loopLabel, { exact: false })).toHaveCount(0)
+        // Open two tabs on different origins
+        const tabLocalhost = yield* makeTabPair(`http://localhost:${port}/devtools/todomvc`, 'tab-localhost', adapter)
+        const tabLoopback = yield* makeTabPair(`http://127.0.0.1:${port}/devtools/todomvc`, 'tab-127', adapter)
 
-        await expect(tabLoopback.liveStoreDevtools.getByText(loopLabel, { exact: false }).first()).toBeVisible({
-          timeout: 60_000,
-        })
-        await expect(tabLoopback.liveStoreDevtools.getByText(localLabel, { exact: false })).toHaveCount(0)
-      }).pipe(
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tabLocalhost.pageConsoleFiber,
-            tabLocalhost.devtoolsConsoleFiber,
-            tabLoopback.pageConsoleFiber,
-            tabLoopback.devtoolsConsoleFiber,
-          ]).pipe(Effect.ignoreLogged),
-        ),
-      )
-    }),
-  ),
-)
+        yield* Effect.tryPromise(async () => {
+          // Ensure both apps are ready and activate a session
+          const input1 = tabLocalhost.page.locator('.new-todo').describe('tab-localhost:new-todo')
+          await input1.waitFor({ timeout: 20_000 })
+          const input2 = tabLoopback.page.locator('.new-todo').describe('tab-127:new-todo')
+          await input2.waitFor({ timeout: 20_000 })
+
+          await input1.fill('Buy milk')
+          await input1.press('Enter')
+          await tabLocalhost.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+
+          // Derive labels used in the session links
+          const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string]>(() => [
+            (window as any).__debugLiveStore.default.clientId,
+            (window as any).__debugLiveStore.default.clientSession.sessionId,
+          ])
+          const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string]>(() => [
+            (window as any).__debugLiveStore.default.clientId,
+            (window as any).__debugLiveStore.default.clientSession.sessionId,
+          ])
+
+          const localLabel = `${localClientId}:${localSessionId}`
+          const loopLabel = `${loopClientId}:${loopSessionId}`
+
+          // Navigate DevTools frames to the sessions index route
+          const toIndexUrl = (u: string) => {
+            const cur = new URL(u)
+            const base = new URL('/_livestore/browser-extension/', cur.origin)
+            const tabId = cur.searchParams.get('tabId')
+            if (tabId) base.searchParams.set('tabId', tabId)
+            return base.toString()
+          }
+          await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))
+          await tabLoopback.liveStoreDevtools.goto(toIndexUrl(tabLoopback.liveStoreDevtools.url()))
+
+          // Isolation assertions: specific items must appear / not appear
+          await expect(tabLocalhost.liveStoreDevtools.getByText(localLabel, { exact: false }).first()).toBeVisible({
+            timeout: 60_000,
+          })
+          await expect(tabLocalhost.liveStoreDevtools.getByText(loopLabel, { exact: false })).toHaveCount(0)
+
+          await expect(tabLoopback.liveStoreDevtools.getByText(loopLabel, { exact: false }).first()).toBeVisible({
+            timeout: 60_000,
+          })
+          await expect(tabLoopback.liveStoreDevtools.getByText(localLabel, { exact: false })).toHaveCount(0)
+        }).pipe(
+          Effect.raceFirst(
+            Fiber.joinAll([
+              tabLocalhost.pageConsoleFiber,
+              tabLocalhost.devtoolsConsoleFiber,
+              tabLoopback.pageConsoleFiber,
+              tabLoopback.devtoolsConsoleFiber,
+            ]).pipe(Effect.ignoreLogged),
+          ),
+        )
+      }),
+    ),
+  )
+})
 
 test(
   'no livestore',
@@ -420,6 +429,7 @@ test(
       const tab1 = yield* makeTabPair(
         `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/no-livestore`,
         'tab-1',
+        'inmemory',
       )
 
       yield* Effect.tryPromise(async () => {

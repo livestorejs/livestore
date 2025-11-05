@@ -1,6 +1,6 @@
 {
   "name": "@livestore/graphql",
-  "version": "0.4.0-dev.14",
+  "version": "0.4.0-dev.16",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

@@ -7,6 +7,7 @@ import { Effect } from 'effect'
 declare const store: Store
 
 const effectShutdown = Effect.gen(function* () {
+  yield* Effect.log('Shutting down store')
   yield* store.shutdown()
 })
 

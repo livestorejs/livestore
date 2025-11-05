@@ -289,6 +289,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Comprehensive dependency update script (#516)
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
+- **Tldraw renderer:** Lazy-load tldraw-cli module to ensure Puppeteer uses Playwright's Chromium instead of downloading its own, reducing build times and preventing duplicate browser downloads in Nix/CI environments (#806)
 
 #### wa-sqlite Integration
 

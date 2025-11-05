@@ -1,10 +1,12 @@
 import fs from 'node:fs'
-
+import fsSync from 'node:fs'
+import path from 'node:path'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { buildDiagrams } from '@local/astro-tldraw'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
@@ -16,6 +18,14 @@ const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
+
+const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () =>
+  Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true })),
+).pipe(
+  Cli.Command.withSubcommands([
+    Cli.Command.make('build', {}, () => Effect.promise(() => buildDiagrams({ projectRoot: docsPath, verbose: true }))),
+  ]),
+)
 
 type NetlifyDeploySummary = {
   site_id: string
@@ -89,6 +99,40 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify', { cwd: docsPath })
 
+    // Derive Puppeteer's executable from Playwright's Nix-provided bundle so
+    // puppeteer doesn't try to download a browser. Set before Astro spins up
+    // the Vite SSR runner so transitive imports (e.g. tldraw-cli) see it.
+    const derivePuppeteerExecutable = (): string | undefined => {
+      const existing = process.env.PUPPETEER_EXECUTABLE_PATH
+      if (existing && existing !== '') return existing
+      const pwBase = process.env.PLAYWRIGHT_BROWSERS_PATH
+      if (pwBase && pwBase !== '') {
+        try {
+          const entries = fsSync
+            .readdirSync(pwBase, { withFileTypes: true })
+            .filter((d) => d.isDirectory() && d.name.startsWith('chromium-'))
+            .map((d) => d.name)
+            .sort()
+            .reverse()
+          for (const dir of entries) {
+            const candidate = path.join(
+              pwBase,
+              dir,
+              process.platform === 'linux'
+                ? path.join('chrome-linux', 'chrome')
+                : process.platform === 'darwin'
+                  ? path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
+                  : path.join('chrome-win', 'chrome.exe'),
+            )
+            if (fsSync.existsSync(candidate)) return candidate
+          }
+        } catch {}
+      }
+      return undefined
+    }
+
+    const puppeteerExecutable = derivePuppeteerExecutable()
+
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
@@ -98,6 +142,8 @@ const docsBuildCommand = Cli.Command.make(
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        PUPPETEER_SKIP_DOWNLOAD: '1',
+        PUPPETEER_EXECUTABLE_PATH: puppeteerExecutable,
       },
     })
   }),
@@ -111,15 +157,16 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
       },
       ({ open }) =>
-        Effect.gen(function* () {
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+        Effect.asVoid(
+          cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             cwd: docsPath,
             logDir: `${docsPath}/logs`,
-          })
-        }),
+          }),
+        ),
     ),
     docsBuildCommand,
     docsSnippetsCommand,
+    docsDiagramsCommand,
     Cli.Command.make(
       'preview',
       {
@@ -183,12 +230,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
         alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
         site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        purgeCdn: Cli.Options.boolean('purge-cdn')
-          .pipe(Cli.Options.withDefault(false))
-          .pipe(Cli.Options.withDescription('Purge the Netlify CDN cache after deploying')),
+        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        ),
+        build: Cli.Options.boolean('build').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.optional,
+          Cli.Options.withDescription('Build the docs before deploying (split flow)'),
+        ),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -263,19 +316,29 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
 
+          // Split mode: build first only when requested via --build
+          const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          if (shouldBuild) {
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
+          }
+
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
             cwd: docsPath,
             message: buildMessage(contextLabelFor(prod, alias)),
-            dir: `${docsPath}/dist`,
-            // Pass through build-time flags so the Netlify CLI build includes
-            // API docs and has sufficient memory headroom.
-            env: {
-              STARLIGHT_INCLUDE_API_DOCS: '1',
-              NODE_OPTIONS: '--max_old_space_size=4096',
-            },
           })
+
+          // Verify root returns Markdown on Accept negotiation
+          const rootContentType = yield* HttpClient.execute(
+            HttpClientRequest.get(`${finalDeploy.deploy_url}/`).pipe(
+              HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
+            ),
+          ).pipe(Effect.map((res) => res.headers['content-type']))
+
+          if (!rootContentType?.toLowerCase().includes('text/markdown')) {
+            return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
+          }
 
           if (purgeCdn) {
             const purgeSiteId = finalDeploy.site_id

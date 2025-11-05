@@ -10,6 +10,9 @@ dist/
 node_modules/
 .cache/snippets/
 
+# tldraw diagram cache
+node_modules/.astro-tldraw/
+
 # logs
 npm-debug.log*
 yarn-debug.log*

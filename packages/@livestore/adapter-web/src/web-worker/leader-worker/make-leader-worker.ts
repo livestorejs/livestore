@@ -1,5 +1,5 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { Devtools, LogConfig, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -21,8 +21,6 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  Logger,
-  LogLevel,
   OtelTracer,
   Scheduler,
   type Schema,
@@ -44,7 +42,7 @@ export type WorkerOptions = {
   otelOptions?: {
     tracer?: otel.Tracer
   }
-}
+} & LogConfig.WithLoggerOptions
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
@@ -67,7 +65,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       )
     : undefined
 
-  const layer = Layer.mergeAll(Logger.prettyWithThread(self.name), FetchHttpClient.layer, TracingLive ?? Layer.empty)
+  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
 
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
@@ -75,7 +73,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(layer),
+    Effect.provide(runtimeLayer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
@@ -83,7 +81,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    LogConfig.withLoggerConfig({ logger: options.logger, logLevel: options.logLevel }, { threadName: self.name }),
   )
 }
 

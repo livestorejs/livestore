@@ -1,5 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it } from 'vitest'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -273,7 +273,7 @@ describe('getColumnDefForSchema', () => {
         INACTIVE: 'inactive',
       })
 
-      const StatusUnion = Schema.Union(Schema.Literal('pending'), Schema.Literal('active'), Schema.Literal('inactive'))
+      const StatusUnion = Schema.Literal('pending', 'active', 'inactive')
 
       expect(State.SQLite.getColumnDefForSchema(StatusEnum).columnType).toBe('text')
       expect(State.SQLite.getColumnDefForSchema(StatusUnion).columnType).toBe('text')
@@ -552,7 +552,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should work with column type annotation', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Number.pipe(withColumnType('integer')).pipe(withPrimaryKey),
+          id: Schema.Number.pipe(withColumnType('integer'), withPrimaryKey),
           name: Schema.String,
         })
 
@@ -584,7 +584,7 @@ describe('getColumnDefForSchema', () => {
     describe('withAutoIncrement', () => {
       it('should add autoIncrement annotation to schema', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           name: Schema.String,
         })
         const userTable = State.SQLite.table({
@@ -636,6 +636,29 @@ describe('getColumnDefForSchema', () => {
           table2.sqliteDef.columns.count.default._tag === 'Some' && table2.sqliteDef.columns.count.default.value,
         ).toBe(0)
       })
+
+      it('should support thunk defaults without eager evaluation', () => {
+        let counter = 0
+        const UserSchema = Schema.Struct({
+          id: Schema.String.pipe(
+            withDefault(() => {
+              counter += 1
+              return `user-${counter}`
+            }),
+          ),
+        })
+
+        const table = State.SQLite.table({ name: 'users_with_thunk', schema: UserSchema })
+
+        expect(counter).toBe(0)
+        expect(table.sqliteDef.columns.id.default._tag).toBe('Some')
+        if (table.sqliteDef.columns.id.default._tag === 'Some') {
+          const defaultThunk = table.sqliteDef.columns.id.default.value
+          assert(typeof defaultThunk === 'function')
+          expect(defaultThunk()).toBe('user-1')
+          expect(defaultThunk()).toBe('user-2')
+        }
+      })
     })
 
     describe('withUnique', () => {
@@ -681,7 +704,7 @@ describe('getColumnDefForSchema', () => {
 
     describe('combined annotations', () => {
       it('should work with multiple annotations', () => {
-        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob')).pipe(withPrimaryKey)
+        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob'), withPrimaryKey)
 
         const UserSchema = Schema.Struct({
           id: schema,
@@ -699,7 +722,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should combine all annotations', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           email: Schema.String.pipe(withUnique),
           status: Schema.String.pipe(withDefault('active')),
           metadata: Schema.Unknown.pipe(withColumnType('text')),

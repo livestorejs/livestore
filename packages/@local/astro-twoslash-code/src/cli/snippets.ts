@@ -1211,13 +1211,14 @@ const loadPreviousManifest = (
     }
 
     const manifestSource = manifestSourceResult.right
-    let parsed: TSnippetManifest
-    try {
-      parsed = JSON.parse(manifestSource) as TSnippetManifest
-    } catch (error) {
-      yield* Effect.logWarning(`Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(error)}`)
+    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.either)
+    if (parsedEither._tag === 'Left') {
+      yield* Effect.logWarning(
+        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedEither.left)}`,
+      )
       return null
     }
+    const parsed = parsedEither.right
 
     if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
       return null
@@ -1507,10 +1508,10 @@ const createWatchStream = (
   root: string,
   cacheRoot: string,
 ): Stream.Stream<WatchEventSummary, unknown, never> =>
-  fs
-    .watch(root)
-    .pipe(Stream.map((event) => summarizeWatchEvent(scope, root, cacheRoot, event)))
-    .pipe(Stream.filter((summary): summary is WatchEventSummary => summary !== null))
+  fs.watch(root).pipe(
+    Stream.map((event) => summarizeWatchEvent(scope, root, cacheRoot, event)),
+    Stream.filter((summary): summary is WatchEventSummary => summary !== null),
+  )
 
 const watchSnippetsInternal = (
   resolved: ResolvedBuildOptions,

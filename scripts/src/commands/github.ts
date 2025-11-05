@@ -191,21 +191,17 @@ const getCurrentRequiredContexts = (branch: string) =>
 
 const getStrictFlag = (branch: string) =>
   Effect.gen(function* () {
-    try {
-      const out = yield* cmdText(
-        [
-          'gh',
-          'api',
-          `repos/${OWNER}/${REPO}/branches/${branch}/protection`,
-          '--jq',
-          '.required_status_checks.strict // true',
-        ],
-        { stderr: 'pipe' },
-      )
-      return out.trim() === 'true'
-    } catch {
-      return true
-    }
+    const out = yield* cmdText(
+      [
+        'gh',
+        'api',
+        `repos/${OWNER}/${REPO}/branches/${branch}/protection`,
+        '--jq',
+        '.required_status_checks.strict // true',
+      ],
+      { stderr: 'pipe' },
+    )
+    return out.trim() === 'true'
   })
 
 const patchRequiredChecks = ({ branch, contexts, strict }: { branch: string; contexts: string[]; strict: boolean }) =>

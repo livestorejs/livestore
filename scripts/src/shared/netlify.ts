@@ -31,12 +31,6 @@ const NetlifyCliConfigSchema = Schema.Struct({
   users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
 })
 
-// Hardcoded site ids for reliability (slug → id)
-const NETLIFY_SITE_IDS: Readonly<Record<string, string>> = {
-  'livestore-docs-dev': 'e02ba783-ea85-4be1-8b7f-c1b2b4d0d307',
-  'livestore-docs': 'abeae053-d336-480a-a0fe-f0aaaacaa74e',
-}
-
 const NetlifyPurgeRequestSchema = Schema.Struct({
   site_id: Schema.optional(Schema.String),
   site_slug: Schema.optional(Schema.String),
@@ -59,31 +53,26 @@ const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 
 /**
- * Deploy docs using the Netlify CLI by uploading the prebuilt directory.
+ * Deploy docs using the Netlify CLI.
  *
- * Assumptions:
- * - Astro already built the site (mono docs build) into ./docs/dist
- * - We want Edge Functions registered/activated without triggering another app build
+ * Default mode: split build/deploy
+ * - Build happens beforehand via Astro (mono docs build)
+ * - Deploy uses config‑driven publish (reads docs/netlify.toml) with --no-build
+ * - This ensures Edge Functions are attached without rebuilding
  */
 export const deployToNetlify = ({
   site,
   target,
   cwd,
   message,
-  dir,
   debug,
-  env,
 }: {
   site: string
   target: Target
   cwd: string
   message?: string
-  /** Absolute or docs-relative path to the built output directory. */
-  dir: string
   /** When true, passes --debug to Netlify CLI and increases logging. */
   debug?: boolean
-  /** Additional environment to pass to the Netlify CLI (e.g. STARLIGHT_*). */
-  env?: Record<string, string | undefined>
 }) =>
   Effect.gen(function* () {
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
@@ -95,13 +84,34 @@ export const deployToNetlify = ({
     // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
     const debugEnabled =
       debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
-    // Resolve site id to avoid team ambiguity when multiple teams exist.
-    // Prefer explicit NETLIFY_SITE_ID if provided, otherwise discover via sites:list.
-    const resolvedSiteArg = (process.env.NETLIFY_SITE_ID ??
-      env?.NETLIFY_SITE_ID ??
-      NETLIFY_SITE_IDS[site] ??
-      site) as string
+
+    const resolvedSiteArg = yield* Effect.gen(function* () {
+      const explicit = process.env.NETLIFY_SITE_ID
+      if (explicit && explicit !== '') return explicit
+      // Resolve site name → id for more reliable config resolution
+      const raw = yield* cmdText(['pnpm', '--package=netlify-cli', 'dlx', 'netlify', 'sites:list', '--json'], {
+        cwd,
+        stderr: 'pipe',
+      })
+
+      const SiteListSchema = Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String }))
+
+      const sites = yield* Schema.decode(Schema.parseJson(SiteListSchema))(raw).pipe(
+        Effect.mapError(
+          (cause) =>
+            new NetlifyError({
+              message: 'Failed to parse output from netlify sites:list',
+              reason: 'unknown',
+              cause,
+            }),
+        ),
+      )
+      const match = sites.find((s) => s.name === site)
+      return match ? match.id : site
+    })
+
     yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
+
     const deployCommand = cmdText(
       [
         'pnpm',
@@ -112,9 +122,13 @@ export const deployToNetlify = ({
         // 'netlify-cli',
         'deploy',
         // In debug mode, omit --json so we get full build logs in stdout/stderr
+        // Request machine-readable JSON from Netlify CLI on success
         debugEnabled ? undefined : '--json',
         debugEnabled ? '--debug' : undefined,
-        `--dir=${dir}`,
+        '--filter',
+        '@local/docs',
+        // Split flow default: do not run Netlify build; rely on netlify.toml publish
+        '--no-build',
         `--site=${resolvedSiteArg}`,
         message ? `--message=${message}` : undefined,
         // Either use `--prod` or `--alias`
@@ -129,16 +143,6 @@ export const deployToNetlify = ({
           // Force the CLI to read the docs-local Netlify config so Edge Functions
           // mapping is consistently applied in CI and locally.
           NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
-          // Ensure Astro/rehype-mermaid can find Playwright browsers when running
-          // inside the Netlify CLI build step (direnv provides this in our dev shells).
-          PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
-          // Preserve workspace root path required by various scripts/utilities
-          // in the docs build (set by direnv in dev/CI environments).
-          WORKSPACE_ROOT: process.env.WORKSPACE_ROOT,
-          // Preserve PATH/HOME to ensure bun/pnpm and caches are available to the build
-          PATH: process.env.PATH,
-          HOME: process.env.HOME,
-          ...(env ?? {}),
         },
       },
     )

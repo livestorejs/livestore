@@ -61,7 +61,7 @@ export const requestSessionInfoSubscription = ({
   webChannel: WebChannel.WebChannel<Message, Message>
   pollInterval?: Duration.DurationInput
   staleTimeout?: Duration.DurationInput
-}): Effect.Effect<Subscribable.Subscribable<Set<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
+}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
       .send(RequestSessions.make({}))
@@ -100,8 +100,5 @@ export const requestSessionInfoSubscription = ({
       Effect.forkScoped,
     )
 
-    return Subscribable.make({
-      get: sessionInfoSubRef.get.pipe(Effect.map((sessionInfos) => new Set(sessionInfos))),
-      changes: sessionInfoSubRef.changes.pipe(Stream.map((sessionInfos) => new Set(sessionInfos))),
-    })
+    return Subscribable.make({ get: sessionInfoSubRef.get, changes: sessionInfoSubRef.changes })
   })

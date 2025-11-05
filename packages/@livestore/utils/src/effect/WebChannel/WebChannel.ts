@@ -225,10 +225,7 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const schema = mapSchema(inputSchema)
 
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          yield* PubSub.publish(pubSub, message)
-        })
+      const send = (message: MsgSend) => PubSub.publish(pubSub, message)
 
       const listen = Stream.fromPubSub(pubSub).pipe(Stream.map(Either.right), listenToDebugPing(channelName))
 
@@ -492,7 +489,4 @@ export const toOpenChannel = (
     }
   })
 
-export const sendDebugPing = (channel: WebChannel<any, any>) =>
-  Effect.gen(function* () {
-    yield* channel.send(DebugPingMessage.make({ message: 'ping' }))
-  })
+export const sendDebugPing = (channel: WebChannel<any, any>) => channel.send(DebugPingMessage.make({ message: 'ping' }))

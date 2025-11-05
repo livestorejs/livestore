@@ -30,6 +30,52 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 
   /**
+   * Transitions to the loading state.
+   */
+  #setPromise(promise: Promise<Store<TSchema>>): void {
+    if (this.#state.status === 'success' || this.#state.status === 'loading') return
+    this.#state = { status: 'loading', promise }
+    this.#notify()
+  }
+
+  /**
+   * Transitions to the success state.
+   */
+  #setStore = (store: Store<TSchema>): void => {
+    this.#state = { status: 'success', store }
+    this.#notify()
+  }
+
+  /**
+   * Transitions to the error state.
+   */
+  #setError = (error: unknown): void => {
+    this.#state = { status: 'error', error }
+    this.#notify()
+  }
+
+  #reset = (): void => {
+    this.#state = { status: 'idle' }
+    this.#notify()
+  }
+
+  /**
+   * Notifies all subscribers of state changes.
+   *
+   * @remarks
+   * This should be called after any meaningful state change.
+   */
+  #notify = (): void => {
+    for (const sub of this.#subscribers) {
+      try {
+        sub()
+      } catch {
+        // Swallow to protect other listeners
+      }
+    }
+  }
+
+  /**
    * Subscribes to this entry's updates.
    *
    * @param listener - Callback invoked when the entry changes
@@ -43,51 +89,9 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 
   /**
-   * Notifies all subscribers of state changes.
-   *
-   * @remarks
-   * This should be called after any meaningful state change.
-   */
-  notify = (): void => {
-    for (const sub of this.#subscribers) {
-      try {
-        sub()
-      } catch {
-        // Swallow to protect other listeners
-      }
-    }
-  }
-
-  /**
-   * Transitions to the loading state.
-   */
-  #setPromise(promise: Promise<Store<TSchema>>): void {
-    if (this.#state.status === 'success' || this.#state.status === 'loading') return
-    this.#state = { status: 'loading', promise }
-    this.notify() // TODO: Test if notifying on loading is needed
-  }
-
-  /**
-   * Transitions to the success state.
-   */
-  #setStore = (store: Store<TSchema>): void => {
-    this.#state = { status: 'success', store }
-    this.notify()
-  }
-
-  /**
-   * Transitions to the error state.
-   */
-  #setError = (error: unknown): void => {
-    this.#state = { status: 'error', error }
-    this.notify()
-  }
-
-  /**
    * Initiates loading of the store if not already in progress.
    *
    * @param options - Store creation options
-   * @param onSettle - Callback invoked when the promise settles (success or failure) if no subscribers remain
    * @returns Promise that resolves to the loaded store or rejects with an error
    *
    * @remarks
@@ -114,6 +118,13 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     this.#setPromise(promise)
 
     return promise
+  }
+
+  shutdown = async (): Promise<void> => {
+    if (this.#state.status !== 'success') return
+    await this.#state.store.shutdownPromise()
+
+    this.#reset()
   }
 }
 
@@ -144,29 +155,18 @@ class StoreCache {
   }
 
   /**
-   * Removes an entry from the cache and notifies its subscribers.
+   * Removes an entry from the cache.
    *
    * @param storeId - The ID of the store to remove
+   *
    * @remarks
-   * Notifying subscribers prompts consumers to re-render and re-read as needed.
+   * - Invokes shutdown on the store before removal.
    */
   remove = (storeId: StoreId): void => {
     const entry = this.#entries.get(storeId)
     if (!entry) return
+    void entry.shutdown()
     this.#entries.delete(storeId)
-    // Notify any subscribers of the removal to force re-render;
-    // components will resubscribe to a new entry and re-read.
-    try {
-      entry.notify()
-    } catch {
-      // Best-effort notify; swallowing to avoid crashing removal flows.
-    }
-  }
-
-  clear = (): void => {
-    for (const storeId of Array.from(this.#entries.keys())) {
-      this.remove(storeId)
-    }
   }
 }
 
@@ -215,16 +215,28 @@ export class StoreRegistry {
     this.#defaultOptions = defaultOptions
   }
 
-  /**
-   * Ensures a store entry exists in the cache.
-   *
-   * @param storeId - The ID of the store
-   * @returns The existing or newly created store entry
-   *
-   * @internal
-   */
-  ensureStoreEntry = <TSchema extends LiveStoreSchema>(storeId: StoreId): StoreEntry<TSchema> => {
-    return this.#cache.ensure<TSchema>(storeId)
+  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
+    options: CachedStoreOptions<TSchema>,
+  ): CachedStoreOptions<TSchema> => ({
+    ...this.#defaultOptions,
+    ...options,
+  })
+
+  #scheduleGC = (id: StoreId): void => {
+    this.#cancelGC(id)
+    const timer = setTimeout(() => {
+      this.#gcTimeouts.delete(id)
+      this.#cache.remove(id)
+    }, DEFAULT_GC_TIME)
+    this.#gcTimeouts.set(id, timer)
+  }
+
+  #cancelGC = (id: StoreId): void => {
+    const t = this.#gcTimeouts.get(id)
+    if (t) {
+      clearTimeout(t)
+      this.#gcTimeouts.delete(id)
+    }
   }
 
   /**
@@ -244,8 +256,7 @@ export class StoreRegistry {
     options: CachedStoreOptions<TSchema>,
   ): Store<TSchema> | Promise<Store<TSchema>> => {
     const optionsWithDefaults = this.#applyDefaultOptions(options)
-    const entry = this.ensureStoreEntry<TSchema>(optionsWithDefaults.storeId)
-    this.#cancelGC(optionsWithDefaults.storeId)
+    const entry = this.#cache.ensure<TSchema>(optionsWithDefaults.storeId)
 
     const storeOrPromise = entry.getOrLoad(optionsWithDefaults)
 
@@ -278,7 +289,7 @@ export class StoreRegistry {
   }
 
   subscribe = <TSchema extends LiveStoreSchema>(storeId: StoreId, listener: () => void): Unsubscribe => {
-    const entry = this.ensureStoreEntry<TSchema>(storeId)
+    const entry = this.#cache.ensure<TSchema>(storeId)
     // Active subscriber: cancel any scheduled GC
     this.#cancelGC(storeId)
 
@@ -288,30 +299,6 @@ export class StoreRegistry {
       unsubscribe()
       // If no more subscribers remain, schedule GC
       if (entry.subscriberCount === 0) this.#scheduleGC(storeId)
-    }
-  }
-
-  #applyDefaultOptions = <TSchema extends LiveStoreSchema>(
-    options: CachedStoreOptions<TSchema>,
-  ): CachedStoreOptions<TSchema> => ({
-    ...this.#defaultOptions,
-    ...options,
-  })
-
-  #scheduleGC = (id: StoreId): void => {
-    this.#cancelGC(id)
-    const timer = setTimeout(() => {
-      this.#gcTimeouts.delete(id)
-      this.#cache.remove(id)
-    }, DEFAULT_GC_TIME)
-    this.#gcTimeouts.set(id, timer)
-  }
-
-  #cancelGC = (id: StoreId): void => {
-    const t = this.#gcTimeouts.get(id)
-    if (t) {
-      clearTimeout(t)
-      this.#gcTimeouts.delete(id)
     }
   }
 }

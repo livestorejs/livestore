@@ -1,5 +1,5 @@
 import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport, SyncError } from '@livestore/common'
-import { provideOtel, UnexpectedError } from '@livestore/common'
+import { LogConfig, provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
   CreateStoreOptions,
@@ -11,24 +11,14 @@ import type {
 import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
 import { errorToString, IS_REACT_NATIVE, LS_DEV, omitUndefineds } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
-import {
-  Cause,
-  Deferred,
-  Effect,
-  Exit,
-  identity,
-  Logger,
-  LogLevel,
-  Schema,
-  Scope,
-  TaskTracing,
-} from '@livestore/utils/effect'
+import { Cause, Deferred, Effect, Exit, identity, Schema, Scope, TaskTracing } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.ts'
 
-export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue> {
+export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue>
+  extends LogConfig.WithLoggerOptions {
   schema: LiveStoreSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -126,6 +116,8 @@ export const LiveStoreProvider = <TSyncPayloadSchema extends Schema.Schema<any> 
   syncPayload,
   syncPayloadSchema,
   debug,
+  logger,
+  logLevel,
 }: LiveStoreProviderProps<TSyncPayloadSchema> & React.PropsWithChildren): React.ReactNode => {
   const storeCtx = useCreateStore({
     storeId,
@@ -142,6 +134,8 @@ export const LiveStoreProvider = <TSyncPayloadSchema extends Schema.Schema<any> 
       syncPayloadSchema,
       debug,
     }),
+    logger,
+    logLevel,
   })
 
   if (storeCtx.stage === 'error') {
@@ -180,10 +174,13 @@ const useCreateStore = ({
   syncPayload,
   syncPayloadSchema,
   debug,
-}: CreateStoreOptions<LiveStoreSchema> & {
-  signal?: AbortSignal
-  otelOptions?: Partial<OtelOptions>
-}) => {
+  logger,
+  logLevel,
+}: CreateStoreOptions<LiveStoreSchema> &
+  LogConfig.WithLoggerOptions & {
+    signal?: AbortSignal
+    otelOptions?: Partial<OtelOptions>
+  }) => {
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<{
     value: StoreContext_ | BootStatus
@@ -383,8 +380,7 @@ const useCreateStore = ({
       provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
-      Effect.provide(Logger.prettyWithThread('window')),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
+      LogConfig.withLoggerConfig({ logger, logLevel }, { threadName: 'window' }),
       Effect.runCallback,
     )
 
@@ -417,6 +413,8 @@ const useCreateStore = ({
     syncPayloadSchema,
     debugInstanceId,
     interrupt,
+    logger,
+    logLevel,
   ])
 
   return ctxValueRef.current.value

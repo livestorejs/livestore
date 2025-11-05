@@ -24,7 +24,7 @@ import {
 import * as ApiSchema from './api-schema.ts'
 
 export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>()('InvalidOperationError', {
-  operation: Schema.Union(Schema.Literal('delete'), Schema.Literal('update')),
+  operation: Schema.Literal('delete', 'update'),
   message: Schema.String,
 }) {}
 

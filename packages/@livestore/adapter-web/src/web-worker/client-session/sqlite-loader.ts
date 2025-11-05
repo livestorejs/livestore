@@ -8,7 +8,7 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
  * The Cloudflare / Workerd runtime has stricter rules: async fetches during module
  * evaluation are blocked, so we defer loading until the worker asks for it.
  */
-const isServerRuntime = String(import.meta.env.SSR) === 'true'
+const isServerRuntime = String(import.meta.env?.SSR) === 'true' || typeof window === 'undefined'
 
 let sqlite3Promise: ReturnType<typeof loadSqlite3Wasm> | undefined
 

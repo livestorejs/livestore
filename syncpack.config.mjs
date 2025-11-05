@@ -60,7 +60,7 @@ const config = {
       dependencies: [...localPackages, '@local/**'],
       dependencyTypes: ['!local'],
       // Except for examples
-      packages: ['!livestore-example-**'],
+      packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
       pinVersion: 'workspace:*',
     },
     {
@@ -70,7 +70,7 @@ const config = {
       // so published packages work with compatible versions, not just exact matches
       dependencyTypes: ['!local', '!peer'],
       // Except for examples
-      packages: ['!livestore-example-**'],
+      packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
       pinVersion: 'catalog:',
     },
     {

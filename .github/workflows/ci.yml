@@ -138,7 +138,11 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run sync-provider tests for ${{ matrix.provider }}
+        if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
         run: mono test integration sync-provider --provider ${{ matrix.provider }}
+      - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
+        if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
+        run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
 
   test-integration-playwright:
     strategy:
@@ -303,6 +307,9 @@ jobs:
       # - push to main: deploy to prod docs site as prod
       #     domain: https://docs.livestore.dev
       # `mono docs deploy` applies filter="docs" and infers context from GitHub env.
+
+      - name: Build docs
+        run: mono docs build --api-docs
 
       - name: Deploy docs
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}

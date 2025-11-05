@@ -135,72 +135,64 @@ const listenToDevtools = ({
             case 'LSD.Leader.LoadDatabaseFile.Request': {
               const { data } = decodedEvent
 
-              let tableNames: Set<string>
-
-              try {
-                const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-                tmpDb.import(data)
-                const tableNameResults = tmpDb.select<{ name: string }>(
-                  `select name from sqlite_master where type = 'table'`,
+              const handleLoadDb = Effect.gen(function* () {
+                const tableNames = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+                  Effect.sync(() => db.close()),
+                ).pipe(
+                  Effect.flatMap((db) =>
+                    Effect.try(() => {
+                      db.import(data)
+                      const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
+                      return new Set(rows.map((r) => r.name))
+                    }),
+                  ),
                 )
 
-                tableNames = new Set(tableNameResults.map((_) => _.name))
-
-                tmpDb.close()
-              } catch (cause) {
-                yield* Effect.logError(`Error importing database file`, cause)
-                yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFile.Error.make({
-                    ...reqPayload,
-                    cause: { _tag: 'unexpected-error', cause },
-                  }),
-                )
-
-                return
-              }
-
-              try {
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
                   // Is eventlog db
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-
-                  dbEventlog.import(data)
-
-                  dbState.destroy()
+                  yield* Effect.try(() => void dbEventlog.import(data))
+                  yield* Effect.try(() => void dbState.destroy())
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
                   tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
                 ) {
                   // Is state db
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-
-                  dbState.import(data)
-
-                  dbEventlog.destroy()
+                  yield* Effect.try(() => void dbState.import(data))
+                  yield* Effect.try(() => void dbEventlog.destroy())
                 } else {
-                  yield* sendMessage(
-                    Devtools.Leader.LoadDatabaseFile.Error.make({
-                      ...reqPayload,
-                      cause: { _tag: 'unsupported-database' },
-                    }),
-                  )
-                  return
+                  return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
                 }
 
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
-                yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
+                yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
+              })
 
-                return
-              } catch (cause) {
-                yield* Effect.logError(`Error importing database file`, cause)
-                yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFile.Error.make({
-                    ...reqPayload,
-                    cause: { _tag: 'unexpected-error', cause },
-                  }),
-                )
-                return
-              }
+              yield* handleLoadDb.pipe(
+                Effect.catchTag('unsupported-database', () =>
+                  sendMessage(
+                    Devtools.Leader.LoadDatabaseFile.Error.make({
+                      ...reqPayload,
+                      cause: { _tag: 'unsupported-database' as const },
+                    }),
+                  ),
+                ),
+                Effect.catchAll((cause) =>
+                  Effect.logWarning('Error importing database file', cause).pipe(
+                    Effect.zipRight(
+                      sendMessage(
+                        Devtools.Leader.LoadDatabaseFile.Error.make({
+                          ...reqPayload,
+                          cause: { _tag: 'unexpected-error' as const, cause },
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+
+              return
             }
             case 'LSD.Leader.ResetAllData.Request': {
               const { mode } = decodedEvent
@@ -215,7 +207,7 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.Leader.ResetAllData.Success.make({ ...reqPayload }))
 
-              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' }))
 
               return
             }

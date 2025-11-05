@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.14",
-    "@livestore/livestore": "0.4.0-dev.14",
-    "@livestore/peer-deps": "0.4.0-dev.14",
-    "@livestore/react": "0.4.0-dev.14",
-    "@livestore/wa-sqlite": "0.4.0-dev.14",
+    "@livestore/adapter-web": "0.4.0-dev.16",
+    "@livestore/livestore": "0.4.0-dev.16",
+    "@livestore/peer-deps": "0.4.0-dev.16",
+    "@livestore/react": "0.4.0-dev.16",
+    "@livestore/wa-sqlite": "0.4.0-dev.16",
     "@overengineering/fps-meter": "0.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -17,7 +17,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.14",
+    "@livestore/devtools-vite": "0.4.0-dev.16",
     "@playwright/test": "^1.56.0",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",

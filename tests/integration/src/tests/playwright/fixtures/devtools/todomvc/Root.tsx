@@ -1,6 +1,6 @@
 import 'todomvc-app-css/index.css'
 
-import { makePersistedAdapter } from '@livestore/adapter-web'
+import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { omitUndefineds } from '@livestore/utils'
@@ -25,19 +25,33 @@ const AppBody: React.FC = () => (
 const searchParams = new URLSearchParams(window.location.search)
 const resetPersistence = import.meta.env.DEV && searchParams.get('reset') !== null
 const sessionId = searchParams.get('sessionId')
+const clientId = searchParams.get('clientId')
+const adapterKind = (searchParams.get('adapter') ?? 'persisted') as 'persisted' | 'inmemory'
 
 if (resetPersistence) {
   searchParams.delete('reset')
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
 }
 
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  resetPersistence,
-  ...omitUndefineds({ sessionId: sessionId !== null ? sessionId : undefined }),
-})
+const adapter =
+  adapterKind === 'inmemory'
+    ? makeInMemoryAdapter({
+        devtools: { sharedWorker: LiveStoreSharedWorker },
+        ...omitUndefineds({
+          sessionId: sessionId !== null ? sessionId : undefined,
+          clientId: clientId !== null ? clientId : undefined,
+        }),
+      })
+    : makePersistedAdapter({
+        storage: { type: 'opfs' },
+        worker: LiveStoreWorker,
+        sharedWorker: LiveStoreSharedWorker,
+        resetPersistence,
+        ...omitUndefineds({
+          sessionId: sessionId !== null ? sessionId : undefined,
+          clientId: clientId !== null ? clientId : undefined,
+        }),
+      })
 
 const otelTracer = makeTracer('todomvc-main')
 
