@@ -50,7 +50,6 @@ const AppLoading: React.FC = () => {
 export const useInitializeInboxStore = () => {
   useEffect(() => {
     fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/inbox-client-do?storeId=${inboxStoreId}`)
-      .then((res) => res.json())
       .then((data) => {
         console.log('Inbox Client Durable Object state initialized:', data)
       })

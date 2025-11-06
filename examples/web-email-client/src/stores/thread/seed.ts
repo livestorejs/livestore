@@ -15,14 +15,12 @@ export const seedThread = ({
   inboxLabelId: string
 }) => {
   try {
+    console.log(`🌱 Seeding Thread store data for thread ID: ${threadId}...`)
+
     const now = new Date()
 
-    console.log('🌱 Batching all seed events for atomic commit...')
-
-    // Collect all events to commit in a single batch (recommended LiveStore pattern)
+    // Collect all events to commit in a single batch
     const allEvents = []
-
-    console.log('📧 Preparing sample email thread...')
 
     // Create the thread
     allEvents.push(
@@ -34,7 +32,7 @@ export const seedThread = ({
       }),
     )
 
-    // Create messages in the thread
+    // Create messages for the thread
     const messages = [
       {
         id: nanoid(),
@@ -57,7 +55,7 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          "Sure! When you apply a label to a thread, the Thread aggregate emits ThreadLabelApplied events. The Label aggregate reacts to these events and updates message counts. It's a great example of eventual consistency!",
+          "Sure! When you apply a label to a thread, the Thread aggregate emits ThreadLabelApplied events. The Label aggregate reacts to these events and updates thread counts. It's a great example of eventual consistency!",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000), // 1 hour ago
@@ -101,10 +99,8 @@ export const seedThread = ({
       }
     }
 
-    console.log('🏷️ Preparing thread label associations...')
-
     // Apply INBOX label to the thread
-    // This should trigger a cross-aggregate event ("v1.LabelMessageCountUpdated") to update INBOX message count
+    // This should trigger a cross-aggregate event ("v1.LabelThreadCountUpdated") to update INBOX thread count
     allEvents.push(
       threadEvents.threadLabelApplied({
         threadId,
@@ -113,19 +109,12 @@ export const seedThread = ({
       }),
     )
 
-    console.log(`📦 Committing ${allEvents.length} events in single batch...`)
-
-    // Commit all events atomically - this ensures proper sync timing
+    // Commit all events atomically
     store.commit(...allEvents)
 
-    console.log('✅ Thread store seed data created successfully!')
-    console.log('📊 Summary:')
-    console.log('  - 1 email thread with 4 messages')
-    console.log('  - Cross-aggregate label associations')
-    console.log('  - Mixed read/unread message states')
-    console.log(`  - All ${allEvents.length} events committed atomically for proper client sync`)
+    console.log(`✅ Thread store seed data for thread ID: ${threadId} created successfully!`)
   } catch (error) {
-    console.error('Failed to seed Thread store data:', error)
+    console.error('❌ Failed to seed Thread store data:', error)
     throw error
   }
 }

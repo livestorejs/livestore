@@ -282,15 +282,6 @@ export const useThread = (threadId: string) => {
     return systemLabels[0] || null // Return first system label found
   }
 
-  const getCurrentThread = () => {
-    return thread
-  }
-
-  // Compute thread message count dynamically
-  const getThreadMessageCount = (threadId: string) => {
-    return messages.filter((m) => m.threadId === threadId).length
-  }
-
   return {
     // Store
     threadStore,
@@ -312,8 +303,6 @@ export const useThread = (threadId: string) => {
     getMessagesForThread,
     getLabelsForThread,
     getUserLabelsForThread,
-    getCurrentThread,
-    getThreadMessageCount,
   }
 }
 

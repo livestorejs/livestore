@@ -15,14 +15,6 @@ import { useInbox } from '../hooks/useInbox.ts'
 export const ThreadList: React.FC = () => {
   const { currentLabel, selectThread, threadIndex, threadLabels } = useInbox()
 
-  // Filter threads by current label using Labels aggregate projections
-  const getThreadsForLabel = (labelId: string) => {
-    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
-    return threadIndex.filter((t) => threadIds.includes(t.id))
-  }
-
-  const threadsForLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
-
   if (!currentLabel) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -33,6 +25,15 @@ export const ThreadList: React.FC = () => {
       </div>
     )
   }
+
+  console.log('threadIndex:', threadIndex)
+
+  // Filter threads by current label using Labels aggregate projections
+  const getThreadsForLabel = (labelId: string) => {
+    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
+    return threadIndex.filter((t) => threadIds.includes(t.id))
+  }
+  const threadsForLabel = getThreadsForLabel(currentLabel.id)
 
   if (threadsForLabel.length === 0) {
     return (

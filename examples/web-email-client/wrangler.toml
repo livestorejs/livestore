@@ -23,5 +23,12 @@ binding = "DB"
 database_name = "web-email"
 database_id = "199c832c-755e-4d4b-ac86-3026b11607e0"
 
+[[queues.producers]]
+queue = "domain-events"
+binding = "DOMAIN_EVENTS_QUEUE"
+
+[[queues.consumers]]
+queue = "domain-events"
+
 [observability]
 enabled = true
