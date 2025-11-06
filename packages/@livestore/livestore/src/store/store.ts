@@ -785,10 +785,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const since = options?.since ?? EventSequenceNumber.ROOT
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
-    const includeClientOnly = (encodedEvent: LiveStoreEvent.EncodedWithMeta): boolean => {
-      return encodedEvent.seqNum.client <= 0
-    }
-
     return leaderThreadProxy.events
       .stream({
         since,
@@ -801,7 +797,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       })
       .pipe(
-        Stream.filter(includeClientOnly),
         Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
         Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
       )

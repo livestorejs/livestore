@@ -10,7 +10,14 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
+import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
+
+const allFixtureEvents = {
+  ...fixtureEvents,
+  app_configSet: appConfigSetEvent,
+} as const
+
+const makeFixtureEventFactory = EventFactory.makeFactory(allFixtureEvents)
 
 const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
@@ -79,21 +86,51 @@ const toEncodedWithMeta = (event: LiveStoreEvent.AnyEncodedGlobal): LiveStoreEve
     materializerHashSession: Option.none(),
   })
 
-const eventHashes = {
-  todoCreated: Schema.hash(fixtureEvents.todoCreated.schema),
-  todoCompleted: Schema.hash(fixtureEvents.todoCompleted.schema),
-  todoDeletedNonPure: Schema.hash(fixtureEvents.todoDeletedNonPure.schema),
-} as const
+const makeClientOnlyEvent = ({
+  base,
+  event,
+}: {
+  base: EventSequenceNumber.EventSequenceNumber
+  event: LiveStoreEvent.AnyEncodedGlobal
+}): {
+  encoded: LiveStoreEvent.EncodedWithMeta
+  nextBase: EventSequenceNumber.EventSequenceNumber
+} => {
+  const nextPair = EventSequenceNumber.nextPair({
+    seqNum: base,
+    isClient: true,
+    rebaseGeneration: base.rebaseGeneration,
+  })
+
+  return {
+    encoded: LiveStoreEvent.EncodedWithMeta.make({
+      name: event.name,
+      args: event.args,
+      seqNum: nextPair.seqNum,
+      parentSeqNum: nextPair.parentSeqNum,
+      clientId: event.clientId,
+      sessionId: event.sessionId,
+    }),
+    nextBase: nextPair.seqNum,
+  }
+}
 
 const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>) =>
   Effect.forEach(events, (event) =>
-    Eventlog.insertIntoEventlog(
-      event,
-      dbEventlog as any,
-      eventHashes[event.name as keyof typeof eventHashes],
-      event.clientId,
-      event.sessionId,
-    ),
+    Effect.gen(function* () {
+      const eventDef = fixtureSchema.eventsDefsMap.get(event.name)
+      if (eventDef === undefined) {
+        throw new Error(`Missing schema for event ${event.name}`)
+      }
+
+      yield* Eventlog.insertIntoEventlog(
+        event,
+        dbEventlog as any,
+        Schema.hash(eventDef.schema),
+        event.clientId,
+        event.sessionId,
+      )
+    }),
   )
 
 Vitest.describe.concurrent('streamEventsWithSyncState', () => {
@@ -102,7 +139,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+        const eventFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
@@ -146,7 +183,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+        const eventFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
@@ -184,7 +221,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+        const eventFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
@@ -221,7 +258,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+        const eventFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
@@ -254,10 +291,10 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const clientAFactory = EventFactory.makeFactory(fixtureEvents)({
+        const clientAFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-a', 'session-1'),
         })
-        const clientBFactory = EventFactory.makeFactory(fixtureEvents)({
+        const clientBFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-b', 'session-2'),
           startSeq: 2,
           initialParent: 1,
@@ -293,10 +330,10 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       Effect.gen(function* () {
         const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-        const sessionOneFactory = EventFactory.makeFactory(fixtureEvents)({
+        const sessionOneFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-shared', 'session-1'),
         })
-        const sessionTwoFactory = EventFactory.makeFactory(fixtureEvents)({
+        const sessionTwoFactory = makeFixtureEventFactory({
           client: EventFactory.clientIdentity('client-shared', 'session-2'),
           startSeq: 2,
           initialParent: 1,
@@ -331,6 +368,64 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
+  Vitest.scopedLive('skips client-only events by default', (test) =>
+    withNodeFs(
+      Effect.gen(function* () {
+        const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
+
+        const eventFactory = makeFixtureEventFactory({
+          client: EventFactory.clientIdentity('client-1', 'session-1'),
+        })
+
+        const backendApproved = [
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
+        ]
+
+        let clientBase = backendApproved[backendApproved.length - 1]!.seqNum
+        const appConfigSetFactory = eventFactory.app_configSet
+
+        const clientOnlyEvents = [
+          { value: { theme: 'dark' } },
+          { value: { fontSize: 18 } },
+          { value: { theme: 'light', fontSize: 20 } },
+        ].map((payload) => {
+          const { encoded, nextBase } = makeClientOnlyEvent({
+            base: clientBase,
+            event: appConfigSetFactory.next({ id: 'session-1', ...payload }),
+          })
+          clientBase = nextBase
+          return encoded
+        })
+
+        yield* insertEvents(dbEventlog, [...backendApproved, ...clientOnlyEvents])
+
+        const stream = streamEventsWithSyncState({
+          dbEventlog,
+          dbState,
+          syncState,
+          options: {
+            since: EventSequenceNumber.ROOT,
+          },
+        })
+
+        const collectFiber = yield* stream
+          .pipe(Stream.take(backendApproved.length), Stream.runCollect)
+          .pipe(Effect.forkScoped)
+
+        yield* advanceHead(backendApproved[backendApproved.length - 1]!.seqNum)
+
+        const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
+
+        expect(emitted).toHaveLength(backendApproved.length)
+        expect(emitted.map((event) => event.seqNum.global)).toEqual(backendApproved.map((event) => event.seqNum.global))
+        expect(emitted.every((event) => event.seqNum.client <= 0)).toBe(true)
+
+        yield* closeHeads
+      }).pipe(Vitest.withTestCtx(test)),
+    ),
+  )
 
   const batchSizeSampleSchema = Schema.Literal(1, 2, 4, 5, 10)
   const eventCountSampleSchema = Schema.Literal(1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 15, 16)
@@ -349,7 +444,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         Effect.gen(function* () {
           const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
 
-          const eventFactory = EventFactory.makeFactory(fixtureEvents)({
+          const eventFactory = makeFixtureEventFactory({
             client: EventFactory.clientIdentity('client-1', 'session-1'),
           })
 

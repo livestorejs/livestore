@@ -18,6 +18,7 @@ import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
+import type { ClientEventSequenceNumber } from '../schema/EventSequenceNumber.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -114,6 +115,7 @@ export type StreamEventsFromEventLogOptions = {
   clientIds?: ReadonlyArray<string>
   sessionIds?: ReadonlyArray<string>
   batchSize?: number
+  includeClientOnly?: boolean
 }
 
 export const streamEventsFromEventlog = ({
@@ -144,6 +146,10 @@ export const streamEventsFromEventlog = ({
 
     if (options.sessionIds && options.sessionIds.length > 0) {
       query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
+    }
+
+    if (!options.includeClientOnly) {
+      query = query.where('seqNumClient', '<=', 0 as ClientEventSequenceNumber)
     }
 
     return query
