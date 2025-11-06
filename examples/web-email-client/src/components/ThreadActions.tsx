@@ -12,21 +12,18 @@ import { UserLabelPicker } from './UserLabelPicker.tsx'
  */
 
 export const ThreadActions: React.FC = () => {
-  const { getCurrentThreadId } = useInbox()
-  const currentThreadId = getCurrentThreadId()
+  const { currentThreadId } = useInbox()
 
   if (!currentThreadId) throw new Error('No current thread selected')
 
-  const { getCurrentThread, trashThread, archiveThread } = useThread(currentThreadId)
-
-  const currentThread = getCurrentThread()
+  const { trashThread, archiveThread } = useThread(currentThreadId)
 
   return (
     <div className="flex items-center space-x-2">
       {/* Quick Actions */}
       <div className="flex items-center space-x-1">
         <button
-          onClick={() => archiveThread(currentThread.id)}
+          onClick={() => archiveThread(currentThreadId)}
           type="button"
           className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           title="Archive thread"
@@ -35,7 +32,7 @@ export const ThreadActions: React.FC = () => {
         </button>
 
         <button
-          onClick={() => trashThread(currentThread.id)}
+          onClick={() => trashThread(currentThreadId)}
           type="button"
           className="p-1 text-gray-400 hover:text-red-600 transition-colors"
           title="Move to trash"
@@ -43,7 +40,7 @@ export const ThreadActions: React.FC = () => {
           🗑️
         </button>
 
-        <UserLabelPicker threadId={currentThread.id} />
+        <UserLabelPicker threadId={currentThreadId} />
       </div>
     </div>
   )
