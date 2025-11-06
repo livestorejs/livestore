@@ -3,16 +3,15 @@ import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/a
 import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import { schema as inboxSchema, inboxTables } from '../stores/inbox/schema.ts'
+import { inboxEvents, schema as inboxSchema, inboxTables } from '../stores/inbox/schema.ts'
 import { seedInbox } from '../stores/inbox/seed.ts'
+import { threadEvents } from '../stores/thread/schema.ts'
 import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   private store: Store<typeof inboxSchema> | undefined
   // private storeSubscription: Unsubscribe | undefined
-
-  fetch = async (): Promise<Response> => new Response('InboxClientDO is alive', { status: 200 })
 
   async initialize({ storeId }: { storeId: string }) {
     if (this.store !== undefined) return
@@ -47,84 +46,71 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     await threadDoStub.initialize({ threadId, inboxLabelId })
   }
 
-  // async subscribeToStore() {
-  //   const store = await this.getStore()
-  //
-  //   // Make sure to only subscribe once
-  //   if (this.storeSubscription === undefined) {
-  //     console.log(`📧 Setting up cross-aggregate event subscriptions...`)
-  //
-  //     // Subscribe to ThreadLabel events to implement cross-aggregate reactions
-  //     // This demonstrates the core architecture requirement: when thread labels change,
-  //     // the label message counts need to be updated automatically
-  //     const unsubscribe = store.subscribe(threadLabelsQuery, {
-  //       onUpdate: (threadLabels) => {
-  //         console.log(`🏷️ Thread labels updated, checking for cross-aggregate updates needed`)
-  //
-  //         // Get current labels to identify system labels
-  //         const labels = store.query(inboxTables.labels.where({}))
-  //         const systemLabels = labels.filter((l) => l.type === 'system')
-  //         const systemLabelIds = new Set(systemLabels.map((l) => l.id))
-  //
-  //         // BUSINESS RULE: Enforce "one system label per thread"
-  //         const threadSystemLabels = new Map<string, string[]>()
-  //         for (const threadLabel of threadLabels) {
-  //           if (systemLabelIds.has(threadLabel.labelId)) {
-  //             const existing = threadSystemLabels.get(threadLabel.threadId) || []
-  //             existing.push(threadLabel.labelId)
-  //             threadSystemLabels.set(threadLabel.threadId, existing)
-  //           }
-  //         }
-  //
-  //         // Log violations (server-side detection only, no correction)
-  //         for (const [threadId, systemLabelIds] of threadSystemLabels.entries()) {
-  //           if (systemLabelIds.length > 1) {
-  //             const labelNames = systemLabelIds.map((id) => labels.find((l) => l.id === id)?.name || id)
-  //             console.warn(
-  //               `⚠️ BUSINESS RULE VIOLATION: Thread ${threadId} has multiple system labels: ${labelNames.join(', ')}`,
-  //             )
-  //           }
-  //         }
-  //
-  //         // Create a map to track expected counts per label
-  //         const expectedCounts = new Map<string, number>()
-  //
-  //         // Count how many threads each label should have
-  //         for (const threadLabel of threadLabels) {
-  //           const current = expectedCounts.get(threadLabel.labelId) || 0
-  //           expectedCounts.set(threadLabel.labelId, current + 1)
-  //         }
-  //
-  //         // Check if any label counts need updating
-  //         for (const label of labels) {
-  //           const expectedCount = expectedCounts.get(label.id) || 0
-  //
-  //           if (label.messageCount !== expectedCount) {
-  //             console.log(`📊 Updating count for label ${label.name}: ${label.messageCount} → ${expectedCount}`)
-  //
-  //             // Commit cross-aggregate event to update label count
-  //             // Note: In a production system, you'd want more sophisticated
-  //             // deduplication to avoid redundant updates
-  //             store.commit(
-  //               events.labelMessageCountUpdated({
-  //                 labelId: label.id,
-  //                 newCount: expectedCount,
-  //                 updatedAt: new Date(),
-  //               }),
-  //             )
-  //           }
-  //         }
-  //       },
-  //     })
-  //
-  //     this.storeSubscription = unsubscribe
-  //
-  //     console.log(`✅ Cross-aggregate event subscriptions active`)
-  //   }
-  //
-  //   // Keep the Durable Object alive with periodic alarms
-  //   await this.state.storage.setAlarm(Date.now() + 30000) // 30 seconds
-  // }
+  async updateLabelCount({ labelId, delta }: { labelId: string; delta: number }) {
+    try {
+      if (!this.store) {
+        throw new Error('Store not initialized. Call initialize() first.')
+      }
+
+      // Query current count
+      const label = this.store.query(inboxTables.labels.where({ id: labelId }))[0]
+
+      if (!label) {
+        console.warn(`[InboxClientDO] Label ${labelId} not found, skipping count update`)
+        return
+      }
+
+      const newCount = Math.max(0, (label.threadCount || 0) + delta)
+
+      // Commit count update event
+      this.store.commit(
+        inboxEvents.labelThreadCountUpdated({
+          labelId,
+          newCount,
+          updatedAt: new Date(),
+        }),
+      )
+
+      console.log(
+        `[InboxClientDO] Updated label ${labelId} count: ${label.threadCount} -> ${newCount} (delta: ${delta})`,
+      )
+    } catch (error) {
+      console.error('[InboxClientDO] Failed to update label count:', error)
+      throw error // Propagate to queue consumer for retry
+    }
+  }
+
+  async addThread({
+    id,
+    subject,
+    participants,
+    createdAt,
+  }: {
+    id: string
+    subject: string
+    participants: string[]
+    createdAt: Date
+  }) {
+    try {
+      if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
+
+      // Commit the thread creation event to Inbox store
+      // The materializer will automatically update threadIndex table
+      this.store.commit(
+        inboxEvents.threadAdded({
+          id,
+          subject,
+          participants,
+          createdAt,
+        }),
+      )
+
+      console.log(`[InboxClientDO] Added thread ${id} to threadIndex`)
+    } catch (error) {
+      console.error('[InboxClientDO] Failed to add thread:', error)
+      throw error // Propagate to queue consumer for retry
+    }
+  }
 
   // alarm(): void | Promise<void> {
   //   Re-initialize subscriptions after potential hibernation
