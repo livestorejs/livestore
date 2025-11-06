@@ -5,33 +5,19 @@ import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { schema as inboxSchema, inboxTables } from '../stores/inbox/schema.ts'
 import { seedInbox } from '../stores/inbox/seed.ts'
-import { type Env, storeIdFromRequest } from './shared.ts'
+import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private storeId: string | undefined
-  private cachedStore: Store<typeof inboxSchema> | undefined
+  private store: Store<typeof inboxSchema> | undefined
   // private storeSubscription: Unsubscribe | undefined
 
-  async fetch(request: Request): Promise<Response> {
-    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
-    this.storeId = storeIdFromRequest(request)
+  fetch = async (): Promise<Response> => new Response('InboxClientDO is alive', { status: 200 })
 
-    const store = await this.getStore()
+  async initialize({ storeId }: { storeId: string }) {
+    if (this.store !== undefined) return
 
-    // Kick off cross-aggregate event subscriptions for email functionality
-    // await this.subscribeToStore()
-
-    const syncState = await store._dev.syncStates()
-
-    return new Response(JSON.stringify({ syncState }, null, 2), { headers: { 'Content-Type': 'application/json' } })
-  }
-
-  async getStore() {
-    if (this.cachedStore !== undefined) return this.cachedStore
-
-    const storeId = this.storeId!
-    const store = await createStoreDoPromise({
+    this.store = await createStoreDoPromise({
       schema: inboxSchema,
       storeId,
       clientId: 'inbox-client-do',
@@ -45,39 +31,20 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
       livePull: true,
     })
 
-    this.cachedStore = store
-
-    // Check if the store needs seeding (server-side seeding)
-    await this.ensureStoreSeeded(store)
-
-    return store
-  }
-
-  private async ensureStoreSeeded(store: Store<typeof inboxSchema>) {
     // Check if seeding has already been done by looking for system labels
-    const existingLabelCount = store.query(inboxTables.labels.count())
+    const existingLabelCount = this.store.query(inboxTables.labels.count())
 
     if (existingLabelCount > 0) {
-      console.log('📧 Inbox aggregate already seeded with', existingLabelCount, 'labels')
+      console.log('📧 Inbox store already seeded with', existingLabelCount, 'labels')
       return
     }
 
-    try {
-      console.log('🌱 Seeding Inbox aggregate data server-side...')
-      seedInbox(store)
+    const { inboxLabelId } = seedInbox(this.store)
 
-      // Wait for all commits to be processed by LiveStore
-      // This ensures all events are available for sync to client
-      await new Promise((resolve) => setTimeout(resolve, 500))
+    const threadId = nanoid()
 
-      // Verify seeding completed by checking for expected data
-      const labelCount = store.query(inboxTables.labels.count())
-
-      console.log(`✅ Server-side seeding verified: ${labelCount} labels`)
-    } catch (error) {
-      console.error('❌ Server-side seeding failed:', error)
-      throw error
-    }
+    const threadDoStub = this.env.THREAD_CLIENT_DO.getByName(`thread-${threadId}`)
+    await threadDoStub.initialize({ threadId, inboxLabelId })
   }
 
   // async subscribeToStore() {

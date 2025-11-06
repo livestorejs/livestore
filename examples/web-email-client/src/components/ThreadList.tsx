@@ -13,9 +13,7 @@ import { useInbox } from '../hooks/useInbox.ts'
  */
 
 export const ThreadList: React.FC = () => {
-  const { getCurrentLabel, selectThread, threadIndex, threadLabels } = useInbox()
-
-  const currentLabel = getCurrentLabel()
+  const { currentLabel, selectThread, threadIndex, threadLabels } = useInbox()
 
   // Filter threads by current label using Labels aggregate projections
   const getThreadsForLabel = (labelId: string) => {

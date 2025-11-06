@@ -10,7 +10,7 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const inboxStoreId = 'inbox:root'
+export const inboxStoreId = 'inbox-root'
 
 export const inboxStoreOptions = storeOptions({
   storeId: inboxStoreId,

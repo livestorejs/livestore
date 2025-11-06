@@ -9,18 +9,18 @@ import { inboxEvents } from './schema.ts'
  * They are projections that are automatically populated via cross-aggregate
  * synchronization when Thread aggregates emit events (threadCreated, threadLabelApplied, etc.)
  */
-export const seedInbox = (store: Store<typeof schema>) => {
+export const seedInbox = (store: Store<typeof schema>): { inboxLabelId: string } => {
   try {
     const now = new Date()
 
-    console.log('🌱 Batching all seed events for atomic commit...')
+    console.log('🌱 Seeding Inbox store data server-side...')
 
     // Collect all events to commit in a single batch
     const allEvents = []
 
     console.log('🏷️ Preparing labels...')
 
-    const inboxLabelId = 'inbox-label-id' // TODO: use a generated ID
+    const inboxLabelId = nanoid()
 
     const labels: { id?: string; name: string; type: 'system' | 'user'; color: string; displayOrder: number }[] = [
       { id: inboxLabelId, name: 'INBOX', type: 'system', color: '#1f2937', displayOrder: 1 },
@@ -49,13 +49,15 @@ export const seedInbox = (store: Store<typeof schema>) => {
     // Commit all events atomically - this ensures proper sync timing
     store.commit(...allEvents)
 
-    console.log('✅ Inbox aggregate seed data created successfully!')
+    console.log('✅ Inbox store seed data created successfully!')
     console.log('📊 Summary:')
     console.log('  - 4 system labels (INBOX, SENT, ARCHIVE, TRASH)')
     console.log('  - 2 user labels (Travel, Receipts)')
     console.log(`  - All ${allEvents.length} events committed atomically for proper client sync`)
+
+    return { inboxLabelId }
   } catch (error) {
-    console.error('Failed to seed Inbox aggregate data:', error)
+    console.error('❌ Failed to seed Inbox store data:', error)
     throw error
   }
 }

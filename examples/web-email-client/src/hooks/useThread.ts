@@ -28,7 +28,7 @@ export const useThread = (threadId: string) => {
   const threadStore = useStore(threadStoreOptions(threadId))
 
   // Get data from stores
-  const thread = threadStore.useQuery(threadQuery)
+  const [thread] = threadStore.useQuery(threadQuery)
   const messages = threadStore.useQuery(messagesQuery)
   const labels = inboxStore.useQuery(labelsQuery)
 

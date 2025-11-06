@@ -14,13 +14,7 @@ import { ThreadView } from './ThreadView.tsx'
  */
 
 export const EmailLayout: React.FC = () => {
-  const { getCurrentLabel, getCurrentThreadId, threadIndex, threadLabels } = useInbox()
-  const currentThreadId = getCurrentThreadId()
-
-  const currentLabel = getCurrentLabel()
-
-  // Get current thread details from Labels' threadIndex projection
-  const currentThread = currentThreadId ? threadIndex.find((t) => t.id === currentThreadId) || null : null
+  const { currentLabel, currentThreadId, currentThread, threadIndex, threadLabels } = useInbox()
 
   // Filter threads by current label using Labels aggregate projections
   const getThreadsForLabel = (labelId: string) => {
@@ -57,7 +51,7 @@ export const EmailLayout: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden">
-          {currentThread && currentThreadId ? (
+          {currentThreadId ? (
             <ThreadView threadId={currentThreadId} />
           ) : currentLabel ? (
             <ThreadList />

@@ -5,7 +5,15 @@ import { threadEvents } from './schema.ts'
 /**
  * Seed data for Thread aggregate.
  */
-export const seedThread = (store: Store<typeof schema>) => {
+export const seedThread = ({
+  store,
+  threadId,
+  inboxLabelId,
+}: {
+  store: Store<typeof schema>
+  threadId: string
+  inboxLabelId: string
+}) => {
   try {
     const now = new Date()
 
@@ -15,8 +23,6 @@ export const seedThread = (store: Store<typeof schema>) => {
     const allEvents = []
 
     console.log('📧 Preparing sample email thread...')
-
-    const threadId = nanoid()
 
     // Create the thread
     allEvents.push(
@@ -102,7 +108,7 @@ export const seedThread = (store: Store<typeof schema>) => {
     allEvents.push(
       threadEvents.threadLabelApplied({
         threadId,
-        labelId: 'inbox-label-id', // TODO: Replace with a INBOX label ID generated in labels seeding
+        labelId: inboxLabelId,
         appliedAt: now,
       }),
     )
@@ -112,14 +118,14 @@ export const seedThread = (store: Store<typeof schema>) => {
     // Commit all events atomically - this ensures proper sync timing
     store.commit(...allEvents)
 
-    console.log('✅ Thread aggregate seed data created successfully!')
+    console.log('✅ Thread store seed data created successfully!')
     console.log('📊 Summary:')
     console.log('  - 1 email thread with 4 messages')
     console.log('  - Cross-aggregate label associations')
     console.log('  - Mixed read/unread message states')
     console.log(`  - All ${allEvents.length} events committed atomically for proper client sync`)
   } catch (error) {
-    console.error('Failed to seed Thread aggregate data:', error)
+    console.error('Failed to seed Thread store data:', error)
     throw error
   }
 }
