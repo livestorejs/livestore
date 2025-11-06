@@ -3,35 +3,21 @@ import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/a
 import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
+import { threadEvents, schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
-import { type Env, storeIdFromRequest } from './shared.ts'
+import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private storeId: string | undefined
-  private cachedStore: Store<typeof threadSchema> | undefined
+  private store: Store<typeof threadSchema> | undefined
   // private storeSubscription: Unsubscribe | undefined
 
-  async fetch(request: Request): Promise<Response> {
-    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
-    this.storeId = storeIdFromRequest(request)
+  async initialize({ threadId, inboxLabelId }: { threadId: string; inboxLabelId: string }) {
+    if (this.store !== undefined) return
 
-    const store = await this.getStore()
+    const storeId = `thread-${threadId}`
 
-    // Kick off cross-aggregate event subscriptions for email functionality
-    // await this.subscribeToStore()
-
-    const syncState = await store._dev.syncStates()
-
-    return new Response(JSON.stringify({ syncState }, null, 2), { headers: { 'Content-Type': 'application/json' } })
-  }
-
-  async getStore() {
-    if (this.cachedStore !== undefined) return this.cachedStore
-
-    const storeId = this.storeId!
-    const store = await createStoreDoPromise({
+    this.store = await createStoreDoPromise({
       schema: threadSchema,
       storeId,
       clientId: 'thread-client-do',
@@ -45,43 +31,51 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       livePull: true,
     })
 
-    this.cachedStore = store
-
-    // Check if the store needs seeding (server-side seeding)
-    await this.ensureStoreSeeded(store)
-
-    return store
-  }
-
-  private async ensureStoreSeeded(store: Store<typeof threadSchema>) {
-    // Check if seeding has already been done by looking for existing messages
-    const existingThreadCount = store.query(threadTables.thread.count())
+    // Check if seeding has already been done by looking for existing threads
+    const existingThreadCount = this.store.query(threadTables.thread.count())
 
     if (existingThreadCount > 0) {
-      console.log('📧 Thread aggregate already seeded with', existingThreadCount, 'thread')
+      console.log('📧 Thread store already seeded with', existingThreadCount, 'thread')
       return
     }
 
     try {
-      console.log('🌱 Seeding Thread aggregate data server-side...')
-      seedThread(store)
-
-      // Wait for all commits to be processed by LiveStore
-      // This ensures all events are available for sync to client
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Verify seeding completed by checking for expected data
-      const threadCount = store.query(threadTables.thread.count())
-      const messageCount = store.query(threadTables.messages.count())
-      const threadLabelsCount = store.query(threadTables.threadLabels.count())
-
-      console.log(
-        `✅ Server-side seeding verified: ${threadCount} thread, ${messageCount} messages, ${threadLabelsCount} thread labels`,
-      )
+      console.log('🌱 Seeding Thread store data server-side...')
+      seedThread({ store: this.store, threadId, inboxLabelId })
     } catch (error) {
       console.error('❌ Server-side seeding failed:', error)
       throw error
     }
+  }
+
+  async createThread({
+    id,
+    labelId,
+    participants,
+    subject,
+  }: {
+    id: string
+    subject: string
+    participants: string[]
+    labelId: string
+  }) {
+    if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
+
+    this.store.commit(
+      threadEvents.threadCreated({
+        id,
+        subject,
+        participants,
+        createdAt: new Date(),
+      }),
+      threadEvents.threadLabelApplied({
+        threadId: id,
+        labelId: labelId,
+        appliedAt: new Date(),
+      }),
+    )
+
+    console.log(`✅ Thread ${id} created successfully`)
   }
 
   // async subscribeToStore() {

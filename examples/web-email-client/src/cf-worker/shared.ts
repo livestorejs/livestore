@@ -1,9 +1,10 @@
-import type { ClientDoWithRpcCallback } from '@livestore/adapter-cloudflare'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import type { InboxClientDO } from './InboxClientDO.ts'
+import type { ThreadClientDO } from './ThreadClientDO.ts'
 
 export type Env = {
-  INBOX_CLIENT_DO: SyncBackend.CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-  THREAD_CLIENT_DO: SyncBackend.CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
+  INBOX_CLIENT_DO: SyncBackend.CfTypes.DurableObjectNamespace<InboxClientDO>
+  THREAD_CLIENT_DO: SyncBackend.CfTypes.DurableObjectNamespace<ThreadClientDO>
   SYNC_BACKEND_DO: SyncBackend.CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>
   SYNC_BACKEND_URL: string
   DB: D1Database

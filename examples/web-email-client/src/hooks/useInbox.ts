@@ -15,7 +15,7 @@ import { inboxTables } from '../stores/inbox/schema.ts'
  */
 
 const labelsQuery = queryDb(inboxTables.labels.where({}), { label: 'labels' })
-const threadIndexQuery = queryDb(inboxTables.threadIndex.where({}), { label: 'threadIndex' })
+const threadsQuery = queryDb(inboxTables.threadIndex.where({}), { label: 'threadIndex' })
 const threadLabelsQuery = queryDb(inboxTables.threadLabels.where({}), { label: 'threadLabels' })
 
 export const useInbox = () => {
@@ -26,7 +26,7 @@ export const useInbox = () => {
   const labels = inboxStore.useQuery(labelsQuery)
 
   // Get thread projections from Inbox aggregate (for efficient browsing/filtering)
-  const threadIndex = inboxStore.useQuery(threadIndexQuery)
+  const threads = inboxStore.useQuery(threadsQuery)
   const threadLabels = inboxStore.useQuery(threadLabelsQuery)
 
   // UI Actions
@@ -46,14 +46,9 @@ export const useInbox = () => {
     setUiState({ isComposing: !uiState.isComposing })
   }
 
-  // Helper functions
-  const getCurrentLabel = () => {
-    return labels.find((l) => l.id === uiState.selectedLabelId) || null
-  }
-
-  const getCurrentThreadId = () => {
-    return uiState.selectedThreadId
-  }
+  const currentLabel = labels.find((l) => l.id === uiState.selectedLabelId)
+  const currentThreadId = uiState.selectedThreadId
+  const currentThread = currentThreadId && threads.find((t) => t.id === currentThreadId)
 
   return {
     // Store
@@ -64,7 +59,7 @@ export const useInbox = () => {
 
     // Data
     labels,
-    threadIndex, // Projection of all threads for browsing
+    threadIndex: threads, // Projection of all threads for browsing
     threadLabels, // Projection of thread-label associations for filtering
 
     // UI Actions
@@ -74,7 +69,8 @@ export const useInbox = () => {
     toggleComposing,
 
     // Helpers
-    getCurrentLabel,
-    getCurrentThreadId,
+    currentLabel,
+    currentThreadId,
+    currentThread,
   }
 }

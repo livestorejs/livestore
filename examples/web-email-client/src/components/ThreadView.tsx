@@ -20,10 +20,8 @@ type ThreadViewProps = {
  */
 export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
   const { uiState, toggleComposing } = useInbox()
-  const { getCurrentThread, getMessagesForThread, getUserLabelsForThread, removeUserLabelFromThread } =
-    useThread(threadId)
+  const { thread, getMessagesForThread, getUserLabelsForThread, removeUserLabelFromThread } = useThread(threadId)
 
-  const thread = getCurrentThread()
   const messages = getMessagesForThread(threadId)
   const threadUserLabels = getUserLabelsForThread(threadId)
 

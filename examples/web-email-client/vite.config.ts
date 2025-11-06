@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    livestoreDevtoolsPlugin({ schemaPath: ['./src/stores/labels/schema.ts', './src/stores/thread/schema.ts'] }),
+    livestoreDevtoolsPlugin({ schemaPath: ['./src/stores/inbox/schema.ts', './src/stores/thread/schema.ts'] }),
   ],
   optimizeDeps: {
     exclude: ['@livestore/wa-sqlite'],
