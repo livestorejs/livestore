@@ -22,21 +22,12 @@ Unconfirmed events are excluded in the first version of the event streaming API.
 
 ## Scenarios that can occur
 
-- Large event log (≥100k events): confirm throughput remains stable and memory stays bounded while streaming.
+- Large event log (>100k events): confirm throughput remains stable and memory stays bounded while streaming.
 - Empty log: validate the stream initializes without events and waits correctly for new data.
 - High throughput log: verify ordering, batching, and backpressure when events arrive faster than they can be processed.
 - Mid-stream interruption: determine resume semantics and whether behavior differs between SQL batching and SyncState sources.
 - Upstream head advancing: confirm the stream continues past the initial `until` and tracks the moving head.
 
-## Property based dimensions
-
-NOTE:
-Convert into dynamic ranges for a more "fuzzing" like approach:
-Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
-
-- Batch size: [0, 1-20, 1000-10000]
-- Number of events: [0, 1-20, 1000-100000]
-- Events per second: [0, 1-20, 1000-100000]
 
 ## Deterministic scenarios
 
@@ -46,10 +37,21 @@ Reference: tests/integration/src/tests/node-sync/node-sync.test.ts
 - [x] Events streamed since local head doesn't include local head
 - [x] Events get filtered by client ID
 - [x] Events get filtered by session ID
+- [x] Client only events get filtered out
+
+## Property based dimensions
+
+- Batch size: [1, 5, 12, 25, 50, 100]
+- Number of events: [0, 1, 6, 10, 100]
+- Batch size per tick: [1, 3, 10, 100]
 
 ## Integration tests
 
-- [ ] Stream resumes when reconnected to sync backend
+- [x] Stream resumes when reconnected to sync backend
+
+## Performance test
+
+- [ ] Large event log >100K
 
 ## Use cases
 
