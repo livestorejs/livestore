@@ -24,6 +24,11 @@ const withTestCtx = Vitest.makeWithTestCtx({
     ),
 })
 
+/**
+ * The purpose of this test is a store integration test for event streaming.
+ * Main test covering event streaming logic itself is located in:
+ * tests/package-common/src/leader-thread/stream-events.test.ts
+ */
 Vitest.describe('Store events API', () => {
   Vitest.scopedLive('should resume when reconnected to sync backend', (test) =>
     Effect.gen(function* () {
@@ -35,6 +40,7 @@ Vitest.describe('Store events API', () => {
         client: EventFactory.clientIdentity('other-client', 'static-session-id'),
       })
 
+      // Queue is used in order to allow analyzing the stream in stages
       const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
 
       yield* store.eventsStream().pipe(
