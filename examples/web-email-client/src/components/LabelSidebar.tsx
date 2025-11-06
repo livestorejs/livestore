@@ -6,7 +6,7 @@ import { useInbox } from '../hooks/useInbox.ts'
  *
  * Displays:
  * - System labels (INBOX, SENT, ARCHIVE, TRASH)
- * - Message counts per label
+ * - Thread counts per label
  * - Active label highlighting
  */
 
@@ -42,15 +42,15 @@ export const LabelSidebar: React.FC = () => {
                 <span className="font-medium capitalize">{label.name.toLocaleLowerCase()}</span>
               </div>
 
-              {/* Message Count */}
-              {label.messageCount > 0 && (
+              {/* Thread Count */}
+              {label.threadCount > 0 && (
                 <span
                   className={`
                     text-xs px-2 py-1 rounded-full font-medium
                     ${isActive ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-600'}
                   `}
                 >
-                  {label.messageCount}
+                  {label.threadCount}
                 </span>
               )}
             </button>
