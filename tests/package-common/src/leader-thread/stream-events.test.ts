@@ -143,12 +143,12 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
-        const encodedEvents = [
+        const initialEvents = [
           toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
           toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
         ]
 
-        yield* insertEvents(dbEventlog, encodedEvents)
+        yield* insertEvents(dbEventlog, initialEvents)
 
         const stream = streamEventsWithSyncState({
           dbEventlog,
@@ -159,9 +159,18 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectFiber = yield* stream.pipe(Stream.take(2), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectFiber = yield* stream.pipe(Stream.take(4), Stream.runCollect).pipe(Effect.forkScoped)
 
-        yield* advanceHead(encodedEvents[1]!.seqNum)
+        yield* advanceHead(initialEvents[1]!.seqNum)
+
+        const laterEvents = [
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
+          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '4', text: 'fourth', completed: false })),
+        ]
+
+        yield* insertEvents(dbEventlog, laterEvents)
+
+        yield* advanceHead(laterEvents[1]!.seqNum)
 
         const collected = yield* collectFiber.pipe(Fiber.join)
         const emitted = Chunk.toReadonlyArray(collected)
@@ -169,10 +178,14 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         expect(emitted.map((event) => event.name)).toEqual([
           fixtureEvents.todoCreated.name,
           fixtureEvents.todoCreated.name,
+          fixtureEvents.todoCreated.name,
+          fixtureEvents.todoCreated.name,
         ])
         expect(emitted.map((event) => event.args)).toEqual([
           { id: '1', text: 'first', completed: false },
           { id: '2', text: 'second', completed: false },
+          { id: '3', text: 'third', completed: false },
+          { id: '4', text: 'fourth', completed: false },
         ])
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
@@ -245,6 +258,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(encodedEvents[1]!.seqNum)
 
+        // Stream.take(n) here is omitted to verify that the stream finalizes when reaching until cursor
         const collectFiber = yield* stream.pipe(Stream.runCollect).pipe(Effect.forkScoped)
 
         const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
