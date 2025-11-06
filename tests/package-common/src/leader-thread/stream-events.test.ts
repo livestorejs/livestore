@@ -427,9 +427,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  const batchSizeSampleSchema = Schema.Literal(1, 2, 4, 5, 10)
-  const eventCountSampleSchema = Schema.Literal(1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 15, 16)
-  const batchesPerTickSampleSchema = Schema.Literal(1, 2, 3, 10)
+  const batchSizeSampleSchema = Schema.Literal(1, 5, 12, 25, 50, 100)
+  const eventCountSampleSchema = Schema.Literal(0, 1, 6, 10, 100)
+  const batchesPerTickSampleSchema = Schema.Literal(1, 3, 10, 100)
 
   Vitest.asProp(
     Vitest.scopedLive,
@@ -443,6 +443,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       withNodeFs(
         Effect.gen(function* () {
           const { dbEventlog, dbState, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
+
+          // console.log('batchSize', batchSize, 'eventCount', eventCount, 'batchesPerTick', batchesPerTick)
 
           const eventFactory = makeFixtureEventFactory({
             client: EventFactory.clientIdentity('client-1', 'session-1'),
@@ -476,7 +478,10 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           for (let index = tickSize; index < generatedEvents.length; index += tickSize) {
             yield* advanceHead(generatedEvents[index - 1]!.seqNum)
           }
-          yield* advanceHead(generatedEvents.at(-1)!.seqNum)
+          if (eventCount > 0) {
+            // Ensure that head is moved to last event if batchSize * batchesPerTick != eventSize
+            yield* advanceHead(generatedEvents.at(-1)!.seqNum)
+          }
 
           const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
 
@@ -488,6 +493,6 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           yield* closeHeads
         }).pipe(Vitest.withTestCtx(test)),
       ),
-    { fastCheck: { numRuns: 20 } },
+    {},
   )
 })
