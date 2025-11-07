@@ -66,6 +66,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, 
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -117,25 +118,45 @@ export type StoreCommitOptions = {
 
 export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   /**
-   * By default only new events are returned.
-   * Use this to get all events from a specific point in time.
+   * Only include events after this logical timestamp (exclusive)
+   * @default undefined (no lower bound)
    */
-  cursor?: EventSequenceNumber.EventSequenceNumber
+  since?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events up to this logical timestamp (inclusive)
+   * @default undefined (no upper bound)
+   */
+  until?: EventSequenceNumber.EventSequenceNumber
   /**
    * Only include events of the given names
    * @default undefined (include all)
    */
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
   /**
-   * Whether to include client-only events or only return synced events
-   * @default true
+   * Only include events from specific client IDs
+   * @default undefined (include all clients)
    */
-  includeClientOnly?: boolean
+  clientIds?: ReadonlyArray<string>
   /**
-   * Exclude own events that have not been pushed to the sync backend yet
-   * @default false
+   * Only include events from specific session IDs
+   * @default undefined (include all sessions)
    */
-  excludeUnpushed?: boolean
+  sessionIds?: ReadonlyArray<string>
+  /**
+   * Number of events to fetch in each batch when streaming from database
+   * @default 1000
+   */
+  eventQueryBatchSize?: number
+
+  // Future filtering ideas (not implemented yet):
+  // - syncLevel: Filte by client, leader or backend (requires supporting unconfirmed events)
+  // - unconfirmedEvents: Filter by unconfirmed events (requires supporting unconfirmed events)
+  // - includeClientOnly: Whether to include client-only events (only relevant when syncLevel supported)
+  // - parentEventId: Filter by parent event
+  // - argPattern: Pattern matching on event arguments
+  // - aggregation: Count events by type, time buckets, etc.
+  // - eventMetadata: Filter by custom metadata
+  // - rebaseGeneration: Filter by rebase generation
 }
 
 export type Unsubscribe = () => void

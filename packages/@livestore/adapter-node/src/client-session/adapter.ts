@@ -13,7 +13,7 @@ import {
   type SyncOptions,
   UnexpectedError,
 } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -341,6 +341,22 @@ const makeLocalLeaderThread = ({
                 batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               ),
+            stream: (options) =>
+              streamEventsWithSyncState({
+                dbEventlog,
+                dbState,
+                syncState: syncProcessor.syncState,
+                options: {
+                  since: options.since,
+                  ...omitUndefineds({
+                    until: options.until,
+                    filter: options.filter,
+                    clientIds: options.clientIds,
+                    sessionIds: options.sessionIds,
+                    batchSize: options.batchSize,
+                  }),
+                },
+              }),
           },
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
           export: Effect.sync(() => dbState.export()),
@@ -480,6 +496,11 @@ const makeWorkerLeaderThread = ({
               Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
+            ),
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
+              Stream.orDie,
             ),
         },
         initialState: {

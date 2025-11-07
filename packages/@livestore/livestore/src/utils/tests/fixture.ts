@@ -47,10 +47,17 @@ export const events = {
       completed: Schema.Boolean,
     }),
   }),
+  todoCompleted: Events.synced({
+    name: 'todo.completed',
+    schema: Schema.Struct({
+      id: Schema.String,
+    }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
   'todo.created': ({ id, text, completed }) => tables.todos.insert({ id, text, completed }),
+  'todo.completed': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
 })
 
 export const state = State.SQLite.makeState({ tables, materializers })

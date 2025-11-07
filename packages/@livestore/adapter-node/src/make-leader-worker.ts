@@ -9,11 +9,12 @@ if (process.execArgv.includes('--inspect')) {
 
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig, UnexpectedError } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
@@ -86,6 +87,26 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
+    StreamEvents: ({
+      since,
+      until,
+      filter,
+      clientIds,
+      sessionIds,
+      batchSize,
+    }: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
+      Effect.gen(function* () {
+        const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
+        return streamEventsWithSyncState({
+          dbEventlog,
+          dbState,
+          syncState: syncProcessor.syncState,
+          options: {
+            since,
+            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          },
+        })
+      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-node:worker:StreamEvents')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,

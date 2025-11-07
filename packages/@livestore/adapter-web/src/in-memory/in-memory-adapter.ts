@@ -9,14 +9,20 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { tryAsFunctionAndNew } from '@livestore/utils'
+import { omitUndefineds, tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   BrowserWorker,
@@ -239,6 +245,22 @@ const makeLeaderThread = ({
               batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
+          stream: (options) =>
+            streamEventsWithSyncState({
+              dbEventlog,
+              dbState,
+              syncState: syncProcessor.syncState,
+              options: {
+                since: options.since,
+                ...omitUndefineds({
+                  until: options.until,
+                  filter: options.filter,
+                  clientIds: options.clientIds,
+                  sessionIds: options.sessionIds,
+                  batchSize: options.batchSize,
+                }),
+              },
+            }),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => dbState.export()),

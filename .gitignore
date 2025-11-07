@@ -44,6 +44,7 @@ scripts/.completions
 
 # locally downloaded S2 CLI
 .infra/s2/
+backlog
 
 .devenv
 .devenv*

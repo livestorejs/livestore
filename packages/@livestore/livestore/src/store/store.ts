@@ -19,8 +19,8 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -36,7 +36,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
-
 import type { LiveQuery, ReactivityGraph, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
@@ -69,6 +68,11 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
+export const DEFAULT_PARAMS = {
+  leaderPushBatchSize: 100,
+  eventQueryBatchSize: 1000,
+}
+
 export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
@@ -77,6 +81,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   schema: LiveStoreSchema
   context: TContext
   otel: StoreOtel
+  params: StoreOptions<TSchema, TContext>['params']
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -139,6 +144,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
+    this.params = params
     this.networkStatus = clientSession.leaderThread.networkStatus
 
     this.effectContext = effectContext
@@ -738,7 +744,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events.
+   * Returns an async iterable of events confirmed by backend.
+   *
+   * If no until is supplied the stream tracks upstream head and stays open.
    *
    * @example
    * ```ts
@@ -755,16 +763,52 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * }
    * ```
    */
-  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
-    this.checkShutdown('events')
-
-    return notYetImplemented(`store.events() is not yet implemented but planned soon`)
+  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+    const stream = this.eventsStream(options)
+    return {
+      async *[Symbol.asyncIterator]() {
+        const iterator = Stream.toAsyncIterable(stream)
+        for await (const event of iterator) {
+          yield event
+        }
+      },
+    }
   }
 
-  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
-    this.checkShutdown('eventsStream')
+  eventsStream = (
+    options?: StoreEventsOptions<TSchema>,
+  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
+    const { schema, clientSession, params } = this
+    const leaderThreadProxy = clientSession.leaderThread
+    const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
-    return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
+    const since = options?.since ?? EventSequenceNumber.ROOT
+    const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
+
+    return leaderThreadProxy.events
+      .stream({
+        since,
+        ...omitUndefineds({
+          until: options?.until,
+          filter: options?.filter as ReadonlyArray<string> | undefined,
+          clientIds: options?.clientIds,
+          sessionIds: options?.sessionIds,
+          batchSize,
+        }),
+      })
+      .pipe(
+        Stream.mapEffect((eventEncoded) =>
+          Schema.decode(eventSchema)(eventEncoded).pipe(
+            Effect.mapError((cause) =>
+              UnexpectedError.make({
+                cause,
+                note: `Failed to decode event: ${eventEncoded.name}#${eventEncoded.seqNum}`,
+              }),
+            ),
+          ),
+        ),
+        Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+      )
   }
 
   /**

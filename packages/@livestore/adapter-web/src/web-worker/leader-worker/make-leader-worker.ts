@@ -1,13 +1,19 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, LS_DEV } from '@livestore/utils'
+import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -183,7 +189,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const { syncProcessor } = yield* LeaderThreadCtx
+        const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
         return syncProcessor.pull({ cursor })
       }).pipe(
         Stream.unwrapScoped,
@@ -198,6 +204,19 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
+    StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
+      Effect.gen(function* () {
+        const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
+        return streamEventsWithSyncState({
+          dbEventlog,
+          dbState,
+          syncState: syncProcessor.syncState,
+          options: {
+            since,
+            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
+          },
+        })
+      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,

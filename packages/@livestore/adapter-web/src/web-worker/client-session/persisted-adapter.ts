@@ -450,6 +450,7 @@ export const makePersistedAdapter =
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
+      // LOOK HERE -> Here we are implementing the leader thread proxy
       const leaderThread: ClientSession['leaderThread'] = {
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),
@@ -465,6 +466,11 @@ export const makePersistedAdapter =
               Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
+            ),
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-web:client-session:streamEvents'),
+              Stream.orDie,
             ),
         },
 

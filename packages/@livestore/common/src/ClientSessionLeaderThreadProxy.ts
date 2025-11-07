@@ -3,6 +3,7 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnexpectedError } from './errors.ts'
+import type { StreamEventsFromEventLogOptions } from './leader-thread/eventlog.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
@@ -14,7 +15,18 @@ export interface ClientSessionLeaderThreadProxy {
       cursor: EventSequenceNumber.EventSequenceNumber
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    push(
+      batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>,
+      options?: {
+        /**
+         * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
+         * @default false
+         */
+        waitForProcessing?: boolean
+      },
+    ): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    /** Stream historical events with filtering */
+    stream(options: StreamEventsFromEventLogOptions): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

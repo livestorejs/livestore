@@ -2549,12 +2549,18 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-web
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
         version: link:../../packages/@livestore/react
+      '@livestore/sqlite-wasm':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -2600,6 +2606,10 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 7.1.7(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
+    devDependencies:
+      tsx:
+        specifier: ^4.20.0
+        version: 4.20.5
 
   tests/sync-provider:
     dependencies:
