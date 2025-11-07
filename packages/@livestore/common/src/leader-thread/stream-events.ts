@@ -8,28 +8,26 @@ import * as Eventlog from './eventlog.ts'
 import type { LeaderSqliteDb } from './types.ts'
 
 /**
- * High-level event streaming helper used by leader-thread adapters.
+ * Streams events for leader-thread adapters.
  *
- * This function is used to provide a continous stream of events from the eventlog
- * as the upstream head advances.
+ * Provides a continuous stream from the eventlog as the upstream head advances.
+ * When you pass an until marker, the helper delegates to `streamEventsFromEventLog`
+ * and stops when it reaches that marker.
  *
- * If an until marker is specified it calls streamEventsFromEventLog directly and
- * the stream finalizes upon reaching the until event.
+ * Why it lives in `leader-thread`:
+ * - Needs leader-owned resources: eventlog database, state database, sync state subscription.
+ * - Every adapter (web worker, in-memory, Node, Cloudflare) relies on the shared pagination helper.
  *
- * ## Why this lives in `leader-thread`
- * - Needs direct access to leader-owned resources (eventlog DB, state DB, syncState subscription).
- * - Shared by every adapter (web worker, in-memory, node, cloudflare) to avoid copy/paste of pagination logic.
- *
- * ## Usage
+ * Adapters that call this helper:
  * - `packages/@livestore/adapter-web/src/in-memory/in-memory-adapter.ts`
  * - `packages/@livestore/adapter-web/src/web-worker/leader-worker/make-leader-worker.ts`
  * - `packages/@livestore/adapter-node/src/client-session/adapter.ts`
  * - `packages/@livestore/adapter-node/src/make-leader-worker.ts`
  * - `packages/@livestore/adapter-cloudflare/src/make-adapter.ts`
  *
- * Each caller resolves the dependencies inside the leader scope and passes them in, so the returned stream
- * is environment-free. This avoids leaking `LeaderThreadCtx` into runtime code paths (e.g. `Store.eventsStream`)
- * that execute outside the leader’s resource scope.
+ * Each caller resolves dependencies inside the leader scope before invoking this helper,
+ * so the stream stays environment-agnostic and does not leak `LeaderThreadCtx` into runtime
+ * entry points such as `Store.eventsStream`.
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
@@ -46,6 +44,12 @@ export const streamEventsWithSyncState = ({
   if (options.until) {
     return Eventlog.streamEventsFromEventlog({ dbEventlog, dbState, options })
   }
+
+  // REFACTOR TO SOLVE EFFICIENCY ISSUE
+  // We can use this as the single outer stream
+  // and then when we refactor the streamEventsFromEventLog
+  // to return chunks instead of streams we avoid re-fetching
+  // events when head advances so we have to re-run and loose data
 
   const headStream = syncState.changes.pipe(
     Stream.map((state) => state.upstreamHead),

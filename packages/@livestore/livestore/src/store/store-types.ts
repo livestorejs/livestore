@@ -116,6 +116,7 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
+// Re-use the new common store events here and narrow the scope of the filter
 export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
   /**
    * Only include events after this logical timestamp (exclusive)

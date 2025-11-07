@@ -108,6 +108,7 @@ export const getEventsSince = ({
  * downstream by adapters through streamEventsWithSyncState to
  * allow for active head tracking from syncState.
  */
+//NOTE: Document that we don't want to load unnecassary data into memory
 export type StreamEventsFromEventLogOptions = {
   since: EventSequenceNumber.EventSequenceNumber
   until?: EventSequenceNumber.EventSequenceNumber
@@ -118,9 +119,10 @@ export type StreamEventsFromEventLogOptions = {
   includeClientOnly?: boolean
 }
 
+// RETURN WHOLE CHUNKS NOT STREAM
 export const streamEventsFromEventlog = ({
   dbEventlog,
-  dbState,
+  dbState, // <- REMOVE AND EXPLAIN WHY
   options,
 }: {
   dbEventlog: SqliteDb
@@ -188,6 +190,8 @@ export const streamEventsFromEventlog = ({
           readModelEvent.seqNumClient === eventlogEvent.seqNumClient,
       )
 
+      // FACTOR THIS OUT TO A SEPARATE FUNCTION -> CHECK FOR RE-USE
+      // USE: AnyEncoded
       return LiveStoreEvent.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
@@ -203,6 +207,7 @@ export const streamEventsFromEventlog = ({
         },
         clientId: eventlogEvent.clientId,
         sessionId: eventlogEvent.sessionId,
+        // OMIT
         meta: {
           sessionChangeset:
             sessionChangeset && sessionChangeset.changeset !== null

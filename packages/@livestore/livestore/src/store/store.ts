@@ -744,9 +744,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events confirmed by backend.
+   * Returns an async iterable of events confirmed by the sync backend.
    *
-   * If no until is supplied the stream tracks upstream head and stays open.
+   * MAKE SURE TO EXPLAIN BETTER
+   *
+   * TODO:
+   * - Support rebase with leader
+   * - Support rebase with sync backend
+   * - Support client only events
    *
    * @example
    * ```ts
@@ -758,7 +763,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * @example
    * ```ts
    * // Get all events from the beginning of time
-   * for await (const event of store.events({ cursor: EventSequenceNumber.ROOT })) {
+   * for await (const event of store.events({ since: EventSequenceNumber.ROOT })) {
    *   console.log(event)
    * }
    * ```
@@ -797,16 +802,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       })
       .pipe(
-        Stream.mapEffect((eventEncoded) =>
-          Schema.decode(eventSchema)(eventEncoded).pipe(
-            Effect.mapError((cause) =>
-              UnexpectedError.make({
-                cause,
-                note: `Failed to decode event: ${eventEncoded.name}#${eventEncoded.seqNum}`,
-              }),
-            ),
-          ),
-        ),
+        // UNDERSTAND BETTER HOW mapChunksEffect works
+        Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
+        Stream.catchTag('ParseError', (cause) => Stream.fail(UnexpectedError.make({ cause }))),
         Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
       )
   }

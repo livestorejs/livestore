@@ -2,18 +2,54 @@
 
 ## NOTES
 
-Where can we document the design decisions on the event stream api?
-- JSDoc
-- Write it one reference in others
-- Any other natural default?
-[!] How does this thing work? Why were certain decisions taken
-    - For example why we placed the logic in the leader worker
+## Event decoding
 
-Test from both store and leader thread perspective
-Store -> More integration type tests
-Leader thread -> Closer to unit-test style
+Currently hanled in store, option to move decoming to leader thread. Should we consider decoding on the leader-thread?
 
-Add note on why Queue's are used in tests -> To allow checking the stream in stages
+**Decode in store (current appraoch)**
+- Keeps leader-thread stream schema-agnostic
+- Decode errors surface in store
+- Potential UI lag for high throughput
+
+**Decode in leader-thread**
+- Requires passing event schema to leader-thread
+- Tightens coupling, every adapter must memoize and thread the event schema
+- More resilience to UI lag in high throughput scnearios since decode is handled on separeate thread
+
+## Performance tests
+
+We need to decide what the most suitable location for testing high throughput event streaming scenarios.
+- Sequentially creating 100K+ events not suitable for local test runtime
+- Generating and saving db snapshot with large event-count as alternative approach. Example: tests/perf/scripts/generate-eventlog-snapshot.ts
+- Ideally we want to test high throughput concurrent streams which is probably best suitable in a `perf` test-like setup.
+
+**Possible approaches**
+
+**Unit style test in `stream-events.test.ts`**
+- Requires db-snapshot or batch event-creation utility
+
+**Node based perfomance test script `stream-events-benchmark.ts` (implemented)**
+- Requires db-snapshot or batch event-creation utility
+- When would this run?
+
+**Playwright test using web adapter like existing `perf` tests**
+- Extend `perf` test-app to stream events?
+    - Possibility of conditionally loading component that does event-streaming to avoid affecting existing perf tests
+- Create new `perf-streaming` folder focused on `event-streaming`?
+    - Easier to isolate event streaming utilities
+    - More files to maintain
+
+## OTEL
+
+**Current gaps**
+- Streams in worker adapters already run within top level otel span
+- `streamEventsWithSyncState`: Missing span metadata for things like head advances, batch counts and filters
+- `streamEventsFromEventLog`: Current Stream.unfold offers no spans around expensive query work.
+- Store to leader traces don't propagate a shared OTEL context so any segments fetched in leader thread appear disconnected relative to Store.eventStream
+
+**Suggestions**
+- `streamEventsWithSyncState`: Wrap each event stream segment in an otel span with relevant meta data
+- `streamEventsFromEventLog`: Switch `Stream.unfold` to `Strem.unfoldEffect` and convert database calls in an `Effect` and wrap with span with current query attrs.
 
 
 ## Important notice for first version of event streaming api
