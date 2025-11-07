@@ -10,6 +10,12 @@ import type { LeaderSqliteDb } from './types.ts'
 /**
  * High-level event streaming helper used by leader-thread adapters.
  *
+ * This function is used to provide a continous stream of events from the eventlog
+ * as the upstream head advances.
+ *
+ * If an until marker is specified it calls streamEventsFromEventLog directly and
+ * the stream finalizes upon reaching the until event.
+ *
  * ## Why this lives in `leader-thread`
  * - Needs direct access to leader-owned resources (eventlog DB, state DB, syncState subscription).
  * - Shared by every adapter (web worker, in-memory, node, cloudflare) to avoid copy/paste of pagination logic.

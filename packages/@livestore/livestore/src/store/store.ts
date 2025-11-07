@@ -30,7 +30,6 @@ import {
   Inspectable,
   Option,
   OtelTracer,
-  type ParseResult,
   Runtime,
   Schema,
   Stream,
@@ -747,6 +746,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   /**
    * Returns an async iterable of events confirmed by backend.
    *
+   * If no until is supplied the stream tracks upstream head and stays open.
+   *
    * @example
    * ```ts
    * for await (const event of store.events()) {
@@ -776,12 +777,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
-  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, ParseResult.ParseError | UnexpectedError> => {
+  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
     const { schema, clientSession, params } = this
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
-    // Apply defaults
     const since = options?.since ?? EventSequenceNumber.ROOT
     const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
@@ -797,7 +797,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       })
       .pipe(
-        Stream.mapEffect((eventEncoded) => Schema.decode(eventSchema)(eventEncoded)),
+        Stream.mapEffect((eventEncoded) =>
+          Schema.decode(eventSchema)(eventEncoded).pipe(
+            Effect.mapError((cause) =>
+              UnexpectedError.make({
+                cause,
+                note: `Failed to decode event: ${eventEncoded.name}#${eventEncoded.seqNum}`,
+              }),
+            ),
+          ),
+        ),
         Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
       )
   }
