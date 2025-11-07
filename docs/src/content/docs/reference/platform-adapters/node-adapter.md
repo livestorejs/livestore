@@ -35,11 +35,7 @@ const adapter = makeWorkerAdapter({
 
 // livestore.worker.ts
 import { makeWorker } from '@livestore/adapter-node/worker'
+import { schema } from './schema/index.js'
 
-const adapter = makeAdapter({
-	storage: { type: 'fs' },
-	// or in-memory:
-	// storage: { type: 'in-memory' },
-	sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
-})
+makeWorker({ schema })
 ```
