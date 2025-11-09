@@ -105,6 +105,10 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
 export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
   'StreamEvents',
   {
+    // Pull this out as a Schema.struct  -> Derive type and re-use for interface in stream-events.ts
+    // Move into commoon pkg
+    // Encode the max batch size in the Schema
+    // Find a mechanical maximum
     payload: {
       since: EventSequenceNumber.EventSequenceNumber,
       until: Schema.optional(EventSequenceNumber.EventSequenceNumber),

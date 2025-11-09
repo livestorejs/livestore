@@ -1,7 +1,6 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Stream } from '@livestore/utils/effect'
-import type { UnexpectedError } from '../adapter-types.ts'
-import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
+import { Effect, Stream, Option, Chunk, Queue } from '@livestore/utils/effect'
+import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { StreamEventsFromEventLogOptions } from './eventlog.ts'
 import * as Eventlog from './eventlog.ts'
@@ -31,67 +30,54 @@ import type { LeaderSqliteDb } from './types.ts'
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
-  dbState,
   syncState,
   options,
 }: {
   dbEventlog: LeaderSqliteDb
-  dbState: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   options: StreamEventsFromEventLogOptions
-}): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError> => {
-  // If options until is specified there is no need to track upstreamHead
-  if (options.until) {
-    return Eventlog.streamEventsFromEventlog({ dbEventlog, dbState, options })
-  }
+}): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
+  const batchSize = options?.batchSize ?? 10
 
-  // REFACTOR TO SOLVE EFFICIENCY ISSUE
-  // We can use this as the single outer stream
-  // and then when we refactor the streamEventsFromEventLog
-  // to return chunks instead of streams we avoid re-fetching
-  // events when head advances so we have to re-run and loose data
+  return Stream.unwrapScoped(
+    Effect.gen(function* () {
+      const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
 
-  const headStream = syncState.changes.pipe(
-    Stream.map((state) => state.upstreamHead),
-    Stream.skipRepeated((a, b) => a.global === b.global && a.client === b.client),
-  )
+      yield* syncState.changes.pipe(
+        Stream.map((state) => state.upstreamHead),
+        Stream.runForEach((head) => Queue.offer(headQueue, head)),
+        Effect.forkScoped,
+      )
 
-  return headStream.pipe(
-    Stream.mapAccum<
-      // Current cursor position tracking our progress through the stream
-      EventSequenceNumber.EventSequenceNumber,
-      // Next upstream head from syncState
-      EventSequenceNumber.EventSequenceNumber,
-      // Stream segment for events between cursor and head
-      Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
-    >(options.since, (currentCursor, nextHead) => {
-      // Check if we've reached the until boundary
-      if (options.until && currentCursor.global >= options.until.global) {
-        return [currentCursor, Stream.empty]
-      }
+      return Stream.paginateChunkEffect({ cursor: options.since, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
+        Effect.gen(function* () {
+          if (options?.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
+            return [Chunk.empty(), Option.none()]
+          }
 
-      // Nothing new to fetch if head hasn't advanced
-      if (nextHead.global <= currentCursor.global) {
-        return [currentCursor, Stream.empty]
-      }
+          const nextHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head) ? yield* Queue.take(headQueue) : head
+          const target = EventSequenceNumber.make({
+            global: Math.min(cursor.global + batchSize, nextHead.global),
+            client: EventSequenceNumber.clientDefault,
+          })
+          // console.log({ nextHead, target })
+          const chunk = Eventlog.getEventsFromEventlog({
+            dbEventlog,
+            options: {
+              ...options,
+              since: cursor,
+              until: target,
+            },
+          })
 
-      // Calculate the effective upper bound for this segment
-      const effectiveHead = options.until && nextHead.global > options.until.global ? options.until : nextHead
+          const nextState =
+            options?.until && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+              ? Option.none()
+              : Option.some({ cursor: target, head: nextHead })
 
-      // Stream this segment of events from database
-      const segment = Eventlog.streamEventsFromEventlog({
-        dbEventlog,
-        dbState,
-        options: {
-          ...options,
-          since: currentCursor,
-          until: effectiveHead,
-        },
-      })
-
-      return [effectiveHead, segment]
+          return [chunk, nextState]
+        }),
+      )
     }),
-    // Flatten all segments into single continuous stream
-    Stream.flatMap((segment) => segment),
   )
 }
