@@ -5,7 +5,7 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Chunk, Effect, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -417,8 +417,11 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectFiber = yield* stream
-          .pipe(Stream.take(backendApproved.length), Stream.runCollect, Effect.forkScoped)
+        const collectFiber = yield* stream.pipe(
+          Stream.take(backendApproved.length),
+          Stream.runCollect,
+          Effect.forkScoped,
+        )
 
         yield* advanceHead(backendApproved[backendApproved.length - 1]!.seqNum)
 

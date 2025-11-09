@@ -96,7 +96,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       batchSize,
     }: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
       Effect.gen(function* () {
-        const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
+        const { dbEventlog, syncProcessor } = yield* LeaderThreadCtx
         return streamEventsWithSyncState({
           dbEventlog,
           syncState: syncProcessor.syncState,
