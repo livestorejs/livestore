@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Effect, Stream, Option, Chunk, Queue } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { StreamEventsFromEventLogOptions } from './eventlog.ts'

@@ -26,7 +26,7 @@ export interface ClientSessionLeaderThreadProxy {
       },
     ): Effect.Effect<void, UnexpectedError | LeaderAheadError>
     /** Stream historical events with filtering */
-    stream(options: StreamEventsFromEventLogOptions): Stream.Stream<LiveStoreEvent.EncodedWithMeta, UnexpectedError>
+    stream(options: StreamEventsFromEventLogOptions): Stream.Stream<LiveStoreEvent.AnyEncoded, UnexpectedError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

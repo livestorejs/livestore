@@ -99,7 +99,6 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
         return streamEventsWithSyncState({
           dbEventlog,
-          dbState,
           syncState: syncProcessor.syncState,
           options: {
             since,

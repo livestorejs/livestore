@@ -122,7 +122,6 @@ export const makeAdapter =
               stream: (options) =>
                 streamEventsWithSyncState({
                   dbEventlog,
-                  dbState,
                   syncState: syncProcessor.syncState,
                   options: {
                     since: options.since,

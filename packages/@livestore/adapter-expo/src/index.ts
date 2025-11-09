@@ -13,7 +13,12 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -267,9 +272,9 @@ const makeLeaderThread = ({
               )
               .pipe(Effect.provide(layer), Effect.scoped),
           stream: (options) =>
-            Eventlog.streamEventsFromEventlog({
+            streamEventsWithSyncState({
               dbEventlog,
-              dbState,
+              syncState: syncProcessor.syncState,
               options,
             }),
         },

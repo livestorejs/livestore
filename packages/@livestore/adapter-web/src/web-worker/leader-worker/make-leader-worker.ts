@@ -206,10 +206,9 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
       Effect.gen(function* () {
-        const { dbEventlog, dbState, syncProcessor } = yield* LeaderThreadCtx
+        const { dbEventlog, syncProcessor } = yield* LeaderThreadCtx
         return streamEventsWithSyncState({
           dbEventlog,
-          dbState,
           syncState: syncProcessor.syncState,
           options: {
             since,

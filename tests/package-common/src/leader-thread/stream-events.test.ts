@@ -5,7 +5,7 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { Chunk, Effect, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -158,7 +158,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectFiber = yield* stream.pipe(Stream.take(4), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectFiber = yield* stream.pipe(Stream.take(4), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(initialEvents[1]!.seqNum)
 
@@ -256,7 +256,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         yield* advanceHead(encodedEvents[1]!.seqNum)
 
         // Stream.take(n) here is omitted to verify that the stream finalizes when reaching until cursor
-        const collectFiber = yield* stream.pipe(Stream.runCollect).pipe(Effect.forkScoped)
+        const collectFiber = yield* stream.pipe(Stream.runCollect, Effect.forkScoped)
 
         const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
         yield* closeHeads
@@ -418,8 +418,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         })
 
         const collectFiber = yield* stream
-          .pipe(Stream.take(backendApproved.length), Stream.runCollect)
-          .pipe(Effect.forkScoped)
+          .pipe(Stream.take(backendApproved.length), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(backendApproved[backendApproved.length - 1]!.seqNum)
 
@@ -478,7 +477,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
             },
           })
 
-          const collectFiber = yield* stream.pipe(Stream.take(eventCount), Stream.runCollect).pipe(Effect.forkScoped)
+          const collectFiber = yield* stream.pipe(Stream.take(eventCount), Stream.runCollect, Effect.forkScoped)
 
           const tickSize = batchSize * batchesPerTick
           for (let index = tickSize; index < generatedEvents.length; index += tickSize) {

@@ -122,7 +122,7 @@ export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWo
       sessionIds: Schema.optional(Schema.Array(Schema.String)),
       batchSize: Schema.optional(Schema.Number),
     },
-    success: LiveStoreEvent.EncodedWithMeta,
+    success: LiveStoreEvent.AnyEncoded,
     failure: UnexpectedError,
   },
 ) {}

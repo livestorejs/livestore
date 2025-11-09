@@ -1,7 +1,6 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
-import { UnexpectedError } from '../errors.ts'
 import type { ClientEventSequenceNumber } from '../schema/EventSequenceNumber.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
