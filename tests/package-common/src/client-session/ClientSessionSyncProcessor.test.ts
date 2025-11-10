@@ -14,7 +14,7 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { makeClientSessionSyncProcessor, type SyncBackend } from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
-import { createStore, makeShutdownDeferred } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
@@ -98,7 +98,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
 
       // Make sure pending events are processed
-      yield* store.syncProcessor.syncState.changes.pipe(
+      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
         Stream.filter((_) => _.pending.length === 0),
         Stream.take(1),
         Stream.runDrain,
@@ -157,7 +157,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(tables.appConfig.set({ theme: 'dark' }, 'session-a'))
 
-      const initialState = yield* store.syncProcessor.syncState.get
+      const initialState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
       expect(initialState.pending.length).toBeGreaterThan(0)
       expect(initialState.pending[0]?.seqNum.client ?? 0).toBeGreaterThan(0)
       expect(initialState.pending[0]?.name).toEqual('app_configSet')
@@ -166,7 +166,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         backendFactory.todoCreated.next({ id: 'backend_rebase', text: '', completed: false }),
       )
 
-      yield* store.syncProcessor.syncState.changes.pipe(
+      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
         Stream.filter(
           (state) => state.pending.length === 0 && EventSequenceNumber.isEqual(state.localHead, state.upstreamHead),
         ),
@@ -175,7 +175,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         Effect.timeout('2 seconds'),
       )
 
-      const finalState = yield* store.syncProcessor.syncState.get
+      const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
       expect(finalState.pending.length).toEqual(0)
       expect(EventSequenceNumber.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
     }).pipe(withTestCtx(test)),
@@ -306,7 +306,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       // Wait for the sync backend to receive the pushed event
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
       // Wait for the client session to have reached e2
-      yield* store.syncProcessor.syncState.changes.pipe(
+      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
         Stream.takeUntil((_) => _.localHead.global === 2),
         Stream.runDrain,
       )

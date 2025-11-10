@@ -48,7 +48,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/router-plugin": "^1.132.56",
-    "@types/node": "^24.5.2",
+    "@types/node": "^24.9.2",
     "@types/react": "^19.1.13",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^19.1.9",

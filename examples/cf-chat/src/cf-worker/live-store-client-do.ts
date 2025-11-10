@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
+import { nanoid, type Store, StoreInternalsSymbol, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import type { CfTypes } from '@livestore/sync-cf/common'
 import { events, schema, tables } from '../livestore/schema.ts'
@@ -30,7 +30,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
 
       const url = new URL(request.url)
       if (url.pathname.endsWith('/db')) {
-        const snapshot = store.sqliteDbWrapper.export()
+        const snapshot = store[StoreInternalsSymbol].sqliteDbWrapper.export()
         return new Response(snapshot, {
           headers: {
             'Content-Type': 'application/octet-stream',

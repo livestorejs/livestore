@@ -41,6 +41,7 @@ import type {
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
@@ -346,7 +347,7 @@ export const createStore = <
       })
 
       // Starts background fibers (syncing, event processing, etc) for store
-      yield* store.boot
+      yield* store[StoreInternalsSymbol].boot
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
@@ -364,7 +365,7 @@ export const createStore = <
 
       if (batchUpdates !== undefined) {
         // Replacing the default batchUpdates function with the provided one after boot
-        store.reactivityGraph.context!.effectsWrapper = batchUpdates
+        store[StoreInternalsSymbol].reactivityGraph.context!.effectsWrapper = batchUpdates
       }
 
       yield* Deferred.succeed(storeDeferred, store as any as Store)

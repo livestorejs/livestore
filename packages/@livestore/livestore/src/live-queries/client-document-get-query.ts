@@ -3,7 +3,7 @@ import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
-
+import { StoreInternalsSymbol } from '../store/store-types.ts'
 import type { ReactivityGraphContext } from './base-class.ts'
 
 export const rowQueryLabel = (
@@ -30,11 +30,11 @@ export const makeExecBeforeFirstRun =
       )
     }
 
-    const otelContext = otelContext_ ?? store.otel.queriesSpanContext
+    const otelContext = otelContext_ ?? store[StoreInternalsSymbol].otel.queriesSpanContext
 
     const idVal = id === SessionIdSymbol ? store.sessionId : id!
     const rowExists =
-      store.sqliteDbWrapper.cachedSelect(
+      store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
         [idVal] as any as PreparedBindValues,
         { otelContext },

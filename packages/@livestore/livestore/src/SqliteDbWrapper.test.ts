@@ -1,7 +1,7 @@
 import { Effect } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
-
+import { StoreInternalsSymbol } from './store/store-types.ts'
 import { makeTodoMvc } from './utils/tests/fixture.ts'
 
 Vitest.describe('SqliteDbWrapper', () => {
@@ -9,7 +9,7 @@ Vitest.describe('SqliteDbWrapper', () => {
     const getTablesUsed = (query: string) =>
       Effect.gen(function* () {
         const store = yield* makeTodoMvc({})
-        return store.sqliteDbWrapper.getTablesUsed(query)
+        return store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(query)
       })
 
     Vitest.scopedLive('should return the correct tables used', (_test) =>

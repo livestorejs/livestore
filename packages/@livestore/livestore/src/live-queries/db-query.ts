@@ -16,6 +16,7 @@ import * as otel from '@opentelemetry/api'
 import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
 import type { RefreshReason } from '../store/store-types.ts'
+import { StoreInternalsSymbol } from '../store/store-types.ts'
 import { isValidFunctionString } from '../utils/function-string.ts'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
@@ -364,23 +365,25 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             const bindValues = queryInputResult.bindValues
 
             if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store.sqliteDbWrapper.getTablesUsed(sqlString)
+              queriedTablesRef.current = store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(sqlString)
             }
 
             if (bindValues !== undefined) {
-              replaceSessionIdSymbol(bindValues, store.clientSession.sessionId)
+              replaceSessionIdSymbol(bindValues, store[StoreInternalsSymbol].clientSession.sessionId)
             }
 
             // Establish a reactive dependency on the tables used in the query
             for (const tableName of queriedTablesRef.current) {
-              const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+              const tableRef =
+                store[StoreInternalsSymbol].tableRefs[tableName] ??
+                shouldNeverHappen(`No table ref found for ${tableName}`)
               get(tableRef, otelContext, debugRefreshReason)
             }
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store.sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {

@@ -5,6 +5,7 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { assert, expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
+import { StoreInternalsSymbol } from '../store/store-types.ts'
 import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '../utils/tests/otel.ts'
 import { computed } from './computed.ts'
@@ -106,7 +107,7 @@ Vitest.describe('otel', () => {
         { label: 'all todos' },
       )
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -116,11 +117,11 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {
@@ -130,7 +131,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       span.end()
 

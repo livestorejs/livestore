@@ -6,6 +6,7 @@ import {
   type Queryable,
   queryDb,
   type SignalDef,
+  StoreInternalsSymbol,
   stackInfoToString,
 } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
@@ -122,17 +123,17 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   const { queryRcRef, span, otelContext } = useRcResource(
     rcRefKey,
     () => {
-      const span = store.otel.tracer.startSpan(
+      const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
         options?.otelSpanName ?? `LiveStore:useQuery:${resourceLabel}`,
         { attributes: { label: resourceLabel, firstStackInfo: JSON.stringify(stackInfo) } },
-        options?.otelContext ?? store.otel.queriesSpanContext,
+        options?.otelContext ?? store[StoreInternalsSymbol].otel.queriesSpanContext,
       )
 
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
       const queryRcRef =
         normalized._tag === 'definition'
-          ? normalized.def.make(store.reactivityGraph.context!, otelContext)
+          ? normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
           : ({
               value: normalized.query$,
               deref: () => {},

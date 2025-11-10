@@ -2,7 +2,7 @@ import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
-import { queryDb } from '@livestore/livestore'
+import { queryDb, StoreInternalsSymbol } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
@@ -111,7 +111,7 @@ export const useClientDocument: {
 
   // console.debug('useClientDocument', tableName, id)
 
-  const idStr: string = id === SessionIdSymbol ? store.clientSession.sessionId : id
+  const idStr: string = id === SessionIdSymbol ? store[StoreInternalsSymbol].clientSession.sessionId : id
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef: QueryDef = React.useMemo(
