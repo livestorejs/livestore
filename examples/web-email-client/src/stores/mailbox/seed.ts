@@ -1,17 +1,17 @@
 import { nanoid, type Store } from '@livestore/livestore'
 import type { schema } from './schema.ts'
-import { inboxEvents } from './schema.ts'
+import { mailboxEvents } from './schema.ts'
 
 /**
- * Seed data for Inbox aggregate.
+ * Seed data for Mailbox aggregate.
  *
  * Note: threadIndex and threadLabels tables are NOT seeded here.
  * They are projections that are automatically populated via cross-aggregate
  * synchronization when Thread aggregates emit events (threadCreated, threadLabelApplied, etc.)
  */
-export const seedInbox = (store: Store<typeof schema>): { inboxLabelId: string } => {
+export const seedMailbox = (store: Store<typeof schema>): { inboxLabelId: string } => {
   try {
-    console.log('🌱 Seeding Inbox store data...')
+    console.log('🌱 Seeding Mailbox store data...')
 
     const now = new Date()
 
@@ -31,7 +31,7 @@ export const seedInbox = (store: Store<typeof schema>): { inboxLabelId: string }
 
     for (const label of labels) {
       allEvents.push(
-        inboxEvents.labelCreated({
+        mailboxEvents.labelCreated({
           id: label.id || nanoid(),
           name: label.name,
           type: label.type,
@@ -45,10 +45,10 @@ export const seedInbox = (store: Store<typeof schema>): { inboxLabelId: string }
     // Commit all events atomically
     store.commit(...allEvents)
 
-    console.log('✅ Inbox store seed data created successfully!')
+    console.log('✅ Mailbox store seed data created successfully!')
     return { inboxLabelId }
   } catch (error) {
-    console.error('❌ Failed to seed Inbox store data:', error)
+    console.error('❌ Failed to seed Mailbox store data:', error)
     throw error
   }
 }

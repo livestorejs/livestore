@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 
 /**
  * LabelSidebar - System labels navigation
@@ -18,7 +18,7 @@ const labelIcons: Record<string, string> = {
 }
 
 export const LabelSidebar: React.FC = () => {
-  const { labels, uiState, selectLabel } = useInbox()
+  const { labels, uiState, selectLabel } = useMailbox()
 
   return (
     <div className="p-4">

@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 import { useThread } from '../hooks/useThread.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
@@ -12,7 +12,7 @@ import { UserLabelPicker } from './UserLabelPicker.tsx'
  */
 
 export const ThreadActions: React.FC = () => {
-  const { currentThreadId } = useInbox()
+  const { currentThreadId } = useMailbox()
 
   if (!currentThreadId) throw new Error('No current thread selected')
 
