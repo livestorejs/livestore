@@ -5,7 +5,6 @@ import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { inboxEvents, schema as inboxSchema, inboxTables } from '../stores/inbox/schema.ts'
 import { seedInbox } from '../stores/inbox/seed.ts'
-import { threadEvents } from '../stores/thread/schema.ts'
 import type { Env } from './shared.ts'
 
 // Scoped by storeId
@@ -46,40 +45,6 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     await threadDoStub.initialize({ threadId, inboxLabelId })
   }
 
-  async updateLabelCount({ labelId, delta }: { labelId: string; delta: number }) {
-    try {
-      if (!this.store) {
-        throw new Error('Store not initialized. Call initialize() first.')
-      }
-
-      // Query current count
-      const label = this.store.query(inboxTables.labels.where({ id: labelId }))[0]
-
-      if (!label) {
-        console.warn(`[InboxClientDO] Label ${labelId} not found, skipping count update`)
-        return
-      }
-
-      const newCount = Math.max(0, (label.threadCount || 0) + delta)
-
-      // Commit count update event
-      this.store.commit(
-        inboxEvents.labelThreadCountUpdated({
-          labelId,
-          newCount,
-          updatedAt: new Date(),
-        }),
-      )
-
-      console.log(
-        `[InboxClientDO] Updated label ${labelId} count: ${label.threadCount} -> ${newCount} (delta: ${delta})`,
-      )
-    } catch (error) {
-      console.error('[InboxClientDO] Failed to update label count:', error)
-      throw error // Propagate to queue consumer for retry
-    }
-  }
-
   async addThread({
     id,
     subject,
@@ -108,7 +73,63 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
       console.log(`[InboxClientDO] Added thread ${id} to threadIndex`)
     } catch (error) {
       console.error('[InboxClientDO] Failed to add thread:', error)
-      throw error // Propagate to queue consumer for retry
+      throw error
+    }
+  }
+
+  async applyThreadLabel({
+    threadId,
+    labelId,
+    appliedAt,
+  }: {
+    threadId: string
+    labelId: string
+    appliedAt: Date
+  }) {
+    try {
+      if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
+
+      // Commit event - materializer will update threadLabels AND increment count
+      this.store.commit(
+        inboxEvents.threadLabelApplied({
+          threadId,
+          labelId,
+          appliedAt,
+        }),
+      )
+
+      console.log(`[InboxClientDO] Applied label ${labelId} to thread ${threadId}`)
+    } catch (error) {
+      console.error('[InboxClientDO] Failed to apply thread label:', error)
+      throw error
+    }
+  }
+
+  async removeThreadLabel({
+    threadId,
+    labelId,
+    removedAt,
+  }: {
+    threadId: string
+    labelId: string
+    removedAt: Date
+  }) {
+    try {
+      if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
+
+      // Commit event - materializer will remove from threadLabels AND decrement count
+      this.store.commit(
+        inboxEvents.threadLabelRemoved({
+          threadId,
+          labelId,
+          removedAt,
+        }),
+      )
+
+      console.log(`[InboxClientDO] Removed label ${labelId} from thread ${threadId}`)
+    } catch (error) {
+      console.error('[InboxClientDO] Failed to remove thread label:', error)
+      throw error
     }
   }
 
