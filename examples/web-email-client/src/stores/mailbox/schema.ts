@@ -1,16 +1,16 @@
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 /**
- * Mailbox Aggregate (Singleton)
+ * Mailbox Store (Singleton)
  *
  * Purpose: Manage system labels (INBOX, SENT, ARCHIVE, TRASH), thread collection, and UI state
  *
- * This aggregate handles:
+ * This store handles:
  * - System label definitions and metadata
- * - Label thread counts (updated by cross-aggregate events)
+ * - Label thread counts (updated by cross-store events)
  * - Label organization and display properties
- * - Thread index (projection from Thread aggregates for efficient querying)
- * - Thread-label associations (projection from Thread aggregates)
+ * - Thread index (projection from Thread stores for efficient querying)
+ * - Thread-label associations (projection from Thread stores)
  * - Global UI state (selected thread, label, compose state)
  */
 
@@ -28,7 +28,7 @@ export const mailboxTables = {
     },
   }),
 
-  // Thread index - projection of thread metadata from Thread aggregates
+  // Thread index - projection of thread metadata from Thread stores
   // Allows efficient querying and filtering of threads without loading full Thread stores
   threadIndex: State.SQLite.table({
     name: 'threadIndex',
@@ -41,7 +41,7 @@ export const mailboxTables = {
     },
   }),
 
-  // Thread-label associations - projection from Thread aggregates
+  // Thread-label associations - projection from Thread stores
   // Synchronized copy for efficient filtering (e.g., "show threads with label X")
   threadLabels: State.SQLite.table({
     name: 'threadLabels',
@@ -87,7 +87,7 @@ export const mailboxEvents = {
     }),
   }),
 
-  // Thread added to mailbox (projection from Thread aggregate)
+  // Thread added to mailbox (projection from Thread store)
   threadAdded: Events.synced({
     name: 'v1.ThreadAdded',
     schema: Schema.Struct({
@@ -98,7 +98,7 @@ export const mailboxEvents = {
     }),
   }),
 
-  // Thread-label association applied (projection from Thread aggregate)
+  // Thread-label association applied (projection from Thread store)
   threadLabelApplied: Events.synced({
     name: 'v1.ThreadLabelApplied',
     schema: Schema.Struct({
@@ -108,7 +108,7 @@ export const mailboxEvents = {
     }),
   }),
 
-  // Thread-label association removed (projection from Thread aggregate)
+  // Thread-label association removed (projection from Thread store)
   threadLabelRemoved: Events.synced({
     name: 'v1.ThreadLabelRemoved',
     schema: Schema.Struct({
