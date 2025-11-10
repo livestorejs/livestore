@@ -3,7 +3,7 @@
 import '@livestore/adapter-cloudflare/polyfill'
 
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import type { DomainEvent, Env } from './shared.ts'
+import type { CrossStoreEvent, Env } from './shared.ts'
 
 export default {
   fetch: async (request, env, ctx) => {
@@ -36,9 +36,9 @@ export default {
     return new Response('Not found', { status: 404 }) as SyncBackend.CfTypes.Response
   },
 
-  // Queue consumer handler for domain events
+  // Queue consumer handler for cross-store events
   async queue(batch: MessageBatch, env: Env, ctx: ExecutionContext): Promise<void> {
-    console.log(`[QueueConsumer] Processing ${batch.messages.length} domain events`)
+    console.log(`[QueueConsumer] Processing ${batch.messages.length} cross-store events`)
 
     const threadsToAdd: Array<{ id: string; subject: string; participants: string[]; createdAt: Date }> = []
     const labelsToApply: Array<{ threadId: string; labelId: string; appliedAt: Date }> = []
@@ -46,7 +46,7 @@ export default {
 
     for (const message of batch.messages) {
       try {
-        const { name, data } = message.body as DomainEvent
+        const { name, data } = message.body as CrossStoreEvent
 
         if (name === 'v1.ThreadLabelApplied') {
           labelsToApply.push({
