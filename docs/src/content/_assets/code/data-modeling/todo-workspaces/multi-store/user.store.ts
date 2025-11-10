@@ -14,7 +14,7 @@ const adapter = makePersistedAdapter({
 // Each user has their own store to track which workspaces they're part of
 export const userStoreOptions = (username: string) =>
   storeOptions({
-    storeId: `user:${username}`,
+    storeId: `user-${username}`,
     schema,
     adapter,
     gcTime: Number.POSITIVE_INFINITY, // Keep user store in memory indefinitely

@@ -148,11 +148,11 @@ This warms up the cache so the store is ready when the user navigates to it.
 
 When creating `storeId` values:
 
-- **Use namespaces** - Prefix with the entity type (e.g., `workspace:abc-123`, `issue:456`) to avoid collisions between different store types and improve debugging
+- **Use namespaces** - Prefix with the entity type (e.g., `workspace-abc123`, `issue-456`) to avoid collisions between different store types and improve debugging
 - **Globally unique** - Prefer globally unique IDs (e.g., nanoid) to prevent collisions
 - **Keep them stable** - The same entity should always use the same `storeId` across renders
 - **Sanitize user input** - If incorporating user data, be sure to validate/sanitize to prevent injection attacks
-- **Document your conventions** - Document your conventions and special IDs like `current-user` as they're part of your API contract
+- **Document your conventions** - Document your conventions and special IDs like `user-current` as they're part of your API contract
 
 ### API Reference
 

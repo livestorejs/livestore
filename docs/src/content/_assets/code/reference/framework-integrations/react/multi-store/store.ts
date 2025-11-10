@@ -6,7 +6,7 @@ import { schema } from './schema.ts'
 // This helper provides type safety and can be reused across your app
 export const issueStoreOptions = (issueId: string) =>
   storeOptions({
-    storeId: `issue:${issueId}`,
+    storeId: `issue-${issueId}`,
     schema,
     adapter: makeInMemoryAdapter(),
     // Optional: Configure garbage collection time
