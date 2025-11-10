@@ -15,7 +15,7 @@ import { mailboxTables } from '../stores/mailbox/schema.ts'
  */
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
-const threadsQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
+const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
 const threadLabelsQuery = queryDb(mailboxTables.threadLabels.where({}), { label: 'threadLabels' })
 
 export const useMailbox = () => {
@@ -26,7 +26,7 @@ export const useMailbox = () => {
   const labels = mailboxStore.useQuery(labelsQuery)
 
   // Get thread projections from Mailbox store (for efficient browsing/filtering)
-  const threads = mailboxStore.useQuery(threadsQuery)
+  const threadIndex = mailboxStore.useQuery(threadIndexQuery)
   const threadLabels = mailboxStore.useQuery(threadLabelsQuery)
 
   // UI Actions
@@ -46,9 +46,16 @@ export const useMailbox = () => {
     setUiState({ isComposing: !uiState.isComposing })
   }
 
-  const currentLabel = labels.find((l) => l.id === uiState.selectedLabelId)
-  const currentThreadId = uiState.selectedThreadId
-  const currentThread = currentThreadId && threads.find((t) => t.id === currentThreadId)
+  // TODO: use queries
+  const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
+  const threadsForSelectedLabel = selectedLabel
+    ? threadLabels
+        .filter((tl) => tl.labelId === selectedLabel.id)
+        .map((tl) => threadIndex.find((t) => t.id === tl.threadId))
+        .filter((t): t is NonNullable<typeof t> => t !== undefined)
+    : undefined
+  const selectedThreadId = uiState.selectedThreadId
+  const currentThread = selectedThreadId && threadIndex.find((t) => t.id === selectedThreadId)
 
   return {
     // Store
@@ -59,8 +66,10 @@ export const useMailbox = () => {
 
     // Data
     labels,
-    threadIndex: threads, // Projection of all threads for browsing
+    threadIndex, // Projection of all threads for browsing
     threadLabels, // Projection of thread-label associations for filtering
+    selectedThreadId,
+    selectedLabelId: uiState.selectedLabelId,
 
     // UI Actions
     selectThread,
@@ -69,8 +78,8 @@ export const useMailbox = () => {
     toggleComposing,
 
     // Helpers
-    currentLabel,
-    currentThreadId,
+    selectedLabel,
+    threadsForSelectedLabel,
     currentThread,
   }
 }
