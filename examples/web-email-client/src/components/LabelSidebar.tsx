@@ -18,13 +18,13 @@ const labelIcons: Record<string, string> = {
 }
 
 export const LabelSidebar: React.FC = () => {
-  const { labels, uiState, selectLabel } = useMailbox()
+  const { labels, selectedLabel, selectLabel } = useMailbox()
 
   return (
     <div className="p-4">
       <nav className="space-y-1">
         {labels.map((label) => {
-          const isActive = uiState.selectedLabelId === label.id
+          const isActive = selectedLabel?.id === label.id
 
           return (
             <button

@@ -2,20 +2,19 @@ import type React from 'react'
 import { useMailbox } from '../hooks/useMailbox.ts'
 
 /**
- * ThreadList - Display list of threads for selected label
+ * Displays list of threads for selected label
  *
  * Shows:
  * - List of threads with subject, participants, last activity
  * - Click to select thread for detailed view
  * - Gmail-inspired thread list design
  *
- * Uses Labels store projections (threadIndex + threadLabels) for efficient querying
+ * Uses Mailbox store projections (threadIndex + threadLabels) for efficient querying
  */
-
 export const ThreadList: React.FC = () => {
-  const { currentLabel, selectThread, threadIndex, threadLabels } = useMailbox()
+  const { selectedLabel, selectThread, threadsForSelectedLabel } = useMailbox()
 
-  if (!currentLabel) {
+  if (!selectedLabel) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
@@ -26,23 +25,14 @@ export const ThreadList: React.FC = () => {
     )
   }
 
-  console.log('threadIndex:', threadIndex)
-
-  // Filter threads by current label using Labels store projections
-  const getThreadsForLabel = (labelId: string) => {
-    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
-    return threadIndex.filter((t) => threadIds.includes(t.id))
-  }
-  const threadsForLabel = getThreadsForLabel(currentLabel.id)
-
-  if (threadsForLabel.length === 0) {
+  if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
           <div className="text-4xl mb-2">📭</div>
           <p>
             No threads in{' '}
-            <span className="font-medium text-gray-600 capitalize">{currentLabel.name.toLocaleLowerCase()}</span>
+            <span className="font-medium text-gray-600 capitalize">{selectedLabel.name.toLocaleLowerCase()}</span>
           </p>
           <p className="text-sm mt-1 text-gray-400">Threads will appear here when they have this label</p>
         </div>
@@ -54,7 +44,7 @@ export const ThreadList: React.FC = () => {
     <div className="h-full bg-white">
       {/* Thread List */}
       <div className="divide-y divide-gray-100">
-        {threadsForLabel.map((thread) => {
+        {threadsForSelectedLabel.map((thread) => {
           const participants = JSON.parse(thread.participants) as string[]
 
           return (
