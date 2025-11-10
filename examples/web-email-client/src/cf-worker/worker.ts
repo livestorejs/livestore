@@ -3,8 +3,7 @@
 import '@livestore/adapter-cloudflare/polyfill'
 
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import type { DomainEvent } from './shared.ts'
-import { type Env, storeIdFromRequest } from './shared.ts'
+import type { DomainEvent, Env } from './shared.ts'
 
 export default {
   fetch: async (request, env, ctx) => {
@@ -123,3 +122,14 @@ export default {
     }
   },
 } satisfies SyncBackend.CfTypes.ExportedHandler<Env>
+
+const storeIdFromRequest = (request: SyncBackend.CfTypes.Request) => {
+  const url = new URL(request.url)
+  const storeId = url.searchParams.get('storeId')
+
+  if (storeId === null) {
+    throw new Error('storeId is required in URL search params')
+  }
+
+  return storeId
+}

@@ -7,10 +7,8 @@ import { inboxEvents, schema as inboxSchema, inboxTables } from '../stores/inbox
 import { seedInbox } from '../stores/inbox/seed.ts'
 import type { Env } from './shared.ts'
 
-// Scoped by storeId
 export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   private store: Store<typeof inboxSchema> | undefined
-  // private storeSubscription: Unsubscribe | undefined
 
   async initialize({ storeId }: { storeId: string }) {
     if (this.store !== undefined) return
@@ -77,15 +75,7 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     }
   }
 
-  async applyThreadLabel({
-    threadId,
-    labelId,
-    appliedAt,
-  }: {
-    threadId: string
-    labelId: string
-    appliedAt: Date
-  }) {
+  async applyThreadLabel({ threadId, labelId, appliedAt }: { threadId: string; labelId: string; appliedAt: Date }) {
     try {
       if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
 
@@ -105,15 +95,7 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     }
   }
 
-  async removeThreadLabel({
-    threadId,
-    labelId,
-    removedAt,
-  }: {
-    threadId: string
-    labelId: string
-    removedAt: Date
-  }) {
+  async removeThreadLabel({ threadId, labelId, removedAt }: { threadId: string; labelId: string; removedAt: Date }) {
     try {
       if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
 
@@ -133,14 +115,8 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     }
   }
 
-  // alarm(): void | Promise<void> {
-  //   Re-initialize subscriptions after potential hibernation
-  // return this.subscribeToStore()
-  // }
-
   async syncUpdateRpc(payload: unknown) {
     // Make sure to wake up the store before processing the sync update
-    // await this.subscribeToStore()
     await handleSyncUpdateRpc(payload)
   }
 }
