@@ -83,7 +83,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
         // Find added labels - publish v1.ThreadLabelApplied
         for (const labelId of currentLabelSet) {
           if (!previousLabelSet.has(labelId)) {
-            await this.env.DOMAIN_EVENTS_QUEUE.send({
+            await this.env.CROSS_STORE_EVENTS_QUEUE.send({
               name: 'v1.ThreadLabelApplied',
               data: {
                 threadId,
@@ -98,7 +98,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
         // Find removed labels - publish v1.ThreadLabelRemoved
         for (const labelId of previousLabelSet) {
           if (!currentLabelSet.has(labelId)) {
-            await this.env.DOMAIN_EVENTS_QUEUE.send({
+            await this.env.CROSS_STORE_EVENTS_QUEUE.send({
               name: 'v1.ThreadLabelRemoved',
               data: {
                 threadId,
@@ -131,7 +131,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       for (const thread of currentThreads) {
         // Only publish if this is a new thread we haven't seen before
         if (!this.previousThreads.has(thread.id)) {
-          await this.env.DOMAIN_EVENTS_QUEUE.send({
+          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
             name: 'v1.ThreadCreated',
             data: {
               id: thread.id,
