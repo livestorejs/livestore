@@ -1,6 +1,6 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnexpectedError } from '@livestore/common'
-import type { DevtoolsOptions } from '@livestore/common/leader-thread'
+import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   Eventlog,
@@ -8,7 +8,6 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'

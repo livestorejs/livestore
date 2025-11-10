@@ -249,7 +249,7 @@ const makeLeaderThread = ({
             streamEventsWithSyncState({
               dbEventlog,
               syncState: syncProcessor.syncState,
-            options,
+              options,
             }),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
