@@ -7,6 +7,7 @@ import {
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
+import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -114,14 +115,7 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
 export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
   'StreamEvents',
   {
-    payload: {
-      since: EventSequenceNumber.EventSequenceNumber,
-      until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
-      filter: Schema.optional(Schema.Array(Schema.String)),
-      clientIds: Schema.optional(Schema.Array(Schema.String)),
-      sessionIds: Schema.optional(Schema.Array(Schema.String)),
-      batchSize: Schema.optional(Schema.Number),
-    },
+    payload: StreamEventsOptionsFields,
     success: LiveStoreEvent.AnyEncoded,
     failure: UnexpectedError,
   },

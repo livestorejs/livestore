@@ -2,9 +2,8 @@ import type { Subscribable } from '@livestore/utils/effect'
 import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
-import type { StreamEventsFromEventLogOptions } from './eventlog.ts'
 import * as Eventlog from './eventlog.ts'
-import type { LeaderSqliteDb } from './types.ts'
+import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
 
 /**
  * Streams events for leader-thread adapters.
@@ -35,9 +34,10 @@ export const streamEventsWithSyncState = ({
 }: {
   dbEventlog: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  options: StreamEventsFromEventLogOptions
+  options: StreamEventsOptions
 }): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
-  const batchSize = options?.batchSize ?? 10
+  const initialCursor = options.since ?? EventSequenceNumber.ROOT
+  const batchSize = options.batchSize ?? 10
 
   return Stream.unwrapScoped(
     Effect.gen(function* () {
@@ -49,9 +49,9 @@ export const streamEventsWithSyncState = ({
         Effect.forkScoped,
       )
 
-      return Stream.paginateChunkEffect({ cursor: options.since, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
+      return Stream.paginateChunkEffect({ cursor: initialCursor, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
         Effect.gen(function* () {
-          if (options?.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
+          if (options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
             return [Chunk.empty(), Option.none()]
           }
 
@@ -71,7 +71,7 @@ export const streamEventsWithSyncState = ({
           })
 
           const nextState =
-            options?.until && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+            options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
               ? Option.none()
               : Option.some({ cursor: target, head: nextHead })
 

@@ -10,11 +10,11 @@ if (process.execArgv.includes('--inspect')) {
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig, UnexpectedError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { omitUndefineds } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
@@ -87,25 +87,20 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
-    StreamEvents: ({
-      since,
-      until,
-      filter,
-      clientIds,
-      sessionIds,
-      batchSize,
-    }: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
-      Effect.gen(function* () {
-        const { dbEventlog, syncProcessor } = yield* LeaderThreadCtx
-        return streamEventsWithSyncState({
-          dbEventlog,
-          syncState: syncProcessor.syncState,
-          options: {
-            since,
-            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
-          },
-        })
-      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-node:worker:StreamEvents')),
+    StreamEvents: (options: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
+      LeaderThreadCtx.pipe(
+        Effect.map(({ dbEventlog, syncProcessor }) => {
+          const { _tag: _ignored, ...payload } = options as any
+          const streamOptions = payload as StreamEventsOptions
+          return streamEventsWithSyncState({
+            dbEventlog,
+            syncState: syncProcessor.syncState,
+            options: streamOptions,
+          })
+        }),
+        Stream.unwrapScoped,
+        Stream.withSpan('@livestore/adapter-node:worker:StreamEvents'),
+      ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,

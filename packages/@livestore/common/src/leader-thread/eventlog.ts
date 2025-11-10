@@ -16,8 +16,8 @@ import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
-import type { InitialSyncInfo } from './types.ts'
-import { LeaderThreadCtx } from './types.ts'
+import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
+import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -100,35 +100,18 @@ export const getEventsSince = ({
     .sort((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
 }
 
-/**
- * Stream events from the eventlog with advanced filtering options
- *
- * This stream only paginates over large SQL queries. It is used
- * downstream by adapters through streamEventsWithSyncState to
- * allow for active head tracking from syncState.
- */
-//NOTE: Document that we don't want to load unnecassary data into memory
-export type StreamEventsFromEventLogOptions = {
-  since: EventSequenceNumber.EventSequenceNumber
-  until?: EventSequenceNumber.EventSequenceNumber
-  filter?: ReadonlyArray<string>
-  clientIds?: ReadonlyArray<string>
-  sessionIds?: ReadonlyArray<string>
-  batchSize?: number
-  includeClientOnly?: boolean
-}
-
 export const getEventsFromEventlog = ({
   dbEventlog,
   options,
 }: {
   dbEventlog: SqliteDb
-  options: StreamEventsFromEventLogOptions
+  options: StreamEventsOptions
 }): Chunk.Chunk<LiveStoreEvent.AnyEncoded> => {
-  const batchSize = options.batchSize ?? 1000
+  const since = options.since ?? EventSequenceNumber.ROOT
+  const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
 
   const makeQuery = () => {
-    let query = eventlogMetaTable.where('seqNumGlobal', '>', options.since.global)
+    let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)
 
     if (options.until) {
       query = query.where('seqNumGlobal', '<=', options.until.global)
@@ -146,7 +129,7 @@ export const getEventsFromEventlog = ({
       query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
     }
 
-    if (!options.includeClientOnly) {
+    if (options.includeClientOnly !== true) {
       query = query.where('seqNumClient', '<=', 0 as ClientEventSequenceNumber)
     }
 

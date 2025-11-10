@@ -24,7 +24,7 @@ import type {
   SyncBackend,
   UnexpectedError,
 } from '../index.ts'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
@@ -132,6 +132,53 @@ export type MaterializeEvent = (
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
   update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
+}
+
+export const STREAM_EVENTS_BATCH_SIZE_MAX = 1_000
+
+export const StreamEventsOptionsFields = {
+  since: Schema.optional(EventSequenceNumber.EventSequenceNumber),
+  until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
+  filter: Schema.optional(Schema.Array(Schema.String)),
+  clientIds: Schema.optional(Schema.Array(Schema.String)),
+  sessionIds: Schema.optional(Schema.Array(Schema.String)),
+  batchSize: Schema.optional(Schema.Int.pipe(Schema.between(1, STREAM_EVENTS_BATCH_SIZE_MAX))),
+  includeClientOnly: Schema.optional(Schema.Boolean),
+} as const
+
+export const StreamEventsOptionsSchema = Schema.Struct(StreamEventsOptionsFields)
+
+export interface StreamEventsOptions {
+  /**
+   * Only include events after this logical timestamp (exclusive).
+   * Defaults to `EventSequenceNumber.ROOT` when omitted.
+   */
+  since?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events up to this logical timestamp (inclusive).
+   */
+  until?: EventSequenceNumber.EventSequenceNumber
+  /**
+   * Only include events of the given names.
+   */
+  filter?: ReadonlyArray<string>
+  /**
+   * Only include events from specific client identifiers.
+   */
+  clientIds?: ReadonlyArray<string>
+  /**
+   * Only include events from specific session identifiers.
+   */
+  sessionIds?: ReadonlyArray<string>
+  /**
+   * Number of events to fetch in each batch when streaming from the eventlog.
+   * @default STREAM_EVENTS_BATCH_SIZE_MAX (when the downstream consumer uses the default)
+   */
+  batchSize?: number
+  /**
+   * Include client-only events (i.e. events with a positive client sequence number).
+   */
+  includeClientOnly?: boolean
 }
 
 export interface LeaderSyncProcessor {

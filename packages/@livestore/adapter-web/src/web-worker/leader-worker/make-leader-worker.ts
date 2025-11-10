@@ -8,12 +8,13 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -204,18 +205,20 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
-    StreamEvents: ({ since, until, filter, clientIds, sessionIds, batchSize }) =>
-      Effect.gen(function* () {
-        const { dbEventlog, syncProcessor } = yield* LeaderThreadCtx
-        return streamEventsWithSyncState({
-          dbEventlog,
-          syncState: syncProcessor.syncState,
-          options: {
-            since,
-            ...omitUndefineds({ until, filter, clientIds, sessionIds, batchSize }),
-          },
-        })
-      }).pipe(Stream.unwrapScoped, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
+    StreamEvents: (options) =>
+      LeaderThreadCtx.pipe(
+        Effect.map(({ dbEventlog, syncProcessor }) => {
+          const { _tag: _ignored, ...payload } = options as any
+          const streamOptions = payload as StreamEventsOptions
+          return streamEventsWithSyncState({
+            dbEventlog,
+            syncState: syncProcessor.syncState,
+            options: streamOptions,
+          })
+        }),
+        Stream.unwrapScoped,
+        Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
+      ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -290,13 +293,13 @@ const makeDevtoolsOptions = ({
 
     return {
       enabled: true,
-      boot: Effect.gen(function* () {
-        const persistenceInfo = {
+      boot: Effect.succeed({
+        node,
+        persistenceInfo: {
           state: dbState.metadata.persistenceInfo,
           eventlog: dbEventlog.metadata.persistenceInfo,
-        }
-
-        return { node, persistenceInfo, mode: 'direct' }
+        },
+        mode: 'direct' as const,
       }),
     }
   })

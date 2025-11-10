@@ -22,7 +22,7 @@ import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { omitUndefineds, tryAsFunctionAndNew } from '@livestore/utils'
+import { tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   BrowserWorker,
@@ -249,16 +249,7 @@ const makeLeaderThread = ({
             streamEventsWithSyncState({
               dbEventlog,
               syncState: syncProcessor.syncState,
-              options: {
-                since: options.since,
-                ...omitUndefineds({
-                  until: options.until,
-                  filter: options.filter,
-                  clientIds: options.clientIds,
-                  sessionIds: options.sessionIds,
-                  batchSize: options.batchSize,
-                }),
-              },
+            options,
             }),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },

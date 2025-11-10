@@ -18,7 +18,6 @@ import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { omitUndefineds } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 export const makeAdapter =
@@ -123,16 +122,7 @@ export const makeAdapter =
                 streamEventsWithSyncState({
                   dbEventlog,
                   syncState: syncProcessor.syncState,
-                  options: {
-                    since: options.since,
-                    ...omitUndefineds({
-                      until: options.until,
-                      filter: options.filter,
-                      clientIds: options.clientIds,
-                      sessionIds: options.sessionIds,
-                      batchSize: options.batchSize,
-                    }),
-                  },
+                  options,
                 }),
             },
             initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },

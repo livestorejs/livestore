@@ -18,8 +18,9 @@ import {
   replaceSessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -787,26 +788,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const leaderThreadProxy = clientSession.leaderThread
     const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
-    const since = options?.since ?? EventSequenceNumber.ROOT
-    const batchSize = params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
+    const preferredBatchSize = options?.batchSize ?? params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
 
-    return leaderThreadProxy.events
-      .stream({
-        since,
-        ...omitUndefineds({
-          until: options?.until,
-          filter: options?.filter as ReadonlyArray<string> | undefined,
-          clientIds: options?.clientIds,
-          sessionIds: options?.sessionIds,
-          batchSize,
-        }),
-      })
-      .pipe(
-        // UNDERSTAND BETTER HOW mapChunksEffect works
-        Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
-        Stream.catchTag('ParseError', (cause) => Stream.fail(UnexpectedError.make({ cause }))),
-        Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
-      )
+    const baseOptions: StreamEventsOptions = {
+      ...options,
+      filter: options?.filter as readonly string[],
+      batchSize: preferredBatchSize,
+    }
+
+    return leaderThreadProxy.events.stream(baseOptions).pipe(
+      // UNDERSTAND BETTER HOW mapChunksEffect works
+      Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
+      Stream.catchTag('ParseError', (cause) => Stream.fail(UnexpectedError.make({ cause }))),
+      Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+    )
   }
 
   /**

@@ -3,7 +3,7 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnexpectedError } from './errors.ts'
-import type { StreamEventsFromEventLogOptions } from './leader-thread/eventlog.ts'
+import type { StreamEventsOptions } from './leader-thread/types.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
@@ -26,7 +26,7 @@ export interface ClientSessionLeaderThreadProxy {
       },
     ): Effect.Effect<void, UnexpectedError | LeaderAheadError>
     /** Stream historical events with filtering */
-    stream(options: StreamEventsFromEventLogOptions): Stream.Stream<LiveStoreEvent.AnyEncoded, UnexpectedError>
+    stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.AnyEncoded, UnexpectedError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

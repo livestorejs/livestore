@@ -11,7 +11,8 @@ import {
   type SyncError,
   type UnexpectedError,
 } from '@livestore/common'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
+import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -116,48 +117,12 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
-// Re-use the new common store events here and narrow the scope of the filter
-export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
+export type StoreEventsOptions<TSchema extends LiveStoreSchema> = Omit<StreamEventsOptions, 'filter'> & {
   /**
-   * Only include events after this logical timestamp (exclusive)
-   * @default undefined (no lower bound)
-   */
-  since?: EventSequenceNumber.EventSequenceNumber
-  /**
-   * Only include events up to this logical timestamp (inclusive)
-   * @default undefined (no upper bound)
-   */
-  until?: EventSequenceNumber.EventSequenceNumber
-  /**
-   * Only include events of the given names
+   * Only include events of the given names.
    * @default undefined (include all)
    */
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
-  /**
-   * Only include events from specific client IDs
-   * @default undefined (include all clients)
-   */
-  clientIds?: ReadonlyArray<string>
-  /**
-   * Only include events from specific session IDs
-   * @default undefined (include all sessions)
-   */
-  sessionIds?: ReadonlyArray<string>
-  /**
-   * Number of events to fetch in each batch when streaming from database
-   * @default 1000
-   */
-  eventQueryBatchSize?: number
-
-  // Future filtering ideas (not implemented yet):
-  // - syncLevel: Filte by client, leader or backend (requires supporting unconfirmed events)
-  // - unconfirmedEvents: Filter by unconfirmed events (requires supporting unconfirmed events)
-  // - includeClientOnly: Whether to include client-only events (only relevant when syncLevel supported)
-  // - parentEventId: Filter by parent event
-  // - argPattern: Pattern matching on event arguments
-  // - aggregation: Count events by type, time buckets, etc.
-  // - eventMetadata: Filter by custom metadata
-  // - rebaseGeneration: Filter by rebase generation
 }
 
 export type Unsubscribe = () => void

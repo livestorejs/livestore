@@ -344,18 +344,8 @@ const makeLocalLeaderThread = ({
             stream: (options) =>
               streamEventsWithSyncState({
                 dbEventlog,
-                dbState,
                 syncState: syncProcessor.syncState,
-                options: {
-                  since: options.since,
-                  ...omitUndefineds({
-                    until: options.until,
-                    filter: options.filter,
-                    clientIds: options.clientIds,
-                    sessionIds: options.sessionIds,
-                    batchSize: options.batchSize,
-                  }),
-                },
+                options,
               }),
           },
           initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },

@@ -8,6 +8,7 @@ import {
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
+import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -105,18 +106,7 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
 export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
   'StreamEvents',
   {
-    // Pull this out as a Schema.struct  -> Derive type and re-use for interface in stream-events.ts
-    // Move into commoon pkg
-    // Encode the max batch size in the Schema
-    // Find a mechanical maximum
-    payload: {
-      since: EventSequenceNumber.EventSequenceNumber,
-      until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
-      filter: Schema.optional(Schema.Array(Schema.String)),
-      clientIds: Schema.optional(Schema.Array(Schema.String)),
-      sessionIds: Schema.optional(Schema.Array(Schema.String)),
-      batchSize: Schema.optional(Schema.Number),
-    },
+    payload: StreamEventsOptionsFields,
     success: LiveStoreEvent.AnyEncoded,
     failure: UnexpectedError,
   },
