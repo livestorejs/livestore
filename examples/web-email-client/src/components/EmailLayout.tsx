@@ -14,23 +14,15 @@ import { ThreadView } from './ThreadView.tsx'
  */
 
 export const EmailLayout: React.FC = () => {
-  const { currentLabel, currentThreadId, currentThread, threadIndex, threadLabels } = useMailbox()
-
-  // Filter threads by current label using Labels store projections
-  const getThreadsForLabel = (labelId: string) => {
-    const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
-    return threadIndex.filter((t) => threadIds.includes(t.id))
-  }
-
-  const threadsInLabel = currentLabel ? getThreadsForLabel(currentLabel.id) : []
+  const { selectedLabel, selectedThreadId, currentThread } = useMailbox()
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">📧 Email Client</h1>
-          <p className="text-sm text-gray-500 mt-1">LiveStore Multi-Store Demo</p>
+          <h1 className="text-xl font-semibold text-gray-900">Email Client</h1>
+          <p className="text-sm text-gray-500 mt-1">LiveStore</p>
         </div>
         <LabelSidebar />
       </div>
@@ -41,9 +33,13 @@ export const EmailLayout: React.FC = () => {
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">{currentLabel?.name || 'Email'}</h2>
+              <h2 className="text-lg font-medium text-gray-900">{selectedLabel?.name ?? 'Home'}</h2>
               <p className="text-sm text-gray-500">
-                {currentThread ? `Thread: ${currentThread.subject}` : `${threadsInLabel.length} threads`}
+                {currentThread
+                  ? `Thread: ${currentThread.subject}`
+                  : selectedLabel
+                    ? `${selectedLabel.threadCount} threads`
+                    : 'Select a label to view threads.'}
               </p>
             </div>
           </div>
@@ -51,28 +47,17 @@ export const EmailLayout: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden">
-          {currentThreadId ? (
-            <ThreadView threadId={currentThreadId} />
-          ) : currentLabel ? (
+          {selectedThreadId ? (
+            <ThreadView threadId={selectedThreadId} />
+          ) : selectedLabel ? (
             <ThreadList />
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-4xl mb-4">📧</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to LiveStore Email Client</h3>
-                <p className="text-gray-500 max-w-md">
-                  This prototype demonstrates event sourcing with multiple stores. Select a label from the sidebar to
-                  view email threads.
-                </p>
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left max-w-md">
-                  <h4 className="font-medium text-blue-900 mb-2">🏗️ Architecture Demo:</h4>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Two separate stores (Labels & Threads)</li>
-                    <li>• Cross-store event flow</li>
-                    <li>• Real-time sync via Durable Objects</li>
-                  </ul>
-                </div>
-              </div>
+            <div className="flex flex-col text-center items-center justify-center h-full">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">LiveStore Email Client Example</h3>
+              <p className="text-gray-500 max-w-md">
+                This app demonstrates partial sync and cross-store sync in LiveStore. Select a label from the sidebar to
+                view email threads.
+              </p>
             </div>
           )}
         </div>

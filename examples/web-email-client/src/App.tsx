@@ -4,7 +4,6 @@ import { StoreRegistry, StoreRegistryProvider } from '@livestore/react/experimen
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { EmailLayout } from './components/EmailLayout.tsx'
-import { VersionBadge } from './components/VersionBadge.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
 
 /**
@@ -25,7 +24,6 @@ export const App: React.FC = () => {
         <div className="h-screen bg-gray-100">
           <EmailLayout />
         </div>
-        <VersionBadge />
       </Suspense>
     </StoreRegistryProvider>
   )

@@ -12,11 +12,10 @@ import { Events, makeSchema, Schema, State } from '@livestore/livestore'
  * - Thread-label associations (enforces business rules)
  *
  * Cross-store synchronization:
- * - Thread events are consumed by Labels store to maintain queryable projections
- * - Labels store maintains threadIndex and threadLabels for efficient filtering
- * - All label operations must go through this store to enforce consistency
+ * - Thread events are consumed by Mailbox store to maintain queryable projections
+ * - Mailbox store maintains threadIndex and threadLabels for efficient filtering
+ * - All thread label operations must go through this store to enforce consistency
  */
-
 export const threadTables = {
   thread: State.SQLite.table({
     name: 'thread',
