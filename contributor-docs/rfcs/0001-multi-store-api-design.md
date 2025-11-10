@@ -391,22 +391,21 @@ The `storeId` is critical for cache key generation. Follow these guidelines:
 
 ```tsx
 // Namespace with store type
-`issue:${issueId}`
-`workspace:${workspaceId}`
-`user-profile:${userId}`
+`issue-${issueId}`
+`workspace-${workspaceId}`
+`user-current`
 
 // Multi-part keys (deterministic order)
-`project:${projectId}:issue:${issueId}`
-`org:${orgId}:workspace:${workspaceId}`
+`project-${projectId}-issue-${issueId}`
+`org-${orgId}-workspace-${workspaceId}`
 
 // Singleton stores
 `workspace-root`
 `app-settings`
-`current-user`
 
 // Scoped to context
-`chat:${conversationId}`
-`canvas:${documentId}:layer:${layerId}`
+`chat-${conversationId}`
+`canvas-${documentId}-layer-${layerId}`
 ```
 
 **❌ Anti-Patterns:**
@@ -420,13 +419,13 @@ issueId  // What if issueId === workspaceId?
 `${Date.now()}`
 
 // ❌ Overly long (impacts telemetry, storage keys)
-`${longUrl}/${manyParams}/${evenMore}...`
+`${longUrl}-${manyParams}-${evenMore}...`
 
 // ❌ Special characters needing escaping
-`user:email:${email}`  // email might contain : or /
+`user-email-${email}`  // email might contain : or /
 
 // ❌ User input without sanitization
-`search:${userQuery}`  // Injection risk
+`search-${userQuery}`  // Injection risk
 ```
 
 **Guidelines:**
@@ -440,13 +439,13 @@ issueId  // What if issueId === workspaceId?
 
 **Decision Matrix:**
 
-| Scenario       | Pattern               | Example               |
-|:---------------|:----------------------|:----------------------|
-| Single entity  | `type:id`             | `issue:abc-123`       |
-| Multi-part key | `type:id1:id2`        | `project:p1:issue:i1` |
-| Singleton      | `type-singleton`      | `workspace-root`      |
-| User-scoped    | `user:userId:type:id` | `user:u1:settings`    |
-| Tenant-scoped  | `org:orgId:type:id`   | `org:acme:workspace`  |
+| Scenario       | Pattern               | Example                     |
+|:---------------|:----------------------|:----------------------------|
+| Single entity  | `type-id`             | `issue-abc123`              |
+| Multi-part key | `type-id1-id2`        | `project-p1-issue-i1`       |
+| Singleton      | `type-singleton`      | `workspace-root`            |
+| User-scoped    | `user-userId-type-id` | `user-u1-settings`          |
+| Tenant-scoped  | `org-orgId-type-id`   | `org-acme-workspace`        |
 
 
 ### Store Lifecycle and GC
