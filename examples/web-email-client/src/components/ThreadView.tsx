@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 import { useThread } from '../hooks/useThread.ts'
 import { ComposeMessage } from './ComposeMessage.tsx'
 import { MessageItem } from './MessageItem.tsx'
@@ -19,7 +19,7 @@ type ThreadViewProps = {
  * - Thread-level actions (labels, etc.)
  */
 export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
-  const { uiState, toggleComposing } = useInbox()
+  const { uiState, toggleComposing } = useMailbox()
   const { thread, getMessagesForThread, getUserLabelsForThread, removeUserLabelFromThread } = useThread(threadId)
 
   const messages = getMessagesForThread(threadId)

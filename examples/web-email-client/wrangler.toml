@@ -7,8 +7,8 @@ name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"
 
 [[durable_objects.bindings]]
-name = "INBOX_CLIENT_DO"
-class_name = "InboxClientDO"
+name = "MAILBOX_CLIENT_DO"
+class_name = "MailboxClientDO"
 
 [[durable_objects.bindings]]
 name = "THREAD_CLIENT_DO"
@@ -16,7 +16,7 @@ class_name = "ThreadClientDO"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SyncBackendDO", "InboxClientDO", "ThreadClientDO"]
+new_sqlite_classes = ["SyncBackendDO", "MailboxClientDO", "ThreadClientDO"]
 
 [[d1_databases]]
 binding = "DB"

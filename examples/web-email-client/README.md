@@ -8,7 +8,7 @@ We can only load so much data in the browser before hitting memory limits and ma
 
 To solve this, we can partition the application data into multiple independent stores that can be lazy-loaded on demand:
 
-**Inbox Store**
+**Mailbox Store**
 - Singleton
 - Manages labels, thread index, and UI state
 - Lifecycle: Loaded on startup, always in memory
@@ -27,11 +27,11 @@ In LiveStore, **each store is completely isolated**:
 - **Consistency Boundary**: Consistency is guaranteed only within a single store
 - **No Built-in Cross-Store Communication**: Stores cannot directly reference or modify other stores
 
-However, in our email client, we need to maintain some data in the Inbox store that reflects changes made in individual Thread stores. For example, when a new thread is created or a label is applied to a thread, the Inbox store needs to update its thread index and label associations accordingly.
+However, in our email client, we need to maintain some data in the Mailbox store that reflects changes made in individual Thread stores. For example, when a new thread is created or a label is applied to a thread, the Mailbox store needs to update its thread index and label associations accordingly.
 
 To achieve this, we use the following strategy:
 
-Maintain **projection tables** in the Inbox store that mirror Thread data:
+Maintain **projection tables** in the Mailbox store that mirror Thread data:
 - `threadIndex`: Thread metadata for listing/searching
 - `threadLabels`: Thread-label associations for filtering
 - `labels.threadCount`: Cached counts per label
@@ -43,8 +43,8 @@ Since LiveStore doesn't provide cross-store communication, we implement it using
 1. **Change Detection**: ThreadClientDO subscribes to its store's tables and detects changes by comparing current snapshots against previous state
 2. **Event Publishing**: When changes are detected, ThreadClientDO publishes cross-store events to the `cross-store-events` Cloudflare Queue
 3. **Event Consumption**: The Queue Consumer Worker processes events from the queue
-4. **State Update**: The worker calls InboxClientDO methods, which commit events to the Inbox store
-5. **Materialization**: Inbox materializers update projection tables
+4. **State Update**: The worker calls MailboxClientDO methods, which commit events to the Mailbox store
+5. **Materialization**: Mailbox materializers update projection tables
 
 ## Architecture Diagram
 
@@ -54,10 +54,10 @@ Since LiveStore doesn't provide cross-store communication, we implement it using
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌───────────────────────────┐            ┌───────────────────────────┐  │
-│  │  Inbox Store              │            │  Thread Store             │  │
+│  │  Mailbox Store            │            │  Thread Store             │  │
 │  │  (Singleton)              │            │  (Multi-Instance)         │  │
 │  │                           │            │                           │  │
-│  │  ID: inbox-root           │            │  ID: thread-{id}          │  │
+│  │  ID: mailbox-root         │            │  ID: thread-{id}          │  │
 │  │                           │            │                           │  │
 │  │  Tables:                  │            │  Tables:                  │  │
 │  │  • labels                 │            │  • thread                 │  │
@@ -94,10 +94,10 @@ Since LiveStore doesn't provide cross-store communication, we implement it using
 │                │ Sync                                   │ Sync           │
 │                │                                        │                │
 │  ┌─────────────┴────────────┐     ┌─────────────────────┴─────────────┐  |
-│  │  InboxClientDO           │     │  ThreadClientDO                   │  │
+│  │  MailboxClientDO         │     │  ThreadClientDO                   │  │
 │  │  (Singleton)             │     │  (Multi-Instance)                 │  │
 │  │                          │     │                                   │  │
-│  │  Holds: a Inbox store    │     │  Holds: a Thread store            │  │
+│  │  Holds: a Mailbox store  │     │  Holds: a Thread store            │  │
 │  │                          │     │                                   │  │
 │  │  Methods:                │     │  Methods:                         │  │
 │  │  • initialize(           │     │  • initialize(                    │  │
@@ -119,7 +119,7 @@ Since LiveStore doesn't provide cross-store communication, we implement it using
 │  │  • v1.ThreadLabelApplied  │                                           │
 |  │  • v1.ThreadLabelRemoved  │                                           │
 │  │                           │                                           │
-│  │  Calls InboxClientDO:     │                                           │
+│  │  Calls MailboxClientDO:   │                                           │
 │  │  • addThread()            │                                           │
 │  │  • applyThreadLabel()     │                                           │
 │  │  • removeThreadLabel()    │                                           │

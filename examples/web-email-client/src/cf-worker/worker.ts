@@ -25,11 +25,11 @@ export default {
 
     const url = new URL(request.url)
 
-    if (url.pathname.includes('/inbox-client-do')) {
+    if (url.pathname.includes('/mailbox-client-do')) {
       const storeId = storeIdFromRequest(request)
-      await env.INBOX_CLIENT_DO.getByName(storeId).initialize({ storeId })
+      await env.MAILBOX_CLIENT_DO.getByName(storeId).initialize({ storeId })
       // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
-      return new Response('Inbox Client DO initialized', { status: 200 }) as SyncBackend.CfTypes.Response
+      return new Response('Mailbox Client DO initialized', { status: 200 }) as SyncBackend.CfTypes.Response
     }
 
     // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
@@ -77,12 +77,12 @@ export default {
       }
     }
 
-    const inboxStub = env.INBOX_CLIENT_DO.getByName('inbox-root')
+    const mailboxStub = env.MAILBOX_CLIENT_DO.getByName('mailbox-root')
 
     // Apply thread labels (materializer automatically updates count)
     for (const label of labelsToApply) {
       ctx.waitUntil(
-        inboxStub
+        mailboxStub
           .applyThreadLabel(label)
           .then(() => {
             console.log(`[QueueConsumer] Applied label ${label.labelId} to thread ${label.threadId}`)
@@ -96,7 +96,7 @@ export default {
     // Remove thread labels (materializer automatically updates count)
     for (const label of labelsToRemove) {
       ctx.waitUntil(
-        inboxStub
+        mailboxStub
           .removeThreadLabel(label)
           .then(() => {
             console.log(`[QueueConsumer] Removed label ${label.labelId} from thread ${label.threadId}`)
@@ -107,13 +107,13 @@ export default {
       )
     }
 
-    // Add threads to Inbox
+    // Add threads to Mailbox
     for (const thread of threadsToAdd) {
       ctx.waitUntil(
-        inboxStub
+        mailboxStub
           .addThread(thread)
           .then(() => {
-            console.log(`[QueueConsumer] Added thread ${thread.id} to Inbox`)
+            console.log(`[QueueConsumer] Added thread ${thread.id} to Mailbox`)
           })
           .catch((error) => {
             console.error(`[QueueConsumer] Failed to add thread:`, error)

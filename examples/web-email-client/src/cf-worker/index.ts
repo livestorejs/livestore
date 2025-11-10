@@ -1,4 +1,4 @@
-export { InboxClientDO } from './InboxClientDO.ts'
+export { MailboxClientDO } from './MailboxClientDO.ts'
 export { SyncBackendDO } from './SyncBackendDO.ts'
 export type { Env } from './shared.ts'
 export { ThreadClientDO } from './ThreadClientDO.ts'

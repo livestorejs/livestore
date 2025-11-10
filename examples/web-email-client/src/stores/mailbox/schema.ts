@@ -1,7 +1,7 @@
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 /**
- * Inbox Aggregate (Singleton)
+ * Mailbox Aggregate (Singleton)
  *
  * Purpose: Manage system labels (INBOX, SENT, ARCHIVE, TRASH), thread collection, and UI state
  *
@@ -14,7 +14,7 @@ import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/l
  * - Global UI state (selected thread, label, compose state)
  */
 
-export const inboxTables = {
+export const mailboxTables = {
   labels: State.SQLite.table({
     name: 'labels',
     columns: {
@@ -57,7 +57,7 @@ export const inboxTables = {
     name: 'uiState',
     schema: Schema.Struct({
       selectedThreadId: Schema.String.pipe(Schema.NullOr),
-      selectedLabelId: Schema.String.pipe(Schema.NullOr), // 'inbox', 'sent', etc.
+      selectedLabelId: Schema.String.pipe(Schema.NullOr),
       composeDraft: Schema.String,
       isComposing: Schema.Boolean,
     }),
@@ -73,7 +73,7 @@ export const inboxTables = {
   }),
 }
 
-export const inboxEvents = {
+export const mailboxEvents = {
   // System label creation (happens during seed/initialization)
   labelCreated: Events.synced({
     name: 'v1.LabelCreated',
@@ -87,7 +87,7 @@ export const inboxEvents = {
     }),
   }),
 
-  // Thread added to inbox (projection from Thread aggregate)
+  // Thread added to mailbox (projection from Thread aggregate)
   threadAdded: Events.synced({
     name: 'v1.ThreadAdded',
     schema: Schema.Struct({
@@ -119,15 +119,15 @@ export const inboxEvents = {
   }),
 
   // UI state events (client-only)
-  uiStateSet: inboxTables.uiState.set,
+  uiStateSet: mailboxTables.uiState.set,
 }
 
-const materializers = State.SQLite.materializers(inboxEvents, {
+const materializers = State.SQLite.materializers(mailboxEvents, {
   'v1.LabelCreated': ({ id, name, type, color, displayOrder, createdAt }) =>
-    inboxTables.labels.insert({ id, name, type, color, displayOrder, threadCount: 0, createdAt }),
+    mailboxTables.labels.insert({ id, name, type, color, displayOrder, threadCount: 0, createdAt }),
 
   'v1.ThreadAdded': ({ id, subject, participants, createdAt }) =>
-    inboxTables.threadIndex.insert({
+    mailboxTables.threadIndex.insert({
       id,
       subject,
       participants: JSON.stringify(participants),
@@ -137,17 +137,17 @@ const materializers = State.SQLite.materializers(inboxEvents, {
 
   // Thread-label applied: insert into threadLabels AND increment label count
   'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) => [
-    inboxTables.threadLabels.insert({ threadId, labelId, appliedAt }),
+    mailboxTables.threadLabels.insert({ threadId, labelId, appliedAt }),
     { sql: 'UPDATE labels SET threadCount = threadCount + 1 WHERE id = ?', bindValues: [labelId] },
   ],
 
   // Thread-label removed: delete from threadLabels AND decrement label count
   'v1.ThreadLabelRemoved': ({ threadId, labelId }) => [
-    inboxTables.threadLabels.delete().where({ threadId, labelId }),
+    mailboxTables.threadLabels.delete().where({ threadId, labelId }),
     { sql: 'UPDATE labels SET threadCount = MAX(0, threadCount - 1) WHERE id = ?', bindValues: [labelId] },
   ],
 })
 
-const state = State.SQLite.makeState({ tables: inboxTables, materializers })
+const state = State.SQLite.makeState({ tables: mailboxTables, materializers })
 
-export const schema = makeSchema({ events: inboxEvents, state, devtools: { alias: 'inbox' } })
+export const schema = makeSchema({ events: mailboxEvents, state, devtools: { alias: 'mailbox' } })

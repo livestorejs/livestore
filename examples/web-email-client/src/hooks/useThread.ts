@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react/experimental'
-import { useInboxStore } from '../stores/inbox/index.ts'
-import { inboxTables } from '../stores/inbox/schema.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
 import { threadEvents, threadTables } from '../stores/thread/schema.ts'
 
@@ -20,17 +20,17 @@ import { threadEvents, threadTables } from '../stores/thread/schema.ts'
 
 const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
 const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
-const labelsQuery = queryDb(inboxTables.labels.where({}), { label: 'labels' })
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
 
 export const useThread = (threadId: string) => {
-  const inboxStore = useInboxStore()
+  const mailboxStore = useMailboxStore()
   const threadStore = useStore(threadStoreOptions(threadId))
 
   // Get data from stores
   const [thread] = threadStore.useQuery(threadQuery)
   const messages = threadStore.useQuery(messagesQuery)
-  const labels = inboxStore.useQuery(labelsQuery)
+  const labels = mailboxStore.useQuery(labelsQuery)
 
   // Query threadLabels from Thread store (source of truth for this thread's labels)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)

@@ -3,39 +3,39 @@ import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/a
 import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import { inboxEvents, schema as inboxSchema, inboxTables } from '../stores/inbox/schema.ts'
-import { seedInbox } from '../stores/inbox/seed.ts'
+import { mailboxEvents, schema as mailboxSchema, mailboxTables } from '../stores/mailbox/schema.ts'
+import { seedMailbox } from '../stores/mailbox/seed.ts'
 import type { Env } from './shared.ts'
 
-export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store: Store<typeof inboxSchema> | undefined
+export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
+  private store: Store<typeof mailboxSchema> | undefined
 
   async initialize({ storeId }: { storeId: string }) {
     if (this.store !== undefined) return
 
     this.store = await createStoreDoPromise({
-      schema: inboxSchema,
+      schema: mailboxSchema,
       storeId,
-      clientId: 'inbox-client-do',
+      clientId: 'mailbox-client-do',
       sessionId: nanoid(),
       durableObject: {
         ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState,
         env: this.env,
-        bindingName: 'INBOX_CLIENT_DO',
+        bindingName: 'MAILBOX_CLIENT_DO',
       },
       syncBackendStub: this.env.SYNC_BACKEND_DO.getByName(storeId),
       livePull: true,
     })
 
     // Check if seeding has already been done by looking for system labels
-    const existingLabelCount = this.store.query(inboxTables.labels.count())
+    const existingLabelCount = this.store.query(mailboxTables.labels.count())
 
     if (existingLabelCount > 0) {
-      console.log('📧 Inbox store already seeded with', existingLabelCount, 'labels')
+      console.log('📧 Mailbox store already seeded with', existingLabelCount, 'labels')
       return
     }
 
-    const { inboxLabelId } = seedInbox(this.store)
+    const { inboxLabelId } = seedMailbox(this.store)
 
     const threadId = nanoid()
 
@@ -57,10 +57,10 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
     try {
       if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
 
-      // Commit the thread creation event to Inbox store
+      // Commit the thread creation event to Mailbox store
       // The materializer will automatically update threadIndex table
       this.store.commit(
-        inboxEvents.threadAdded({
+        mailboxEvents.threadAdded({
           id,
           subject,
           participants,
@@ -68,9 +68,9 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
         }),
       )
 
-      console.log(`[InboxClientDO] Added thread ${id} to threadIndex`)
+      console.log(`[MailboxClientDO] Added thread ${id} to threadIndex`)
     } catch (error) {
-      console.error('[InboxClientDO] Failed to add thread:', error)
+      console.error('[MailboxClientDO] Failed to add thread:', error)
       throw error
     }
   }
@@ -81,16 +81,16 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
 
       // Commit event - materializer will update threadLabels AND increment count
       this.store.commit(
-        inboxEvents.threadLabelApplied({
+        mailboxEvents.threadLabelApplied({
           threadId,
           labelId,
           appliedAt,
         }),
       )
 
-      console.log(`[InboxClientDO] Applied label ${labelId} to thread ${threadId}`)
+      console.log(`[MailboxClientDO] Applied label ${labelId} to thread ${threadId}`)
     } catch (error) {
-      console.error('[InboxClientDO] Failed to apply thread label:', error)
+      console.error('[MailboxClientDO] Failed to apply thread label:', error)
       throw error
     }
   }
@@ -101,16 +101,16 @@ export class InboxClientDO extends DurableObject<Env> implements ClientDoWithRpc
 
       // Commit event - materializer will remove from threadLabels AND decrement count
       this.store.commit(
-        inboxEvents.threadLabelRemoved({
+        mailboxEvents.threadLabelRemoved({
           threadId,
           labelId,
           removedAt,
         }),
       )
 
-      console.log(`[InboxClientDO] Removed label ${labelId} from thread ${threadId}`)
+      console.log(`[MailboxClientDO] Removed label ${labelId} from thread ${threadId}`)
     } catch (error) {
-      console.error('[InboxClientDO] Failed to remove thread label:', error)
+      console.error('[MailboxClientDO] Failed to remove thread label:', error)
       throw error
     }
   }

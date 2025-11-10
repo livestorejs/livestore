@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 
 /**
  * ThreadList - Display list of threads for selected label
@@ -13,7 +13,7 @@ import { useInbox } from '../hooks/useInbox.ts'
  */
 
 export const ThreadList: React.FC = () => {
-  const { currentLabel, selectThread, threadIndex, threadLabels } = useInbox()
+  const { currentLabel, selectThread, threadIndex, threadLabels } = useMailbox()
 
   if (!currentLabel) {
     return (

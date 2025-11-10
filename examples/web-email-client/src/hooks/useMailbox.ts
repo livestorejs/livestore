@@ -1,9 +1,9 @@
 import { queryDb } from '@livestore/livestore'
-import { useInboxStore } from '../stores/inbox/index.ts'
-import { inboxTables } from '../stores/inbox/schema.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
 
 /**
- * Inbox Hook
+ * Mailbox Hook
  *
  * Provides label data and all UI state management:
  * - Label data and queries
@@ -14,20 +14,20 @@ import { inboxTables } from '../stores/inbox/schema.ts'
  * - Compose UI state
  */
 
-const labelsQuery = queryDb(inboxTables.labels.where({}), { label: 'labels' })
-const threadsQuery = queryDb(inboxTables.threadIndex.where({}), { label: 'threadIndex' })
-const threadLabelsQuery = queryDb(inboxTables.threadLabels.where({}), { label: 'threadLabels' })
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadsQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
+const threadLabelsQuery = queryDb(mailboxTables.threadLabels.where({}), { label: 'threadLabels' })
 
-export const useInbox = () => {
-  const inboxStore = useInboxStore()
-  const [uiState, setUiState] = inboxStore.useClientDocument(inboxTables.uiState)
+export const useMailbox = () => {
+  const mailboxStore = useMailboxStore()
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
 
   // Get labels data
-  const labels = inboxStore.useQuery(labelsQuery)
+  const labels = mailboxStore.useQuery(labelsQuery)
 
-  // Get thread projections from Inbox aggregate (for efficient browsing/filtering)
-  const threads = inboxStore.useQuery(threadsQuery)
-  const threadLabels = inboxStore.useQuery(threadLabelsQuery)
+  // Get thread projections from Mailbox aggregate (for efficient browsing/filtering)
+  const threads = mailboxStore.useQuery(threadsQuery)
+  const threadLabels = mailboxStore.useQuery(threadLabelsQuery)
 
   // UI Actions
   const selectThread = (threadId: string | null) => {
@@ -52,7 +52,7 @@ export const useInbox = () => {
 
   return {
     // Store
-    inboxStore,
+    mailboxStore,
 
     // State
     uiState,

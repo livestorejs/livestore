@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
@@ -14,7 +14,7 @@ import { ThreadView } from './ThreadView.tsx'
  */
 
 export const EmailLayout: React.FC = () => {
-  const { currentLabel, currentThreadId, currentThread, threadIndex, threadLabels } = useInbox()
+  const { currentLabel, currentThreadId, currentThread, threadIndex, threadLabels } = useMailbox()
 
   // Filter threads by current label using Labels aggregate projections
   const getThreadsForLabel = (labelId: string) => {
