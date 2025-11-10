@@ -10,13 +10,13 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-export const inboxStoreId = 'inbox-root'
+export const mailboxStoreId = 'mailbox-root'
 
-export const inboxStoreOptions = storeOptions({
-  storeId: inboxStoreId,
+export const mailboxStoreOptions = storeOptions({
+  storeId: mailboxStoreId,
   schema,
   adapter,
   gcTime: Number.POSITIVE_INFINITY, // Disable garbage collection
 })
 
-export const useInboxStore = () => useStore(inboxStoreOptions)
+export const useMailboxStore = () => useStore(mailboxStoreOptions)

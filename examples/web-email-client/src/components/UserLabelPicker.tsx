@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState } from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 import { useThread } from '../hooks/useThread.ts'
 
 /**
@@ -17,7 +17,7 @@ interface UserLabelPickerProps {
 }
 
 export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) => {
-  const { labels } = useInbox()
+  const { labels } = useMailbox()
   const { getLabelsForThread, applyUserLabelToThread, removeUserLabelFromThread } = useThread(threadId)
 
   const [isOpen, setIsOpen] = useState(false)

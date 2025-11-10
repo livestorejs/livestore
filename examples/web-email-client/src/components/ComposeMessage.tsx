@@ -1,5 +1,5 @@
 import React from 'react'
-import { useInbox } from '../hooks/useInbox.ts'
+import { useMailbox } from '../hooks/useMailbox.ts'
 import { useThread } from '../hooks/useThread.ts'
 
 /**
@@ -17,7 +17,7 @@ interface ComposeMessageProps {
 }
 
 export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
-  const { uiState, updateComposeDraft, toggleComposing } = useInbox()
+  const { uiState, updateComposeDraft, toggleComposing } = useMailbox()
   const { sendMessage } = useThread(threadId)
 
   const [isExpanded, setIsExpanded] = React.useState(false)

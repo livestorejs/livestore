@@ -5,19 +5,19 @@ import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { EmailLayout } from './components/EmailLayout.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
-import { inboxStoreId } from './stores/inbox/index.ts'
+import { mailboxStoreId } from './stores/mailbox/index.ts'
 
 /**
  * Email Client - LiveStore Multi-Aggregate Demo
  *
  * Demonstrates:
- * - Two-aggregate architecture (Inbox & Threads)
+ * - Two-aggregate architecture (Mailbox & Threads)
  * - Cross-aggregate event flow
  */
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
 
-  useInitializeInboxStore()
+  useInitializeMailboxStore()
 
   return (
     <StoreRegistryProvider storeRegistry={storeRegistry}>
@@ -46,15 +46,15 @@ const AppLoading: React.FC = () => {
   )
 }
 
-// hook version of InboxStoreInitializer
-export const useInitializeInboxStore = () => {
+// hook version of MailboxStoreInitializer
+export const useInitializeMailboxStore = () => {
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/inbox-client-do?storeId=${inboxStoreId}`)
+    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/mailbox-client-do?storeId=${mailboxStoreId}`)
       .then((data) => {
-        console.log('Inbox Client Durable Object state initialized:', data)
+        console.log('Mailbox Client Durable Object state initialized:', data)
       })
       .catch((error) => {
-        console.error('Failed to initialize Durable Inbox Client Durable Object:', error)
+        console.error('Failed to initialize Durable Mailbox Client Durable Object:', error)
       })
   }, [])
 }
