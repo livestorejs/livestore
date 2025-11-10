@@ -1,15 +1,52 @@
 # Web Email Client Example
 
-A email client demonstrating LiveStore's multi-store architecture with cross-store synchronization.
+An email client using multi-store architecture to demonstrate partial sync and cross-store sync.
 
-## Architecture Overview
+## Partial Synchronization
 
-This example implements a simplified email interface with two stores:
+We can only load so much data in the browser before hitting memory limits and making the initial load unbearably slow. A typical email mailbox with thousands of threads would exceed this limit.
 
-- **Inbox (singleton)**: Manages labels, thread index, and global UI state
-- **Thread (multi-instance)**: One instance per thread, owns thread and label associations
+To solve this, we can partition the application data into multiple independent stores that can be lazy-loaded on demand:
 
-### Architecture Diagram
+**Inbox Store**
+- Singleton
+- Manages labels, thread index, and UI state
+- Lifecycle: Loaded on startup, always in memory
+
+**Thread Store**:
+- One per email thread
+- Manages a single thread's messages and label associations
+- Lifecycle: Loaded on-demand, garbage collected when inactive
+
+## Cross-Store Synchronization
+
+In LiveStore, **each store is completely isolated**:
+
+- **Event Log**: Events can only be committed to a single store's append-only event log
+- **State DB**: Events are materialized into that same store's database via materializers
+- **Consistency Boundary**: Consistency is guaranteed only within a single store
+- **No Built-in Cross-Store Communication**: Stores cannot directly reference or modify other stores
+
+However, in our email client, we need to maintain some data in the Inbox store that reflects changes made in individual Thread stores. For example, when a new thread is created or a label is applied to a thread, the Inbox store needs to update its thread index and label associations accordingly.
+
+To achieve this, we use the following strategy:
+
+Maintain **projection tables** in the Inbox store that mirror Thread data:
+- `threadIndex`: Thread metadata for listing/searching
+- `threadLabels`: Thread-label associations for filtering
+- `labels.threadCount`: Cached counts per label
+
+These projections are **eventually consistent** copies synchronized via cross-store events.
+
+Since LiveStore doesn't provide cross-store communication, we implement it using an event publishing pattern:
+
+1. **Change Detection**: ThreadClientDO subscribes to its store's tables and detects changes by comparing current snapshots against previous state
+2. **Event Publishing**: When changes are detected, ThreadClientDO publishes cross-store events to the `cross-store-events` Cloudflare Queue
+3. **Event Consumption**: The Queue Consumer Worker processes events from the queue
+4. **State Update**: The worker calls InboxClientDO methods, which commit events to the Inbox store
+5. **Materialization**: Inbox materializers update projection tables
+
+## Architecture Diagram
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -90,54 +127,3 @@ This example implements a simplified email interface with two stores:
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
-
-## Cross-Store Synchronization
-
-[//]: # (TODO: Explain that in LiveStore, each store is isolated. Events can only be committed to a single store (to the store's event log) and materialized within that same store's state DB. If we need to update state in another store, we have to handle this outside of LiveStore. In this example, we use event publishing pattern with Cloudflare Queues for that. Explain the challenges with this solution (e.g. same event duplication). List the multiple flows we implemented (and why we needed to implement them).
-
-### Consistency Boundaries
-- **Inbox**: Owns labels, thread index, UI state. Read-only for thread data.
-- **Thread**: Owns threads, messages, and label associations.
-
-## Project Structure
-
-```
-src/
-├── cf-worker/
-│   ├── InboxClientDO.ts      # Singleton Durable Object for Inbox
-│   ├── ThreadClientDO.ts     # Per-thread Durable Object
-│   ├── worker.ts             # Request handler + queue consumer
-│   └── shared.ts             # Env types, CrossStoreEvent definitions
-├── stores/
-│   ├── inbox/
-│   │   ├── schema.ts         # Inbox events, tables, materializers
-│   │   └── seed.ts           # Initial system labels
-│   └── thread/
-│       ├── schema.ts         # Thread events, tables, materializers
-│       ├── seed.ts           # Sample thread data
-│       └── index.ts          # Store factory
-└── components/
-    └── [React components]
-```
-
-## Running Locally
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start Cloudflare and Vite dev server
-pnpm dev
-
-# Open browser
-open http://localhost:8787
-```
-
-## Technologies
-
-- **LiveStore**: Event-sourced state management with SQLite
-- **Cloudflare Workers**: Serverless compute runtime
-- **Cloudflare Durable Objects**: Stateful serverless instances
-- **Cloudflare Queues**: Pub/sub messaging for cross-store events
-- **React**: UI framework
-- **Vite**: Frontend build tool
