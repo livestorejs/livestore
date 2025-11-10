@@ -12,7 +12,7 @@ const adapter = makePersistedAdapter({
 
 export const threadStoreOptions = (threadId: string) =>
   storeOptions({
-    storeId: `thread:${threadId}`,
+    storeId: `thread-${threadId}`,
     schema,
     adapter,
   })

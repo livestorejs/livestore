@@ -87,16 +87,7 @@ export const inboxEvents = {
     }),
   }),
 
-  // Cross-aggregate event: triggered when thread labels are applied/removed
-  labelThreadCountUpdated: Events.synced({
-    name: 'v1.LabelThreadCountUpdated',
-    schema: Schema.Struct({
-      labelId: Schema.String,
-      newCount: Schema.Number,
-      updatedAt: Schema.Date,
-    }),
-  }),
-
+  // Thread added to inbox (projection from Thread aggregate)
   threadAdded: Events.synced({
     name: 'v1.ThreadAdded',
     schema: Schema.Struct({
@@ -104,6 +95,26 @@ export const inboxEvents = {
       subject: Schema.String,
       participants: Schema.Array(Schema.String), // Array of email addresses
       createdAt: Schema.Date,
+    }),
+  }),
+
+  // Thread-label association applied (projection from Thread aggregate)
+  threadLabelApplied: Events.synced({
+    name: 'v1.ThreadLabelApplied',
+    schema: Schema.Struct({
+      threadId: Schema.String,
+      labelId: Schema.String,
+      appliedAt: Schema.Date,
+    }),
+  }),
+
+  // Thread-label association removed (projection from Thread aggregate)
+  threadLabelRemoved: Events.synced({
+    name: 'v1.ThreadLabelRemoved',
+    schema: Schema.Struct({
+      threadId: Schema.String,
+      labelId: Schema.String,
+      removedAt: Schema.Date,
     }),
   }),
 
@@ -115,9 +126,6 @@ const materializers = State.SQLite.materializers(inboxEvents, {
   'v1.LabelCreated': ({ id, name, type, color, displayOrder, createdAt }) =>
     inboxTables.labels.insert({ id, name, type, color, displayOrder, threadCount: 0, createdAt }),
 
-  'v1.LabelThreadCountUpdated': ({ labelId, newCount }) => {
-    return inboxTables.labels.update({ threadCount: newCount }).where({ id: labelId })
-  },
   'v1.ThreadAdded': ({ id, subject, participants, createdAt }) =>
     inboxTables.threadIndex.insert({
       id,
@@ -126,6 +134,18 @@ const materializers = State.SQLite.materializers(inboxEvents, {
       lastActivity: createdAt,
       createdAt,
     }),
+
+  // Thread-label applied: insert into threadLabels AND increment label count
+  'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) => [
+    inboxTables.threadLabels.insert({ threadId, labelId, appliedAt }),
+    { sql: 'UPDATE labels SET threadCount = threadCount + 1 WHERE id = ?', bindValues: [labelId] },
+  ],
+
+  // Thread-label removed: delete from threadLabels AND decrement label count
+  'v1.ThreadLabelRemoved': ({ threadId, labelId }) => [
+    inboxTables.threadLabels.delete().where({ threadId, labelId }),
+    { sql: 'UPDATE labels SET threadCount = MAX(0, threadCount - 1) WHERE id = ?', bindValues: [labelId] },
+  ],
 })
 
 const state = State.SQLite.makeState({ tables: inboxTables, materializers })
