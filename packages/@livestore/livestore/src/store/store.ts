@@ -335,10 +335,22 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
   // #endregion constructor
 
+  /**
+   * Current session identifier for this Store instance.
+   *
+   * - Stable for the lifetime of the Store
+   * - Useful for correlating events or scoping per-session data
+   */
   get sessionId(): string {
     return this[StoreInternalsSymbol].clientSession.sessionId
   }
 
+  /**
+   * Stable client identifier for the process/device using this Store.
+   *
+   * - Shared across Store instances created by the same client
+   * - Useful for diagnostics and multi-client correlation
+   */
   get clientId(): string {
     return this[StoreInternalsSymbol].clientSession.clientId
   }
@@ -940,7 +952,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // for (const event of events) {
     //   if (event.args.id === SessionIdSymbol) {
-    //     event.args.id = this.clientSession.sessionId
+    //     event.args.id = this.sessionId
     //   }
     // }
 

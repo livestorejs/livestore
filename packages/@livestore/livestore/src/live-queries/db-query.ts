@@ -369,7 +369,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             }
 
             if (bindValues !== undefined) {
-              replaceSessionIdSymbol(bindValues, store[StoreInternalsSymbol].clientSession.sessionId)
+              replaceSessionIdSymbol(bindValues, store.sessionId)
             }
 
             // Establish a reactive dependency on the tables used in the query
