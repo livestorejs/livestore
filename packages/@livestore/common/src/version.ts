@@ -2,7 +2,7 @@
 // import packageJson from '../package.json' with { type: 'json' }
 // export const liveStoreVersion = packageJson.version
 
-export const liveStoreVersion = '0.4.0-dev.16' as const
+export const liveStoreVersion = '0.4.0-dev.17' as const
 
 /**
  * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.
