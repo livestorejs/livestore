@@ -14,8 +14,8 @@ import { threadEvents, threadTables } from '../stores/thread/schema.ts'
  * - Label management for threads
  *
  * Note: Queries threadLabels from Thread store (source of truth).
- * Labels aggregate maintains a synchronized projection for cross-thread filtering.
- * Use Labels aggregate's threadLabels for browsing/filtering, Thread's for detail view.
+ * Labels store maintains a synchronized projection for cross-thread filtering.
+ * Use Labels store's threadLabels for browsing/filtering, Thread's for detail view.
  */
 
 const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
