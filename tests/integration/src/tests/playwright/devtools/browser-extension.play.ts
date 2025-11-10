@@ -376,11 +376,11 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           // Derive labels used in the session links
           const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string]>(() => [
             (window as any).__debugLiveStore.default.clientId,
-            (window as any).__debugLiveStore.default.clientSession.sessionId,
+            (window as any).__debugLiveStore.default.sessionId,
           ])
           const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string]>(() => [
             (window as any).__debugLiveStore.default.clientId,
-            (window as any).__debugLiveStore.default.clientSession.sessionId,
+            (window as any).__debugLiveStore.default.sessionId,
           ])
 
           const localLabel = `${localClientId}:${localSessionId}`
