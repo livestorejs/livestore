@@ -3,7 +3,7 @@ import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/a
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
-import { threadEvents, schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
+import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
 import type { Env } from './shared.ts'
 
@@ -47,37 +47,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     await this.subscribeToStore()
   }
 
-  async createThread({
-    id,
-    labelId,
-    participants,
-    subject,
-  }: {
-    id: string
-    subject: string
-    participants: string[]
-    labelId: string
-  }) {
-    if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
-
-    this.store.commit(
-      threadEvents.threadCreated({
-        id,
-        subject,
-        participants,
-        createdAt: new Date(),
-      }),
-      threadEvents.threadLabelApplied({
-        threadId: id,
-        labelId: labelId,
-        appliedAt: new Date(),
-      }),
-    )
-
-    console.log(`✅ Thread ${id} created successfully`)
-  }
-
-  async subscribeToStore() {
+  private async subscribeToStore() {
     if (this.storeSubscription || this.threadSubscription) return
 
     if (!this.store) throw new Error('Store not initialized. Call initialize() first.')

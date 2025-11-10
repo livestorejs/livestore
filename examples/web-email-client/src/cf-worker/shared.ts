@@ -16,14 +16,3 @@ export type Env = {
   DB: D1Database
   ADMIN_SECRET: string
 }
-
-export const storeIdFromRequest = (request: SyncBackend.CfTypes.Request) => {
-  const url = new URL(request.url)
-  const storeId = url.searchParams.get('storeId')
-
-  if (storeId === null) {
-    throw new Error('storeId is required in URL search params')
-  }
-
-  return storeId
-}
