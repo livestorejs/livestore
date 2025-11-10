@@ -16,7 +16,7 @@ import { ThreadView } from './ThreadView.tsx'
 export const EmailLayout: React.FC = () => {
   const { currentLabel, currentThreadId, currentThread, threadIndex, threadLabels } = useMailbox()
 
-  // Filter threads by current label using Labels aggregate projections
+  // Filter threads by current label using Labels store projections
   const getThreadsForLabel = (labelId: string) => {
     const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
     return threadIndex.filter((t) => threadIds.includes(t.id))
@@ -30,7 +30,7 @@ export const EmailLayout: React.FC = () => {
       <div className="w-64 bg-white border-r border-gray-200">
         <div className="p-4 border-b border-gray-200">
           <h1 className="text-xl font-semibold text-gray-900">📧 Email Client</h1>
-          <p className="text-sm text-gray-500 mt-1">LiveStore Multi-Aggregate Demo</p>
+          <p className="text-sm text-gray-500 mt-1">LiveStore Multi-Store Demo</p>
         </div>
         <LabelSidebar />
       </div>
@@ -61,14 +61,14 @@ export const EmailLayout: React.FC = () => {
                 <div className="text-4xl mb-4">📧</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to LiveStore Email Client</h3>
                 <p className="text-gray-500 max-w-md">
-                  This prototype demonstrates event sourcing with multiple aggregates. Select a label from the sidebar
-                  to view email threads.
+                  This prototype demonstrates event sourcing with multiple stores. Select a label from the sidebar to
+                  view email threads.
                 </p>
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left max-w-md">
                   <h4 className="font-medium text-blue-900 mb-2">🏗️ Architecture Demo:</h4>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Two separate aggregates (Labels & Threads)</li>
-                    <li>• Cross-aggregate event flow</li>
+                    <li>• Two separate stores (Labels & Threads)</li>
+                    <li>• Cross-store event flow</li>
                     <li>• Real-time sync via Durable Objects</li>
                   </ul>
                 </div>

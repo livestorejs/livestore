@@ -8,11 +8,11 @@ import { VersionBadge } from './components/VersionBadge.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
 
 /**
- * Email Client - LiveStore Multi-Aggregate Demo
+ * Email Client - LiveStore Multi-Store Demo
  *
  * Demonstrates:
- * - Two-aggregate architecture (Mailbox & Threads)
- * - Cross-aggregate event flow
+ * - Two-store architecture (Mailbox & Threads)
+ * - Cross-store event flow
  */
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
@@ -40,7 +40,7 @@ const AppLoading: React.FC = () => {
         <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden mx-auto">
           <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />
         </div>
-        <div className="mt-4 text-xs text-gray-400">Initializing LiveStore multi-aggregate architecture...</div>
+        <div className="mt-4 text-xs text-gray-400">Initializing LiveStore multi-store architecture...</div>
       </div>
     </div>
   )

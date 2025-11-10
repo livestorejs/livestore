@@ -1,20 +1,20 @@
 import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 /**
- * Thread Aggregate
+ * Thread Store
  *
  * Purpose: Core unit for email threads (collections of related messages)
  * Event Log: Variable size (10-100KB per thread)
  *
- * This aggregate is the SOURCE OF TRUTH for:
+ * This store is the SOURCE OF TRUTH for:
  * - Email threads and their metadata
  * - Individual messages within threads
  * - Thread-label associations (enforces business rules)
  *
- * Cross-aggregate synchronization:
- * - Thread events are consumed by Labels aggregate to maintain queryable projections
- * - Labels aggregate maintains threadIndex and threadLabels for efficient filtering
- * - All label operations must go through this aggregate to enforce consistency
+ * Cross-store synchronization:
+ * - Thread events are consumed by Labels store to maintain queryable projections
+ * - Labels store maintains threadIndex and threadLabels for efficient filtering
+ * - All label operations must go through this store to enforce consistency
  */
 
 export const threadTables = {
@@ -102,7 +102,7 @@ export const threadEvents = {
     }),
   }),
 
-  // Label association events (these trigger cross-aggregate updates)
+  // Label association events (these trigger cross-store updates)
   threadLabelApplied: Events.synced({
     name: 'v1.ThreadLabelApplied',
     schema: Schema.Struct({
@@ -122,7 +122,7 @@ export const threadEvents = {
   }),
 }
 
-// Materializers for Thread Aggregate
+// Materializers for Thread Store
 export const materializers = State.SQLite.materializers(threadEvents, {
   'v1.ThreadCreated': ({ id, subject, participants, createdAt }) =>
     threadTables.thread.insert({

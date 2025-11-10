@@ -9,7 +9,7 @@ import { useMailbox } from '../hooks/useMailbox.ts'
  * - Click to select thread for detailed view
  * - Gmail-inspired thread list design
  *
- * Uses Labels aggregate projections (threadIndex + threadLabels) for efficient querying
+ * Uses Labels store projections (threadIndex + threadLabels) for efficient querying
  */
 
 export const ThreadList: React.FC = () => {
@@ -28,7 +28,7 @@ export const ThreadList: React.FC = () => {
 
   console.log('threadIndex:', threadIndex)
 
-  // Filter threads by current label using Labels aggregate projections
+  // Filter threads by current label using Labels store projections
   const getThreadsForLabel = (labelId: string) => {
     const threadIds = threadLabels.filter((tl) => tl.labelId === labelId).map((tl) => tl.threadId)
     return threadIndex.filter((t) => threadIds.includes(t.id))

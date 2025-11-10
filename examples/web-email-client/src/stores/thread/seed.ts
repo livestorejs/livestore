@@ -3,7 +3,7 @@ import type { schema } from './schema.ts'
 import { threadEvents } from './schema.ts'
 
 /**
- * Seed data for Thread aggregate.
+ * Seed data for Thread store.
  */
 export const seedThread = ({
   store,
@@ -37,7 +37,7 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          "Hi Bob! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple aggregates. What do you think?",
+          "Hi Bob! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple stores. What do you think?",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000 * 2), // 2 hours ago
@@ -46,7 +46,7 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          'That sounds amazing, Alice! I love how LiveStore handles real-time sync between aggregates. Can you show me the cross-aggregate event flow?',
+          'That sounds amazing, Alice! I love how LiveStore handles real-time sync between stores. Can you show me the cross-store event flow?',
         sender: 'bob@livestore.dev',
         senderName: 'Bob Smith',
         timestamp: new Date(now.getTime() - 3600000 * 1.5), // 1.5 hours ago
@@ -55,7 +55,7 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          "Sure! When you apply a label to a thread, the Thread aggregate emits ThreadLabelApplied events. The Label aggregate reacts to these events and updates thread counts. It's a great example of eventual consistency!",
+          "Sure! When you apply a label to a thread, the Thread store emits ThreadLabelApplied events. The Label store reacts to these events and updates thread counts. It's a great example of eventual consistency!",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000), // 1 hour ago
@@ -100,7 +100,7 @@ export const seedThread = ({
     }
 
     // Apply INBOX label to the thread
-    // This should trigger a cross-aggregate event ("v1.LabelThreadCountUpdated") to update INBOX thread count
+    // This should trigger a cross-store event ("v1.LabelThreadCountUpdated") to update INBOX thread count
     allEvents.push(
       threadEvents.threadLabelApplied({
         threadId,

@@ -25,7 +25,7 @@ export const useMailbox = () => {
   // Get labels data
   const labels = mailboxStore.useQuery(labelsQuery)
 
-  // Get thread projections from Mailbox aggregate (for efficient browsing/filtering)
+  // Get thread projections from Mailbox store (for efficient browsing/filtering)
   const threads = mailboxStore.useQuery(threadsQuery)
   const threadLabels = mailboxStore.useQuery(threadLabelsQuery)
 

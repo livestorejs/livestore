@@ -3,11 +3,11 @@ import type { schema } from './schema.ts'
 import { mailboxEvents } from './schema.ts'
 
 /**
- * Seed data for Mailbox aggregate.
+ * Seed data for Mailbox store.
  *
  * Note: threadIndex and threadLabels tables are NOT seeded here.
- * They are projections that are automatically populated via cross-aggregate
- * synchronization when Thread aggregates emit events (threadCreated, threadLabelApplied, etc.)
+ * They are projections that are automatically populated via cross-store
+ * synchronization when Thread stores emit events (threadCreated, threadLabelApplied, etc.)
  */
 export const seedMailbox = (store: Store<typeof schema>): { inboxLabelId: string } => {
   try {
