@@ -1,4 +1,5 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { schema } from '../../__tests__/fixture.tsx'
 import { DEFAULT_GC_TIME, StoreRegistry } from './StoreRegistry.ts'
@@ -93,7 +94,7 @@ describe('StoreRegistry', () => {
 
     // Should be a different store instance
     expect(nextStore).not.toBe(store)
-    expect(nextStore.clientSession.debugInstanceId).toBeDefined()
+    expect(nextStore[StoreInternalsSymbol].clientSession.debugInstanceId).toBeDefined()
 
     // Clean up the second store (first one was cleaned up by GC)
     await nextStore.shutdownPromise()
@@ -421,7 +422,7 @@ describe('StoreRegistry', () => {
 
     // Verify the store loads successfully
     expect(store).toBeDefined()
-    expect(store.clientSession.debugInstanceId).toBeDefined()
+    expect(store[StoreInternalsSymbol].clientSession.debugInstanceId).toBeDefined()
 
     // Verify configured default gcTime is applied by checking GC doesn't happen at library's default gc time
     await vi.advanceTimersByTimeAsync(DEFAULT_GC_TIME)

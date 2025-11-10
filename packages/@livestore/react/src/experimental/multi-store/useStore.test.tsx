@@ -1,4 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import type { Store } from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -97,7 +99,7 @@ describe('experimental useStore', () => {
 
     // Wait for store to be ready
     await waitForStoreReady(result)
-    expect(result.current.clientSession).toBeDefined()
+    expect(result.current[StoreInternalsSymbol].clientSession).toBeDefined()
 
     cleanupWithPendingTimers(unmount)
   })
@@ -116,7 +118,7 @@ describe('experimental useStore', () => {
     // Wait for first store to load
     await waitForStoreReady(result)
     const storeA = result.current
-    expect(storeA.clientSession).toBeDefined()
+    expect(storeA[StoreInternalsSymbol].clientSession).toBeDefined()
 
     // Switch to different storeId
     rerender(optionsB)
@@ -124,11 +126,11 @@ describe('experimental useStore', () => {
     // Wait for second store to load and verify it's different from the first
     await waitFor(() => {
       expect(result.current).not.toBe(storeA)
-      expect(result.current?.clientSession).toBeDefined()
+      expect(result.current?.[StoreInternalsSymbol].clientSession).toBeDefined()
     })
 
     const storeB = result.current
-    expect(storeB.clientSession).toBeDefined()
+    expect(storeB[StoreInternalsSymbol].clientSession).toBeDefined()
     expect(storeB).not.toBe(storeA)
 
     cleanupWithPendingTimers(unmount)
@@ -187,9 +189,9 @@ const waitForSuspenseResolved = async (view: RenderResult): Promise<void> => {
  * Waits for a store to be fully loaded and ready to use.
  * The store is considered ready when it has a defined clientSession.
  */
-const waitForStoreReady = async <T extends { clientSession?: unknown }>(result: { current: T }): Promise<void> => {
+const waitForStoreReady = async (result: { current: Store<any> }): Promise<void> => {
   await waitFor(() => {
     expect(result.current).not.toBeNull()
-    expect(result.current?.clientSession).toBeDefined()
+    expect(result.current[StoreInternalsSymbol].clientSession).toBeDefined()
   })
 }

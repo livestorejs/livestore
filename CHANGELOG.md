@@ -276,6 +276,9 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 > Updates in this section are primarily relevant to maintainers and contributors. They cover infrastructure, tooling, and other non-user-facing work that supports the release.
 
+#### Core Runtime
+- Encapsulated Store internals behind `StoreInternalsSymbol` (moved `boot`, `syncProcessor`, `effectContext`, `tableRefs`, `otel`, `sqliteDbWrapper`, `clientSession`, `activeQueries`, `reactivityGraph`, `isShutdown`), reducing public surface and clarifying API boundaries ([#814](https://github.com/livestorejs/livestore/issues/814)).
+
 #### Testing Infrastructure
 - Comprehensive sync provider test suite with property-based testing (#386)
 - Node.js sync test infrastructure with Wrangler dev server integration (#594)
