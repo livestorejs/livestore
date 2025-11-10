@@ -113,7 +113,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
   // NOTE this is currently exposed for the Devtools databrowser to commit events
-  readonly __eventSchema
+  // Stripped by internal so this type is removed and does not cause errors for TypeScript coercion from `useStore().store as Store<typeof schema>`
+  /** @internal */
+  readonly __eventSchema: unknown
   readonly syncProcessor: ClientSessionSyncProcessor
 
   readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
