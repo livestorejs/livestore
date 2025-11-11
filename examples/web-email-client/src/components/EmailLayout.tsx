@@ -1,20 +1,31 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
+
 /**
- * EmailLayout - Main email client layout component
+ * Main email client layout
  *
  * Layout structure:
  * - Left sidebar with labels
  * - Main content area with thread view
  * - Gmail-inspired design patterns
  */
-
 export const EmailLayout: React.FC = () => {
-  const { selectedLabel, selectedThreadId, currentThread } = useMailbox()
+  const mailboxStore = useMailboxStore()
+  const [uiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const labels = mailboxStore.useQuery(labelsQuery)
+  const threadIndex = mailboxStore.useQuery(threadIndexQuery)
+
+  const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
+  const selectedThreadId = uiState.selectedThreadId
+  const currentThread = selectedThreadId && threadIndex.find((t) => t.id === selectedThreadId)
 
   return (
     <div className="flex h-screen bg-gray-50">

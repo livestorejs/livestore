@@ -1,5 +1,11 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
+
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
+const threadLabelsQuery = queryDb(mailboxTables.threadLabels.where({}), { label: 'threadLabels' })
 
 /**
  * Displays list of threads for selected label
@@ -8,11 +14,25 @@ import { useMailbox } from '../hooks/useMailbox.ts'
  * - List of threads with subject, participants, last activity
  * - Click to select thread for detailed view
  * - Gmail-inspired thread list design
- *
- * Uses Mailbox store projections (threadIndex + threadLabels) for efficient querying
  */
 export const ThreadList: React.FC = () => {
-  const { selectedLabel, selectThread, threadsForSelectedLabel } = useMailbox()
+  const mailboxStore = useMailboxStore()
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const labels = mailboxStore.useQuery(labelsQuery)
+  const threadIndex = mailboxStore.useQuery(threadIndexQuery)
+  const threadLabels = mailboxStore.useQuery(threadLabelsQuery)
+
+  const selectThread = (threadId: string | null) => {
+    setUiState({ selectedThreadId: threadId })
+  }
+
+  const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
+  const threadsForSelectedLabel = selectedLabel
+    ? threadLabels
+        .filter((tl) => tl.labelId === selectedLabel.id)
+        .map((tl) => threadIndex.find((t) => t.id === tl.threadId))
+        .filter((t): t is NonNullable<typeof t> => t !== undefined)
+    : undefined
 
   if (!selectedLabel) {
     return (

@@ -1,14 +1,7 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
-
-/**
- * LabelSidebar - System labels navigation
- *
- * Displays:
- * - System labels (INBOX, SENT, ARCHIVE, TRASH)
- * - Thread counts per label
- * - Active label highlighting
- */
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
 
 const labelIcons: Record<string, string> = {
   INBOX: '📥',
@@ -17,8 +10,27 @@ const labelIcons: Record<string, string> = {
   TRASH: '🗑️',
 }
 
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+
+/**
+ * Thread labels navigation sidebar
+ *
+ * Displays:
+ * - System labels (INBOX, SENT, ARCHIVE, TRASH)
+ * - Custom user labels
+ * - Thread counts per label
+ * - Active label highlighting
+ */
 export const LabelSidebar: React.FC = () => {
-  const { labels, selectedLabel, selectLabel } = useMailbox()
+  const mailboxStore = useMailboxStore()
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const labels = mailboxStore.useQuery(labelsQuery)
+
+  const selectLabel = (labelId: string) => {
+    setUiState({ selectedLabelId: labelId, selectedThreadId: null })
+  }
+
+  const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
 
   return (
     <div className="p-4">

@@ -1,6 +1,10 @@
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react/experimental'
 import type React from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
-import { useThread } from '../hooks/useThread.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadEvents, threadTables } from '../stores/thread/schema.ts'
 import { ComposeMessage } from './ComposeMessage.tsx'
 import { MessageItem } from './MessageItem.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
@@ -9,8 +13,13 @@ type ThreadViewProps = {
   threadId: string
 }
 
+const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
+const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
+
 /**
- * ThreadView - Display single email thread
+ * Display single email thread
  *
  * Shows:
  * - Thread header with subject and participants
@@ -19,10 +28,66 @@ type ThreadViewProps = {
  * - Thread-level actions (labels, etc.)
  */
 export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
-  const { uiState, toggleComposing } = useMailbox()
-  const { thread, getMessagesForThread, getUserLabelsForThread, removeUserLabelFromThread } = useThread(threadId)
+  const mailboxStore = useMailboxStore()
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
 
-  const messages = getMessagesForThread(threadId)
+  const toggleComposing = () => {
+    setUiState({ isComposing: !uiState.isComposing })
+  }
+
+  const threadStore = useStore(threadStoreOptions(threadId))
+  const [thread] = threadStore.useQuery(threadQuery)
+  const messages = threadStore.useQuery(messagesQuery)
+  const labels = mailboxStore.useQuery(labelsQuery)
+  const threadLabels = threadStore.useQuery(threadLabelsQuery)
+
+  const getMessagesForThread = (threadId: string) => {
+    return messages.filter((m) => m.threadId === threadId).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+  }
+
+  const getLabelsForThread = (threadId: string) => {
+    const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
+    return labels.filter((l) => labelIds.includes(l.id))
+  }
+
+  const getUserLabelsForThread = (threadId: string) => {
+    const allLabels = getLabelsForThread(threadId)
+    return allLabels.filter((l) => l.type === 'user')
+  }
+
+  const removeUserLabelFromThread = (threadId: string, labelId: string) => {
+    if (!threadStore) return
+
+    const targetLabel = labels.find((l) => l.id === labelId)
+    if (!targetLabel) {
+      console.error('Target label not found')
+      return
+    }
+
+    if (targetLabel.type !== 'user') {
+      console.error('Can only remove user labels with this function')
+      return
+    }
+
+    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
+    if (!isLabelApplied) {
+      return
+    }
+
+    try {
+      threadStore.commit(
+        threadEvents.threadLabelRemoved({
+          threadId,
+          labelId: targetLabel.id,
+          removedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
+    }
+  }
+
+  const messagesForThread = getMessagesForThread(threadId)
   const threadUserLabels = getUserLabelsForThread(threadId)
 
   if (!thread) {
@@ -50,7 +115,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
                 <span className="font-medium">Participants:</span> {participants.join(', ')}
               </div>
               <div>
-                <span className="font-medium">Messages:</span> {messages.length}
+                <span className="font-medium">Messages:</span> {messagesForThread.length}
               </div>
               <div>
                 <span className="font-medium">Last activity:</span> {thread.lastActivity.toLocaleDateString()}
@@ -97,19 +162,19 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto py-6 px-6">
-          {messages.length === 0 ? (
+          {messagesForThread.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">💬</div>
               <p className="text-gray-500">No messages in this thread</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {messages.map((message, index) => (
+              {messagesForThread.map((message, index) => (
                 <MessageItem
                   key={message.id}
                   message={message}
                   isFirst={index === 0}
-                  isLast={index === messages.length - 1}
+                  isLast={index === messagesForThread.length - 1}
                 />
               ))}
             </div>

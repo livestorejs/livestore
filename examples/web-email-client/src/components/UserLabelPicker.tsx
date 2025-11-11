@@ -1,24 +1,102 @@
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react/experimental'
 import type React from 'react'
 import { useState } from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
-import { useThread } from '../hooks/useThread.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadEvents, threadTables } from '../stores/thread/schema.ts'
+
+interface UserLabelPickerProps {
+  threadId: string
+}
+
+const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
 
 /**
- * UserLabelPicker - Component for applying/removing user labels from threads
+ * Component for applying/removing user labels from threads
  *
  * Features:
  * - Dropdown showing all available user labels
  * - Shows which labels are already applied
  * - Click to toggle label application
  */
-
-interface UserLabelPickerProps {
-  threadId: string
-}
-
 export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) => {
-  const { labels } = useMailbox()
-  const { getLabelsForThread, applyUserLabelToThread, removeUserLabelFromThread } = useThread(threadId)
+  const mailboxStore = useMailboxStore()
+  const labels = mailboxStore.useQuery(labelsQuery)
+
+  const threadStore = useStore(threadStoreOptions(threadId))
+  const threadLabels = threadStore.useQuery(threadLabelsQuery)
+
+  const getLabelsForThread = (threadId: string) => {
+    const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
+    return labels.filter((l) => labelIds.includes(l.id))
+  }
+
+  const applyUserLabelToThread = (threadId: string, labelId: string) => {
+    if (!threadStore) return
+
+    const targetLabel = labels.find((l) => l.id === labelId)
+    if (!targetLabel) {
+      console.error('Target label not found')
+      return
+    }
+
+    if (targetLabel.type !== 'user') {
+      console.error('Can only apply user labels with this function')
+      return
+    }
+
+    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
+    if (isLabelApplied) {
+      return
+    }
+
+    try {
+      threadStore.commit(
+        threadEvents.threadLabelApplied({
+          threadId,
+          labelId: targetLabel.id,
+          appliedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error(`Failed to apply user label ${targetLabel.name} to thread:`, error)
+    }
+  }
+
+  const removeUserLabelFromThread = (threadId: string, labelId: string) => {
+    if (!threadStore) return
+
+    const targetLabel = labels.find((l) => l.id === labelId)
+    if (!targetLabel) {
+      console.error('Target label not found')
+      return
+    }
+
+    if (targetLabel.type !== 'user') {
+      console.error('Can only remove user labels with this function')
+      return
+    }
+
+    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
+    if (!isLabelApplied) {
+      return
+    }
+
+    try {
+      threadStore.commit(
+        threadEvents.threadLabelRemoved({
+          threadId,
+          labelId: targetLabel.id,
+          removedAt: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
+    }
+  }
 
   const [isOpen, setIsOpen] = useState(false)
 
