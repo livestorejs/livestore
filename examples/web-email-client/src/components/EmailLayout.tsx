@@ -57,7 +57,7 @@ export const EmailLayout: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden">
           {selectedThreadId ? (
             <ThreadView threadId={selectedThreadId} />
           ) : selectedLabel ? (
@@ -71,7 +71,7 @@ export const EmailLayout: React.FC = () => {
               </p>
             </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )
