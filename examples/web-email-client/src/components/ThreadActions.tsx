@@ -7,11 +7,11 @@ import { threadStoreOptions } from '../stores/thread/index.ts'
 import { threadEvents, threadTables } from '../stores/thread/schema.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
-const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const systemLabelsQuery = queryDb(mailboxTables.labels.where({ type: 'system' }), { label: 'systemLabels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
 
 /**
- *  Thread-level action buttons
+ * Thread-level action buttons
  *
  * Provides:
  * - Archive/Trash actions
@@ -22,102 +22,58 @@ export const ThreadActions: React.FC = () => {
   const [uiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
   const selectedThreadId = uiState.selectedThreadId
 
-  if (!selectedThreadId) throw new Error('No current thread selected')
+  if (!selectedThreadId) throw new Error('No thread selected')
 
   const threadStore = useStore(threadStoreOptions(selectedThreadId))
-  const labels = mailboxStore.useQuery(labelsQuery)
+  const systemLabels = mailboxStore.useQuery(systemLabelsQuery)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
 
-  const getLabelsForThread = (threadId: string) => {
-    const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
-    return labels.filter((l) => labelIds.includes(l.id))
-  }
-
-  const getSystemLabelForThread = (threadId: string) => {
-    const threadLabelsForThread = getLabelsForThread(threadId)
-    const systemLabels = threadLabelsForThread.filter((l) => l.type === 'system')
-    return systemLabels[0] || null
-  }
+  const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
+  const threadSystemLabels = systemLabels.filter((l) => isLabelApplied(l.id))
+  if (threadSystemLabels.length !== 1) throw new Error('Thread must have exactly one system label applied')
+  const currentSystemLabel = threadSystemLabels[0]
 
   const trashThread = (threadId: string) => {
-    if (!threadStore) return
+    const trashLabel = systemLabels.find((l) => l.name === 'TRASH')
+    if (!trashLabel) throw new Error('TRASH label not found')
 
-    const trashLabel = labels.find((l) => l.name === 'TRASH')
-    if (!trashLabel) {
-      console.error('Trash label not found')
-      return
-    }
-
-    const currentSystemLabel = getSystemLabelForThread(threadId)
-
+    const now = new Date()
     try {
-      const eventsToCommit = []
-
-      if (currentSystemLabel && currentSystemLabel.id !== trashLabel.id) {
-        eventsToCommit.push(
-          threadEvents.threadLabelRemoved({
-            threadId,
-            labelId: currentSystemLabel.id,
-            removedAt: new Date(),
-          }),
-        )
-      }
-
-      if (!currentSystemLabel || currentSystemLabel.id !== trashLabel.id) {
-        eventsToCommit.push(
-          threadEvents.threadLabelApplied({
-            threadId,
-            labelId: trashLabel.id,
-            appliedAt: new Date(),
-          }),
-        )
-      }
-
-      if (eventsToCommit.length > 0) {
-        threadStore.commit(...eventsToCommit)
-      }
+      threadStore.commit(
+        threadEvents.threadLabelRemoved({
+          threadId,
+          labelId: currentSystemLabel.id,
+          removedAt: now,
+        }),
+        threadEvents.threadLabelApplied({
+          threadId,
+          labelId: trashLabel.id,
+          appliedAt: now,
+        }),
+      )
     } catch (error) {
       console.error('Failed to trash thread:', error)
     }
   }
 
   const archiveThread = (threadId: string) => {
-    if (!threadStore) return
+    const archiveLabel = systemLabels.find((l) => l.name === 'ARCHIVE')
+    if (!archiveLabel) throw new Error('ARCHIVE label not found')
 
-    const archiveLabel = labels.find((l) => l.name === 'ARCHIVE')
-    if (!archiveLabel) {
-      console.error('Archive label not found')
-      return
-    }
-
-    const currentSystemLabel = getSystemLabelForThread(threadId)
-
+    const now = new Date()
     try {
-      const eventsToCommit = []
-
-      if (currentSystemLabel && currentSystemLabel.id !== archiveLabel.id) {
-        eventsToCommit.push(
-          threadEvents.threadLabelRemoved({
-            threadId,
-            labelId: currentSystemLabel.id,
-            removedAt: new Date(),
-          }),
-        )
-      }
-
-      if (!currentSystemLabel || currentSystemLabel.id !== archiveLabel.id) {
-        eventsToCommit.push(
-          threadEvents.threadLabelApplied({
-            threadId,
-            labelId: archiveLabel.id,
-            appliedAt: new Date(),
-          }),
-        )
-      }
-
-      if (eventsToCommit.length > 0) {
-        threadStore.commit(...eventsToCommit)
-      }
+      threadStore.commit(
+        threadEvents.threadLabelRemoved({
+          threadId,
+          labelId: currentSystemLabel.id,
+          removedAt: now,
+        }),
+        threadEvents.threadLabelApplied({
+          threadId,
+          labelId: archiveLabel.id,
+          appliedAt: now,
+        }),
+      )
     } catch (error) {
       console.error('Failed to archive thread:', error)
     }

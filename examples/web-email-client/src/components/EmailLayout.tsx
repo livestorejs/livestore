@@ -24,8 +24,7 @@ export const EmailLayout: React.FC = () => {
   const threadIndex = mailboxStore.useQuery(threadIndexQuery)
 
   const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
-  const selectedThreadId = uiState.selectedThreadId
-  const currentThread = selectedThreadId && threadIndex.find((t) => t.id === selectedThreadId)
+  const currentThread = uiState.selectedThreadId && threadIndex.find((t) => t.id === uiState.selectedThreadId)
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -58,8 +57,8 @@ export const EmailLayout: React.FC = () => {
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden">
-          {selectedThreadId ? (
-            <ThreadView threadId={selectedThreadId} />
+          {uiState.selectedThreadId ? (
+            <ThreadView threadId={uiState.selectedThreadId} />
           ) : selectedLabel ? (
             <ThreadList />
           ) : (
