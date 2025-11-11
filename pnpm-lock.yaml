@@ -136,8 +136,8 @@ catalogs:
       specifier: 19.2.3
       version: 19.2.3
     solid-js:
-      specifier: 1.9.10
-      version: 1.9.10
+      specifier: 1.9.9
+      version: 1.9.9
     tailwindcss:
       specifier: 4.1.18
       version: 4.1.18
@@ -2508,6 +2508,67 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+
+  packages/@livestore/test-utils:
+    dependencies:
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../utils-dev
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.0
+    devDependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../adapter-web
+      '@opentelemetry/sdk-trace-base':
+        specifier: ^2.0.1
+        version: 2.0.1(@opentelemetry/api@1.9.0)
+      '@solidjs/testing-library':
+        specifier: ^0.8.10
+        version: 0.8.10(solid-js@1.9.9)
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.1
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.0(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.1.13
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0
+      react:
+        specifier: 'catalog:'
+        version: 19.1.0
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.1.0(react@19.1.0)
+      react-window:
+        specifier: ^1.8.11
+        version: 1.8.11(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      solid-js:
+        specifier: 'catalog:'
+        version: 1.9.9
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.2
+      vite:
+        specifier: 'catalog:'
+        version: 7.1.7(@types/node@24.5.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.2)(@vitest/ui@3.2.4)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
 
   packages/@livestore/utils:
     dependencies:
@@ -24479,7 +24540,21 @@ snapshots:
       '@types/react': 19.2.7
       '@types/react-dom': 19.2.3(@types/react@19.2.7)
 
+<<<<<<< HEAD
   '@testing-library/svelte@5.2.9(svelte@5.45.5)(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+=======
+  '@testing-library/react@16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.0(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@babel/runtime': 7.28.4
+      '@testing-library/dom': 10.4.1
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+    optionalDependencies:
+      '@types/react': 19.1.13
+      '@types/react-dom': 19.2.0(@types/react@19.1.13)
+
+  '@tiptap/core@3.7.0(@tiptap/pm@3.7.0)':
+>>>>>>> 5c2e921c5 (chore: update pnpm-lock.yaml)
     dependencies:
       '@testing-library/dom': 10.4.1
       svelte: 5.45.5
@@ -25077,7 +25152,20 @@ snapshots:
     dependencies:
       '@types/react': 19.1.17
 
+<<<<<<< HEAD
   '@types/react-dom@19.2.3(@types/react@19.2.7)':
+=======
+  '@types/react-dom@19.1.9(@types/react@19.1.13)':
+    dependencies:
+      '@types/react': 19.1.13
+
+  '@types/react-dom@19.2.0(@types/react@19.1.13)':
+    dependencies:
+      '@types/react': 19.1.13
+    optional: true
+
+  '@types/react-dom@19.2.0(@types/react@19.2.1)':
+>>>>>>> 5c2e921c5 (chore: update pnpm-lock.yaml)
     dependencies:
       '@types/react': 19.2.7
 
