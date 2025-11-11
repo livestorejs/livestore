@@ -21,9 +21,7 @@ export const App: React.FC = () => {
   return (
     <StoreRegistryProvider storeRegistry={storeRegistry}>
       <Suspense fallback={<AppLoading />}>
-        <div className="h-screen bg-gray-100">
-          <EmailLayout />
-        </div>
+        <EmailLayout />
       </Suspense>
     </StoreRegistryProvider>
   )
