@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import './index.css'
 
 import ReactDOM from 'react-dom/client'

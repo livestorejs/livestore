@@ -1,19 +1,5 @@
 import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
-/**
- * Mailbox Store (Singleton)
- *
- * Purpose: Manage system labels (INBOX, SENT, ARCHIVE, TRASH), thread collection, and UI state
- *
- * This store handles:
- * - System label definitions and metadata
- * - Label thread counts (updated by cross-store events)
- * - Label organization and display properties
- * - Thread index (projection from Thread stores for efficient querying)
- * - Thread-label associations (projection from Thread stores)
- * - Global UI state (selected thread, label, compose state)
- */
-
 export const mailboxTables = {
   labels: State.SQLite.table({
     name: 'labels',
@@ -135,13 +121,11 @@ const materializers = State.SQLite.materializers(mailboxEvents, {
       createdAt,
     }),
 
-  // Thread-label applied: insert into threadLabels AND increment label count
   'v1.ThreadLabelApplied': ({ threadId, labelId, appliedAt }) => [
     mailboxTables.threadLabels.insert({ threadId, labelId, appliedAt }),
     { sql: 'UPDATE labels SET threadCount = threadCount + 1 WHERE id = ?', bindValues: [labelId] },
   ],
 
-  // Thread-label removed: delete from threadLabels AND decrement label count
   'v1.ThreadLabelRemoved': ({ threadId, labelId }) => [
     mailboxTables.threadLabels.delete().where({ threadId, labelId }),
     { sql: 'UPDATE labels SET threadCount = MAX(0, threadCount - 1) WHERE id = ?', bindValues: [labelId] },
