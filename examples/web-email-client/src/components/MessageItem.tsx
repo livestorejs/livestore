@@ -1,15 +1,5 @@
 import type React from 'react'
 
-/**
- * MessageItem - Individual email message display
- *
- * Shows:
- * - Sender name and email
- * - Message timestamp
- * - Message content
- * - Message type indicators
- */
-
 interface MessageItemProps {
   message: {
     id: string
@@ -24,6 +14,15 @@ interface MessageItemProps {
   isLast: boolean
 }
 
+/**
+ * Individual email message display
+ *
+ * Shows:
+ * - Sender name and email
+ * - Message timestamp
+ * - Message content
+ * - Message type indicators
+ */
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const getMessageTypeIcon = () => {
     switch (message.messageType) {
