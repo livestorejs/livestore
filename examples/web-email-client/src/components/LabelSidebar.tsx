@@ -30,13 +30,11 @@ export const LabelSidebar: React.FC = () => {
     setUiState({ selectedLabelId: labelId, selectedThreadId: null })
   }
 
-  const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
-
   return (
     <div className="p-4">
       <nav className="space-y-1">
         {labels.map((label) => {
-          const isActive = selectedLabel?.id === label.id
+          const isActive = uiState.selectedLabelId === label.id
 
           return (
             <button

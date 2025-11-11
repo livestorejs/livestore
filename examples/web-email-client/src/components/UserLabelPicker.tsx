@@ -11,11 +11,11 @@ interface UserLabelPickerProps {
   threadId: string
 }
 
-const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
+const userLabelsQuery = queryDb(mailboxTables.labels.where({ type: 'user' }), { label: 'userLabels' })
 
 /**
- * Component for applying/removing user labels from threads
+ * Picker for applying/removing user labels from threads
  *
  * Features:
  * - Dropdown showing all available user labels
@@ -24,86 +24,51 @@ const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 
  */
 export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) => {
   const mailboxStore = useMailboxStore()
-  const labels = mailboxStore.useQuery(labelsQuery)
+  const userLabels = mailboxStore.useQuery(userLabelsQuery)
 
   const threadStore = useStore(threadStoreOptions(threadId))
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
 
-  const getLabelsForThread = (threadId: string) => {
-    const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
-    return labels.filter((l) => labelIds.includes(l.id))
-  }
+  const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
+
+  const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
 
   const applyUserLabelToThread = (threadId: string, labelId: string) => {
-    if (!threadStore) return
-
-    const targetLabel = labels.find((l) => l.id === labelId)
-    if (!targetLabel) {
-      console.error('Target label not found')
-      return
-    }
-
-    if (targetLabel.type !== 'user') {
-      console.error('Can only apply user labels with this function')
-      return
-    }
-
-    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (isLabelApplied) return
+    if (isLabelApplied(labelId)) return
 
     try {
       threadStore.commit(
         threadEvents.threadLabelApplied({
           threadId,
-          labelId: targetLabel.id,
+          labelId,
           appliedAt: new Date(),
         }),
       )
     } catch (error) {
-      console.error(`Failed to apply user label ${targetLabel.name} to thread:`, error)
+      console.error(`Failed to apply user label ${labelId} to thread ${threadId}:`, error)
     }
   }
 
   const removeUserLabelFromThread = (threadId: string, labelId: string) => {
-    if (!threadStore) return
-
-    const targetLabel = labels.find((l) => l.id === labelId)
-    if (!targetLabel) {
-      console.error('Target label not found')
-      return
-    }
-
-    if (targetLabel.type !== 'user') {
-      console.error('Can only remove user labels with this function')
-      return
-    }
-
-    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (!isLabelApplied) return
+    if (!isLabelApplied(labelId)) return
 
     try {
       threadStore.commit(
         threadEvents.threadLabelRemoved({
           threadId,
-          labelId: targetLabel.id,
+          labelId,
           removedAt: new Date(),
         }),
       )
     } catch (error) {
-      console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
+      console.error(`Failed to remove user label ${labelId} to thread ${threadId}:`, error)
     }
   }
 
   const [isOpen, setIsOpen] = useState(false)
 
-  const userLabels = labels.filter((l) => l.type === 'user')
-  const appliedLabels = getLabelsForThread(threadId)
-  const appliedUserLabels = appliedLabels.filter((l) => l.type === 'user')
-
-  const toggleLabel = (labelId: string) => {
-    const isApplied = appliedLabels.some((l) => l.id === labelId)
-
-    if (isApplied) {
+  const toggleUserLabel = (labelId: string) => {
+    if (isLabelApplied(labelId)) {
       removeUserLabelFromThread(threadId, labelId)
     } else {
       applyUserLabelToThread(threadId, labelId)
@@ -125,9 +90,9 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
       </button>
 
       {/* Applied Labels Count */}
-      {appliedUserLabels.length > 0 && (
+      {threadUserLabels.length > 0 && (
         <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-          {appliedUserLabels.length}
+          {threadUserLabels.length}
         </span>
       )}
 
@@ -148,12 +113,10 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
               <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-200">Apply Labels</div>
 
               {userLabels.map((label) => {
-                const isApplied = appliedLabels.some((l) => l.id === label.id)
-
                 return (
                   <button
                     key={label.id}
-                    onClick={() => toggleLabel(label.id)}
+                    onClick={() => toggleUserLabel(label.id)}
                     type="button"
                     className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-between"
                   >
@@ -162,7 +125,7 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
                       <span className="capitalize">{label.name}</span>
                     </div>
 
-                    {isApplied && <span className="text-green-600 text-xs">✓</span>}
+                    {isLabelApplied(label.id) && <span className="text-green-600 text-xs">✓</span>}
                   </button>
                 )
               })}

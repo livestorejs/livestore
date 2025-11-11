@@ -31,9 +31,8 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
   }
 
   const threadStore = useStore(threadStoreOptions(threadId))
-
   const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
-    if (!threadStore || !content.trim()) return
+    if (!content.trim()) return
 
     try {
       threadStore.commit(
@@ -56,17 +55,17 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
 
   // Auto-focus and expand on mount
   React.useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus()
-      setIsExpanded(true)
-    }
+    if (!textareaRef.current) return
+
+    textareaRef.current.focus()
+    setIsExpanded(true)
   }, [])
 
   const handleSend = () => {
-    if (uiState.composeDraft.trim()) {
-      sendMessage(threadId, uiState.composeDraft)
-      setIsExpanded(false)
-    }
+    if (!uiState.composeDraft.trim()) return
+
+    sendMessage(threadId, uiState.composeDraft)
+    setIsExpanded(false)
   }
 
   const handleCancel = () => {

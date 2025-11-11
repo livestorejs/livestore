@@ -1,7 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react/experimental'
 import type React from 'react'
-import { useMemo } from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
@@ -15,18 +14,12 @@ type ThreadViewProps = {
 }
 
 const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
-const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
+const userLabelsQuery = queryDb(mailboxTables.labels.where({ type: 'user' }), { label: 'userLabels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
 
-// Parameterized query for messages filtered by threadId
-const createMessagesForThreadQuery = (threadId: string) =>
-  queryDb(threadTables.messages.where({ threadId }).orderBy('timestamp', 'asc'), {
-    label: 'messagesForThread',
-    deps: [threadId],
-  })
-
 /**
- * Display single email thread
+ * Displays single email thread
  *
  * Shows:
  * - Thread header with subject and participants
@@ -36,62 +29,37 @@ const createMessagesForThreadQuery = (threadId: string) =>
  */
 export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
   const mailboxStore = useMailboxStore()
-  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const userLabels = mailboxStore.useQuery(userLabelsQuery)
 
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
   const toggleComposing = () => {
     setUiState({ isComposing: !uiState.isComposing })
   }
 
   const threadStore = useStore(threadStoreOptions(threadId))
   const [thread] = threadStore.useQuery(threadQuery)
-  const labels = mailboxStore.useQuery(labelsQuery)
+  const messages = threadStore.useQuery(messagesQuery)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
 
-  // Use parameterized query for messages (filtered and sorted by SQLite)
-  const messagesQuery = useMemo(() => createMessagesForThreadQuery(threadId), [threadId])
-  const messages = threadStore.useQuery(messagesQuery)
+  const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
 
-  const getLabelsForThread = (threadId: string) => {
-    const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
-    return labels.filter((l) => labelIds.includes(l.id))
-  }
-
-  const getUserLabelsForThread = (threadId: string) => {
-    const allLabels = getLabelsForThread(threadId)
-    return allLabels.filter((l) => l.type === 'user')
-  }
+  const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
 
   const removeUserLabelFromThread = (threadId: string, labelId: string) => {
-    if (!threadStore) return
-
-    const targetLabel = labels.find((l) => l.id === labelId)
-    if (!targetLabel) {
-      console.error('Target label not found')
-      return
-    }
-
-    if (targetLabel.type !== 'user') {
-      console.error('Can only remove user labels with this function')
-      return
-    }
-
-    const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (!isLabelApplied) return
+    if (!isLabelApplied(labelId)) return
 
     try {
       threadStore.commit(
         threadEvents.threadLabelRemoved({
           threadId,
-          labelId: targetLabel.id,
+          labelId,
           removedAt: new Date(),
         }),
       )
     } catch (error) {
-      console.error(`Failed to remove user label ${targetLabel.name} from thread:`, error)
+      console.error(`Failed to remove user label ${labelId} to thread ${threadId}:`, error)
     }
   }
-
-  const threadUserLabels = getUserLabelsForThread(threadId)
 
   if (!thread) {
     return (
