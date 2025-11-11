@@ -1,6 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react/experimental'
 import type React from 'react'
+import { useMemo } from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
@@ -14,9 +15,15 @@ type ThreadViewProps = {
 }
 
 const threadQuery = queryDb(threadTables.thread, { label: 'thread' })
-const messagesQuery = queryDb(threadTables.messages.where({}), { label: 'messages' })
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 const threadLabelsQuery = queryDb(threadTables.threadLabels.where({}), { label: 'threadLabels' })
+
+// Parameterized query for messages filtered by threadId
+const createMessagesForThreadQuery = (threadId: string) =>
+  queryDb(threadTables.messages.where({ threadId }).orderBy('timestamp', 'asc'), {
+    label: 'messagesForThread',
+    deps: [threadId],
+  })
 
 /**
  * Display single email thread
@@ -37,13 +44,12 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
 
   const threadStore = useStore(threadStoreOptions(threadId))
   const [thread] = threadStore.useQuery(threadQuery)
-  const messages = threadStore.useQuery(messagesQuery)
   const labels = mailboxStore.useQuery(labelsQuery)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
 
-  const getMessagesForThread = (threadId: string) => {
-    return messages.filter((m) => m.threadId === threadId).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-  }
+  // Use parameterized query for messages (filtered and sorted by SQLite)
+  const messagesQuery = useMemo(() => createMessagesForThreadQuery(threadId), [threadId])
+  const messages = threadStore.useQuery(messagesQuery)
 
   const getLabelsForThread = (threadId: string) => {
     const labelIds = threadLabels.filter((tl) => tl.threadId === threadId).map((tl) => tl.labelId)
@@ -87,7 +93,6 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
     }
   }
 
-  const messagesForThread = getMessagesForThread(threadId)
   const threadUserLabels = getUserLabelsForThread(threadId)
 
   if (!thread) {
@@ -115,7 +120,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
                 <span className="font-medium">Participants:</span> {participants.join(', ')}
               </div>
               <div>
-                <span className="font-medium">Messages:</span> {messagesForThread.length}
+                <span className="font-medium">Messages:</span> {messages.length}
               </div>
               <div>
                 <span className="font-medium">Last activity:</span> {thread.lastActivity.toLocaleDateString()}
@@ -162,19 +167,19 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto py-6 px-6">
-          {messagesForThread.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">💬</div>
               <p className="text-gray-500">No messages in this thread</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {messagesForThread.map((message, index) => (
+              {messages.map((message, index) => (
                 <MessageItem
                   key={message.id}
                   message={message}
                   isFirst={index === 0}
-                  isLast={index === messagesForThread.length - 1}
+                  isLast={index === messages.length - 1}
                 />
               ))}
             </div>
