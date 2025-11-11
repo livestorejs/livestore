@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2022",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -8,7 +9,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
@@ -17,9 +18,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "exactOptionalPropertyTypes": false
+    "noUncheckedSideEffectImports": true
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "vite.config.ts"]
 }
