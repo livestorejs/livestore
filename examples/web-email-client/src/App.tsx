@@ -42,7 +42,6 @@ const AppLoading: React.FC = () => {
   )
 }
 
-// hook version of MailboxStoreInitializer
 export const useInitializeMailboxStore = () => {
   useEffect(() => {
     fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/mailbox-client-do?storeId=${mailboxStoreId}`)
