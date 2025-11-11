@@ -49,9 +49,7 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     }
 
     const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (isLabelApplied) {
-      return
-    }
+    if (isLabelApplied) return
 
     try {
       threadStore.commit(
@@ -81,9 +79,7 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     }
 
     const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (!isLabelApplied) {
-      return
-    }
+    if (!isLabelApplied) return
 
     try {
       threadStore.commit(
@@ -114,9 +110,7 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     }
   }
 
-  if (userLabels.length === 0) {
-    return null // No user labels to show
-  }
+  if (userLabels.length === 0) return null // No user labels to show
 
   return (
     <div className="relative">
