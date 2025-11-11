@@ -24,7 +24,12 @@ export const ThreadList: React.FC = () => {
     setUiState({ selectedThreadId: threadId })
   }
 
-  const threadLabelsForLabel = mailboxStore.useQuery(queryDb(mailboxTables.threadLabels.where({ labelId: uiState.selectedLabelId || '' }), { label: 'threadLabelsForLabel', deps: [uiState.selectedLabelId] }))
+  const threadLabelsForLabel = mailboxStore.useQuery(
+    queryDb(mailboxTables.threadLabels.where({ labelId: uiState.selectedLabelId || '' }), {
+      label: 'threadLabelsForLabel',
+      deps: [uiState.selectedLabelId],
+    }),
+  )
   const threadsForSelectedLabel = uiState.selectedLabelId
     ? threadLabelsForLabel
         .map((tl) => threadIndex.find((t) => t.id === tl.threadId))
