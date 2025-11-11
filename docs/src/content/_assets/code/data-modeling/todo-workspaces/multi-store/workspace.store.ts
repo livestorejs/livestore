@@ -14,7 +14,7 @@ const adapter = makePersistedAdapter({
 // Each workspace gets its own isolated store instance
 export const workspaceStoreOptions = (workspaceId: string) =>
   storeOptions({
-    storeId: `workspace:${workspaceId}`,
+    storeId: `workspace-${workspaceId}`,
     schema,
     adapter,
     gcTime: 60_000, // Keep in memory for 60 seconds after last use
