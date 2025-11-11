@@ -1,21 +1,5 @@
 import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
-/**
- * Thread Store
- *
- * Purpose: Core unit for email threads (collections of related messages)
- * Event Log: Variable size (10-100KB per thread)
- *
- * This store is the SOURCE OF TRUTH for:
- * - Email threads and their metadata
- * - Individual messages within threads
- * - Thread-label associations (enforces business rules)
- *
- * Cross-store synchronization:
- * - Thread events are consumed by Mailbox store to maintain queryable projections
- * - Mailbox store maintains threadIndex and threadLabels for efficient filtering
- * - All thread label operations must go through this store to enforce consistency
- */
 export const threadTables = {
   thread: State.SQLite.table({
     name: 'thread',
@@ -54,7 +38,6 @@ export const threadTables = {
 }
 
 export const threadEvents = {
-  // Thread lifecycle events
   threadCreated: Events.synced({
     name: 'v1.ThreadCreated',
     schema: Schema.Struct({
@@ -65,7 +48,6 @@ export const threadEvents = {
     }),
   }),
 
-  // Message lifecycle events
   messageReceived: Events.synced({
     name: 'v1.MessageReceived',
     schema: Schema.Struct({
@@ -101,7 +83,7 @@ export const threadEvents = {
     }),
   }),
 
-  // Label association events (these trigger cross-store updates)
+  // Thread-label association applied (triggers cross-store update)
   threadLabelApplied: Events.synced({
     name: 'v1.ThreadLabelApplied',
     schema: Schema.Struct({
@@ -111,6 +93,7 @@ export const threadEvents = {
     }),
   }),
 
+  // Thread-label association removed (triggers cross-store update)
   threadLabelRemoved: Events.synced({
     name: 'v1.ThreadLabelRemoved',
     schema: Schema.Struct({
@@ -121,7 +104,6 @@ export const threadEvents = {
   }),
 }
 
-// Materializers for Thread Store
 export const materializers = State.SQLite.materializers(threadEvents, {
   'v1.ThreadCreated': ({ id, subject, participants, createdAt }) =>
     threadTables.thread.insert({
