@@ -76,9 +76,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
     }
 
     const isLabelApplied = getLabelsForThread(threadId).some((l) => l.id === labelId)
-    if (!isLabelApplied) {
-      return
-    }
+    if (!isLabelApplied) return
 
     try {
       threadStore.commit(
