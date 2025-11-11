@@ -3,8 +3,9 @@ import { useStore } from '@livestore/react/experimental'
 import type React from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { removeUserLabelFromThread } from '../stores/thread/commands.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
-import { threadEvents, threadTables } from '../stores/thread/schema.ts'
+import { threadTables } from '../stores/thread/schema.ts'
 import { ComposeMessage } from './ComposeMessage.tsx'
 import { MessageItem } from './MessageItem.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
@@ -45,20 +46,13 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
 
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
 
-  const removeUserLabelFromThread = (threadId: string, labelId: string) => {
+  const handleUserLabel = (labelId: string) => {
     if (!isLabelApplied(labelId)) return
 
-    try {
-      threadStore.commit(
-        threadEvents.threadLabelRemoved({
-          threadId,
-          labelId,
-          removedAt: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.error(`Failed to remove user label ${labelId} to thread ${threadId}:`, error)
-    }
+    removeUserLabelFromThread(threadStore, {
+      threadId,
+      labelId,
+    })
   }
 
   if (!thread) {
@@ -106,7 +100,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
                   >
                     {label.name}
                     <button
-                      onClick={() => removeUserLabelFromThread(thread.id, label.id)}
+                      onClick={() => handleUserLabel(label.id)}
                       type="button"
                       className="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full p-0.5 transition-colors"
                       title={`Remove ${label.name} label`}
@@ -126,7 +120,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
             )}
           </div>
 
-          <ThreadActions />
+          <ThreadActions threadId={threadId} />
         </div>
       </div>
 

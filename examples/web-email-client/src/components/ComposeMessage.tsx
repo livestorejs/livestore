@@ -2,8 +2,8 @@ import { useStore } from '@livestore/react/experimental'
 import React from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { sendMessage } from '../stores/thread/commands.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
-import { threadEvents } from '../stores/thread/schema.ts'
 
 interface ComposeMessageProps {
   threadId: string
@@ -31,24 +31,6 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
   }
 
   const threadStore = useStore(threadStoreOptions(threadId))
-  const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
-    if (!content.trim()) return
-
-    try {
-      threadStore.commit(
-        threadEvents.messageSent({
-          id: crypto.randomUUID(),
-          threadId,
-          content: content.trim(),
-          sender,
-          senderName: 'Current User',
-          timestamp: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.error('Failed to send message:', error)
-    }
-  }
 
   const [isExpanded, setIsExpanded] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -64,7 +46,11 @@ export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
   const handleSend = () => {
     if (!uiState.composeDraft.trim()) return
 
-    sendMessage(threadId, uiState.composeDraft)
+    sendMessage(threadStore, {
+      threadId,
+      content: uiState.composeDraft,
+      sender: 'user@example.com',
+    })
     setIsExpanded(false)
   }
 

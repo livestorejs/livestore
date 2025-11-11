@@ -4,10 +4,11 @@ import type React from 'react'
 import { useState } from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { applyUserLabelToThread, removeUserLabelFromThread } from '../stores/thread/commands.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
-import { threadEvents, threadTables } from '../stores/thread/schema.ts'
+import { threadTables } from '../stores/thread/schema.ts'
 
-interface UserLabelPickerProps {
+type UserLabelPickerProps = {
   threadId: string
 }
 
@@ -33,45 +34,13 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
 
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
 
-  const applyUserLabelToThread = (threadId: string, labelId: string) => {
-    if (isLabelApplied(labelId)) return
-
-    try {
-      threadStore.commit(
-        threadEvents.threadLabelApplied({
-          threadId,
-          labelId,
-          appliedAt: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.error(`Failed to apply user label ${labelId} to thread ${threadId}:`, error)
-    }
-  }
-
-  const removeUserLabelFromThread = (threadId: string, labelId: string) => {
-    if (!isLabelApplied(labelId)) return
-
-    try {
-      threadStore.commit(
-        threadEvents.threadLabelRemoved({
-          threadId,
-          labelId,
-          removedAt: new Date(),
-        }),
-      )
-    } catch (error) {
-      console.error(`Failed to remove user label ${labelId} to thread ${threadId}:`, error)
-    }
-  }
-
   const [isOpen, setIsOpen] = useState(false)
 
   const toggleUserLabel = (labelId: string) => {
     if (isLabelApplied(labelId)) {
-      removeUserLabelFromThread(threadId, labelId)
+      removeUserLabelFromThread(threadStore, { threadId, labelId })
     } else {
-      applyUserLabelToThread(threadId, labelId)
+      applyUserLabelToThread(threadStore, { threadId, labelId })
     }
   }
 
