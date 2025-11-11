@@ -6,13 +6,6 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { EmailLayout } from './components/EmailLayout.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
 
-/**
- * Email Client - LiveStore Multi-Store Demo
- *
- * Demonstrates:
- * - Two-store architecture (Mailbox & Threads)
- * - Cross-store event flow
- */
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
 
