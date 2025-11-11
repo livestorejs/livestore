@@ -4,6 +4,7 @@ import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
 import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
+import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
 
 /**
  * Streams events for leader-thread adapters.
@@ -37,10 +38,11 @@ export const streamEventsWithSyncState = ({
   options: StreamEventsOptions
 }): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
   const initialCursor = options.since ?? EventSequenceNumber.ROOT
-  const batchSize = options.batchSize ?? 10
+  const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
 
   return Stream.unwrapScoped(
     Effect.gen(function* () {
+      // Single-element Queue allws suspending the event stream until head advances
       const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
 
       yield* syncState.changes.pipe(
@@ -51,16 +53,19 @@ export const streamEventsWithSyncState = ({
 
       return Stream.paginateChunkEffect({ cursor: initialCursor, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
         Effect.gen(function* () {
-          if (options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
+          if (options.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
             return [Chunk.empty(), Option.none()]
           }
 
+          // When we reach the current head we take the latest upstreamHead.
+          // The stream suspends here until a new upstreamHead is available in the Queue.
           const nextHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head) ? yield* Queue.take(headQueue) : head
           const target = EventSequenceNumber.make({
             global: Math.min(cursor.global + batchSize, nextHead.global),
             client: EventSequenceNumber.clientDefault,
           })
-          // console.log({ nextHead, target })
+
+          console.log({ nextHead, target, batchSize })
           const chunk = Eventlog.getEventsFromEventlog({
             dbEventlog,
             options: {
@@ -71,7 +76,7 @@ export const streamEventsWithSyncState = ({
           })
 
           const nextState =
-            options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+            options.until && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
               ? Option.none()
               : Option.some({ cursor: target, head: nextHead })
 
