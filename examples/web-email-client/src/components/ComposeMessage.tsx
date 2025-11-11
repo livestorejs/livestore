@@ -1,9 +1,16 @@
+import { useStore } from '@livestore/react/experimental'
 import React from 'react'
-import { useMailbox } from '../hooks/useMailbox.ts'
-import { useThread } from '../hooks/useThread.ts'
+import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadEvents } from '../stores/thread/schema.ts'
+
+interface ComposeMessageProps {
+  threadId: string
+}
 
 /**
- * ComposeMessage - New message composition interface
+ * New message composition interface
  *
  * Features:
  * - Text area for message content
@@ -11,14 +18,38 @@ import { useThread } from '../hooks/useThread.ts'
  * - Draft saving (UI state)
  * - Real-time draft persistence
  */
-
-interface ComposeMessageProps {
-  threadId: string
-}
-
 export const ComposeMessage: React.FC<ComposeMessageProps> = ({ threadId }) => {
-  const { uiState, updateComposeDraft, toggleComposing } = useMailbox()
-  const { sendMessage } = useThread(threadId)
+  const mailboxStore = useMailboxStore()
+  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+
+  const updateComposeDraft = (content: string) => {
+    setUiState({ composeDraft: content })
+  }
+
+  const toggleComposing = () => {
+    setUiState({ isComposing: !uiState.isComposing })
+  }
+
+  const threadStore = useStore(threadStoreOptions(threadId))
+
+  const sendMessage = (threadId: string, content: string, sender = 'user@example.com') => {
+    if (!threadStore || !content.trim()) return
+
+    try {
+      threadStore.commit(
+        threadEvents.messageSent({
+          id: crypto.randomUUID(),
+          threadId,
+          content: content.trim(),
+          sender,
+          senderName: 'Current User',
+          timestamp: new Date(),
+        }),
+      )
+    } catch (error) {
+      console.error('Failed to send message:', error)
+    }
+  }
 
   const [isExpanded, setIsExpanded] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
