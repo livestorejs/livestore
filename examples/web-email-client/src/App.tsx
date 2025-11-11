@@ -22,7 +22,7 @@ export const App: React.FC = () => {
 
 const AppLoading: React.FC = () => {
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-dvh bg-gray-100">
       <div className="text-center">
         <div className="text-4xl mb-4">📧</div>
         <div className="text-lg font-medium text-gray-900 mb-2">Loading Email Client</div>
