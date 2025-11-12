@@ -10,7 +10,7 @@ import type { Env } from './shared.ts'
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   private store: Store<typeof threadSchema> | undefined
-  private storeSubscription: Unsubscribe | undefined
+  private threadLabelsSubscription: Unsubscribe | undefined
   private threadSubscription: Unsubscribe | undefined
   private previousLabels = new Map<string, Set<string>>() // threadId -> labelIds
   private previousThreads = new Set<string>() // track which threads we've published
@@ -48,24 +48,20 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
   }
 
   private async subscribeToStore() {
-    if (this.storeSubscription || this.threadSubscription) return
+    if (this.threadLabelsSubscription || this.threadSubscription) return
 
     if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
 
-    // Subscribe to threadLabels table changes
-    this.storeSubscription = this.store.subscribe(threadTables.threadLabels, async (threadLabels) => {
-      await this.publishLabelChanges(threadLabels)
-    })
+    // Subscribe to threadLabels table changes to detect label applications/removals
+    this.threadLabelsSubscription = this.store.subscribe(threadTables.threadLabels, this.publishLabelChanges)
 
     // Subscribe to thread table changes to detect new threads
-    this.threadSubscription = this.store.subscribe(threadTables.thread, async (threads) => {
-      await this.publishThreadCreated(threads)
-    })
+    this.threadSubscription = this.store.subscribe(threadTables.thread, this.publishThreadCreated)
   }
 
-  private async publishLabelChanges(
+  private publishLabelChanges = async (
     currentLabels: ReadonlyArray<{ readonly threadId: string; readonly labelId: string; readonly appliedAt: Date }>,
-  ) {
+  ) => {
     try {
       // Group by threadId
       const currentMap = new Map<string, Set<string>>()
@@ -119,14 +115,14 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     }
   }
 
-  private async publishThreadCreated(
+  private publishThreadCreated = async (
     currentThreads: ReadonlyArray<{
       readonly id: string
       readonly subject: string
       readonly participants: string
       readonly createdAt: Date
     }>,
-  ) {
+  ) => {
     try {
       for (const thread of currentThreads) {
         // Only publish if this is a new thread we haven't seen before
