@@ -4,13 +4,15 @@ An email client using multi-store architecture to demonstrate partial sync and c
 
 ## Partial Synchronization
 
-We can only load so much data in the browser before hitting memory limits and making the initial load unbearably slow. A typical email mailbox with hundred thousands of threads would exceed this limit.
+We can only load so much data in the browser before hitting memory limits and making the initial load unbearably slow. A typical email mailbox with hundreds of thousands of threads would exceed this limit.
 
 To solve this, we can partition the application data into multiple independent stores that can be lazy-loaded on demand.
 
 ### How to Partition the Data?
 
-A helpful approach is to think about our data model's consistency boundaries. What are the smallest units of data that must remain consistent within themselves? A common pattern in email clients is that each email thread is mostly self-contained. Threads have few dependencies on other parts of the data model. Thus, we can partition threads into their own stores with limited impact on the rest of the application state. This allows us to load only the threads that the user is actively viewing or interacting with; reducing the amount of data held in memory at any given time. We're putting the rest of the data in a single and always-loaded Mailbox store. In a real application, we might further partition the Mailbox store into additional stores (e.g., Contacts store) to allow for even more granular data loading.
+A helpful approach is to think about our data model's consistency boundaries. What are the smallest units of data that must remain consistent within themselves? A common pattern in email clients is that each email thread is mostly self-contained. Threads have few dependencies on other parts of the data model. Thus, we can partition threads into their own stores with minimal impact on the rest of the application state.
+
+This approach allows loading only the threads that the user is actively viewing or interacting with, reducing the amount of data held in memory at any given time. The rest of the data lives in a single, always-loaded Mailbox store. In a real application, the Mailbox store could be further partitioned into additional stores (e.g., Contacts store) to allow for even more granular data loading.
 
 ### Stores
 
@@ -33,16 +35,16 @@ In LiveStore, **each store is completely isolated**:
 - **Consistency Boundary**: Consistency is guaranteed only within a single store
 - **No Built-in Cross-Store Communication**: Stores cannot directly reference or modify other stores
 
-In our email client, we decided to partition threads into their own stores. However, this creates challenges. We need a way to query the list of threads, but thread data now lives in separate Thread stores. We can't load all thread stores at once as that would defeat the purpose of partitioning. We need then to maintain an index of threads in the Mailbox store. But how do we keep that index updated when changes happen in individual Thread stores?
+In our email client, we partition threads into their own stores. However, this creates challenges. We need a way to query the list of threads, but thread data now lives in separate Thread stores. We can't load all thread stores at once as that would defeat the purpose of partitioning. We then need to maintain an index of threads in the Mailbox store. But how do we keep that index updated when changes happen in individual Thread stores?
 
 Additionally, we need to update some data in the Mailbox store that reflects changes made in individual Thread stores. For example, when a label is applied to a thread, the Mailbox store needs to update its count of threads for that label so that we can display an accurate thread count without loading all Thread stores.
 
-To solve for the issues above, we maintain **projection tables** in the Mailbox store that mirror Thread data:
+To solve these issues, we maintain **projection tables** in the Mailbox store that mirror Thread data:
 - `threadIndex`: Thread metadata for listing/searching
 - `threadLabels`: Thread-label associations for filtering
 - `labels.threadCount`: Cached counts per label
 
-These projections are **eventually consistent** copies that we synchronized via cross-store events. We implement it using an event publishing pattern:
+These projections are **eventually consistent** copies that we synchronize via cross-store events. This is implemented using an event publishing pattern:
 
 1. **Change Detection**: ThreadClientDO subscribes to its store's tables and detects changes by comparing current snapshots against previous state
 2. **Event Publishing**: When changes are detected, ThreadClientDO publishes cross-store events to the `cross-store-events` Cloudflare Queue
@@ -99,7 +101,7 @@ These projections are **eventually consistent** copies that we synchronized via 
 │                │                                        │                │
 │                │ Sync                                   │ Sync           │
 │                │                                        │                │
-│  ┌─────────────┴────────────┐     ┌─────────────────────┴─────────────┐  |
+│  ┌─────────────┴────────────┐     ┌─────────────────────┴─────────────┐  │
 │  │  MailboxClientDO         │     │  ThreadClientDO                   │  │
 │  │  (Singleton)             │     │  (Multi-Instance)                 │  │
 │  │                          │     │                                   │  │
