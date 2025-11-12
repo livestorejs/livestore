@@ -1,0 +1,41 @@
+{
+  "name": "livestore-example-file-sync",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "file-sync": "./dist/main.js"
+  },
+  "dependencies": {
+    "@livestore/adapter-node": "0.4.0-dev.3",
+    "@livestore/common": "0.4.0-dev.3",
+    "@livestore/livestore": "0.4.0-dev.3",
+    "@livestore/utils": "0.4.0-dev.3",
+    "chokidar": "3.6.0"
+  },
+  "description": "Bidirectional file synchronization CLI using LiveStore and Effect",
+  "devDependencies": {
+    "@livestore/utils-dev": "0.4.0-dev.3",
+    "@types/node": "^24.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "PLAN.md"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "tsx src/main.ts",
+    "lint": "biome check src",
+    "lint:fix": "biome check src --write",
+    "start": "node dist/main.js",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  }
+}

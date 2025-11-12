@@ -664,6 +664,40 @@ importers:
         specifier: ^4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20250923.0)
 
+  examples/file-sync:
+    dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+      chokidar:
+        specifier: 3.6.0
+        version: 3.6.0
+    devDependencies:
+      '@livestore/utils-dev':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils-dev
+      '@types/node':
+        specifier: ^24.2.0
+        version: 24.2.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.19.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.2.0)(@vitest/ui@3.2.4)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.8.1)
+
   examples/node-effect-cli:
     dependencies:
       '@livestore/adapter-node':
