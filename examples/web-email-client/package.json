@@ -13,7 +13,8 @@
     "@livestore/sync-cf": "0.4.0-dev.17",
     "@livestore/wa-sqlite": "0.4.0-dev.17",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-error-boundary": "6.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.7",

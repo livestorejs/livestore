@@ -1,5 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import type React from 'react'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
@@ -58,7 +60,11 @@ export const EmailLayout: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-hidden">
           {uiState.selectedThreadId ? (
-            <ThreadView threadId={uiState.selectedThreadId} />
+            <ErrorBoundary fallback={<ThreadError />}>
+              <Suspense fallback={<ThreadLoading />}>
+                <ThreadView threadId={uiState.selectedThreadId} />
+              </Suspense>
+            </ErrorBoundary>
           ) : selectedLabel ? (
             <ThreadList />
           ) : (
@@ -75,3 +81,21 @@ export const EmailLayout: React.FC = () => {
     </div>
   )
 }
+
+const ThreadError: React.FC = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-center text-red-500">
+      <div className="text-4xl mb-2">⚠️</div>
+      <p>Failed to load thread. Please try again later.</p>
+    </div>
+  </div>
+)
+
+const ThreadLoading: React.FC = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-center text-gray-500">
+      <div className="text-4xl mb-2">⏳</div>
+      <p>Loading thread...</p>
+    </div>
+  </div>
+)

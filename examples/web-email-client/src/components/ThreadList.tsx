@@ -1,7 +1,9 @@
 import { queryDb } from '@livestore/livestore'
+import { useStoreRegistry } from '@livestore/react/experimental'
 import type React from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { threadStoreOptions } from '../stores/thread/index.ts'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
@@ -15,14 +17,12 @@ const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: '
  * - Gmail-inspired thread list design
  */
 export const ThreadList: React.FC = () => {
+  const storeRegistry = useStoreRegistry()
   const mailboxStore = useMailboxStore()
   const labels = mailboxStore.useQuery(labelsQuery)
   const threadIndex = mailboxStore.useQuery(threadIndexQuery)
 
   const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
-  const selectThread = (threadId: string | null) => {
-    setUiState({ selectedThreadId: threadId })
-  }
 
   const threadLabelsForLabel = mailboxStore.useQuery(
     queryDb(mailboxTables.threadLabels.where({ labelId: uiState.selectedLabelId || '' }), {
@@ -30,11 +30,6 @@ export const ThreadList: React.FC = () => {
       deps: [uiState.selectedLabelId],
     }),
   )
-  const threadsForSelectedLabel = uiState.selectedLabelId
-    ? threadLabelsForLabel
-        .map((tl) => threadIndex.find((t) => t.id === tl.threadId))
-        .filter((t): t is NonNullable<typeof t> => t !== undefined)
-    : undefined
 
   const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
   if (!selectedLabel) {
@@ -47,6 +42,12 @@ export const ThreadList: React.FC = () => {
       </div>
     )
   }
+
+  const threadsForSelectedLabel = uiState.selectedLabelId
+    ? threadLabelsForLabel
+        .map((tl) => threadIndex.find((t) => t.id === tl.threadId))
+        .filter((t): t is NonNullable<typeof t> => t !== undefined)
+    : undefined
 
   if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
     return (
@@ -63,6 +64,14 @@ export const ThreadList: React.FC = () => {
     )
   }
 
+  const selectThread = (threadId: string | null) => {
+    setUiState({ selectedThreadId: threadId })
+  }
+
+  const preloadThreadStore = (threadId: string) => {
+    void storeRegistry.preload(threadStoreOptions(threadId))
+  }
+
   return (
     <div className="h-full bg-white">
       {/* Thread List */}
@@ -73,6 +82,8 @@ export const ThreadList: React.FC = () => {
           return (
             <button
               key={thread.id}
+              onMouseEnter={() => preloadThreadStore(thread.id)}
+              onFocus={() => preloadThreadStore(thread.id)}
               onClick={() => selectThread(thread.id)}
               type="button"
               className="w-full text-left px-6 py-4 hover:bg-gray-50 border-l-4 border-transparent hover:border-blue-400 transition-colors"
