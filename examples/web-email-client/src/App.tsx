@@ -1,6 +1,7 @@
 import { StoreRegistry, StoreRegistryProvider } from '@livestore/react/experimental'
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { ErrorBoundary } from 'react-error-boundary'
 import { EmailLayout } from './components/EmailLayout.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
 
@@ -10,11 +11,32 @@ export const App: React.FC = () => {
   useInitializeMailboxStore()
 
   return (
-    <StoreRegistryProvider storeRegistry={storeRegistry}>
+    <ErrorBoundary fallback={<AppError />}>
       <Suspense fallback={<AppLoading />}>
-        <EmailLayout />
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <EmailLayout />
+        </StoreRegistryProvider>
       </Suspense>
-    </StoreRegistryProvider>
+    </ErrorBoundary>
+  )
+}
+
+const AppError: React.FC = () => {
+  return (
+    <div className="flex items-center justify-center min-h-dvh bg-gray-100">
+      <div className="text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <div className="text-lg font-medium text-red-600 mb-2">Application Error</div>
+        <p className="text-gray-600 max-w-md mb-6">Something went wrong. Please refresh the page to try again.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
   )
 }
 
