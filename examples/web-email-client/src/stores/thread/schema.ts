@@ -48,37 +48,14 @@ export const threadEvents = {
     }),
   }),
 
-  messageReceived: Events.synced({
-    name: 'v1.MessageReceived',
+  messageAdded: Events.synced({
+    name: 'v1.MessageAdded',
     schema: Schema.Struct({
       id: Schema.String,
       threadId: Schema.String,
       content: Schema.String,
       sender: Schema.String,
       senderName: Schema.String.pipe(Schema.NullOr),
-      timestamp: Schema.Date,
-    }),
-  }),
-
-  messageSent: Events.synced({
-    name: 'v1.MessageSent',
-    schema: Schema.Struct({
-      id: Schema.String,
-      threadId: Schema.String,
-      content: Schema.String,
-      sender: Schema.String,
-      senderName: Schema.String.pipe(Schema.NullOr),
-      timestamp: Schema.Date,
-    }),
-  }),
-
-  draftCreated: Events.synced({
-    name: 'v1.DraftCreated',
-    schema: Schema.Struct({
-      id: Schema.String,
-      threadId: Schema.String,
-      content: Schema.String,
-      sender: Schema.String,
       timestamp: Schema.Date,
     }),
   }),
@@ -114,7 +91,7 @@ export const materializers = State.SQLite.materializers(threadEvents, {
       createdAt,
     }),
 
-  'v1.MessageReceived': ({ id, threadId, content, sender, senderName, timestamp }) => [
+  'v1.MessageAdded': ({ id, threadId, content, sender, senderName, timestamp }) => [
     threadTables.messages.insert({
       id,
       threadId,
@@ -125,40 +102,6 @@ export const materializers = State.SQLite.materializers(threadEvents, {
       messageType: 'received',
     }),
     // Update thread activity timestamp
-    threadTables.thread
-      .update({
-        lastActivity: timestamp,
-      })
-      .where({ id: threadId }),
-  ],
-
-  'v1.MessageSent': ({ id, threadId, content, sender, senderName, timestamp }) => [
-    threadTables.messages.insert({
-      id,
-      threadId,
-      content,
-      sender,
-      senderName,
-      timestamp,
-      messageType: 'sent',
-    }),
-    threadTables.thread
-      .update({
-        lastActivity: timestamp,
-      })
-      .where({ id: threadId }),
-  ],
-
-  'v1.DraftCreated': ({ id, threadId, content, sender, timestamp }) => [
-    threadTables.messages.insert({
-      id,
-      threadId,
-      content,
-      sender,
-      senderName: null,
-      timestamp,
-      messageType: 'draft',
-    }),
     threadTables.thread
       .update({
         lastActivity: timestamp,

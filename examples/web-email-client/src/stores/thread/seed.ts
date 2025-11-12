@@ -37,66 +37,33 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          "Hi Bob! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple stores. What do you think?",
+          "Hi! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple stores and cross-store synchronization.",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000 * 2), // 2 hours ago
-        type: 'received' as const,
       },
       {
         id: nanoid(),
         content:
-          'That sounds amazing, Alice! I love how LiveStore handles real-time sync between stores. Can you show me the cross-store event flow?',
-        sender: 'bob@livestore.dev',
-        senderName: 'Bob Smith',
-        timestamp: new Date(now.getTime() - 3600000 * 1.5), // 1.5 hours ago
-        type: 'sent' as const,
-      },
-      {
-        id: nanoid(),
-        content:
-          "Sure! When you apply a label to a thread, the Thread store emits ThreadLabelApplied events. The Label store reacts to these events and updates thread counts. It's a great example of eventual consistency!",
+          "When you apply a label to a thread, the Thread store emits ThreadLabelApplied events. The Mailbox store listens to these events via a Cloudflare Queue and updates its projection tables. It's a great example of eventual consistency!",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000), // 1 hour ago
-        type: 'received' as const,
-      },
-      {
-        id: nanoid(),
-        content:
-          'This is so cool! I can see how this would scale with the 1GB client limit by selectively loading thread event logs. The offline-first approach is perfect for email.',
-        sender: 'bob@livestore.dev',
-        senderName: 'Bob Smith',
-        timestamp: new Date(now.getTime() - 1800000), // 30 minutes ago
-        type: 'sent' as const,
       },
     ]
 
     // Add messages to the thread
     for (const message of messages) {
-      if (message.type === 'received') {
-        allEvents.push(
-          threadEvents.messageReceived({
-            id: message.id,
-            threadId,
-            content: message.content,
-            sender: message.sender,
-            senderName: message.senderName,
-            timestamp: message.timestamp,
-          }),
-        )
-      } else if (message.type === 'sent') {
-        allEvents.push(
-          threadEvents.messageSent({
-            id: nanoid(),
-            threadId,
-            content: message.content,
-            sender: message.sender,
-            senderName: message.senderName,
-            timestamp: message.timestamp,
-          }),
-        )
-      }
+      allEvents.push(
+        threadEvents.messageAdded({
+          id: message.id,
+          threadId,
+          content: message.content,
+          sender: message.sender,
+          senderName: message.senderName,
+          timestamp: message.timestamp,
+        }),
+      )
     }
 
     // Apply INBOX label to the thread
