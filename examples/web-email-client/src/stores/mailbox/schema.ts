@@ -6,7 +6,7 @@ export const mailboxTables = {
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       name: State.SQLite.text(),
-      type: State.SQLite.text(), // 'system' | 'user' (user labels out of scope for prototype)
+      type: State.SQLite.text(), // 'system' | 'user'
       color: State.SQLite.text({ nullable: true }),
       threadCount: State.SQLite.integer({ default: 0 }),
       displayOrder: State.SQLite.integer({ default: 0 }), // Display order in UI

@@ -12,4 +12,5 @@ export type Env = {
   THREAD_CLIENT_DO: SyncBackend.CfTypes.DurableObjectNamespace<ThreadClientDO>
   SYNC_BACKEND_DO: SyncBackend.CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>
   CROSS_STORE_EVENTS_QUEUE: Queue<CrossStoreEvent>
+  ADMIN_SECRET: string
 }

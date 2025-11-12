@@ -26,7 +26,7 @@ export const seedThread = ({
     allEvents.push(
       threadEvents.threadCreated({
         id: threadId,
-        subject: 'LiveStore Email Client Prototype Discussion',
+        subject: 'LiveStore Email Client Discussion',
         participants: ['alice@livestore.dev', 'bob@livestore.dev'],
         createdAt: new Date(now.getTime() - 3600000 * 2), // 2 hours ago
       }),
@@ -37,7 +37,7 @@ export const seedThread = ({
       {
         id: nanoid(),
         content:
-          "Hi! I've been working on this email client prototype using LiveStore. It demonstrates event sourcing with multiple stores and cross-store synchronization.",
+          "Hi! I've been working on this email client using LiveStore. It demonstrates event sourcing with multiple stores and cross-store synchronization.",
         sender: 'alice@livestore.dev',
         senderName: 'Alice Cooper',
         timestamp: new Date(now.getTime() - 3600000 * 2), // 2 hours ago

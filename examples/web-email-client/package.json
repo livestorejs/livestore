@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/adapter-cloudflare": "0.4.0-dev.17",
     "@livestore/adapter-web": "0.4.0-dev.17",
@@ -28,14 +29,9 @@
     "wrangler": "^4.42.2"
   },
   "scripts": {
-    "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-email-client-prototype.igassmann.workers.dev vite build && wrangler build",
-    "deploy": "pnpm build && pnpm deploy:cf && pnpm deploy:netlify",
-    "deploy:cf": "wrangler deploy",
-    "deploy:netlify": "bunx netlify-cli deploy --prod --no-build --dir=dist",
-    "dev": "pnpm --filter . --parallel --color '/^dev:.*/'",
-    "dev:cf": "wrangler dev",
-    "dev:web": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "deploy": "pnpm build && wrangler deploy"
   }
 }

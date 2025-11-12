@@ -23,9 +23,9 @@ export const App: React.FC = () => {
   )
 }
 
-export const useInitializeMailboxStore = () => {
+const useInitializeMailboxStore = () => {
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_LIVESTORE_SYNC_URL}/mailbox-client-do?storeId=${mailboxStoreId}`).catch((error) => {
+    fetch(`/mailbox-client-do?storeId=${mailboxStoreId}`).catch((error) => {
       console.error('Failed to initialize Durable Mailbox Client Durable Object:', error)
     })
   }, [])
