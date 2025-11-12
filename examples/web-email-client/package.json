@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-web-email-client-prototype",
+  "name": "livestore-example-web-email-client",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -17,30 +17,25 @@
     "react-error-boundary": "6.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.7",
     "@livestore/devtools-vite": "0.4.0-dev.17",
-    "@playwright/test": "^1.56.0",
     "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
-    "concurrently": "^9.0.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "wrangler": "^4.42.2"
   },
   "scripts": {
+    "dev": "pnpm --filter . --parallel --color '/^dev:.*/'",
+    "dev:cf": "wrangler dev",
+    "dev:web": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev",
     "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-email-client-prototype.igassmann.workers.dev vite build && wrangler build",
     "deploy": "pnpm build && pnpm deploy:cf && pnpm deploy:netlify",
     "deploy:cf": "wrangler deploy",
     "deploy:netlify": "bunx netlify-cli deploy --prod --no-build --dir=dist",
-    "dev": "concurrently \"pnpm wrangler dev\" \"VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev --force\"",
-    "lint": "biome check .",
-    "lint:fix": "biome check . --fix",
     "preview": "vite preview",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit"
   }
 }
