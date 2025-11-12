@@ -12,8 +12,12 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
   private store: Store<typeof threadSchema> | undefined
   private threadLabelsSubscription: Unsubscribe | undefined
   private threadSubscription: Unsubscribe | undefined
-  private previousLabels = new Map<string, Set<string>>() // threadId -> labelIds
-  private previousThreads = new Set<string>() // track which threads we've published
+  private previousLabels: ReadonlyArray<{
+    readonly threadId: string
+    readonly labelId: string
+    readonly appliedAt: Date
+  }> = [] // labels for the single thread in this store
+  private threadPublished = false // track if we've published the thread creation event
 
   async initialize({ threadId, inboxLabelId }: { threadId: string; inboxLabelId: string }) {
     if (this.store !== undefined) return
@@ -63,52 +67,38 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     currentLabels: ReadonlyArray<{ readonly threadId: string; readonly labelId: string; readonly appliedAt: Date }>,
   ) => {
     try {
-      // Group by threadId
-      const currentMap = new Map<string, Set<string>>()
+      // Find removed labels - publish v1.ThreadLabelRemoved
+      for (const { threadId, labelId } of this.previousLabels) {
+        if (!currentLabels.some((curr) => curr.labelId === labelId)) {
+          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
+            name: 'v1.ThreadLabelRemoved',
+            data: {
+              threadId,
+              labelId,
+              removedAt: new Date(),
+            },
+          })
+          console.log(`📤 Published v1.ThreadLabelRemoved: thread=${threadId}, label=${labelId}`)
+        }
+      }
+
+      // Find added labels - publish v1.ThreadLabelApplied
       for (const { threadId, labelId } of currentLabels) {
-        if (!currentMap.has(threadId)) {
-          currentMap.set(threadId, new Set())
-        }
-        currentMap.get(threadId)!.add(labelId)
-      }
-
-      // Detect changes for each thread
-      for (const [threadId, currentLabelSet] of currentMap.entries()) {
-        const previousLabelSet = this.previousLabels.get(threadId) || new Set()
-
-        // Find added labels - publish v1.ThreadLabelApplied
-        for (const labelId of currentLabelSet) {
-          if (!previousLabelSet.has(labelId)) {
-            await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-              name: 'v1.ThreadLabelApplied',
-              data: {
-                threadId,
-                labelId,
-                appliedAt: new Date(),
-              },
-            })
-            console.log(`📤 Published v1.ThreadLabelApplied: thread=${threadId}, label=${labelId}`)
-          }
-        }
-
-        // Find removed labels - publish v1.ThreadLabelRemoved
-        for (const labelId of previousLabelSet) {
-          if (!currentLabelSet.has(labelId)) {
-            await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-              name: 'v1.ThreadLabelRemoved',
-              data: {
-                threadId,
-                labelId,
-                removedAt: new Date(),
-              },
-            })
-            console.log(`📤 Published v1.ThreadLabelRemoved: thread=${threadId}, label=${labelId}`)
-          }
+        if (!this.previousLabels.some((prev) => prev.labelId === labelId)) {
+          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
+            name: 'v1.ThreadLabelApplied',
+            data: {
+              threadId,
+              labelId,
+              appliedAt: new Date(),
+            },
+          })
+          console.log(`📤 Published v1.ThreadLabelApplied: thread=${threadId}, label=${labelId}`)
         }
       }
 
-      // Update tracking
-      this.previousLabels = currentMap
+      // Store current state for next comparison
+      this.previousLabels = currentLabels
     } catch (error) {
       // Log and continue (per user preference)
       console.error('[ThreadClientDO] Failed to publish label changes:', error)
@@ -124,22 +114,24 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     }>,
   ) => {
     try {
-      for (const thread of currentThreads) {
-        // Only publish if this is a new thread we haven't seen before
-        if (!this.previousThreads.has(thread.id)) {
-          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-            name: 'v1.ThreadCreated',
-            data: {
-              id: thread.id,
-              subject: thread.subject,
-              participants: JSON.parse(thread.participants), // Convert back to array
-              createdAt: thread.createdAt,
-            },
-          })
-          console.log(`📤 Published v1.ThreadCreated: thread=${thread.id}`)
-          this.previousThreads.add(thread.id)
-        }
+      // Since this store manages a single thread, we only publish once
+      if (this.threadPublished || currentThreads.length === 0) {
+        return
       }
+
+      // There should only be one thread in this store, but we'll handle it gracefully
+      const thread = currentThreads[0]
+      await this.env.CROSS_STORE_EVENTS_QUEUE.send({
+        name: 'v1.ThreadCreated',
+        data: {
+          id: thread.id,
+          subject: thread.subject,
+          participants: JSON.parse(thread.participants), // Convert back to array
+          createdAt: thread.createdAt,
+        },
+      })
+      console.log(`📤 Published v1.ThreadCreated: thread=${thread.id}`)
+      this.threadPublished = true
     } catch (error) {
       console.error('[ThreadClientDO] Failed to publish thread created:', error)
     }
