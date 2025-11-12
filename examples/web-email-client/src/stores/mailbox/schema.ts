@@ -7,7 +7,7 @@ export const mailboxTables = {
       id: State.SQLite.text({ primaryKey: true }),
       name: State.SQLite.text(),
       type: State.SQLite.text(), // 'system' | 'user' (user labels out of scope for prototype)
-      color: State.SQLite.text(),
+      color: State.SQLite.text({ nullable: true }),
       threadCount: State.SQLite.integer({ default: 0 }),
       displayOrder: State.SQLite.integer({ default: 0 }), // Display order in UI
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -44,16 +44,12 @@ export const mailboxTables = {
     schema: Schema.Struct({
       selectedThreadId: Schema.String.pipe(Schema.NullOr),
       selectedLabelId: Schema.String.pipe(Schema.NullOr),
-      composeDraft: Schema.String,
-      isComposing: Schema.Boolean,
     }),
     default: {
       id: SessionIdSymbol,
       value: {
         selectedThreadId: null,
         selectedLabelId: null,
-        composeDraft: '',
-        isComposing: false,
       },
     },
   }),
@@ -67,7 +63,7 @@ export const mailboxEvents = {
       id: Schema.String,
       name: Schema.String,
       type: Schema.Literal('system', 'user'),
-      color: Schema.String,
+      color: Schema.String.pipe(Schema.NullOr),
       displayOrder: Schema.Number,
       createdAt: Schema.Date,
     }),

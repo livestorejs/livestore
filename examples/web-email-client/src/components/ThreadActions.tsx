@@ -21,23 +21,23 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
   const threadStore = useStore(threadStoreOptions(threadId))
 
   return (
-    <div className="flex items-center space-x-1">
+    <div className="flex items-center space-x-2">
       <button
         onClick={() => archiveThread(threadStore, mailboxStore, { threadId })}
         type="button"
-        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+        className="px-2 py-1 text-sm text-gray-600 hover:text-green-600 border rounded"
         title="Archive thread"
       >
-        🗄️
+        Archive
       </button>
 
       <button
         onClick={() => trashThread(threadStore, mailboxStore, { threadId })}
         type="button"
-        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+        className="px-2 py-1 text-sm text-gray-600 hover:text-red-600 border rounded"
         title="Move to trash"
       >
-        🗑️
+        Trash
       </button>
 
       <UserLabelPicker threadId={threadId} />

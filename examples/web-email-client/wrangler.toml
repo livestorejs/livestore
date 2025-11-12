@@ -18,11 +18,6 @@ class_name = "ThreadClientDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "MailboxClientDO", "ThreadClientDO"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "web-email"
-database_id = "199c832c-755e-4d4b-ac86-3026b11607e0"
-
 [[queues.producers]]
 queue = "cross-store-events"
 binding = "CROSS_STORE_EVENTS_QUEUE"

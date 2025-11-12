@@ -20,11 +20,17 @@ export const seedMailbox = (store: Store<typeof schema>): { inboxLabelId: string
 
     const inboxLabelId = nanoid()
 
-    const labels: { id?: string; name: string; type: 'system' | 'user'; color: string; displayOrder: number }[] = [
-      { id: inboxLabelId, name: 'INBOX', type: 'system', color: '#1f2937', displayOrder: 1 },
-      { name: 'SENT', type: 'system', color: '#059669', displayOrder: 2 },
-      { name: 'ARCHIVE', type: 'system', color: '#7c3aed', displayOrder: 3 },
-      { name: 'TRASH', type: 'system', color: '#dc2626', displayOrder: 4 },
+    const labels: {
+      id?: string
+      name: string
+      type: 'system' | 'user'
+      color?: string
+      displayOrder: number
+    }[] = [
+      { id: inboxLabelId, name: 'INBOX', type: 'system', displayOrder: 1 },
+      { name: 'SENT', type: 'system', displayOrder: 2 },
+      { name: 'ARCHIVE', type: 'system', displayOrder: 3 },
+      { name: 'TRASH', type: 'system', displayOrder: 4 },
       { name: 'Travel', type: 'user', color: '#0ea5e9', displayOrder: 5 },
       { name: 'Receipts', type: 'user', color: '#84cc16', displayOrder: 6 },
     ]
@@ -32,10 +38,10 @@ export const seedMailbox = (store: Store<typeof schema>): { inboxLabelId: string
     for (const label of labels) {
       allEvents.push(
         mailboxEvents.labelCreated({
-          id: label.id || nanoid(),
+          id: label.id ?? nanoid(),
           name: label.name,
           type: label.type,
-          color: label.color,
+          color: label.color ?? null,
           displayOrder: label.displayOrder,
           createdAt: now,
         }),
