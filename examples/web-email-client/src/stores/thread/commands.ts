@@ -2,32 +2,6 @@ import { queryDb, type Store } from '@livestore/livestore'
 import { type schema as mailboxSchema, mailboxTables } from '../mailbox/schema.ts'
 import { threadEvents, type schema as threadSchema, threadTables } from './schema.ts'
 
-export function sendMessage(
-  threadStore: Store<typeof threadSchema>,
-  params: {
-    threadId: string
-    content: string
-    sender: string
-  },
-): void {
-  if (!params.content.trim()) return
-
-  try {
-    threadStore.commit(
-      threadEvents.messageSent({
-        id: crypto.randomUUID(),
-        threadId: params.threadId,
-        content: params.content.trim(),
-        sender: params.sender,
-        senderName: 'Current User',
-        timestamp: new Date(),
-      }),
-    )
-  } catch (error) {
-    console.error('Failed to send message:', error)
-  }
-}
-
 export function applyUserLabelToThread(
   threadStore: Store<typeof threadSchema>,
   params: {

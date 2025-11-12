@@ -11,19 +11,17 @@ const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: '
 /**
  * Displays list of threads for selected label
  *
- * Shows:
  * - List of threads with subject, participants, last activity
  * - Click to select thread for detailed view
- * - Gmail-inspired thread list design
+ * - Preloads thread store on hover/focus for faster loading
  */
 export const ThreadList: React.FC = () => {
   const storeRegistry = useStoreRegistry()
   const mailboxStore = useMailboxStore()
+
   const labels = mailboxStore.useQuery(labelsQuery)
   const threadIndex = mailboxStore.useQuery(threadIndexQuery)
-
   const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
-
   const threadLabelsForLabel = mailboxStore.useQuery(
     queryDb(mailboxTables.threadLabels.where({ labelId: uiState.selectedLabelId || '' }), {
       label: 'threadLabelsForLabel',
@@ -32,16 +30,7 @@ export const ThreadList: React.FC = () => {
   )
 
   const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
-  if (!selectedLabel) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-gray-500">
-          <div className="text-4xl mb-2">📧</div>
-          <p>Select a label to view threads</p>
-        </div>
-      </div>
-    )
-  }
+  if (!selectedLabel) throw new Error('ThreadList rendered without a selected label or selected label not found')
 
   const threadsForSelectedLabel = uiState.selectedLabelId
     ? threadLabelsForLabel
@@ -51,20 +40,16 @@ export const ThreadList: React.FC = () => {
 
   if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-gray-500">
-          <div className="text-4xl mb-2">📭</div>
-          <p>
-            No threads in{' '}
-            <span className="font-medium text-gray-600 capitalize">{selectedLabel.name.toLocaleLowerCase()}</span>
-          </p>
-          <p className="text-sm mt-1 text-gray-400">Threads will appear here when they have this label</p>
-        </div>
+      <div className="grid place-items-center h-full">
+        <p className="text-gray-500">
+          No threads in{' '}
+          <span className="font-medium text-gray-700 capitalize">{selectedLabel.name.toLocaleLowerCase()}</span>
+        </p>
       </div>
     )
   }
 
-  const selectThread = (threadId: string | null) => {
+  const selectThread = (threadId: string) => {
     setUiState({ selectedThreadId: threadId })
   }
 
@@ -73,46 +58,30 @@ export const ThreadList: React.FC = () => {
   }
 
   return (
-    <div className="h-full bg-white">
-      {/* Thread List */}
-      <div className="divide-y divide-gray-100">
-        {threadsForSelectedLabel.map((thread) => {
-          const participants = JSON.parse(thread.participants) as string[]
+    <div className="divide-y h-full bg-white divide-gray-100">
+      {threadsForSelectedLabel.map((thread) => {
+        const participants = JSON.parse(thread.participants) as string[]
 
-          return (
-            <button
-              key={thread.id}
-              onMouseEnter={() => preloadThreadStore(thread.id)}
-              onFocus={() => preloadThreadStore(thread.id)}
-              onClick={() => selectThread(thread.id)}
-              type="button"
-              className="w-full text-left px-6 py-4 hover:bg-gray-50 border-l-4 border-transparent hover:border-blue-400 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  {/* Thread Subject */}
-                  <h3 className="text-sm font-medium mb-1 text-gray-900 truncate">{thread.subject}</h3>
-
-                  {/* Participants */}
-                  <p className="text-sm text-gray-600 truncate">
-                    {participants.length > 2
-                      ? `${participants.slice(0, 2).join(', ')} +${participants.length - 2} more`
-                      : participants.join(', ')}
-                  </p>
-                </div>
-
-                <span className="text-xs text-gray-400">
-                  {`${new Date(thread.lastActivity).toLocaleDateString(undefined, {
-                    dateStyle: 'medium',
-                  })} - ${new Date(thread.lastActivity).toLocaleTimeString(undefined, {
-                    timeStyle: 'short',
-                  })}`}
-                </span>
+        return (
+          <button
+            key={thread.id}
+            onMouseEnter={() => preloadThreadStore(thread.id)}
+            onFocus={() => preloadThreadStore(thread.id)}
+            onClick={() => selectThread(thread.id)}
+            type="button"
+            className="w-full text-left px-6 py-4 hover:bg-gray-50 border-l-2 border-transparent hover:border-gray-400"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium mb-1 truncate">{thread.subject}</h3>
+                <p className="text-sm text-gray-600 truncate">{participants.join(', ')}</p>
               </div>
-            </button>
-          )
-        })}
-      </div>
+
+              <span className="text-xs text-gray-400">{new Date(thread.lastActivity).toLocaleDateString()}</span>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -28,13 +28,13 @@
     "wrangler": "^4.42.2"
   },
   "scripts": {
-    "dev": "pnpm --filter . --parallel --color '/^dev:.*/'",
-    "dev:cf": "wrangler dev",
-    "dev:web": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev",
     "build": "VITE_LIVESTORE_SYNC_URL=https://livestore-email-client-prototype.igassmann.workers.dev vite build && wrangler build",
     "deploy": "pnpm build && pnpm deploy:cf && pnpm deploy:netlify",
     "deploy:cf": "wrangler deploy",
     "deploy:netlify": "bunx netlify-cli deploy --prod --no-build --dir=dist",
+    "dev": "pnpm --filter . --parallel --color '/^dev:.*/'",
+    "dev:cf": "wrangler dev",
+    "dev:web": "VITE_LIVESTORE_SYNC_URL=http://localhost:8787 vite dev",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   }
