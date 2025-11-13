@@ -34,7 +34,6 @@ type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
   TEST_STORE_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
   DB: CfTypes.D1Database
-  ADMIN_SECRET: string
 }
 
 export class SyncBackendDO extends makeDurableObject({}) {}

@@ -4,7 +4,6 @@ import type { CfTypes, SyncBackendRpcInterface } from '@livestore/sync-cf/cf-wor
 export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
-  ADMIN_SECRET: string
 }
 
 export const storeIdFromRequest = (request: CfTypes.Request) => {

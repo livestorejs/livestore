@@ -10,9 +10,6 @@ binding = "DB"
 database_name = "hibernation-test-db"
 database_id = "hibernation-test-db"
 
-[vars]
-ADMIN_SECRET = "test-admin-secret-123"
-
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"
