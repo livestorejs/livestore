@@ -137,6 +137,11 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     }
   }
 
+  alarm(): void | Promise<void> {
+    // Re-initialize subscriptions after potential hibernation
+    return this.subscribeToStore()
+  }
+
   async syncUpdateRpc(payload: unknown) {
     // Make sure to wake up the store before processing the sync update
     await this.subscribeToStore()
