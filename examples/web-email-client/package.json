@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/vite-plugin": "1.13.12",
     "@cloudflare/workers-types": "4.20250923.0",
     "@livestore/adapter-cloudflare": "0.4.0-dev.17",
     "@livestore/adapter-web": "0.4.0-dev.17",
