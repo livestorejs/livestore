@@ -29,9 +29,9 @@
     "wrangler": "^4.42.2"
   },
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "deploy": "pnpm build && wrangler deploy"
+    "deploy": "pnpm build && wrangler deploy",
+    "dev": "vite",
+    "preview": "vite preview"
   }
 }
