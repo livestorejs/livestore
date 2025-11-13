@@ -5,9 +5,7 @@ import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
-export interface Env {
-  ADMIN_SECRET: string
-}
+export type Env = {}
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (

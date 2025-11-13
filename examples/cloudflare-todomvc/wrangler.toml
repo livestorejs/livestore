@@ -67,8 +67,6 @@ tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
 [vars]
-# should be set via CF dashboard (as secret)
-# ADMIN_SECRET = "..."
 SYNC_BACKEND_URL = "http://localhost:8787"
 
 
