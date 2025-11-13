@@ -18,7 +18,7 @@ import {
   type MaterializerHashMismatchError,
   type SqliteDb,
   type SqliteError,
-  UnexpectedError,
+  UnknownError,
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
@@ -82,7 +82,7 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
@@ -220,7 +220,7 @@ export const makeLeaderThreadLayer = ({
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:boot'),
     Effect.withSpanScoped('@livestore/common:leader-thread'),
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
@@ -350,7 +350,7 @@ const bootLeaderThread = ({
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnexpectedError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
+  UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {

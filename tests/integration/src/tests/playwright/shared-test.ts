@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-import type { UnexpectedError } from '@livestore/common'
+import type { UnknownError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
 import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 import type * as PW from '@playwright/test'
@@ -46,10 +46,7 @@ export const runAndGetExit = <Tag extends string, A>({
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<
-    Tag,
-    { exit: Schema.Exit<Schema.Schema<A>, typeof UnexpectedError, typeof Schema.Defect> }
-  >
+  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, typeof Schema.Defect> }>
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext

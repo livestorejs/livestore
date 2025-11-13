@@ -1,4 +1,4 @@
-import { Devtools, LogConfig, liveStoreVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -66,10 +66,10 @@ const makeWorkerRunner = Effect.gen(function* () {
     req: TReq,
   ): Effect.Effect<
     Schema.WithResult.Success<TReq>,
-    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    UnknownError | Schema.WithResult.Failure<TReq>,
     Schema.WithResult.Context<TReq>
   > =>
-    // Forward the request to the active worker and normalize platform errors into UnexpectedError.
+    // Forward the request to the active worker and normalize platform errors into UnknownError.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
       Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, unknown>),
@@ -81,17 +81,17 @@ const makeWorkerRunner = Effect.gen(function* () {
         duration: 500,
       }),
       Effect.mapError((cause) =>
-        Schema.is(UnexpectedError)(cause)
+        Schema.is(UnknownError)(cause)
           ? cause
           : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-            ? new UnexpectedError({ cause })
+            ? new UnknownError({ cause })
             : cause,
       ),
-      Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+      Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       Effect.tapCauseLogPretty,
     ) as Effect.Effect<
       Schema.WithResult.Success<TReq>,
-      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      UnknownError | Schema.WithResult.Failure<TReq>,
       Schema.WithResult.Context<TReq>
     >
 
@@ -99,7 +99,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     req: TReq,
   ): Stream.Stream<
     Schema.WithResult.Success<TReq>,
-    UnexpectedError | Schema.WithResult.Failure<TReq>,
+    UnknownError | Schema.WithResult.Failure<TReq>,
     Schema.WithResult.Context<TReq>
   > =>
     Effect.gen(function* () {
@@ -121,14 +121,14 @@ const makeWorkerRunner = Effect.gen(function* () {
       return Stream.merge(stream, scopeShutdownStream, { haltStrategy: 'either' })
     }).pipe(
       Effect.interruptible,
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-      UnexpectedError.mapToUnexpectedErrorStream,
+      UnknownError.mapToUnknownErrorStream,
     ) as Stream.Stream<
       Schema.WithResult.Success<TReq>,
-      UnexpectedError | Schema.WithResult.Failure<TReq>,
+      UnknownError | Schema.WithResult.Failure<TReq>,
       Schema.WithResult.Context<TReq>
     >
 
@@ -186,7 +186,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         // Early return on mismatch to keep happy path linear
         if (prev !== undefined && !sameInvariants(prev, invariants)) {
           const diff = Schema.debugDiff(InvariantsSchema)(prev, invariants)
-          return yield* new UnexpectedError({
+          return yield* new UnknownError({
             cause: 'Store invariants changed across leader transitions',
             payload: { diff, previous: prev, next: invariants },
           })
@@ -236,7 +236,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
       }).pipe(
         Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.tapCauseLogPretty,
       ),
 

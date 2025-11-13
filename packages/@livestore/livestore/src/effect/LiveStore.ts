@@ -1,4 +1,4 @@
-import type { UnexpectedError } from '@livestore/common'
+import type { UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
@@ -20,7 +20,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
   syncPayloadSchema,
 }: LiveStoreContextProps<TSchema, TContext>): Effect.Effect<
   LiveStoreContextRunning['Type'],
-  UnexpectedError | Cause.TimeoutException,
+  UnknownError | Cause.TimeoutException,
   DeferredStoreContext | Scope.Scope | OtelTracer.OtelTracer
 > =>
   pipe(
@@ -51,7 +51,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
 
 export const LiveStoreContextLayer = <TSchema extends LiveStoreSchema, TContext = {}>(
   props: LiveStoreContextProps<TSchema, TContext>,
-): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
+): Layer.Layer<LiveStoreContextRunning, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
   Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
     Layer.withSpan('LiveStore'),
     Layer.provide(LiveStoreContextDeferred),
@@ -59,5 +59,5 @@ export const LiveStoreContextLayer = <TSchema extends LiveStoreSchema, TContext 
 
 export const LiveStoreContextDeferred = Layer.effect(
   DeferredStoreContext,
-  Deferred.make<LiveStoreContextRunning['Type'], UnexpectedError>(),
+  Deferred.make<LiveStoreContextRunning['Type'], UnknownError>(),
 )

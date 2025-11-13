@@ -1,4 +1,4 @@
-import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA, type WebDatabaseMetadataOpfs } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
@@ -120,7 +120,7 @@ const opfsDeleteAbs = (absPath: string) =>
       }
     }
   }).pipe(
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.withSpan('@livestore/adapter-web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }),
   )
 

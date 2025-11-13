@@ -8,7 +8,7 @@ import type {
   ClientSessionLeaderThreadProxy,
   LockStatus,
   SqliteDb,
-  UnexpectedError,
+  UnknownError,
 } from './adapter-types.ts'
 import * as Devtools from './devtools/mod.ts'
 import { liveStoreVersion } from './version.ts'
@@ -44,7 +44,7 @@ export const makeClientSession = <R>({
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
     sessionInfo: Devtools.SessionInfo.SessionInfo
-  }) => Effect.Effect<void, UnexpectedError, Scope.Scope | R>
+  }) => Effect.Effect<void, UnknownError, Scope.Scope | R>
   webmeshMode: 'direct' | 'proxy'
   registerBeforeUnload: (onBeforeUnload: () => void) => () => void
   /** Browser origin of the client session; used for origin-scoped DevTools mesh channels */

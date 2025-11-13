@@ -15,7 +15,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, UnexpectedError } from '../adapter-types.ts'
+import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
@@ -146,8 +146,8 @@ export const makeClientSessionSyncProcessor = ({
       ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
     })
 
-    if (mergeResult._tag === 'unexpected-error') {
-      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
+    if (mergeResult._tag === 'unknown-error') {
+      return shouldNeverHappen('Unknown error in client-session-sync-processor', mergeResult.message)
     }
 
     if (mergeResult._tag !== 'advance') {
@@ -236,8 +236,8 @@ export const makeClientSessionSyncProcessor = ({
             isEqualEvent: LiveStoreEvent.isEqualEncoded,
           })
 
-          if (mergeResult._tag === 'unexpected-error') {
-            return yield* new UnexpectedError({ cause: mergeResult.message })
+          if (mergeResult._tag === 'unknown-error') {
+            return yield* new UnknownError({ cause: mergeResult.message })
           } else if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
@@ -375,7 +375,7 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
-  boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  boot: Effect.Effect<void, UnknownError, Scope.Scope>
   /**
    * Only used for debugging / observability.
    */

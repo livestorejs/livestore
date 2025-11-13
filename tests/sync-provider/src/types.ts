@@ -1,4 +1,4 @@
-import type { SyncBackend, UnexpectedError } from '@livestore/common'
+import type { SyncBackend, UnknownError } from '@livestore/common'
 import { Context, type Effect, type HttpClient, type Layer, type Schedule } from '@livestore/utils/effect'
 
 export interface SyncProviderOptions {
@@ -19,4 +19,4 @@ export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
   }
 >() {}
 
-export type SyncProviderLayer = Layer.Layer<SyncProviderImpl, UnexpectedError, HttpClient.HttpClient>
+export type SyncProviderLayer = Layer.Layer<SyncProviderImpl, UnknownError, HttpClient.HttpClient>

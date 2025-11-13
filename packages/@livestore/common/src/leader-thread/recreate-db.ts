@@ -10,7 +10,7 @@ import {
   rematerializeFromEventlog,
   type SqliteDb,
   type SqliteError,
-  UnexpectedError,
+  UnknownError,
 } from '../index.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { configureConnection } from './connection.ts'
@@ -28,7 +28,7 @@ export const recreateDb = ({
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
-}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnexpectedError | MaterializeError | SqliteError> =>
+}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
     const migrationOptions = schema.state.sqlite.migrations
     let migrationsReport: MigrationsReport
@@ -48,7 +48,7 @@ export const recreateDb = ({
 
     const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
       Effect.gen(function* () {
-        yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         const migrationsReport = yield* migrateDb({
           db: tmpDb,
@@ -57,7 +57,7 @@ export const recreateDb = ({
             Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
         })
 
-        yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         return { migrationsReport, tmpDb }
       })
@@ -78,7 +78,7 @@ export const recreateDb = ({
             Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
         })
 
-        yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         break
       }
@@ -88,7 +88,7 @@ export const recreateDb = ({
         migrationsReport = { migrations: [] }
 
         const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
         )
 
         tmpDb.import(newDbData)

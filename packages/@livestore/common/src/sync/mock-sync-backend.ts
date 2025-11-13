@@ -1,6 +1,6 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { UnexpectedError } from '../errors.ts'
+import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import { InvalidPushError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
@@ -10,7 +10,7 @@ export interface MockSyncBackend {
   pushedEvents: Stream.Stream<LiveStoreEvent.AnyEncodedGlobal>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
-  makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnexpectedError, Scope.Scope>
+  makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.AnyEncodedGlobal[]) => Effect.Effect<void>
   /** Fail the next N push calls with an InvalidPushError (or custom error) */
   failNextPushes: (
@@ -29,7 +29,7 @@ export interface MockSyncBackendOptions {
 
 export const makeMockSyncBackend = (
   options?: MockSyncBackendOptions,
-): Effect.Effect<MockSyncBackend, UnexpectedError, Scope.Scope> =>
+): Effect.Effect<MockSyncBackend, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncEventSequenceNumberRef = { current: EventSequenceNumber.ROOT.global }
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.AnyEncodedGlobal>()
@@ -115,7 +115,7 @@ export const makeMockSyncBackend = (
                 return yield* maybeFail(batch)
               }
               return yield* new InvalidPushError({
-                cause: new UnexpectedError({ cause: new Error('MockSyncBackend: simulated push failure') }),
+                cause: new UnknownError({ cause: new Error('MockSyncBackend: simulated push failure') }),
               })
             }
 

@@ -115,7 +115,7 @@ describe.each([true, false])('LiveStoreProvider (strictMode: %s)', (strictMode) 
 
     expect(appRenderCount).toBe(0)
 
-    await ReactTesting.waitFor(() => ReactTesting.screen.getByText((_) => _.startsWith('LiveStore.UnexpectedError')))
+    await ReactTesting.waitFor(() => ReactTesting.screen.getByText((_) => _.startsWith('LiveStore.UnknownError')))
   })
 
   it('unmounts when store is shutdown', async () => {

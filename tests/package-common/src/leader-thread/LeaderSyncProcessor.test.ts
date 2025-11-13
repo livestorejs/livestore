@@ -8,7 +8,7 @@ import {
   ServerAheadError,
   type SyncBackend,
   type SyncState,
-  type UnexpectedError,
+  type UnknownError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
@@ -470,7 +470,7 @@ class TestContext extends Context.Tag('TestContext')<
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>
-    ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, UnknownError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 

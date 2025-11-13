@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { Effect, Exit } from '@livestore/utils/effect'
 import { expect, test } from '@playwright/test'
 
@@ -43,7 +43,7 @@ test(
         schema: Bridge.ResultStoreBootError,
       })
 
-      expect(exit).toStrictEqual(Exit.fail(UnexpectedError.make({ cause: new Error('Boom!') })))
+      expect(exit).toStrictEqual(Exit.fail(UnknownError.make({ cause: new Error('Boom!') })))
     }),
   ),
 )

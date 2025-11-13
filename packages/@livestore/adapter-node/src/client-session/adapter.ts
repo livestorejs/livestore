@@ -11,7 +11,7 @@ import {
   makeClientSession,
   type SyncError,
   type SyncOptions,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -159,7 +159,7 @@ const makeAdapterImpl = ({
       if (resetPersistence === true) {
         yield* shutdownChannel
           .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
-          .pipe(UnexpectedError.mapToUnexpectedError)
+          .pipe(UnknownError.mapToUnknownError)
 
         yield* resetNodePersistence({ storage, storeId })
       }
@@ -210,7 +210,7 @@ const makeAdapterImpl = ({
                 syncPayloadSchema,
                 testing,
               }),
-            }).pipe(UnexpectedError.mapToUnexpectedError)
+            }).pipe(UnknownError.mapToUnknownError)
           : yield* makeWorkerLeaderThread({
               shutdown,
               storeId,
@@ -262,7 +262,7 @@ const resetNodePersistence = ({
 }: {
   storage: WorkerSchema.StorageType
   storeId: string
-}): Effect.Effect<void, UnexpectedError, FileSystem.FileSystem> => {
+}): Effect.Effect<void, UnknownError, FileSystem.FileSystem> => {
   if (storage.type !== 'fs') {
     return Effect.void
   }
@@ -272,13 +272,13 @@ const resetNodePersistence = ({
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
-    const directoryExists = yield* fs.exists(directory).pipe(UnexpectedError.mapToUnexpectedError)
+    const directoryExists = yield* fs.exists(directory).pipe(UnknownError.mapToUnknownError)
 
     if (directoryExists === false) {
       return
     }
 
-    yield* fs.remove(directory, { recursive: true }).pipe(UnexpectedError.mapToUnexpectedError)
+    yield* fs.remove(directory, { recursive: true }).pipe(UnknownError.mapToUnknownError)
   }).pipe(
     Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
     Effect.withSpan('@livestore/adapter-node:resetPersistence', { attributes: { directory } }),
@@ -371,7 +371,7 @@ const makeWorkerLeaderThread = ({
   syncPayloadEncoded,
   testing,
 }: {
-  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnexpectedError | SyncError>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string
@@ -405,7 +405,7 @@ const makeWorkerLeaderThread = ({
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
@@ -413,7 +413,7 @@ const makeWorkerLeaderThread = ({
     const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Effect.Effect<A, UnexpectedError, R>
+      ? Effect.Effect<A, UnknownError, R>
       : never =>
       (worker.executeEffect(req) as any).pipe(
         Effect.logWarnIfTakesLongerThan({
@@ -422,26 +422,26 @@ const makeWorkerLeaderThread = ({
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
         Effect.mapError((cause) =>
-          Schema.is(UnexpectedError)(cause)
+          Schema.is(UnknownError)(cause)
             ? cause
             : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnexpectedError({ cause })
+              ? new UnknownError({ cause })
               : cause,
         ),
-        Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+        Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       ) as any
 
     const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Stream.Stream<A, UnexpectedError, R>
+      ? Stream.Stream<A, UnknownError, R>
       : never =>
       worker.execute(req as any).pipe(
         Stream.mapError((cause) =>
-          Schema.is(UnexpectedError)(cause)
+          Schema.is(UnknownError)(cause)
             ? cause
             : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnexpectedError({ cause })
+              ? new UnknownError({ cause })
               : cause,
         ),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
@@ -466,7 +466,7 @@ const makeWorkerLeaderThread = ({
 
     const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/adapter-node:client-session:export'),
     )
 
@@ -488,20 +488,20 @@ const makeWorkerLeaderThread = ({
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
         }),
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({

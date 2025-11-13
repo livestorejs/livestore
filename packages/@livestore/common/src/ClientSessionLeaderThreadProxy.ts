@@ -2,7 +2,7 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
-import type { UnexpectedError } from './errors.ts'
+import type { UnknownError } from './errors.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
@@ -12,9 +12,9 @@ export interface ClientSessionLeaderThreadProxy {
   events: {
     pull: (args: {
       cursor: EventSequenceNumber.EventSequenceNumber
-    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnexpectedError>
+    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnknownError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnknownError | LeaderAheadError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
@@ -23,11 +23,11 @@ export interface ClientSessionLeaderThreadProxy {
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
   }
-  export: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
-  getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnexpectedError>
-  syncState: Subscribable.Subscribable<SyncState, UnexpectedError>
+  export: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>
+  getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>
+  syncState: Subscribable.Subscribable<SyncState, UnknownError>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
-  sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
+  sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnknownError>
   /**
    * Reactive stream describing the connectivity between the leader and its upstream sync backend.
    * Includes raw connection state, last transition timestamp, and devtools overrides (latch state).

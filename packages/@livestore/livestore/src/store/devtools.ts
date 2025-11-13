@@ -1,5 +1,5 @@
 import type { DebugInfo, SyncState } from '@livestore/common'
-import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnknownError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
@@ -332,4 +332,4 @@ export const connectDevtoolsToStore = ({
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),
     )
-  }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))
+  }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))

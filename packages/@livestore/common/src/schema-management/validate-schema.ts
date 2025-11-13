@@ -1,6 +1,6 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
-import { UnexpectedError } from '../adapter-types.ts'
+import { UnknownError } from '../adapter-types.ts'
 import type { EventDef } from '../schema/EventDef.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import type { EventDefInfo, SchemaManager } from './common.ts'
@@ -15,7 +15,7 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
     )
 
     if (missingEventDefs.length > 0) {
-      return yield* new UnexpectedError({
+      return yield* new UnknownError({
         cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.eventName).join(', ')}`,
       })
     }

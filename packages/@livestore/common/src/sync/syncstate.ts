@@ -159,8 +159,8 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResultUnexpectedError extends Schema.Class<MergeResultUnexpectedError>('MergeResultUnexpectedError')({
-  _tag: Schema.Literal('unexpected-error'),
+export class MergeResultUnknownError extends Schema.Class<MergeResultUnknownError>('MergeResultUnknownError')({
+  _tag: Schema.Literal('unknown-error'),
   message: Schema.String,
 }) {}
 
@@ -168,7 +168,7 @@ export class MergeResult extends Schema.Union(
   MergeResultAdvance,
   MergeResultRebase,
   MergeResultReject,
-  MergeResultUnexpectedError,
+  MergeResultUnknownError,
 ) {}
 
 export const payloadFromMergeResult = (
@@ -187,13 +187,13 @@ export const payloadFromMergeResult = (
     Match.exhaustive,
   )
 
-const unexpectedError = (message: string): MergeResultUnexpectedError => {
+const unknownError = (message: string): MergeResultUnknownError => {
   if (LS_DEV) {
     // biome-ignore lint/suspicious/noDebugger: debug
     debugger
   }
 
-  return MergeResultUnexpectedError.make({ _tag: 'unexpected-error', message })
+  return MergeResultUnknownError.make({ _tag: 'unknown-error', message })
 }
 
 // TODO Idea: call merge recursively through hierarchy levels
@@ -272,7 +272,7 @@ export const merge = ({
       // Validate that newEvents are sorted in ascending order by eventNum
       for (let i = 1; i < payload.newEvents.length; i++) {
         if (EventSequenceNumber.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
-          return unexpectedError(
+          return unknownError(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
           )
         }
@@ -283,7 +283,7 @@ export const merge = ({
         EventSequenceNumber.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) ||
         EventSequenceNumber.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum)
       ) {
-        return unexpectedError(
+        return unknownError(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
         )
       }
@@ -514,7 +514,7 @@ const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 const validatePayload = (payload: typeof Payload.Type) => {
   for (let i = 1; i < payload.newEvents.length; i++) {
     if (EventSequenceNumber.isGreaterThanOrEqual(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
-      return unexpectedError(
+      return unknownError(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
       )
     }
@@ -563,7 +563,7 @@ const validateSyncState = (syncState: SyncState) => {
 }
 
 const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
-  if (mergeResult._tag === 'unexpected-error' || mergeResult._tag === 'reject') return mergeResult
+  if (mergeResult._tag === 'unknown-error' || mergeResult._tag === 'reject') return mergeResult
 
   validateSyncState(mergeResult.newSyncState)
 

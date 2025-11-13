@@ -1,6 +1,6 @@
 // import path from 'node:path'
 
-import { type MakeSqliteDb, type PersistenceInfo, type SqliteDb, UnexpectedError } from '@livestore/common'
+import { type MakeSqliteDb, type PersistenceInfo, type SqliteDb, UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
@@ -140,4 +140,4 @@ const makeCloudflareFsDb = ({
     const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
 
     return { dbPointer, vfs: {} as UNUSED<'only needed in web adapter currently and should longer-term be removed'> }
-  }).pipe(UnexpectedError.mapToUnexpectedError)
+  }).pipe(UnknownError.mapToUnknownError)

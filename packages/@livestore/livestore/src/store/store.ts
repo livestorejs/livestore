@@ -15,7 +15,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
@@ -189,7 +189,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   })
                 } catch (cause) {
                   // TOOD refactor with `SqliteError`
-                  throw UnexpectedError.make({
+                  throw UnknownError.make({
                     cause,
                     note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
                   })
@@ -357,7 +357,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   private checkShutdown = (operation: string): void => {
     if (this[StoreInternalsSymbol].isShutdown) {
-      throw new UnexpectedError({
+      throw new UnknownError({
         cause: `Store has been shut down (while performing "${operation}").`,
         note: `You cannot perform this operation after the store has been shut down.`,
       })
@@ -710,7 +710,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             return runMaterializeEvents()
           }
         },
-        catch: (cause) => UnexpectedError.make({ cause }),
+        catch: (cause) => UnknownError.make({ cause }),
       })
 
       // Materialize events to state
@@ -815,7 +815,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdownPromise = async (cause?: UnexpectedError) => {
+  shutdownPromise = async (cause?: UnknownError) => {
     this.checkShutdown('shutdownPromise')
 
     this[StoreInternalsSymbol].isShutdown = true
@@ -827,7 +827,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializeError>): Effect.Effect<void> => {
+  shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
       cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),

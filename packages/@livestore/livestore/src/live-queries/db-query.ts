@@ -7,7 +7,7 @@ import {
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   SessionIdSymbol,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
@@ -254,7 +254,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               : undefined,
         }
       } catch (cause) {
-        throw new UnexpectedError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
+        throw new UnknownError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
       }
     }
 

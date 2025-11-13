@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { EventSequenceNumber, State } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -43,7 +43,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         if (opt?._tag === 'd1') {
           const db = (doSelf.env as any)[opt.binding]
           if (!db) {
-            return yield* UnexpectedError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
+            return yield* UnknownError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
           }
           return { _tag: 'd1' as const, db }
         } else if (opt?._tag === 'do-sqlite' || opt === undefined) {
@@ -122,7 +122,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
 
       return storageCache
     },
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.withSpan('@livestore/sync-cf:durable-object:makeDoCtx'),
   ),
 }) {}
