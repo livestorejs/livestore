@@ -5,9 +5,6 @@ compatibility_flags = [
 ]
 main = "./test-worker.ts"
 
-[vars]
-ADMIN_SECRET = "test-admin-secret-123"
-
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
 class_name = "SyncBackendDO"
@@ -19,4 +16,3 @@ class_name = "TestClientDo"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "TestClientDo"]
-
