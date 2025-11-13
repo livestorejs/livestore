@@ -1,0 +1,52 @@
+sequenceDiagram
+    box ClientSession
+        participant UI
+        participant Store
+        participant CSSP as ClientSessionSyncProcessor
+        participant ClientSessionSyncState
+        participant InMemorySQLite
+        participant LeaderPushQueue
+    end
+    box Leader
+        participant ClientSessionPullQueues
+        participant LSP as LeaderSyncProcessor
+        participant LocalPushesQueue
+        participant PersistedSQLite
+        participant BackendPushQueue
+    end
+    box Backend
+        participant SyncBackend
+    end
+
+        par
+            UI->>Store: commit events
+            Store->>CSSP: push events
+            CSSP->>CSSP: assign event sequence<br>numbers to events
+            CSSP->>CSSP: merge events as 'local-push'
+            CSSP->>Store: materialize events callback
+            Store->>InMemorySQLite: materialize events
+            CSSP->>Store: refresh tables callback
+            Store->>Store: update table refs
+            Store->>UI: trigger reactivity
+            CSSP->>LeaderPushQueue: queue events for leader
+        and
+            CSSP->>LeaderPushQueue: Take between 1 and <br/>up to `leaderPushBatchSize`<br/>events as a batch
+            CSSP->>LSP: push event batch to leader
+
+
+            LSP->>LSP: validatePushBatch()<br/>check sequence continuity
+            LSP->>LocalPushesQueue: queue validated<br>event batch
+        end
+
+        par
+            LSP->>LocalPushesQueue: Take between 1 and <br/>up to `localPushBatchSize`<br/>events as a batch
+            LSP->>LSP: filter out events with<br>old rebaseGeneration value
+            LSP->>LSP: merge events as 'local-push'
+            Note over LSP: merge result = 'advance'
+            LSP->>PersistedSQLite: materialize events
+            LSP->>ClientSessionPullQueues: broadcast 'upstream-advance'<br/>to client sessions
+            LSP->>BackendPushQueue: queue non-clientOnly events
+        and
+            LSP->> BackendPushQueue: Take between 1 and <br/>up to `backendPushBatchSize`<br/>events as a batch
+            BackendPushQueue->>SyncBackend: push event batch to backend
+    end
