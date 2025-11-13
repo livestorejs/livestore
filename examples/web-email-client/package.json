@@ -1,0 +1,37 @@
+{
+  "name": "livestore-example-web-email-client",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/vite-plugin": "1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
+    "@livestore/adapter-cloudflare": "0.4.0-dev.17",
+    "@livestore/adapter-web": "0.4.0-dev.17",
+    "@livestore/livestore": "0.4.0-dev.17",
+    "@livestore/react": "0.4.0-dev.17",
+    "@livestore/sqlite-wasm": "0.4.0-dev.17",
+    "@livestore/sync-cf": "0.4.0-dev.17",
+    "@livestore/wa-sqlite": "0.4.0-dev.17",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-error-boundary": "6.0.0"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.17",
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "wrangler": "^4.42.2"
+  },
+  "scripts": {
+    "build": "vite build",
+    "deploy": "pnpm build && wrangler deploy",
+    "dev": "vite",
+    "preview": "vite preview"
+  }
+}
