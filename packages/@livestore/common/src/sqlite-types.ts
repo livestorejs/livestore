@@ -1,5 +1,5 @@
 import { type Effect, Schema } from '@livestore/utils/effect'
-import type { SqliteError, UnexpectedError } from './errors.ts'
+import type { SqliteError, UnknownError } from './errors.ts'
 import type { EventSequenceNumber } from './schema/mod.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import type { PreparedBindValues } from './util.ts'
@@ -46,7 +46,7 @@ export type MakeSqliteDb<
   TMetadata extends TMetadata_ & { _tag: TInput['_tag'] } = TMetadata_ & { _tag: TInput['_tag'] },
 >(
   input: TInput,
-) => Effect.Effect<SqliteDb<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError | UnexpectedError, R>
+) => Effect.Effect<SqliteDb<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError | UnknownError, R>
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void

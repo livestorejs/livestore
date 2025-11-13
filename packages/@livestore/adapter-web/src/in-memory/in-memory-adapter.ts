@@ -6,7 +6,7 @@ import {
   makeClientSession,
   migrateDb,
   type SyncOptions,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
@@ -96,7 +96,7 @@ export const makeInMemoryAdapter =
           }).pipe(
             Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
             Effect.tapCauseLogPretty,
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.forkScoped,
           )
         : undefined
@@ -151,7 +151,7 @@ export const makeInMemoryAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer))
+    }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer))
 
 export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
@@ -256,7 +256,7 @@ const makeLeaderThread = ({
 
 type SharedWorkerFiber = Fiber.Fiber<
   Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>,
-  UnexpectedError
+  UnknownError
 >
 
 const makeDevtoolsOptions = ({
@@ -273,7 +273,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
       return { enabled: false }

@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
@@ -76,7 +76,7 @@ export const makeHttpSync =
         storeId,
         payload,
         transport: 'http',
-      }).pipe(UnexpectedError.mapToUnexpectedError)
+      }).pipe(UnknownError.mapToUnknownError)
 
       const urlParams = UrlParams.fromInput(urlParamsData)
 
@@ -103,7 +103,7 @@ export const makeHttpSync =
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
       )
@@ -116,7 +116,7 @@ export const makeHttpSync =
       }
 
       // Helps already establish a TCP connection to the server
-      const connect = ping.pipe(UnexpectedError.mapToUnexpectedError)
+      const connect = ping.pipe(UnknownError.mapToUnknownError)
 
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
@@ -190,7 +190,7 @@ export const makeHttpSync =
                 backendId,
               }),
             }),
-            Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
+            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
           )
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
@@ -200,7 +200,7 @@ export const makeHttpSync =
         }).pipe(
           pushSemaphore.withPermits(1),
           Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
+            cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnknownError({ cause }) }),
           ),
           Effect.withSpan('http-sync-client:push'),
         )

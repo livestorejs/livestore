@@ -10,7 +10,7 @@
  */
 import http from 'node:http'
 import path from 'node:path'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
@@ -82,7 +82,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
 ).pipe(
   Layer.provide(DockerComposeLive),
   Layer.provide(PlatformNode.NodeContext.layer),
-  UnexpectedError.mapToUnexpectedErrorLayer,
+  UnknownError.mapToUnknownErrorLayer,
 )
 
 const startElectricApi = Effect.gen(function* () {

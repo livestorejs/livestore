@@ -1,4 +1,4 @@
-import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
@@ -24,9 +24,7 @@ export const makeEndingPullStream = (
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
     if (doOptions?.onPull) {
-      yield* Effect.tryAll(() => doOptions!.onPull!(req, { storeId, payload })).pipe(
-        UnexpectedError.mapToUnexpectedError,
-      )
+      yield* Effect.tryAll(() => doOptions!.onPull!(req, { storeId, payload })).pipe(UnknownError.mapToUnknownError)
     }
 
     if (req.cursor._tag === 'Some' && req.cursor.value.backendId !== backendId) {
@@ -64,7 +62,7 @@ export const makeEndingPullStream = (
       Stream.tap(
         Effect.fn(function* (res) {
           if (doOptions?.onPullRes) {
-            yield* Effect.tryAll(() => doOptions.onPullRes!(res)).pipe(UnexpectedError.mapToUnexpectedError)
+            yield* Effect.tryAll(() => doOptions.onPullRes!(res)).pipe(UnknownError.mapToUnknownError)
           }
         }),
       ),

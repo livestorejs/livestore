@@ -31,7 +31,7 @@
  * - push → InvalidPushError on non‑2xx; pull → InvalidPullError on non‑2xx; ping/connect map timeouts to offline.
  * - The proxy should surface helpful status codes and error bodies.
  */
-import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -100,7 +100,7 @@ export const makeSyncBackend =
         yield* httpClient.pipe(HttpClient.filterStatusOk).head(pingEndpoint)
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
       )
@@ -113,7 +113,7 @@ export const makeSyncBackend =
       // No need to connect if the pull endpoint has the same origin as the current page
       const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
-        : ping.pipe(UnexpectedError.mapToUnexpectedError)
+        : ping.pipe(UnknownError.mapToUnknownError)
 
       const runPullSse = (
         cursor: Option.Option<{
@@ -254,7 +254,7 @@ export const makeSyncBackend =
                 return cause
               }
 
-              if (cause instanceof UnexpectedError) {
+              if (cause instanceof UnknownError) {
                 return new InvalidPushError({ cause })
               }
 
@@ -265,7 +265,7 @@ export const makeSyncBackend =
                     : `S2 batch exceeded ${cause.max} (type: ${cause.limitType}, actual: ${cause.actual})`
 
                 return new InvalidPushError({
-                  cause: new UnexpectedError({
+                  cause: new UnknownError({
                     cause,
                     note,
                     payload: {
@@ -278,7 +278,7 @@ export const makeSyncBackend =
                 })
               }
 
-              return new InvalidPushError({ cause: new UnexpectedError({ cause }) })
+              return new InvalidPushError({ cause: new UnknownError({ cause }) })
             }
 
             const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(makeInvalidPushError))

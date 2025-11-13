@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
@@ -29,7 +29,7 @@ const viteDevServer = ({
   Effect.gen(function* () {
     const devPort = useWorkspacePort
       ? '4444'
-      : yield* getFreePort.pipe(Effect.map(String), UnexpectedError.mapToUnexpectedError)
+      : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
 
     yield* cmd(`vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
@@ -46,7 +46,7 @@ const viteDevServer = ({
 export const miscTest: Cli.Command.Command<
   'misc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
+  UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -87,7 +87,7 @@ export const miscTest: Cli.Command.Command<
 export const todomvcTest: Cli.Command.Command<
   'todomvc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
+  UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -127,7 +127,7 @@ export const todomvcTest: Cli.Command.Command<
 export const setupDevtools: Cli.Command.Command<
   'setup-devtools',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError,
+  UnknownError | PlatformError.PlatformError,
   {}
 > = Cli.Command.make(
   'setup-devtools',
@@ -140,13 +140,13 @@ export const setupDevtools: Cli.Command.Command<
     }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
 
     yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
-  }, UnexpectedError.mapToUnexpectedError),
+  }, UnknownError.mapToUnknownError),
 )
 
 export const devtoolsTest: Cli.Command.Command<
   'devtools',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
+  UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
@@ -198,7 +198,7 @@ export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as 
 export const command: Cli.Command.Command<
   'integration-misc',
   CommandExecutor.CommandExecutor,
-  UnexpectedError | PlatformError.PlatformError | CmdError,
+  UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
   }
