@@ -115,6 +115,26 @@
 
   To use the default DO SQLite, omit the `storage` option or pass `{ _tag: 'do-sqlite' }`.
 
+- **Error class rename:** `UnexpectedError` has been renamed to `UnknownError` for better semantic clarity and consistency with Effect ecosystem naming conventions. The previous name conflicted with Effect's terminology where "unexpected errors" refer to defects, while this error type represents errors of unknown type from external libraries or infrastructure failures (See [PR #823](https://github.com/livestorejs/livestore/pull/823)).
+
+  Update all references:
+  - Class name: `UnexpectedError` → `UnknownError`
+  - Error tag: `'LiveStore.UnexpectedError'` → `'LiveStore.UnknownError'`
+  - Static methods: `mapToUnexpectedError*` → `mapToUnknownError*`
+  - Related type: `MergeResultUnexpectedError` → `MergeResultUnknownError`
+
+  ```typescript
+  // Before
+  import { UnexpectedError } from '@livestore/common'
+
+  effect.pipe(UnexpectedError.mapToUnexpectedError)
+
+  // After
+  import { UnknownError } from '@livestore/common'
+
+  effect.pipe(UnknownError.mapToUnknownError)
+  ```
+
 ### Changes
 
 #### Platform adapters
@@ -211,7 +231,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
 - **Store.subscribe async iteration:** The async iterator overload now exposes a first-class `AsyncIterable` so `for await` loops work without manual casts, and the new exported `Queryable` type documents the accepted inputs (livestorejs/livestore#736).
 - **Queryable type export:** `packages/@livestore/livestore` now re-exports `Queryable<TResult>` so shared utilities and framework adapters can describe the exact shapes accepted by `store.subscribe` and `subscribeStream` (livestorejs/livestore#736).
-- Store operations after shutdown are rejected with a descriptive `UnexpectedError`. Shutdown now returns an Effect (see breaking changes).
+- Store operations after shutdown are rejected with a descriptive `UnknownError`. Shutdown now returns an Effect (see breaking changes).
 - Exact optional property types are enabled, surfacing missing optional handling at compile time (#600).
 - Effect `Equal` and `Hash` implementations for `LiveQueryDef` and `SignalDef` improve comparisons.
 - Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).

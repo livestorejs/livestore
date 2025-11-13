@@ -7,12 +7,12 @@ import {
   InvalidPushError,
   IsOfflineError,
   MaterializeError,
-  UnexpectedError,
+  UnknownError,
 } from '../index.ts'
 
 export class All extends Schema.Union(
   IntentionalShutdownCause,
-  UnexpectedError,
+  UnknownError,
   IsOfflineError,
   InvalidPushError,
   InvalidPullError,

@@ -34,7 +34,7 @@ import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
-import type { UnexpectedError } from '../errors.ts'
+import type { UnknownError } from '../errors.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { makeColumnSpec } from '../schema/state/sqlite/column-spec.ts'
 import { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
@@ -87,7 +87,7 @@ export const migrateDb = ({
   db: SqliteDb
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
-}): Effect.Effect<MigrationsReport, UnexpectedError> =>
+}): Effect.Effect<MigrationsReport, UnknownError> =>
   Effect.gen(function* () {
     for (const tableDef of stateSystemTables) {
       yield* migrateTable({

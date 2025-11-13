@@ -1,5 +1,5 @@
 import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport, SyncError } from '@livestore/common'
-import { LogConfig, provideOtel, UnexpectedError } from '@livestore/common'
+import { LogConfig, provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
   CreateStoreOptions,
@@ -37,7 +37,7 @@ export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   otelOptions?: Partial<OtelOptions>
   renderLoading?: (status: BootStatus) => React.ReactNode
-  renderError?: (error: UnexpectedError | unknown) => React.ReactNode
+  renderError?: (error: UnknownError | unknown) => React.ReactNode
   renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => React.ReactNode
   adapter: Adapter
   /**
@@ -74,8 +74,8 @@ export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema
   }
 }
 
-const defaultRenderError = (error: UnexpectedError | unknown) =>
-  IS_REACT_NATIVE ? null : Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)
+const defaultRenderError = (error: UnknownError | unknown) =>
+  IS_REACT_NATIVE ? null : Schema.is(UnknownError)(error) ? error.toString() : errorToString(error)
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => {
   const reason =

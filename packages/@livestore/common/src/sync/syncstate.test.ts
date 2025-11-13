@@ -134,7 +134,7 @@ describe('syncstate', () => {
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if newEvents are not sorted in ascending order by event number (global)', () => {
@@ -144,7 +144,7 @@ describe('syncstate', () => {
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0, e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if incoming event is < expected upstream head', () => {
@@ -154,7 +154,7 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if incoming event is = expected upstream head', () => {
@@ -164,7 +164,7 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should confirm pending event when receiving matching event', () => {
@@ -318,7 +318,7 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
     })
 

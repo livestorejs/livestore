@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { SyncBackend, UnexpectedError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
 import {
@@ -47,7 +47,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
         wranglerConfigPath: config?.wranglerConfigPath,
       }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
     ),
-    UnexpectedError.mapToUnexpectedErrorLayer,
+    UnknownError.mapToUnknownErrorLayer,
   )
 
 export const d1 = {

@@ -6,7 +6,7 @@ import {
   MigrationsReport,
   SyncBackend,
   SyncState,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
@@ -49,7 +49,7 @@ export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<Leader
   {
     payload: { port: Transferable.MessagePort, storeId: Schema.String, clientId: Schema.String },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -68,7 +68,7 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
     },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -77,7 +77,7 @@ export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<Lead
   {
     payload: {},
     success: BootStatus,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -88,7 +88,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
       batch: Schema.Array(LiveStoreEvent.AnyEncoded),
     },
     success: Schema.Void,
-    failure: Schema.Union(UnexpectedError, LeaderAheadError),
+    failure: Schema.Union(UnknownError, LeaderAheadError),
   },
 ) {}
 
@@ -99,13 +99,13 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
   }),
-  failure: UnexpectedError,
+  failure: UnknownError,
 }) {}
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
   success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
-  failure: UnexpectedError,
+  failure: UnknownError,
 }) {}
 
 export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<LeaderWorkerInnerExportEventlog>()(
@@ -113,7 +113,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   {
     payload: {},
     success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -125,7 +125,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
       snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -134,7 +134,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   {
     payload: {},
     success: EventSequenceNumber.EventSequenceNumber,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -143,7 +143,7 @@ export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<Le
   {
     payload: {},
     success: SyncState.SyncState,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -152,7 +152,7 @@ export class LeaderWorkerInnerSyncStateStream extends Schema.TaggedRequest<Leade
   {
     payload: {},
     success: SyncState.SyncState,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -161,7 +161,7 @@ export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<Lead
   {
     payload: {},
     success: SyncBackend.NetworkStatus,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -170,14 +170,14 @@ export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<L
   {
     payload: {},
     success: SyncBackend.NetworkStatus,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
 export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
   payload: {},
   success: Schema.Void,
-  failure: UnexpectedError,
+  failure: UnknownError,
 }) {}
 
 export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<LeaderWorkerInnerExtraDevtoolsMessage>()(
@@ -187,7 +187,7 @@ export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<
       message: Devtools.Leader.MessageToApp,
     },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 
@@ -226,7 +226,7 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
       initial: LeaderWorkerInnerInitialMessage,
     },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: UnknownError,
   },
 ) {}
 

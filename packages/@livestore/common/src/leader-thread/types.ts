@@ -22,7 +22,7 @@ import type {
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
-  UnexpectedError,
+  UnknownError,
 } from '../index.ts'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -66,7 +66,7 @@ export type DevtoolsOptions =
           persistenceInfo: PersistenceInfoPair
           mode: 'proxy' | 'direct'
         },
-        UnexpectedError,
+        UnknownError,
         Scope.Scope | HttpClient.HttpClient | LeaderThreadCtx
       >
     }
@@ -138,11 +138,11 @@ export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
     cursor: EventSequenceNumber.EventSequenceNumber
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnexpectedError>
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnknownError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
     cursor: EventSequenceNumber.EventSequenceNumber
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnexpectedError, Scope.Scope>
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnknownError, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -163,11 +163,11 @@ export interface LeaderSyncProcessor {
     event: LiveStoreEvent.PartialAnyEncoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnexpectedError>
+  }) => Effect.Effect<void, UnknownError>
 
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.EventSequenceNumber },
-    UnexpectedError,
+    UnknownError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>

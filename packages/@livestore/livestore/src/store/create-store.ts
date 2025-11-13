@@ -12,7 +12,7 @@ import {
   type MigrationsReport,
   provideOtel,
   type SyncError,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
@@ -60,7 +60,7 @@ export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/e
 
 export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
   DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
+  Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
 >() {}
 
 export type LiveStoreContextProps<
@@ -230,7 +230,7 @@ export const createStore = <
   syncPayloadSchema,
 }: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema>): Effect.Effect<
   Store<TSchema, TContext>,
-  UnexpectedError,
+  UnknownError,
   Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
@@ -271,7 +271,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnexpectedError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
+          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
         >,
       ) =>
         Effect.gen(function* () {
@@ -301,7 +301,7 @@ export const createStore = <
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnexpectedError.mapToUnexpectedError)
+          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -354,7 +354,7 @@ export const createStore = <
         yield* Effect.tryAll(() =>
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
           Effect.withSpan('createStore:boot'),
         )
@@ -384,7 +384,7 @@ const validateStoreId = (storeId: string) =>
     const validChars = /^[a-zA-Z0-9_-]+$/
 
     if (!validChars.test(storeId)) {
-      return yield* UnexpectedError.make({
+      return yield* UnknownError.make({
         cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
         payload: { storeId },
       })

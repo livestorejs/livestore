@@ -1,10 +1,4 @@
-import {
-  InvalidPullError,
-  InvalidPushError,
-  type IsOfflineError,
-  SyncBackend,
-  UnexpectedError,
-} from '@livestore/common'
+import { InvalidPullError, InvalidPushError, type IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented } from '@livestore/utils'
 import {
@@ -279,7 +273,7 @@ export const makeSyncBackend =
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
         Effect.withSpan('electric-provider:ping'),
@@ -296,7 +290,7 @@ export const makeSyncBackend =
       // otherwise we send a HEAD request to speed up the connection process
       const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
-        : ping.pipe(UnexpectedError.mapToUnexpectedError)
+        : ping.pipe(UnknownError.mapToUnknownError)
 
       return SyncBackend.of({
         connect,
@@ -343,11 +337,11 @@ export const makeSyncBackend =
               Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
               Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
               Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ cause: UnexpectedError.make({ cause }) })),
+              Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
             )
 
             if (!resp.success) {
-              return yield* InvalidPushError.make({ cause: new UnexpectedError({ cause: new Error('Push failed') }) })
+              return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
             }
           }).pipe(Effect.withSpan('electric-provider:push')),
         ping,

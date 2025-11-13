@@ -6,7 +6,7 @@ import {
   type ClientSessionLeaderThreadProxy,
   makeMockSyncBackend,
   SyncState,
-  type UnexpectedError,
+  type UnknownError,
 } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -232,7 +232,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const error = yield* shutdownDeferred.pipe(Effect.flip)
 
-      expect(error._tag).toEqual('LiveStore.UnexpectedError')
+      expect(error._tag).toEqual('LiveStore.UnknownError')
       expect(error.cause).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
@@ -593,7 +593,7 @@ class TestContext extends Context.Tag('TestContext')<
           }
         }
       }
-    }) => Effect.Effect<Store, UnexpectedError, Scope.Scope | OtelTracer.OtelTracer>
+    }) => Effect.Effect<Store, UnknownError, Scope.Scope | OtelTracer.OtelTracer>
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }

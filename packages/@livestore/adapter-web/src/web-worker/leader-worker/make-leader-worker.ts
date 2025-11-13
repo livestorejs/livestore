@@ -1,5 +1,5 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, LogConfig, UnexpectedError } from '@livestore/common'
+import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -159,7 +159,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         })
       }).pipe(
         Effect.tapCauseLogPretty,
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
         Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
         Effect.annotateSpans({ debugInstanceId }),
@@ -177,10 +177,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         const snapshot = workerCtx.dbState.export()
         return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx
@@ -200,12 +197,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
@@ -214,15 +211,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.syncProcessor.syncState
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState')),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -232,7 +226,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.networkStatus
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -245,10 +239,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
         yield* Effect.sleep(300)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
@@ -262,7 +256,7 @@ const makeDevtoolsOptions = ({
   devtoolsEnabled: boolean
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebmeshWorker.CacheService> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
       return { enabled: false }

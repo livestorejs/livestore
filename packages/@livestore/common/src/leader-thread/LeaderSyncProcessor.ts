@@ -19,12 +19,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import {
-  type IntentionalShutdownCause,
-  type MaterializeError,
-  type SqliteDb,
-  UnexpectedError,
-} from '../adapter-types.ts'
+import { type IntentionalShutdownCause, type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
@@ -113,7 +108,7 @@ export const makeLeaderSyncProcessor = ({
       localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<LeaderSyncProcessor, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 1
@@ -205,7 +200,7 @@ export const makeLeaderSyncProcessor = ({
             sessionId,
             seqNum: syncState.localHead,
           },
-        }).pipe(UnexpectedError.mapToUnexpectedError)
+        }).pipe(UnknownError.mapToUnknownError)
 
         if (resolution._tag === 'unknown') {
           // Ignore partial pushes for unrecognised events – they are still
@@ -260,7 +255,7 @@ export const makeLeaderSyncProcessor = ({
 
       const maybeShutdownOnError = (
         cause: Cause.Cause<
-          | UnexpectedError
+          | UnknownError
           | IntentionalShutdownCause
           | IsOfflineError
           | InvalidPushError
@@ -279,7 +274,7 @@ export const makeLeaderSyncProcessor = ({
             return
           }
 
-          const errorToSend = Cause.isFailType(cause) ? cause.error : UnexpectedError.make({ cause })
+          const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.die(cause)
@@ -488,12 +483,12 @@ const backgroundApplyLocalPushes = ({
       })
 
       switch (mergeResult._tag) {
-        case 'unexpected-error': {
-          otelSpan?.addEvent(`push:unexpected-error`, {
+        case 'unknown-error': {
+          otelSpan?.addEvent(`push:unknown-error`, {
             batchSize: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* new UnexpectedError({ cause: mergeResult.message })
+          return yield* new UnknownError({ cause: mergeResult.message })
         }
         case 'rebase': {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
@@ -643,7 +638,7 @@ const backgroundBackendPulling = ({
   isClientEvent: (eventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
-  ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
+  ) => Effect.Effect<void, UnknownError, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
@@ -687,12 +682,12 @@ const backgroundBackendPulling = ({
 
         if (mergeResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
-        } else if (mergeResult._tag === 'unexpected-error') {
-          otelSpan?.addEvent(`pull:unexpected-error`, {
+        } else if (mergeResult._tag === 'unknown-error') {
+          otelSpan?.addEvent(`pull:unknown-error`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* new UnexpectedError({ cause: mergeResult.message })
+          return yield* new UnknownError({ cause: mergeResult.message })
         }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
@@ -751,7 +746,7 @@ const backgroundBackendPulling = ({
                 EventSequenceNumber.isEqual(event.seqNum, confirmedEvent.seqNum),
               ),
             )
-            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnexpectedError.mapToUnexpectedError)
+            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnknownError.mapToUnknownError)
           }
         }
 
@@ -850,9 +845,9 @@ const backgroundBackendPushing = ({
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
-      // Only retry for transient UnexpectedError cases
+      // Only retry for transient UnknownError cases
       const isRetryable = (err: InvalidPushError | IsOfflineError) =>
-        err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnexpectedError'
+        err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnknownError'
 
       // Input: InvalidPushError | IsOfflineError, Output: Duration
       const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
@@ -905,13 +900,13 @@ interface PullQueueSet {
     cursor: EventSequenceNumber.EventSequenceNumber,
   ) => Effect.Effect<
     Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>,
-    UnexpectedError,
+    UnknownError,
     Scope.Scope | LeaderThreadCtx
   >
   offer: (item: {
     payload: typeof SyncState.PayloadUpstream.Type
     leaderHead: EventSequenceNumber.EventSequenceNumber
-  }) => Effect.Effect<void, UnexpectedError>
+  }) => Effect.Effect<void, UnknownError>
 }
 
 const makePullQueueSet = Effect.gen(function* () {

@@ -8,7 +8,7 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { SyncOptions } from '@livestore/common'
-import { LogConfig, UnexpectedError } from '@livestore/common'
+import { LogConfig, UnknownError } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
@@ -88,27 +88,24 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       }).pipe(Stream.unwrapScoped),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
     ExportEventlog: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderHead')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.syncProcessor.syncState
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-node:worker:GetLeaderSyncState'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderSyncState')),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -118,7 +115,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.networkStatus
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:GetNetworkStatus')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetNetworkStatus')),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -134,10 +131,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         // return cachedSnapshot ?? workerCtx.db.export()
         const snapshot = workerCtx.dbState.export()
         return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-node:worker:GetRecreateSnapshot'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetRecreateSnapshot')),
     Shutdown: () =>
       // @effect-diagnostics-next-line unnecessaryEffectGen:off
       Effect.gen(function* () {
@@ -153,10 +147,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
         // yield* Effect.sleep(1000)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:Shutdown')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:Shutdown')),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),
   }).pipe(

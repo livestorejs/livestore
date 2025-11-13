@@ -1,4 +1,4 @@
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { Devtools, UnknownError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
 import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
@@ -15,7 +15,7 @@ declare global {
 
 export const makeSessionInfoBroadcastChannel: Effect.Effect<
   WebChannel.WebChannel<Devtools.SessionInfo.Message, Devtools.SessionInfo.Message>,
-  UnexpectedError,
+  UnknownError,
   Scope.Scope
 > = WebChannel.broadcastChannel({
   channelName: 'session-info',
@@ -103,4 +103,4 @@ export const connectViaWorker = ({
     if (LS_DEV) {
       yield* Effect.logDebug(`@livestore/devtools-web-common: initiated connection: ${node.nodeName} → ${target}`)
     }
-  }).pipe(UnexpectedError.mapToUnexpectedError)
+  }).pipe(UnknownError.mapToUnknownError)

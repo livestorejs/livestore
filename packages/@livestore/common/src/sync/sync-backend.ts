@@ -9,7 +9,7 @@ import {
   type Stream,
   type SubscriptionRef,
 } from '@livestore/utils/effect'
-import type { UnexpectedError } from '../adapter-types.ts'
+import type { UnknownError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'
 import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
@@ -30,7 +30,7 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue, TPayload = 
   args: MakeBackendArgs<TPayload>,
 ) => Effect.Effect<
   SyncBackend<TSyncMetadata>,
-  UnexpectedError,
+  UnknownError,
   Scope.Scope | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 >
 
@@ -45,7 +45,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.
    */
-  connect: Effect.Effect<void, IsOfflineError | UnexpectedError, Scope.Scope>
+  connect: Effect.Effect<void, IsOfflineError | UnknownError, Scope.Scope>
   pull: (
     cursor: Option.Option<{
       eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
@@ -70,7 +70,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * */
     batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
   ) => Effect.Effect<void, IsOfflineError | InvalidPushError>
-  ping: Effect.Effect<void, IsOfflineError | UnexpectedError | Cause.TimeoutException>
+  ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutException>
   // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**

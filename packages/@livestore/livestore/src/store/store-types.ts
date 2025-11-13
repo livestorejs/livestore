@@ -10,7 +10,7 @@ import {
   type QueryBuilder,
   type StoreInterrupted,
   type SyncError,
-  type UnexpectedError,
+  type UnknownError,
 } from '@livestore/common'
 import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
@@ -34,7 +34,7 @@ export type LiveStoreContext =
   | LiveStoreContextRunning
   | {
       stage: 'error'
-      error: UnexpectedError | unknown
+      error: UnknownError | unknown
     }
   | {
       stage: 'shutdown'
@@ -43,11 +43,11 @@ export type LiveStoreContext =
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >()
 
 export type LiveStoreContextRunning = {
@@ -146,7 +146,7 @@ export type StoreInternals = {
    * once per Store instance. Scoped; installs finalizers to end spans and
    * detach reactive refs.
    */
-  readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  readonly boot: Effect.Effect<void, UnknownError, Scope.Scope>
 
   /**
    * Tracks whether the Store has been shut down. When true, mutating APIs
