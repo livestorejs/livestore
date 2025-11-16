@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { expect } from '@playwright/test'
 
 import {
   repeatSuite as baseRepeatSuite,
@@ -12,6 +12,7 @@ export const shouldRecordPerfProfile = baseShouldRecordPerfProfile
 const SELECTORS = {
   status: '[data-testid="stream-status"]',
   todoMeta: '[data-testid="todo-meta"]',
+  eventMeta: '[data-testid="event-stream-meta"]',
   totalInput: '[data-testid="config-total"]',
   rateInput: '[data-testid="config-rate"]',
   startStream: '[data-testid="start-stream"]',
@@ -26,14 +27,6 @@ const SEED_BUTTON_IDS = new Map<number, string>([
   [10_000, 'seed-10k'],
   [100_000, 'seed-100k'],
 ])
-
-const getNumericAttribute = (element: Element | null, attribute: string): number => {
-  if (!element) return 0
-  const value = element.getAttribute(attribute)
-  if (!value) return 0
-  const parsed = Number(value)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
 
 type StatusSnapshot = {
   streamingStatus: string
@@ -50,6 +43,14 @@ type TodoSnapshot = {
   total: number
   completed: number
   active: number
+}
+
+type EventStreamSnapshot = {
+  total: number
+  created: number
+  completed: number
+  uncompleted: number
+  deleted: number
 }
 
 const getStatusSnapshot = async (page: Page): Promise<StatusSnapshot> => {
@@ -110,6 +111,29 @@ const getTodoSnapshot = async (page: Page): Promise<TodoSnapshot> => {
   }, SELECTORS.todoMeta)
 }
 
+const getEventStreamSnapshot = async (page: Page): Promise<EventStreamSnapshot> => {
+  return await page.evaluate((selector: string) => {
+    const node = document.querySelector<HTMLElement>(selector)
+    if (!node) {
+      return { total: 0, created: 0, completed: 0, uncompleted: 0, deleted: 0 }
+    }
+    const readNumber = (attr: string) => {
+      const raw = node.getAttribute(attr)
+      if (!raw) return 0
+      const parsed = Number(raw)
+      return Number.isNaN(parsed) ? 0 : parsed
+    }
+
+    return {
+      total: readNumber('data-events'),
+      created: readNumber('data-created'),
+      completed: readNumber('data-completed'),
+      uncompleted: readNumber('data-uncompleted'),
+      deleted: readNumber('data-deleted'),
+    }
+  }, SELECTORS.eventMeta)
+}
+
 const waitForStreamingStatus = async (page: Page, status: string) => {
   await page.waitForFunction(
     ({ selector, expected }) => {
@@ -150,7 +174,7 @@ export const resetHarness = async (page: Page) => {
 
   if (snapshot.generatorStatus === 'running') {
     const stopGenerator = page.locator(SELECTORS.stopGenerate)
-    if (await stopGenerator.isVisible() && (await stopGenerator.isEnabled())) {
+    if ((await stopGenerator.isVisible()) && (await stopGenerator.isEnabled())) {
       await stopGenerator.click()
     }
     await waitForGeneratorStatus(page, 'stopped')
@@ -159,20 +183,20 @@ export const resetHarness = async (page: Page) => {
 
   if (snapshot.streamingStatus === 'running') {
     const stopStream = page.locator(SELECTORS.stopStream)
-    if (await stopStream.isVisible() && (await stopStream.isEnabled())) {
+    if ((await stopStream.isVisible()) && (await stopStream.isEnabled())) {
       await stopStream.click()
     }
-  await page.waitForFunction(
-    ({ selector }) => {
-      const node = document.querySelector<HTMLElement>(selector)
-      return node?.getAttribute('data-streaming-status') !== 'running'
-    },
-    { selector: SELECTORS.status },
-  )
+    await page.waitForFunction(
+      ({ selector }) => {
+        const node = document.querySelector<HTMLElement>(selector)
+        return node?.getAttribute('data-streaming-status') !== 'running'
+      },
+      { selector: SELECTORS.status },
+    )
   }
 
   const resetButton = page.locator(SELECTORS.resetHarness)
-  if (await resetButton.isVisible() && (await resetButton.isEnabled())) {
+  if ((await resetButton.isVisible()) && (await resetButton.isEnabled())) {
     await resetButton.click()
   }
 
@@ -199,9 +223,7 @@ export const configureGenerator = async (
     await page.locator(SELECTORS.totalInput).fill(Math.max(0, Math.floor(config.total)).toString())
   }
   if (config.eventsPerSecond !== undefined) {
-    await page
-      .locator(SELECTORS.rateInput)
-      .fill(Math.max(1, Math.floor(config.eventsPerSecond)).toString())
+    await page.locator(SELECTORS.rateInput).fill(Math.max(1, Math.floor(config.eventsPerSecond)).toString())
   }
 }
 
@@ -297,10 +319,12 @@ export const collectStreamingMetrics = async (page: Page) => {
 
   const status = await getStatusSnapshot(page)
   const todos = await getTodoSnapshot(page)
+  const events = await getEventStreamSnapshot(page)
 
   return {
     duration,
     status,
     todos,
+    events,
   }
 }

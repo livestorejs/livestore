@@ -44,6 +44,9 @@ repeatSuite(
 
       expect(statusAfter.streamedCount).toBe(TODO_COUNT)
       expect(metrics.todos.total).toBe(TODO_COUNT)
+      expect(metrics.events.created).toBe(TODO_COUNT)
+      expect(metrics.events.total).toBe(TODO_COUNT)
+      expect(metrics.status.streamingStatus).toBe('complete')
     })
   },
 )

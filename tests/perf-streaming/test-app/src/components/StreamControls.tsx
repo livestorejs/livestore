@@ -1,9 +1,8 @@
 import { useStore } from '@livestore/react'
 import React from 'react'
-
-import { events } from '../livestore/schema.ts'
 import { todos$ } from '../livestore/queries.ts'
 import type { TodoRow } from '../livestore/schema.ts'
+import { events } from '../livestore/schema.ts'
 
 const ADJECTIVES = [
   'agile',
@@ -106,7 +105,6 @@ type ControlState = {
   generatorStatus: GeneratorStatus
   queueLength: number
   generatedCount: number
-  streamedCount: number
   seededCount: number
   lastError: string | null
 }
@@ -117,7 +115,6 @@ const initialControlState: ControlState = {
   generatorStatus: 'idle',
   queueLength: 0,
   generatedCount: 0,
-  streamedCount: 0,
   seededCount: 0,
   lastError: null,
 }
@@ -254,7 +251,6 @@ export const StreamControls: React.FC = () => {
     setControlState((prev) => ({
       ...prev,
       queueLength,
-      streamedCount: prev.streamedCount + batch.length,
     }))
 
     if (queueLength === 0 && generatorRef.current.timerId === null && generatorRef.current.remaining <= 0) {
@@ -300,7 +296,6 @@ export const StreamControls: React.FC = () => {
       runId,
       streamingStatus: 'running',
       lastError: null,
-      streamedCount: 0,
     }))
     if (typeof window !== 'undefined') {
       ;(window as any).__streamPerfStart = performance.now()
@@ -500,21 +495,20 @@ export const StreamControls: React.FC = () => {
           flexWrap: 'wrap',
           alignItems: 'center',
         }}
-        data-testid="stream-status"
-        data-streaming-status={controlState.streamingStatus}
+        data-testid="generator-status"
         data-generator-status={controlState.generatorStatus}
+        data-flush-status={controlState.streamingStatus}
         data-queue-length={controlState.queueLength}
         data-generated-count={controlState.generatedCount}
-        data-streamed-count={controlState.streamedCount}
         data-seeded-count={controlState.seededCount}
         data-run-id={controlState.runId ?? ''}
         data-rate={sanitizedRate}
       >
-        <span>Stream: {controlState.streamingStatus === 'running' ? 'Running' : controlState.streamingStatus}</span>
         <span>Generator: {controlState.generatorStatus === 'running' ? 'Running' : controlState.generatorStatus}</span>
+        <span>Flush loop: {controlState.streamingStatus === 'running' ? 'Running' : controlState.streamingStatus}</span>
         <span>Queue: {controlState.queueLength.toLocaleString()}</span>
         <span>Generated: {controlState.generatedCount.toLocaleString()}</span>
-        <span>Streamed: {controlState.streamedCount.toLocaleString()}</span>
+        <span>Seeded: {controlState.seededCount.toLocaleString()}</span>
       </div>
 
       <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>

@@ -1,67 +1,82 @@
 import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { todos$ } from '../livestore/queries.ts'
-import type { TodoRow } from '../livestore/schema.ts'
+const MAX_EVENT_ITEMS = 500
+
+type DisplayEvent = {
+  id: string
+  json: string
+}
+
+const stringify = (value: unknown) => {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch (error) {
+    return typeof value === 'string' ? value : String(error)
+  }
+}
 
 export const EventsList: React.FC = () => {
   const { store } = useStore()
-  const todos = store.useQuery(todos$) as ReadonlyArray<TodoRow>
+  const [events, setEvents] = React.useState<ReadonlyArray<DisplayEvent>>([])
+  const counterRef = React.useRef(0)
 
-  const activeTodos = React.useMemo(
-    () =>
-      todos
-        .filter((todo) => todo.deletedAt === null)
-        .slice()
-        .sort((a, b) => a.id.localeCompare(b.id)),
-    [todos],
-  )
+  React.useEffect(() => {
+    let cancelled = false
+    const iterator = store.events()[Symbol.asyncIterator]()
 
-  const completedCount = React.useMemo(
-    () => activeTodos.reduce((count, todo) => count + (todo.completed ? 1 : 0), 0),
-    [activeTodos],
-  )
+    const run = async () => {
+      try {
+        while (!cancelled) {
+          const { value, done } = await iterator.next()
+          if (done || cancelled) break
+          if (!value) continue
+
+          const id = `${counterRef.current++}-${value.seqNum ?? 'unknown'}`
+          const json = stringify(value)
+
+          setEvents((prev) => [{ id, json }, ...prev].slice(0, MAX_EVENT_ITEMS))
+        }
+      } catch (error) {
+        console.error('Error consuming LiveStore events stream', error)
+      } finally {
+        await iterator.return?.()
+      }
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      void iterator.return?.()
+    }
+  }, [store])
 
   return (
     <section style={{ marginTop: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h2 style={{ margin: 0 }}>Todos (live state)</h2>
-        <div
-          style={{ display: 'flex', gap: '0.75rem', fontSize: '0.9rem' }}
-          data-testid="todo-meta"
-          data-total={activeTodos.length}
-          data-completed={completedCount}
-          data-active={activeTodos.length - completedCount}
-        >
-          <span data-testid="todo-count">Total: {activeTodos.length}</span>
-          <span data-testid="todo-completed">Completed: {completedCount}</span>
-          <span data-testid="todo-active">Active: {activeTodos.length - completedCount}</span>
-        </div>
-      </div>
+      <h2 style={{ margin: '0 0 0.75rem 0' }}>Live event stream</h2>
       <ul
-        style={{ maxHeight: '24rem', overflowY: 'auto', padding: 0, listStyle: 'none' }}
-        data-testid="todo-list"
+        style={{ maxHeight: '26rem', overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0 }}
+        data-testid="event-stream-list"
       >
-        {activeTodos.map((todo) => (
+        {events.map((event) => (
           <li
-            key={todo.id}
-            data-testid="todo-item"
-            data-id={todo.id}
-            data-completed={todo.completed ? 'true' : 'false'}
+            key={event.id}
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
               borderBottom: '1px solid #ddd',
               padding: '0.5rem 0.25rem',
-              textDecoration: todo.completed ? 'line-through' : 'none',
-              color: todo.completed ? '#666' : '#111',
+              fontFamily:
+                'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontSize: '0.85rem',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
             }}
           >
-            <span>{todo.id}</span>
-            <span>{todo.text}</span>
+            {event.json}
           </li>
         ))}
       </ul>
+      {events.length === 0 && <p style={{ color: '#555' }}>No events yet. Start streaming to see incoming events.</p>}
     </section>
   )
 }
