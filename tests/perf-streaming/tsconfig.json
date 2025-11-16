@@ -4,7 +4,7 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["./test-app", "./tests", "./src"],
+  "include": ["./test-app", "./tests", "./src", "../perf/tests/**/*.ts"],
   "exclude": ["node_modules", "**/dist"],
   "references": [
     { "path": "../../packages/@livestore/adapter-web" },

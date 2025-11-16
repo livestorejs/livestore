@@ -2,7 +2,7 @@ import { test as base } from '@playwright/test'
 
 import { shouldRecordPerfProfile } from './utils.ts'
 
-export const test = base.extend<{ forEachTest: undefined }>({
+export const test = base.extend<{ forEachTest: void }>({
   forEachTest: [
     async ({ page, browser }, use, testInfo) => {
       if (shouldRecordPerfProfile) {

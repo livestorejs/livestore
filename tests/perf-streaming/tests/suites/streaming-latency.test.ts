@@ -1,9 +1,19 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures.ts'
-import { repeatSuite } from '../utils.ts'
+import {
+  collectStreamingMetrics,
+  configureGenerator,
+  repeatSuite,
+  resetHarness,
+  seedTodos,
+  startGenerator,
+  startStreaming,
+  waitForStreamingCompletion,
+} from '../utils.ts'
 
 const REPETITIONS_PER_TEST = 15
+const TODO_COUNT = 1_000
 
 repeatSuite(
   'Streaming latency',
@@ -13,68 +23,37 @@ repeatSuite(
   },
   () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/')
-      const clearButton = page.locator('[data-testid="clear-run"]')
-      if (await clearButton.isEnabled()) {
-        await clearButton.click()
-      }
+      await resetHarness(page)
     })
 
-    test('for streaming 1,000 events', async ({ page }, testInfo) => {
-      await page.evaluate(() => {
-        ;(window as any).__streamPerfStart = performance.now()
-      })
+    test('for pre-seeded backlog of 1,000 todos', async ({ page }, testInfo) => {
+      await seedTodos(page, TODO_COUNT)
+      await startStreaming(page)
 
-      await page.locator('[data-testid="emit-default"]').click()
+      const statusAfter = await waitForStreamingCompletion(page)
+      const metrics = await collectStreamingMetrics(page)
 
-      const expectedHandle = await page.waitForFunction(() => {
-        const expectedEl = document.querySelector('[data-testid="expected-events"]')
-        const countEl = document.querySelector('[data-testid="event-count"]')
-        const lastSeqEl = document.querySelector('[data-testid="last-sequence"]')
+      testInfo.annotations.push({ type: 'measurement', description: metrics.duration.toString() })
 
-        if (!expectedEl || !countEl || !lastSeqEl) {
-          return undefined
-        }
+      expect(statusAfter.streamedCount).toBe(TODO_COUNT)
+      expect(metrics.todos.total).toBe(TODO_COUNT)
+      expect(metrics.status.streamingStatus).toBe('complete')
+    })
 
-        const expectedAttr = expectedEl.getAttribute('data-expected')
-        const countAttr = countEl.getAttribute('data-count')
-        const lastSeqAttr = lastSeqEl.getAttribute('data-sequence')
+    test('for live generation of 1,000 todos @ 500 eps', async ({ page }, testInfo) => {
+      await configureGenerator(page, { total: TODO_COUNT, eventsPerSecond: 500 })
 
-        if (expectedAttr === null || countAttr === null || lastSeqAttr === null) {
-          return undefined
-        }
+      await startStreaming(page)
+      await startGenerator(page)
 
-        const expected = Number(expectedAttr)
-        const count = Number(countAttr)
-        const lastSeq = Number(lastSeqAttr)
+      const statusAfter = await waitForStreamingCompletion(page)
+      const metrics = await collectStreamingMetrics(page)
 
-        if (Number.isNaN(expected) || Number.isNaN(count) || Number.isNaN(lastSeq)) {
-          return undefined
-        }
+      testInfo.annotations.push({ type: 'measurement', description: metrics.duration.toString() })
 
-        return count === expected && lastSeq === expected ? expected : undefined
-      })
-      const expectedEvents = await expectedHandle.jsonValue()
-      if (typeof expectedEvents !== 'number') {
-        throw new Error('Expected events count was not resolved')
-      }
-
-      const measurement = await page.evaluate(() => {
-        const start = (window as any).__streamPerfStart as number | undefined
-        const duration = start !== undefined ? performance.now() - start : Number.NaN
-        delete (window as any).__streamPerfStart
-        return duration
-      })
-
-      if (Number.isNaN(measurement)) {
-        throw new Error('Failed to capture streaming latency measurement')
-      }
-
-      testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
-      await expect(page.locator('[data-testid="event-count"]').first()).toHaveAttribute(
-        'data-count',
-        expectedEvents.toString(),
-      )
+      expect(statusAfter.streamedCount).toBe(TODO_COUNT)
+      expect(metrics.todos.total).toBe(TODO_COUNT)
+      expect(metrics.status.streamingStatus).toBe('complete')
     })
   },
 )
