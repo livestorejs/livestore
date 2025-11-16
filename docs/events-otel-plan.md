@@ -6,23 +6,23 @@
 - The store layer still bootstraps the root, commit, and query spans via direct `@opentelemetry/api` calls, but those spans never carry into the leader thread.
 
 ## Observed Gaps
-- `streamEventsWithSyncState` returns raw segments with no span metadata. Head advances, batch counts, and filter combinations are invisible to telemetry.
-- `streamEventsFromEventlog` fetches SQLite batches synchronously; the current `Stream.unfold` wrapper offers no spans around the expensive query work, so latency and row counts are invisible.
+- `streamEventsWithSyncState` paginates via `Stream.paginateChunkEffect`, but every iteration just returns the chunk from `Eventlog.getEventsFromEventlog` with no span metadata. Head advances, batch counts, queue waits, and filter combinations are invisible to telemetry.
+- `getEventsFromEventlog` still issues SQLite reads synchronously. The `dbEventlog.select` call and chunk encoding have no spans, so latency and row counts are hidden.
 - Store-to-leader traces do not propagate a shared OTEL context, meaning segments fetched in the leader thread appear as disconnected traces relative to `Store.eventsStream`.
 
 ## Recommendations
 1. **Segment-level spans in `stream-events.ts`**
-   - Wrap each emitted segment with `Stream.withSpan('@livestore/common:streamEvents:segment', attrs)`.
-   - Attributes worth recording: cursor bounds, effective head, configured batch size, filter counts, `includeClientOnly`, and whether the segment was triggered by head advancement vs. bounded `until`.
-   - Ensures every adapter reusing the helper gets consistent, centralized telemetry.
+   - Inside the `Stream.paginateChunkEffect` step, wrap the effect that computes `chunk` and `nextState` with `Stream.withSpan('@livestore/common:streamEvents:segment', attrs)`.
+   - Attributes worth recording: current cursor/global bounds, the chosen `target`, batch size, filter counts, `includeClientOnly`, queue wait vs. immediate advance, number of rows returned, and whether the segment was triggered by head advancement vs. bounded `until`.
+   - Enables every adapter reusing `streamEventsWithSyncState` to emit consistent batch telemetry without duplicating instrumentation.
 
 2. **Batch-fetch spans in `eventlog.ts`**
-   - Switch the `Stream.unfold` to `Stream.unfoldEffect`, shift the database call into an `Effect`, and wrap it with `Effect.withSpan('@livestore/common:eventlog:fetchBatch', attrs)`.
-   - Attributes: offset, batch size, actual row count, `since`/`until` global sequence, filter/client/session counts.
-   - Captures the real bottleneck (SQLite query) without duplicating logic elsewhere.
+   - Lift the body of `getEventsFromEventlog` into an effect (`Effect.suspend` or a new effectful helper) so the `dbEventlog.select` call can be wrapped by `Effect.withSpan('@livestore/common:eventlog:fetchBatch', attrs)`.
+   - Attributes: `since`/`until` globals, batch size, row count, filter/client/session counts, and whether client-only rows were excluded.
+   - Captures the real bottleneck (SQLite query plus encoding) without duplicating logic elsewhere and feeds useful attributes back to the segment span above.
 
 3. **Context propagation option**
-   - If modifying shared helpers is risky, extend `StreamEventsFromEventLogOptions` with `otelContext?: otel.Context` and pass it through adapters. Linking the worker spans to the store’s query span provides end-to-end traces, but you still miss per-batch visibility.
+   - If modifying shared helpers is risky, extend `StreamEventsOptions` with `otelContext?: otel.Context` and pass it through adapters. Linking the worker spans to the store’s query span provides end-to-end traces, but you still miss per-batch visibility.
 
 ## Suggested Next Steps
 - Pick either the helper-based instrumentation (preferred) or the propagation-only approach depending on rollout comfort.
