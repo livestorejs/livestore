@@ -57,15 +57,19 @@ export const streamEventsWithSyncState = ({
             return [Chunk.empty(), Option.none()]
           }
 
-          // When we reach the current head we take the latest upstreamHead.
+          // const headHasAdvanced = Option.isSome(yield* Queue.poll(headQueue))
+          // const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
+
+          // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
           // The stream suspends here until a new upstreamHead is available in the Queue.
-          const nextHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head) ? yield* Queue.take(headQueue) : head
+          const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
+          const nextHead = waitForHead ? yield* Queue.take(headQueue) : head
           const target = EventSequenceNumber.make({
             global: Math.min(cursor.global + batchSize, nextHead.global),
             client: EventSequenceNumber.clientDefault,
           })
 
-          console.log({ nextHead, target, batchSize })
+          // console.log({ nextHead, target, batchSize })
           const chunk = Eventlog.getEventsFromEventlog({
             dbEventlog,
             options: {
@@ -75,12 +79,25 @@ export const streamEventsWithSyncState = ({
             },
           })
 
-          const nextState =
-            options.until && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
-              ? Option.none()
-              : Option.some({ cursor: target, head: nextHead })
+          const reachedUntil =
+            options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
 
-          return [chunk, nextState]
+          const nextState: Option.Option<{
+            cursor: EventSequenceNumber.EventSequenceNumber
+            head: EventSequenceNumber.EventSequenceNumber
+          }> = reachedUntil ? Option.none() : Option.some({ cursor: target, head: nextHead })
+
+          const spanAttributes = {
+            'livestore.streamEvents.cursor.global': cursor.global,
+            'livestore.streamEvents.target.global': target.global,
+            'livestore.streamEvents.batchSize': batchSize,
+            'livestore.streamEvents.waitedForHead': waitForHead,
+          }
+
+          return yield* Effect.succeed<[Chunk.Chunk<LiveStoreEvent.AnyEncoded>, typeof nextState]>([
+            chunk,
+            nextState,
+          ]).pipe(Effect.withSpan('@livestore/common:streamEvents:segment', { attributes: spanAttributes }))
         }),
       )
     }),

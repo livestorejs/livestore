@@ -217,7 +217,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectedFiber = yield* stream.pipe(Stream.take(2), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectedFiber = yield* stream.pipe(Stream.take(2), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(encodedEvents.at(-1)!.seqNum)
 
@@ -286,7 +286,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(second.seqNum)
 
@@ -324,7 +324,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(eventB.seqNum)
 
@@ -366,7 +366,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           },
         })
 
-        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect).pipe(Effect.forkScoped)
+        const collectedFiber = yield* stream.pipe(Stream.take(1), Stream.runCollect, Effect.forkScoped)
 
         yield* advanceHead(eventSessionTwo.seqNum)
 
