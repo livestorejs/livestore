@@ -99,6 +99,6 @@ const collectArchiveSnapshot = Effect.gen(function* () {
 
   return files
 }).pipe(
-  Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.succeed([])),
+  Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed([])),
   UnexpectedError.mapToUnexpectedError,
 )
