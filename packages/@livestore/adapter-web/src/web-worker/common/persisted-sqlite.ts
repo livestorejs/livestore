@@ -6,7 +6,7 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { type BrowserError, Effect, Opfs, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, Opfs, Schedule, Schema, type WebError } from '@livestore/utils/effect'
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -22,12 +22,12 @@ export const readPersistedStateDbFromClientSession: (args: {
   Effect.Effect<
     Uint8Array<ArrayBuffer>,
     | PersistedSqliteError
-    | BrowserError.UnknownError
-    | BrowserError.TypeError
-    | BrowserError.NotFoundError
-    | BrowserError.NotAllowedError
-    | BrowserError.TypeMismatchError
-    | BrowserError.SecurityError
+    | WebError.UnknownError
+    | WebError.TypeError
+    | WebError.NotFoundError
+    | WebError.NotAllowedError
+    | WebError.TypeMismatchError
+    | WebError.SecurityError
     | Opfs.OpfsError,
     Opfs.Opfs
   >
@@ -84,7 +84,7 @@ export const resetPersistedDataFromClientSession = Effect.fn(
     const directory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* Opfs.remove(directory).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
-      Effect.catchTag('@livestore/utils/Browser/NotFoundError', () => Effect.void),
+      Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.void),
     )
   },
   Effect.retry({
