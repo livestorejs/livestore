@@ -2,7 +2,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
-import { Effect, Logger, LogLevel, Opfs, Queue, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel, Opfs, Queue, Schedule, Schema } from '@livestore/utils/effect'
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { schema } from '../schema.ts'
@@ -73,8 +73,7 @@ export const testMultipleMigrations = () =>
       window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Opfs.Opfs.Default),
-    Effect.provide(Logger.pretty),
+    Effect.provide(Layer.mergeAll(Opfs.Opfs.Default, Logger.pretty)),
     Effect.scoped,
     Effect.runPromise,
   )
