@@ -1,4 +1,9 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/FacadeVFS.js
+//
+// This TypeScript version lives in @livestore/sqlite-wasm instead of @livestore/wa-sqlite because:
+// - @livestore/wa-sqlite is a direct wrapper of upstream wa-sqlite (kept as JavaScript for easier upstream sync)
+// - @livestore/sqlite-wasm is where we add TypeScript abstractions on top of wa-sqlite
+
 /** biome-ignore-all lint/complexity/useLiteralKeys: not needed for this file */
 /** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
 /** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
