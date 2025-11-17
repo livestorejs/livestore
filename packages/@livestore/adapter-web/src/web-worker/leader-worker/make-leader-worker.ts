@@ -92,9 +92,13 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
-          Effect.provide(Opfs.Opfs.Default),
           Effect.provide(
-            WebmeshWorker.CacheService.layer({ nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }) }),
+            Layer.mergeAll(
+              Opfs.Opfs.Default,
+              WebmeshWorker.CacheService.layer({
+                nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+              }),
+            ),
           ),
           Effect.forkScoped,
         )
