@@ -119,7 +119,11 @@ const initialControlState: ControlState = {
   lastError: null,
 }
 
-export const StreamControls: React.FC = () => {
+type StreamControlsProps = {
+  onResetHarness: () => void
+}
+
+export const StreamControls: React.FC<StreamControlsProps> = ({ onResetHarness }) => {
   const { store } = useStore()
   const todos = store.useQuery(todos$) as ReadonlyArray<TodoRow>
 
@@ -374,24 +378,8 @@ export const StreamControls: React.FC = () => {
     setControlState(initialControlState)
     setRequestedTotalEvents(DEFAULT_TOTAL_EVENTS)
     setRequestedEventsPerSecond(DEFAULT_EVENTS_PER_SECOND)
-
-    const activeTodos = todos.filter((todo) => todo.deletedAt === null)
-    if (activeTodos.length === 0) {
-      return
-    }
-
-    const deletedAt = new Date()
-    const deletions = activeTodos.map((todo) => events.todoDeleted({ id: todo.id, deletedAt }))
-
-    deletions.forEach((event, index) => {
-      const isLast = index === deletions.length - 1
-      if (isLast) {
-        store.commit(event)
-      } else {
-        store.commit({ skipRefresh: true }, event)
-      }
-    })
-  }, [stopGenerator, stopStreamingInternal, store, todos])
+    onResetHarness()
+  }, [onResetHarness, stopGenerator, stopStreamingInternal])
 
   React.useEffect(() => {
     return () => {
