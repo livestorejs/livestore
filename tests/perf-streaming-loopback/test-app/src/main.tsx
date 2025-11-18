@@ -5,8 +5,8 @@ import { StrictMode, useCallback, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { STORE_ID } from '../../src/shared/constants.ts'
-import { EventsList } from './components/EventsList.tsx'
 import { EventControls } from './components/EventControls.tsx'
+import { EventsList } from './components/EventsList.tsx'
 import { schema } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
@@ -19,10 +19,10 @@ const createAdapter = (resetPersistence = false) =>
   })
 
 const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
-  const [eventsVisible, setEventsVisible] = useState(true)
+  const [eventsVisible, setEventsVisible] = useState(false)
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', margin: '1.5rem auto', maxWidth: '48rem' }}>
+    <div style={{ fontFamily: 'system-ui, sans-serif', margin: '1.5rem auto', maxWidth: '48rem' }} data-testid="app">
       <header>
         <h1>LiveStore Event Streaming Perf</h1>
         <p style={{ color: '#555' }}>

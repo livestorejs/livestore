@@ -7,12 +7,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   workers: 1,
   reportSlowTests: null,
-  reporter: [process.env.CI ? ['dot'] : ['line'], ['./tests/measurements-reporter.ts']],
+  reporter: [process.env.CI ? ['dot'] : ['line']],
   use: { baseURL: 'http://localhost:46001' },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:46001',
+      },
     },
   ],
   webServer: {

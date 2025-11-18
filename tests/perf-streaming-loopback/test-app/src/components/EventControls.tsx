@@ -282,6 +282,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
         </button>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <button type="button" data-testid="seed-500" onClick={() => seedEvents(500)}>
+          Seed 500
+        </button>
         <button type="button" data-testid="seed-1k" onClick={() => seedEvents(1_000)}>
           Seed 1,000
         </button>
