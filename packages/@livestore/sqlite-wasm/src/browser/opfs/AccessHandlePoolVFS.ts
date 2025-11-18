@@ -1,4 +1,4 @@
-import { Effect, type Opfs, type Runtime, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, Opfs, Runtime, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
@@ -270,22 +270,17 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   async isReady() {
-    if (!this.#directoryHandle) {
-      // All files are stored in a single directory.
-      let handle = await navigator.storage.getDirectory()
-      for (const d of this.#directoryPath.split('/')) {
-        if (d) {
-          handle = await handle.getDirectoryHandle(d, { create: true })
+    return Effect.gen(this, function* () {
+      if (!this.#directoryHandle) {
+        this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
+
+        yield* Effect.promise(() => this.#acquireAccessHandles())
+        if (this.getCapacity() === 0) {
+          yield* Effect.promise(() => this.addCapacity(DEFAULT_CAPACITY))
         }
       }
-      this.#directoryHandle = handle
-
-      await this.#acquireAccessHandles()
-      if (this.getCapacity() === 0) {
-        await this.addCapacity(DEFAULT_CAPACITY)
-      }
-    }
-    return true
+      return true
+    }).pipe(Runtime.runPromise(this.#runtime))
   }
 
   /**
