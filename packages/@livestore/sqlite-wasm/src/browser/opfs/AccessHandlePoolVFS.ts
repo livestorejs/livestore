@@ -75,11 +75,11 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   #mapIdToFile = new Map<number, { path: string; flags: number; accessHandle: FileSystemSyncAccessHandle }>()
 
-  static async create(name: string, directoryPath: string, module: any) {
+  static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
     const vfs = new AccessHandlePoolVFS(name, directoryPath, module)
-    await vfs.isReady()
+    yield* Effect.promise(() => vfs.isReady())
     return vfs
-  }
+  })
 
   constructor(name: string, directoryPath: string, module: any) {
     super(name, module)
