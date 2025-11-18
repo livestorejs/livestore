@@ -1,4 +1,4 @@
-import { Effect, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, type Opfs, type Runtime, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
@@ -57,6 +57,9 @@ const DEFAULT_CAPACITY = 20
 export class AccessHandlePoolVFS extends FacadeVFS {
   log = null //function(...args) { console.log(`[${contextName}]`, ...args) };
 
+  // Runtime for executing Effect operations
+  #runtime: Runtime.Runtime<Opfs.Opfs>
+
   // All the OPFS files the VFS uses are contained in one flat directory
   // specified in the constructor. No other files should be written here.
   #directoryPath
@@ -76,14 +79,21 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #mapIdToFile = new Map<number, { path: string; flags: number; accessHandle: FileSystemSyncAccessHandle }>()
 
   static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
-    const vfs = new AccessHandlePoolVFS(name, directoryPath, module)
+    const runtime = yield* Effect.runtime<Opfs.Opfs>()
+    const vfs = new AccessHandlePoolVFS({ name, directoryPath, module, runtime })
     yield* Effect.promise(() => vfs.isReady())
     return vfs
   })
 
-  constructor(name: string, directoryPath: string, module: any) {
+  constructor({
+    name,
+    directoryPath,
+    module,
+    runtime,
+  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs> }) {
     super(name, module)
     this.#directoryPath = directoryPath
+    this.#runtime = runtime
   }
 
   /**
