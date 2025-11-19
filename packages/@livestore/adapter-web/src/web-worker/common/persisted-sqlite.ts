@@ -154,7 +154,7 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
   const currentDbFileName = getStateDbFileName(currentSchema)
   const currentPath = `/${currentDbFileName}`
 
-  const allPaths = yield* Effect.sync(() => vfs.getTrackedFilePaths())
+  const allPaths = yield* Effect.sync(() => vfs.getTrackedSqliteFilePaths())
   const oldStateDbPaths = allPaths.filter(
     (path) => path.startsWith('/state') && path.endsWith('.db') && path !== currentPath,
   )
