@@ -277,7 +277,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      * Perform a synchronous read into the provided buffer from a sync access handle.
      *
      * @param handle - Sync access handle to read from.
-     * @param buffer - Destination buffer.
+     * @param buffer - Destination buffer (can be a specific view like Uint8Array).
      * @param options - Read position options.
      * @returns Number of bytes read.
      *
@@ -286,12 +286,13 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      *
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle/read | MDN Reference}
      */
-    const syncRead = (handle: FileSystemSyncAccessHandle, buffer: ArrayBuffer, options?: FileSystemReadWriteOptions) =>
+    const syncRead = (
+      handle: FileSystemSyncAccessHandle,
+      buffer: ArrayBuffer | ArrayBufferView,
+      options?: FileSystemReadWriteOptions,
+    ) =>
       Effect.try({
-        try: () => {
-          const view = new Uint8Array(buffer)
-          return handle.read(view, options)
-        },
+        try: () => handle.read(buffer, options),
         catch: (u) => WebError.parseWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
       })
 
