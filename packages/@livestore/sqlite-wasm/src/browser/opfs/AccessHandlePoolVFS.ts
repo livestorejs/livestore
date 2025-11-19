@@ -1,5 +1,5 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
-import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream } from '@livestore/utils/effect'
+import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream, type WebError } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
@@ -271,14 +271,13 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   async isReady() {
     return Effect.gen(this, function* () {
-      if (!this.#directoryHandle) {
-        this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
+      if (this.#directoryHandle) return true
 
-        yield* this.#acquireAccessHandles()
-        if (this.getCapacity() === 0) {
-          yield* Effect.promise(() => this.addCapacity(DEFAULT_CAPACITY))
-        }
-      }
+      this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
+
+      yield* this.#acquireAccessHandles()
+      if (this.getCapacity() === 0) yield* this.addCapacity(DEFAULT_CAPACITY)
+
       return true
     }).pipe(Runtime.runPromise(this.#runtime))
   }
@@ -310,23 +309,33 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   /**
    * Increase the capacity of the file system by n.
    */
-  async addCapacity(n: number): Promise<number> {
-    for (let i = 0; i < n; ++i) {
-      const name = Math.random().toString(36).replace('0.', '')
-      const handle = await this.#directoryHandle!.getFileHandle(name, {
-        create: true,
-      })
+  addCapacity: (
+    n: number,
+  ) => Effect.Effect<
+    void,
+    | WebError.UnknownError
+    | WebError.TypeError
+    | WebError.NoModificationAllowedError
+    | WebError.NotFoundError
+    | WebError.NotAllowedError
+    | WebError.TypeMismatchError
+    | WebError.InvalidStateError,
+    Opfs.Opfs | Scope.Scope
+  > = Effect.fn((n: number) =>
+    Effect.repeatN(
+      Effect.gen(this, function* () {
+        const name = Math.random().toString(36).replace('0.', '')
+        const fileHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true })
+        const syncFileHandle = yield* Opfs.Opfs.createSyncAccessHandle(fileHandle).pipe(
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+        )
 
-      const accessHandle = await Effect.tryPromise({
-        try: () => handle.createSyncAccessHandle(),
-        catch: (cause) => new OpfsError({ cause, path: name }),
-      }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
-      this.#mapAccessHandleToName.set(accessHandle, name)
-
-      this.#setAssociatedPath(accessHandle, '', 0)
-    }
-    return n
-  }
+        this.#mapAccessHandleToName.set(syncFileHandle, name)
+        this.#setAssociatedPath(syncFileHandle, '', 0)
+      }),
+      n,
+    ),
+  )
 
   /**
    * Decrease the capacity of the file system by n. The capacity cannot be
