@@ -109,6 +109,7 @@ export {
   MutableHashMap,
   MutableHashSet,
   Option,
+  Order,
   ParseResult,
   Predicate,
   Pretty,

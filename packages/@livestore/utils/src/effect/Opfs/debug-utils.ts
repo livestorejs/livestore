@@ -4,7 +4,7 @@
  * and inspect the OPFS structure during development.
  */
 
-import { Effect } from 'effect'
+import { Effect, Stream } from 'effect'
 import { prettyBytes } from '../../mod.ts'
 import { Opfs } from './Opfs.ts'
 import { getDirectoryHandleByPath, getMetadata, remove } from './utils.ts'
@@ -38,34 +38,37 @@ const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
     pathSegments: ReadonlyArray<string>,
   ) => Effect.Effect<OpfsTreeNode, unknown, Opfs> = (handle, pathSegments) =>
     Effect.gen(function* () {
-      const entries = yield* Opfs.listEntries(handle)
-      const sorted = entries.slice().sort((left, right) => left.name.localeCompare(right.name))
+      const handlesStream = yield* Opfs.values(handle)
+      const handles = yield* handlesStream.pipe(
+        Stream.runCollect,
+        Effect.map((chunk) => Array.from(chunk).sort((a, b) => a.name.localeCompare(b.name))),
+      )
 
-      const children: OpfsTreeNode[] = []
+      const children = yield* Effect.forEach(
+        handles,
+        (childHandle) =>
+          Effect.gen(function* () {
+            const nextSegments = [...pathSegments, childHandle.name]
+            const path = formatPath(nextSegments)
 
-      for (const entry of sorted) {
-        const nextSegments = [...pathSegments, entry.name]
-        const path = formatPath(nextSegments)
+            if (childHandle.kind === 'directory') {
+              return yield* collectDirectory(childHandle as FileSystemDirectoryHandle, nextSegments)
+            }
 
-        if (entry.kind === 'directory') {
-          const childDirectory = yield* collectDirectory(entry.handle, nextSegments)
-          children.push(childDirectory)
-          continue
-        }
+            const metadata = yield* getMetadata(childHandle as FileSystemFileHandle)
 
-        if (entry.kind === 'file') {
-          const fileMetadata = yield* getMetadata(entry.handle)
-          children.push({
-            metadata: {
-              name: entry.name,
-              path,
-              kind: entry.kind,
-              size: fileMetadata.size,
-              lastModified: fileMetadata.lastModified,
-            },
-          })
-        }
-      }
+            return {
+              metadata: {
+                name: childHandle.name,
+                path,
+                kind: 'file',
+                size: metadata.size,
+                lastModified: metadata.lastModified,
+              },
+            } as OpfsTreeNode
+          }),
+        { concurrency: 'unbounded' },
+      )
 
       return {
         metadata: {

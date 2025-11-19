@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Effect, Stream } from 'effect'
 import { Opfs, OpfsError } from './Opfs.ts'
 
 /**
@@ -110,9 +110,7 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
   path: string,
   options?: FileSystemGetDirectoryOptions,
 ) {
-  if (isRootPath(path)) {
-    return yield* Opfs.getRootDirectoryHandle
-  }
+  if (isRootPath(path)) return yield* Opfs.getRootDirectoryHandle
 
   const pathSegments = yield* parsePathSegments(path)
   return yield* traverseDirectoryPath(pathSegments, options)
@@ -132,13 +130,10 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
 
   if (isRootPath(path)) {
     const rootHandle = yield* Opfs.getRootDirectoryHandle
-    const entries = yield* Opfs.listEntries(rootHandle)
-
-    for (const entry of entries) {
-      // Clearing the root implies removing every entry recursively.
-      yield* Opfs.removeEntry(rootHandle, entry.name, { recursive: true })
-    }
-
+    const handlesStream = yield* Opfs.values(rootHandle)
+    yield* handlesStream.pipe(
+      Stream.runForEach((handle) => Opfs.removeEntry(rootHandle, handle.name, { recursive: true })),
+    )
     return
   }
 
