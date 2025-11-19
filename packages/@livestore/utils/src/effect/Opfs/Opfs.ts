@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema, Stream } from 'effect'
 import * as Browser from '../WebError.ts'
 
 /**
@@ -90,57 +90,22 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
             Browser.NotAllowedError,
             Browser.InvalidModificationError,
             Browser.NotFoundError,
+            Browser.NoModificationAllowedError,
           ]),
       })
 
     /**
-     * Collect a snapshot of child file-system handles for a directory.
+     * Return a stream of child file-system handles for a directory.
      *
-     * @param directory - Directory whose entries should be listed.
-     * @returns Handles grouped by kind and annotated with names.
+     * @param directory - Directory whose children are to be streamed
+     * @returns `Stream` of `FileSystemHandle`
      *
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/entries | MDN Reference}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/values | MDN Reference}
      */
-    const listEntries = (directory: FileSystemDirectoryHandle) =>
-      Effect.gen(function* () {
-        const entries: (
-          | {
-              readonly name: string
-              readonly kind: 'directory'
-              readonly handle: FileSystemDirectoryHandle
-            }
-          | {
-              readonly name: string
-              readonly kind: 'file'
-              readonly handle: FileSystemFileHandle
-            }
-          | {
-              readonly name: string
-              readonly kind: Exclude<FileSystemHandleKind, 'file' | 'directory'>
-              readonly handle: FileSystemHandle
-            }
-        )[] = []
-
-        return yield* Effect.tryPromise({
-          try: async () => {
-            for await (const [name, handle] of directory) {
-              if (handle.kind === 'file') {
-                entries.push({ name, kind: 'file', handle: handle as FileSystemFileHandle })
-              } else if (handle.kind === 'directory') {
-                entries.push({ name, kind: 'directory', handle: handle as FileSystemDirectoryHandle })
-              } else {
-                entries.push({
-                  name,
-                  kind: handle.kind,
-                  handle,
-                })
-              }
-            }
-            return entries
-          },
-          catch: (u) => Browser.parseWebError(u, [Browser.NotAllowedError, Browser.NotFoundError]),
-        })
-      })
+    const values = (directory: FileSystemDirectoryHandle) =>
+      Stream.fromAsyncIterable(directory.values(), (u) =>
+        Browser.parseWebError(u, [Browser.NotAllowedError, Browser.NotFoundError]),
+      )
 
     /**
      * Resolve the relative path from a parent directory to a descendant handle.
@@ -408,7 +373,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       getFileHandle,
       getDirectoryHandle,
       removeEntry,
-      listEntries,
+      values,
       resolve,
       getFile,
       writeFile,
@@ -439,7 +404,7 @@ export const noopOpfs = new Opfs({
   getFileHandle: () => Effect.fail(notFoundError),
   getDirectoryHandle: () => Effect.fail(notFoundError),
   removeEntry: () => Effect.fail(notFoundError),
-  listEntries: () => Effect.succeed([]),
+  values: () => Effect.fail(notFoundError),
   resolve: () => Effect.succeed(Option.none()),
   getFile: () => Effect.fail(notFoundError),
   writeFile: () => Effect.fail(notFoundError),
