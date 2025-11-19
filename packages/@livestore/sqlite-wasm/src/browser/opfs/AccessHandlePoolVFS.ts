@@ -179,7 +179,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
           ;[accessHandle] = this.#availableAccessHandles.keys()
-          this.#setAssociatedPath(accessHandle!, path, flags)
+          this.#setAssociatedPath(accessHandle!, path, flags).pipe(Runtime.runSync(this.#runtime))
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
@@ -208,7 +208,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       file.accessHandle.flush()
       this.#mapIdToFile.delete(fileId)
       if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
-        this.#deletePath(file.path)
+        this.#deletePath(file.path).pipe(Runtime.runSync(this.#runtime))
       }
     }
     return VFS.SQLITE_OK
@@ -269,12 +269,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jDelete(zName: string, _syncDir: number): number {
     const path = this.#getPath(zName)
-    this.#deletePath(path)
+    this.#deletePath(path).pipe(Runtime.runSync(this.#runtime))
     return VFS.SQLITE_OK
   }
 
   close() {
-    this.#releaseAccessHandles()
+    this.#releaseAccessHandles().pipe(Runtime.runPromise(this.#runtime))
   }
 
   async isReady() {
@@ -317,32 +317,21 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   /**
    * Increase the capacity of the file system by n.
    */
-  addCapacity: (
-    n: number,
-  ) => Effect.Effect<
-    void,
-    | WebError.UnknownError
-    | WebError.TypeError
-    | WebError.NoModificationAllowedError
-    | WebError.NotFoundError
-    | WebError.NotAllowedError
-    | WebError.TypeMismatchError
-    | WebError.InvalidStateError,
-    Opfs.Opfs | Scope.Scope
-  > = Effect.fn((n: number) =>
-    Effect.repeatN(
-      Effect.gen(this, function* () {
-        const name = Math.random().toString(36).replace('0.', '')
-        const fileHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true })
-        const syncFileHandle = yield* Opfs.Opfs.createSyncAccessHandle(fileHandle).pipe(
-          Effect.retry(Schedule.exponentialBackoff10Sec),
-        )
+  addCapacity: (n: number) => Effect.Effect<void, OpfsError | WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn(
+    (n: number) =>
+      Effect.repeatN(
+        Effect.gen(this, function* () {
+          const name = Math.random().toString(36).replace('0.', '')
+          const fileHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true })
+          const syncFileHandle = yield* Opfs.Opfs.createSyncAccessHandle(fileHandle).pipe(
+            Effect.retry(Schedule.exponentialBackoff10Sec),
+          )
 
-        this.#mapAccessHandleToName.set(syncFileHandle, name)
-        this.#setAssociatedPath(syncFileHandle, '', 0)
-      }),
-      n,
-    ),
+          this.#mapAccessHandleToName.set(syncFileHandle, name)
+          yield* this.#setAssociatedPath(syncFileHandle, '', 0)
+        }),
+        n,
+      ),
   )
 
   /**
@@ -393,8 +382,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
             // Store handle-to-name mapping
             this.#mapAccessHandleToName.set(syncFileHandle, fileHandleName)
 
-            // Read associated path from file header (synchronous operation)
-            const path = this.#getAssociatedPath(syncFileHandle)
+            // Read associated path from file header
+            const path = yield* this.#getAssociatedPath(syncFileHandle)
 
             // Categorize handle as associated or available
             if (path) {
@@ -426,75 +415,83 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Empty string is returned for an unassociated OPFS file.
    * @returns {string} path or empty string
    */
-  #getAssociatedPath(accessHandle: FileSystemSyncAccessHandle): string {
-    // Read the path and digest of the path from the file.
-    const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
-    accessHandle.read(corpus, { at: 0 })
+  #getAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle) =>
+    Effect.gen(this, function* () {
+      // Read the path and digest of the path from the file.
+      const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
+      yield* Opfs.Opfs.syncRead(accessHandle, corpus.buffer, { at: 0 })
 
-    // Delete files not expected to be present.
-    const dataView = new DataView(corpus.buffer, corpus.byteOffset)
-    const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-    if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
-      console.warn(`Remove file with unexpected flags ${flags.toString(16)}`)
-      this.#setAssociatedPath(accessHandle, '', 0)
-      return ''
-    }
-
-    const fileDigest = new Uint32Array(HEADER_DIGEST_SIZE / 4)
-    accessHandle.read(fileDigest, { at: HEADER_OFFSET_DIGEST })
-
-    // Verify the digest.
-    const computedDigest = this.#computeDigest(corpus)
-    if (fileDigest.every((value, i) => value === computedDigest[i])) {
-      // Good digest. Decode the null-terminated path string.
-      const pathBytes = corpus.indexOf(0)
-      if (pathBytes === 0) {
-        // Ensure that unassociated files are empty. Unassociated files are
-        // truncated in #setAssociatedPath after the header is written. If
-        // an interruption occurs right before the truncation then garbage
-        // may remain in the file.
-        accessHandle.truncate(HEADER_OFFSET_DATA)
+      // Delete files not expected to be present.
+      const dataView = new DataView(corpus.buffer, corpus.byteOffset)
+      const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
+      if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+        yield* Effect.logWarning(`Remove file with unexpected flags ${flags.toString(16)}`)
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+        return ''
       }
-      return new TextDecoder().decode(corpus.subarray(0, pathBytes))
-    } else {
-      // Bad digest. Repair this header.
-      console.warn('Disassociating file with bad digest.')
-      this.#setAssociatedPath(accessHandle, '', 0)
-      return ''
-    }
-  }
+
+      const fileDigest = new Uint32Array(HEADER_DIGEST_SIZE / 4)
+      yield* Opfs.Opfs.syncRead(accessHandle, fileDigest.buffer, { at: HEADER_OFFSET_DIGEST })
+
+      // Verify the digest.
+      const computedDigest = this.#computeDigest(corpus)
+      if (fileDigest.every((value, i) => value === computedDigest[i])) {
+        // Good digest. Decode the null-terminated path string.
+        const pathBytes = corpus.indexOf(0)
+        if (pathBytes === 0) {
+          // Ensure that unassociated files are empty. Unassociated files are
+          // truncated in #setAssociatedPath after the header is written. If
+          // an interruption occurs right before the truncation then garbage
+          // may remain in the file.
+          yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+        }
+        return new TextDecoder().decode(corpus.subarray(0, pathBytes))
+      } else {
+        // Bad digest. Repair this header.
+        yield* Effect.logWarning('Disassociating file with bad digest.')
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+        return ''
+      }
+    }),
+  )
 
   /**
    * Set the path on an OPFS file header.
    */
-  #setAssociatedPath(accessHandle: FileSystemSyncAccessHandle, path: string, flags: number) {
-    // Convert the path string to UTF-8.
-    const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
-    const encodedResult = new TextEncoder().encodeInto(path, corpus)
-    if (encodedResult.written >= HEADER_MAX_PATH_SIZE) {
-      throw new Error('path too long')
-    }
+  #setAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle, path: string, flags: number) =>
+    Effect.gen(this, function* () {
+      // Convert the path string to UTF-8.
+      const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
+      const encodedResult = new TextEncoder().encodeInto(path, corpus)
 
-    // Add the creation flags.
-    const dataView = new DataView(corpus.buffer, corpus.byteOffset)
-    dataView.setUint32(HEADER_OFFSET_FLAGS, flags)
+      if (encodedResult.written >= HEADER_MAX_PATH_SIZE) {
+        return yield* new OpfsError({
+          cause: new Error('Path too long'),
+          path,
+        })
+      }
 
-    // Write the OPFS file header, including the digest.
-    const digest = this.#computeDigest(corpus)
-    accessHandle.write(corpus, { at: 0 })
-    accessHandle.write(digest, { at: HEADER_OFFSET_DIGEST })
-    accessHandle.flush()
+      // Add the creation flags.
+      const dataView = new DataView(corpus.buffer, corpus.byteOffset)
+      dataView.setUint32(HEADER_OFFSET_FLAGS, flags)
 
-    if (path) {
-      this.#mapPathToAccessHandle.set(path, accessHandle)
-      this.#availableAccessHandles.delete(accessHandle)
-    } else {
-      // This OPFS file doesn't represent any SQLite file so it doesn't
-      // need to keep any data.
-      accessHandle.truncate(HEADER_OFFSET_DATA)
-      this.#availableAccessHandles.add(accessHandle)
-    }
-  }
+      // Write the OPFS file header, including the digest.
+      const digest = this.#computeDigest(corpus)
+      yield* Opfs.Opfs.syncWrite(accessHandle, corpus, { at: 0 })
+      yield* Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST })
+      yield* Opfs.Opfs.syncFlush(accessHandle)
+
+      if (path) {
+        this.#mapPathToAccessHandle.set(path, accessHandle)
+        this.#availableAccessHandles.delete(accessHandle)
+      } else {
+        // This OPFS file doesn't represent any SQLite file so it doesn't
+        // need to keep any data.
+        yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+        this.#availableAccessHandles.add(accessHandle)
+      }
+    }),
+  )
 
   /**
    * We need a synchronous digest function so can't use WebCrypto.
@@ -533,14 +530,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Remove the association between a path and an OPFS file.
    * @param {string} path
    */
-  #deletePath(path: string) {
-    const accessHandle = this.#mapPathToAccessHandle.get(path)
-    if (accessHandle) {
-      // Un-associate the SQLite path from the OPFS file.
-      this.#mapPathToAccessHandle.delete(path)
-      this.#setAssociatedPath(accessHandle, '', 0)
-    }
-  }
+  #deletePath = Effect.fn((path: string) =>
+    Effect.gen(this, function* () {
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
+      if (accessHandle) {
+        // Un-associate the SQLite path from the OPFS file.
+        this.#mapPathToAccessHandle.delete(path)
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+      }
+    }),
+  )
 }
 
 export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
