@@ -400,14 +400,18 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }),
   )
 
-  #releaseAccessHandles() {
-    for (const accessHandle of this.#mapAccessHandleToName.keys()) {
-      accessHandle.close()
-    }
-    this.#mapAccessHandleToName.clear()
-    this.#mapPathToAccessHandle.clear()
-    this.#availableAccessHandles.clear()
-  }
+  #releaseAccessHandles = Effect.fn(() =>
+    Effect.gen(this, function* () {
+      yield* Effect.forEach(
+        this.#mapAccessHandleToName.keys(),
+        (accessHandle) => Effect.sync(() => accessHandle.close()),
+        { concurrency: 'unbounded', discard: true },
+      )
+      this.#mapAccessHandleToName.clear()
+      this.#mapPathToAccessHandle.clear()
+      this.#availableAccessHandles.clear()
+    }),
+  )
 
   /**
    * Read and return the associated path from an OPFS file header.
