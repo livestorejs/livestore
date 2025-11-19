@@ -1,5 +1,5 @@
-import { Effect, Opfs, Runtime, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
+import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
@@ -58,7 +58,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   log = null //function(...args) { console.log(`[${contextName}]`, ...args) };
 
   // Runtime for executing Effect operations
-  #runtime: Runtime.Runtime<Opfs.Opfs>
+  #runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
 
   // All the OPFS files the VFS uses are contained in one flat directory
   // specified in the constructor. No other files should be written here.
@@ -79,7 +79,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #mapIdToFile = new Map<number, { path: string; flags: number; accessHandle: FileSystemSyncAccessHandle }>()
 
   static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
-    const runtime = yield* Effect.runtime<Opfs.Opfs>()
+    const runtime = yield* Effect.runtime<Opfs.Opfs | Scope.Scope>()
     const vfs = new AccessHandlePoolVFS({ name, directoryPath, module, runtime })
     yield* Effect.promise(() => vfs.isReady())
     return vfs
@@ -90,7 +90,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     directoryPath,
     module,
     runtime,
-  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs> }) {
+  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope> }) {
     super(name, module)
     this.#directoryPath = directoryPath
     this.#runtime = runtime
@@ -274,7 +274,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       if (!this.#directoryHandle) {
         this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
 
-        yield* Effect.promise(() => this.#acquireAccessHandles())
+        yield* this.#acquireAccessHandles()
         if (this.getCapacity() === 0) {
           yield* Effect.promise(() => this.addCapacity(DEFAULT_CAPACITY))
         }
@@ -348,32 +348,41 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return nRemoved
   }
 
-  async #acquireAccessHandles() {
-    // Enumerate all the files in the directory.
-    const files = [] as [string, FileSystemFileHandle][]
-    for await (const [name, handle] of this.#directoryHandle!) {
-      if (handle.kind === 'file') {
-        files.push([name, handle as FileSystemFileHandle])
-      }
-    }
+  #acquireAccessHandles = Effect.fn(() =>
+    Effect.gen(this, function* () {
+      const handlesStream = yield* Opfs.Opfs.values(this.#directoryHandle!)
 
-    // Open access handles in parallel, separating associated and unassociated.
-    await Promise.all(
-      files.map(async ([name, handle]) => {
-        const accessHandle = await Effect.tryPromise({
-          try: () => handle.createSyncAccessHandle(),
-          catch: (cause) => new OpfsError({ cause, path: name }),
-        }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
-        this.#mapAccessHandleToName.set(accessHandle, name)
-        const path = this.#getAssociatedPath(accessHandle)
-        if (path) {
-          this.#mapPathToAccessHandle.set(path, accessHandle)
-        } else {
-          this.#availableAccessHandles.add(accessHandle)
-        }
-      }),
-    )
-  }
+      yield* handlesStream.pipe(
+        Stream.filter((handle) => handle.kind === 'file'),
+        Stream.mapEffect(
+          (fileHandle) =>
+            Effect.gen(function* () {
+              return {
+                fileHandleName: fileHandle.name,
+                syncFileHandle: yield* Opfs.Opfs.createSyncAccessHandle(fileHandle),
+              } as const
+            }),
+          { concurrency: 'unbounded' },
+        ),
+        Stream.runForEach(({ fileHandleName, syncFileHandle }) =>
+          Effect.gen(this, function* () {
+            // Store handle-to-name mapping
+            this.#mapAccessHandleToName.set(syncFileHandle, fileHandleName)
+
+            // Read associated path from file header (synchronous operation)
+            const path = this.#getAssociatedPath(syncFileHandle)
+
+            // Categorize handle as associated or available
+            if (path) {
+              this.#mapPathToAccessHandle.set(path, syncFileHandle)
+            } else {
+              this.#availableAccessHandles.add(syncFileHandle)
+            }
+          }),
+        ),
+      )
+    }),
+  )
 
   #releaseAccessHandles() {
     for (const accessHandle of this.#mapAccessHandleToName.keys()) {
