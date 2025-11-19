@@ -191,7 +191,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   )
 
   jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
-    try {
+    return Effect.gen(this, function* () {
       // First try to open a path that already exists in the file system.
       const path = zName ? this.#getPath(zName) : Math.random().toString(36)
       let accessHandle = this.#mapPathToAccessHandle.get(path)
@@ -200,15 +200,15 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
           ;[accessHandle] = this.#availableAccessHandles.keys()
-          this.#setAssociatedPath(accessHandle!, path, flags).pipe(Runtime.runSync(this.#runtime))
+          yield* this.#setAssociatedPath(accessHandle!, path, flags)
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
-          throw new Error('cannot create file')
+          return yield* Effect.fail(new Error('cannot create file'))
         }
       }
       if (!accessHandle) {
-        throw new Error('file not found')
+        return yield* Effect.fail(new Error('file not found'))
       }
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
@@ -217,61 +217,99 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       pOutFlags.setInt32(0, flags, true)
       return VFS.SQLITE_OK
-    } catch (e: any) {
-      console.error(e.message)
-      return VFS.SQLITE_CANTOPEN
-    }
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jClose(fileId: number): number {
-    const file = this.#mapIdToFile.get(fileId)
-    if (file) {
-      file.accessHandle.flush()
-      this.#mapIdToFile.delete(fileId)
-      if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
-        this.#deletePath(file.path).pipe(Runtime.runSync(this.#runtime))
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)
+      if (file) {
+        yield* Opfs.Opfs.syncFlush(file.accessHandle)
+        this.#mapIdToFile.delete(fileId)
+        if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+          yield* this.#deletePath(file.path)
+        }
       }
-    }
-    return VFS.SQLITE_OK
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.read(pData.subarray(), {
-      at: HEADER_OFFSET_DATA + iOffset,
-    })
-    if (nBytes < pData.byteLength) {
-      pData.fill(0, nBytes, pData.byteLength)
-      return VFS.SQLITE_IOERR_SHORT_READ
-    }
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.buffer, {
+        at: HEADER_OFFSET_DATA + iOffset,
+      })
+      if (nBytes < pData.byteLength) {
+        pData.fill(0, nBytes, pData.byteLength)
+        return VFS.SQLITE_IOERR_SHORT_READ
+      }
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.write(pData.subarray(), {
-      at: HEADER_OFFSET_DATA + iOffset,
-    })
-    return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const nBytes = yield* Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
+        at: HEADER_OFFSET_DATA + iOffset,
+      })
+      return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jTruncate(fileId: number, iSize: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    file.accessHandle.truncate(HEADER_OFFSET_DATA + iSize)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jSync(fileId: number, _flags: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    file.accessHandle.flush()
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      yield* Opfs.Opfs.syncFlush(file.accessHandle)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jFileSize(fileId: number, pSize64: DataView): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const size = file.accessHandle.getSize() - HEADER_OFFSET_DATA
-    pSize64.setBigInt64(0, BigInt(size), true)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const fileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
+      const size = fileSize - HEADER_OFFSET_DATA
+      pSize64.setBigInt64(0, BigInt(size), true)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jSectorSize(_fileId: number): number {
@@ -283,15 +321,27 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   jAccess(zName: string, _flags: number, pResOut: DataView): number {
-    const path = this.#getPath(zName)
-    pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jDelete(zName: string, _syncDir: number): number {
-    const path = this.#getPath(zName)
-    this.#deletePath(path).pipe(Runtime.runSync(this.#runtime))
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      this.#deletePath(path).pipe(Runtime.runSync(this.#runtime))
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   close() {
