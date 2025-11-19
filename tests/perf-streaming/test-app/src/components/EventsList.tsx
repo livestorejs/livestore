@@ -55,6 +55,9 @@ export const EventsList: React.FC = () => {
   return (
     <section style={{ marginTop: '1.5rem' }}>
       <h2 style={{ margin: '0 0 0.75rem 0' }}>Live event stream</h2>
+      <div>
+        Events streamed: <span data-testid="events-streamed">{counterRef.current}</span>
+      </div>
       <ul
         style={{ maxHeight: '26rem', overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0 }}
         data-testid="event-stream-list"
