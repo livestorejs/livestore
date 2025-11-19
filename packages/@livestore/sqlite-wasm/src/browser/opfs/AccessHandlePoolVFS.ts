@@ -62,7 +62,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   // All the OPFS files the VFS uses are contained in one flat directory
   // specified in the constructor. No other files should be written here.
-  #directoryPath
+  readonly #directoryPath: string
   #directoryHandle: FileSystemDirectoryHandle | undefined
 
   // The OPFS files all have randomly-generated names that do not match
