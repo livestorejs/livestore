@@ -6,7 +6,7 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Effect, Opfs, Schedule, Schema, type WebError } from '@livestore/utils/effect'
+import { Chunk, Effect, Opfs, Option, Order, Schedule, Schema, Stream, type WebError } from '@livestore/utils/effect'
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -37,28 +37,34 @@ export const readPersistedStateDbFromClientSession: (args: {
 
     const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
 
-    const entries = yield* Opfs.Opfs.listEntries(accessHandlePoolDirHandle)
-    const fileHandles = entries.filter((entry) => entry.kind === 'file').map((entry) => entry.handle)
-
     const stateDbFileName = `/${getStateDbFileName(schema)}`
 
-    let stateDbFile: File | undefined
-    for (const fileHandle of fileHandles) {
-      const file = yield* Opfs.Opfs.getFile(fileHandle)
-      const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
-      if (fileName !== stateDbFileName) {
-        stateDbFile = file
-        break
-      }
-    }
+    const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
 
-    if (stateDbFile === undefined) {
+    const stateDbFileOption = yield* handlesStream.pipe(
+      Stream.filter((handle) => handle.kind === 'file'),
+      Stream.mapEffect(
+        (fileHandle) =>
+          Effect.gen(function* () {
+            const file = yield* Opfs.Opfs.getFile(fileHandle)
+            const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
+            return { file, fileName }
+          }),
+        { concurrency: 'unbounded' },
+      ),
+      Stream.find(({ fileName }) => fileName === stateDbFileName),
+      Stream.runHead,
+    )
+
+    if (Option.isNone(stateDbFileOption)) {
       return yield* new PersistedSqliteError({
         message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
       })
     }
 
-    const stateDbBuffer = yield* Effect.promise(() => stateDbFile.slice(HEADER_OFFSET_DATA).arrayBuffer())
+    const stateDbBuffer = yield* Effect.promise(() =>
+      stateDbFileOption.value.file.slice(HEADER_OFFSET_DATA).arrayBuffer(),
+    )
 
     // Given the access handle pool always eagerly creates files with empty non-header data,
     // we want to return undefined if the file exists but is empty
@@ -154,14 +160,10 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
   )
 
   if (oldStateDbPaths.length === 0) {
-    yield* Effect.logDebug('State db cleanup completed: no old database files found')
+    yield* Effect.logDebug('No old database files found')
     return
   }
 
-  yield* Effect.logDebug(`Found ${oldStateDbPaths.length} old state database file(s) to clean up`)
-
-  let deletedCount = 0
-  const archivedFileNames: string[] = []
   const absoluteArchiveDirName = `${opfsDirectory}/${ARCHIVE_DIR_NAME}`
   if (isDev && !(yield* Opfs.exists(absoluteArchiveDirName))) yield* Opfs.makeDirectory(absoluteArchiveDirName)
 
@@ -174,8 +176,6 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       const archiveFileName = `${Date.now()}-${fileName}`
 
       yield* Opfs.writeFile(`${opfsDirectory}/archive/${archiveFileName}`, new Uint8Array(archiveFileData))
-
-      archivedFileNames.push(archiveFileName)
     }
 
     const vfsResultCode = yield* Effect.try({
@@ -192,21 +192,14 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
       })
     }
 
-    deletedCount++
-    yield* Effect.logDebug(`Successfully deleted old state database file: ${fileName}`)
+    yield* Effect.logDebug(`Deleted old state database file: ${fileName}`)
   }
 
   if (isDev) {
-    const pruneResult = yield* pruneArchiveDirectory({
+    yield* pruneArchiveDirectory({
       archiveDirectory: absoluteArchiveDirName,
       keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
     })
-
-    yield* Effect.logDebug(
-      `State db cleanup completed: archived ${archivedFileNames.length} file(s); removed ${deletedCount} old database file(s) from active pool; archive retained ${pruneResult.retained.length} file(s)`,
-    )
-  } else {
-    yield* Effect.logDebug(`State db cleanup completed: removed ${deletedCount} old database file(s)`)
   }
 })
 
@@ -218,18 +211,21 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   keep: number
 }) {
   const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
-  const entries = yield* Opfs.Opfs.listEntries(archiveDirHandle)
-  const files = entries.filter((entry) => entry.kind === 'file')
-  const filesWithMetadata = yield* Effect.forEach(files, (file) => Opfs.getMetadata(file.handle))
-  const sortedFilesWithMetadata = filesWithMetadata.sort((a, b) => b.lastModified - a.lastModified)
+  const handlesStream = yield* Opfs.Opfs.values(archiveDirHandle)
+  const filesWithMetadata = yield* handlesStream.pipe(
+    Stream.filter((handle) => handle.kind === 'file'),
+    Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
+    Stream.runCollect,
+  )
+  const filesToDelete = filesWithMetadata.pipe(
+    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+    Chunk.drop(keep),
+    Chunk.toReadonlyArray,
+  )
 
-  const retained = sortedFilesWithMetadata.slice(0, keep)
-  const toDelete = sortedFilesWithMetadata.slice(keep)
+  if (filesToDelete.length === 0) return
 
-  yield* Effect.forEach(toDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
+  yield* Effect.forEach(filesToDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
 
-  return {
-    retained,
-    deleted: toDelete,
-  }
+  yield* Effect.logDebug(`Pruned ${filesToDelete.length} old database file(s) from archive directory`)
 })
