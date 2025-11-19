@@ -138,38 +138,41 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * acquires an exclusive lock — we don't need to handle short reads as
    * the file cannot be modified by other threads.
    */
-  readFilePayload(zName: string): ArrayBuffer {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)
+  readFilePayload = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
 
-    if (accessHandle === undefined) {
-      throw new OpfsError({
-        path,
-        cause: new Error('Cannot read payload for untracked OPFS path'),
-      })
-    }
+      if (accessHandle === undefined) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error('Cannot read payload for untracked OPFS path'),
+        })
+      }
 
-    const fileSize = accessHandle.getSize()
-    if (fileSize <= HEADER_OFFSET_DATA) {
-      throw new OpfsError({
-        path,
-        cause: new Error(
-          `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
-        ),
-      })
-    }
+      const fileSize = yield* Opfs.Opfs.syncGetSize(accessHandle)
+      if (fileSize <= HEADER_OFFSET_DATA) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error(
+            `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
+          ),
+        })
+      }
 
-    const payloadSize = fileSize - HEADER_OFFSET_DATA
-    const payload = new Uint8Array(payloadSize)
-    const bytesRead = accessHandle.read(payload, { at: HEADER_OFFSET_DATA })
-    if (bytesRead !== payloadSize) {
-      throw new OpfsError({
-        path,
-        cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
-      })
-    }
-    return payload.buffer
-  }
+      const payloadSize = fileSize - HEADER_OFFSET_DATA
+      const payload = new Uint8Array(payloadSize)
+      const bytesRead = yield* Opfs.Opfs.syncRead(accessHandle, payload.buffer, { at: HEADER_OFFSET_DATA })
+      if (bytesRead !== payloadSize) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
+        })
+      }
+
+      return payload.buffer
+    }),
+  )
 
   resetAccessHandle = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
