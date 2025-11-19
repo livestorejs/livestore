@@ -97,7 +97,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    */
   getOpfsFileName = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
-      const sqliteFilePath = this.#getSqliteFilePath(zName)
+      const sqliteFilePath = this.#resolveSqliteFilePath(zName)
       const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
       if (!file) {
@@ -122,7 +122,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    */
   readFilePayload = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
-      const sqliteFilePath = this.#getSqliteFilePath(zName)
+      const sqliteFilePath = this.#resolveSqliteFilePath(zName)
       const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
       if (!file) {
@@ -158,7 +158,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   resetAccessHandle = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
-      const sqliteFilePath = this.#getSqliteFilePath(zName)
+      const sqliteFilePath = this.#resolveSqliteFilePath(zName)
       const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
       if (!file) {
@@ -174,7 +174,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     return Effect.gen(this, function* () {
-      const sqliteFilePath = zName ? this.#getSqliteFilePath(zName) : Math.random().toString(36)
+      const sqliteFilePath = zName ? this.#resolveSqliteFilePath(zName) : Math.random().toString(36)
 
       // First try to open a path that already exists in the file system.
       let file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
@@ -314,7 +314,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jAccess(zName: string, _flags: number, pResOut: DataView): number {
     return Effect.gen(this, function* () {
-      const sqliteFilePath = this.#getSqliteFilePath(zName)
+      const sqliteFilePath = this.#resolveSqliteFilePath(zName)
       const exists = this.#files.some((f) => f.sqliteFilePath === sqliteFilePath)
       pResOut.setInt32(0, exists ? 1 : 0, true)
       return VFS.SQLITE_OK
@@ -327,7 +327,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jDelete(zName: string, _syncDir: number): number {
     return Effect.gen(this, function* () {
-      const sqliteFilePath = this.#getSqliteFilePath(zName)
+      const sqliteFilePath = this.#resolveSqliteFilePath(zName)
       this.#deleteSqliteFile(sqliteFilePath).pipe(Runtime.runSync(this.#runtime))
       return VFS.SQLITE_OK
     }).pipe(
@@ -573,7 +573,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   /**
    * Convert a bare filename, path, or URL to a UNIX-style path.
    */
-  #getSqliteFilePath(nameOrURL: string | URL): string {
+  #resolveSqliteFilePath(nameOrURL: string | URL): string {
     const url = typeof nameOrURL === 'string' ? new URL(nameOrURL, 'file://localhost/') : nameOrURL
     return url.pathname
   }
