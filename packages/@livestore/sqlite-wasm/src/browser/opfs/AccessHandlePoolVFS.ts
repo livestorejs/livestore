@@ -55,31 +55,18 @@ const DEFAULT_CAPACITY = 20
  * Asyncify.
  */
 export class AccessHandlePoolVFS extends FacadeVFS {
-  log = null //function(...args) { console.log(`[${contextName}]`, ...args) };
-
-  // Runtime for executing Effect operations
-  #runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
-
   // All the OPFS files the VFS uses are contained in one flat directory
   // specified in the constructor. No other files should be written here.
   readonly #directoryPath: string
   #directoryHandle: FileSystemDirectoryHandle | undefined
 
-  // The OPFS files all have randomly-generated names that do not match
-  // the SQLite files whose data they contain. This map links those names
-  // with their respective OPFS access handles.
-  #accessHandleToOpfsFileNameMap = new Map<FileSystemSyncAccessHandle, string>()
+  // Runtime for executing Effect operations
+  readonly #runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
 
-  // When a SQLite file is associated with an OPFS file, that association
-  // is kept in #sqliteFilePathToAccessHandleMap. Each access handle is in exactly
-  // one of #sqliteFilePathToAccessHandleMap or #availableAccessHandles.
-  #sqliteFilePathToAccessHandleMap = new Map<string, FileSystemSyncAccessHandle>()
-  #availableAccessHandles = new Set<FileSystemSyncAccessHandle>()
-
-  #sqliteFileIdToFileMap = new Map<
-    number,
-    { sqliteFilePath: string; flags: number; accessHandle: FileSystemSyncAccessHandle }
-  >()
+  // List of all allocated OPFS files.
+  //
+  // The OPFS files all have randomly generated names that do not match the SQLite files whose data they contain.
+  #files: PooledOpfsFile[] = []
 
   static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
     const runtime = yield* Effect.runtime<Opfs.Opfs | Scope.Scope>()
@@ -111,24 +98,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   getOpfsFileName = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
       const sqliteFilePath = this.#getSqliteFilePath(zName)
-      const accessHandle = this.#sqliteFilePathToAccessHandleMap.get(sqliteFilePath)
+      const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
-      if (!accessHandle) {
+      if (!file) {
         return yield* new OpfsError({
           cause: new Error('Cannot get OPFS file name for untracked path'),
           path: sqliteFilePath,
         })
       }
 
-      const name = this.#accessHandleToOpfsFileNameMap.get(accessHandle)
-      if (!name) {
-        return yield* new OpfsError({
-          cause: new Error('Access handle not found in name mapping'),
-          path: sqliteFilePath,
-        })
-      }
-
-      return name
+      return file.name
     }),
   )
 
@@ -144,16 +123,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   readFilePayload = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
       const sqliteFilePath = this.#getSqliteFilePath(zName)
-      const accessHandle = this.#sqliteFilePathToAccessHandleMap.get(sqliteFilePath)
+      const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
-      if (accessHandle === undefined) {
+      if (!file) {
         return yield* new OpfsError({
           path: sqliteFilePath,
           cause: new Error('Cannot read payload for untracked OPFS path'),
         })
       }
 
-      const fileSize = yield* Opfs.Opfs.syncGetSize(accessHandle)
+      const fileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
       if (fileSize <= HEADER_OFFSET_DATA) {
         return yield* new OpfsError({
           path: sqliteFilePath,
@@ -165,7 +144,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       const payloadSize = fileSize - HEADER_OFFSET_DATA
       const payload = new Uint8Array(payloadSize)
-      const bytesRead = yield* Opfs.Opfs.syncRead(accessHandle, payload.buffer, { at: HEADER_OFFSET_DATA })
+      const bytesRead = yield* Opfs.Opfs.syncRead(file.accessHandle, payload.buffer, { at: HEADER_OFFSET_DATA })
       if (bytesRead !== payloadSize) {
         return yield* new OpfsError({
           path: sqliteFilePath,
@@ -180,43 +159,52 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   resetAccessHandle = Effect.fn((zName: string) =>
     Effect.gen(this, function* () {
       const sqliteFilePath = this.#getSqliteFilePath(zName)
-      const accessHandle = this.#sqliteFilePathToAccessHandleMap.get(sqliteFilePath)
+      const file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
 
-      if (!accessHandle) {
+      if (!file) {
         return yield* new OpfsError({
           cause: new Error('Cannot reset untracked access handle'),
           path: sqliteFilePath,
         })
       }
 
-      yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+      yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA)
     }),
   )
 
   jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     return Effect.gen(this, function* () {
-      // First try to open a path that already exists in the file system.
       const sqliteFilePath = zName ? this.#getSqliteFilePath(zName) : Math.random().toString(36)
-      let accessHandle = this.#sqliteFilePathToAccessHandleMap.get(sqliteFilePath)
-      if (!accessHandle && flags & VFS.SQLITE_OPEN_CREATE) {
+
+      // First try to open a path that already exists in the file system.
+      let file = this.#files.find((f) => f.sqliteFilePath === sqliteFilePath)
+
+      if (!file && flags & VFS.SQLITE_OPEN_CREATE) {
         // File not found so try to create it.
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
-          ;[accessHandle] = this.#availableAccessHandles.keys()
-          yield* this.#setAssociatedSqliteFilePath(accessHandle!, sqliteFilePath, flags)
+          file = this.#files.find((f) => f.isAvailable)
+          if (!file) {
+            return yield* Effect.fail(new Error('could not find available file even though capacity not exhausted'))
+          }
+
+          yield* this.#setAssociatedSqliteFilePath(file.accessHandle, sqliteFilePath, flags)
+          file.sqliteFilePath = sqliteFilePath
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
-          return yield* Effect.fail(new Error('cannot create file'))
+          return yield* Effect.fail(new Error('cannot create file: capacity exhausted'))
         }
       }
-      if (!accessHandle) {
+
+      if (!file) {
         return yield* Effect.fail(new Error('file not found'))
       }
+
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
-      const file = { sqliteFilePath, flags, accessHandle }
-      this.#sqliteFileIdToFileMap.set(fileId, file)
+      file.fileId = fileId
+      file.flags = flags
 
       pOutFlags.setInt32(0, flags, true)
       return VFS.SQLITE_OK
@@ -229,13 +217,14 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jClose(fileId: number): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)
+      const file = this.#files.find((f) => f.fileId === fileId)
       if (file) {
         yield* Opfs.Opfs.syncFlush(file.accessHandle)
-        this.#sqliteFileIdToFileMap.delete(fileId)
+        file.fileId = null
         if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
-          yield* this.#deleteSqliteFile(file.sqliteFilePath)
+          yield* this.#deleteSqliteFile(file.sqliteFilePath!)
         }
+        file.flags = 0
       }
       return VFS.SQLITE_OK
     }).pipe(
@@ -247,7 +236,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)!
+      const file = this.#files.find((f) => f.fileId === fileId)!
       const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
         at: HEADER_OFFSET_DATA + iOffset,
       })
@@ -265,7 +254,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)!
+      const file = this.#files.find((f) => f.fileId === fileId)!
       const nBytes = yield* Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
         at: HEADER_OFFSET_DATA + iOffset,
       })
@@ -279,7 +268,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jTruncate(fileId: number, iSize: number): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)!
+      const file = this.#files.find((f) => f.fileId === fileId)!
       yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize)
       return VFS.SQLITE_OK
     }).pipe(
@@ -291,7 +280,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jSync(fileId: number, _flags: number): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)!
+      const file = this.#files.find((f) => f.fileId === fileId)!
       yield* Opfs.Opfs.syncFlush(file.accessHandle)
       return VFS.SQLITE_OK
     }).pipe(
@@ -303,7 +292,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jFileSize(fileId: number, pSize64: DataView): number {
     return Effect.gen(this, function* () {
-      const file = this.#sqliteFileIdToFileMap.get(fileId)!
+      const file = this.#files.find((f) => f.fileId === fileId)!
       const fileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
       const size = fileSize - HEADER_OFFSET_DATA
       pSize64.setBigInt64(0, BigInt(size), true)
@@ -326,7 +315,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   jAccess(zName: string, _flags: number, pResOut: DataView): number {
     return Effect.gen(this, function* () {
       const sqliteFilePath = this.#getSqliteFilePath(zName)
-      pResOut.setInt32(0, this.#sqliteFilePathToAccessHandleMap.has(sqliteFilePath) ? 1 : 0, true)
+      const exists = this.#files.some((f) => f.sqliteFilePath === sqliteFilePath)
+      pResOut.setInt32(0, exists ? 1 : 0, true)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
@@ -368,29 +358,17 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Returns the number of SQLite files in the file system.
    */
   getSize(): number {
-    return this.#sqliteFilePathToAccessHandleMap.size
+    return this.#files.filter((f) => !f.isAvailable).length
   }
 
-  /**
-   * Returns the maximum number of SQLite files the file system can hold.
-   */
   getCapacity(): number {
-    return this.#accessHandleToOpfsFileNameMap.size
+    return this.#files.length
   }
 
-  /**
-   * Get all currently tracked SQLite file paths.
-   * This can be used by higher-level components for file management operations.
-   *
-   * @returns Array of currently active SQLite file paths
-   */
   getTrackedSqliteFilePaths(): string[] {
-    return Array.from(this.#sqliteFilePathToAccessHandleMap.keys())
+    return this.#files.filter((f) => f.sqliteFilePath !== null).map((f) => f.sqliteFilePath!)
   }
 
-  /**
-   * Increase the capacity of the file system by n.
-   */
   addCapacity: (n: number) => Effect.Effect<void, OpfsError | WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn(
     (n: number) =>
       Effect.repeatN(
@@ -401,7 +379,11 @@ export class AccessHandlePoolVFS extends FacadeVFS {
             Effect.retry(Schedule.exponentialBackoff10Sec),
           )
 
-          this.#accessHandleToOpfsFileNameMap.set(syncFileHandle, name)
+          // Add new file to the single state array
+          const file = new PooledOpfsFile(name, syncFileHandle)
+          this.#files.push(file)
+
+          // Initialize header as empty/unassociated
           yield* this.#setAssociatedSqliteFilePath(syncFileHandle, '', 0)
         }),
         n,
@@ -416,17 +398,24 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   removeCapacity = Effect.fn((n: number) =>
     Effect.gen(this, function* () {
       let nRemoved = 0
+      // Create a snapshot of available files to iterate safely
+      const availableFiles = this.#files.filter((f) => f.isAvailable)
+
       yield* Effect.forEach(
-        this.#availableAccessHandles,
-        (accessHandle) =>
+        availableFiles,
+        (file) =>
           Effect.gen(this, function* () {
             if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
-            const name = this.#accessHandleToOpfsFileNameMap.get(accessHandle)!
-            accessHandle.close()
-            yield* Opfs.Opfs.removeEntry(this.#directoryHandle!, name)
-            this.#accessHandleToOpfsFileNameMap.delete(accessHandle)
-            this.#availableAccessHandles.delete(accessHandle)
+            file.accessHandle.close()
+            yield* Opfs.Opfs.removeEntry(this.#directoryHandle!, file.name)
+
+            // Remove from the single source of truth
+            const index = this.#files.indexOf(file)
+            if (index > -1) {
+              this.#files.splice(index, 1)
+            }
+
             ++nRemoved
           }),
         { concurrency: 'unbounded', discard: true },
@@ -453,18 +442,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         ),
         Stream.runForEach(({ opfsFileName, accessHandle }) =>
           Effect.gen(this, function* () {
-            // Store handle-to-name mapping
-            this.#accessHandleToOpfsFileNameMap.set(accessHandle, opfsFileName)
-
             // Read associated SQLite file path from OPFS file header
             const sqliteFilePath = yield* this.#getAssociatedSqliteFilePath(accessHandle)
 
-            // Categorize handle as associated or available
-            if (sqliteFilePath) {
-              this.#sqliteFilePathToAccessHandleMap.set(sqliteFilePath, accessHandle)
-            } else {
-              this.#availableAccessHandles.add(accessHandle)
-            }
+            // Create and store the smart object
+            const file = new PooledOpfsFile(
+              opfsFileName,
+              accessHandle,
+              sqliteFilePath || null, // Treat empty string as null (Available)
+            )
+            this.#files.push(file)
           }),
         ),
       )
@@ -473,14 +460,11 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   #releaseAccessHandles = Effect.fn(() =>
     Effect.gen(this, function* () {
-      yield* Effect.forEach(
-        this.#accessHandleToOpfsFileNameMap.keys(),
-        (accessHandle) => Effect.sync(() => accessHandle.close()),
-        { concurrency: 'unbounded', discard: true },
-      )
-      this.#accessHandleToOpfsFileNameMap.clear()
-      this.#sqliteFilePathToAccessHandleMap.clear()
-      this.#availableAccessHandles.clear()
+      yield* Effect.forEach(this.#files, (file) => Effect.sync(() => file.accessHandle.close()), {
+        concurrency: 'unbounded',
+        discard: true,
+      })
+      this.#files = []
     }),
   )
 
@@ -555,14 +539,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       yield* Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST })
       yield* Opfs.Opfs.syncFlush(accessHandle)
 
-      if (path) {
-        this.#sqliteFilePathToAccessHandleMap.set(path, accessHandle)
-        this.#availableAccessHandles.delete(accessHandle)
-      } else {
-        // This OPFS file doesn't represent any SQLite file so it doesn't
-        // need to keep any data.
+      if (!path) {
         yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
-        this.#availableAccessHandles.add(accessHandle)
       }
     }),
   )
@@ -606,14 +584,61 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    */
   #deleteSqliteFile = Effect.fn((path: string) =>
     Effect.gen(this, function* () {
-      const accessHandle = this.#sqliteFilePathToAccessHandleMap.get(path)
-      if (accessHandle) {
-        // Un-associate the SQLite file path from the OPFS file.
-        this.#sqliteFilePathToAccessHandleMap.delete(path)
-        yield* this.#setAssociatedSqliteFilePath(accessHandle, '', 0)
+      const file = this.#files.find((f) => f.sqliteFilePath === path)
+      if (file) {
+        // Un-associate the SQLite file path from the OPFS file
+        yield* this.#setAssociatedSqliteFilePath(file.accessHandle, '', 0)
+
+        // Reset state to "Available" in the pool
+        file.sqliteFilePath = null
+        file.fileId = null
+        file.flags = 0
       }
     }),
   )
+}
+
+/**
+ * A OPFS file resource along with its associated SQLite file state.
+ */
+class PooledOpfsFile {
+  /** The OPFS file name. It‘s a randomly generated name. */
+  readonly name: string
+  /** The OPFS file sync access handle. */
+  readonly accessHandle: FileSystemSyncAccessHandle
+  /** The SQLite file path (e.g. "/dbname.db") embedded in the OPFS file header. */
+  public sqliteFilePath: string | null = null
+  /** The active SQLite file descriptor ID. */
+  public fileId: number | null = null
+
+  public flags = 0
+
+  constructor(
+    name: string,
+    accessHandle: FileSystemSyncAccessHandle,
+    // The logical path (e.g. "/mydb.sqlite"). Null implies the file is in the "Pool".
+    sqliteFilePath: string | null = null,
+    // The active SQLite file descriptor ID. Null implies the file is not currently open.
+    fileId: number | null = null,
+    // Flags used during the open operation
+    flags = 0,
+  ) {
+    this.flags = flags
+    this.fileId = fileId
+    this.sqliteFilePath = sqliteFilePath
+    this.accessHandle = accessHandle
+    this.name = name
+  }
+
+  /** Whether the file is currently available for use. Meaning it is not currently associated with an SQLite file. */
+  get isAvailable(): boolean {
+    return this.sqliteFilePath === null
+  }
+
+  /* Whether the file is currently open in SQLite. */
+  get isOpen(): boolean {
+    return this.fileId !== null
+  }
 }
 
 export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
