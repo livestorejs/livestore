@@ -153,13 +153,21 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     return payload.buffer
   }
 
-  resetAccessHandle(zName: string) {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)!
-    accessHandle.truncate(HEADER_OFFSET_DATA)
-    // accessHandle.write(new Uint8Array(), { at: HEADER_OFFSET_DATA })
-    // accessHandle.flush()
-  }
+  resetAccessHandle = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
+
+      if (!accessHandle) {
+        return yield* new OpfsError({
+          cause: new Error('Cannot reset untracked access handle'),
+          path,
+        })
+      }
+
+      yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+    }),
+  )
 
   jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
