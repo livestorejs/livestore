@@ -248,7 +248,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     return Effect.gen(this, function* () {
       const file = this.#sqliteFileIdToFileMap.get(fileId)!
-      const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.buffer, {
+      const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
         at: HEADER_OFFSET_DATA + iOffset,
       })
       if (nBytes < pData.byteLength) {
