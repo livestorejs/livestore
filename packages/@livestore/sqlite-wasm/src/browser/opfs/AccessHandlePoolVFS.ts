@@ -342,20 +342,27 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * decreased to fewer than the current number of SQLite files in the
    * file system.
    */
-  async removeCapacity(n: number): Promise<number> {
-    let nRemoved = 0
-    for (const accessHandle of Array.from(this.#availableAccessHandles)) {
-      if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
+  removeCapacity = Effect.fn((n: number) =>
+    Effect.gen(this, function* () {
+      let nRemoved = 0
+      yield* Effect.forEach(
+        this.#availableAccessHandles,
+        (accessHandle) =>
+          Effect.gen(this, function* () {
+            if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
-      const name = this.#mapAccessHandleToName.get(accessHandle)!
-      accessHandle.close()
-      await this.#directoryHandle!.removeEntry(name)
-      this.#mapAccessHandleToName.delete(accessHandle)
-      this.#availableAccessHandles.delete(accessHandle)
-      ++nRemoved
-    }
-    return nRemoved
-  }
+            const name = this.#mapAccessHandleToName.get(accessHandle)!
+            accessHandle.close()
+            yield* Opfs.Opfs.removeEntry(this.#directoryHandle!, name)
+            this.#mapAccessHandleToName.delete(accessHandle)
+            this.#availableAccessHandles.delete(accessHandle)
+            ++nRemoved
+          }),
+        { concurrency: 'unbounded', discard: true },
+      )
+      return nRemoved
+    }),
+  )
 
   #acquireAccessHandles = Effect.fn(() =>
     Effect.gen(this, function* () {
