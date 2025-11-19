@@ -9,6 +9,7 @@ import { EventControls } from './components/EventControls.tsx'
 import { EventsList } from './components/EventsList.tsx'
 import { schema } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
+import { makeTracer } from './otel.ts'
 
 const createAdapter = (resetPersistence = false) =>
   makePersistedAdapter({
@@ -59,6 +60,7 @@ const LiveStoreRoot = () => {
       adapter={providerState.adapter}
       batchUpdates={batchUpdates}
       storeId={STORE_ID}
+      otelOptions={{ tracer: makeTracer('livestore-perf-streaming-loopback') }}
       // params={{ leaderPushBatchSize: 1000, eventQueryBatchSize: 1000 }}
       renderLoading={(boot) => <p data-testid="boot-stage">Stage: {boot.stage}</p>}
     >

@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import { test } from '../fixtures.ts'
 
 test.describe('Streaming latency', () => {
-  test('stream 500 events', async ({ page }) => {
+  test('stream 500 events', async ({ page, cpuProfiler }, testInfo) => {
     await test.step('prepare', async () => {
       await page.goto('/')
       await page.getByTestId('reset-harness').click()
@@ -13,20 +13,24 @@ test.describe('Streaming latency', () => {
     })
 
     await test.step('warmup', async () => {
+      await cpuProfiler.start('cold')
       const startTime = Date.now()
       await page.getByTestId('toggle-events').click()
       await expect(page.getByTestId('events-streamed')).toHaveText('500', { timeout: 60000 })
       const duration = Date.now() - startTime
-      console.log(`[COLD]: Streamed 500 events in ${duration}`)
+      await cpuProfiler.stop('streaming')
+      console.log(`[COLD]: Streamed 500 events in ${duration}ms`)
     })
 
     await test.step('run', async () => {
       await page.reload()
+      await cpuProfiler.start('warm')
       const startTime = Date.now()
       await page.getByTestId('toggle-events').click()
       await expect(page.getByTestId('events-streamed')).toHaveText('500', { timeout: 60000 })
       const duration = Date.now() - startTime
-      console.log(`[WARM]: Streamed 500 events in ${duration}`)
+      await cpuProfiler.stop('streaming')
+      console.log(`[WARM]: Streamed 500 events in ${duration}ms`)
     })
   })
 })
