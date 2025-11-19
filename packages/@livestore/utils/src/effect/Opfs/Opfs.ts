@@ -1,13 +1,13 @@
 /// <reference lib="webworker" />
 
 import { Effect, Option, Schema, Stream } from 'effect'
-import * as Browser from '../WebError.ts'
+import * as WebError from '../WebError.ts'
 
 /**
  * Effect service that exposes ergonomic wrappers around Origin Private File System (OPFS) operations.
  *
  * @remarks
- * - Helpers mirror the File System Access API where possible and parse browser exceptions into Effect errors.
+ * - Helpers mirror the File System Access API where possible and parse web exceptions into Effect errors.
  * - Sync access handle helpers can only be used in dedicated workers; invoking them in other contexts fails at runtime.
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
@@ -23,7 +23,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      */
     const getRootDirectoryHandle = Effect.tryPromise({
       try: () => navigator.storage.getDirectory(),
-      catch: (u) => Browser.parseWebError(u, [Browser.SecurityError]),
+      catch: (u) => WebError.parseWebError(u, [WebError.SecurityError]),
     })
 
     /**
@@ -39,11 +39,11 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       Effect.tryPromise({
         try: () => parent.getFileHandle(name, options),
         catch: (u) =>
-          Browser.parseWebError(u, [
-            Browser.NotAllowedError,
-            Browser.TypeError,
-            Browser.TypeMismatchError,
-            Browser.NotFoundError,
+          WebError.parseWebError(u, [
+            WebError.NotAllowedError,
+            WebError.TypeError,
+            WebError.TypeMismatchError,
+            WebError.NotFoundError,
           ]),
       })
 
@@ -64,11 +64,11 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       Effect.tryPromise({
         try: () => parent.getDirectoryHandle(name, options),
         catch: (u) =>
-          Browser.parseWebError(u, [
-            Browser.NotAllowedError,
-            Browser.TypeError,
-            Browser.TypeMismatchError,
-            Browser.NotFoundError,
+          WebError.parseWebError(u, [
+            WebError.NotAllowedError,
+            WebError.TypeError,
+            WebError.TypeMismatchError,
+            WebError.NotFoundError,
           ]),
       })
 
@@ -85,12 +85,12 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       Effect.tryPromise({
         try: () => parent.removeEntry(name, options),
         catch: (u) =>
-          Browser.parseWebError(u, [
-            Browser.TypeError,
-            Browser.NotAllowedError,
-            Browser.InvalidModificationError,
-            Browser.NotFoundError,
-            Browser.NoModificationAllowedError,
+          WebError.parseWebError(u, [
+            WebError.TypeError,
+            WebError.NotAllowedError,
+            WebError.InvalidModificationError,
+            WebError.NotFoundError,
+            WebError.NoModificationAllowedError,
           ]),
       })
 
@@ -104,7 +104,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      */
     const values = (directory: FileSystemDirectoryHandle) =>
       Stream.fromAsyncIterable(directory.values(), (u) =>
-        Browser.parseWebError(u, [Browser.NotAllowedError, Browser.NotFoundError]),
+        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       )
 
     /**
@@ -119,7 +119,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     const resolve = (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
       Effect.tryPromise({
         try: () => parent.resolve(child),
-        catch: (u) => Browser.parseWebError(u),
+        catch: (u) => WebError.parseWebError(u),
       }).pipe(Effect.map((path) => (path === null ? Option.none() : Option.some(path))))
 
     /**
@@ -132,7 +132,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     const getFile = (handle: FileSystemFileHandle) =>
       Effect.tryPromise({
         try: () => handle.getFile(),
-        catch: (u) => Browser.parseWebError(u, [Browser.NotAllowedError, Browser.NotFoundError]),
+        catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       })
 
     /**
@@ -153,23 +153,23 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         Effect.tryPromise({
           try: () => handle.createWritable(options),
           catch: (u) =>
-            Browser.parseWebError(u, [
-              Browser.NotAllowedError,
-              Browser.NotFoundError,
-              Browser.NoModificationAllowedError,
-              Browser.AbortError,
+            WebError.parseWebError(u, [
+              WebError.NotAllowedError,
+              WebError.NotFoundError,
+              WebError.NoModificationAllowedError,
+              WebError.AbortError,
             ]),
         }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.write(data),
             catch: (u) =>
-              Browser.parseWebError(u, [Browser.NotAllowedError, Browser.QuotaExceededError, Browser.TypeError]),
+              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => Browser.parseWebError(u, [Browser.TypeError]),
+            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
@@ -186,11 +186,11 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         Effect.tryPromise({
           try: () => handle.createWritable({ keepExistingData: true }),
           catch: (u) =>
-            Browser.parseWebError(u, [
-              Browser.NotAllowedError,
-              Browser.NotFoundError,
-              Browser.NoModificationAllowedError,
-              Browser.AbortError,
+            WebError.parseWebError(u, [
+              WebError.NotAllowedError,
+              WebError.NotFoundError,
+              WebError.NoModificationAllowedError,
+              WebError.AbortError,
             ]),
         }),
         (stream) =>
@@ -198,18 +198,18 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
             const file = yield* getFile(handle)
             yield* Effect.tryPromise({
               try: () => stream.seek(file.size),
-              catch: (u) => Browser.parseWebError(u, [Browser.NotAllowedError, Browser.TypeError]),
+              catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError]),
             })
             yield* Effect.tryPromise({
               try: () => stream.write(data),
               catch: (u) =>
-                Browser.parseWebError(u, [Browser.NotAllowedError, Browser.QuotaExceededError, Browser.TypeError]),
+                WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
             })
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => Browser.parseWebError(u, [Browser.TypeError]),
+            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
@@ -226,23 +226,23 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         Effect.tryPromise({
           try: () => handle.createWritable({ keepExistingData: true }),
           catch: (u) =>
-            Browser.parseWebError(u, [
-              Browser.NotAllowedError,
-              Browser.NotFoundError,
-              Browser.NoModificationAllowedError,
-              Browser.AbortError,
+            WebError.parseWebError(u, [
+              WebError.NotAllowedError,
+              WebError.NotFoundError,
+              WebError.NoModificationAllowedError,
+              WebError.AbortError,
             ]),
         }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.truncate(size),
             catch: (u) =>
-              Browser.parseWebError(u, [Browser.NotAllowedError, Browser.TypeError, Browser.QuotaExceededError]),
+              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError, WebError.QuotaExceededError]),
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => Browser.parseWebError(u, [Browser.TypeError]),
+            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
           }).pipe(Effect.orElse(() => Effect.void)),
       )
 
@@ -263,11 +263,11 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         Effect.tryPromise({
           try: () => handle.createSyncAccessHandle(),
           catch: (u) =>
-            Browser.parseWebError(u, [
-              Browser.NotAllowedError,
-              Browser.InvalidStateError,
-              Browser.NotFoundError,
-              Browser.NoModificationAllowedError,
+            WebError.parseWebError(u, [
+              WebError.NotAllowedError,
+              WebError.InvalidStateError,
+              WebError.NotFoundError,
+              WebError.NoModificationAllowedError,
             ]),
         }),
         (syncHandle) => Effect.sync(() => syncHandle.close()),
@@ -292,7 +292,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           const view = new Uint8Array(buffer)
           return handle.read(view, options)
         },
-        catch: (u) => Browser.parseWebError(u, [Browser.RangeError, Browser.InvalidStateError, Browser.TypeError]),
+        catch: (u) => WebError.parseWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
       })
 
     /**
@@ -315,7 +315,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     ) =>
       Effect.try({
         try: () => handle.write(buffer, options),
-        catch: (u) => Browser.parseWebError(u),
+        catch: (u) => WebError.parseWebError(u),
       })
 
     /**
@@ -332,7 +332,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     const syncTruncate = (handle: FileSystemSyncAccessHandle, size: number) =>
       Effect.try({
         try: () => handle.truncate(size),
-        catch: (u) => Browser.parseWebError(u),
+        catch: (u) => WebError.parseWebError(u),
       })
 
     /**
@@ -349,7 +349,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     const syncGetSize = (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.getSize(),
-        catch: (u) => Browser.parseWebError(u),
+        catch: (u) => WebError.parseWebError(u),
       })
 
     /**
@@ -365,7 +365,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
     const syncFlush = (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.flush(),
-        catch: (u) => Browser.parseWebError(u),
+        catch: (u) => WebError.parseWebError(u),
       })
 
     return {
@@ -390,11 +390,11 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
   accessors: true,
 }) {}
 
-const notFoundError = new Browser.NotFoundError({
+const notFoundError = new WebError.NotFoundError({
   cause: new DOMException('The object can not be found here.', 'NotFoundError'),
 })
 
-const unknownError = (message: string) => new Browser.UnknownError({ description: message })
+const unknownError = (message: string) => new WebError.UnknownError({ description: message })
 
 /**
  * A no-op Opfs service that can be used for testing.
