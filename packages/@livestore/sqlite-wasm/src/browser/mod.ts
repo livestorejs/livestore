@@ -107,7 +107,7 @@ export const sqliteDbFactory =
           persistenceInfo: {
             fileName: dbFilename,
             opfsDirectory: input.opfsDirectory,
-            opfsFileName: vfs.getOpfsFileName(dbFilename),
+            opfsFileName: yield* vfs.getOpfsFileName(dbFilename),
           },
         },
       })

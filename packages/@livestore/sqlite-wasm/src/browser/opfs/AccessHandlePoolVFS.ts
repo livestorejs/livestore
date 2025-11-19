@@ -105,11 +105,29 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * It's not the same as the SQLite file name. It's a randomly-generated
    * string that is not meaningful to the application.
    */
-  getOpfsFileName(zName: string) {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)!
-    return this.#mapAccessHandleToName.get(accessHandle)!
-  }
+  getOpfsFileName = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
+
+      if (!accessHandle) {
+        return yield* new OpfsError({
+          cause: new Error('Cannot get OPFS file name for untracked path'),
+          path,
+        })
+      }
+
+      const name = this.#mapAccessHandleToName.get(accessHandle)
+      if (!name) {
+        return yield* new OpfsError({
+          cause: new Error('Access handle not found in name mapping'),
+          path,
+        })
+      }
+
+      return name
+    }),
+  )
 
   /**
    * Reads the SQLite payload (without the OPFS header) for the given file.
