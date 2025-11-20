@@ -55,3 +55,5 @@ declare global {
       }
     | undefined
 }
+
+export {}
