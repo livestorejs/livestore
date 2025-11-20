@@ -14,7 +14,7 @@ const PERSISTENT_FILE_TYPES =
 
 const textDecoder = new TextDecoder()
 
-export const decodeSAHPoolFilename = async (file: File): Promise<string> => {
+export const decodeAccessHandlePoolFilename = async (file: File): Promise<string> => {
   // Read the path and digest of the path from the file.
   const corpus = new Uint8Array(await file.slice(0, HEADER_CORPUS_SIZE).arrayBuffer())
 
