@@ -7,11 +7,21 @@ import { defineConfig } from 'vite'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
+// Required for use of performance.measureUserAgentSpecificMemory()
+const crossOriginIsolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+}
+
 export default defineConfig({
   root: rootDir,
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 46001,
     fs: { strict: false },
+    headers: crossOriginIsolationHeaders,
+  },
+  preview: {
+    headers: crossOriginIsolationHeaders,
   },
   plugins: [react(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
   optimizeDeps: {
