@@ -42,7 +42,7 @@ export const readPersistedStateDbFromClientSession: (args: {
     const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
 
     const stateDbFileOption = yield* handlesStream.pipe(
-      Stream.filter((handle) => handle.kind === 'file'),
+      Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
       Stream.mapEffect(
         (fileHandle) =>
           Effect.gen(function* () {
@@ -213,7 +213,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
   const handlesStream = yield* Opfs.Opfs.values(archiveDirHandle)
   const filesWithMetadata = yield* handlesStream.pipe(
-    Stream.filter((handle) => handle.kind === 'file'),
+    Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
     Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
     Stream.runCollect,
   )
