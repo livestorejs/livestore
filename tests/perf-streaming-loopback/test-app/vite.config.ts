@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -12,7 +13,7 @@ export default defineConfig({
     port: process.env.PORT ? Number(process.env.PORT) : 46001,
     fs: { strict: false },
   },
-  plugins: [react()],
+  plugins: [react(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
   optimizeDeps: {
     exclude: ['@livestore/wa-sqlite'],
   },

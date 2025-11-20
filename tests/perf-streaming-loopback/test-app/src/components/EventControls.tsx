@@ -1,5 +1,7 @@
+import { Devtools, liveStoreVersion } from '@livestore/common'
 import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import React from 'react'
 import { events, tables } from '../livestore/schema.ts'
 
@@ -90,6 +92,11 @@ type GeneratorState = {
   rate: number
 }
 
+type SnapshotPayload = {
+  state: ArrayBuffer | Uint8Array<ArrayBuffer>
+  eventlog: ArrayBuffer | Uint8Array<ArrayBuffer>
+}
+
 const makeGeneratorState = (): GeneratorState => ({
   timerId: null,
   remaining: 0,
@@ -111,6 +118,10 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const [requestedEventsPerSecond, setRequestedEventsPerSecond] = React.useState<number>(DEFAULT_EVENTS_PER_SECOND)
   const [isGenerating, setIsGenerating] = React.useState<boolean>(false)
   const [lastError, setLastError] = React.useState<string | null>(null)
+  const [stateSnapshot, setStateSnapshot] = React.useState<File | null>(null)
+  const [eventlogSnapshot, setEventlogSnapshot] = React.useState<File | null>(null)
+  const [snapshotStatus, setSnapshotStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [snapshotError, setSnapshotError] = React.useState<string | null>(null)
   const initialSyncHead = React.useMemo(() => {
     try {
       const syncState = store.syncProcessor.syncState.pipe(Effect.runSync)
@@ -212,6 +223,82 @@ export const EventControls: React.FC<EventControlsProps> = ({
     onResetHarness()
   }, [onResetHarness, stopGenerator])
 
+  const normalizeSnapshot = React.useCallback((input: SnapshotPayload['state']) => {
+    if (input instanceof Uint8Array) return input
+    return new Uint8Array(input)
+  }, [])
+
+  const loadSnapshots = React.useCallback(
+    async ({ state, eventlog }: SnapshotPayload) => {
+      const clientSession = store.clientSession
+      const clientId = clientSession.clientId
+      const batchId = `perf-${makeRunId()}`
+
+      const send = (data: Uint8Array<ArrayBuffer>) =>
+        clientSession.leaderThread
+          .sendDevtoolsMessage(
+            Devtools.Leader.LoadDatabaseFile.Request.make({
+              clientId,
+              requestId: nanoid(),
+              data,
+              batchId,
+              liveStoreVersion,
+            }),
+          )
+          .pipe(Effect.runPromise)
+
+      const normalizedState = normalizeSnapshot(state)
+      const normalizedEventlog = normalizeSnapshot(eventlog)
+
+      await send(normalizedState)
+      await send(normalizedEventlog)
+    },
+    [normalizeSnapshot, store.clientSession],
+  )
+
+  const handleLoadSnapshotFiles = React.useCallback(async () => {
+    if (stateSnapshot === null || eventlogSnapshot === null) {
+      setSnapshotStatus('error')
+      setSnapshotError('Select both state and eventlog files before loading.')
+      return
+    }
+
+    setSnapshotStatus('loading')
+    setSnapshotError(null)
+
+    try {
+      const [stateBuffer, eventlogBuffer] = await Promise.all([
+        stateSnapshot.arrayBuffer(),
+        eventlogSnapshot.arrayBuffer(),
+      ])
+
+      await loadSnapshots({
+        state: stateBuffer,
+        eventlog: eventlogBuffer,
+      })
+
+      setSnapshotStatus('success')
+    } catch (error) {
+      console.error('Failed to load snapshots', error)
+      setSnapshotStatus('error')
+      setSnapshotError(error instanceof Error ? error.message : 'Unknown error while loading snapshots.')
+    }
+  }, [eventlogSnapshot, loadSnapshots, stateSnapshot])
+
+  React.useEffect(() => {
+    const harness = {
+      loadSnapshots: (payload: SnapshotPayload) => loadSnapshots(payload),
+    }
+
+    ;(window as any).__livestorePerfHarness = harness
+
+    return () => {
+      if ((window as any).__livestorePerfHarness === harness) {
+        delete (window as any).__livestorePerfHarness
+      }
+    }
+  }, [loadSnapshots])
+
   React.useEffect(() => {
     return () => {
       stopGenerator()
@@ -303,6 +390,51 @@ export const EventControls: React.FC<EventControlsProps> = ({
           Reset harness
         </button>
       </div>
+      <section style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #ddd' }}>
+        <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Load snapshots</h2>
+        <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Select matching state and eventlog SQLite snapshots exported from LiveStore Devtools to instantly load large
+          datasets.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+            State DB
+            <input
+              type="file"
+              accept=".db"
+              data-testid="snapshot-state-input"
+              onChange={(event) => setStateSnapshot(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+            Eventlog DB
+            <input
+              type="file"
+              accept=".db"
+              data-testid="snapshot-eventlog-input"
+              onChange={(event) => setEventlogSnapshot(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <button
+            type="button"
+            data-testid="load-snapshots"
+            onClick={handleLoadSnapshotFiles}
+            disabled={snapshotStatus === 'loading'}
+          >
+            {snapshotStatus === 'loading' ? 'Loading snapshots…' : 'Load snapshots'}
+          </button>
+        </div>
+        {snapshotStatus === 'success' && (
+          <p style={{ color: 'green', marginTop: '0.5rem' }} data-testid="snapshot-load-status">
+            Snapshots loaded. Harness will restart automatically.
+          </p>
+        )}
+        {snapshotStatus === 'error' && snapshotError && (
+          <p style={{ color: 'red', marginTop: '0.5rem' }} data-testid="snapshot-load-error">
+            {snapshotError}
+          </p>
+        )}
+      </section>
       {lastError && (
         <p style={{ color: 'red', marginTop: '0.75rem' }} data-testid="event-error">
           {lastError}

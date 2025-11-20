@@ -26,6 +26,7 @@
     "vite": "catalog:"
   },
   "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.16",
     "@playwright/test": "catalog:",
     "tsx": "^4.20.0"
   },
