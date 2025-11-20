@@ -17,7 +17,7 @@ export const useStoreRegistry = (override?: StoreRegistry) => {
 
   const storeRegistry = React.use(StoreRegistryContext)
 
-  if (!storeRegistry) throw new Error('useStoreRegistry() must be used within <MultiStoreProvider>')
+  if (!storeRegistry) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
 
   return storeRegistry
 }
