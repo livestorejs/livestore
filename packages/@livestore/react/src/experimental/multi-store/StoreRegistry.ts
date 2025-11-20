@@ -125,16 +125,17 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   }
 
   /**
-   * Initiates loading of the store if not already in progress.
+   * Gets the loaded store or initiates loading if not already in progress.
    *
    * @param options - Store creation options
-   * @returns Promise that resolves to the loaded store or rejects with an error
+   * @returns The loaded store if available, or a Promise that resolves to the loaded store
    *
    * @remarks
    * This method handles the complete lifecycle of loading a store:
-   * - Creates the store promise via createStorePromise
+   * - Returns the store directly if already loaded (synchronous)
+   * - Returns a Promise if loading is in progress or needs to be initiated
    * - Transitions through loading → success/error states
-   * - Invokes onSettle callback for GC scheduling when needed
+   * - Schedules GC when loading completes without active subscribers
    */
   getOrLoad = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
     if (options.gcTime !== undefined) this.#gcTime = Math.max(this.#gcTime ?? 0, options.gcTime)
@@ -259,14 +260,13 @@ export class StoreRegistry {
    * Get or load a store, returning it directly if loaded or a promise if loading.
    *
    * @typeParam TSchema - The schema of the store to load
-   * @returns The loaded store if available, or a Promise that resolves to the store if loading
+   * @returns The loaded store if available, or a Promise that resolves to the loaded store
    * @throws unknown loading error
    *
    * @remarks
-   * - Designed to work with React.use() for Suspense integration.
-   * - When the store is already loaded, returns the store instance directly (not wrapped in a Promise)
-   * - When loading, returns a stable Promise reference that can be used with React.use()
-   * - This prevents re-suspension on subsequent renders when the store is already loaded
+   * - Returns the store instance directly (synchronous) when already loaded
+   * - Returns a stable Promise reference when loading is in progress or needs to be initiated
+   * - Applies default options from registry config, with call-site options taking precedence
    */
   getOrLoad = <TSchema extends LiveStoreSchema>(
     options: CachedStoreOptions<TSchema>,
