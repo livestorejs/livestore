@@ -184,22 +184,18 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
           file = this.#files.find((f) => f.isAvailable)
-          if (!file) {
-            return yield* Effect.fail(new Error('could not find available file even though capacity not exhausted'))
-          }
+          if (!file) return yield* Effect.dieMessage('could not find available file even though capacity not exhausted')
 
           yield* this.#setAssociatedSqliteFilePath(file.accessHandle, sqliteFilePath, flags)
           file.sqliteFilePath = sqliteFilePath
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
-          return yield* Effect.fail(new Error('cannot create file: capacity exhausted'))
+          return yield* Effect.dieMessage('cannot create file: capacity exhausted')
         }
       }
 
-      if (!file) {
-        return yield* Effect.fail(new Error('file not found'))
-      }
+      if (!file) return yield* Effect.dieMessage('file not found')
 
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
