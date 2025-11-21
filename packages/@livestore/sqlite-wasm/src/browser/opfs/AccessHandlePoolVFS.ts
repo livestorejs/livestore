@@ -1,5 +1,5 @@
-import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
+import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
@@ -62,6 +62,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #directoryPath
   #directoryHandle: FileSystemDirectoryHandle | undefined
 
+  // Runtime for executing Effect operations
+  readonly #runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
+
   // The OPFS files all have randomly-generated names that do not match
   // the SQLite files whose data they contain. This map links those names
   // with their respective OPFS access handles.
@@ -75,15 +78,22 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   #mapIdToFile = new Map<number, { path: string; flags: number; accessHandle: FileSystemSyncAccessHandle }>()
 
-  static async create(name: string, directoryPath: string, module: any) {
-    const vfs = new AccessHandlePoolVFS(name, directoryPath, module)
-    await vfs.isReady()
+  static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
+    const runtime = yield* Effect.runtime<Opfs.Opfs | Scope.Scope>()
+    const vfs = new AccessHandlePoolVFS({ name, directoryPath, module, runtime })
+    yield* Effect.promise(() => vfs.isReady())
     return vfs
-  }
+  })
 
-  constructor(name: string, directoryPath: string, module: any) {
+  constructor({
+    name,
+    directoryPath,
+    module,
+    runtime,
+  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope> }) {
     super(name, module)
     this.#directoryPath = directoryPath
+    this.#runtime = runtime
   }
 
   /**
@@ -121,7 +131,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       })
     }
 
-    const fileSize = accessHandle.getSize()
+    const fileSize = Opfs.Opfs.syncGetSize(accessHandle).pipe(Runtime.runSync(this.#runtime))
     if (fileSize <= HEADER_OFFSET_DATA) {
       throw new OpfsError({
         path,
@@ -133,7 +143,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
     const payloadSize = fileSize - HEADER_OFFSET_DATA
     const payload = new Uint8Array(payloadSize)
-    const bytesRead = accessHandle.read(payload, { at: HEADER_OFFSET_DATA })
+    const bytesRead = Opfs.Opfs.syncRead(accessHandle, payload, { at: HEADER_OFFSET_DATA }).pipe(
+      Runtime.runSync(this.#runtime),
+    )
     if (bytesRead !== payloadSize) {
       throw new OpfsError({
         path,
@@ -146,7 +158,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   resetAccessHandle(zName: string) {
     const path = this.#getPath(zName)
     const accessHandle = this.#mapPathToAccessHandle.get(path)!
-    accessHandle.truncate(HEADER_OFFSET_DATA)
+    Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
     // accessHandle.write(new Uint8Array(), { at: HEADER_OFFSET_DATA })
     // accessHandle.flush()
   }
@@ -187,7 +199,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   jClose(fileId: number): number {
     const file = this.#mapIdToFile.get(fileId)
     if (file) {
-      file.accessHandle.flush()
+      Opfs.Opfs.syncFlush(file.accessHandle).pipe(Runtime.runSync(this.#runtime))
       this.#mapIdToFile.delete(fileId)
       if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
         this.#deletePath(file.path)
@@ -198,9 +210,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.read(pData.subarray(), {
+    const nBytes = Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
       at: HEADER_OFFSET_DATA + iOffset,
-    })
+    }).pipe(Runtime.runSync(this.#runtime))
     if (nBytes < pData.byteLength) {
       pData.fill(0, nBytes, pData.byteLength)
       return VFS.SQLITE_IOERR_SHORT_READ
@@ -210,27 +222,27 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = file.accessHandle.write(pData.subarray(), {
+    const nBytes = Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
       at: HEADER_OFFSET_DATA + iOffset,
-    })
+    }).pipe(Runtime.runSync(this.#runtime))
     return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
   }
 
   jTruncate(fileId: number, iSize: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    file.accessHandle.truncate(HEADER_OFFSET_DATA + iSize)
+    Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize).pipe(Runtime.runSync(this.#runtime))
     return VFS.SQLITE_OK
   }
 
   jSync(fileId: number, _flags: number): number {
     const file = this.#mapIdToFile.get(fileId)!
-    file.accessHandle.flush()
+    Opfs.Opfs.syncFlush(file.accessHandle).pipe(Runtime.runSync(this.#runtime))
     return VFS.SQLITE_OK
   }
 
   jFileSize(fileId: number, pSize64: DataView): number {
     const file = this.#mapIdToFile.get(fileId)!
-    const size = file.accessHandle.getSize() - HEADER_OFFSET_DATA
+    const size = Opfs.Opfs.syncGetSize(file.accessHandle).pipe(Runtime.runSync(this.#runtime)) - HEADER_OFFSET_DATA
     pSize64.setBigInt64(0, BigInt(size), true)
     return VFS.SQLITE_OK
   }
@@ -262,13 +274,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   async isReady() {
     if (!this.#directoryHandle) {
       // All files are stored in a single directory.
-      let handle = await navigator.storage.getDirectory()
-      for (const d of this.#directoryPath.split('/')) {
-        if (d) {
-          handle = await handle.getDirectoryHandle(d, { create: true })
-        }
-      }
-      this.#directoryHandle = handle
+      this.#directoryHandle = await Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true }).pipe(
+        Runtime.runPromise(this.#runtime),
+      )
 
       await this.#acquireAccessHandles()
       if (this.getCapacity() === 0) {
@@ -308,14 +316,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   async addCapacity(n: number): Promise<number> {
     for (let i = 0; i < n; ++i) {
       const name = Math.random().toString(36).replace('0.', '')
-      const handle = await this.#directoryHandle!.getFileHandle(name, {
-        create: true,
-      })
-
-      const accessHandle = await Effect.tryPromise({
-        try: () => handle.createSyncAccessHandle(),
-        catch: (cause) => new OpfsError({ cause, path: name }),
-      }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
+      const accessHandle = await Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
+        Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
+        Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Runtime.runPromise(this.#runtime),
+      )
       this.#mapAccessHandleToName.set(accessHandle, name)
 
       this.#setAssociatedPath(accessHandle, '', 0)
@@ -335,7 +341,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       const name = this.#mapAccessHandleToName.get(accessHandle)!
       accessHandle.close()
-      await this.#directoryHandle!.removeEntry(name)
+      Opfs.Opfs.removeEntry(this.#directoryHandle!, name).pipe(Runtime.runPromise(this.#runtime))
       this.#mapAccessHandleToName.delete(accessHandle)
       this.#availableAccessHandles.delete(accessHandle)
       ++nRemoved
@@ -344,21 +350,24 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   async #acquireAccessHandles() {
+    const handlesStream = Opfs.Opfs.values(this.#directoryHandle!).pipe(Runtime.runSync(this.#runtime))
+
     // Enumerate all the files in the directory.
-    const files = [] as [string, FileSystemFileHandle][]
-    for await (const [name, handle] of this.#directoryHandle!) {
-      if (handle.kind === 'file') {
-        files.push([name, handle as FileSystemFileHandle])
-      }
-    }
+    const files = await handlesStream.pipe(
+      Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
+      Stream.map((fileHandle) => [fileHandle.name, fileHandle] as const),
+      Stream.runCollectReadonlyArray,
+      Runtime.runPromise(this.#runtime),
+    )
 
     // Open access handles in parallel, separating associated and unassociated.
     await Promise.all(
       files.map(async ([name, handle]) => {
-        const accessHandle = await Effect.tryPromise({
-          try: () => handle.createSyncAccessHandle(),
-          catch: (cause) => new OpfsError({ cause, path: name }),
-        }).pipe(Effect.retry(Schedule.exponentialBackoff10Sec), Effect.runPromise)
+        const accessHandle = await Opfs.Opfs.createSyncAccessHandle(handle).pipe(
+          Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+          Runtime.runPromise(this.#runtime),
+        )
         this.#mapAccessHandleToName.set(accessHandle, name)
         const path = this.#getAssociatedPath(accessHandle)
         if (path) {
@@ -387,7 +396,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #getAssociatedPath(accessHandle: FileSystemSyncAccessHandle): string {
     // Read the path and digest of the path from the file.
     const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
-    accessHandle.read(corpus, { at: 0 })
+    Opfs.Opfs.syncRead(accessHandle, corpus, { at: 0 }).pipe(Runtime.runSync(this.#runtime))
 
     // Delete files not expected to be present.
     const dataView = new DataView(corpus.buffer, corpus.byteOffset)
@@ -399,7 +408,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }
 
     const fileDigest = new Uint32Array(HEADER_DIGEST_SIZE / 4)
-    accessHandle.read(fileDigest, { at: HEADER_OFFSET_DIGEST })
+    Opfs.Opfs.syncRead(accessHandle, fileDigest, { at: HEADER_OFFSET_DIGEST }).pipe(Runtime.runSync(this.#runtime))
 
     // Verify the digest.
     const computedDigest = this.#computeDigest(corpus)
@@ -411,7 +420,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         // truncated in #setAssociatedPath after the header is written. If
         // an interruption occurs right before the truncation then garbage
         // may remain in the file.
-        accessHandle.truncate(HEADER_OFFSET_DATA)
+        Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
       }
       return new TextDecoder().decode(corpus.subarray(0, pathBytes))
     } else {
@@ -439,9 +448,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
     // Write the OPFS file header, including the digest.
     const digest = this.#computeDigest(corpus)
-    accessHandle.write(corpus, { at: 0 })
-    accessHandle.write(digest, { at: HEADER_OFFSET_DIGEST })
-    accessHandle.flush()
+    Opfs.Opfs.syncWrite(accessHandle, corpus, { at: 0 }).pipe(Runtime.runSync(this.#runtime))
+    Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST }).pipe(Runtime.runSync(this.#runtime))
+    Opfs.Opfs.syncFlush(accessHandle).pipe(Runtime.runSync(this.#runtime))
 
     if (path) {
       this.#mapPathToAccessHandle.set(path, accessHandle)
@@ -449,7 +458,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     } else {
       // This OPFS file doesn't represent any SQLite file so it doesn't
       // need to keep any data.
-      accessHandle.truncate(HEADER_OFFSET_DATA)
+      Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
       this.#availableAccessHandles.add(accessHandle)
     }
   }
