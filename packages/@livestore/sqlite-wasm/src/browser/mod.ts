@@ -1,5 +1,5 @@
 import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
-import { Effect, Hash } from '@livestore/utils/effect'
+import { Effect, Hash, type Opfs, type Scope } from '@livestore/utils/effect'
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
@@ -9,6 +9,11 @@ import type { AccessHandlePoolVFS } from './opfs/AccessHandlePoolVFS.ts'
 import { makeOpfsDb } from './opfs/index.ts'
 
 export * from './opfs/opfs-sah-pool.ts'
+
+type WebDatabaseReq = {
+  dbPointer: number
+  persistenceInfo: PersistenceInfo
+}
 
 export type WebDatabaseMetadataInMemory = {
   _tag: 'in-memory'
@@ -47,18 +52,29 @@ export type WebDatabaseInputOpfs = {
   configureDb?: (db: SqliteDb) => void
 }
 
-export type WebDatabaseInput = WebDatabaseInputInMemory | WebDatabaseInputOpfs
+type MakeInMemoryWebDatabase = MakeSqliteDb<WebDatabaseReq, WebDatabaseInputInMemory, WebDatabaseMetadataInMemory>
 
-export type MakeWebSqliteDb = MakeSqliteDb<
-  { dbPointer: number; persistenceInfo: PersistenceInfo },
-  WebDatabaseInput,
-  WebDatabaseMetadata
+type MakeOpfsWebDatabase = MakeSqliteDb<
+  WebDatabaseReq,
+  WebDatabaseInputOpfs,
+  WebDatabaseMetadataOpfs,
+  Opfs.Opfs | Scope.Scope
 >
 
-export const sqliteDbFactory =
-  ({ sqlite3 }: { sqlite3: SQLiteAPI }): MakeWebSqliteDb =>
-  (input: WebDatabaseInput) =>
-    Effect.gen(function* () {
+export function sqliteDbFactory({ sqlite3 }: { sqlite3: SQLiteAPI }) {
+  function makeDb(input: WebDatabaseInputInMemory): ReturnType<MakeInMemoryWebDatabase>
+  function makeDb(input: WebDatabaseInputOpfs): ReturnType<MakeOpfsWebDatabase>
+  function makeDb(
+    input: WebDatabaseInputInMemory | WebDatabaseInputOpfs,
+  ): ReturnType<
+    MakeSqliteDb<
+      WebDatabaseReq,
+      WebDatabaseInputInMemory | WebDatabaseInputOpfs,
+      WebDatabaseMetadata,
+      Opfs.Opfs | Scope.Scope
+    >
+  > {
+    return Effect.gen(function* () {
       if (input._tag === 'in-memory') {
         const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
         return makeSqliteDb<WebDatabaseMetadataInMemory>({
@@ -73,7 +89,7 @@ export const sqliteDbFactory =
               fileName: ':memory:',
             },
           },
-        }) as any
+        })
       }
 
       // TODO figure out the actual max length
@@ -110,3 +126,9 @@ export const sqliteDbFactory =
         },
       })
     })
+  }
+
+  return makeDb
+}
+
+export type MakeWebSqliteDb = ReturnType<typeof sqliteDbFactory>
