@@ -57,13 +57,11 @@ export const streamEventsWithSyncState = ({
             return [Chunk.empty(), Option.none()]
           }
 
-          // const headHasAdvanced = Option.isSome(yield* Queue.poll(headQueue))
-          // const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
-
           // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
           // The stream suspends here until a new upstreamHead is available in the Queue.
           const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
-          const nextHead = waitForHead ? yield* Queue.take(headQueue) : head
+          const headHasAdvanced = yield* Queue.isFull(headQueue)
+          const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
           const target = EventSequenceNumber.make({
             global: Math.min(cursor.global + batchSize, nextHead.global),
             client: EventSequenceNumber.clientDefault,
