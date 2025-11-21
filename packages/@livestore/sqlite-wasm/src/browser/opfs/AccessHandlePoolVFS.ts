@@ -1,5 +1,5 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
-import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream, type WebError } from '@livestore/utils/effect'
+import { Effect, Opfs, Runtime, Schedule, type Scope, Stream, type WebError } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
@@ -128,30 +128,21 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       const accessHandle = this.#mapPathToAccessHandle.get(path)
 
       if (accessHandle === undefined) {
-        return yield* new OpfsError({
-          path,
-          cause: new Error('Cannot read payload for untracked OPFS path'),
-        })
+        return yield* Effect.dieMessage('Cannot read payload for untracked OPFS path')
       }
 
       const fileSize = yield* Opfs.Opfs.syncGetSize(accessHandle)
       if (fileSize <= HEADER_OFFSET_DATA) {
-        return yield* new OpfsError({
-          path,
-          cause: new Error(
-            `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
-          ),
-        })
+        return yield* Effect.dieMessage(
+          `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
+        )
       }
 
       const payloadSize = fileSize - HEADER_OFFSET_DATA
       const payload = new Uint8Array(payloadSize)
       const bytesRead = yield* Opfs.Opfs.syncRead(accessHandle, payload, { at: HEADER_OFFSET_DATA })
       if (bytesRead !== payloadSize) {
-        return yield* new OpfsError({
-          path,
-          cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
-        })
+        return yield* Effect.dieMessage(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`)
       }
 
       return payload.buffer
@@ -370,22 +361,20 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   /**
    * Increase the capacity of the file system by n.
    */
-  addCapacity: (n: number) => Effect.Effect<void, OpfsError | WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn(
-    (n: number) =>
-      Effect.repeatN(
-        Effect.gen(this, function* () {
-          const name = Math.random().toString(36).replace('0.', '')
-          const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
-            Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
-            Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
-            Effect.retry(Schedule.exponentialBackoff10Sec),
-          )
-          this.#mapAccessHandleToName.set(accessHandle, name)
+  addCapacity: (n: number) => Effect.Effect<void, WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn((n: number) =>
+    Effect.repeatN(
+      Effect.gen(this, function* () {
+        const name = Math.random().toString(36).replace('0.', '')
+        const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
+          Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+        )
+        this.#mapAccessHandleToName.set(accessHandle, name)
 
-          yield* this.#setAssociatedPath(accessHandle, '', 0)
-        }),
-        n,
-      ),
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+      }),
+      n,
+    ),
   )
 
   /**
@@ -587,8 +576,3 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }),
   )
 }
-
-export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
-  cause: Schema.Defect,
-  path: Schema.String,
-}) {}
