@@ -1,5 +1,5 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
-import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream } from '@livestore/utils/effect'
+import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream, type WebError } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
@@ -105,11 +105,13 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * It's not the same as the SQLite file name. It's a randomly-generated
    * string that is not meaningful to the application.
    */
-  getOpfsFileName(zName: string) {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)!
-    return this.#mapAccessHandleToName.get(accessHandle)!
-  }
+  getOpfsFileName = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)!
+      return this.#mapAccessHandleToName.get(accessHandle)!
+    }),
+  )
 
   /**
    * Reads the SQLite payload (without the OPFS header) for the given file.
@@ -120,51 +122,54 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * acquires an exclusive lock — we don't need to handle short reads as
    * the file cannot be modified by other threads.
    */
-  readFilePayload(zName: string): ArrayBuffer {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)
+  readFilePayload = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
 
-    if (accessHandle === undefined) {
-      throw new OpfsError({
-        path,
-        cause: new Error('Cannot read payload for untracked OPFS path'),
-      })
-    }
+      if (accessHandle === undefined) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error('Cannot read payload for untracked OPFS path'),
+        })
+      }
 
-    const fileSize = Opfs.Opfs.syncGetSize(accessHandle).pipe(Runtime.runSync(this.#runtime))
-    if (fileSize <= HEADER_OFFSET_DATA) {
-      throw new OpfsError({
-        path,
-        cause: new Error(
-          `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
-        ),
-      })
-    }
+      const fileSize = yield* Opfs.Opfs.syncGetSize(accessHandle)
+      if (fileSize <= HEADER_OFFSET_DATA) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error(
+            `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
+          ),
+        })
+      }
 
-    const payloadSize = fileSize - HEADER_OFFSET_DATA
-    const payload = new Uint8Array(payloadSize)
-    const bytesRead = Opfs.Opfs.syncRead(accessHandle, payload, { at: HEADER_OFFSET_DATA }).pipe(
-      Runtime.runSync(this.#runtime),
-    )
-    if (bytesRead !== payloadSize) {
-      throw new OpfsError({
-        path,
-        cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
-      })
-    }
-    return payload.buffer
-  }
+      const payloadSize = fileSize - HEADER_OFFSET_DATA
+      const payload = new Uint8Array(payloadSize)
+      const bytesRead = yield* Opfs.Opfs.syncRead(accessHandle, payload, { at: HEADER_OFFSET_DATA })
+      if (bytesRead !== payloadSize) {
+        return yield* new OpfsError({
+          path,
+          cause: new Error(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`),
+        })
+      }
 
-  resetAccessHandle(zName: string) {
-    const path = this.#getPath(zName)
-    const accessHandle = this.#mapPathToAccessHandle.get(path)!
-    Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
-    // accessHandle.write(new Uint8Array(), { at: HEADER_OFFSET_DATA })
-    // accessHandle.flush()
-  }
+      return payload.buffer
+    }),
+  )
+
+  resetAccessHandle = Effect.fn((zName: string) =>
+    Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      const accessHandle = this.#mapPathToAccessHandle.get(path)!
+      yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+      // accessHandle.write(new Uint8Array(), { at: HEADER_OFFSET_DATA })
+      // accessHandle.flush()
+    }),
+  )
 
   jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
-    try {
+    return Effect.gen(this, function* () {
       // First try to open a path that already exists in the file system.
       const path = zName ? this.#getPath(zName) : Math.random().toString(36)
       let accessHandle = this.#mapPathToAccessHandle.get(path)
@@ -173,16 +178,15 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
           ;[accessHandle] = this.#availableAccessHandles.keys()
-          this.#setAssociatedPath(accessHandle!, path, flags)
+          yield* this.#setAssociatedPath(accessHandle!, path, flags)
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
-          throw new Error('cannot create file')
+          return yield* Effect.dieMessage('cannot create file')
         }
       }
-      if (!accessHandle) {
-        throw new Error('file not found')
-      }
+      if (!accessHandle) return yield* Effect.dieMessage('file not found')
+
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
       const file = { path, flags, accessHandle }
@@ -190,61 +194,102 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       pOutFlags.setInt32(0, flags, true)
       return VFS.SQLITE_OK
-    } catch (e: any) {
-      console.error(e.message)
-      return VFS.SQLITE_CANTOPEN
-    }
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jClose(fileId: number): number {
-    const file = this.#mapIdToFile.get(fileId)
-    if (file) {
-      Opfs.Opfs.syncFlush(file.accessHandle).pipe(Runtime.runSync(this.#runtime))
-      this.#mapIdToFile.delete(fileId)
-      if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
-        this.#deletePath(file.path)
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)
+      if (file) {
+        yield* Opfs.Opfs.syncFlush(file.accessHandle)
+        this.#mapIdToFile.delete(fileId)
+        if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+          yield* this.#deletePath(file.path)
+        }
       }
-    }
-    return VFS.SQLITE_OK
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
-      at: HEADER_OFFSET_DATA + iOffset,
-    }).pipe(Runtime.runSync(this.#runtime))
-    if (nBytes < pData.byteLength) {
-      pData.fill(0, nBytes, pData.byteLength)
-      return VFS.SQLITE_IOERR_SHORT_READ
-    }
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
+        at: HEADER_OFFSET_DATA + iOffset,
+      })
+      if (nBytes < pData.byteLength) {
+        pData.fill(0, nBytes, pData.byteLength)
+        return VFS.SQLITE_IOERR_SHORT_READ
+      }
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const nBytes = Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
-      at: HEADER_OFFSET_DATA + iOffset,
-    }).pipe(Runtime.runSync(this.#runtime))
-    return nBytes === pData.byteLength ? VFS.SQLITE_OK : VFS.SQLITE_IOERR
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const nBytes = yield* Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
+        at: HEADER_OFFSET_DATA + iOffset,
+      })
+      if (nBytes !== pData.byteLength) {
+        return yield* Effect.dieMessage(`Wrote ${nBytes} bytes, expected ${pData.byteLength}`)
+      }
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jTruncate(fileId: number, iSize: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize).pipe(Runtime.runSync(this.#runtime))
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jSync(fileId: number, _flags: number): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    Opfs.Opfs.syncFlush(file.accessHandle).pipe(Runtime.runSync(this.#runtime))
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      yield* Opfs.Opfs.syncFlush(file.accessHandle)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jFileSize(fileId: number, pSize64: DataView): number {
-    const file = this.#mapIdToFile.get(fileId)!
-    const size = Opfs.Opfs.syncGetSize(file.accessHandle).pipe(Runtime.runSync(this.#runtime)) - HEADER_OFFSET_DATA
-    pSize64.setBigInt64(0, BigInt(size), true)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const file = this.#mapIdToFile.get(fileId)!
+      const opfsFileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
+      const size = opfsFileSize - HEADER_OFFSET_DATA
+      pSize64.setBigInt64(0, BigInt(size), true)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jSectorSize(_fileId: number): number {
@@ -256,34 +301,46 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   jAccess(zName: string, _flags: number, pResOut: DataView): number {
-    const path = this.#getPath(zName)
-    pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   jDelete(zName: string, _syncDir: number): number {
-    const path = this.#getPath(zName)
-    this.#deletePath(path)
-    return VFS.SQLITE_OK
+    return Effect.gen(this, function* () {
+      const path = this.#getPath(zName)
+      yield* this.#deletePath(path)
+      return VFS.SQLITE_OK
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
+      Runtime.runSync(this.#runtime),
+    )
   }
 
   close() {
-    this.#releaseAccessHandles()
+    this.#releaseAccessHandles().pipe(Runtime.runPromise(this.#runtime))
   }
 
   async isReady() {
-    if (!this.#directoryHandle) {
-      // All files are stored in a single directory.
-      this.#directoryHandle = await Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true }).pipe(
-        Runtime.runPromise(this.#runtime),
-      )
+    return Effect.gen(this, function* () {
+      if (!this.#directoryHandle) {
+        // All files are stored in a single directory.
+        this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
 
-      await this.#acquireAccessHandles()
-      if (this.getCapacity() === 0) {
-        await this.addCapacity(DEFAULT_CAPACITY)
+        yield* this.#acquireAccessHandles()
+        if (this.getCapacity() === 0) {
+          yield* this.addCapacity(DEFAULT_CAPACITY)
+        }
       }
-    }
-    return true
+      return true
+    }).pipe(Runtime.runPromise(this.#runtime))
   }
 
   /**
@@ -313,155 +370,174 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   /**
    * Increase the capacity of the file system by n.
    */
-  async addCapacity(n: number): Promise<number> {
-    for (let i = 0; i < n; ++i) {
-      const name = Math.random().toString(36).replace('0.', '')
-      const accessHandle = await Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
-        Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
-        Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
-        Effect.retry(Schedule.exponentialBackoff10Sec),
-        Runtime.runPromise(this.#runtime),
-      )
-      this.#mapAccessHandleToName.set(accessHandle, name)
+  addCapacity: (n: number) => Effect.Effect<void, OpfsError | WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn(
+    (n: number) =>
+      Effect.repeatN(
+        Effect.gen(this, function* () {
+          const name = Math.random().toString(36).replace('0.', '')
+          const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
+            Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
+            Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
+            Effect.retry(Schedule.exponentialBackoff10Sec),
+          )
+          this.#mapAccessHandleToName.set(accessHandle, name)
 
-      this.#setAssociatedPath(accessHandle, '', 0)
-    }
-    return n
-  }
+          yield* this.#setAssociatedPath(accessHandle, '', 0)
+        }),
+        n,
+      ),
+  )
 
   /**
    * Decrease the capacity of the file system by n. The capacity cannot be
    * decreased to fewer than the current number of SQLite files in the
    * file system.
    */
-  async removeCapacity(n: number): Promise<number> {
-    let nRemoved = 0
-    for (const accessHandle of Array.from(this.#availableAccessHandles)) {
-      if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
+  removeCapacity = Effect.fn((n: number) =>
+    Effect.gen(this, function* () {
+      let nRemoved = 0
+      yield* Effect.forEach(
+        this.#availableAccessHandles,
+        (accessHandle) =>
+          Effect.gen(this, function* () {
+            if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
-      const name = this.#mapAccessHandleToName.get(accessHandle)!
-      accessHandle.close()
-      Opfs.Opfs.removeEntry(this.#directoryHandle!, name).pipe(Runtime.runPromise(this.#runtime))
-      this.#mapAccessHandleToName.delete(accessHandle)
-      this.#availableAccessHandles.delete(accessHandle)
-      ++nRemoved
-    }
-    return nRemoved
-  }
+            const name = this.#mapAccessHandleToName.get(accessHandle)!
+            accessHandle.close()
+            yield* Opfs.Opfs.removeEntry(this.#directoryHandle!, name)
+            this.#mapAccessHandleToName.delete(accessHandle)
+            this.#availableAccessHandles.delete(accessHandle)
+            ++nRemoved
+          }),
+        { concurrency: 'unbounded', discard: true },
+      )
+      return nRemoved
+    }),
+  )
 
-  async #acquireAccessHandles() {
-    const handlesStream = Opfs.Opfs.values(this.#directoryHandle!).pipe(Runtime.runSync(this.#runtime))
+  #acquireAccessHandles = Effect.fn(() =>
+    Effect.gen(this, function* () {
+      const handlesStream = yield* Opfs.Opfs.values(this.#directoryHandle!)
 
-    // Enumerate all the files in the directory.
-    const files = await handlesStream.pipe(
-      Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
-      Stream.map((fileHandle) => [fileHandle.name, fileHandle] as const),
-      Stream.runCollectReadonlyArray,
-      Runtime.runPromise(this.#runtime),
-    )
+      yield* handlesStream.pipe(
+        Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
+        Stream.mapEffect(
+          (fileHandle) =>
+            Effect.gen(function* () {
+              return {
+                opfsFileName: fileHandle.name,
+                accessHandle: yield* Opfs.Opfs.createSyncAccessHandle(fileHandle),
+              } as const
+            }),
+          { concurrency: 'unbounded' },
+        ),
+        Stream.runForEach(({ opfsFileName, accessHandle }) =>
+          Effect.gen(this, function* () {
+            this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
+            const path = yield* this.#getAssociatedPath(accessHandle)
 
-    // Open access handles in parallel, separating associated and unassociated.
-    await Promise.all(
-      files.map(async ([name, handle]) => {
-        const accessHandle = await Opfs.Opfs.createSyncAccessHandle(handle).pipe(
-          Effect.mapError((error) => new OpfsError({ cause: error, path: name })),
-          Effect.retry(Schedule.exponentialBackoff10Sec),
-          Runtime.runPromise(this.#runtime),
-        )
-        this.#mapAccessHandleToName.set(accessHandle, name)
-        const path = this.#getAssociatedPath(accessHandle)
-        if (path) {
-          this.#mapPathToAccessHandle.set(path, accessHandle)
-        } else {
-          this.#availableAccessHandles.add(accessHandle)
-        }
-      }),
-    )
-  }
+            if (path) {
+              this.#mapPathToAccessHandle.set(path, accessHandle)
+            } else {
+              this.#availableAccessHandles.add(accessHandle)
+            }
+          }),
+        ),
+      )
+    }),
+  )
 
-  #releaseAccessHandles() {
-    for (const accessHandle of this.#mapAccessHandleToName.keys()) {
-      accessHandle.close()
-    }
-    this.#mapAccessHandleToName.clear()
-    this.#mapPathToAccessHandle.clear()
-    this.#availableAccessHandles.clear()
-  }
+  #releaseAccessHandles = Effect.fn(() =>
+    Effect.gen(this, function* () {
+      yield* Effect.forEach(
+        this.#mapAccessHandleToName.keys(),
+        (accessHandle) => Effect.sync(() => accessHandle.close()),
+        { concurrency: 'unbounded', discard: true },
+      )
+      this.#mapAccessHandleToName.clear()
+      this.#mapPathToAccessHandle.clear()
+      this.#availableAccessHandles.clear()
+    }),
+  )
 
   /**
    * Read and return the associated path from an OPFS file header.
    * Empty string is returned for an unassociated OPFS file.
    * @returns {string} path or empty string
    */
-  #getAssociatedPath(accessHandle: FileSystemSyncAccessHandle): string {
-    // Read the path and digest of the path from the file.
-    const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
-    Opfs.Opfs.syncRead(accessHandle, corpus, { at: 0 }).pipe(Runtime.runSync(this.#runtime))
+  #getAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle) =>
+    Effect.gen(this, function* () {
+      // Read the path and digest of the path from the file.
+      const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
+      yield* Opfs.Opfs.syncRead(accessHandle, corpus, { at: 0 })
 
-    // Delete files not expected to be present.
-    const dataView = new DataView(corpus.buffer, corpus.byteOffset)
-    const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-    if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
-      console.warn(`Remove file with unexpected flags ${flags.toString(16)}`)
-      this.#setAssociatedPath(accessHandle, '', 0)
-      return ''
-    }
-
-    const fileDigest = new Uint32Array(HEADER_DIGEST_SIZE / 4)
-    Opfs.Opfs.syncRead(accessHandle, fileDigest, { at: HEADER_OFFSET_DIGEST }).pipe(Runtime.runSync(this.#runtime))
-
-    // Verify the digest.
-    const computedDigest = this.#computeDigest(corpus)
-    if (fileDigest.every((value, i) => value === computedDigest[i])) {
-      // Good digest. Decode the null-terminated path string.
-      const pathBytes = corpus.indexOf(0)
-      if (pathBytes === 0) {
-        // Ensure that unassociated files are empty. Unassociated files are
-        // truncated in #setAssociatedPath after the header is written. If
-        // an interruption occurs right before the truncation then garbage
-        // may remain in the file.
-        Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
+      // Delete files not expected to be present.
+      const dataView = new DataView(corpus.buffer, corpus.byteOffset)
+      const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
+      if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+        yield* Effect.logWarning(`Remove file with unexpected flags ${flags.toString(16)}`)
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+        return ''
       }
-      return new TextDecoder().decode(corpus.subarray(0, pathBytes))
-    } else {
-      // Bad digest. Repair this header.
-      console.warn('Disassociating file with bad digest.')
-      this.#setAssociatedPath(accessHandle, '', 0)
-      return ''
-    }
-  }
+
+      const fileDigest = new Uint32Array(HEADER_DIGEST_SIZE / 4)
+      yield* Opfs.Opfs.syncRead(accessHandle, fileDigest, { at: HEADER_OFFSET_DIGEST })
+
+      // Verify the digest.
+      const computedDigest = this.#computeDigest(corpus)
+      if (fileDigest.every((value, i) => value === computedDigest[i])) {
+        // Good digest. Decode the null-terminated path string.
+        const pathBytes = corpus.indexOf(0)
+        if (pathBytes === 0) {
+          // Ensure that unassociated files are empty. Unassociated files are
+          // truncated in #setAssociatedPath after the header is written. If
+          // an interruption occurs right before the truncation then garbage
+          // may remain in the file.
+          yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+        }
+        return new TextDecoder().decode(corpus.subarray(0, pathBytes))
+      } else {
+        // Bad digest. Repair this header.
+        yield* Effect.logWarning('Disassociating file with bad digest.')
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+        return ''
+      }
+    }),
+  )
 
   /**
    * Set the path on an OPFS file header.
    */
-  #setAssociatedPath(accessHandle: FileSystemSyncAccessHandle, path: string, flags: number) {
-    // Convert the path string to UTF-8.
-    const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
-    const encodedResult = new TextEncoder().encodeInto(path, corpus)
-    if (encodedResult.written >= HEADER_MAX_PATH_SIZE) {
-      throw new Error('path too long')
-    }
+  #setAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle, path: string, flags: number) =>
+    Effect.gen(this, function* () {
+      // Convert the path string to UTF-8.
+      const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
+      const encodedResult = new TextEncoder().encodeInto(path, corpus)
+      if (encodedResult.written >= HEADER_MAX_PATH_SIZE) {
+        return yield* Effect.dieMessage('path too long')
+      }
 
-    // Add the creation flags.
-    const dataView = new DataView(corpus.buffer, corpus.byteOffset)
-    dataView.setUint32(HEADER_OFFSET_FLAGS, flags)
+      // Add the creation flags.
+      const dataView = new DataView(corpus.buffer, corpus.byteOffset)
+      dataView.setUint32(HEADER_OFFSET_FLAGS, flags)
 
-    // Write the OPFS file header, including the digest.
-    const digest = this.#computeDigest(corpus)
-    Opfs.Opfs.syncWrite(accessHandle, corpus, { at: 0 }).pipe(Runtime.runSync(this.#runtime))
-    Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST }).pipe(Runtime.runSync(this.#runtime))
-    Opfs.Opfs.syncFlush(accessHandle).pipe(Runtime.runSync(this.#runtime))
+      // Write the OPFS file header, including the digest.
+      const digest = this.#computeDigest(corpus)
+      yield* Opfs.Opfs.syncWrite(accessHandle, corpus, { at: 0 })
+      yield* Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST })
+      yield* Opfs.Opfs.syncFlush(accessHandle)
 
-    if (path) {
-      this.#mapPathToAccessHandle.set(path, accessHandle)
-      this.#availableAccessHandles.delete(accessHandle)
-    } else {
-      // This OPFS file doesn't represent any SQLite file so it doesn't
-      // need to keep any data.
-      Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA).pipe(Runtime.runSync(this.#runtime))
-      this.#availableAccessHandles.add(accessHandle)
-    }
-  }
+      if (path) {
+        this.#mapPathToAccessHandle.set(path, accessHandle)
+        this.#availableAccessHandles.delete(accessHandle)
+      } else {
+        // This OPFS file doesn't represent any SQLite file so it doesn't
+        // need to keep any data.
+        yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
+        this.#availableAccessHandles.add(accessHandle)
+      }
+    }),
+  )
 
   /**
    * We need a synchronous digest function so can't use WebCrypto.
@@ -500,14 +576,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Remove the association between a path and an OPFS file.
    * @param {string} path
    */
-  #deletePath(path: string) {
-    const accessHandle = this.#mapPathToAccessHandle.get(path)
-    if (accessHandle) {
-      // Un-associate the SQLite path from the OPFS file.
-      this.#mapPathToAccessHandle.delete(path)
-      this.#setAssociatedPath(accessHandle, '', 0)
-    }
-  }
+  #deletePath = Effect.fn((path: string) =>
+    Effect.gen(this, function* () {
+      const accessHandle = this.#mapPathToAccessHandle.get(path)
+      if (accessHandle) {
+        // Un-associate the SQLite path from the OPFS file.
+        this.#mapPathToAccessHandle.delete(path)
+        yield* this.#setAssociatedPath(accessHandle, '', 0)
+      }
+    }),
+  )
 }
 
 export class OpfsError extends Schema.TaggedError<OpfsError>()('OpfsError', {
