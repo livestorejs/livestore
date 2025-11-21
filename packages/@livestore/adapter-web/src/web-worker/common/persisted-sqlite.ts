@@ -18,19 +18,17 @@ export const readPersistedStateDbFromClientSession: (args: {
   storageOptions: WorkerSchema.StorageType
   storeId: string
   schema: LiveStoreSchema
-}) => Effect.Effect.AsEffect<
-  Effect.Effect<
-    Uint8Array<ArrayBuffer>,
-    | PersistedSqliteError
-    | WebError.UnknownError
-    | WebError.TypeError
-    | WebError.NotFoundError
-    | WebError.NotAllowedError
-    | WebError.TypeMismatchError
-    | WebError.SecurityError
-    | Opfs.OpfsError,
-    Opfs.Opfs
-  >
+}) => Effect.Effect<
+  Uint8Array<ArrayBuffer>,
+  | PersistedSqliteError
+  | WebError.UnknownError
+  | WebError.TypeError
+  | WebError.NotFoundError
+  | WebError.NotAllowedError
+  | WebError.TypeMismatchError
+  | WebError.SecurityError
+  | Opfs.OpfsError,
+  Opfs.Opfs
 > = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
   function* ({ storageOptions, storeId, schema }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
@@ -131,15 +129,32 @@ export const ARCHIVE_DIR_NAME = 'archive'
  * @param vfs - The AccessHandlePoolVFS instance for safe file operations
  * @param currentSchema - Current schema (to avoid deleting the active database)
  */
-export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({
-  vfs,
-  currentSchema,
-  opfsDirectory,
-}: {
+export const cleanupOldStateDbFiles: (options: {
   vfs: WebDatabaseMetadataOpfs['vfs']
   currentSchema: LiveStoreSchema
   opfsDirectory: string
-}) {
+}) => Effect.Effect<
+  void,
+  | WebError.AbortError
+  | WebError.DataCloneError
+  | WebError.EvalError
+  | WebError.InvalidModificationError
+  | WebError.InvalidStateError
+  | WebError.NoModificationAllowedError
+  | WebError.NotAllowedError
+  | WebError.NotFoundError
+  | WebError.QuotaExceededError
+  | WebError.RangeError
+  | WebError.ReferenceError
+  | WebError.SecurityError
+  | WebError.TypeError
+  | WebError.TypeMismatchError
+  | WebError.URIError
+  | WebError.UnknownError
+  | Opfs.OpfsError
+  | PersistedSqliteError,
+  Opfs.Opfs
+> = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({ vfs, currentSchema, opfsDirectory }) {
   // Only cleanup for auto migration strategy because:
   // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
   //   which accumulate over time and can exhaust OPFS file pool capacity
@@ -171,7 +186,7 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
     const fileName = path.startsWith('/') ? path.slice(1) : path
 
     if (isDev) {
-      const archiveFileData = vfs.readFilePayload(fileName)
+      const archiveFileData = yield* vfs.readFilePayload(fileName)
 
       const archiveFileName = `${Date.now()}-${fileName}`
 
