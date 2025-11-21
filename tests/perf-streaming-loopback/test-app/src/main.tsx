@@ -5,8 +5,8 @@ import { StrictMode, useCallback, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { STORE_ID } from '../../src/shared/constants.ts'
-import { EventControls } from './components/EventControls.tsx'
-import { EventsList } from './components/EventsList.tsx'
+import { EventControls, DEFAULT_EVENT_BATCH_SIZE } from './components/EventControls.tsx'
+import { SimpleEventsStream, EventsList } from './components/EventsList.tsx'
 import { schema } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { makeTracer } from './otel.ts'
@@ -21,6 +21,7 @@ const createAdapter = (resetPersistence = false) =>
 
 const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
   const [eventsVisible, setEventsVisible] = useState(false)
+  const [eventBatchSize, setEventBatchSize] = useState(DEFAULT_EVENT_BATCH_SIZE)
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', margin: '1.5rem auto', maxWidth: '48rem' }} data-testid="app">
@@ -34,8 +35,10 @@ const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
         onResetHarness={onResetHarness}
         eventsVisible={eventsVisible}
         onEventsVisibleChange={setEventsVisible}
+        eventBatchSize={eventBatchSize}
+        onEventBatchSizeChange={setEventBatchSize}
       />
-      {eventsVisible && <EventsList />}
+      {eventsVisible && <EventsList batchSize={eventBatchSize} />}
     </div>
   )
 }

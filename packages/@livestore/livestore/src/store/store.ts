@@ -745,14 +745,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events confirmed by the sync backend.
+   * Returns an async iterable of events from the eventlog.
+   * Currently only events confirmed by the sync backend is supported.
    *
-   * MAKE SURE TO EXPLAIN BETTER
+   * Defaults to tracking upstreamHead as it advances.
+   * If an until marker is supplied the stream finalizes upon reaching the marker.
+   *
+   * Supports filtering by eventName, clientId and sessionId
    *
    * TODO:
    * - Support rebase with leader
    * - Support rebase with sync backend
-   * - Support client only events
+   * - Support client-only events
    *
    * @example
    * ```ts
@@ -763,8 +767,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * @example
    * ```ts
-   * // Get all events from the beginning of time
-   * for await (const event of store.events({ since: EventSequenceNumber.ROOT })) {
+   * // Start streaming from a specific event number
+   * for await (const event of store.events({ since: EventSequenceNumber.fromString('e3') })) {
    *   console.log(event)
    * }
    * ```
@@ -797,7 +801,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     return leaderThreadProxy.events.stream(baseOptions).pipe(
-      // UNDERSTAND BETTER HOW mapChunksEffect works
       Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
       Stream.catchTag('ParseError', (cause) => Stream.fail(UnexpectedError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),

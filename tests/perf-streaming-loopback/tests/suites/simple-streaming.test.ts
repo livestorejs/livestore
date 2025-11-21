@@ -1,16 +1,28 @@
 import { fileURLToPath } from 'node:url'
-import { expect, type CDPSession, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { test } from '../fixtures.ts'
 
-const SNAPSHOT_EXPECTED_EVENTS = 10_000
-const SNAPSHOT_STATE_PATH = fileURLToPath(new URL('../snapshots/state-10_000.db', import.meta.url))
-const SNAPSHOT_EVENTLOG_PATH = fileURLToPath(new URL('../snapshots/eventlog-10_000.db', import.meta.url))
-const BYTES_IN_MB = 1024 * 1024
-const WORKER_URL_FRAGMENT = 'livestore.worker'
+const SNAPSHOT_EVENT_COUNTS = [10_000, 100_000] as const
+const STREAM_BATCH_SIZES = [1, 10, 100, 1000] as const
 
-const loadSnapshots = async (page: Page) => {
-  await page.setInputFiles('[data-testid="snapshot-state-input"]', SNAPSHOT_STATE_PATH)
-  await page.setInputFiles('[data-testid="snapshot-eventlog-input"]', SNAPSHOT_EVENTLOG_PATH)
+test.setTimeout(120_000)
+
+const formatSnapshotCount = (count: number) => count.toLocaleString('en-US').replace(/,/g, '_')
+
+const getSnapshotPaths = (count: number) => {
+  const formatted = formatSnapshotCount(count)
+  const root = '../snapshots'
+
+  return {
+    state: fileURLToPath(new URL(`${root}/state-${formatted}.db`, import.meta.url)),
+    eventlog: fileURLToPath(new URL(`${root}/eventlog-${formatted}.db`, import.meta.url)),
+  }
+}
+
+const loadSnapshots = async (page: Page, count: number) => {
+  const { state, eventlog } = getSnapshotPaths(count)
+  await page.setInputFiles('[data-testid="snapshot-state-input"]', state)
+  await page.setInputFiles('[data-testid="snapshot-eventlog-input"]', eventlog)
   await page.getByTestId('load-snapshots').click()
   await page.waitForFunction(
     () => document.body.innerText.includes('LiveStore Shutdown due to devtools import'),
@@ -19,112 +31,21 @@ const loadSnapshots = async (page: Page) => {
   )
 }
 
-const enableHeapTools = async (session: CDPSession) => {
-  await session.send('Runtime.enable')
-  await session.send('HeapProfiler.enable')
-}
+const prepareSnapshots = async (page: Page, eventCount: number) => {
+  await page.goto('/')
+  await page.getByTestId('reset-harness').click()
+  await expect(page.getByTestId('app')).toBeVisible()
 
-const sampleHeap = async (session: CDPSession) => {
-  await enableHeapTools(session)
-  await session.send('HeapProfiler.collectGarbage')
-  return session.send('Runtime.getHeapUsage')
-}
-
-type UserAgentSpecificMemoryResult = {
-  breakdown: Array<{
-    bytes: number
-    attribution: Array<{
-      scope: string
-      url?: string
-    }>
-  }>
-}
-
-type WorkerHeapSample = {
-  bytes: number | null
-  diag: {
-    crossOriginIsolated: boolean
-    hasMeasure: boolean
-    errorName?: string
-    errorMessage?: string
-  }
-}
-
-const readWorkerHeapUsage = async (page: Page): Promise<WorkerHeapSample> => {
-  return page.evaluate(async (workerFragment) => {
-    const perf = performance as Performance & {
-      measureUserAgentSpecificMemory?: () => Promise<UserAgentSpecificMemoryResult>
-    }
-    const crossOriginIsolated = window.crossOriginIsolated
-    const hasMeasure = typeof perf.measureUserAgentSpecificMemory === 'function'
-
-    if (!perf.measureUserAgentSpecificMemory) {
-      return {
-        bytes: null,
-        diag: { crossOriginIsolated, hasMeasure },
-      }
-    }
-
-    try {
-      const measurement = await perf.measureUserAgentSpecificMemory()
-      const bytes = measurement.breakdown
-        .filter((entry) =>
-          entry.attribution.some(
-            (item) => item.scope === 'DedicatedWorkerGlobalScope' && item.url?.includes(workerFragment),
-          ),
-        )
-        .reduce((total, entry) => total + entry.bytes, 0)
-
-      return {
-        bytes,
-        diag: { crossOriginIsolated, hasMeasure },
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'SecurityError') {
-        return {
-          bytes: null,
-          diag: { crossOriginIsolated, hasMeasure, errorName: error.name, errorMessage: error.message },
-        }
-      }
-      throw error
-    }
-  }, WORKER_URL_FRAGMENT)
-}
-
-const measureHeapDelta = async ({
-  label,
-  page,
-  mainSession,
-  action,
-}: {
-  label: string
-  page: Page
-  mainSession: CDPSession
-  action: () => Promise<void>
-}) => {
+  await loadSnapshots(page, eventCount)
+  await page.reload()
   await page.requestGC()
-  const mainBefore = await sampleHeap(mainSession)
-  const workerBefore = await readWorkerHeapUsage(page)
+}
 
-  await action()
-
-  await page.requestGC()
-  const mainAfter = await sampleHeap(mainSession)
-  const workerAfter = await readWorkerHeapUsage(page)
-
-  const mainDelta = (mainAfter.usedSize - mainBefore.usedSize) / BYTES_IN_MB
-  if (workerBefore.bytes === null || workerAfter.bytes === null) {
-    console.warn('[HEAP] Worker measurement unavailable', {
-      before: workerBefore.diag,
-      after: workerAfter.diag,
-    })
-  }
-  const workerDelta =
-    workerBefore.bytes !== null && workerAfter.bytes !== null
-      ? ((workerAfter.bytes - workerBefore.bytes) / BYTES_IN_MB).toFixed(2)
-      : 'n/a'
-
-  console.log(`[MEMORY][${label}] main Δ ${mainDelta.toFixed(2)} MB · worker Δ ${workerDelta} MB`)
+const streamEvents = async (page: Page, eventCount: number) => {
+  await page.getByTestId('toggle-events').click()
+  await expect(page.getByTestId('events-streamed')).toHaveText(String(eventCount), {
+    timeout: 60_000,
+  })
 }
 
 test.describe('Streaming latency', () => {
@@ -160,39 +81,36 @@ test.describe('Streaming latency', () => {
     })
   })
 
-  test('stream snapshots (10k events)', async ({ page, context, cpuProfiler }, _testInfo) => {
-    await test.step('prepare', async () => {
-      await page.goto('/')
-      await page.getByTestId('reset-harness').click()
-      await expect(page.getByTestId('app')).toBeVisible()
-
-      await loadSnapshots(page)
-      await page.reload()
-      await page.requestGC()
+  SNAPSHOT_EVENT_COUNTS.forEach((eventCount) => {
+    test(`stream snapshots (${eventCount.toLocaleString()} events)`, async ({ page }) => {
+      await prepareSnapshots(page, eventCount)
+      const startTime = Date.now()
+      await streamEvents(page, eventCount)
+      const duration = Date.now() - startTime
+      console.log(`[DURATION]: Streamed ${eventCount} events in ${duration}ms`)
     })
+  })
 
-    await test.step('run', async () => {
-      await cpuProfiler.start('snapshot')
-      const mainSession = await context.newCDPSession(page)
-      try {
+  test('stream snapshot batch size sweep (10,000 events)', async ({ page }) => {
+    const eventCount = 10_000
+    await prepareSnapshots(page, eventCount)
+
+    for (const batchSize of STREAM_BATCH_SIZES) {
+      await test.step(`batch size ${batchSize}`, async () => {
+        await page.reload()
+        await expect(page.getByTestId('app')).toBeVisible()
+        await expect(page.getByTestId('syncstate')).toHaveText('Synced', { timeout: 60_000 })
+
+        const batchInput = page.getByTestId('config-batch')
+        await batchInput.fill(String(batchSize))
+
+        await page.requestGC()
         const startTime = Date.now()
-        await measureHeapDelta({
-          label: 'snapshot-stream',
-          page,
-          mainSession,
-          action: async () => {
-            await page.getByTestId('toggle-events').click()
-            await expect(page.getByTestId('events-streamed')).toHaveText(String(SNAPSHOT_EXPECTED_EVENTS), {
-              timeout: 60000,
-            })
-          },
-        })
+        await page.getByTestId('toggle-events').click()
+        await expect(page.getByTestId('events-streamed')).toHaveText(String(eventCount), { timeout: 60_000 })
         const duration = Date.now() - startTime
-        console.log(`[DURATION]: Streamed ${SNAPSHOT_EXPECTED_EVENTS} events in ${duration}ms`)
-      } finally {
-        await mainSession.detach()
-        await cpuProfiler.stop('snapshot')
-      }
-    })
+        console.log(`[BATCH ${batchSize}]: Streamed ${eventCount} events in ${duration}ms`)
+      })
+    }
   })
 })

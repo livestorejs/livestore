@@ -65,9 +65,11 @@ const COLORS = ['amber', 'burgundy', 'cerulean', 'denim', 'emerald', 'fuchsia', 
 
 const randomFrom = (items: readonly string[], seed: number) => items[seed % items.length]!
 
+export const DEFAULT_EVENT_BATCH_SIZE = 1000
 const DEFAULT_TOTAL_EVENTS = 1000
 const DEFAULT_EVENTS_PER_SECOND = 500
 const EVENT_RATE_MIN = 1
+const EVENT_BATCH_SIZE_MIN = 1
 const GENERATOR_INTERVAL_MS = 100
 
 const makeRunId = () =>
@@ -84,6 +86,8 @@ type EventControlsProps = {
   onResetHarness: () => void
   eventsVisible: boolean
   onEventsVisibleChange: (visible: boolean) => void
+  eventBatchSize: number
+  onEventBatchSizeChange: (size: number) => void
 }
 
 type GeneratorState = {
@@ -109,6 +113,8 @@ export const EventControls: React.FC<EventControlsProps> = ({
   onResetHarness,
   eventsVisible,
   onEventsVisibleChange,
+  eventBatchSize,
+  onEventBatchSizeChange,
 }) => {
   const { store } = useStore()
 
@@ -220,8 +226,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     setLastError(null)
     sessionIdRef.current = makeRunId()
     idCounterRef.current = 1
+    onEventBatchSizeChange(DEFAULT_EVENT_BATCH_SIZE)
     onResetHarness()
-  }, [onResetHarness, stopGenerator])
+  }, [onEventBatchSizeChange, onResetHarness, stopGenerator])
 
   const normalizeSnapshot = React.useCallback((input: SnapshotPayload['state']) => {
     if (input instanceof Uint8Array) return input
@@ -326,6 +333,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
 
   const sanitizedTotalEvents = Math.max(0, Math.floor(requestedTotalEvents))
   const sanitizedRate = sanitizeRate(requestedEventsPerSecond)
+  const sanitizedBatchSize = Math.max(EVENT_BATCH_SIZE_MIN, Math.floor(eventBatchSize))
 
   return (
     <section>
@@ -382,13 +390,29 @@ export const EventControls: React.FC<EventControlsProps> = ({
           Seed 100,000
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', alignItems: 'end' }}>
         <button type="button" data-testid="toggle-events" onClick={() => onEventsVisibleChange(!eventsVisible)}>
           {eventsVisible ? 'Hide events stream' : 'Show events stream'}
         </button>
         <button type="button" data-testid="reset-harness" onClick={handleResetHarness} disabled={isGenerating}>
           Reset harness
         </button>
+        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+          Stream batch size
+          <input
+            type="number"
+            min={EVENT_BATCH_SIZE_MIN}
+            value={sanitizedBatchSize}
+            data-testid="config-batch"
+            onChange={(event) => {
+              const next = Number.parseInt(event.target.value, 10)
+              onEventBatchSizeChange(
+                Number.isFinite(next) ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN,
+              )
+            }}
+            style={{ width: '8rem' }}
+          />
+        </label>
       </div>
       <section style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #ddd' }}>
         <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Load snapshots</h2>
