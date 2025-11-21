@@ -171,7 +171,7 @@ export const cleanupOldStateDbFiles = Effect.fn('@livestore/adapter-web:cleanupO
     const fileName = path.startsWith('/') ? path.slice(1) : path
 
     if (isDev) {
-      const archiveFileData = vfs.readFilePayload(fileName)
+      const archiveFileData = yield* vfs.readFilePayload(fileName)
 
       const archiveFileName = `${Date.now()}-${fileName}`
 
