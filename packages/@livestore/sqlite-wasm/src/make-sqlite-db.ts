@@ -149,9 +149,6 @@ export const makeSqliteDb = <
       sqliteDb.close()
 
       metadata.deleteDb()
-      // if (metadata._tag === 'opfs') {
-      //   metadata.vfs.resetAccessHandle(metadata.fileName)
-      // }
     },
     close: () => {
       if (isClosed) {

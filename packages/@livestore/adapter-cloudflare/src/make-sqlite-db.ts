@@ -193,10 +193,6 @@ export const makeSqliteDb_ = <
         code: -1,
         cause: 'Database destroy not supported with public SqlStorage API',
       })
-
-      // if (metadata._tag === 'opfs') {
-      //   metadata.vfs.resetAccessHandle(metadata.fileName)
-      // }
     },
     close: () => {
       if (isClosed) {
