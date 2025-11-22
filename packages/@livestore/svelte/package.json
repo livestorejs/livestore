@@ -1,0 +1,60 @@
+{
+  "name": "@livestore/svelte",
+  "version": "0.0.1",
+  "keywords": [
+    "svelte"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.svelte.d.ts",
+      "svelte": "./dist/index.svelte.js"
+    }
+  },
+  "svelte": "./dist/index.svelte.js",
+  "types": "./dist/index.svelte.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.spec.*",
+    "src",
+    "!src/**/*.test.*",
+    "!src/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "npm run prepack",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
+    "dev": "svelte-package --watch --input src --tsconfig ./tsconfig.json",
+    "prepack": "svelte-package --input src --tsconfig ./tsconfig.json && publint",
+    "test": "npm run test:unit -- --run",
+    "test:unit": "vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@sveltejs/package": "^2.0.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/svelte": "^5.2.4",
+    "jsdom": "^26.0.0",
+    "publint": "^0.3.2",
+    "svelte": "^5.43.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4",
+    "vitest": "^3.1.2"
+  },
+  "peerDependencies": {
+    "svelte": "^5.31.0"
+  }
+}
