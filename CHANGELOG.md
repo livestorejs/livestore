@@ -246,6 +246,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Detect sync backend identity mismatches after Cloudflare state resets and surface an actionable error instead of silent failure (#389)
 - Stop advancing the backend head when materializers crash so subsequent boots no longer fail (#409)
 - Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
+- Fix `subscribe` with `skipInitialRun` to properly register reactive dependencies while suppressing the initial callback (#847)
 
 ##### TypeScript & Build
 
