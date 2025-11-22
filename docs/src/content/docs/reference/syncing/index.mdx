@@ -67,32 +67,49 @@ The sync backend acts as the global authority and determines the total order of 
 
 #### Pulling events (without unpushed events)
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Sync Backend
-    Client->>Sync Backend: `pull` request (head_cursor)
-    Sync Backend->>Sync Backend: Get new events (since head_cursor)
-    Sync Backend-->>Client: New events
-    activate Client
-    Note over Client: Client is in sync
-    deactivate Client
+```d2
+direction: right
+
+Client: {
+  label: "Client"
+}
+
+SyncBackend: {
+  label: "Sync Backend"
+}
+
+Client -> SyncBackend: "`pull` request\n(head_cursor)"
+SyncBackend -> SyncBackend: "Get new events\n(since head_cursor)"
+SyncBackend -> Client: "New events"
+ClientNote: {
+  shape: note
+  label: "Client is in sync"
+}
+ClientNote -> Client
 ```
 
 #### Pushing events
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Sync Backend
+```d2
+direction: right
 
-    Client->>Client: Commits events
-    Client->>Sync Backend: `push` request (new_local_events)
-    activate Sync Backend
-    Sync Backend->>Sync Backend: Process push request (validate, persist)
-    Sync Backend-->>Client: Push Success
-    deactivate Sync Backend
-    Note over Client: Client is in sync
+Client: {
+  label: "Client"
+}
+
+SyncBackend: {
+  label: "Sync Backend"
+}
+
+Client -> Client: "Commit events"
+Client -> SyncBackend: "`push` request\n(new_local_events)"
+SyncBackend -> SyncBackend: "Validate & persist"
+SyncBackend -> Client: "Push success"
+ClientNote: {
+  shape: note
+  label: "Client is in sync"
+}
+ClientNote -> Client
 ```
 
 ### Rebasing
