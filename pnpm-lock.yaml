@@ -281,6 +281,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.56.0
+      '@puppeteer/browsers':
+        specifier: ^2.10.13
+        version: 2.10.13
       '@types/hast':
         specifier: ^3.0.4
         version: 3.0.4

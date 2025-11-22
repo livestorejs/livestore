@@ -82,7 +82,6 @@ Client -> SyncBackend: "`pull` request\n(head_cursor)"
 SyncBackend -> SyncBackend: "Get new events\n(since head_cursor)"
 SyncBackend -> Client: "New events"
 ClientNote: {
-  shape: note
   label: "Client is in sync"
 }
 ClientNote -> Client
@@ -106,7 +105,6 @@ Client -> SyncBackend: "`push` request\n(new_local_events)"
 SyncBackend -> SyncBackend: "Validate & persist"
 SyncBackend -> Client: "Push success"
 ClientNote: {
-  shape: note
   label: "Client is in sync"
 }
 ClientNote -> Client
