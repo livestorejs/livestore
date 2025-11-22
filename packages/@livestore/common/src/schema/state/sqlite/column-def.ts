@@ -179,33 +179,12 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     return SqliteDsl.real({ schema: coreSchema, nullable })
   }
 
-  // Literals based on their type
-  if (SchemaAST.isLiteral(coreAst)) {
-    const value = coreAst.literal
-    if (typeof value === 'boolean') return SqliteDsl.boolean({ nullable })
-  }
+  const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)
+  if (literalColumn) return literalColumn
 
-  if (isLiteralUnionOf(coreAst, (value): value is string => typeof value === 'string')) {
-    return SqliteDsl.text({ schema: coreSchema, nullable })
-  }
-
-  // Literals based on their encoded type
-  if (SchemaAST.isLiteral(encodedAst)) {
-    const value = encodedAst.literal
-    if (typeof value === 'string') return SqliteDsl.text({ schema: coreSchema, nullable })
-    if (typeof value === 'number') {
-      // Check if the original schema is Int
-      const id = SchemaAST.getIdentifierAnnotation(coreAst).pipe(Option.getOrElse(() => ''))
-      if (id === 'Int') {
-        return SqliteDsl.integer({ schema: coreSchema, nullable })
-      }
-      return SqliteDsl.real({ schema: coreSchema, nullable })
-    }
-  }
-
-  if (isLiteralUnionOf(encodedAst, (value): value is string => typeof value === 'string')) {
-    return SqliteDsl.text({ schema: coreSchema, nullable })
-  }
+  // Fallback to checking the original AST in case the encoded schema differs
+  const coreLiteralColumn = getLiteralColumnDefinition(coreAst, coreSchema, nullable, coreAst)
+  if (coreLiteralColumn) return coreLiteralColumn
 
   // Everything else needs JSON encoding
   return SqliteDsl.json({ schema: coreSchema, nullable })
@@ -230,10 +209,57 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
   return SchemaAST.Union.make(coreTypes, ast.annotations)
 }
 
-const isLiteralUnionOf = <T extends SchemaAST.LiteralValue>(
+const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  predicate: (value: SchemaAST.LiteralValue) => value is T,
-): ast is SchemaAST.Union & { types: ReadonlyArray<SchemaAST.Literal & { literal: T }> } =>
-  SchemaAST.isUnion(ast) &&
-  ast.types.length > 0 &&
-  ast.types.every((type) => SchemaAST.isLiteral(type) && predicate(type.literal))
+  schema: Schema.Schema.AnyNoContext,
+  nullable: boolean,
+  sourceAst: SchemaAST.AST,
+): SqliteDsl.ColumnDefinition.Any | null => {
+  const literalValues = extractLiteralValues(ast)
+  if (!literalValues) return null
+
+  const literalType = getLiteralValueType(literalValues)
+  switch (literalType) {
+    case 'string':
+      return SqliteDsl.text({ schema, nullable })
+    case 'number': {
+      const id = SchemaAST.getIdentifierAnnotation(sourceAst).pipe(Option.getOrElse(() => ''))
+      if (id === 'Int' || id === 'DateFromNumber') {
+        return SqliteDsl.integer({ schema, nullable })
+      }
+
+      const useIntegerColumn =
+        literalValues.length > 1 && literalValues.every((value) => typeof value === 'number' && Number.isInteger(value))
+
+      return useIntegerColumn ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
+    }
+    case 'boolean':
+      return SqliteDsl.boolean({ nullable })
+    case 'bigint':
+      return SqliteDsl.integer({ schema, nullable })
+    default:
+      return null
+  }
+}
+
+const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
+  if (SchemaAST.isLiteral(ast)) return [ast.literal]
+
+  if (SchemaAST.isUnion(ast) && ast.types.length > 0 && ast.types.every((type) => SchemaAST.isLiteral(type))) {
+    return ast.types.map((type) => (type as SchemaAST.Literal).literal)
+  }
+
+  return null
+}
+
+const getLiteralValueType = (
+  literals: ReadonlyArray<SchemaAST.LiteralValue>,
+): 'string' | 'number' | 'boolean' | 'bigint' | null => {
+  const literalTypes = new Set(literals.map((value) => (value === null ? 'null' : typeof value)))
+  if (literalTypes.size !== 1) return null
+
+  const [literalType] = literalTypes
+  return literalType === 'string' || literalType === 'number' || literalType === 'boolean' || literalType === 'bigint'
+    ? literalType
+    : null
+}
