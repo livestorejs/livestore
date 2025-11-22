@@ -1,0 +1,13 @@
+name = "example-web-todomvc-svelte"
+main = "./src/cf-worker/index.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = ["enable_request_signal", "nodejs_compat"]
+
+[env.prod]
+name = "example-web-todomvc-svelte"
+
+[env.preview]
+name = "example-web-todomvc-svelte-preview"
+
+[env.dev]
+name = "example-web-todomvc-svelte-dev"
