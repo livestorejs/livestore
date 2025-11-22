@@ -9,6 +9,7 @@ import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/i
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
+import astroD2 from 'astro-d2'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightContextualMenu from 'starlight-contextual-menu'
@@ -56,6 +57,7 @@ export default defineConfig({
     },
   },
   integrations: [
+    astroD2(),
     createAstroTwoslashCodeIntegration(),
     createAstroTldrawIntegration(),
     react(),
@@ -361,7 +363,7 @@ export default defineConfig({
   markdown: {
     syntaxHighlight: {
       type: 'shiki',
-      excludeLangs: ['mermaid', 'math'],
+      excludeLangs: ['mermaid', 'math', 'd2'],
     },
     remarkPlugins: [
       remarkGithubIssueLinks,
