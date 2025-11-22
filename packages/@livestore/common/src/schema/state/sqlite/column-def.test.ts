@@ -278,6 +278,22 @@ describe('getColumnDefForSchema', () => {
       expect(State.SQLite.getColumnDefForSchema(StatusEnum).columnType).toBe('text')
       expect(State.SQLite.getColumnDefForSchema(StatusUnion).columnType).toBe('text')
     })
+
+    it('should handle unions of numeric literals as integer column', () => {
+      const IntervalSchema = Schema.Literal(1, 5, 15, 30)
+
+      const columnDef = State.SQLite.getColumnDefForSchema(IntervalSchema)
+
+      expect(columnDef.columnType).toBe('integer')
+    })
+
+    it('should handle unions of non-integer numeric literals as real column', () => {
+      const PercentSchema = Schema.Literal(0.1, 0.2, 0.25)
+
+      const columnDef = State.SQLite.getColumnDefForSchema(PercentSchema)
+
+      expect(columnDef.columnType).toBe('real')
+    })
   })
 
   describe('binary data', () => {
