@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import fsSync from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -35,7 +36,10 @@ const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () =>
 const derivePuppeteerExecutable = (): string | undefined => {
   const existing = process.env.PUPPETEER_EXECUTABLE_PATH
   if (existing && existing !== '') return existing
-  const pwBase = process.env.PLAYWRIGHT_BROWSERS_PATH
+  const pwBase =
+    process.env.PLAYWRIGHT_BROWSERS_PATH && process.env.PLAYWRIGHT_BROWSERS_PATH !== 'undefined'
+      ? process.env.PLAYWRIGHT_BROWSERS_PATH
+      : path.join(os.homedir(), '.cache', 'ms-playwright')
   if (pwBase && pwBase !== '') {
     try {
       const entries = fsSync
@@ -142,6 +146,7 @@ const docsBuildCommand = Cli.Command.make(
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
         PUPPETEER_SKIP_DOWNLOAD: '1',
         PUPPETEER_EXECUTABLE_PATH: derivePuppeteerExecutable(),
       },
