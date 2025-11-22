@@ -24,28 +24,24 @@ export const createStore = async <S extends LiveStoreSchema>(
   // TODO figure out the type errors
   store.query = (queryDef, ...args) => {
     if (queryDef._tag === 'def' && $effect.tracking()) {
-      const query$ = queryDef.make(store.reactivityGraph.context!).value // TODO otel stuff?
-
       const token = {}
 
       // this will cause the effect/derived containing the `store.query(...)` call
       // to re-run when the query value changes in `onUpdate`
       updates.has(token)
 
-      // TODO replace with `skipInitialRun` (right now it's buggy)
       let initial = true
 
       $effect(() => {
-        const unsubscribe = store.subscribe(query$, {
-          onUpdate: () => {
-            if (initial) {
+        const unsubscribe = store.subscribe(queryDef, () => {
+          if (initial) {
               initial = false
               return
             }
 
             updates.add(token)
           },
-        })
+        )
 
         return () => {
           updates.delete(token)
