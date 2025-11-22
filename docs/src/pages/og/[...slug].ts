@@ -3,6 +3,8 @@
 import { getCollection } from 'astro:content'
 import { OGImageRoute } from 'astro-og-canvas'
 
+const ogEnabled = process.env.LS_SKIP_OG_IMAGES !== '1'
+
 // Get all entries from the `docs` content collection.
 const docs = await getCollection(
   'docs',
@@ -28,7 +30,9 @@ const ogRoute = OGImageRoute({
   }),
 })
 
-export const { getStaticPaths } = ogRoute
+export const prerender = ogEnabled
+
+export const getStaticPaths = ogEnabled ? ogRoute.getStaticPaths : () => []
 
 let generationQueue: Promise<void> = Promise.resolve()
 
@@ -42,4 +46,6 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   return run
 }
 
-export const GET: typeof ogRoute.GET = async (context) => enqueue(async () => ogRoute.GET(context))
+export const GET: typeof ogRoute.GET = ogEnabled
+  ? async (context) => enqueue(async () => ogRoute.GET(context))
+  : async () => new Response('OG image generation disabled', { status: 204 })

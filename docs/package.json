@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@puppeteer/browsers": "^2.10.13",
     "@types/hast": "^3.0.4",
     "@types/react-dom": "catalog:"
   },
@@ -62,6 +63,7 @@
     "dev": "astro dev",
     "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
     "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
+    "postinstall": "playwright install chromium && (pnpm exec browsers install chrome || true)",
     "preview": "astro preview",
     "start": "astro dev"
   }
