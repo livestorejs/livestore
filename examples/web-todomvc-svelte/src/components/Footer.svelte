@@ -3,10 +3,11 @@
 	import { uiState$ } from '../livestore/queries';
 	import { events, tables } from '../livestore/schema';
 	import { store } from '../livestore/store';
+	import type { Filter } from '../types';
 
 	const { filter } = $derived(store.query(uiState$));
 
-	const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => {
+	const setFilter = (filter: Filter) => {
 		store.commit(events.uiStateSet({ filter }));
 	};
 
