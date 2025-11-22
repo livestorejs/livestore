@@ -6,7 +6,7 @@ import { assert, expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
-import { events, makeTodoMvc, tables } from '../utils/tests/fixture.ts'
+import { events, makeTodoMvc, tables, type Todo } from '../utils/tests/fixture.ts'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '../utils/tests/otel.ts'
 import { computed } from './computed.ts'
 import { queryDb } from './db-query.ts'
@@ -238,6 +238,53 @@ Vitest.describe('otel', () => {
     ),
   )
 
+  Vitest.scopedLive('QueryBuilder subscription - skipInitialRun', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const callbackResults: Todo[] = []
+      const defaultTodo: Todo = { id: '', text: '', completed: false }
+
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
+
+      const unsubscribe = store.subscribe(
+        queryBuilder,
+        (result) => {
+          callbackResults.push(result)
+        },
+        { skipInitialRun: true },
+      )
+
+      expect(callbackResults).toHaveLength(0)
+
+      store.commit(events.todoCreated({ id: 't-skip', text: 'skip initial', completed: false }))
+
+      expect(callbackResults).toHaveLength(1)
+      expect(callbackResults[0]).toMatchObject({
+        id: 't-skip',
+        text: 'skip initial',
+        completed: false,
+      })
+
+      unsubscribe()
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
   Vitest.scopedLive('QueryBuilder subscription - unsubscribe functionality', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
@@ -294,7 +341,7 @@ Vitest.describe('otel', () => {
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
-      const defaultTodo = { id: '', text: '', completed: false }
+      const defaultTodo: Todo = { id: '', text: '', completed: false }
 
       const queryBuilder = tables.todos
         .where({ completed: false })
@@ -314,6 +361,55 @@ Vitest.describe('otel', () => {
         expect(update.value).toMatchObject({
           id: 't-async',
           text: 'write tests',
+          completed: false,
+        })
+
+        const doneResult = await iterator.return?.()
+        assert(doneResult)
+        expect(doneResult.done).toBe(true)
+      })
+
+      span.end()
+
+      return { exporter, provider }
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter, provider }) =>
+        Effect.promise(async () => {
+          await provider.forceFlush()
+          expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+          expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
+          await provider.shutdown()
+        }),
+      ),
+    ),
+  )
+
+  Vitest.scopedLive('QueryBuilder subscription - async iterator with skipInitialRun', () =>
+    Effect.gen(function* () {
+      const { store, exporter, span, provider } = yield* makeQuery
+
+      const defaultTodo: Todo = { id: '', text: '', completed: false }
+
+      const queryBuilder = tables.todos
+        .where({ completed: false })
+        .first({ behaviour: 'fallback', fallback: () => defaultTodo })
+
+      yield* Effect.promise(async () => {
+        const iterator = store.subscribe(queryBuilder, { skipInitialRun: true })[Symbol.asyncIterator]()
+
+        const pending = Symbol('pending')
+        const nextPromise = iterator.next()
+        const raceResult = await Promise.race([nextPromise, Promise.resolve(pending)])
+        expect(raceResult).toBe(pending)
+
+        store.commit(events.todoCreated({ id: 't-async-skip', text: 'write tests later', completed: false }))
+
+        const update = await nextPromise
+        expect(update.done).toBe(false)
+        expect(update.value).toMatchObject({
+          id: 't-async-skip',
+          text: 'write tests later',
           completed: false,
         })
 
