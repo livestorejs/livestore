@@ -1,5 +1,4 @@
 import os from 'node:os'
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
@@ -27,17 +26,6 @@ import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.j
 const port = 5252
 
 const branch = getBranchName()
-
-const playwrightBrowserPath = path.join(
-  process.env.PLAYWRIGHT_BROWSERS_PATH ?? path.join(os.homedir(), '.cache', 'ms-playwright'),
-  'chromium-1194',
-  'chrome-linux',
-  'chrome',
-)
-
-if (!process.env.PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH === 'undefined') {
-  process.env.PUPPETEER_EXECUTABLE_PATH = playwrightBrowserPath
-}
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain = process.env.DEPLOY_PRIME_URL

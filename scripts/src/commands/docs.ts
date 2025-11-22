@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import fsSync from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -39,7 +38,7 @@ const derivePuppeteerExecutable = (): string | undefined => {
   const pwBase =
     process.env.PLAYWRIGHT_BROWSERS_PATH && process.env.PLAYWRIGHT_BROWSERS_PATH !== 'undefined'
       ? process.env.PLAYWRIGHT_BROWSERS_PATH
-      : path.join(os.homedir(), '.cache', 'ms-playwright')
+      : undefined
   if (pwBase && pwBase !== '') {
     try {
       const entries = fsSync
