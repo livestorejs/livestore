@@ -1,0 +1,37 @@
+{
+  "name": "livestore-example-web-todomvc-svelte",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.4.0-dev.17",
+    "@livestore/livestore": "0.4.0-dev.17",
+    "@livestore/peer-deps": "0.4.0-dev.17",
+    "@livestore/svelte": "workspace:*",
+    "@livestore/wa-sqlite": "0.4.0-dev.17",
+    "svelte": "^5.43.14",
+    "todomvc-app-css": "2.4.3",
+    "uuid": "11.1.0"
+  },
+  "description": "",
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/workers-types": "4.20250923.0",
+    "@livestore/devtools-vite": "0.4.0-dev.17",
+    "@playwright/test": "^1.56.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "wrangler": "^4.42.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "deploy": "pnpm run build && bunx wrangler deploy",
+    "dev": "vite --force",
+    "preview": "vite preview",
+    "test": "playwright test"
+  }
+}
