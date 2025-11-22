@@ -419,10 +419,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const query$ = queryRcRef.value
 
         const label = `subscribe:${options?.label}`
+        let suppressCallback = options?.skipInitialRun === true
         const effect = this[StoreInternalsSymbol].reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          (get, _otelContext, debugRefreshReason) => {
+            const result = get(query$.results$, otelContext, debugRefreshReason)
+            if (suppressCallback) {
+              return
+            }
+            onUpdate(result)
+          },
           { label },
         )
+        const runInitialEffect = () => {
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
+        }
 
         if (options?.stackInfo) {
           query$.activeSubscriptions.add(options.stackInfo)
@@ -432,11 +445,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this[StoreInternalsSymbol].activeQueries.add(query$ as LiveQuery<TResult>)
 
-        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, {
-            _tag: 'subscribe.initial',
-            label: `subscribe-initial-run:${options?.label}`,
-          })
+        if (!query$.isDestroyed) {
+          if (suppressCallback) {
+            // We still run once to register dependencies in the reactive graph, but suppress the initial callback so the
+            // caller truly skips the first emission; subsequent runs (after commits) will call the callback.
+            runInitialEffect()
+            suppressCallback = false
+          } else {
+            runInitialEffect()
+          }
         }
 
         const unsubscribe = () => {
