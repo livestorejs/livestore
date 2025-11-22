@@ -2605,7 +2605,7 @@ importers:
         specifier: ^4.20.0
         version: 4.20.5
 
-  tests/perf-streaming:
+  tests/perf-streaming-cf:
     dependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.12
