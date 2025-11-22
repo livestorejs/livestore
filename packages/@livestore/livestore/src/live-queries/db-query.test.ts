@@ -6,7 +6,7 @@ import { assert, expect } from 'vitest'
 
 import * as RG from '../reactive.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
-import { events, makeTodoMvc, tables, type Todo } from '../utils/tests/fixture.ts'
+import { events, makeTodoMvc, type Todo, tables } from '../utils/tests/fixture.ts'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '../utils/tests/otel.ts'
 import { computed } from './computed.ts'
 import { queryDb } from './db-query.ts'
