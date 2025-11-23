@@ -73,7 +73,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   /**
    * Transitions to the loading state.
    */
-  #setPromise(promise: Promise<Store<TSchema>>, abortController: AbortController): void {
+  #setLoading(promise: Promise<Store<TSchema>>, abortController: AbortController): void {
     if (this.#state.status === 'success' || this.#state.status === 'loading') return
     this.#state = { status: 'loading', promise, abortController }
     this.#notify()
@@ -163,7 +163,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
         if (this.#subscribers.size === 0) this.#scheduleGC()
       })
 
-    this.#setPromise(promise, abortController)
+    this.#setLoading(promise, abortController)
 
     return promise
   }
