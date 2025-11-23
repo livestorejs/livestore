@@ -1,8 +1,7 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 /// <reference lib="webworker" />
-
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
+import { Context, Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
@@ -51,6 +50,9 @@ const PERSISTENT_FILE_TYPES =
 // - https://sqlite.org/forum/info/a3da1e34d8
 // - https://www.sqlite.org/tempfiles.html
 const DEFAULT_CAPACITY = 20
+
+// Declaring a tag for a service that generates random numbers
+class VfsService extends Context.Tag('MyRandomService')<VfsService, { readonly next: Effect.Effect<number> }>() {}
 
 /**
  * This VFS uses the updated Access Handle API with all synchronous methods

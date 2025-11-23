@@ -9,6 +9,20 @@ import { makeInMemoryDb } from '../in-memory-vfs.ts'
 import { makeSqliteDb } from '../make-sqlite-db.ts'
 import { NodeFS } from './NodeFS.ts'
 
+// Export the new Effect-based NodeVfs service
+export {
+  makeNodeVfsBackendLayer,
+  makeNodeVfsLayer,
+  makeNodeVfsLayerWithBackend,
+  makeNodeVfsUtilsLayer,
+  NodeVfs,
+  type NodeVfsConfig,
+  type NodeVfsShape,
+} from './NodeVfs.ts'
+
+// Re-export VfsBackend for convenience
+export { VfsBackend, type VfsBackendShape } from '../vfs/VfsBackend.ts'
+
 export type NodeDatabaseMetadataInMemory = {
   _tag: 'in-memory'
   vfs: MemoryVFS

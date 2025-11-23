@@ -1,4 +1,5 @@
 import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import { Effect, Hash, Runtime, type Scope } from '@livestore/utils/effect'
 import type { Opfs } from '@livestore/utils/effect/browser'
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
@@ -6,8 +7,8 @@ import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
 import { makeInMemoryDb } from '../in-memory-vfs.ts'
 import { makeSqliteDb } from '../make-sqlite-db.ts'
-import type { AccessHandlePoolVFS } from './opfs/AccessHandlePoolVFS.ts'
-import { makeOpfsDb } from './opfs/index.ts'
+import type { VfsBackend } from '../vfs/VfsBackend.ts'
+import { makeOpfsDb, type OpfsPool, type OpfsPoolShape } from './opfs/index.ts'
 
 export * from './opfs/opfs-sah-pool.ts'
 
@@ -27,7 +28,7 @@ export type WebDatabaseMetadataInMemory = {
 
 export type WebDatabaseMetadataOpfs = {
   _tag: 'opfs'
-  vfs: AccessHandlePoolVFS
+  pool: OpfsPoolShape
   dbPointer: number
   persistenceInfo: PersistenceInfo<{
     opfsDirectory: string
@@ -59,7 +60,7 @@ type MakeOpfsWebDatabase = MakeSqliteDb<
   WebDatabaseReq,
   WebDatabaseInputOpfs,
   WebDatabaseMetadataOpfs,
-  Opfs.Opfs | Scope.Scope
+  VfsBackend | OpfsPool | Scope.Scope
 >
 
 export function sqliteDbFactory({ sqlite3 }: { sqlite3: SQLiteAPI }) {
@@ -72,7 +73,7 @@ export function sqliteDbFactory({ sqlite3 }: { sqlite3: SQLiteAPI }) {
       WebDatabaseReq,
       WebDatabaseInputInMemory | WebDatabaseInputOpfs,
       WebDatabaseMetadata,
-      Opfs.Opfs | Scope.Scope
+      VfsBackend | OpfsPool | Scope.Scope
     >
   > {
     return Effect.gen(function* () {
@@ -105,30 +106,31 @@ export function sqliteDbFactory({ sqlite3 }: { sqlite3: SQLiteAPI }) {
         dbFilename = `hash-${Hash.string(input.fileName)}.db`
       }
 
-      const { dbPointer, vfs } = yield* makeOpfsDb({
+      const { dbPointer, pool } = yield* makeOpfsDb({
         sqlite3,
         directory: input.opfsDirectory,
         fileName: dbFilename,
       })
 
-      const runtime = yield* Effect.runtime<Opfs.Opfs>()
+      const runtime = yield* Effect.runtime()
+      const opfsFileName = yield* pool.getOpfsFileName(dbFilename)
 
       return makeSqliteDb<WebDatabaseMetadataOpfs>({
         sqlite3,
         metadata: {
           _tag: 'opfs',
-          vfs,
+          pool,
           dbPointer,
-          deleteDb: () => vfs.resetAccessHandle(input.fileName).pipe(Runtime.runSync(runtime)),
+          deleteDb: () => pool.resetAccessHandle(dbFilename).pipe(Runtime.runSync(runtime)),
           configureDb: input.configureDb ?? (() => {}),
           persistenceInfo: {
             fileName: dbFilename,
             opfsDirectory: input.opfsDirectory,
-            opfsFileName: yield* vfs.getOpfsFileName(dbFilename),
+            opfsFileName,
           },
         },
       })
-    })
+    }).pipe(UnexpectedError.mapToUnexpectedError)
   }
 
   return makeDb
