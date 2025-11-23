@@ -32,3 +32,4 @@ pnpm-debug.log*
 # build output
 src/content/docs/api/*
 !src/content/docs/api/index.md
+public/generated-d2/

@@ -132,3 +132,11 @@
     navigation: auto;
   }
 } */
+
+.d2-svg {
+  /* filter: invert(1) hue-rotate(180deg); */
+}
+
+svg[data-d2-version] {
+  max-width: 500px;
+}

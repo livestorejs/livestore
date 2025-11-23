@@ -57,7 +57,14 @@ export default defineConfig({
     },
   },
   integrations: [
-    astroD2(),
+    // We're using a custom D2 theme (see `docs/src/content/base.d2`)
+    astroD2({
+      sketch: true,
+      pad: 40,
+      inline: true,
+      // skipGeneration: true,
+      output: 'generated-d2',
+    }),
     createAstroTwoslashCodeIntegration(),
     createAstroTldrawIntegration(),
     react(),
