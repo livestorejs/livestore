@@ -30,6 +30,7 @@ in
   env =
     {
       PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
+      PUPPETEER_SKIP_DOWNLOAD = "1";
     }
     // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
       let
@@ -61,6 +62,21 @@ in
 
     # Needed until newest corepack version ships in nixpkgs
     export COREPACK_INTEGRITY_KEYS=0
+
+    # Prefer Playwright-provided Chromium for Puppeteer/tldraw-cli; fall back only if user overrides.
+    if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
+      for candidate in \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-win/chrome.exe
+      do
+        if [ -x "$candidate" ]; then
+          export PUPPETEER_EXECUTABLE_PATH="$candidate"
+          break
+        fi
+      done
+    fi
+    export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
 
     # Add LiveStore CLIs and node bin to PATH
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
