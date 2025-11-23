@@ -21,8 +21,9 @@ in
       pkgs.bun
       pkgs.deno
     ]
-    # Parcel watcher (used by the docs snippet watcher) needs libstdc++ on Linux hosts
-    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib ]
+    # Parcel watcher (pulled in by Biome) dlopens a native addon linked against libstdc++.
+    # Provide the runtime plus nix-ld shim on Linux so commands like `mono lint` don't require manual LD_LIBRARY_PATH.
+    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
     ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
   # Environment variables
@@ -30,9 +31,15 @@ in
     {
       PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
     }
-    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
-      LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-    };
+    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
+      let
+        ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+      in
+      {
+        LD_LIBRARY_PATH = ldPath;
+        NIX_LD_LIBRARY_PATH = ldPath;
+      }
+    );
 
   # Shell initialization (dynamic values and PATH wiring)
   enterShell = ''
