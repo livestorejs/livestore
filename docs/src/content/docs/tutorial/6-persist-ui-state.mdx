@@ -191,7 +191,7 @@ On this table, you define:
     - The `filter` that'll be used to filter the todos according to their `completed` status.
 - Default values for this client document.
 
-Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add this predefined event to your `events` object:
+Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add the following event to your `events` object:
 
 ```diff title="src/livestore/schema.ts" lang="ts"
 export const events = {
@@ -215,6 +215,8 @@ export const events = {
 +  uiStateSet: tables.uiState.set,
 }
 ```
+
+Here, both the event definition and materializer are automatically derived from the client document schema, with the materializer implementing upsert semantics.
 
 ## Implement local state with LiveStore
 
@@ -251,12 +253,6 @@ Since you've renamed the functions to update the values of `input` and `filter` 
 You have now recreated the same functionality from before and are able to switch the tabs in the UI element—with one important difference: If you refresh the browser, the UI state will remain the same as before. Your UI state is now persisted and survives page refreshes:
 
 ![](../../../assets/tutorial/chapter-6/1-persist-ui-state.gif)
-
-:::note[Tables vs Client documents]
-
-Unlike the regular tables (of type `State.SQLite.table`), client documents (of type `State.SQLite.clientDocument`) are not synced across browser sessions and devices. They are only persisted withing a single browser session.
-
-:::
 
 ## Implement filter logic
 
@@ -429,9 +425,31 @@ function App() {
 export default App
 ```
 
-## Deploy and test the app
+## Test the app
 
-As before, you can deploy the app with the deploy script:
+You can test the app by running the `dev` script:
+
+<Tabs syncKey="package-manager">
+
+  <TabItem label="bun">
+
+    <Code code={`bun dev`} lang="sh" />
+
+  </TabItem>
+
+  <TabItem label="pnpm">
+
+    <Code code={`pnpm dev`} lang="sh" />
+
+  </TabItem>
+
+</Tabs>
+
+The filters now will be applied and update the list of todos when changed:
+
+![](../../../assets/tutorial/chapter-6/2-final-app.gif)
+
+You can observe the same behaviour if you deploy the app using the `deploy` script:
 
 <Tabs syncKey="package-manager">
 
@@ -448,7 +466,3 @@ As before, you can deploy the app with the deploy script:
   </TabItem>
 
 </Tabs>
-
-The filters now will be applied and update the list of todos when changed:
-
-![](../../../assets/tutorial/chapter-6/2-final-app.gif)

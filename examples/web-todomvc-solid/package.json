@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.16",
-    "@livestore/livestore": "0.4.0-dev.16",
-    "@livestore/peer-deps": "0.4.0-dev.16",
-    "@livestore/solid": "0.4.0-dev.16",
-    "@livestore/wa-sqlite": "0.4.0-dev.16",
+    "@livestore/adapter-web": "0.4.0-dev.17",
+    "@livestore/livestore": "0.4.0-dev.17",
+    "@livestore/peer-deps": "0.4.0-dev.17",
+    "@livestore/solid": "0.4.0-dev.17",
+    "@livestore/wa-sqlite": "0.4.0-dev.17",
     "solid-js": "1.9.9",
     "todomvc-app-css": "2.4.3",
     "uuid": "11.1.0"
@@ -17,7 +17,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20250923.0",
-    "@livestore/devtools-vite": "0.4.0-dev.16",
+    "@livestore/devtools-vite": "0.4.0-dev.17",
     "@playwright/test": "^1.56.0",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.9.2",

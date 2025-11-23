@@ -111,7 +111,7 @@ export const useClientDocument: {
 
   // console.debug('useClientDocument', tableName, id)
 
-  const idStr: string = id === SessionIdSymbol ? store.clientSession.sessionId : id
+  const idStr: string = id === SessionIdSymbol ? store.sessionId : id
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef: QueryDef = React.useMemo(

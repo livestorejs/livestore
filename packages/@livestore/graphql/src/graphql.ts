@@ -1,6 +1,7 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
@@ -181,7 +182,8 @@ export class LiveStoreGraphQLQuery<
 
         // Add dependencies on any tables that were used
         for (const tableName of queriedTables) {
-          const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+          const tableRef =
+            store[StoreInternalsSymbol].tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
           get(tableRef)
         }
 

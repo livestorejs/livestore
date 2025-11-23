@@ -151,7 +151,7 @@ const runTest =
             await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
             const tab1ChannelId = await tab1.page.evaluate<string>(
-              `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.clientSession.sessionId`,
+              `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
             )
             await tab1.devtools.locator(`a:text("${tab1ChannelId}")`).describe('devtools-tab-1:click').click()
 
@@ -231,10 +231,10 @@ const runTest =
               await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
               const tab1ChannelId = await tab1.page.evaluate<string>(
-                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.clientSession.sessionId`,
+                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
               )
               const tab2ChannelId = await tab2.page.evaluate<string>(
-                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.clientSession.sessionId`,
+                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
               )
 
               const tables = ['uiState (2)', 'todos (1)']

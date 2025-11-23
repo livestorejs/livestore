@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/a11y: test files need a11y disabled */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { queryDb, type Store } from '@livestore/livestore'
+import { queryDb, type Store, StoreInternalsSymbol } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
@@ -184,7 +184,7 @@ it('should work two stores with the same storeId', async () => {
 
   const App = () => {
     const { store } = LiveStoreReact.useStore()
-    const instanceId = store.clientSession.debugInstanceId as 'store1' | 'store2'
+    const instanceId = store[StoreInternalsSymbol].clientSession.debugInstanceId as 'store1' | 'store2'
     appRenderCount[instanceId]!++
 
     const todos = store.useQuery(allTodos$)

@@ -1,4 +1,3 @@
-/// <reference path="./vue-livestore.d.ts" />
 import { useStore } from 'vue-livestore'
 
 import { events } from './schema.ts'

@@ -1,23 +1,14 @@
-import type { ClientSession, ClientSessionSyncProcessor, DebugInfo, SyncState } from '@livestore/common'
+import type { DebugInfo, SyncState } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.ts'
 import { NOT_REFRESHED_YET } from '../reactive.ts'
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.ts'
-import type { ReferenceCountedSet } from '../utils/data-structures.ts'
-
-type IStore = {
-  clientSession: ClientSession
-  reactivityGraph: ReactivityGraph
-  sqliteDbWrapper: SqliteDbWrapper
-  activeQueries: ReferenceCountedSet<LiveQuery<any>>
-  syncProcessor: ClientSessionSyncProcessor
-}
+import type { Store } from './store.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 
 type Unsub = () => void
 type RequestId = string
@@ -40,7 +31,7 @@ export const connectDevtoolsToStore = ({
     Devtools.ClientSession.MessageToApp,
     Devtools.ClientSession.MessageFromApp
   >
-  store: IStore
+  store: Store
 }) =>
   Effect.gen(function* () {
     const reactivityGraphSubcriptions: SubMap = new Map()
@@ -48,7 +39,7 @@ export const connectDevtoolsToStore = ({
     const debugInfoHistorySubscriptions: SubMap = new Map()
     const syncHeadClientSessionSubscriptions: SubMap = new Map()
 
-    const { clientId, sessionId } = store.clientSession
+    const { clientId, sessionId } = store[StoreInternalsSymbol].clientSession
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
@@ -117,7 +108,7 @@ export const connectDevtoolsToStore = ({
               () =>
                 sendToDevtools(
                   Devtools.ClientSession.ReactivityGraphRes.make({
-                    reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
+                    reactivityGraph: store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults }),
                     requestId: nanoid(10),
                     clientId,
                     sessionId,
@@ -135,14 +126,17 @@ export const connectDevtoolsToStore = ({
           // This might need to be tweaked further and possibly be exposed to the user in some way.
           const throttledSend = throttle(send, 20)
 
-          reactivityGraphSubcriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          reactivityGraphSubcriptions.set(
+            subscriptionId,
+            store[StoreInternalsSymbol].reactivityGraph.subscribeToRefresh(throttledSend),
+          )
 
           break
         }
         case 'LSD.ClientSession.DebugInfoReq': {
           sendToDevtools(
             Devtools.ClientSession.DebugInfoRes.make({
-              debugInfo: store.sqliteDbWrapper.debugInfo,
+              debugInfo: store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo,
               requestId,
               clientId,
               sessionId,
@@ -158,13 +152,13 @@ export const connectDevtoolsToStore = ({
           let tickHandle: number | undefined
 
           const tick = () => {
-            buffer.push(store.sqliteDbWrapper.debugInfo)
+            buffer.push(store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo)
 
             // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
             // will get the empty debug info
             // TODO We need to come up with a more graceful way to do store. Probably via a single global
             // `requestAnimationFrame` loop that is passed in somehow.
-            store.sqliteDbWrapper.debugInfo = makeEmptyDebugInfo()
+            store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo = makeEmptyDebugInfo()
 
             if (buffer.length > 10) {
               sendToDevtools(
@@ -208,7 +202,7 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.DebugInfoResetReq': {
-          store.sqliteDbWrapper.debugInfo.slowQueries.clear()
+          store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo.slowQueries.clear()
           sendToDevtools(
             Devtools.ClientSession.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
           )
@@ -216,7 +210,10 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.sqliteDbWrapper.cachedSelect(queryStr, bindValues, { queriedTables, skipCache: true })
+          store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(queryStr, bindValues, {
+            queriedTables,
+            skipCache: true,
+          })
           sendToDevtools(
             Devtools.ClientSession.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
           )
@@ -237,7 +234,7 @@ export const connectDevtoolsToStore = ({
               () =>
                 sendToDevtools(
                   Devtools.ClientSession.LiveQueriesRes.make({
-                    liveQueries: [...store.activeQueries].map((q) => ({
+                    liveQueries: [...store[StoreInternalsSymbol].activeQueries].map((q) => ({
                       _tag: q._tag,
                       id: q.id,
                       label: q.label,
@@ -265,7 +262,10 @@ export const connectDevtoolsToStore = ({
           // Same as in the reactivity graph subscription case above, we need to throttle the updates
           const throttledSend = throttle(send, 20)
 
-          liveQueriesSubscriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          liveQueriesSubscriptions.set(
+            subscriptionId,
+            store[StoreInternalsSymbol].reactivityGraph.subscribeToRefresh(throttledSend),
+          )
 
           break
         }
@@ -292,11 +292,11 @@ export const connectDevtoolsToStore = ({
               }),
             )
 
-          send(store.syncProcessor.syncState.pipe(Effect.runSync))
+          send(store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync))
 
           syncHeadClientSessionSubscriptions.set(
             subscriptionId,
-            store.syncProcessor.syncState.changes.pipe(
+            store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
               Stream.tap((syncState) => send(syncState)),
               Stream.runDrain,
               Effect.interruptible,

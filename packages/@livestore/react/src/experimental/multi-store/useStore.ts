@@ -20,11 +20,15 @@ export const useStore = <TSchema extends LiveStoreSchema>(
     (onChange: () => void) => storeRegistry.subscribe(options.storeId, onChange),
     [storeRegistry, options.storeId],
   )
-  const getSnapshot = React.useCallback(() => storeRegistry.getOrLoad(options), [storeRegistry, options])
+  const getSnapshot = React.useCallback(() => {
+    const storeOrPromise = storeRegistry.getOrLoad(options)
 
-  const storeOrPromise = React.useSyncExternalStore(subscribe, getSnapshot)
+    if (storeOrPromise instanceof Promise) throw storeOrPromise
 
-  const loadedStore = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+    return storeOrPromise
+  }, [storeRegistry, options])
+
+  const loadedStore = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   return withReactApi(loadedStore)
 }

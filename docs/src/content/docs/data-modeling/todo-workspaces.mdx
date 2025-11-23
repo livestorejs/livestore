@@ -6,8 +6,14 @@ sidebar:
   order: 2
 ---
 
-import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
 import EventlogModelingDiagram from '../../_assets/diagrams/eventlog-modeling.tldr?tldraw';
+import UserSchemaSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/user.schema.ts?snippet'
+import WorkspaceSchemaSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/workspace.schema.ts?snippet'
+import WorkspaceStoreOptionsSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/workspace.store.ts?snippet'
+import UserStoreOptionsSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/user.store.ts?snippet'
+import AppRootSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/App.tsx?snippet'
+import WorkspaceComponentSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/Workspace.tsx?snippet'
+import WorkspaceListSnippet from '../../_assets/code/data-modeling/todo-workspaces/multi-store/WorkspaceList.tsx?snippet'
 
 Let's consider a fairly common application scenario: An app (in this case a todo app) with shared workspaces. For the sake of this guide, we'll keep things simple but you should be able to nicely extend this to a more complex app.
 
@@ -53,151 +59,55 @@ Note that the `workspaceCreated` event is used both in the `workspace` and the `
 
 <EventlogModelingDiagram class="my-8" />
 
-## Schema
+## Schemas
 
-<Tabs>
-  <TabItem label="user-schema.ts">
-    <Code lang="ts" code={`\
-  import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+**User store:**
 
-  // Emitted when this user creates a new workspace
-  const workspaceCreated = Events.synced({
-    name: 'v1.ListCreated',
-    schema: Schema.Struct({ workspaceId: Schema.String }),
-  })
+<UserSchemaSnippet />
 
-  // Emitted when this user joins an existing workspace
-  const workspaceJoined = Events.synced({
-    name: 'v1.ListJoined',
-    schema: Schema.Struct({ workspaceId: Schema.String }),
-  })
+**Workspace store:**
 
-  const events = { workspaceCreated, workspaceJoined }
+<WorkspaceSchemaSnippet />
 
-  // Table to store basic user info
-  // Contains only one row as this store is per-user.
-  const userTable = State.SQLite.table({
-    name: 'user',
-    columns: {
-      // Assuming username is unique and used as the identifier
-      username: State.SQLite.text({ primaryKey: true }),
-    },
-  })
+## Using the Multi-Store API
 
-  // Table to track which workspaces this user is part of
-  const userListTable = State.SQLite.table({
-    name: 'userList',
-    columns: {
-      workspaceId: State.SQLite.text({ primaryKey: true }),
-      // Could add role/permissions here later
-    },
-  })
+Now that we've defined our schemas, let's set up the multi-store API to manage workspace and user stores dynamically.
 
-  const tables = { user: userTable, userList: userListTable }
+:::caution[Experimental API]
+This guide uses the [experimental multi-store API](/reference/framework-integrations/react-integration#multi-store) which is still early in its development.
 
-  const materializers = State.SQLite.materializers(events, {
-    // When the user creates or joins a workspace, add it to their workspace table
-    workspaceCreated: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
-    workspaceJoined: ({ workspaceId }) => tables.userList.insert({ workspaceId }),
-  })
+If you have feedback or questions about this API, please don't hesitate to comment on the [RFC](https://github.com/livestorejs/livestore/pull/585)
+:::
 
-  const state = State.SQLite.makeState({ tables, materializers })
+### Store Configuration
 
-  export const schema = makeSchema({ events, state })
-    `} />
-  </TabItem>
-  <TabItem label="workspace-schema.ts">
-    <Code lang="ts" code={`\
-  import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+First, define store options for each store type using [`storeOptions()`](/reference/framework-integrations/react-integration#storeoptionsoptions):
 
-  // Emitted when a new workspace is created (originates this store)
-  const workspaceCreated = Events.synced({
-    name: 'v1.ListCreated',
-    schema: Schema.Struct({
-      workspaceId: Schema.String,
-      name: Schema.String,
-      createdByUsername: Schema.String, 
-    }),
-  })
+**Workspace store:**
 
-  // Emitted when a todo item is added to this workspace
-  const todoAdded = Events.synced({
-    name: 'v1.TodoAdded',
-    schema: Schema.Struct({ todoId: Schema.String, text: Schema.String }),
-  })
+<WorkspaceStoreOptionsSnippet />
 
-  // Emitted when a todo item is marked as completed
-  const todoCompleted = Events.synced({
-    name: 'v1.TodoCompleted',
-    schema: Schema.Struct({ todoId: Schema.String }),
-  })
+**User store:**
 
-  // Emitted when a todo item is deleted (soft delete)
-  const todoDeleted = Events.synced({
-    name: 'v1.TodoDeleted',
-    schema: Schema.Struct({ todoId: Schema.String, deletedAt: Schema.Date }),
-  })
+<UserStoreOptionsSnippet />
 
-  // Emitted when a new user joins this workspace
-  const userJoined = Events.synced({
-    name: 'v1.UserJoined',
-    schema: Schema.Struct({ username: Schema.String }),
-  })
+### App Setup
 
-  const events = { workspaceCreated, todoAdded, todoCompleted, todoDeleted, userJoined }
+Create a [`StoreRegistry`](/reference/framework-integrations/react-integration#new-storeregistryconfig) and provide it to your React app:
 
-  // Table for the workspace itself (only one row as this store is per-workspace)
-  const workspaceTable = State.SQLite.table({
-    name: 'workspace',
-    columns: {
-      workspaceId: State.SQLite.text({ primaryKey: true }),
-      name: State.SQLite.text(),
-      createdByUsername: State.SQLite.text(),
-    },
-  })
+<AppRootSnippet />
 
-  // Table for the todo items in this workspace
-  const todoTable = State.SQLite.table({
-    name: 'todo',
-    columns: {
-      todoId: State.SQLite.text({ primaryKey: true }),
-      text: State.SQLite.text(),
-      completed: State.SQLite.boolean({ default: false }),
-      // Using soft delete by adding a deletedAt timestamp
-      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
-    },
-  })
+### Accessing Stores
 
-  // Table for members of this workspace
-  const memberTable = State.SQLite.table({
-    name: 'member',
-    columns: {
-      username: State.SQLite.text({ primaryKey: true }),
-      // Could add role/permissions here later
-    },
-  })
+Use the [`useStore()`](/reference/framework-integrations/react-integration#usestoreoptions) hook to access specific workspace instances:
 
-  const tables = { workspace: workspaceTable, todo: todoTable, member: memberTable }
+<WorkspaceComponentSnippet />
 
-  const materializers = State.SQLite.materializers(events, {
-    workspaceCreated: ({ workspaceId, name, createdByUsername }) => [
-      tables.workspace.insert({ workspaceId, name, createdByUsername }),
-      // Add the creator as the first member
-      tables.member.insert({ username: createdByUsername }),
-    ],
-    todoAdded: ({ todoId, text }) => tables.todo.insert({ todoId, text }),
-    todoCompleted: ({ todoId }) => tables.todo.update({ completed: true }).where({ todoId }),
-    todoDeleted: ({ todoId, deletedAt }) =>
-      tables.todo.update({ deletedAt }).where({ todoId }),
-    userJoined: ({ username }) => tables.member.insert({ username }),
-  })
+### Loading Multiple Workspaces
 
-  const state = State.SQLite.makeState({ tables, materializers })
+To display all workspaces for a user, first load the user store to get their workspace list, then dynamically load each workspace:
 
-  export const schema = makeSchema({ events, state })
-    `} />
-  </TabItem>
-</Tabs>
+<WorkspaceListSnippet />
 
 ## Further notes
 
@@ -212,7 +122,7 @@ To make this app more production-ready, we might want to do the following:
 If each todo item has a lot of data (e.g. think of a GitHub/Linear issue with lots of details), it might make sense to split up each todo item into its own store.
 
 This would create **3 store types** instead of 2:
-- **User stores** (one per user) - unchanged  
+- **User stores** (one per user) - unchanged
 - **Workspace stores** (one per workspace) - only basic todo metadata
 - **Todo stores** (one per todo item) - rich todo data
 

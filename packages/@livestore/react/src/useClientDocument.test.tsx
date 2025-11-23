@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -39,12 +40,12 @@ Vitest.describe('useClientDocument', () => {
       expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       rerender('u2')
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       expect(result.current.id).toBe('u2')
       expect(result.current.state.username).toBe('username_u2')
       expect(renderCount.val).toBe(2)

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { makeAdapter } from '@livestore/adapter-node'
-import { createStore } from '@livestore/livestore'
+import { createStore, StoreInternalsSymbol } from '@livestore/livestore'
 import { IS_CI, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -49,7 +49,7 @@ Vitest.describe('todomvc-node', () => {
 
       yield* Effect.sleep(100)
 
-      const syncState = yield* store.syncProcessor.syncState
+      const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState
       expect(syncState.pending.length).toBe(0)
 
       yield* sameStore.shutdown()
