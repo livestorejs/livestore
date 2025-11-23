@@ -65,7 +65,7 @@
 }
 
 /* https://tailwindcss.com/docs/dark-mode#using-a-data-attribute */
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* Starlight theme below */
 :root {

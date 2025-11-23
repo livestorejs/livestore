@@ -97,6 +97,11 @@
   "json": {
     "formatter": {}
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "overrides": [
     {
       // Disable noUnusedVariables for Astro files due to false positives
