@@ -4,7 +4,7 @@ import type { CachedStoreOptions, StoreId } from './types.ts'
 
 type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'idle' }
-  | { status: 'loading'; promise: Promise<Store<TSchema>> }
+  | { status: 'loading'; promise: Promise<Store<TSchema>>; abortController: AbortController }
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
 
@@ -54,6 +54,9 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
       // Re-check to avoid racing with a new subscription
       if (this.#subscribers.size > 0) return
 
+      // Abort any in-progress loading to release resources early
+      this.#abortLoading()
+
       void this.#shutdown().finally(() => {
         // Double-check again just in case shutdown was slow
         if (this.#subscribers.size === 0) this.#cache.delete(this.#storeId)
@@ -70,9 +73,9 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   /**
    * Transitions to the loading state.
    */
-  #setPromise(promise: Promise<Store<TSchema>>): void {
+  #setPromise(promise: Promise<Store<TSchema>>, abortController: AbortController): void {
     if (this.#state.status === 'success' || this.#state.status === 'loading') return
-    this.#state = { status: 'loading', promise }
+    this.#state = { status: 'loading', promise, abortController }
     this.#notify()
   }
 
@@ -144,7 +147,9 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
 
-    const promise = createStorePromise(options)
+    const abortController = new AbortController()
+
+    const promise = createStorePromise({ ...options, signal: abortController.signal })
       .then((store) => {
         this.#setStore(store)
         return store
@@ -158,9 +163,20 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
         if (this.#subscribers.size === 0) this.#scheduleGC()
       })
 
-    this.#setPromise(promise)
+    this.#setPromise(promise, abortController)
 
     return promise
+  }
+
+  /**
+   * Aborts an in-progress store load.
+   *
+   * This signals the createStorePromise to cancel, releasing resources like
+   * worker threads, SQLite connections, and network requests.
+   */
+  #abortLoading = (): void => {
+    if (this.#state.status !== 'loading') return
+    this.#state.abortController.abort()
   }
 
   #shutdown = async (): Promise<void> => {

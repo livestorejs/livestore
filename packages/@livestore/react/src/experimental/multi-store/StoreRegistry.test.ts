@@ -362,6 +362,77 @@ describe('StoreRegistry', () => {
     await nextStore.shutdownPromise()
   })
 
+  it('aborts loading when GC fires while store is still loading', async () => {
+    vi.useFakeTimers()
+    const registry = new StoreRegistry()
+    const gcTime = 10
+    const options = testStoreOptions({ gcTime })
+
+    // Subscribe briefly to trigger getOrLoad and then unsubscribe
+    const unsubscribe = registry.subscribe(options.storeId, () => {})
+
+    // Start loading - this will be slow due to fake timers
+    const loadPromise = registry.getOrLoad(options)
+
+    // Attach a catch handler to prevent unhandled rejection when the load is aborted
+    const abortedPromise = (loadPromise as Promise<unknown>).catch(() => {
+      // Expected: load was aborted by GC
+    })
+
+    // Unsubscribe immediately, which schedules GC
+    unsubscribe()
+
+    // Advance time to trigger GC while still loading
+    await vi.advanceTimersByTimeAsync(gcTime)
+
+    // Wait for the abort to complete
+    await abortedPromise
+
+    // After abort, a new getOrLoad should start a fresh load
+    const freshLoadPromise = registry.getOrLoad(options)
+
+    // This should be a new promise (not the aborted one)
+    expect(freshLoadPromise).toBeInstanceOf(Promise)
+    expect(freshLoadPromise).not.toBe(loadPromise)
+
+    // Wait for fresh load to complete
+    const store = await freshLoadPromise
+    expect(store).toBeDefined()
+
+    await store.shutdownPromise()
+  })
+
+  it('does not abort loading when new subscription arrives before GC fires', async () => {
+    vi.useFakeTimers()
+    const registry = new StoreRegistry()
+    const gcTime = 50
+    const options = testStoreOptions({ gcTime })
+
+    // Start loading and immediately unsubscribe to schedule GC
+    const unsub1 = registry.subscribe(options.storeId, () => {})
+    const loadPromise = registry.getOrLoad(options)
+    unsub1()
+
+    // Advance time partially (before GC fires)
+    await vi.advanceTimersByTimeAsync(gcTime - 10)
+
+    // Add a new subscription - this should cancel the pending GC
+    const unsub2 = registry.subscribe(options.storeId, () => {})
+
+    // Advance past the original GC time
+    await vi.advanceTimersByTimeAsync(20)
+
+    // The load should complete normally (not be aborted)
+    const store = await loadPromise
+
+    // And should be the same instance when retrieved again
+    const cachedStore = registry.getOrLoad(options)
+    expect(cachedStore).toBe(store)
+
+    unsub2()
+    await store.shutdownPromise()
+  })
+
   it('manages multiple stores with different IDs independently', async () => {
     vi.useFakeTimers()
     const registry = new StoreRegistry()
