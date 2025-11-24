@@ -277,7 +277,7 @@ export namespace Queryable {
   export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
 }
 
-const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
+export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
   if (typeof value !== 'object' || value === null) {
     return false
   }
@@ -305,7 +305,7 @@ const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<
   return true
 }
 
-const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
+export const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
 
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)

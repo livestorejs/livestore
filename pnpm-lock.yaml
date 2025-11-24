@@ -106,6 +106,7 @@ overrides:
   '@livestore/react': workspace:*
   '@livestore/solid': workspace:*
   '@livestore/sqlite-wasm': workspace:*
+  '@livestore/svelte': workspace:*
   '@livestore/sync-cf': workspace:*
   '@livestore/sync-electric': workspace:*
   '@livestore/sync-s2': workspace:*

@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { uiState$ } from '../livestore/queries';
-	import { events, tables } from '../livestore/schema';
-	import { store } from '../livestore/store';
-	import { queryDb } from '@livestore/livestore';
+import { queryDb } from '@livestore/livestore'
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
+import { store } from '../livestore/store.ts'
 
-	const visibleTodos$ = queryDb(
-		(get) => {
-			const { filter } = get(uiState$);
-			return tables.todos.where({
-				deletedAt: null,
-				completed: filter === 'all' ? undefined : filter === 'completed'
-			});
-		},
-		{ label: 'visibleTodos' }
-	);
+const visibleTodos$ = queryDb(
+  (get) => {
+    const { filter } = get(uiState$)
+    return tables.todos.where({
+      deletedAt: null,
+      completed: filter === 'all' ? undefined : filter === 'completed',
+    })
+  },
+  { label: 'visibleTodos' },
+)
 </script>
 
 <section class="main">

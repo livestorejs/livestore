@@ -16,7 +16,8 @@
       "examples/**",
       "!**/routeTree.gen.ts",
       "docs/**",
-      "!docs/**/.astro",
+      "!docs/**/.astro", // TODO re-enable once Biome supports Astro files
+      "!**/*.svelte", // TODO re-enable once Biome supports Svelte files
       "tests/**",
       "scripts/**",
       "contributor-docs/**",

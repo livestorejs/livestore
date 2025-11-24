@@ -1,7 +1,7 @@
 import 'todomvc-app-css/index.css'
-import App from './App.svelte';
-import { mount } from 'svelte';
+import { mount } from 'svelte'
+import App from './App.svelte'
 
 mount(App, {
-	target: document.querySelector('#root')!
-});
+  target: document.querySelector('#root')!,
+})

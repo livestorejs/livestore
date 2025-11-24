@@ -1,22 +1,16 @@
 {
+  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "lib": ["esnext", "DOM", "DOM.Iterable"],
-    "target": "esnext",
-    "allowJs": true,
-    "checkJs": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "sourceMap": true,
-    "strict": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src", "./vite.config.ts"]
+  "include": ["./src"],
+  "references": [
+    { "path": "../common" },
+    { "path": "../adapter-web" },
+    { "path": "../livestore" },
+    { "path": "../utils" },
+    { "path": "../utils-dev" }
+  ]
 }

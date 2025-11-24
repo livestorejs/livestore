@@ -9,20 +9,12 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.svelte.d.ts",
-      "svelte": "./dist/index.svelte.js"
-    }
+    ".": "./src/mod.ts"
   },
-  "svelte": "./dist/index.svelte.js",
-  "types": "./dist/index.svelte.d.ts",
   "files": [
-    "dist",
-    "!dist/**/*.test.*",
-    "!dist/**/*.spec.*",
+    "package.json",
     "src",
-    "!src/**/*.test.*",
-    "!src/**/*.spec.*"
+    "dist"
   ],
   "scripts": {
     "build": "npm run prepack",
@@ -56,5 +48,11 @@
   },
   "peerDependencies": {
     "svelte": "^5.31.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js"
+    }
   }
 }

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { events } from '../livestore/schema.js';
-	import { uiState$ } from '../livestore/queries.js';
-	import { store } from '../livestore/store';
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
+import { store } from '../livestore/store.ts'
 
-	let { newTodoText } = $derived(store.query(uiState$));
+const { newTodoText } = $derived(store.query(uiState$))
 </script>
 
 <header class="header">
