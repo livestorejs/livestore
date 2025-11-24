@@ -266,7 +266,7 @@ type DefaultStoreOptions = Partial<
    * store have unmounted.
    *
    * @remarks
-   * - If set to `infinity`, will disable garbage collection
+   * - If set to `Infinity`, will disable garbage collection
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
    * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
