@@ -7,6 +7,7 @@ type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'loading'; promise: Promise<Store<TSchema>>; abortController: AbortController }
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
+  | { status: 'shutting_down'; shutdownPromise: Promise<void> }
 
 /**
  * Default garbage collection time for inactive stores.
@@ -57,10 +58,15 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
       // Abort any in-progress loading to release resources early
       this.#abortLoading()
 
-      void this.#shutdown().finally(() => {
-        // Double-check again just in case shutdown was slow
+      // Transition to shutting_down state BEFORE starting async shutdown.
+      // This prevents new subscribers from receiving a store that's about to be disposed.
+      const shutdownPromise = this.#shutdown().finally(() => {
+        // Reset to idle so fresh loads can proceed, then remove from cache if still inactive
+        this.#setIdle()
         if (this.#subscribers.size === 0) this.#cache.delete(this.#storeId)
       })
+
+      this.#setShuttingDown(shutdownPromise)
     }, effectiveGcTime)
   }
 
@@ -93,6 +99,22 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   #setError = (error: unknown): void => {
     this.#state = { status: 'error', error }
     this.#notify()
+  }
+
+  /**
+   * Transitions to the shutting_down state.
+   */
+  #setShuttingDown = (shutdownPromise: Promise<void>): void => {
+    this.#state = { status: 'shutting_down', shutdownPromise }
+    this.#notify()
+  }
+
+  /**
+   * Transitions to the idle state.
+   */
+  #setIdle = (): void => {
+    this.#state = { status: 'idle' }
+    // No notify needed - getOrLoad will handle the fresh load
   }
 
   /**
@@ -146,6 +168,11 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     if (this.#state.status === 'success') return this.#state.store
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
+
+    // Wait for shutdown to complete, then recursively call to load a fresh store
+    if (this.#state.status === 'shutting_down') {
+      return this.#state.shutdownPromise.then(() => this.getOrLoad(options))
+    }
 
     const abortController = new AbortController()
 
