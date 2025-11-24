@@ -529,6 +529,55 @@ describe('StoreRegistry', () => {
     await nextStore.shutdownPromise()
   })
 
+  it('prevents subscriptions to stores that are shutting down', async () => {
+    vi.useFakeTimers()
+    const registry = new StoreRegistry()
+    const gcTime = 10
+    const options = testStoreOptions({ gcTime })
+
+    // Load the store and wait for it to be ready
+    const originalStore = await registry.getOrLoad(options)
+
+    // Verify store is cached
+    expect(registry.getOrLoad(options)).toBe(originalStore)
+
+    // Spy on shutdownPromise to detect when shutdown starts
+    let shutdownStarted = false
+    let shutdownCompleted = false
+    const originalShutdownPromise = originalStore.shutdownPromise.bind(originalStore)
+    originalStore.shutdownPromise = () => {
+      shutdownStarted = true
+      return originalShutdownPromise().finally(() => {
+        shutdownCompleted = true
+      })
+    }
+
+    // Use vi.advanceTimersToNextTimer to advance ONLY to the GC timer firing,
+    // then immediately (before microtasks resolve) try to get the store
+    vi.advanceTimersToNextTimer()
+
+    // The GC callback has now executed synchronously, which means:
+    // 1. Subscriber check passed (no subscribers)
+    // 2. shutdown() was called (but it's async, hasn't resolved yet)
+    // 3. Cache entry SHOULD have been removed
+
+    // Verify shutdown was initiated
+    expect(shutdownStarted).toBe(true)
+    // Shutdown is async, so it shouldn't have completed yet in the same tick
+    expect(shutdownCompleted).toBe(false)
+
+    const storeOrPromise = registry.getOrLoad(options)
+
+    if (!(storeOrPromise instanceof Promise)) {
+      expect.fail('getOrLoad returned dying store synchronously instead of starting fresh load')
+    }
+
+    const freshStore = await storeOrPromise
+    // A fresh load was triggered because cache was cleared
+    expect(freshStore).not.toBe(originalStore)
+    await freshStore.shutdownPromise()
+  })
+
   it('warms the cache so subsequent getOrLoad is synchronous after preload', async () => {
     const registry = new StoreRegistry()
     const options = testStoreOptions()
