@@ -106,68 +106,77 @@ export const getEventsFromEventlog = ({
 }: {
   dbEventlog: SqliteDb
   options: StreamEventsOptions
-}): Chunk.Chunk<LiveStoreEvent.AnyEncoded> => {
-  const since = options.since ?? EventSequenceNumber.ROOT
-  const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
+}): Effect.Effect<Chunk.Chunk<LiveStoreEvent.AnyEncoded>> =>
+  Effect.gen(function* () {
+    const since = options.since ?? EventSequenceNumber.ROOT
+    const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
 
-  const makeQuery = () => {
-    let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)
+    const makeQuery = () => {
+      let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)
 
-    if (options.until) {
-      query = query.where('seqNumGlobal', '<=', options.until.global)
+      if (options.until) {
+        query = query.where('seqNumGlobal', '<=', options.until.global)
+      }
+
+      if (options.filter && options.filter.length > 0) {
+        query = query.where({ name: { op: 'IN', value: options.filter } })
+      }
+
+      if (options.clientIds && options.clientIds.length > 0) {
+        query = query.where({ clientId: { op: 'IN', value: options.clientIds } })
+      }
+
+      if (options.sessionIds && options.sessionIds.length > 0) {
+        query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
+      }
+
+      if (options.includeClientOnly !== true) {
+        query = query.where('seqNumClient', '<=', 0 as ClientEventSequenceNumber)
+      }
+
+      return query
+        .orderBy([
+          { col: 'seqNumGlobal', direction: 'asc' },
+          { col: 'seqNumClient', direction: 'asc' },
+        ])
+        .limit(batchSize)
     }
 
-    if (options.filter && options.filter.length > 0) {
-      query = query.where({ name: { op: 'IN', value: options.filter } })
+    const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery())).pipe(
+      Effect.withSpan('@livestore/common:eventlog:getEventsFromEventLog:select', { attributes: { batchSize } }),
+    )
+
+    if (eventlogEvents.length === 0) {
+      return Chunk.empty<LiveStoreEvent.AnyEncoded>()
     }
 
-    if (options.clientIds && options.clientIds.length > 0) {
-      query = query.where({ clientId: { op: 'IN', value: options.clientIds } })
-    }
+    return yield* Effect.sync(() => {
+      const encodedEvents = eventlogEvents.map((eventlogEvent) => {
+        return LiveStoreEvent.AnyEncoded.make({
+          name: eventlogEvent.name,
+          args: eventlogEvent.argsJson,
+          seqNum: {
+            global: eventlogEvent.seqNumGlobal,
+            client: eventlogEvent.seqNumClient,
+            rebaseGeneration: eventlogEvent.seqNumRebaseGeneration,
+          },
+          parentSeqNum: {
+            global: eventlogEvent.parentSeqNumGlobal,
+            client: eventlogEvent.parentSeqNumClient,
+            rebaseGeneration: eventlogEvent.parentSeqNumRebaseGeneration,
+          },
+          clientId: eventlogEvent.clientId,
+          sessionId: eventlogEvent.sessionId,
+        })
+      })
 
-    if (options.sessionIds && options.sessionIds.length > 0) {
-      query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
-    }
-
-    if (options.includeClientOnly !== true) {
-      query = query.where('seqNumClient', '<=', 0 as ClientEventSequenceNumber)
-    }
-
-    return query
-      .orderBy([
-        { col: 'seqNumGlobal', direction: 'asc' },
-        { col: 'seqNumClient', direction: 'asc' },
-      ])
-      .limit(batchSize)
-  }
-
-  const eventlogEvents = dbEventlog.select(makeQuery())
-
-  if (eventlogEvents.length === 0) {
-    return Chunk.empty<LiveStoreEvent.AnyEncoded>()
-  }
-
-  const encodedEvents = eventlogEvents.map((eventlogEvent) => {
-    return LiveStoreEvent.AnyEncoded.make({
-      name: eventlogEvent.name,
-      args: eventlogEvent.argsJson,
-      seqNum: {
-        global: eventlogEvent.seqNumGlobal,
-        client: eventlogEvent.seqNumClient,
-        rebaseGeneration: eventlogEvent.seqNumRebaseGeneration,
-      },
-      parentSeqNum: {
-        global: eventlogEvent.parentSeqNumGlobal,
-        client: eventlogEvent.parentSeqNumClient,
-        rebaseGeneration: eventlogEvent.parentSeqNumRebaseGeneration,
-      },
-      clientId: eventlogEvent.clientId,
-      sessionId: eventlogEvent.sessionId,
-    })
+      return Chunk.fromIterable(encodedEvents)
+    }).pipe(
+      Effect.withSpan('@livestore/common:eventlog:getEventsFromEventLog:encode', {
+        attributes: { events: eventlogEvents.length },
+      }),
+    )
   })
-
-  return Chunk.fromIterable(encodedEvents)
-}
 
 export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.EventSequenceNumber => {
   const res = dbEventlog.select<{

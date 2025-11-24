@@ -1,5 +1,5 @@
-import { Store, StoreInternalsSymbol } from '@livestore/livestore'
 import { Devtools, liveStoreVersion } from '@livestore/common'
+import { Store, StoreInternalsSymbol } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -238,7 +238,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
 
   const loadSnapshots = React.useCallback(
     async ({ state, eventlog }: SnapshotPayload) => {
-      const clientSession = store.clientSession
+      const clientSession = store[StoreInternalsSymbol].clientSession
       const clientId = clientSession.clientId
       const batchId = `perf-${makeRunId()}`
 
@@ -261,7 +261,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
       await send(normalizedState)
       await send(normalizedEventlog)
     },
-    [normalizeSnapshot, store.clientSession],
+    [normalizeSnapshot, store[StoreInternalsSymbol].clientSession],
   )
 
   const handleLoadSnapshotFiles = React.useCallback(async () => {

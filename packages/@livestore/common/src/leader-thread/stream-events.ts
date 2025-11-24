@@ -58,7 +58,6 @@ export const streamEventsWithSyncState = ({
           }
 
           // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
-          // The stream suspends here until a new upstreamHead is available in the Queue.
           const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
           const headHasAdvanced = yield* Queue.isFull(headQueue)
           const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
@@ -67,8 +66,7 @@ export const streamEventsWithSyncState = ({
             client: EventSequenceNumber.clientDefault,
           })
 
-          // console.log({ nextHead, target, batchSize })
-          const chunk = Eventlog.getEventsFromEventlog({
+          const chunk = yield* Eventlog.getEventsFromEventlog({
             dbEventlog,
             options: {
               ...options,
