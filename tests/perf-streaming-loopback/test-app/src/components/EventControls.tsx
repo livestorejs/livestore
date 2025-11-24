@@ -1,3 +1,4 @@
+import { Store, StoreInternalsSymbol } from '@livestore/livestore'
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
@@ -130,7 +131,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const [snapshotError, setSnapshotError] = React.useState<string | null>(null)
   const initialSyncHead = React.useMemo(() => {
     try {
-      const syncState = store.syncProcessor.syncState.pipe(Effect.runSync)
+      const syncState = store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
       return {
         local: syncState.localHead.global,
         upstream: syncState.upstreamHead.global,
@@ -313,7 +314,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
   }, [stopGenerator])
 
   React.useEffect(() => {
-    const cancel = store.syncProcessor.syncState.changes.pipe(
+    const cancel = store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
       Stream.runForEach((state) =>
         Effect.sync(() =>
           setSyncHead({
