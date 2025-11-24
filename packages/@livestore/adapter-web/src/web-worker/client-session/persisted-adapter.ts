@@ -188,7 +188,7 @@ export const makePersistedAdapter =
           ? undefined
           : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
               Effect.tapError((error) =>
-                Effect.logDebug('[@livestore/adapter-web:client-session] Error reading persisted db', error, {
+                Effect.logDebug('[@livestore/adapter-web:client-session] Could not read persisted state db', error, {
                   storeId,
                 }),
               ),
