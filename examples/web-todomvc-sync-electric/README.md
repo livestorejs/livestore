@@ -7,8 +7,8 @@ See links to demos in [the examples docs](https://docs.livestore.dev/examples).
 Note you'll also need to run the Electric server locally for the app to work (see below).
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 ### Running the Electric server locally
