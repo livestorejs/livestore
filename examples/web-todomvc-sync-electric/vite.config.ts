@@ -20,6 +20,7 @@ export default defineConfig({
     exclude: [
       '@livestore/wa-sqlite',
       'lightningcss', // Avoid wasm branch looking for missing ../pkg (lightningcss#701)
+      'fsevents', // Native module, should not be optimized
     ],
   },
   plugins: [tanstackStart(), viteReact(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
