@@ -13,7 +13,6 @@
     "@livestore/sync-electric": "0.4.0-dev.18",
     "@livestore/wa-sqlite": "0.4.0-dev.18",
     "@overengineering/fps-meter": "0.2.4",
-    "@tanstack/react-router": "1.132.47",
     "@tanstack/react-start": "1.132.56",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -23,6 +22,7 @@
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.18",
     "@playwright/test": "^1.56.0",
+    "@tanstack/react-router": "1.132.47",
     "@tanstack/router-devtools": "^1.133.1",
     "@tanstack/router-plugin": "^1.132.56",
     "@types/node": "^24.9.2",
