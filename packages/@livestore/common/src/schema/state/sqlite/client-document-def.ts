@@ -579,5 +579,5 @@ export namespace ClientDocumentTableDef {
       ) => QueryBuilder<TType, ClientDocumentTableDef.TableDefBase_<TName, TType>, QueryBuilder.ApiFeature>
 }
 
-export const ClientDocumentTableDefSymbol = Symbol('ClientDocumentTableDef')
+export const ClientDocumentTableDefSymbol = Symbol.for('livestore.ClientDocumentTableDef')
 export type ClientDocumentTableDefSymbol = typeof ClientDocumentTableDefSymbol
