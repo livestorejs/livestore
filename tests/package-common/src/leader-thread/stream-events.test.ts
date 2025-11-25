@@ -436,6 +436,56 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
+  Vitest.scopedLive('respects until marker when batchSize exceeds remaining events', (test) =>
+    withNodeFs(
+      Effect.gen(function* () {
+        const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
+
+        const eventFactory = makeFixtureEventFactory({
+          client: EventFactory.clientIdentity('client-1', 'session-1'),
+        })
+
+        // Create 20 events
+        const allEvents = Array.from({ length: 20 }, (_, index) =>
+          toEncodedWithMeta(
+            eventFactory.todoCreated.next({
+              id: `${index + 1}`,
+              text: `todo-${index + 1}`,
+              completed: false,
+            }),
+          ),
+        )
+
+        yield* insertEvents(dbEventlog, allEvents)
+
+        // until is set to event 5, batchSize is 10
+        // Bug: stream fetches up to e10 instead of stopping at e5
+        const untilEvent = allEvents[4]! // 0-indexed, so index 4 is event 5
+        const stream = streamEventsWithSyncState({
+          dbEventlog,
+          syncState,
+          options: {
+            since: EventSequenceNumber.ROOT,
+            until: untilEvent.seqNum,
+            batchSize: 10,
+          },
+        })
+
+        // Advance head to include all events
+        yield* advanceHead(allEvents[allEvents.length - 1]!.seqNum)
+
+        const collected = yield* stream.pipe(Stream.runCollect)
+        const emitted = Chunk.toReadonlyArray(collected)
+
+        // Should only emit events 1-5 (5 events total), not 1-10
+        expect(emitted.length).toEqual(5)
+        expect(emitted.map((event) => event.seqNum.global)).toEqual([1, 2, 3, 4, 5])
+
+        yield* closeHeads
+      }).pipe(Vitest.withTestCtx(test)),
+    ),
+  )
+
   const batchSizeSampleSchema = Schema.Literal(1, 5, 12, 25, 50, 100)
   const eventCountSampleSchema = Schema.Literal(0, 1, 6, 10, 100)
   const batchesPerTickSampleSchema = Schema.Literal(1, 3, 10, 100)

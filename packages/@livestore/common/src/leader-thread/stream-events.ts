@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Queue, Ref, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
@@ -45,8 +45,18 @@ export const streamEventsWithSyncState = ({
       // Single-element Queue allws suspending the event stream until head advances
       const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
 
+      // Keep track of previous head to prevent other syncState changes
+      // to trigger u
+      let prevGlobalHead = -1
       yield* syncState.changes.pipe(
         Stream.map((state) => state.upstreamHead),
+        Stream.filter((head) => {
+          if (head.global > prevGlobalHead) {
+            prevGlobalHead = head.global
+            return true
+          }
+          return false
+        }),
         Stream.runForEach((head) => Queue.offer(headQueue, head)),
         Effect.forkScoped,
       )
@@ -62,7 +72,11 @@ export const streamEventsWithSyncState = ({
           const headHasAdvanced = yield* Queue.isFull(headQueue)
           const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
           const target = EventSequenceNumber.make({
-            global: Math.min(cursor.global + batchSize, nextHead.global),
+            global: Math.min(
+              options.until?.global || Number.POSITIVE_INFINITY,
+              cursor.global + batchSize,
+              nextHead.global,
+            ),
             client: EventSequenceNumber.clientDefault,
           })
 
