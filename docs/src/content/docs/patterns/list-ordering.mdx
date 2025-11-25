@@ -1,0 +1,114 @@
+---
+title: List Ordering
+description: Implement drag-and-drop list ordering with fractional indexing
+sidebar:
+  order: 22
+---
+
+import SchemaSnippet from '../../_assets/code/patterns/list-ordering/schema.ts?snippet'
+import CreateItemSnippet from '../../_assets/code/patterns/list-ordering/create-item.ts?snippet'
+import ReorderSnippet from '../../_assets/code/patterns/list-ordering/reorder.ts?snippet'
+import QuerySnippet from '../../_assets/code/patterns/list-ordering/query.ts?snippet'
+
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  createItem: CreateItemSnippet,
+  reorder: ReorderSnippet,
+  query: QuerySnippet,
+}
+
+Fractional indexing enables conflict-free list ordering in distributed systems by assigning string-based position values that maintain lexicographic order. This makes it ideal for implementing drag-and-drop reordering in LiveStore applications where multiple clients may reorder items concurrently.
+
+To understand how the algorithm works, see these visual and interactive explanations:
+- [CRDT Fractional Indexing](https://madebyevan.com/algos/crdt-fractional-indexing/) by Evan Wallace - Visual explanation of the algorithm
+- [Implementing Fractional Indexing](https://observablehq.com/@dgreensp/implementing-fractional-indexing) by David Greenspan - Interactive notebook walkthrough
+
+## Why Fractional Indexing?
+
+Traditional numeric ordering (1, 2, 3...) requires renumbering multiple items when inserting or reordering, which creates conflicts in distributed systems. Fractional indexing solves this by:
+
+- Generating position values that can always be inserted between any two existing positions
+- Using lexicographic string ordering that works naturally with SQL `ORDER BY`
+- Eliminating the need for coordination between clients when reordering
+- Avoiding cascading updates when inserting items
+
+For example, inserting a new item between positions "a0" and "b0" generates "aV", which sorts correctly without modifying existing items.
+
+## Installation
+
+Install the `fractional-indexing` package from [Rocicorp](https://github.com/rocicorp/fractional-indexing) (the same team behind Replicache):
+
+```bash
+pnpm install fractional-indexing
+```
+
+## Schema Design
+
+Define a text column to store the fractional index and add a database index for efficient ordering:
+
+<SNIPPETS.schema />
+
+The `order` column stores string values like "a0", "a1", "aV" that maintain lexicographic ordering. Adding a database index on this column ensures efficient queries when retrieving ordered lists.
+
+## Creating Ordered Items
+
+Use `generateKeyBetween(a, b)` to generate position values when creating new items:
+
+<SNIPPETS.createItem />
+
+Key patterns:
+- `generateKeyBetween(highest, null)` - Append to end of list
+- `generateKeyBetween(null, lowest)` - Prepend to start of list
+- Use `"a1"` as a simple default for the first item in an empty list
+
+## Reordering Items
+
+Handle drag-and-drop by generating a new position between the target boundaries:
+
+<SNIPPETS.reorder />
+
+The `generateKeyBetween` function automatically creates a string value that sorts lexicographically between the two boundary positions. Pass `null` to represent the start or end of the list.
+
+## Querying Ordered Lists
+
+Query items using standard SQL ordering on the fractional index column:
+
+<SNIPPETS.query />
+
+Since fractional index values maintain lexicographic ordering, you can use simple `ORDER BY` clauses without special handling.
+
+## Best Practices
+
+- **Use text/string columns** - Fractional index values are strings, not numbers
+- **Add database indexes** - Index the order column for efficient queries
+- **Validate lexicographic ordering** - Ensure your sorting logic uses standard string comparison, not locale-aware comparison (avoid `String.prototype.localeCompare()`)
+- **Handle empty lists** - Use a simple default like `"a1"` for the first item
+- **Consider bulk operations** - For creating multiple items at once, use `generateNKeysBetween(a, b, n)` from the same package
+
+## Real-World Example
+
+The [web-linearlite example](/examples/linearlite/) demonstrates fractional indexing for Kanban board ordering. It shows:
+- Schema definition with `kanbanorder` column
+- Creating issues with proper ordering
+- Drag-and-drop reordering across columns
+- Querying issues in order by status
+
+Check `examples/web-linearlite/src/livestore/schema/issue.ts` for the schema and `examples/web-linearlite/src/components/column.tsx` for the drag-and-drop implementation.
+
+## How It Works
+
+Fractional indexing generates position strings that always allow insertion between any two positions:
+
+```
+Initial:  a0    a1    a2
+Insert between a0 and a1: a0V (sorts: a0 < a0V < a1)
+Insert between a0V and a1: a0n (sorts: a0 < a0V < a0n < a1)
+```
+
+The algorithm ensures:
+- Position strings stay reasonably short
+- No coordination needed between clients
+- Conflicts resolve naturally through lexicographic ordering
+- Works seamlessly with LiveStore's event sourcing model
+
+For more details on the algorithm, see the [fractional-indexing documentation](https://github.com/rocicorp/fractional-indexing).
