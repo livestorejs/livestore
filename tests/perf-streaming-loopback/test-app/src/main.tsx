@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { StrictMode, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { STORE_ID } from '../../src/shared/constants.ts'
@@ -22,6 +22,7 @@ const createAdapter = (resetPersistence = false) =>
 const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
   const [eventsVisible, setEventsVisible] = useState(false)
   const [eventBatchSize, setEventBatchSize] = useState(DEFAULT_EVENT_BATCH_SIZE)
+  const [eventUntil, setEventUntil] = useState<number | undefined>(undefined)
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', margin: '1.5rem auto', maxWidth: '48rem' }} data-testid="app">
@@ -37,8 +38,10 @@ const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
         onEventsVisibleChange={setEventsVisible}
         eventBatchSize={eventBatchSize}
         onEventBatchSizeChange={setEventBatchSize}
+        eventUntil={eventUntil}
+        onEventUntilChange={setEventUntil}
       />
-      {eventsVisible && <EventsList batchSize={eventBatchSize} />}
+      {eventsVisible && <EventsList batchSize={eventBatchSize} until={eventUntil} />}
     </div>
   )
 }
@@ -72,8 +75,4 @@ const LiveStoreRoot = () => {
   )
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <LiveStoreRoot />
-  </StrictMode>,
-)
+createRoot(document.getElementById('root')!).render(<LiveStoreRoot />)

@@ -1,5 +1,5 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
-import { Store, StoreInternalsSymbol } from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -89,6 +89,8 @@ type EventControlsProps = {
   onEventsVisibleChange: (visible: boolean) => void
   eventBatchSize: number
   onEventBatchSizeChange: (size: number) => void
+  eventUntil: number | undefined
+  onEventUntilChange: (until: number | undefined) => void
 }
 
 type GeneratorState = {
@@ -116,6 +118,8 @@ export const EventControls: React.FC<EventControlsProps> = ({
   onEventsVisibleChange,
   eventBatchSize,
   onEventBatchSizeChange,
+  eventUntil,
+  onEventUntilChange,
 }) => {
   const { store } = useStore()
 
@@ -228,8 +232,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     sessionIdRef.current = makeRunId()
     idCounterRef.current = 1
     onEventBatchSizeChange(DEFAULT_EVENT_BATCH_SIZE)
+    onEventUntilChange(undefined)
     onResetHarness()
-  }, [onEventBatchSizeChange, onResetHarness, stopGenerator])
+  }, [onEventBatchSizeChange, onEventUntilChange, onResetHarness, stopGenerator])
 
   const normalizeSnapshot = React.useCallback((input: SnapshotPayload['state']) => {
     if (input instanceof Uint8Array) return input
@@ -410,6 +415,26 @@ export const EventControls: React.FC<EventControlsProps> = ({
               onEventBatchSizeChange(
                 Number.isFinite(next) ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN,
               )
+            }}
+            style={{ width: '8rem' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+          Stream until (global seq)
+          <input
+            type="number"
+            min={0}
+            value={eventUntil ?? ''}
+            placeholder="∞"
+            data-testid="config-until"
+            onChange={(event) => {
+              const raw = event.target.value.trim()
+              if (raw === '') {
+                onEventUntilChange(undefined)
+              } else {
+                const next = Number.parseInt(raw, 10)
+                onEventUntilChange(Number.isFinite(next) && next >= 0 ? next : undefined)
+              }
             }}
             style={{ width: '8rem' }}
           />

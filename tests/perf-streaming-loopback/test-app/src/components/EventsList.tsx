@@ -1,3 +1,4 @@
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { useStore } from '@livestore/react'
 import React from 'react'
 
@@ -10,6 +11,8 @@ type DisplayEvent = {
 
 type EventsListProps = {
   batchSize: number
+  /** When set, the stream stops after reaching this global sequence number */
+  until: number | undefined
 }
 
 const sanitizeBatchSize = (value: number) => Math.max(1, Math.floor(value) || 1)
@@ -22,7 +25,7 @@ const stringify = (value: unknown) => {
   }
 }
 
-export const EventsList: React.FC<EventsListProps> = ({ batchSize }) => {
+export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
   const { store } = useStore()
   const [events, setEvents] = React.useState<ReadonlyArray<DisplayEvent>>([])
   const [streamedCount, setStreamedCount] = React.useState(0)
@@ -32,8 +35,12 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize }) => {
   React.useEffect(() => {
     let cancelled = false
     lastSeqRef.current = 0
-    const iterator = store.events({ batchSize: preferredBatchSize })[Symbol.asyncIterator]()
-    store.events
+    const iterator = store
+      .events({
+        batchSize: preferredBatchSize,
+        ...(until !== undefined && { until: EventSequenceNumber.fromString(`e${until}`) }),
+      })
+      [Symbol.asyncIterator]()
 
     const run = async () => {
       try {
@@ -70,7 +77,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize }) => {
       cancelled = true
       void iterator.return?.()
     }
-  }, [preferredBatchSize, store])
+  }, [preferredBatchSize, until, store])
 
   return (
     <section style={{ marginTop: '1.5rem' }}>
@@ -108,7 +115,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize }) => {
  * Directly itterate over events without rendering as list.
  * Saves 4-16% rendering time on larger event logs.
  */
-export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize }) => {
+export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until }) => {
   const { store } = useStore()
   const [streamedCount, setStreamedCount] = React.useState(0)
   const preferredBatchSize = sanitizeBatchSize(batchSize)
@@ -118,7 +125,10 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize }) => 
 
     const run = async () => {
       try {
-        for await (const event of store.events({ batchSize: preferredBatchSize })) {
+        for await (const event of store.events({
+          batchSize: preferredBatchSize,
+          ...(until !== undefined && { until: EventSequenceNumber.fromString(`e${until}`) }),
+        })) {
           if (cancelled) break
           if (!event) continue
           setStreamedCount((prev) => prev + 1)
@@ -133,7 +143,7 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize }) => 
     return () => {
       cancelled = true
     }
-  }, [preferredBatchSize, store])
+  }, [preferredBatchSize, until, store])
 
   return (
     <section style={{ marginTop: '1.5rem' }}>
