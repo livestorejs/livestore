@@ -1,16 +1,16 @@
 import { Schema } from '@livestore/utils/effect'
 
-import type { EventDef } from '../../../schema/EventDef.ts'
-import { defineEvent, defineFacts } from '../../../schema/EventDef.ts'
-import * as EventSequenceNumber from '../../../schema/EventSequenceNumber.ts'
+import type { EventDef } from '../../../schema/EventDef/mod.ts'
+import { defineEvent, defineFacts } from '../../../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../../../schema/EventSequenceNumber/mod.ts'
 import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.ts'
 import { historyDagFromNodes } from '../history-dag.ts'
 import type { HistoryDagNode } from '../history-dag-common.ts'
 import { rootEventNode } from '../history-dag-common.ts'
 
 export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
-  seqNum: EventSequenceNumber.toString(seqNum),
-  parentSeqNum: EventSequenceNumber.toString(parentSeqNum),
+  seqNum: EventSequenceNumber.Client.toString(seqNum),
+  parentSeqNum: EventSequenceNumber.Client.toString(parentSeqNum),
   ...rest,
   facts: factsGroup,
 })
@@ -140,11 +140,11 @@ export const toEventNodes = (
 ): HistoryDagNode[] => {
   const nodesAcc: HistoryDagNode[] = [rootEventNode]
 
-  let currentEventSequenceNumber: EventSequenceNumber.EventSequenceNumber = EventSequenceNumber.ROOT
+  let currentEventSequenceNumber: EventSequenceNumber.Client.Composite = EventSequenceNumber.Client.ROOT
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const eventDef = eventDefs[partialEvent.name]!
-    const eventNum = EventSequenceNumber.nextPair({
+    const eventNum = EventSequenceNumber.Client.nextPair({
       seqNum: currentEventSequenceNumber,
       isClient: eventDef.options.clientOnly,
     }).seqNum
@@ -219,18 +219,18 @@ export const toEventNodes = (
   return eventNodes
 }
 
-const getParentNum = (eventNum: EventSequenceNumber.EventSequenceNumber): EventSequenceNumber.EventSequenceNumber => {
+const getParentNum = (eventNum: EventSequenceNumber.Client.Composite): EventSequenceNumber.Client.Composite => {
   const globalParentNum = eventNum.global
   const clientParentNum = eventNum.client - 1
 
   if (clientParentNum < 0) {
-    return EventSequenceNumber.make({
+    return EventSequenceNumber.Client.Composite.make({
       global: globalParentNum - 1,
-      client: EventSequenceNumber.clientDefault,
+      client: EventSequenceNumber.Client.DEFAULT,
     })
   }
 
-  return EventSequenceNumber.make({
+  return EventSequenceNumber.Client.Composite.make({
     global: globalParentNum,
     client: clientParentNum,
   })

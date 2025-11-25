@@ -115,6 +115,36 @@
 
   To use the default DO SQLite, omit the `storage` option or pass `{ _tag: 'do-sqlite' }`.
 
+- **Restructured `LiveStoreEvent` and `EventSequenceNumber` APIs:** Types are now organized into symmetric `Global`, `Client`, and `Input` namespaces that clarify the distinction between sync backend format, client format, and events without sequence numbers (#855):
+
+  | Old Name | New Name |
+  |----------|----------|
+  | `LiveStoreEvent.AnyEncodedGlobal` | `LiveStoreEvent.Global.Encoded` |
+  | `LiveStoreEvent.AnyEncoded` | `LiveStoreEvent.Client.Encoded` |
+  | `LiveStoreEvent.AnyDecoded` | `LiveStoreEvent.Client.Decoded` |
+  | `LiveStoreEvent.PartialAnyEncoded` | `LiveStoreEvent.Input.Encoded` |
+  | `LiveStoreEvent.PartialAnyDecoded` | `LiveStoreEvent.Input.Decoded` |
+  | `LiveStoreEvent.EncodedWithMeta` | `LiveStoreEvent.Client.EncodedWithMeta` |
+  | `EventSequenceNumber.GlobalEventSequenceNumber` | `EventSequenceNumber.Global` |
+  | `EventSequenceNumber.globalEventSequenceNumber` | `EventSequenceNumber.Global.make` |
+  | `EventSequenceNumber.localEventSequenceNumber` | `EventSequenceNumber.Client.make` |
+  | `EventSequenceNumber.clientDefault` | `EventSequenceNumber.Client.DEFAULT` |
+  | `EventSequenceNumber.rebaseGenerationDefault` | `EventSequenceNumber.REBASE_GENERATION_DEFAULT` |
+  | `LiveStoreEvent.EventDefPartialSchema` | `LiveStoreEvent.EventDefInputSchema` |
+  | `LiveStoreEvent.makeEventDefPartialSchema` | `LiveStoreEvent.makeEventDefInputSchema` |
+
+  ```typescript
+  // Before
+  import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+  const event: LiveStoreEvent.AnyEncoded = { ... }
+  const globalSeq: EventSequenceNumber.GlobalEventSequenceNumber = 1
+
+  // After
+  import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+  const event: LiveStoreEvent.Client.Encoded = { ... }
+  const globalSeq: EventSequenceNumber.Global = 1
+  ```
+
 ### Changes
 
 #### Platform adapters

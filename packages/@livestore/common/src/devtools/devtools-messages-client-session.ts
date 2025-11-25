@@ -52,8 +52,8 @@ export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.Clie
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
-  local: EventSequenceNumber.EventSequenceNumber,
-  upstream: EventSequenceNumber.EventSequenceNumber,
+  local: EventSequenceNumber.Client.Composite,
+  upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
 }) {}
 

@@ -156,7 +156,7 @@ export const makeWsSync =
           Effect.gen(function* () {
             if (batch.length === 0) return
 
-            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => ({
+            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => ({
               storeId,
               payload,
               batch,

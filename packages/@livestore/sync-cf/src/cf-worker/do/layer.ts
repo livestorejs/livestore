@@ -77,14 +77,14 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         .exec(`SELECT * FROM "${contextTable.sqliteDef.name}" WHERE storeId = ?`, storeId)
         .toArray()[0] as typeof contextTable.rowSchema.Type | undefined
 
-      const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.ROOT.global }
+      const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.Client.ROOT.global }
 
       // TODO do concistency check with eventlog table to make sure the head is consistent
 
       // Should be the same backendId for lifetime of the durable object
       const backendId = storageRow?.backendId ?? nanoid()
 
-      const updateCurrentHead = (currentHead: EventSequenceNumber.GlobalEventSequenceNumber) => {
+      const updateCurrentHead = (currentHead: EventSequenceNumber.Global.Type) => {
         doSelf.ctx.storage.sql.exec(
           `INSERT OR REPLACE INTO "${contextTable.sqliteDef.name}" (storeId, currentHead, backendId) VALUES (?, ?, ?)`,
           storeId,
@@ -117,7 +117,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
 
       // Set initial current head to root
       if (storageRow === undefined) {
-        updateCurrentHead(EventSequenceNumber.ROOT.global)
+        updateCurrentHead(EventSequenceNumber.Client.ROOT.global)
       }
 
       return storageCache

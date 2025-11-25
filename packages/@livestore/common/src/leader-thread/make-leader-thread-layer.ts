@@ -192,7 +192,7 @@ export const makeLeaderThreadLayer = ({
       dbState,
       dbEventlog,
       makeSqliteDb,
-      eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
+      eventSchema: LiveStoreEvent.Client.makeSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,
@@ -257,10 +257,12 @@ const getInitialSyncState = ({
   dbEventlogMissing: boolean
 }) => {
   const initialBackendHead = dbEventlogMissing
-    ? EventSequenceNumber.ROOT.global
+    ? EventSequenceNumber.Client.ROOT.global
     : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+  const initialLocalHead = dbEventlogMissing
+    ? EventSequenceNumber.Client.ROOT
+    : Eventlog.getClientHeadFromDb(dbEventlog)
 
   if (initialBackendHead > initialLocalHead.global) {
     return shouldNeverHappen(
@@ -272,8 +274,8 @@ const getInitialSyncState = ({
     localHead: initialLocalHead,
     upstreamHead: {
       global: initialBackendHead,
-      client: EventSequenceNumber.clientDefault,
-      rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      client: EventSequenceNumber.Client.DEFAULT,
+      rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
     pending: dbEventlogMissing
       ? []
@@ -282,7 +284,7 @@ const getInitialSyncState = ({
           dbState,
           since: {
             global: initialBackendHead,
-            client: EventSequenceNumber.clientDefault,
+            client: EventSequenceNumber.Client.DEFAULT,
             rebaseGeneration: initialLocalHead.rebaseGeneration,
           },
         }),

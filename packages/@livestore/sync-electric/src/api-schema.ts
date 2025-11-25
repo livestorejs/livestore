@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 
 export const PushPayload = Schema.TaggedStruct('@livestore/sync-electric.Push', {
   storeId: Schema.String,
-  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.Global.Encoded),
 }).annotations({ title: '@livestore/sync-electric.PushPayload' })
 
 export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', {

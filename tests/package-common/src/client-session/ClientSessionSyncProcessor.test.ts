@@ -41,9 +41,7 @@ import { expect } from 'vitest'
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
-const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
-  schema,
-) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
+const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
 const encode = Schema.encodeSync(eventSchema)
 
 const withTestCtx = Vitest.makeWithTestCtx({
@@ -168,7 +166,8 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
         Stream.filter(
-          (state) => state.pending.length === 0 && EventSequenceNumber.isEqual(state.localHead, state.upstreamHead),
+          (state) =>
+            state.pending.length === 0 && EventSequenceNumber.Client.isEqual(state.localHead, state.upstreamHead),
         ),
         Stream.take(1),
         Stream.runDrain,
@@ -177,14 +176,14 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
       expect(finalState.pending.length).toEqual(0)
-      expect(EventSequenceNumber.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
+      expect(EventSequenceNumber.Client.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
     }).pipe(withTestCtx(test)),
   )
 
   Vitest.scopedLive('should fail for event that is not larger than expected upstream', (test) =>
     Effect.gen(function* () {
       const shutdownDeferred = yield* makeShutdownDeferred
-      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
+      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
       const adapter = makeAdapter({
         storage: { type: 'in-memory' },
@@ -214,17 +213,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         shutdownDeferred,
       })
 
-      const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
-        schema,
-      ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
+      const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
       const encode = Schema.encodeSync(eventSchema)
 
       yield* Queue.offer(
         pullQueue,
-        LiveStoreEvent.EncodedWithMeta.make({
+        LiveStoreEvent.Client.EncodedWithMeta.make({
           ...encode(events.todoCreated({ id: `id_0`, text: '', completed: false })),
-          seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-          parentSeqNum: EventSequenceNumber.ROOT,
+          seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+          parentSeqNum: EventSequenceNumber.Client.ROOT,
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
@@ -263,11 +260,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           yield* Eventlog.initEventlogDb(dbEventlog)
 
           yield* Eventlog.insertIntoEventlog(
-            LiveStoreEvent.EncodedWithMeta.make({
+            LiveStoreEvent.Client.EncodedWithMeta.make({
               ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
               clientId: 'client',
-              seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-              parentSeqNum: EventSequenceNumber.ROOT,
+              seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+              parentSeqNum: EventSequenceNumber.Client.ROOT,
               sessionId: 'client-session1',
             }),
             dbEventlog,
@@ -332,8 +329,8 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
       const runtime = yield* Effect.runtime<Scope.Scope>()
       const span = makeNoopSpan()
-      const baseHead = EventSequenceNumber.make({ global: 10, client: 0, rebaseGeneration: 4 })
-      const recordedEvents: LiveStoreEvent.EncodedWithMeta[] = []
+      const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
+      const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
 
       const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
         events: {
@@ -393,7 +390,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(recordedEvents).toHaveLength(1)
       const event = recordedEvents[0]!
-      expect(event.seqNum).toEqual(EventSequenceNumber.make({ global: 11, client: 0, rebaseGeneration: 4 }))
+      expect(event.seqNum).toEqual(
+        EventSequenceNumber.Client.Composite.make({ global: 11, client: 0, rebaseGeneration: 4 }),
+      )
       expect(event.seqNum.rebaseGeneration).toBe(baseHead.rebaseGeneration)
       expect(event.parentSeqNum.rebaseGeneration).toBe(baseHead.rebaseGeneration)
     }).pipe(withTestCtx(test)),
@@ -418,7 +417,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   // This test covers the client-session-side hash mismatch detection, which occurs during the pull path (when receiving events from the leader).
   Vitest.scopedLive('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
     Effect.gen(function* () {
-      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
+      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
       const { makeStore, shutdownDeferred } = yield* TestContext
 
@@ -442,14 +441,14 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         },
       })
 
-      const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(schema)
+      const eventSchema = LiveStoreEvent.Input.makeSchema(schema)
       const encode = Schema.encodeSync(eventSchema)
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
-      const eventFromLeader = LiveStoreEvent.EncodedWithMeta.make({
+      const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
         ...encode(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false })),
-        seqNum: EventSequenceNumber.make({ global: 0, client: 1 }),
-        parentSeqNum: EventSequenceNumber.ROOT,
+        seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
+        parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',
         sessionId: 'static-session-id',
         meta: {
@@ -473,8 +472,8 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
   Vitest.scopedLive('unknown upstream events still invoke materializeEvent', (test) =>
     Effect.gen(function* () {
-      const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.EncodedWithMeta>()
-      const materializedEvents: LiveStoreEvent.EncodedWithMeta[] = []
+      const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+      const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
       const materialized = yield* Deferred.make<void>()
       const runtime = yield* Effect.runtime<Scope.Scope>()
       const span = makeNoopSpan()
@@ -491,7 +490,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const materializeEvent = Effect.fn('test:materialize-event')(
         (
-          event: LiveStoreEvent.EncodedWithMeta,
+          event: LiveStoreEvent.Client.EncodedWithMeta,
           _options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
         ) =>
           Effect.gen(function* () {
@@ -514,7 +513,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         shutdown: () => Effect.void,
         leaderThread: {
           initialState: {
-            leaderHead: EventSequenceNumber.ROOT,
+            leaderHead: EventSequenceNumber.Client.ROOT,
             migrationsReport: { migrations: [] },
           },
           events: {
@@ -550,11 +549,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         confirmUnsavedChanges: false,
       })
 
-      const unknownEvent = LiveStoreEvent.EncodedWithMeta.make({
+      const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'unknown_event_test',
         args: { foo: 'bar' },
-        seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-        parentSeqNum: EventSequenceNumber.ROOT,
+        seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+        parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'remote-client',
         sessionId: 'remote-session',
       })

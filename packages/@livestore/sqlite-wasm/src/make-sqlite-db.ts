@@ -35,7 +35,7 @@ export const makeSqliteDb = <
     metadata,
     debug: {
       // Setting initially to root but will be set to correct value shortly after
-      head: EventSequenceNumber.ROOT,
+      head: EventSequenceNumber.Client.ROOT,
     },
     prepare: (queryStr) => {
       try {

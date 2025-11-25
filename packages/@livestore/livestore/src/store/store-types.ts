@@ -77,7 +77,7 @@ export type StoreInternals = {
    * Exposed primarily for Devtools (e.g. databrowser) to validate ad‑hoc
    * event payloads. Application code should not depend on it directly.
    */
-  readonly eventSchema: Schema.Schema<LiveStoreEvent.AnyDecoded, LiveStoreEvent.AnyEncoded>
+  readonly eventSchema: Schema.Schema<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
 
   /**
    * The active client session backing this Store. Provides access to the
@@ -181,7 +181,7 @@ export type RefreshReason =
   | {
       _tag: 'commit'
       /** The events that were applied */
-      events: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
+      events: ReadonlyArray<LiveStoreEvent.Client.Decoded | LiveStoreEvent.Input.Decoded>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -223,7 +223,7 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
    * By default only new events are returned.
    * Use this to get all events from a specific point in time.
    */
-  cursor?: EventSequenceNumber.EventSequenceNumber
+  cursor?: EventSequenceNumber.Client.Composite
   /**
    * Only include events of the given names
    * @default undefined (include all)

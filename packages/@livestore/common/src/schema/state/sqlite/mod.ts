@@ -1,14 +1,14 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../../../adapter-types.ts'
-import type { Materializer } from '../../EventDef.ts'
+import type { Materializer } from '../../EventDef/mod.ts'
 import type { InternalState } from '../../schema.ts'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
 import { SqliteAst } from './db-schema/mod.ts'
 import { stateSystemTables } from './system-tables/state-tables.ts'
 import type { TableDef, TableDefBase } from './table-def.ts'
 
-export * from '../../EventDef.ts'
+export * from '../../EventDef/mod.ts'
 export {
   type ClientDocumentTableDef,
   ClientDocumentTableDefSymbol,

@@ -32,7 +32,7 @@ export const rematerializeFromEventlog = ({
     const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
         const args = JSON.parse(row.argsJson)
-        const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
+        const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
           name: row.name,
           args,
           seqNum: {
@@ -106,9 +106,9 @@ LIMIT ${CHUNK_SIZE}
       const lastId = Chunk.isChunk(item)
         ? Chunk.last(item).pipe(
             Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
-            Option.getOrElse(() => EventSequenceNumber.ROOT),
+            Option.getOrElse(() => EventSequenceNumber.Client.ROOT),
           )
-        : EventSequenceNumber.ROOT
+        : EventSequenceNumber.Client.ROOT
       const nextItem = Chunk.fromIterable(
         stmt.select<SystemTables.EventlogMetaRow>({
           $seqNumGlobal: lastId?.global,

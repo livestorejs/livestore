@@ -422,12 +422,12 @@ export const makePersistedAdapter =
       )
 
       const initialLeaderHead = initialLeaderHeadRes
-        ? EventSequenceNumber.make({
+        ? EventSequenceNumber.Client.Composite.make({
             global: initialLeaderHeadRes.seqNumGlobal,
             client: initialLeaderHeadRes.seqNumClient,
             rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
           })
-        : EventSequenceNumber.ROOT
+        : EventSequenceNumber.Client.ROOT
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 

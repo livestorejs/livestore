@@ -116,13 +116,53 @@ On the client, sequence numbers are expanded to track additional information for
 }
 ```
 
-- **global**: Globally unique integer assigned by the sync backend
-- **client**: Client-local counter (0 for synced events, increments for client-only events)
+- **global**: Globally unique integer assigned by the sync backend (`EventSequenceNumber.Global`)
+- **client**: Client-local counter (0 for synced events, increments for client-only events) (`EventSequenceNumber.Client`)
 - **rebaseGeneration**: Increments when the client rebases unconfirmed events
 
 Events can be represented as strings like `e5` (global event 5), `e5.1` (client-local event), or `e5r1` (after a rebase).
 
-For the full type definitions, see [`LiveStoreEvent.ts`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/LiveStoreEvent.ts).
+For the full type definitions, see [`LiveStoreEvent.ts`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/LiveStoreEvent.ts) and [`EventSequenceNumber.ts`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/EventSequenceNumber.ts).
+
+### Event type namespaces
+
+LiveStore organizes event types into namespaces based on their usage context:
+
+| Namespace | Description | Sequence Number Format |
+|-----------|-------------|----------------------|
+| `LiveStoreEvent.Input` | Events without sequence numbers (for committing) | None |
+| `LiveStoreEvent.Global` | Sync backend format | Integer (`seqNum: number`) |
+| `LiveStoreEvent.Client` | Client-side format with full metadata | Struct (`seqNum: { global, client, rebaseGeneration }`) |
+
+```typescript
+import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+
+// Input events (no sequence numbers) - used when committing
+const input: LiveStoreEvent.Input.Decoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' }
+}
+
+// Global events (sync backend format) - integer sequence numbers
+const global: LiveStoreEvent.Global.Encoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' },
+  seqNum: 5,  // EventSequenceNumber.Global
+  parentSeqNum: 4,
+  clientId: 'client-xyz',
+  sessionId: 'session-123'
+}
+
+// Client events (local format) - struct sequence numbers
+const client: LiveStoreEvent.Client.Encoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' },
+  seqNum: { global: 5, client: 0, rebaseGeneration: 0 },
+  parentSeqNum: { global: 4, client: 0, rebaseGeneration: 0 },
+  clientId: 'client-xyz',
+  sessionId: 'session-123'
+}
+```
 
 ## Commiting events
 
