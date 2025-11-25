@@ -3,6 +3,8 @@ title: App Evolution
 description: How to evolve your app and roll out new app versions
 ---
 
+import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
+
 When building an app with LiveStore, you'll need to keep some things in mind when evolving your app.
 
 ## Schema changes
@@ -29,18 +31,6 @@ App instances running version 4 might commit events that are not yet supported b
 
 LiveStore exposes a dedicated `unknownEventHandling` configuration on `makeSchema` so you can codify the desired behaviour instead of sprinkling ad-hoc checks across your app. The default is `'warn'`, which logs every unknown event and keeps processing.
 
-```ts
-const schema = makeSchema({
-  events,
-  state,
-  unknownEventHandling: {
-    strategy: 'callback',
-    onUnknownEvent: (event, error) => {
-      // Optional observer hook (only used for the `callback` strategy)
-      console.warn('Unknown event seen in production', { event, reason: error.reason })
-    },
-  },
-})
-```
+<UnknownEventHandlingSnippet />
 
 Set the strategy to `'ignore'` to silently skip forward-only events, `'fail'` to stop immediately (useful during development), or `'callback'` to forward them to custom telemetry while continuing to replay the log.

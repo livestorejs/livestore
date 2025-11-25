@@ -70,10 +70,60 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
+/**
+ * Central interface to a LiveStore database providing reactive queries, event commits, and sync.
+ *
+ * A `Store` instance wraps a local SQLite database that is kept in sync with other clients via
+ * an event log. Instead of mutating state directly, you commit events that get materialized
+ * into database rows. Queries automatically re-run when their underlying tables change.
+ *
+ * ## Creating a Store
+ *
+ * Use `createStore` (Effect-based) or `createStorePromise` to obtain a Store instance.
+ * In React applications, use the `<LiveStoreProvider>` component which manages the Store lifecycle
+ * and exposes it via React context.
+ *
+ * ## Querying Data
+ *
+ * Use {@link Store.query} for one-shot reads or {@link Store.subscribe} for reactive subscriptions.
+ * Both accept query builders (e.g. `tables.todo.where({ complete: true })`) or custom `LiveQueryDef`s.
+ *
+ * ## Committing Events
+ *
+ * Use {@link Store.commit} to persist events. Events are immediately materialized locally and
+ * asynchronously synced to other clients. Multiple events can be committed atomically.
+ *
+ * ## Lifecycle
+ *
+ * The Store must be shut down when no longer needed via {@link Store.shutdown} or
+ * {@link Store.shutdownPromise}. Framework integrations (React, Effect) handle this automatically.
+ *
+ * @typeParam TSchema - The LiveStore schema defining tables and events
+ * @typeParam TContext - Optional user-defined context attached to the Store (e.g. for dependency injection)
+ *
+ * @example
+ * ```ts
+ * // Query data
+ * const todos = store.query(tables.todo.where({ complete: false }))
+ *
+ * // Subscribe to changes
+ * const unsubscribe = store.subscribe(tables.todo.all(), (todos) => {
+ *   console.log('Todos updated:', todos)
+ * })
+ *
+ * // Commit an event
+ * store.commit(events.todoCreated({ id: nanoid(), text: 'Buy milk' }))
+ * ```
+ */
 export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
+  /** Unique identifier for this Store instance, stable for its lifetime. */
   readonly storeId: string
-  schema: LiveStoreSchema
-  context: TContext
+
+  /** The LiveStore schema defining tables, events, and materializers. */
+  readonly schema: LiveStoreSchema
+
+  /** User-defined context attached to this Store (e.g. for dependency injection). */
+  readonly context: TContext
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -91,16 +141,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * )
    * ```
    */
-  readonly networkStatus: ClientSession['leaderThread']['networkStatus'];
-
-  /** Tracks whether the store has been shut down is kept in internals */
-
-  /** RC-based set to see which queries are currently subscribed to */
+  readonly networkStatus: ClientSession['leaderThread']['networkStatus']
 
   /**
-   * Store internals. Shouldn't be used directly in application code.
+   * Store internals. Not part of the public API — shapes and semantics may change without notice.
+   *
+   * @internal
    */
-  [StoreInternalsSymbol]: StoreInternals
+  readonly [StoreInternalsSymbol]: StoreInternals
 
   // #region constructor
   constructor({
