@@ -60,6 +60,110 @@ Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new
       - you can add new fields if they have default values or are optional
       - you can remove fields
 
+## Event format
+
+Each event has the following structure:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Event name matching the event definition |
+| `args` | Event arguments as defined by the event schema |
+| `seqNum` | Sequence number identifying this event |
+| `parentSeqNum` | Parent event's sequence number (for causal ordering) |
+| `clientId` | Identifier of the client that created the event |
+| `sessionId` | Identifier of the session |
+
+### Encoded vs decoded events
+
+Events exist in two formats:
+
+**Decoded** - Native TypeScript types used in application code:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": Date },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+**Encoded** - Serialized format for storage and sync:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": "2024-01-15T10:30:00.000Z" },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+The `args` field is encoded according to the event's schema (e.g., `Date` objects become ISO strings, binary data becomes base64). LiveStore handles encoding/decoding automatically.
+
+### Client-side sequence numbers
+
+On the client, sequence numbers are expanded to track additional information for local events:
+
+```json
+{
+  "seqNum": { "global": 5, "client": 1, "rebaseGeneration": 0 },
+  "parentSeqNum": { "global": 5, "client": 0, "rebaseGeneration": 0 }
+}
+```
+
+- **global**: Globally unique integer assigned by the sync backend (`EventSequenceNumber.Global`)
+- **client**: Client-local counter (0 for synced events, increments for client-only events) (`EventSequenceNumber.Client`)
+- **rebaseGeneration**: Increments when the client rebases unconfirmed events
+
+Events can be represented as strings like `e5` (global event 5), `e5.1` (client-local event), or `e5r1` (after a rebase).
+
+For the full type definitions, see [`LiveStoreEvent`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/LiveStoreEvent) and [`EventSequenceNumber`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/EventSequenceNumber).
+
+### Event type namespaces
+
+LiveStore organizes event types into namespaces based on their usage context:
+
+| Namespace | Description | Sequence Number Format |
+|-----------|-------------|----------------------|
+| `LiveStoreEvent.Input` | Events without sequence numbers (for committing) | None |
+| `LiveStoreEvent.Global` | Sync backend format | Integer (`seqNum: number`) |
+| `LiveStoreEvent.Client` | Client-side format with full metadata | Struct (`seqNum: { global, client, rebaseGeneration }`) |
+
+```typescript
+import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+
+// Input events (no sequence numbers) - used when committing
+const input: LiveStoreEvent.Input.Decoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' }
+}
+
+// Global events (sync backend format) - integer sequence numbers
+const global: LiveStoreEvent.Global.Encoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' },
+  seqNum: 5,  // EventSequenceNumber.Global
+  parentSeqNum: 4,
+  clientId: 'client-xyz',
+  sessionId: 'session-123'
+}
+
+// Client events (local format) - struct sequence numbers
+const client: LiveStoreEvent.Client.Encoded = {
+  name: 'todoCreated-v1',
+  args: { id: 'abc123', text: 'Buy milk' },
+  seqNum: { global: 5, client: 0, rebaseGeneration: 0 },
+  parentSeqNum: { global: 4, client: 0, rebaseGeneration: 0 },
+  clientId: 'client-xyz',
+  sessionId: 'session-123'
+}
+```
+
 ## Commiting events
 
 <CommitEventSnippet />

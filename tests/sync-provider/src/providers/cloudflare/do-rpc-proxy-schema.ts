@@ -35,7 +35,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
   Rpc.make('Push', {
     payload: Schema.Struct({
       ...commonFields,
-      batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+      batch: Schema.Array(LiveStoreEvent.Global.Encoded),
     }),
     success: Schema.Void,
     error: Schema.Union(IsOfflineError, InvalidPushError),

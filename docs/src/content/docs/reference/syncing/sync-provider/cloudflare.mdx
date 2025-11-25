@@ -208,9 +208,6 @@ class_name = "SyncBackendDO"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
-
-[vars]
-ADMIN_SECRET = "your-admin-secret"
 ```
 
 To use D1 instead of DO SQLite, add a D1 binding and reference it from `makeDurableObject({ storage: { _tag: 'd1', binding: '...' } })`:
@@ -220,9 +217,6 @@ To use D1 instead of DO SQLite, add a D1 binding and reference it from `makeDura
 binding = "DB"
 database_name = "livestore-sync"
 database_id = "your-database-id"
-
-[vars]
-ADMIN_SECRET = "your-admin-secret"
 ```
 
 ### Environment Variables

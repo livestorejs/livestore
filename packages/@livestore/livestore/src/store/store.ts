@@ -314,9 +314,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
-      eventSchema: LiveStoreEvent.makeEventDefSchemaMemo(schema) as Schema.Schema<
-        LiveStoreEvent.AnyDecoded,
-        LiveStoreEvent.AnyEncoded
+      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
+        LiveStoreEvent.Client.Decoded,
+        LiveStoreEvent.Client.Encoded
       >,
       clientSession,
       sqliteDbWrapper,
@@ -680,19 +680,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   commit: {
-    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(...list: TCommitArg): void
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(...list: TCommitArg): void
     (
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
         ...list: TCommitArg
       ) => void,
     ): void
-    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
       options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
     (
       options: StoreCommitOptions,
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
         ...list: TCommitArg
       ) => void,
     ): void
@@ -795,13 +795,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * }
    * ```
    */
-  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.Client.ForSchema<TSchema>> => {
     this.checkShutdown('events')
 
     return notYetImplemented(`store.events() is not yet implemented but planned soon`)
   }
 
-  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>> => {
+  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>> => {
     this.checkShutdown('eventsStream')
 
     return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
@@ -943,10 +943,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     firstEventOrTxnFnOrOptions: any,
     restEvents: any[],
   ): {
-    events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     options: StoreCommitOptions | undefined
   } => {
-    let events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    let events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     let options: StoreCommitOptions | undefined
 
     if (typeof firstEventOrTxnFnOrOptions === 'function') {

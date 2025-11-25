@@ -33,7 +33,6 @@ export interface Env {
   TEST_CLIENT_DO: CfTypes.DurableObjectNamespace
   /** Eventlog database */
   DB: CfTypes.D1Database
-  ADMIN_SECRET: string
 }
 
 export class SyncBackendDO extends makeDurableObject({

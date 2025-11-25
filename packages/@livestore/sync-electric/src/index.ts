@@ -79,12 +79,7 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-  .pipe(
-    Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
-      decode: (_) => _,
-      encode: (_) => _,
-    }),
-  )
+  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
   .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
 const ResponseItemInsert = Schema.Struct({
@@ -181,7 +176,7 @@ export const makeSyncBackend =
             /** The batch of events */
             ReadonlyArray<{
               metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.Global.Encoded
             }>,
             /** The next handle to use for the next pull */
             Option.Option<SyncMetadata>,
@@ -256,7 +251,7 @@ export const makeSyncBackend =
 
           const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
             metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-            eventEncoded: item.value as LiveStoreEvent.AnyEncodedGlobal,
+            eventEncoded: item.value as LiveStoreEvent.Global.Encoded,
           }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })

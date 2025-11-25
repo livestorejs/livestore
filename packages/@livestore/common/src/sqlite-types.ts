@@ -33,7 +33,7 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   makeChangeset: (data: Uint8Array<ArrayBuffer>) => SqliteDbChangeset
 }
 
-export type SqliteDebugInfo = { head: EventSequenceNumber.EventSequenceNumber }
+export type SqliteDebugInfo = { head: EventSequenceNumber.Client.Composite }
 
 // TODO refactor this helper type. It's quite cumbersome to use and should be revisited.
 export type MakeSqliteDb<

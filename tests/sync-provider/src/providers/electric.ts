@@ -228,7 +228,7 @@ const makeDb = ({ storeId, postgresPort }: { storeId: string; postgresPort: numb
   `,
   ).pipe(Effect.withSpan('electric-provider:migrate'))
 
-  const createEvents = (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) =>
+  const createEvents = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) =>
     Effect.tryPromise(async () => {
       // For postgres library, we need to use the exact column names as properties
       // Since our columns are quoted in the CREATE TABLE, we need to match them

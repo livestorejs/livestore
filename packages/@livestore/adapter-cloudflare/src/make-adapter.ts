@@ -109,7 +109,7 @@ export const makeAdapter =
               pull: ({ cursor }) => syncProcessor.pull({ cursor }),
               push: (batch) =>
                 syncProcessor.push(
-                  batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+                  batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                   { waitForProcessing: true },
                 ),
             },
@@ -139,14 +139,14 @@ export const makeAdapter =
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          console.log('connectWebmeshNode', { webmeshNode })
-          // if (devtoolsOptions.enabled) {
-          //   yield* Webmesh.connectViaWebSocket({
-          //     node: webmeshNode,
-          //     url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
-          //     openTimeout: 500,
-          //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-          // }
+          if (devtoolsOptions.enabled) {
+            console.log('connectWebmeshNode', { webmeshNode })
+            //   yield* Webmesh.connectViaWebSocket({
+            //     node: webmeshNode,
+            //     url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
+            //     openTimeout: 500,
+            //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+          }
         }),
         leaderThread,
         lockStatus,

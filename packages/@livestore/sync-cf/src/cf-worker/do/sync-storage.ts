@@ -12,14 +12,14 @@ export type SyncStorage = {
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
         UnexpectedError
       >
     },
     UnexpectedError
   >
   appendEvents: (
-    batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+    batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
     createdAt: string,
   ) => Effect.Effect<void, UnexpectedError>
   resetStore: Effect.Effect<void, UnexpectedError>
@@ -76,7 +76,7 @@ export const makeStorage = (
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
         UnexpectedError
       >
     },
@@ -96,7 +96,7 @@ export const makeStorage = (
       const total = Number(countRows[0]?.total ?? 0)
 
       type State = { cursor: number | undefined; limit: number }
-      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> }
 
       const initialState: State = { cursor, limit: D1_INITIAL_PAGE_SIZE }
 
@@ -206,7 +206,7 @@ export const makeStorage = (
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
         UnexpectedError
       >
     },
@@ -232,7 +232,7 @@ export const makeStorage = (
       })
 
       type State = { cursor: number | undefined }
-      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> }
 
       const DO_PAGE_SIZE = 256
       const initialState: State = { cursor }

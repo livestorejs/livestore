@@ -123,7 +123,7 @@ export const makeHttpSync =
       const mapCursor = (cursor: Option.Option<{ eventSequenceNumber: number }>) =>
         cursor.pipe(
           Option.map((a) => ({
-            eventSequenceNumber: a.eventSequenceNumber as EventSequenceNumber.GlobalEventSequenceNumber,
+            eventSequenceNumber: a.eventSequenceNumber as EventSequenceNumber.Global.Type,
             backendId: backendIdHelper.get().pipe(Option.getOrThrow),
           })),
         )

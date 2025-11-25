@@ -1,4 +1,4 @@
-import * as EventSequenceNumber from '../../../EventSequenceNumber.ts'
+import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
 import { table } from '../table-def.ts'
 
@@ -53,8 +53,8 @@ export const sessionChangesetMetaTable = table({
   name: SESSION_CHANGESET_META_TABLE,
   columns: {
     // TODO bring back primary key
-    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
-    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({}),
     changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),

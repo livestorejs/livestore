@@ -262,7 +262,7 @@ const makeLeaderThread = ({
           push: (batch) =>
             syncProcessor
               .push(
-                batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),
