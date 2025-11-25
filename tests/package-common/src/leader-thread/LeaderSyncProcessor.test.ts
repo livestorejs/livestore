@@ -113,20 +113,20 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         completed: false,
       })
 
-      const staleSeq = EventSequenceNumber.make({
+      const staleSeq = EventSequenceNumber.Client.Composite.make({
         global: (syncStateBefore.localHead.global + 1) as any,
-        client: EventSequenceNumber.clientDefault,
+        client: EventSequenceNumber.Client.DEFAULT,
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
-      const staleParent = EventSequenceNumber.make({
+      const staleParent = EventSequenceNumber.Client.Composite.make({
         ...syncStateBefore.localHead,
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
       // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
-      const staleEvent = LiveStoreEvent.EncodedWithMeta.make({
-        ...LiveStoreEvent.encodedFromGlobal(baseEvent),
+      const staleEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(baseEvent),
         seqNum: staleSeq,
         parentSeqNum: staleParent,
       })
@@ -314,8 +314,8 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         return
       }
 
-      expect(EventSequenceNumber.toString(error.minimumExpectedNum)).toBe('e6')
-      expect(EventSequenceNumber.toString(error.providedNum)).toBe('e2')
+      expect(EventSequenceNumber.Client.toString(error.minimumExpectedNum)).toBe('e6')
+      expect(EventSequenceNumber.Client.toString(error.providedNum)).toBe('e2')
     }).pipe(withTestCtx()(test)),
   )
 
@@ -337,8 +337,8 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         () =>
           new InvalidPushError({
             cause: new ServerAheadError({
-              minimumExpectedNum: EventSequenceNumber.globalEventSequenceNumber(2),
-              providedNum: EventSequenceNumber.globalEventSequenceNumber(1),
+              minimumExpectedNum: EventSequenceNumber.Global.make(2),
+              providedNum: EventSequenceNumber.Global.make(1),
             }),
           }),
       )
@@ -371,13 +371,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
 
       const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
-      const nextPair = EventSequenceNumber.nextPair({
+      const nextPair = EventSequenceNumber.Client.nextPair({
         seqNum: syncStateBefore.localHead,
         isClient: true,
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration + 1,
       })
 
-      const rebasedClientEvent = LiveStoreEvent.EncodedWithMeta.make({
+      const rebasedClientEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'app_configSet',
         args: { id: 'session-a', value: { theme: 'dark' } },
         seqNum: nextPair.seqNum,
@@ -469,7 +469,7 @@ class TestContext extends Context.Tag('TestContext')<
     eventFactory: LeaderEventFactory
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
-      ...events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>
+      ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
@@ -532,16 +532,16 @@ const LeaderThreadCtxLive = ({
         client: EventFactory.clientIdentity(leaderThreadCtx.clientId, 'static-session-id'),
       })
 
-      const toEncodedWithMeta = (event: LiveStoreEvent.AnyEncodedGlobal) =>
-        new LiveStoreEvent.EncodedWithMeta({
-          ...LiveStoreEvent.encodedFromGlobal(event),
+      const toEncodedWithMeta = (event: LiveStoreEvent.Global.Encoded) =>
+        new LiveStoreEvent.Client.EncodedWithMeta({
+          ...LiveStoreEvent.Global.toClientEncoded(event),
         })
 
-      const pushEncoded = (...events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) =>
+      const pushEncoded = (...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) =>
         leaderThreadCtx.syncProcessor.push(events.map((event) => toEncodedWithMeta(event)))
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
-        cursor: EventSequenceNumber.ROOT,
+        cursor: EventSequenceNumber.Client.ROOT,
       })
 
       const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()

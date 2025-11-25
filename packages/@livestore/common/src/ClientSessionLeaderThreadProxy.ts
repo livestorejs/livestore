@@ -3,7 +3,7 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnexpectedError } from './errors.ts'
-import type * as EventSequenceNumber from './schema/EventSequenceNumber.ts'
+import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
@@ -11,15 +11,15 @@ import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
 export interface ClientSessionLeaderThreadProxy {
   events: {
     pull: (args: {
-      cursor: EventSequenceNumber.EventSequenceNumber
+      cursor: EventSequenceNumber.Client.Composite
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
     /** The latest event sequence number during boot. Used for the client session to resume syncing. */
-    readonly leaderHead: EventSequenceNumber.EventSequenceNumber
+    readonly leaderHead: EventSequenceNumber.Client.Composite
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
   }

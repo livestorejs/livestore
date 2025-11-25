@@ -1,7 +1,7 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.ts'
-import type { EventDef } from '../schema/EventDef.ts'
+import type { EventDef } from '../schema/EventDef/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import type { EventDefInfo, SchemaManager } from './common.ts'
 

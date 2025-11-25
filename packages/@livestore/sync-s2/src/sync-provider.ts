@@ -117,7 +117,7 @@ export const makeSyncBackend =
 
       const runPullSse = (
         cursor: Option.Option<{
-          eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+          eventSequenceNumber: EventSequenceNumber.Global.Type
           metadata: Option.Option<SyncMetadata>
         }>,
         live: boolean,
@@ -184,14 +184,14 @@ export const makeSyncBackend =
 
       const ssePull = (
         startCursor: Option.Option<{
-          eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+          eventSequenceNumber: EventSequenceNumber.Global.Type
           metadata: Option.Option<SyncMetadata>
         }>,
       ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
         const computeNextCursor = (
           lastItem: Option.Option<SyncBackend.PullResItem<SyncMetadata>>,
           current: Option.Option<{
-            eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+            eventSequenceNumber: EventSequenceNumber.Global.Type
             metadata: Option.Option<SyncMetadata>
           }>,
         ) =>
@@ -209,7 +209,7 @@ export const makeSyncBackend =
 
         const loop = (
           cursor: Option.Option<{
-            eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+            eventSequenceNumber: EventSequenceNumber.Global.Type
             metadata: Option.Option<SyncMetadata>
           }>,
           isFirst: boolean,

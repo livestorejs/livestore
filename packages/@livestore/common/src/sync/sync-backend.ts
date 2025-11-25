@@ -10,7 +10,7 @@ import {
   type SubscriptionRef,
 } from '@livestore/utils/effect'
 import type { UnexpectedError } from '../adapter-types.ts'
-import type * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import type * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'
 import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
 
@@ -48,7 +48,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   connect: Effect.Effect<void, IsOfflineError | UnexpectedError, Scope.Scope>
   pull: (
     cursor: Option.Option<{
-      eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+      eventSequenceNumber: EventSequenceNumber.Global.Type
       /** Metadata is needed by some sync backends */
       metadata: Option.Option<TSyncMetadata>
     }>,
@@ -68,7 +68,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - Number of events: 1-100
      * - sequence numbers must be in ascending order
      * */
-    batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+    batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
   ) => Effect.Effect<void, IsOfflineError | InvalidPushError>
   ping: Effect.Effect<void, IsOfflineError | UnexpectedError | Cause.TimeoutException>
   // TODO also expose latency information additionally to whether the backend is connected
@@ -160,7 +160,7 @@ export const pullResItemEmpty = <TSyncMetadata = Schema.JsonValue>(): PullResIte
 
 export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
   batch: ReadonlyArray<{
-    eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+    eventEncoded: LiveStoreEvent.Global.Encoded
     metadata: Option.Option<TSyncMetadata>
   }>
   pageInfo: PullResPageInfo
@@ -174,7 +174,7 @@ export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetad
 export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
   item: PullResItem<TSyncMetadata>,
 ): Option.Option<{
-  eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.Global.Type
   metadata: Option.Option<TSyncMetadata>
 }> => {
   const lastEvent = item.batch.at(-1)

@@ -235,7 +235,7 @@ const makeRouter = ({
           )
           createdStreams.add(streamName)
         }
-        const lines = parsed.batch.map((ev: LiveStoreEvent.AnyEncodedGlobal) => JSON.stringify(ev))
+        const lines = parsed.batch.map((ev: LiveStoreEvent.Global.Encoded) => JSON.stringify(ev))
         if ((failNextAppend.get(streamName) ?? 0) > 0) {
           failNextAppend.set(streamName, (failNextAppend.get(streamName) ?? 1) - 1)
           return yield* HttpServerResponse.json({ error: 'test induced append failure' }, { status: 500 })

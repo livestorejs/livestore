@@ -155,8 +155,8 @@ export const commit = ({ events }: { events: ReadonlyArray<{ name: string; args:
       return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
     }
     const s = opt.value
-    const PartialEventSchema = LiveStoreEvent.makeEventDefPartialSchema(s.schema) as Schema.Schema<any>
-    const decoded = events.map((e) => Schema.decodeSync(PartialEventSchema)(e))
+    const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
+    const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
     s.commit(...decoded)
     return { committed: decoded.length }
   }).pipe(Effect.withSpan('mcp-runtime:commit'))

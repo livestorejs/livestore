@@ -15,8 +15,8 @@ export class BackendIdMismatchError extends Schema.TaggedError<BackendIdMismatch
 }) {}
 
 export class ServerAheadError extends Schema.TaggedError<ServerAheadError>()('ServerAheadError', {
-  minimumExpectedNum: EventSequenceNumber.GlobalEventSequenceNumber,
-  providedNum: EventSequenceNumber.GlobalEventSequenceNumber,
+  minimumExpectedNum: EventSequenceNumber.Global.Schema,
+  providedNum: EventSequenceNumber.Global.Schema,
 }) {}
 
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
@@ -28,8 +28,8 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
 }) {}
 
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
-  minimumExpectedNum: EventSequenceNumber.EventSequenceNumber,
-  providedNum: EventSequenceNumber.EventSequenceNumber,
+  minimumExpectedNum: EventSequenceNumber.Client.Composite,
+  providedNum: EventSequenceNumber.Client.Composite,
   /** Generation number the client session should use for subsequent pushes */
   // nextGeneration: Schema.Number,
 }) {}

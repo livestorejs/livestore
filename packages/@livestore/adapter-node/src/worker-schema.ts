@@ -103,7 +103,7 @@ export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<Lead
 
 export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
   payload: {
-    cursor: EventSequenceNumber.EventSequenceNumber,
+    cursor: Schema.typeSchema(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
@@ -115,9 +115,9 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   'PushToLeader',
   {
     payload: {
-      batch: Schema.Array(LiveStoreEvent.AnyEncoded),
+      batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
     },
-    success: Schema.Void,
+    success: Schema.Void as Schema.Schema<void>,
     failure: Schema.Union(UnexpectedError, LeaderAheadError),
   },
 ) {}
@@ -153,7 +153,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   'GetLeaderHead',
   {
     payload: {},
-    success: EventSequenceNumber.EventSequenceNumber,
+    success: Schema.typeSchema(EventSequenceNumber.Client.Composite),
     failure: UnexpectedError,
   },
 ) {}

@@ -43,7 +43,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.Global.Type
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -96,13 +96,13 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    eventSchema: LiveStoreEvent.ForEventDefRecord<any>
+    eventSchema: LiveStoreEvent.ForEventDef.ForRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {
-      leaderHead: EventSequenceNumber.EventSequenceNumber
+      leaderHead: EventSequenceNumber.Client.Composite
       migrationsReport: MigrationsReport
     }
     /**
@@ -116,7 +116,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 >() {}
 
 export type MaterializeEvent = (
-  eventEncoded: LiveStoreEvent.EncodedWithMeta,
+  eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
   options?: {
     /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
@@ -137,17 +137,17 @@ export type InitialBlockingSyncContext = {
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    cursor: EventSequenceNumber.EventSequenceNumber
+    cursor: EventSequenceNumber.Client.Composite
   }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: EventSequenceNumber.EventSequenceNumber
+    cursor: EventSequenceNumber.Client.Composite
   }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnexpectedError, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
+    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
@@ -160,13 +160,13 @@ export interface LeaderSyncProcessor {
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
-    event: LiveStoreEvent.PartialAnyEncoded
+    event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError>
 
   boot: Effect.Effect<
-    { initialLeaderHead: EventSequenceNumber.EventSequenceNumber },
+    { initialLeaderHead: EventSequenceNumber.Client.Composite },
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >

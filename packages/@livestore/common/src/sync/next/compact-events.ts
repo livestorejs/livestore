@@ -206,14 +206,14 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
 const removeEvent = (dag: HistoryDag, eventNumStr: string) => {
   // console.debug('removing event', eventNumStr)
   const event = dag.getNodeAttributes(eventNumStr)
-  const parentSeqNumStr = EventSequenceNumber.toString(event.parentSeqNum)
+  const parentSeqNumStr = EventSequenceNumber.Client.toString(event.parentSeqNum)
   const childEdges = dag.outboundEdgeEntries(eventNumStr)
 
   for (const childEdge of childEdges) {
     if (childEdge.attributes.type === 'parent') {
       const childEvent = dag.getNodeAttributes(childEdge.target)
       childEvent.parentSeqNum = { ...event.parentSeqNum }
-      dag.addEdge(parentSeqNumStr, EventSequenceNumber.toString(childEvent.seqNum), { type: 'parent' })
+      dag.addEdge(parentSeqNumStr, EventSequenceNumber.Client.toString(childEvent.seqNum), { type: 'parent' })
     }
   }
 

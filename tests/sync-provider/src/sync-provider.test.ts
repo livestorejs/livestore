@@ -241,7 +241,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     const makeBatchEvents = (
       scenario: LargeBatchScenario,
       { baseId }: { baseId: string },
-    ): ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal> => {
+    ): ReadonlyArray<LiveStoreEvent.Global.Encoded> => {
       const payload = 'x'.repeat(scenario.payloadSize)
       const batchClient = EventFactory.clientIdentity(`${baseId}-client`, `${baseId}-session`)
       const eventFactory = makeFactory({ client: batchClient, startSeq: 1, initialParent: 'root' })
@@ -257,7 +257,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
     const pushBatchEvents = (
       syncBackend: SyncBackend.SyncBackend,
-      batches: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+      batches: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
       pushBatchSize: number,
     ) =>
       Effect.gen(function* () {
@@ -561,7 +561,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
       // Push 10000 events in batches
       for (let batchStart = 0; batchStart < TOTAL_EVENTS; batchStart += BATCH_SIZE) {
-        const batchEvents: Array<LiveStoreEvent.AnyEncodedGlobal> = []
+        const batchEvents: Array<LiveStoreEvent.Global.Encoded> = []
         const batchEnd = Math.min(batchStart + BATCH_SIZE, TOTAL_EVENTS)
 
         for (let i = batchStart; i < batchEnd; i++) {
@@ -598,7 +598,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       if (totalRetrievedEvents === TOTAL_EVENTS) {
         for (let i = 0; i < Math.min(100, allEvents.length); i++) {
           const event = allEvents[i]!
-          expect(event.eventEncoded.seqNum).toEqual(EventSequenceNumber.globalEventSequenceNumber(startSeq + i))
+          expect(event.eventEncoded.seqNum).toEqual(EventSequenceNumber.Global.make(startSeq + i))
         }
       }
 

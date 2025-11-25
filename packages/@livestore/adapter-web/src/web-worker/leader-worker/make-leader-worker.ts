@@ -193,7 +193,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
         syncProcessor.push(
-          batch.map((event) => new LiveStoreEvent.EncodedWithMeta(event)),
+          batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event)),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),
