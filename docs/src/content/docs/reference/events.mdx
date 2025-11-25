@@ -6,6 +6,8 @@ sidebar:
 
 import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
 import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
+import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
+import EventTypeNamespacesSnippet from '../../_assets/code/reference/events/event-type-namespaces.ts?snippet'
 
 ## Event definitions
 
@@ -35,18 +37,7 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 Older clients might receive events that were introduced in newer app versions. Configure the behaviour centrally via `unknownEventHandling` when constructing the schema:
 
-```ts
-const schema = makeSchema({
-  events,
-  state,
-  unknownEventHandling: {
-    strategy: 'callback',
-    onUnknownEvent: (event, error) => {
-      console.warn('LiveStore saw an unknown event', { event, reason: error.reason })
-    },
-  },
-})
-```
+<UnknownEventHandlingSnippet />
 
 Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new events until the client updates, `'fail'` to halt immediately, or `'callback'` to delegate to custom logging/telemetry while continuing to process the log.
 
@@ -134,35 +125,7 @@ LiveStore organizes event types into namespaces based on their usage context:
 | `LiveStoreEvent.Global` | Sync backend format | Integer (`seqNum: number`) |
 | `LiveStoreEvent.Client` | Client-side format with full metadata | Struct (`seqNum: { global, client, rebaseGeneration }`) |
 
-```typescript
-import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
-
-// Input events (no sequence numbers) - used when committing
-const input: LiveStoreEvent.Input.Decoded = {
-  name: 'todoCreated-v1',
-  args: { id: 'abc123', text: 'Buy milk' }
-}
-
-// Global events (sync backend format) - integer sequence numbers
-const global: LiveStoreEvent.Global.Encoded = {
-  name: 'todoCreated-v1',
-  args: { id: 'abc123', text: 'Buy milk' },
-  seqNum: 5,  // EventSequenceNumber.Global
-  parentSeqNum: 4,
-  clientId: 'client-xyz',
-  sessionId: 'session-123'
-}
-
-// Client events (local format) - struct sequence numbers
-const client: LiveStoreEvent.Client.Encoded = {
-  name: 'todoCreated-v1',
-  args: { id: 'abc123', text: 'Buy milk' },
-  seqNum: { global: 5, client: 0, rebaseGeneration: 0 },
-  parentSeqNum: { global: 4, client: 0, rebaseGeneration: 0 },
-  clientId: 'client-xyz',
-  sessionId: 'session-123'
-}
-```
+<EventTypeNamespacesSnippet />
 
 ## Commiting events
 

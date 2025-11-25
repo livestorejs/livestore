@@ -302,12 +302,21 @@ importers:
       '@effect-atom/atom-react':
         specifier: 0.3.0
         version: 0.3.0(@effect/experimental@0.56.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(@effect/platform@0.92.0(effect@3.18.0))(@effect/rpc@0.71.0(@effect/platform@0.92.0(effect@3.18.0))(effect@3.18.0))(effect@3.18.0)(react@19.1.0)(scheduler@0.27.0)
+      '@livestore/adapter-expo':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/adapter-expo
       '@livestore/adapter-node':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/adapter-web
+      '@livestore/devtools-expo':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/devtools-expo
+      '@livestore/devtools-vite':
+        specifier: 0.4.0-dev.18
+        version: 0.4.0-dev.18(vite@7.1.7(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/livestore
@@ -317,12 +326,18 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/sync-cf
+      '@livestore/sync-electric':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/sync-electric
       '@types/node':
         specifier: 'catalog:'
         version: 24.9.2
       effect:
         specifier: 'catalog:'
         version: 3.18.0
+      expo:
+        specifier: 54.0.12
+        version: 54.0.12(@babel/core@7.28.5)(@expo/metro-runtime@6.1.2)(expo-router@6.0.10)(graphql@16.11.0)(react-native@0.81.4(@babel/core@7.28.5)(@types/react@19.2.6)(react@19.1.0))(react@19.1.0)
       expo-status-bar:
         specifier: 3.0.8
         version: 3.0.8(react-native@0.81.4(@babel/core@7.28.5)(@types/react@19.2.6)(react@19.1.0))(react@19.1.0)
@@ -347,9 +362,12 @@ importers:
       solid-js:
         specifier: 1.9.9
         version: 1.9.9
+      vite:
+        specifier: 'catalog:'
+        version: 7.1.7(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
       vue-livestore:
         specifier: 0.2.3
-        version: 0.2.3(typescript@5.9.3)(vite@7.2.4(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
+        version: 0.2.3(typescript@5.9.3)(vite@7.1.7(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
 
   examples/cf-chat:
     dependencies:
@@ -18224,12 +18242,6 @@ snapshots:
       '@livestore/utils': link:packages/@livestore/utils
       vite: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
 
-  '@livestore/devtools-vite@0.4.0-dev.18(vite@7.2.4(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))':
-    dependencies:
-      '@livestore/adapter-web': link:packages/@livestore/adapter-web
-      '@livestore/utils': link:packages/@livestore/utils
-      vite: 7.2.4(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
-
   '@mapbox/node-pre-gyp@2.0.0':
     dependencies:
       consola: 3.4.2
@@ -31840,10 +31852,10 @@ snapshots:
 
   vscode-uri@3.1.0: {}
 
-  vue-livestore@0.2.3(typescript@5.9.3)(vite@7.2.4(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
+  vue-livestore@0.2.3(typescript@5.9.3)(vite@7.1.7(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
-      '@livestore/devtools-vite': 0.4.0-dev.18(vite@7.2.4(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
+      '@livestore/devtools-vite': 0.4.0-dev.18(vite@7.1.7(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
       '@livestore/livestore': link:packages/@livestore/livestore
       '@livestore/peer-deps': link:packages/@livestore/peer-deps
       '@livestore/sync-cf': link:packages/@livestore/sync-cf
