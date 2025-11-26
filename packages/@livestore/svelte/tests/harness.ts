@@ -60,6 +60,38 @@ export const renderSwappableHarness = <TSchema extends LiveStoreSchema, TResult>
 }
 
 /**
+ * Renders a harness where we can trigger `$effect` reruns via an external dependency
+ * to verify cleanup behavior without swapping query references.
+ */
+export const renderRerunHarness = <TSchema extends LiveStoreSchema, TResult>(
+  store: Store<TSchema>,
+  query: Queryable<TResult>,
+): { snapshots: Array<TResult>; updateDep: (next: unknown) => void; unmount: () => void } => {
+  const snapshots: Array<TResult> = []
+  let setDep: ((next: unknown) => void) | undefined
+
+  const { unmount } = render(Harness, {
+    props: {
+      mode: 'query',
+      store,
+      query,
+      onSnapshot: (rows: TResult) => {
+        snapshots.push(rows)
+      },
+      onRegisterDepSetter: (setter: (next: unknown) => void) => {
+        setDep = setter
+      },
+    },
+  })
+
+  const updateDep = (next: unknown) => {
+    setDep?.(next)
+  }
+
+  return { snapshots, updateDep, unmount }
+}
+
+/**
  * Waits until the last captured snapshot equals the expected value, leveraging
  * Testing Library's retry loop to give the reactive updates time to propagate.
  */

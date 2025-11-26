@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { CreateStoreOptionsPromise, LiveStoreSchema, Queryable, Store } from '@livestore/livestore'
-  import { shouldNeverHappen } from '@livestore/utils'
+import type { CreateStoreOptionsPromise, LiveStoreSchema, Queryable, Store } from '@livestore/livestore'
+import { shouldNeverHappen } from '@livestore/utils'
 
 import { createStore } from '../../src/create-store.svelte.ts'
 
@@ -23,17 +23,22 @@ import { createStore } from '../../src/create-store.svelte.ts'
     onSnapshot = () => {},
     onRegisterSetter,
     onCreated = () => {},
+    effectDep,
+    onRegisterDepSetter,
   }: {
     mode: Mode
     store?: Store<LiveStoreSchema>
     query?: Queryable<unknown>
     options?: CreateStoreOptionsPromise<LiveStoreSchema>
-    onSnapshot?: (rows: ReadonlyArray<unknown>) => void
+    onSnapshot?: (value: unknown) => void
     onRegisterSetter?: (setQuery: (next: Queryable<unknown>) => void) => void
     onCreated?: (store: Store<LiveStoreSchema>) => void
+    effectDep?: unknown
+    onRegisterDepSetter?: (setDep: (next: unknown) => void) => void
   } = $props()
 
   let currentQuery = $state<Queryable<unknown> | undefined>(query)
+  let effectDepState = $state<unknown>(effectDep)
 
   if (mode === 'query') {
     const liveStore = store ?? shouldNeverHappen('store is required for query mode')
@@ -44,7 +49,15 @@ import { createStore } from '../../src/create-store.svelte.ts'
       })
     }
 
+    if (onRegisterDepSetter) {
+      onRegisterDepSetter((next: unknown) => {
+        effectDepState = next
+      })
+    }
+
     $effect(() => {
+      // make effect rerun when the external dep changes
+      void effectDepState
       const activeQuery = currentQuery ?? shouldNeverHappen('query is required for query mode')
       onSnapshot(liveStore.query(activeQuery))
     })

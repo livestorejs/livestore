@@ -1,7 +1,7 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import { queryDb } from '@livestore/livestore'
+import { queryDb, signal } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import * as svelteTestingLibrary from '@testing-library/svelte'
 import * as svelte from 'svelte'
@@ -10,13 +10,9 @@ import { describe, it } from 'vitest'
 
 import { createStore } from '../src/create-store.svelte.ts'
 import Harness from './__fixtures__/Harness.svelte'
-import { renderQueryHarness, renderSwappableHarness, waitForLastSnapshot } from './harness.ts'
+import { renderQueryHarness, renderRerunHarness, renderSwappableHarness, waitForLastSnapshot } from './harness.ts'
 
 // TODO add coverage for:
-// - abort-signal wiring on teardown
-// - query swaps with multiple tokens
-// - signal-based queryables
-// - effect cleanup propagation on reruns
 // - subscription leak guard on double-dispose scenarios
 
 describe('createStore (svelte)', () => {
@@ -83,6 +79,77 @@ describe('createStore (svelte)', () => {
     vitest.expect(unsubscribeSpy).toHaveBeenCalledTimes(1)
   })
 
+  it('propagates effect cleanup on reruns', async () => {
+    const store = await makeStore()
+    const allTodos$ = makeAllTodosQuery()
+
+    const unsubscribeSpy = vitest.vi.fn()
+    const originalSubscribe = store.subscribe.bind(store)
+
+    store.subscribe = ((query, onUpdateOrOptions, maybeOptions) => {
+      if (typeof onUpdateOrOptions === 'function') {
+        const teardown = originalSubscribe(query, onUpdateOrOptions, maybeOptions)
+        return () => {
+          unsubscribeSpy()
+          teardown()
+        }
+      }
+
+      return originalSubscribe(query, onUpdateOrOptions)
+    }) as typeof store.subscribe
+
+    const { updateDep, unmount } = renderRerunHarness(store, allTodos$)
+    await svelte.tick()
+
+    updateDep('first-rerun')
+    await svelte.tick()
+
+    updateDep('second-rerun')
+    await svelte.tick()
+
+    unmount()
+    await svelte.tick()
+
+    // one cleanup per rerun plus final unmount
+    vitest.expect(unsubscribeSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('cleans up subscriptions on query swaps and disposal', async () => {
+    const store = await makeStore()
+    const todosByCompletedFalse$ = makeTodosByCompletedQuery(false)
+    const todosByCompletedTrue$ = makeTodosByCompletedQuery(true)
+
+    const unsubscribeSpy = vitest.vi.fn()
+    const originalSubscribe = store.subscribe.bind(store)
+
+    store.subscribe = ((query, onUpdateOrOptions, maybeOptions) => {
+      if (typeof onUpdateOrOptions === 'function') {
+        const teardown = originalSubscribe(query, onUpdateOrOptions, maybeOptions)
+        return () => {
+          unsubscribeSpy()
+          teardown()
+        }
+      }
+
+      return originalSubscribe(query, onUpdateOrOptions)
+    }) as typeof store.subscribe
+
+    const { updateQuery, unmount } = renderSwappableHarness(store, todosByCompletedFalse$)
+    await svelte.tick()
+
+    updateQuery(todosByCompletedTrue$)
+    await svelte.tick()
+
+    unmount()
+    await svelte.tick()
+
+    store.commit(events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }))
+    await svelte.tick()
+
+    // once for the swap, once for the final unmount
+    vitest.expect(unsubscribeSpy).toHaveBeenCalledTimes(2)
+  })
+
   it('swaps tracked queries and cleans up old tokens', async () => {
     const store = await makeStore()
     const todosByCompletedFalse$ = makeTodosByCompletedQuery(false)
@@ -104,6 +171,62 @@ describe('createStore (svelte)', () => {
 
     store.commit(events.todoCreated({ id: 't2', text: 'done', completed: true }))
     await waitForLastSnapshot(snapshots, [{ completed: true, id: 't2', text: 'done' }])
+
+    unmount()
+  })
+
+  it('supports swapping between queryables with different result types', async () => {
+    const store = await makeStore()
+    const str$ = signal<string | number>('hello', { label: 'str' })
+    const num$ = signal<string | number>(123, { label: 'num' })
+
+    const { snapshots, updateQuery, unmount } = renderSwappableHarness(store, str$)
+
+    await waitForLastSnapshot(snapshots, 'hello')
+
+    updateQuery(num$)
+    await waitForLastSnapshot(snapshots, 123)
+
+    unmount()
+  })
+
+  it('reacts to signal-driven queryables', async () => {
+    const store = await makeStore()
+    const filter$ = signal('t1', { label: 'id-filter' })
+    const todoById$ = queryDb((get) => todos.where({ id: get(filter$) }), { label: 'todo-by-id' })
+
+    store.commit(
+      events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+      events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
+    )
+
+    const { snapshots, unmount } = renderQueryHarness(store, todoById$)
+    await waitForLastSnapshot(snapshots, [
+      {
+        completed: false,
+        id: 't1',
+        text: 'buy milk',
+      },
+    ])
+
+    store.commit(events.todoRenamed({ id: 't1', text: 'buy oat milk' }))
+    await waitForLastSnapshot(snapshots, [
+      {
+        completed: false,
+        id: 't1',
+        text: 'buy oat milk',
+      },
+    ])
+
+    store.setSignal(filter$, 't2')
+
+    await waitForLastSnapshot(snapshots, [
+      {
+        completed: false,
+        id: 't2',
+        text: 'buy eggs',
+      },
+    ])
 
     unmount()
   })
