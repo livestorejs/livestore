@@ -413,19 +413,19 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
         Stream.mapEffect(
           (fileHandle) =>
-            Effect.gen(function* () {
+            Effect.gen(this, function* () {
+              const accessHandle = yield* Opfs.Opfs.createSyncAccessHandle(fileHandle)
               return {
+                accessHandle,
                 opfsFileName: fileHandle.name,
-                accessHandle: yield* Opfs.Opfs.createSyncAccessHandle(fileHandle),
+                path: yield* this.#getAssociatedPath(accessHandle),
               } as const
             }),
           { concurrency: 'unbounded' },
         ),
-        Stream.runForEach(({ opfsFileName, accessHandle }) =>
+        Stream.runForEach(({ opfsFileName, accessHandle, path }) =>
           Effect.gen(this, function* () {
             this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
-            const path = yield* this.#getAssociatedPath(accessHandle)
-
             if (path) {
               this.#mapPathToAccessHandle.set(path, accessHandle)
             } else {
