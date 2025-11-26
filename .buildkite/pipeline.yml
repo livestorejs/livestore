@@ -8,7 +8,6 @@ env:
 
 steps:
   - label: "lint"
-    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -16,7 +15,6 @@ steps:
       - direnv exec . mono lint
 
   - label: "test:unit"
-    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -24,7 +22,6 @@ steps:
       - direnv exec . mono test unit
 
   - label: "test:integration (node-sync)"
-    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -42,20 +39,21 @@ steps:
         fi
       - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
 
-  - label: "test:integration (sync-provider:{{matrix}})"
-    if: build.branch == "dev"
+  - label: "test:integration (sync-provider:{{matrix.provider}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
-      - mock
-      - electric
-      - s2
-      - cf-http-d1
-      - cf-http-do
-      - cf-ws-d1
-      - cf-ws-do
-      - cf-do-rpc-d1
-      - cf-do-rpc-do
+      setup:
+        provider:
+          - mock
+          - electric
+          - s2
+          - cf-http-d1
+          - cf-http-do
+          - cf-ws-d1
+          - cf-ws-do
+          - cf-do-rpc-d1
+          - cf-do-rpc-do
     commands:
       - direnv allow .
       - |
@@ -64,16 +62,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="{{matrix}}"
-
-        echo "DEBUG provider envs:"
-        env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-        echo "DEBUG provider value: '${PROVIDER}'"
-
-        if [ -z "${PROVIDER}" ]; then
-          PROVIDER="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*sync-provider://; s/).*//p')"
-          echo "DEBUG provider fallback from label: '${PROVIDER}'"
-        fi
+        PROVIDER="{{matrix.provider}}"
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -82,14 +71,15 @@ steps:
 
         direnv exec . mono test integration sync-provider --provider "${PROVIDER}"
 
-  - label: "test:integration (playwright:{{matrix}})"
-    if: build.branch == "dev"
+  - label: "test:integration (playwright:{{matrix.suite}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
-      - misc
-      - todomvc
-      - devtools
+      setup:
+        suite:
+          - misc
+          - todomvc
+          - devtools
     commands:
       - direnv allow .
       - |
@@ -98,16 +88,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PLAYWRIGHT_SUITE="{{matrix}}"
-
-        echo "DEBUG suite envs:"
-        env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-        echo "DEBUG suite value: '${PLAYWRIGHT_SUITE}'"
-
-        if [ -z "${PLAYWRIGHT_SUITE}" ]; then
-          PLAYWRIGHT_SUITE="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*playwright://; s/).*//p')"
-          echo "DEBUG suite fallback from label: '${PLAYWRIGHT_SUITE}'"
-        fi
+        PLAYWRIGHT_SUITE="{{matrix.suite}}"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -126,7 +107,6 @@ steps:
         fi
 
   - label: "test:perf"
-    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -141,7 +121,6 @@ steps:
         direnv exec . mono test perf
 
   - label: "test:wa-sqlite"
-    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -159,14 +138,13 @@ steps:
   - wait
 
   - label: "release:snapshot"
-    if: build.pull_request.id == null && build.branch == "dev"
+    if: build.pull_request.id == null
     commands:
       - direnv allow .
       - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
       - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
 
   - label: "examples:build+test"
-    if: build.branch == "dev"
     commands:
       - direnv allow .
       - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
@@ -179,7 +157,6 @@ steps:
         fi
 
   - label: "docs:build+deploy"
-    if: build.branch == "dev"
     commands:
       - direnv allow .
       - direnv exec . mono docs build --api-docs
@@ -192,12 +169,14 @@ steps:
           echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: "examples:create ({{matrix}})"
-    if: build.pull_request.id == null && build.branch == "dev"
+  - label: "examples:create ({{matrix.app}})"
+    if: build.pull_request.id == null
     matrix:
-      - web-todomvc
-      - web-linearlite
-      - expo-linearlite
+      setup:
+        app:
+          - web-todomvc
+          - web-linearlite
+          - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
     commands:
@@ -206,16 +185,7 @@ steps:
         direnv exec . bash -lc '
           set -euo pipefail
 
-          APP_NAME="{{matrix}}"
-
-          echo "DEBUG app envs:"
-          env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-          echo "DEBUG app value: '${APP_NAME}'"
-
-          if [ -z "${APP_NAME}" ]; then
-            APP_NAME="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*examples:create (//; s/)//p')"
-            echo "DEBUG app fallback from label: '${APP_NAME}'"
-          fi
+          APP_NAME="{{matrix.app}}"
 
           APP_PATH="examples/${APP_NAME}"
 
