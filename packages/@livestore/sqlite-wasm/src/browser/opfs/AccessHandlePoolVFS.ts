@@ -1,4 +1,5 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
+/// <reference lib="webworker" />
 import { Effect, Opfs, Runtime, Schedule, Schema, type Scope, Stream } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
