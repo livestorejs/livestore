@@ -1,5 +1,7 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 /// <reference lib="webworker" />
+
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Opfs, Runtime, Schedule, type Scope, Stream, type WebError } from '@livestore/utils/effect'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
@@ -129,12 +131,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       const accessHandle = this.#mapPathToAccessHandle.get(path)
 
       if (accessHandle === undefined) {
-        return yield* Effect.dieMessage('Cannot read payload for untracked OPFS path')
+        return shouldNeverHappen('Cannot read payload for untracked OPFS path')
       }
 
       const fileSize = yield* Opfs.Opfs.syncGetSize(accessHandle)
       if (fileSize <= HEADER_OFFSET_DATA) {
-        return yield* Effect.dieMessage(
+        return shouldNeverHappen(
           `OPFS file too small to contain header and payload: size ${fileSize} < HEADER_OFFSET_DATA ${HEADER_OFFSET_DATA}`,
         )
       }
@@ -143,7 +145,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       const payload = new Uint8Array(payloadSize)
       const bytesRead = yield* Opfs.Opfs.syncRead(accessHandle, payload, { at: HEADER_OFFSET_DATA })
       if (bytesRead !== payloadSize) {
-        return yield* Effect.dieMessage(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`)
+        return shouldNeverHappen(`Failed to read full payload from OPFS file: read ${bytesRead}/${payloadSize}`)
       }
 
       return payload.buffer
