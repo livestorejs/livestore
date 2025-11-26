@@ -145,8 +145,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   /**
    * Store internals. Not part of the public API — shapes and semantics may change without notice.
-   *
-   * @internal
    */
   readonly [StoreInternalsSymbol]: StoreInternals
 
