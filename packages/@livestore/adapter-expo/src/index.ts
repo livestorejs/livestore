@@ -10,7 +10,7 @@ import {
   liveStoreStorageFormatVersion,
   makeClientSession,
   type SyncOptions,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
@@ -76,7 +76,7 @@ export const makePersistedAdapter =
   (adapterArgs) =>
     Effect.gen(function* () {
       if (IS_NEW_ARCH === false) {
-        return yield* UnexpectedError.make({
+        return yield* UnknownError.make({
           cause: new Error(
             'The LiveStore Expo adapter requires the new React Native architecture (aka Fabric). See https://docs.expo.dev/guides/new-architecture',
           ),
@@ -165,7 +165,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
+    }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
 
 const makeLeaderThread = ({
   storeId,
@@ -323,7 +323,7 @@ const resetExpoPersistence = ({
       SQLite.deleteDatabaseSync(eventlogDatabaseName, directory)
     },
     catch: (cause) =>
-      new UnexpectedError({
+      new UnknownError({
         cause,
         note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId}`,
       }),
@@ -346,7 +346,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.sync(() => {
     if (devtoolsEnabled === false) {
       return {

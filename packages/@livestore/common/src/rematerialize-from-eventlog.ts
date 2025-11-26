@@ -1,7 +1,7 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from './adapter-types.ts'
+import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
@@ -52,7 +52,7 @@ export const rematerializeFromEventlog = ({
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:rematerializeFromEventlog:processEvent',
           event: eventEncoded,
-        }).pipe(UnexpectedError.mapToUnexpectedError)
+        }).pipe(UnknownError.mapToUnknownError)
 
         if (resolution._tag === 'unknown') {
           // Old snapshots can contain newer events. Skip until the runtime has
@@ -71,7 +71,7 @@ export const rematerializeFromEventlog = ({
         // Checking whether the schema has changed in an incompatible way
         yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
           Effect.mapError((cause) =>
-            UnexpectedError.make({
+            UnknownError.make({
               cause,
               note: `\
 There was an error during rematerializing from the eventlog while decoding

@@ -5,7 +5,7 @@ import {
   liveStoreStorageFormatVersion,
   makeClientSession,
   type SyncOptions,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { CfTypes } from '@livestore/common-cf'
@@ -45,7 +45,7 @@ export const makeAdapter =
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
       const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory', storage, configureDb: () => {} }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
       )
 
       const schemaHashSuffix =
@@ -67,14 +67,14 @@ export const makeAdapter =
         storage,
         fileName: stateDbFileName,
         configureDb: () => {},
-      }).pipe(UnexpectedError.mapToUnexpectedError)
+      }).pipe(UnknownError.mapToUnknownError)
 
       const dbEventlog = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
         fileName: eventlogDbFileName,
         configureDb: () => {},
-      }).pipe(UnexpectedError.mapToUnexpectedError)
+      }).pipe(UnknownError.mapToUnknownError)
 
       const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
 
@@ -187,7 +187,7 @@ const resetDurableObjectPersistence = ({
         }
       }),
     catch: (cause) =>
-      new UnexpectedError({
+      new UnknownError({
         cause,
         note: `@livestore/adapter-cloudflare: Failed to reset persistence for store ${storeId}`,
       }),

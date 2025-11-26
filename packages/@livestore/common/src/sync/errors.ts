@@ -1,5 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
-import { UnexpectedError } from '../errors.ts'
+import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber } from '../schema/mod.ts'
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {
@@ -20,7 +20,7 @@ export class ServerAheadError extends Schema.TaggedError<ServerAheadError>()('Se
 }) {}
 
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
-  cause: Schema.Union(UnexpectedError, ServerAheadError, BackendIdMismatchError),
+  cause: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
 }) {}
 
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {

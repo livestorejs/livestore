@@ -1,7 +1,7 @@
 import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.ts'
+import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnknownError } from '../index.ts'
 import { SystemTables } from '../schema/mod.ts'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -184,7 +184,7 @@ const listenToDevtools = ({
                       sendMessage(
                         Devtools.Leader.LoadDatabaseFile.Error.make({
                           ...reqPayload,
-                          cause: { _tag: 'unexpected-error' as const, cause },
+                          cause: { _tag: 'unknown-error' as const, cause },
                         }),
                       ),
                     ),
@@ -391,7 +391,7 @@ const listenToDevtools = ({
           }
         }).pipe(Effect.withSpan(`@livestore/common:leader-thread:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
-      UnexpectedError.mapToUnexpectedErrorStream,
+      UnknownError.mapToUnknownErrorStream,
       Stream.runDrain,
     )
   })

@@ -83,7 +83,7 @@ export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile
     cause: Schema.Union(
       Schema.TaggedStruct('unsupported-file', {}),
       Schema.TaggedStruct('unsupported-database', {}),
-      Schema.TaggedStruct('unexpected-error', { cause: Schema.Defect }),
+      Schema.TaggedStruct('unknown-error', { cause: Schema.Defect }),
     ),
   },
 })
@@ -133,7 +133,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //     liveStoreVersion,
 //   },
 //   success: DatabaseFileInfo,
-//   failure: UnexpectedError,
+//   failure: UnknownError,
 // }) {}
 
 // export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.Leader.NetworkStatus', {
@@ -142,7 +142,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //     liveStoreVersion,
 //   },
 //   success: NetworkStatus,
-//   failure: UnexpectedError,
+//   failure: UnknownError,
 // }) {}
 
 // export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)

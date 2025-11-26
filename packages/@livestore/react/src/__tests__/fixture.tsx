@@ -1,5 +1,5 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { provideOtel, type UnexpectedError } from '@livestore/common'
+import { provideOtel, type UnknownError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { LiveStoreSchema, SqliteDsl, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
@@ -107,7 +107,7 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
     store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreReact.ReactApi
     renderCount: { readonly val: number; inc: () => void }
   },
-  UnexpectedError,
+  UnknownError,
   Scope.Scope
 > = (opts: MakeTodoMvcReactOptions = {}) =>
   Effect.gen(function* () {
