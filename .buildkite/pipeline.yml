@@ -46,7 +46,6 @@ steps:
     if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-      PROVIDER: "{{matrix}}"
     matrix:
       - mock
       - electric
@@ -65,11 +64,16 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="${PROVIDER}"
+        PROVIDER="{{matrix}}"
 
         echo "DEBUG provider envs:"
         env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-        echo "DEBUG provider value: '${PROVIDER}' (raw template: '{{matrix}}')"
+        echo "DEBUG provider value: '${PROVIDER}'"
+
+        if [ -z "${PROVIDER}" ]; then
+          PROVIDER="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*sync-provider://; s/).*//p')"
+          echo "DEBUG provider fallback from label: '${PROVIDER}'"
+        fi
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -82,7 +86,6 @@ steps:
     if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-      PLAYWRIGHT_SUITE: "{{matrix}}"
     matrix:
       - misc
       - todomvc
@@ -95,11 +98,16 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PLAYWRIGHT_SUITE="${PLAYWRIGHT_SUITE}"
+        PLAYWRIGHT_SUITE="{{matrix}}"
 
         echo "DEBUG suite envs:"
         env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-        echo "DEBUG suite value: '${PLAYWRIGHT_SUITE}' (raw template: '{{matrix}}')"
+        echo "DEBUG suite value: '${PLAYWRIGHT_SUITE}'"
+
+        if [ -z "${PLAYWRIGHT_SUITE}" ]; then
+          PLAYWRIGHT_SUITE="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*playwright://; s/).*//p')"
+          echo "DEBUG suite fallback from label: '${PLAYWRIGHT_SUITE}'"
+        fi
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -192,18 +200,22 @@ steps:
       - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
-      APP_NAME: "{{matrix}}"
     commands:
       - direnv allow .
       - |
         direnv exec . bash -lc '
           set -euo pipefail
 
-          APP_NAME="${APP_NAME}"
+          APP_NAME="{{matrix}}"
 
           echo "DEBUG app envs:"
           env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
-          echo "DEBUG app value: '${APP_NAME}' (raw template: '{{matrix}}')"
+          echo "DEBUG app value: '${APP_NAME}'"
+
+          if [ -z "${APP_NAME}" ]; then
+            APP_NAME="$(printf '%s\n' "${BUILDKITE_LABEL:-}" | sed -n 's/.*examples:create (//; s/)//p')"
+            echo "DEBUG app fallback from label: '${APP_NAME}'"
+          fi
 
           APP_PATH="examples/${APP_NAME}"
 
