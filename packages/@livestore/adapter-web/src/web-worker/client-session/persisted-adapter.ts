@@ -193,7 +193,7 @@ export const makePersistedAdapter =
                 }),
               ),
               // If we get any error here, we return `undefined` to fall back to the slow path
-              Effect.catchAll(() => Effect.succeed(undefined)),
+              Effect.orElseSucceed(() => undefined),
             )
 
       // The same across all client sessions (i.e. tabs, windows)
