@@ -62,7 +62,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="${BUILDKITE_MATRIX_PROVIDER}"
+        PROVIDER="%{matrix.provider}"
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -88,7 +88,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PLAYWRIGHT_SUITE="${BUILDKITE_MATRIX_SUITE}"
+        PLAYWRIGHT_SUITE="%{matrix.suite}"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -185,7 +185,7 @@ steps:
         direnv exec . bash -lc '
           set -euo pipefail
 
-          APP_NAME="${BUILDKITE_MATRIX_APP}"
+          APP_NAME="%{matrix.app}"
           APP_PATH="examples/${APP_NAME}"
 
           WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
