@@ -5,6 +5,7 @@ env:
   GRAFANA_ENDPOINT: "https://livestore.grafana.net"
   OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
   VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  GITHUB_REF_NAME: "${BUILDKITE_BRANCH}"
 
 steps:
   - label: "lint"
@@ -42,6 +43,7 @@ steps:
   - label: "test:integration (sync-provider:{{matrix.provider}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      PROVIDER: "{{matrix.provider}}"
     matrix:
       setup:
         provider:
@@ -62,8 +64,6 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="{{matrix.provider}}"
-
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
           exit 0
@@ -74,6 +74,7 @@ steps:
   - label: "test:integration (playwright:{{matrix.suite}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      PLAYWRIGHT_SUITE: "{{matrix.suite}}"
     matrix:
       setup:
         suite:
@@ -87,8 +88,6 @@ steps:
 
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
-
-        PLAYWRIGHT_SUITE="{{matrix.suite}}"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -179,13 +178,12 @@ steps:
           - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
+      APP_NAME: "{{matrix.app}}"
     commands:
       - direnv allow .
       - |
         direnv exec . bash -lc '
           set -euo pipefail
-
-          APP_NAME="{{matrix.app}}"
 
           APP_PATH="examples/${APP_NAME}"
 
