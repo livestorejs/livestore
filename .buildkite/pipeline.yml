@@ -42,6 +42,7 @@ steps:
   - label: "test:integration (sync-provider:{{matrix}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      SYNC_PROVIDER: "{{matrix}}"
     matrix:
       - mock
       - electric
@@ -60,7 +61,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="{{matrix}}"
+        PROVIDER="${SYNC_PROVIDER}"
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -72,6 +73,7 @@ steps:
   - label: "test:integration (playwright:{{matrix}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      PLAYWRIGHT_SUITE: "{{matrix}}"
     matrix:
       - misc
       - todomvc
@@ -84,7 +86,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PLAYWRIGHT_SUITE="{{matrix}}"
+        PLAYWRIGHT_SUITE="${PLAYWRIGHT_SUITE}"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -173,13 +175,13 @@ steps:
       - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
+      APP_NAME: "{{matrix}}"
     commands:
       - direnv allow .
       - |
         direnv exec . bash -lc '
           set -euo pipefail
 
-          APP_NAME="{{matrix}}"
           APP_PATH="examples/${APP_NAME}"
 
           WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
