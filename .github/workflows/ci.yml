@@ -13,8 +13,8 @@ on:
     branches:
       - main # Only run on pushes to main
       - dev # Also run on pushes to dev to keep dev docs deploys consistent
+  merge_group:
   pull_request:
-    branches: ["**"] # Run on PRs targeting any branch
 
 env:
   GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
