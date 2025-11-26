@@ -39,21 +39,19 @@ steps:
         fi
       - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
 
-  - label: "test:integration (sync-provider:%{matrix.provider})"
+  - label: "test:integration (sync-provider:{{matrix}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
-      setup:
-        provider:
-          - mock
-          - electric
-          - s2
-          - cf-http-d1
-          - cf-http-do
-          - cf-ws-d1
-          - cf-ws-do
-          - cf-do-rpc-d1
-          - cf-do-rpc-do
+      - mock
+      - electric
+      - s2
+      - cf-http-d1
+      - cf-http-do
+      - cf-ws-d1
+      - cf-ws-do
+      - cf-do-rpc-d1
+      - cf-do-rpc-do
     commands:
       - direnv allow .
       - |
@@ -62,7 +60,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="%{matrix.provider}"
+        PROVIDER="{{matrix}}"
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -71,15 +69,13 @@ steps:
 
         direnv exec . mono test integration sync-provider --provider "${PROVIDER}"
 
-  - label: "test:integration (playwright:%{matrix.suite})"
+  - label: "test:integration (playwright:{{matrix}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
-      setup:
-        suite:
-          - misc
-          - todomvc
-          - devtools
+      - misc
+      - todomvc
+      - devtools
     commands:
       - direnv allow .
       - |
@@ -88,7 +84,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PLAYWRIGHT_SUITE="%{matrix.suite}"
+        PLAYWRIGHT_SUITE="{{matrix}}"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -169,14 +165,12 @@ steps:
           echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: "examples:create (%{matrix.app})"
+  - label: "examples:create ({{matrix}})"
     if: build.pull_request.id == null
     matrix:
-      setup:
-        app:
-          - web-todomvc
-          - web-linearlite
-          - expo-linearlite
+      - web-todomvc
+      - web-linearlite
+      - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
     commands:
@@ -185,7 +179,7 @@ steps:
         direnv exec . bash -lc '
           set -euo pipefail
 
-          APP_NAME="%{matrix.app}"
+          APP_NAME="{{matrix}}"
           APP_PATH="examples/${APP_NAME}"
 
           WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
