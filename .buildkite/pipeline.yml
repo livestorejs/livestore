@@ -95,10 +95,7 @@ steps:
       - buildkite-agent artifact upload "tests/integration/playwright-report/**/*" || true
       - |
         if [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
-          direnv exec . bash -lc '
-            set -euo pipefail
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "{{matrix.suite}}-$(git rev-parse --short HEAD)"
-          '
+          direnv exec . bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "{{matrix.suite}}-$(git rev-parse --short HEAD)"
         else
           echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
         fi

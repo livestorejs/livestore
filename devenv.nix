@@ -18,6 +18,7 @@ in
       pkgs.nodejs_24
       pkgs.caddy
       pkgs.jq
+      pkgs.unzip
       pkgs.bun
       pkgs.deno
     ]
