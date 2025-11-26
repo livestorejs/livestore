@@ -1521,7 +1521,7 @@ importers:
         specifier: ^1.56.0
         version: 1.56.1
       '@tanstack/react-router':
-        specifier: ^1.132.47
+        specifier: 1.132.47
         version: 1.132.47(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@tanstack/router-devtools':
         specifier: ^1.133.1
