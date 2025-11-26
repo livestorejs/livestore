@@ -65,7 +65,7 @@ const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
                 size: metadata.size,
                 lastModified: metadata.lastModified,
               },
-            } as OpfsTreeNode
+            } satisfies OpfsTreeNode
           }),
         { concurrency: 'unbounded' },
       )
