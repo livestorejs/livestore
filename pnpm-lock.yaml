@@ -2289,9 +2289,6 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
-      publint:
-        specifier: ^0.3.2
-        version: 0.3.15
       svelte:
         specifier: ^5.43.14
         version: 5.43.14
@@ -5775,10 +5772,6 @@ packages:
 
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
-
-  '@publint/pack@0.1.2':
-    resolution: {integrity: sha512-S+9ANAvUmjutrshV4jZjaiG8XQyuJIZ8a4utWmN/vW1sgQ9IfBnPndwkmQYw53QmouOIytT874u65HEmu6H5jw==}
-    engines: {node: '>=18'}
 
   '@puppeteer/browsers@2.10.10':
     resolution: {integrity: sha512-3ZG500+ZeLql8rE0hjfhkycJjDj0pI/btEh3L9IkWUYcOrgP0xCNRq3HbtbqOPbvDhFaAWD88pDFtlLv8ns8gA==}
@@ -13459,11 +13452,6 @@ packages:
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
 
-  publint@0.3.15:
-    resolution: {integrity: sha512-xPbRAPW+vqdiaKy5sVVY0uFAu3LaviaPO3pZ9FaRx59l9+U/RKR1OEbLhkug87cwiVKxPXyB4txsv5cad67u+A==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
 
@@ -19614,8 +19602,6 @@ snapshots:
   '@protobufjs/pool@1.1.0': {}
 
   '@protobufjs/utf8@1.1.0': {}
-
-  '@publint/pack@0.1.2': {}
 
   '@puppeteer/browsers@2.10.10':
     dependencies:
@@ -29639,13 +29625,6 @@ snapshots:
       - supports-color
 
   proxy-from-env@1.1.0: {}
-
-  publint@0.3.15:
-    dependencies:
-      '@publint/pack': 0.1.2
-      package-manager-detector: 1.5.0
-      picocolors: 1.1.1
-      sade: 1.8.1
 
   pump@3.0.3:
     dependencies:

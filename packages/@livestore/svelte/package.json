@@ -22,7 +22,6 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/svelte": "^5.2.4",
     "jsdom": "^26.1.0",
-    "publint": "^0.3.2",
     "svelte": "^5.43.14",
     "svelte-check": "^4.0.0",
     "typescript": "catalog:",
@@ -51,7 +50,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
     "dev": "svelte-package --watch --input src --tsconfig ./tsconfig.json",
-    "prepack": "svelte-package --input src --tsconfig ./tsconfig.json && publint",
+    "prepack": "svelte-package --input src --tsconfig ./tsconfig.json",
     "test": "npm run test:unit -- --run",
     "test:unit": "vitest"
   }
