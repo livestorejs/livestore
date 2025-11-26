@@ -8,6 +8,7 @@ env:
 
 steps:
   - label: "lint"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -15,6 +16,7 @@ steps:
       - direnv exec . mono lint
 
   - label: "test:unit"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -22,6 +24,7 @@ steps:
       - direnv exec . mono test unit
 
   - label: "test:integration (node-sync)"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -40,9 +43,10 @@ steps:
       - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
 
   - label: "test:integration (sync-provider:{{matrix}})"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-      SYNC_PROVIDER: "{{matrix}}"
+      PROVIDER: "{{matrix}}"
     matrix:
       - mock
       - electric
@@ -61,7 +65,11 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        PROVIDER="${SYNC_PROVIDER}"
+        PROVIDER="${PROVIDER}"
+
+        echo "DEBUG provider envs:"
+        env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
+        echo "DEBUG provider value: '${PROVIDER}' (raw template: '{{matrix}}')"
 
         if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
@@ -71,6 +79,7 @@ steps:
         direnv exec . mono test integration sync-provider --provider "${PROVIDER}"
 
   - label: "test:integration (playwright:{{matrix}})"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
       PLAYWRIGHT_SUITE: "{{matrix}}"
@@ -87,6 +96,10 @@ steps:
         export OTEL_EXPORTER_OTLP_HEADERS
 
         PLAYWRIGHT_SUITE="${PLAYWRIGHT_SUITE}"
+
+        echo "DEBUG suite envs:"
+        env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
+        echo "DEBUG suite value: '${PLAYWRIGHT_SUITE}' (raw template: '{{matrix}}')"
 
         if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
@@ -105,6 +118,7 @@ steps:
         fi
 
   - label: "test:perf"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -119,6 +133,7 @@ steps:
         direnv exec . mono test perf
 
   - label: "test:wa-sqlite"
+    if: build.branch == "dev"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
@@ -136,13 +151,14 @@ steps:
   - wait
 
   - label: "release:snapshot"
-    if: build.pull_request.id == null
+    if: build.pull_request.id == null && build.branch == "dev"
     commands:
       - direnv allow .
       - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
       - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
 
   - label: "examples:build+test"
+    if: build.branch == "dev"
     commands:
       - direnv allow .
       - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
@@ -155,6 +171,7 @@ steps:
         fi
 
   - label: "docs:build+deploy"
+    if: build.branch == "dev"
     commands:
       - direnv allow .
       - direnv exec . mono docs build --api-docs
@@ -168,7 +185,7 @@ steps:
         fi
 
   - label: "examples:create ({{matrix}})"
-    if: build.pull_request.id == null
+    if: build.pull_request.id == null && build.branch == "dev"
     matrix:
       - web-todomvc
       - web-linearlite
@@ -181,6 +198,12 @@ steps:
       - |
         direnv exec . bash -lc '
           set -euo pipefail
+
+          APP_NAME="${APP_NAME}"
+
+          echo "DEBUG app envs:"
+          env | sort | grep -E 'MATRIX|PROVIDER|PLAYWRIGHT|APP' || true
+          echo "DEBUG app value: '${APP_NAME}' (raw template: '{{matrix}}')"
 
           APP_PATH="examples/${APP_NAME}"
 
