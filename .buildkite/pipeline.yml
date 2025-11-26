@@ -43,7 +43,6 @@ steps:
   - label: "test:integration (sync-provider:{{matrix.provider}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-      PROVIDER: "{{matrix.provider}}"
     matrix:
       setup:
         provider:
@@ -64,17 +63,16 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        if [ "${PROVIDER}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
+        if [ "{{matrix.provider}}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
           echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
           exit 0
         fi
 
-        direnv exec . mono test integration sync-provider --provider "${PROVIDER}"
+        direnv exec . mono test integration sync-provider --provider "{{matrix.provider}}"
 
   - label: "test:integration (playwright:{{matrix.suite}})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-      PLAYWRIGHT_SUITE: "{{matrix.suite}}"
     matrix:
       setup:
         suite:
@@ -89,17 +87,17 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        if [ "${PLAYWRIGHT_SUITE}" = "devtools" ]; then
+        if [ "{{matrix.suite}}" = "devtools" ]; then
           direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
         else
-          direnv exec . mono test integration "${PLAYWRIGHT_SUITE}"
+          direnv exec . mono test integration "{{matrix.suite}}"
         fi
       - buildkite-agent artifact upload "tests/integration/playwright-report/**/*" || true
       - |
         if [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
           direnv exec . bash -lc '
             set -euo pipefail
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "${PLAYWRIGHT_SUITE}-$(git rev-parse --short HEAD)"
+            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "{{matrix.suite}}-$(git rev-parse --short HEAD)"
           '
         else
           echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
@@ -178,13 +176,13 @@ steps:
           - expo-linearlite
     env:
       SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
-      APP_NAME: "{{matrix.app}}"
     commands:
       - direnv allow .
       - |
         direnv exec . bash -lc '
           set -euo pipefail
 
+          APP_NAME="{{matrix.app}}"
           APP_PATH="examples/${APP_NAME}"
 
           WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
