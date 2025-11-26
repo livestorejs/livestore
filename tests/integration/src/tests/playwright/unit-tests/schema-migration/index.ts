@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
-import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
 import { Chunk, Effect, Layer, Logger, LogLevel, Opfs, Queue, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
@@ -67,7 +67,7 @@ export const testMultipleMigrations = () =>
     }
   }).pipe(
     Effect.tapCauseLogPretty,
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.exit,
     Effect.tapSync((exit) => {
       window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
@@ -102,5 +102,5 @@ const collectArchiveSnapshot = Effect.gen(function* () {
   return fileChunks.pipe(Chunk.toReadonlyArray)
 }).pipe(
   Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed([])),
-  UnexpectedError.mapToUnexpectedError,
+  UnknownError.mapToUnknownError,
 )
