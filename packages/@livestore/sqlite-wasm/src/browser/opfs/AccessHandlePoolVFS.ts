@@ -401,7 +401,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
             this.#availableAccessHandles.delete(accessHandle)
             ++nRemoved
           }),
-        { concurrency: 'unbounded', discard: true },
+        { discard: true },
       )
       return nRemoved
     }),
