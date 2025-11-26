@@ -7,45 +7,39 @@ env:
   VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ""
 
 steps:
-  - label: ":lint: lint"
-    key: lint
+  - label: "lint"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
       - direnv allow .
       - direnv exec . mono lint
 
-  - label: ":test_tube: unit tests"
-    key: test-unit
+  - label: "test:unit"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
       - direnv allow .
       - direnv exec . mono test unit
 
-  - label: ":arrows_counterclockwise: integration (node-sync)"
-    key: test-integration-node-sync
+  - label: "test:integration (node-sync)"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
       - direnv allow .
       - |
-        direnv exec . bash -lc '
-          set -euo pipefail
+        set -euo pipefail
 
-          OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-          export OTEL_EXPORTER_OTLP_HEADERS
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
 
-          if mono test integration node-sync; then
-            :
-          else
-            buildkite-agent annotate --style "warning" "Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624)"
-          fi
-        '
+        if direnv exec . mono test integration node-sync; then
+          :
+        else
+          buildkite-agent annotate --style "warning" "Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624)"
+        fi
       - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
 
-  - label: ":satellite: integration (sync-provider ${provider})"
-    key: test-integration-sync-provider
+  - label: "test:integration (sync-provider:${provider})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
@@ -63,22 +57,19 @@ steps:
     commands:
       - direnv allow .
       - |
-        direnv exec . bash -lc '
-          set -euo pipefail
+        set -euo pipefail
 
-          OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-          export OTEL_EXPORTER_OTLP_HEADERS
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
 
-          if [ "${provider}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
-            echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
-            exit 0
-          fi
+        if [ "${provider}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
+          echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
+          exit 0
+        fi
 
-          mono test integration sync-provider --provider "${provider}"
-        '
+        direnv exec . mono test integration sync-provider --provider "${provider}"
 
-  - label: ":globe_with_meridians: integration (playwright ${suite})"
-    key: test-integration-playwright
+  - label: "test:integration (playwright:${suite})"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     matrix:
@@ -90,20 +81,18 @@ steps:
     commands:
       - direnv allow .
       - |
-        direnv exec . bash -lc '
-          set -euo pipefail
+        set -euo pipefail
 
-          OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-          export OTEL_EXPORTER_OTLP_HEADERS
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
 
-          export PLAYWRIGHT_SUITE="${suite}"
+        export PLAYWRIGHT_SUITE="${suite}"
 
-          if [ "${suite}" = "devtools" ]; then
-            mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
-          else
-            mono test integration "${suite}"
-          fi
-        '
+        if [ "${suite}" = "devtools" ]; then
+          direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
+        else
+          direnv exec . mono test integration "${suite}"
+        fi
       - buildkite-agent artifact upload "tests/integration/playwright-report/**/*" || true
       - |
         if [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
@@ -116,53 +105,45 @@ steps:
           echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: ":chart_with_upwards_trend: perf tests"
-    key: perf-test
+  - label: "test:perf"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
       - direnv allow .
       - |
-        direnv exec . bash -lc '
-          set -euo pipefail
+        set -euo pipefail
 
-          OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-          export OTEL_EXPORTER_OTLP_HEADERS
-          export COMMIT_SHA="${BUILDKITE_COMMIT}"
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+        export COMMIT_SHA="${BUILDKITE_COMMIT}"
 
-          mono test perf
-        '
+        direnv exec . mono test perf
 
-  - label: ":floppy_disk: wa-sqlite"
-    key: wa-sqlite-test
+  - label: "test:wa-sqlite"
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     commands:
       - direnv allow .
       - |
-        direnv exec . bash -lc '
-          set -euo pipefail
+        set -euo pipefail
 
-          OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-          export OTEL_EXPORTER_OTLP_HEADERS
-          export COMMIT_SHA="${BUILDKITE_COMMIT}"
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+        export COMMIT_SHA="${BUILDKITE_COMMIT}"
 
-          (cd packages/@livestore/wa-sqlite && nix run .#build)
-          mono test integration wa-sqlite
-        '
+        (cd packages/@livestore/wa-sqlite && direnv exec . nix run .#build)
+        direnv exec . mono test integration wa-sqlite
 
   - wait
 
-  - label: ":package: publish snapshot"
-    key: publish-snapshot-version
+  - label: "release:snapshot"
     if: build.pull_request.id == null
     commands:
       - direnv allow .
       - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
       - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
 
-  - label: ":building_construction: examples build/test/deploy"
-    key: build-and-deploy-examples-src
+  - label: "examples:build+test"
     commands:
       - direnv allow .
       - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
@@ -174,8 +155,7 @@ steps:
           echo "Skipping Cloudflare deploy (PR build or missing CLOUDFLARE credentials)"
         fi
 
-  - label: ":memo: docs build/deploy"
-    key: build-deploy-docs
+  - label: "docs:build+deploy"
     commands:
       - direnv allow .
       - direnv exec . mono docs build --api-docs
@@ -188,8 +168,7 @@ steps:
           echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: ":factory: example create/build (${app})"
-    key: build-example-create
+  - label: "examples:create (${app})"
     if: build.pull_request.id == null
     matrix:
       setup:
