@@ -22,7 +22,7 @@
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.18",
     "@playwright/test": "^1.56.0",
-    "@tanstack/react-router": "1.132.47",
+    "@tanstack/react-router": "^1.132.47",
     "@tanstack/router-devtools": "^1.133.1",
     "@tanstack/router-plugin": "^1.132.56",
     "@types/node": "^24.9.2",
