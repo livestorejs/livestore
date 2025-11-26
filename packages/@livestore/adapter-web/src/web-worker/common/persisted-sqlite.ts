@@ -20,6 +20,7 @@ export const readPersistedStateDbFromClientSession: (args: {
   schema: LiveStoreSchema
 }) => Effect.Effect<
   Uint8Array<ArrayBuffer>,
+  // All the following errors could actually happen:
   | PersistedSqliteError
   | WebError.UnknownError
   | WebError.TypeError
@@ -135,6 +136,7 @@ export const cleanupOldStateDbFiles: (options: {
   opfsDirectory: string
 }) => Effect.Effect<
   void,
+  // All the following errors could actually happen:
   | WebError.AbortError
   | WebError.DataCloneError
   | WebError.EvalError
