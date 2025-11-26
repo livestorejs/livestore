@@ -1,1 +1,1 @@
-export * from './index.svelte.ts'
+export * from './create-store.svelte.ts'

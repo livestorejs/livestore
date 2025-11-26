@@ -8,10 +8,24 @@ NOTE we're mapping to absolute paths here to avoid issues where tests seem to be
 */
 
 const rootDir = import.meta.dirname
+const resolveProjectPath = (packageDir: string): string => {
+  const rootConfig = path.join(packageDir, 'vitest.config.ts')
+  if (fs.existsSync(rootConfig)) {
+    return rootConfig
+  }
+
+  const testsConfig = path.join(packageDir, 'tests/vitest.config.ts')
+  if (fs.existsSync(testsConfig)) {
+    return testsConfig
+  }
+
+  return packageDir
+}
+
 const rootPackages = fs
   .readdirSync(path.join(rootDir, './packages/@livestore'))
   .filter((dir) => fs.statSync(path.join(rootDir, './packages/@livestore', dir)).isDirectory())
-  .map((dir) => path.join(rootDir, './packages/@livestore', dir))
+  .map((dir) => resolveProjectPath(path.join(rootDir, './packages/@livestore', dir)))
 
 export default defineConfig({
   test: {

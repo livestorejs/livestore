@@ -27,6 +27,7 @@
     { "path": "./packages/@livestore/graphql" },
     { "path": "./packages/@livestore/livestore" },
     { "path": "./packages/@livestore/svelte" },
+    { "path": "./packages/@livestore/svelte/tsconfig.tests.json" },
     { "path": "./packages/@livestore/react" },
     { "path": "./packages/@livestore/solid" },
     { "path": "./packages/@livestore/sqlite-wasm" },
