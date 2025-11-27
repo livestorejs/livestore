@@ -3,7 +3,8 @@ import { expect, type Page } from '@playwright/test'
 import { test } from '../fixtures.ts'
 
 const SNAPSHOT_EVENT_COUNTS = [10_000, 100_000] as const
-const STREAM_BATCH_SIZES = [1, 10, 100, 1000] as const
+const STREAM_BATCH_SIZES = [10, 100, 256, 1000] as const
+const STREAM_BATCH_ITERATIONS = 10
 
 test.setTimeout(120_000)
 
@@ -97,20 +98,56 @@ test.describe('Streaming latency', () => {
 
     for (const batchSize of STREAM_BATCH_SIZES) {
       await test.step(`batch size ${batchSize}`, async () => {
-        await page.reload()
-        await expect(page.getByTestId('app')).toBeVisible()
-        await expect(page.getByTestId('syncstate')).toHaveText('Synced', { timeout: 60_000 })
+        const durations: number[] = []
+        for (let iteration = 0; iteration < STREAM_BATCH_ITERATIONS; iteration += 1) {
+          await page.reload()
+          await expect(page.getByTestId('app')).toBeVisible()
+          await expect(page.getByTestId('syncstate')).toHaveText('Synced', { timeout: 60_000 })
 
-        const batchInput = page.getByTestId('config-batch')
-        await batchInput.fill(String(batchSize))
+          const batchInput = page.getByTestId('config-batch')
+          await batchInput.fill(String(batchSize))
 
-        await page.requestGC()
-        const startTime = Date.now()
-        await page.getByTestId('toggle-events').click()
-        await expect(page.getByTestId('events-streamed')).toHaveText(String(eventCount), { timeout: 60_000 })
-        const duration = Date.now() - startTime
-        console.log(`[BATCH ${batchSize}]: Streamed ${eventCount} events in ${duration}ms`)
+          await page.requestGC()
+          const startTime = Date.now()
+          await page.getByTestId('toggle-events').click()
+          await expect(page.getByTestId('events-streamed')).toHaveText(String(eventCount), { timeout: 60_000 })
+          durations.push(Date.now() - startTime)
+        }
+
+        const averageDuration = calculateAverage(durations)
+        const medianDuration = calculateMedian(durations)
+        console.log(
+          `[BATCH ${batchSize}]: ${STREAM_BATCH_ITERATIONS} iterations avg=${averageDuration.toFixed(2)}ms median=${medianDuration.toFixed(2)}ms durations=[${durations.join(', ')}]`,
+        )
       })
     }
   })
 })
+
+const calculateAverage = (values: number[]): number => {
+  if (values.length === 0) {
+    return 0
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+const calculateMedian = (values: number[]): number => {
+  if (values.length === 0) {
+    return 0
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const middleIndex = Math.floor(sorted.length / 2)
+
+  if (sorted.length % 2 === 0) {
+    const lower = sorted[middleIndex - 1]
+    const upper = sorted[middleIndex]
+    if (lower === undefined || upper === undefined) {
+      return 0
+    }
+    return (lower + upper) / 2
+  }
+
+  return sorted[middleIndex] ?? 0
+}

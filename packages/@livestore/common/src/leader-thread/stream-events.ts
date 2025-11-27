@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Queue, Ref, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
@@ -10,12 +10,7 @@ import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
  * Streams events for leader-thread adapters.
  *
  * Provides a continuous stream from the eventlog as the upstream head advances.
- * When you pass an until marker, the helper delegates to `streamEventsFromEventLog`
- * and stops when it reaches that marker.
- *
- * Why it lives in `leader-thread`:
- * - Needs leader-owned resources: eventlog database, state database, sync state subscription.
- * - Every adapter (web worker, in-memory, Node, Cloudflare) relies on the shared pagination helper.
+ * When an until event is passed in the stream finalizes upon reaching it.
  *
  * Adapters that call this helper:
  * - `packages/@livestore/adapter-web/src/in-memory/in-memory-adapter.ts`
@@ -45,8 +40,8 @@ export const streamEventsWithSyncState = ({
       // Single-element Queue allws suspending the event stream until head advances
       const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
 
-      // Keep track of previous head to prevent other syncState changes
-      // to trigger u
+      // When upstream advances we put the latest head in the headQueue. Keeping
+      // track of previous prevents other syncState changes to trigger emtpty queries
       let prevGlobalHead = -1
       yield* syncState.changes.pipe(
         Stream.map((state) => state.upstreamHead),
@@ -71,12 +66,9 @@ export const streamEventsWithSyncState = ({
           const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
           const headHasAdvanced = yield* Queue.isFull(headQueue)
           const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
+          const hardStop = options.until?.global || Number.POSITIVE_INFINITY
           const target = EventSequenceNumber.make({
-            global: Math.min(
-              options.until?.global || Number.POSITIVE_INFINITY,
-              cursor.global + batchSize,
-              nextHead.global,
-            ),
+            global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
             client: EventSequenceNumber.clientDefault,
           })
 
