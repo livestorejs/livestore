@@ -14,7 +14,7 @@ export const workspaceStoreOptions = storeOptions({
   storeId: 'workspace-root',
   schema,
   adapter,
-  gcTime: Number.POSITIVE_INFINITY, // Disable garbage collection
+  unusedCacheTime: Number.POSITIVE_INFINITY, // Disable disposal
   boot: (store) => {
     if (store.query(workspaceTables.workspaces.count()) === 0) {
       store.commit(workspaceEvents.workspaceCreated({ id: 'root', name: 'My Workspace', createdAt: new Date() }))

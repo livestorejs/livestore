@@ -29,7 +29,7 @@ export const mailboxStoreOptions = storeOptions({
   storeId: mailboxStoreId,
   schema,
   adapter,
-  gcTime: Number.POSITIVE_INFINITY, // Disable garbage collection
+  unusedCacheTime: Number.POSITIVE_INFINITY, // Disable automatic disposal
 })
 
 export const useMailboxStore = () => useStore(mailboxStoreOptions)

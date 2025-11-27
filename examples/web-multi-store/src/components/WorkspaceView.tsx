@@ -33,7 +33,7 @@ export function WorkspaceView() {
   const preloadIssue = (issueId: string) =>
     storeRegistry.preload({
       ...issueStoreOptions(issueId),
-      gcTime: 10_000,
+      unusedCacheTime: 10_000,
     })
 
   return (
