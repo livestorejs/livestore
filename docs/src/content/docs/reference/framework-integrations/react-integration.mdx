@@ -16,6 +16,7 @@ import MultiStoreRegistrySnippet from '../../../_assets/code/reference/framework
 import MultiStoreUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueView.tsx?snippet'
 import MultiStorePreloadSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/PreloadedIssue.tsx?snippet'
 import MultiStoreInstanceSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueList.tsx?snippet'
+import MultiStoreMinimalSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/minimal.tsx?snippet'
 import { getBranchName } from "../../../../data/data.ts";
 
 While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
@@ -82,6 +83,8 @@ The multi-store API enables managing multiple stores within a single React appli
 
 - **Partial data synchronization** - Load only the data you need, when you need it
 - **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
+
+<MultiStoreMinimalSnippet />
 
 :::caution[Experimental API]
 The Multi-Store API is still early in its development.
