@@ -115,34 +115,34 @@ A multi-store solution must:
 The multi-store architecture introduces three key concepts:
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                    <StoreRegistryProvider>                     │
-│  • Provides StoreRegistry                                      │
-│  • Lives at application root                                   │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│           <StoreRegistryProvider>           │
+│  • Provides StoreRegistry                   │
+│  • Lives at application root                │
+└─────────────────────────────────────────────┘
                               │
                               │ provides
                               ▼
-┌────────────────────────────────────────────────────────────────┐
-│                         StoreRegistry                          │
-│  • Central registry for all store instances                    │
-│  • Passes default store options (gcTime, syncPayload, etc.)    │
-│  • Manages caching, ref-counting, garbage collection           │
-│  • Cache key: storeId                                          │
-│  • Framework-agnostic (reusable outside React)                 │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                             StoreRegistry                            │
+│  • Central registry for all store instances                          │
+│  • Passes default store options (unusedCacheTime, syncPayload, etc.) │
+│  • Manages caching, ref-counting, disposal                           │
+│  • Cache key: storeId                                                │
+│  • Framework-agnostic (reusable outside React)                       │
+└──────────────────────────────────────────────────────────────────────┘
                               │
                               │ manages
                               ▼
-┌────────────────────────────────────────────────────────────────┐
-│                         Store Instances                        │
-│                                                                │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │ storeId:123     │  │ storeId:456     │  │ storeId:789    │  │
-│  │ observers: 2    │  │ observers: 1    │  │ observers: 0   │  │
-│  │ gcTimeout: null │  │ gcTimeout: null │  │ gcTimeout: 60s │  │
-│  └─────────────────┘  └─────────────────┘  └────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                                  Store Instances                                  │
+│                                                                                   │
+│  ┌───────────────────────┐  ┌───────────────────────┐  ┌───────────────────────┐  │
+│  │ storeId:123           │  │ storeId:456           │  │ storeId:789           │  │
+│  │ subscribers: 2        │  │ subscribers: 1        │  │ subscribers: 0        │  │
+│  │ disposeTimeout: null  │  │ disposeTimeout: null  │  │ disposeTimeout: 60s   │  │
+│  └───────────────────────┘  └───────────────────────┘  └───────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 > [!NOTE]
@@ -191,7 +191,7 @@ export const workspaceStoreOptions = storeOptions({
   storeId: 'workspace-root',
   schema,
   adapter,
-  gcTime: Infinity,
+  unusedCacheTime: Infinity,
   boot: (store) => {
     console.log('Workspace store loaded')
   },
@@ -219,7 +219,7 @@ export const issueStoreOptions = (issueId: string) =>
     storeId: `issue-${issueId}`,
     schema,
     adapter,
-    gcTime: 20_000,
+    unusedCacheTime: 20_000,
   })
 ```
 
@@ -326,7 +326,7 @@ type PreloadStore = <TSchema extends LiveStoreSchema>(
 - Starts loading if not in cache
 - Returns promise that resolves when loading completes
 - Silently discards errors
-- Instance still subject to GC if no observers attach
+- Instance still subject to disposal if no subscribers attach
 
 **Example: Preload on Hover**
 
@@ -337,7 +337,7 @@ function IssueLink({ issueId }: { issueId: string }) {
   const preloadIssue = (issueId: string) => {
     storeRegistry.preload({
       ...issueStoreOptions(issueId),
-      gcTime: 5_000,
+      unusedCacheTime: 5_000,
     })
   }
 
@@ -448,9 +448,9 @@ issueId  // What if issueId === workspaceId?
 | Tenant-scoped  | `org-orgId-type-id`   | `org-acme-workspace`        |
 
 
-### Store Lifecycle and GC
+### Store Lifecycle and Disposal
 
-Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Garbage Collection with gcTime](#automatic-garbage-collection-with-gctime)).
+Understanding the store lifecycle is critical for reasoning about memory usage and performance (see [Automatic Disposal with unusedCacheTime](#automatic-disposal-with-unusedcachetime)).
 
 A store progresses through these states:
 
@@ -465,27 +465,27 @@ A store progresses through these states:
                  │ Store loaded
                  ▼
 ┌─────────────────────────────────────────────────────────┐
-│                         ACTIVE                          │
+│                          USED                           │
 │  • Store ready                                          │
-│  • observers > 0                                        │
+│  • subscribers > 0                                      │
 │  • Components using useStore() can access it            │
 └────────────────┬────────────────────────────────────────┘
                  │
-                 │ Last observer unmounts
+                 │ Last subscriber unmounts
                  ▼
 ┌─────────────────────────────────────────────────────────┐
-│                        INACTIVE                         │
+│                         UNUSED                          │
 │  • Store cached but not observed                        │
-│  • observers === 0                                      │
-│  • GC timer scheduled for `gcTime` milliseconds         │
-|  • May transition back to ACTIVE if observer attaches   │
-│  • Re-activation cancels pending GC                     │
+│  • subscribers === 0                                    │
+│  • Disposal timer scheduled for `unusedCacheTime` ms    │
+│  • May transition back to USED if subscriber attaches   │
+│  • Re-activation cancels pending disposal               │
 └────────────────┬────────────────────────────────────────┘
                  │
-                 │ GC timer fires
+                 │ Disposal timer fires
                  ▼
 ┌─────────────────────────────────────────────────────────┐
-│                       DISPOSED                          │
+│                        DISPOSED                         │
 │  • store.shutdown() called                              │
 │  • Removed from registry cache                          │
 │  • Must reload from scratch if needed again             │
@@ -499,7 +499,7 @@ Two layers define an effective store's configuration.
 ```tsx
 // Registry default (lowest priority)
 const registry = new StoreRegistry({
-  defaultOptions: { gcTime: 60_000 },
+  defaultOptions: { unusedCacheTime: 60_000 },
 })
 
 // Call-site override (highest priority)
@@ -507,27 +507,27 @@ const store = useStore({
   storeId: 'issue-1',
   schema,
   adapter,
-  gcTime: 120_000, // Overrides registry default
+  unusedCacheTime: 120_000, // Overrides registry default
 })
 ```
 
-**Observer-Specific GC Times:**
+**Subscriber-Specific Unused Cache Times:**
 
-If multiple observers specify different `gcTime` values, the longest duration wins:
+If multiple subscribers specify different `unusedCacheTime` values, the longest duration wins:
 
 ```tsx
 // Component A
-useStore({...issueStoreOptions('issue-1'), gcTime: 30_000 }) // 30s
+useStore({...issueStoreOptions('issue-1'), unusedCacheTime: 30_000 }) // 30s
 
 // Component B
-useStore({...issueStoreOptions('issue-1'), gcTime: 120_000 }) // 120s
+useStore({...issueStoreOptions('issue-1'), unusedCacheTime: 120_000 }) // 120s
 
-// When both unmount, GC timer will be 120s (longest)
+// When both unmount, disposal timer will be 120s (longest)
 ```
 
-During runtime the longest `gcTime` wins when multiple observers pass different options for the same `storeId`. This mirrors the behaviour in the examples where the workspace store disables GC (`Infinity`) while issue stores use shorter windows.
+During runtime the longest `unusedCacheTime` wins when multiple subscribers pass different options for the same `storeId`. This mirrors the behaviour in the examples where the workspace store disables disposal (`Infinity`) while issue stores use shorter windows.
 
-**Rationale:** This ensures late-arriving observers don't get surprised by an early eviction from a short-lived peer (see [Longest `gcTime` Wins When Multiple Observers](#longest-gctime-wins-when-multiple-observers)).
+**Rationale:** This ensures late-arriving subscribers don't get surprised by an early eviction from a short-lived peer (see [Longest `unusedCacheTime` Wins When Multiple Subscribers](#longest-unusedcachetime-wins-when-multiple-subscribers)).
 
 ### SSR Considerations
 
@@ -550,18 +550,18 @@ export default function App({ children }) {
 }
 ```
 
-**Default GC Time:**
+**Default Unused Cache Time:**
 
-On the server, the default `gcTime` is promoted to `Number.POSITIVE_INFINITY` to prevent premature disposal during HTML generation.
+On the server, the default `unusedCacheTime` is promoted to `Number.POSITIVE_INFINITY` to prevent premature disposal during HTML generation.
 
 ```ts
-const DEFAULT_GC_TIME = typeof window === 'undefined'
+const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined'
   ? Number.POSITIVE_INFINITY
   : 60_000
 ```
 
 
-See [Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-gctime-of-60-seconds-browser--infinity-ssr).
+See [Default `unusedCacheTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-unusedcachetime-of-60-seconds-browser--infinity-ssr).
 
 ### Limitations
 
@@ -661,14 +661,14 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 - Difficult to share store instances across components
 - No preloading capability
 
-### Automatic Garbage Collection with `gcTime`
+### Automatic Disposal with `unusedCacheTime`
 
 **Alternatives Considered:**
 1. **Manual disposal**: User calls `store.destroy()` explicitly
 2. **React lifecycle**: Dispose when provider unmounts
-3. **Ref-counting + GC**: Dispose after N seconds of inactivity (chosen)
+3. **Ref-counting + timed disposal**: Dispose after N seconds of inactivity (chosen)
 
-**Chosen:** Ref-counting + GC (option 3)
+**Chosen:** Ref-counting + timed disposal (option 3)
 
 **Rationale:**
 - Balances memory efficiency with performance (avoid reload thrashing)
@@ -678,28 +678,28 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 **Trade-offs:**
 - ✅ Automatic memory management
 - ✅ Handles rapid mount/unmount gracefully
-- ⚠️ GC timing is approximate (setTimeout delays)
-- ⚠️ Users must understand gcTime for tuning
+- ⚠️ Disposal timing is approximate (setTimeout delays)
+- ⚠️ Users must understand unusedCacheTime for tuning
 
-### Longest `gcTime` Wins When Multiple Observers
+### Longest `unusedCacheTime` Wins When Multiple Subscribers
 
 **Alternatives Considered:**
-1. **First observer's gcTime**
-2. **Last observer's gcTime**
-3. **Shortest gcTime** (most aggressive)
-4. **Longest gcTime** (chosen)
+1. **First subscriber's unusedCacheTime**
+2. **Last subscriber's unusedCacheTime**
+3. **Shortest unusedCacheTime** (most aggressive)
+4. **Longest unusedCacheTime** (chosen)
 
-**Chosen:** Longest gcTime (option 4)
+**Chosen:** Longest unusedCacheTime (option 4)
 
 **Rationale:**
 - Conservative approach (avoids surprise evictions)
-- Late-arriving observers can extend lifetime
-- Prevents short-lived observer from prematurely dropping store used by long-lived observer
+- Late-arriving subscribers can extend lifetime
+- Prevents short-lived subscriber from prematurely dropping store used by long-lived subscriber
 
 **Trade-offs:**
-- ⚠️ Potentially keeps stores in memory longer than some observers expect
+- ⚠️ Potentially keeps stores in memory longer than some subscribers expect
 
-### Default `gcTime` of 60 Seconds (Browser) / Infinity (SSR)
+### Default `unusedCacheTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
 1. **30 seconds** (aggressive eviction)
@@ -743,7 +743,7 @@ We still need to validate which knobs belong where (e.g., should `batchUpdates` 
 
 | Configuration           | Type               | Registry | Call-Site | Merging Strategy    |
 |:------------------------|:-------------------|:---------|:----------|:--------------------|
-| `gcTime`                | number             | ✅        | ✅         | Call-site overrides |
+| `unusedCacheTime`       | number             | ✅        | ✅         | Call-site overrides |
 | `batchUpdates`          | function           | ✅        | ❌         | -                   |
 | `syncPayload`           | object (data)      | ❓        | ❓         | ❓                   |
 | `otelOptions`           | object (instances) | ❓        | ❓         | ❓                   |
@@ -880,7 +880,7 @@ export const workspaceStoreOptions = storeOptions({
   storeId: "workspace-root",
   schema: workspaceSchema,
   adapter: workspaceAdapter,
-  gcTime: Number.POSITIVE_INFINITY, // Disable garbage collection
+  unusedCacheTime: Number.POSITIVE_INFINITY, // Disable automatic disposal
   boot: (store) => {
     // Callback triggered when the store is first loaded
   },
@@ -892,7 +892,7 @@ export const issueStoreOptions = (issueId: string) =>
     storeId: `issue-${issueId}`,
     schema: issueSchema,
     adapter: issueAdapter,
-    gcTime: 20_000,
+    unusedCacheTime: 20_000,
     boot: (issueStore) => {
       // Callback triggered when the store is first loaded
     },
@@ -941,7 +941,7 @@ export default function Route() {
   const preloadIssue = (issueId: string) =>
     storeRegistry.preload({
       ...issueStoreOptions(issueId),
-      gcTime: 5 * 1000,
+      unusedCacheTime: 5 * 1000,
     });
 
   return (
@@ -969,7 +969,7 @@ export default function Route() {
 function IssuePanel({ issueId }: { issueId: string }) {
   const issueStore = useStore({
     ...issueStoreOptions(issueId),
-    gcTime: 5 * 1000, // Override gcTime
+    unusedCacheTime: 5 * 1000, // Override unusedCacheTime
   }); // Suspends
   const [issue] = issueStore.useQuery(selectIssueQuery(issueId));
 
