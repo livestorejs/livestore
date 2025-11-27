@@ -97,7 +97,7 @@ The multi-store API introduces four main primitives:
 - **useStore()** - Suspense-enabled hook for accessing individual store instances
 - **storeOptions()** - Type-safe way to define reusable store configurations
 
-Stores are cached by their `storeId` and automatically disposed after being inactive for a configurable duration.
+Stores are cached by their `storeId` and automatically disposed after being unused for a configurable duration (`unusedCacheTime`)
 
 ### Setting Up
 
@@ -151,7 +151,7 @@ Options:
 - `storeId` - Unique identifier for this store instance (required)
 - `schema` - The LiveStore schema (required)
 - `adapter` - The platform adapter (required)
-- `gcTime` - Time in milliseconds to keep inactive stores in memory (default: 60_000 in browser, infinity in non-browser)
+- `unusedCacheTime` - Time in milliseconds to keep unused stores in memory (default: 60_000 in browser, infinity in non-browser)
 - `boot` - Function called when the store is first loaded
 - `batchUpdates` - Function for batching React updates
 - And other `CreateStoreOptions`
