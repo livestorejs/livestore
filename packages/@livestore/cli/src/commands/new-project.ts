@@ -12,6 +12,8 @@ import {
 } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
+import { detectPackageManager, pmCommands } from '../package-manager.ts'
+
 // Schema for GitHub API response
 const GitHubContentSchema = Schema.Struct({
   name: Schema.String,
@@ -21,6 +23,14 @@ const GitHubContentSchema = Schema.Struct({
 })
 
 const GitHubContentsResponseSchema = Schema.Array(GitHubContentSchema)
+
+/** Schema for parsing package.json scripts (dev or start) */
+const PackageJsonScriptsSchema = Schema.Struct({
+  scripts: Schema.Union(
+    Schema.Struct({ dev: Schema.String }),
+    Schema.Struct({ start: Schema.String }),
+  ),
+})
 
 // Error types
 export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>()('ExampleNotFoundError', {
@@ -251,13 +261,43 @@ export const createCommand = Cli.Command.make(
     // Download and extract the example
     yield* downloadExample(selectedExample, branch, destinationPath)
 
-    // Success message
+    // Detect available run script (dev or start) from the created project's package.json.
+    // Some examples use "dev" (web projects), others use "start" (Expo projects),
+    // and some have no run script at all (e.g., node-effect-cli).
+    const fs = yield* FileSystem.FileSystem
+    const packageJsonPath = nodePath.join(destinationPath, 'package.json')
+    const packageJsonContent = yield* fs.readFileString(packageJsonPath)
+    const runScript = yield* Schema.decodeUnknown(Schema.parseJson(PackageJsonScriptsSchema))(packageJsonContent).pipe(
+      Effect.map((pkg) => ('dev' in pkg.scripts ? ('dev' as const) : ('start' as const))),
+      Effect.orElseSucceed(() => undefined),
+    )
+
+    // Detect which package manager was used to invoke the CLI (via npm_config_user_agent).
+    // This ensures the "next steps" instructions match how the user ran the create command.
+    const pmResult = detectPackageManager()
+
     yield* Console.log('\n🎉 Project created successfully!')
     yield* Console.log(`📁 Location: ${destinationPath}`)
     yield* Console.log('\n📋 Next steps:')
     yield* Console.log(`   cd ${nodePath.basename(destinationPath)}`)
-    yield* Console.log('   pnpm install    # Install dependencies')
-    yield* Console.log('   pnpm dev        # Start development server')
+
+    // Yarn is not recommended for LiveStore projects. When detected, show a warning
+    // and suggest using bun instead for the next steps.
+    if (pmResult._tag === 'unsupported') {
+      yield* Console.log('   bun install    # Install dependencies (yarn is not recommended)')
+      if (runScript !== undefined) {
+        yield* Console.log(`   bun ${runScript}        # Start development server`)
+      }
+      yield* Console.log('\n⚠️  Yarn is not recommended for LiveStore projects.')
+      yield* Console.log('   We recommend using bun, pnpm, or npm instead.')
+      yield* Console.log('   The commands above use bun by default.')
+    } else {
+      const pm = pmResult.pm
+      yield* Console.log(`   ${pmCommands.install[pm]}    # Install dependencies`)
+      if (runScript !== undefined) {
+        yield* Console.log(`   ${pmCommands.run[pm](runScript)}        # Start development server`)
+      }
+    }
     yield* Console.log('\n💡 Tip: Run `git init` if you want to initialize version control')
   }),
 )
