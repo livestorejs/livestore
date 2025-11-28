@@ -4,6 +4,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@automerge/automerge": "^3.2.0",
+    "@automerge/react": "^2.5.0",
     "@cloudflare/workers-types": "catalog:",
     "@effect-atom/atom": "0.3.0",
     "@effect-atom/atom-livestore": "0.3.0",
