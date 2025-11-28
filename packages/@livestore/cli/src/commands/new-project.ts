@@ -26,10 +26,7 @@ const GitHubContentsResponseSchema = Schema.Array(GitHubContentSchema)
 
 /** Schema for parsing package.json scripts (dev or start) */
 const PackageJsonScriptsSchema = Schema.Struct({
-  scripts: Schema.Union(
-    Schema.Struct({ dev: Schema.String }),
-    Schema.Struct({ start: Schema.String }),
-  ),
+  scripts: Schema.Union(Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })),
 })
 
 // Error types

@@ -19,7 +19,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.26.0",
+    "@livestore/utils-dev": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   },

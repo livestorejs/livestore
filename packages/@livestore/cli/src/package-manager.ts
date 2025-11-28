@@ -8,9 +8,7 @@ export type PackageManager = 'npm' | 'pnpm' | 'bun'
  * Result of package manager detection.
  * Returns 'unsupported' for yarn to allow the CLI to show a warning message.
  */
-export type DetectPackageManagerResult =
-  | { _tag: 'supported'; pm: PackageManager }
-  | { _tag: 'unsupported'; pm: 'yarn' }
+export type DetectPackageManagerResult = { _tag: 'supported'; pm: PackageManager } | { _tag: 'unsupported'; pm: 'yarn' }
 
 /**
  * Detects the package manager used to invoke the CLI based on the `npm_config_user_agent`
@@ -19,7 +17,9 @@ export type DetectPackageManagerResult =
  * - Returns 'unsupported' for yarn so the CLI can show a recommendation to use bun instead
  * - Falls back to 'bun' when detection fails (e.g., when run directly without a package manager)
  */
-export const detectPackageManager = (userAgent = process.env.npm_config_user_agent ?? ''): DetectPackageManagerResult => {
+export const detectPackageManager = (
+  userAgent = process.env.npm_config_user_agent ?? '',
+): DetectPackageManagerResult => {
   if (userAgent.startsWith('bun/')) return { _tag: 'supported', pm: 'bun' }
   if (userAgent.startsWith('pnpm/')) return { _tag: 'supported', pm: 'pnpm' }
   if (userAgent.startsWith('npm/')) return { _tag: 'supported', pm: 'npm' }
