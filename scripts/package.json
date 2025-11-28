@@ -15,6 +15,9 @@
     "@local/tests-integration": "workspace:*",
     "@local/tests-sync-provider": "workspace:*",
     "@types/bun": "^1.2.21",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/semver": "^7.7.0",
+    "semver": "^7.7.3",
+    "yaml": "^2.8.1"
   }
 }
