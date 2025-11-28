@@ -1,4 +1,4 @@
-import * as Vitest from '@effect/vitest'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import { detectPackageManager, pmCommands } from './package-manager.ts'
 
