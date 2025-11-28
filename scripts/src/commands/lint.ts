@@ -1,7 +1,8 @@
-import { Effect } from '@livestore/utils/effect'
+import { Console, Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd } from '@livestore/utils-dev/node'
 import { hasParentGitRepo } from '../shared/misc.ts'
+import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
 const cwd =
   process.env.WORKSPACE_ROOT ??
@@ -28,5 +29,11 @@ export const lintCommand = Cli.Command.make(
 
     // Shell needed for wildcards
     yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { cwd, shell: true })
+
+    // Check peer dependencies (warn-only for now, doesn't fail the build)
+    const peerDepsOk = yield* runPeerDepCheck
+    if (!peerDepsOk) {
+      yield* Console.warn('Peer dependency check found violations (see above)')
+    }
   }),
 )

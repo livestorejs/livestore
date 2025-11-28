@@ -33,7 +33,7 @@
       "workerd"
     ],
     "overrides": {
-      "syncpack>effect": "3.18.0"
+      "syncpack>effect": "3.18.4"
     }
   },
   "resolutions": {

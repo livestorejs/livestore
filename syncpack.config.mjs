@@ -84,6 +84,13 @@ const config = {
       packages: ['**'],
       isIgnored: true,
     },
+    {
+      label: 'ignore pnpm overrides',
+      // pnpm overrides require exact versions to work correctly
+      dependencyTypes: ['pnpmOverrides'],
+      packages: ['**'],
+      isIgnored: true,
+    },
   ],
   semverGroups: [
     {
