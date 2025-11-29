@@ -165,6 +165,12 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
   // Get the encoded AST - what actually gets stored in SQLite
   const encodedAst = Schema.encodedSchema(coreSchema).ast
 
+  const identifier = SchemaAST.getIdentifierAnnotation(coreAst).pipe(Option.getOrElse(() => ''))
+
+  if (identifier === 'Uint8Array' || identifier === 'Uint8ArrayFromSelf') {
+    return SqliteDsl.blob({ schema: coreSchema, nullable })
+  }
+
   // Check if the encoded type matches SQLite native types
   if (SchemaAST.isStringKeyword(encodedAst)) {
     return SqliteDsl.text({ schema: coreSchema, nullable })

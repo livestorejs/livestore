@@ -299,7 +299,7 @@ describe('getColumnDefForSchema', () => {
   describe('binary data', () => {
     it('should handle Uint8Array as blob column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
-      expect(columnDef.columnType).toBe('text') // Stored as JSON
+      expect(columnDef.columnType).toBe('blob')
     })
   })
 
