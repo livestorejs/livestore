@@ -75,7 +75,7 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -162,7 +162,7 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -221,14 +221,14 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
               "children": [
@@ -236,17 +236,17 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 0,
                   },
                 },
               ],
             },
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -254,7 +254,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -295,7 +295,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -428,7 +428,7 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -487,14 +487,14 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
               "children": [
@@ -502,17 +502,17 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 0,
                   },
                 },
               ],
             },
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -520,7 +520,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -561,7 +561,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -627,14 +627,14 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
               "children": [
@@ -642,17 +642,17 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 0,
                   },
                 },
               ],
             },
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -660,7 +660,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -671,14 +671,14 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -686,7 +686,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -727,7 +727,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -761,7 +761,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -884,7 +884,7 @@ exports[`otel > otel 4`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -1185,7 +1185,7 @@ exports[`otel > with thunks 8`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
@@ -1242,9 +1242,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+          "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
           "attributes": {
-            "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
             "sql.rowsCount": 0,
           },
           "children": [
@@ -1255,16 +1255,16 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
             },
           ],
         },
         {
-          "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+          "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
           "attributes": {
-            "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
             "sql.rowsCount": 1,
           },
           "children": [
@@ -1275,7 +1275,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
             },
@@ -1314,7 +1314,7 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
               {
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
-                  "sql.query": "INSERT INTO 'todos' (id, text, completed) VALUES (?, ?, ?)",
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
                 },
               },
             ],
