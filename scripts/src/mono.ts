@@ -1,7 +1,6 @@
-import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, OtelLiveHttp } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
 import { examplesCommand } from './commands/examples/cli.ts'
@@ -10,9 +9,6 @@ import { lintCommand } from './commands/lint.ts'
 import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
-
-const cwd =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 
 const tsCommand = Cli.Command.make(
   'ts',
@@ -27,14 +23,14 @@ const tsCommand = Cli.Command.make(
     if (clean) {
       yield* cmd(
         'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -a -not -path "*/wa-sqlite/dist" -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
-        { cwd, shell: true },
+        { cwd: (yield* LivestoreWorkspace).root, shell: true },
       )
     }
 
     if (watch) {
-      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd })
+      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd: (yield* LivestoreWorkspace).root })
     } else {
-      yield* cmd('tsc --build tsconfig.dev.json', { cwd })
+      yield* cmd('tsc --build tsconfig.dev.json', { cwd: (yield* LivestoreWorkspace).root })
       // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
       // yield* cmd('tsc --build tsconfig.examples.json', { cwd })
     }
@@ -81,6 +77,8 @@ if (import.meta.main) {
       skipLogUrl: process.argv.join(' ').includes('--completions'),
       traceNodeBootstrap: true,
     }),
+    CurrentWorkingDirectory.live,
+    LivestoreWorkspace.live,
   )
 
   cli(process.argv).pipe(
