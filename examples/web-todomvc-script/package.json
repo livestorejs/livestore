@@ -16,7 +16,7 @@
     "@livestore/devtools-vite": "0.4.0-dev.18",
     "@playwright/test": "^1.56.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7",
+    "vite": "^7.2.4",
     "wrangler": "^4.42.2"
   },
   "engines": {
