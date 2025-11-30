@@ -1,6 +1,6 @@
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { CurrentWorkingDirectory, cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
+import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
 import { examplesCommand } from './commands/examples/cli.ts'
@@ -23,14 +23,14 @@ const tsCommand = Cli.Command.make(
     if (clean) {
       yield* cmd(
         'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -a -not -path "*/wa-sqlite/dist" -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
-        { cwd: (yield* LivestoreWorkspace).root, shell: true },
-      )
+        { shell: true },
+      ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
     if (watch) {
-      yield* cmd('tsc --build tsconfig.dev.json --watch', { cwd: (yield* LivestoreWorkspace).root })
+      yield* cmd('tsc --build tsconfig.dev.json --watch').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     } else {
-      yield* cmd('tsc --build tsconfig.dev.json', { cwd: (yield* LivestoreWorkspace).root })
+      yield* cmd('tsc --build tsconfig.dev.json').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
       // yield* cmd('tsc --build tsconfig.examples.json', { cwd })
     }
@@ -41,7 +41,9 @@ const circularCommand = Cli.Command.make(
   'circular',
   {},
   Effect.fn(function* () {
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true })
+    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+      Effect.provide(LivestoreWorkspace.toCwd()),
+    )
   }),
 )
 
@@ -77,7 +79,6 @@ if (import.meta.main) {
       skipLogUrl: process.argv.join(' ').includes('--completions'),
       traceNodeBootstrap: true,
     }),
-    CurrentWorkingDirectory.live,
     LivestoreWorkspace.live,
   )
 

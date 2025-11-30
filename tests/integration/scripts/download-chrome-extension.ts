@@ -2,7 +2,7 @@ import path from 'node:path'
 import { UnknownError } from '@livestore/common'
 import { Effect, FileSystem, HttpClient, HttpClientResponse, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 
 /** Download the latest Chrome extension from LiveStore GitHub releases */
 export const downloadChromeExtension = ({ version, targetDir }: { version?: string; targetDir: string }) =>
@@ -105,7 +105,8 @@ const extractZipFile = (zipPath: string, targetDir: string) =>
     // Ensure target directory exists
     yield* fs.makeDirectory(targetDir, { recursive: true })
 
-    yield* cmd(['unzip', '-o', '-j', zipPath], { cwd: targetDir }).pipe(
+    yield* cmd(['unzip', '-o', '-j', zipPath]).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(targetDir)),
       Effect.mapError(
         (cause) => new UnknownError({ cause, note: `Failed to extract zip file from ${zipPath} to ${targetDir}` }),
       ),
