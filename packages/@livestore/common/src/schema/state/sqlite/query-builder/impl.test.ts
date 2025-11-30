@@ -573,15 +573,13 @@ describe('query builder', () => {
     })
 
     it('should quote reserved column names', () => {
-      expect(
-        dump(db.selections.insert({ id: 1, group: 'alpha' }).onConflict('id', 'ignore')),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.selections.insert({ id: 1, group: 'alpha' }).onConflict('id', 'ignore'))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
             "alpha",
           ],
-          "query": "INSERT INTO 'selections' (\"id\", \"group\") VALUES (?, ?) ON CONFLICT (\"id\") DO NOTHING",
+          "query": "INSERT INTO 'selections' ("id", "group") VALUES (?, ?) ON CONFLICT ("id") DO NOTHING",
           "schema": "number",
         }
       `)
@@ -592,7 +590,7 @@ describe('query builder', () => {
             "beta",
             1,
           ],
-          "query": "UPDATE 'selections' SET \"group\" = ? WHERE \"id\" = ?",
+          "query": "UPDATE 'selections' SET "group" = ? WHERE "id" = ?",
           "schema": "number",
         }
       `)
