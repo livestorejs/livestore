@@ -23,15 +23,14 @@ export type ReactivityGraphContext = {
   effectsWrapper: (run: () => void) => void
 }
 
-export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any | SignalDef<any>> = TQuery extends LiveQuery<
-  infer TResult
->
-  ? TResult
-  : TQuery extends LiveQueryDef<infer TResult>
+export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any | SignalDef<any>> =
+  TQuery extends LiveQuery<infer TResult>
     ? TResult
-    : TQuery extends SignalDef<infer TResult>
+    : TQuery extends LiveQueryDef<infer TResult>
       ? TResult
-      : unknown
+      : TQuery extends SignalDef<infer TResult>
+        ? TResult
+        : unknown
 
 let queryIdCounter = 0
 

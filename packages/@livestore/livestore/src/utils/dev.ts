@@ -1,6 +1,7 @@
 import type { SqliteDb } from '@livestore/common'
 import { prettyBytes } from '@livestore/utils'
-import { Effect, Opfs } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
+import { Opfs } from '@livestore/utils/effect/browser'
 
 declare global {
   // declaring a global *value* is the least fussy when augmenting inline

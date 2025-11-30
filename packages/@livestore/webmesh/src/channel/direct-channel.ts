@@ -10,8 +10,8 @@ import {
   Scope,
   Stream,
   TQueue,
-  WebChannel,
 } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as WebmeshSchema from '../mesh-schema.ts'

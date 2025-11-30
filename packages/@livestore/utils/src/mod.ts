@@ -1,7 +1,7 @@
 export { default as prettyBytes } from 'pretty-bytes'
 export * as base64 from './base64.ts'
 export * from './binary.ts'
-export * from './browser.ts'
+export * from './browser/mod.ts'
 export * from './Deferred.ts'
 export * from './env.ts'
 export * from './fast-deep-equal.ts'

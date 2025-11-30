@@ -1,7 +1,8 @@
 import { Devtools, UnknownError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
-import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import { Deferred, Effect, Schema, Stream } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 import type { MeshNode } from '@livestore/webmesh'
 import { WebmeshSchema } from '@livestore/webmesh'
 

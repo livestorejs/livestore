@@ -12,7 +12,8 @@ import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 
 export const makeAdapter =
   ({

@@ -3,7 +3,8 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
 import type { Worker } from '@livestore/utils/effect'
-import { Effect, Stream, WebChannel } from '@livestore/utils/effect'
+import { Effect, Stream } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 
 export const logDevtoolsUrl = ({

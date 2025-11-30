@@ -8,6 +8,7 @@
   ],
   "exports": {
     ".": "./src/mod.ts",
+    "./browser": "./src/browser/mod.ts",
     "./cuid": {
       "browser": "./src/cuid/cuid.browser.ts",
       "react-native": "./src/cuid/cuid.browser.ts",
@@ -15,6 +16,7 @@
     },
     "./nanoid": "./src/nanoid/index.ts",
     "./effect": "./src/effect/index.ts",
+    "./effect/browser": "./src/browser/effect.ts",
     "./node": "./src/node/mod.ts",
     "./bun": "./src/bun/mod.ts"
   },
@@ -84,6 +86,10 @@
         "types": "./dist/mod.d.ts",
         "default": "./dist/mod.js"
       },
+      "./browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
+      },
       "./cuid": {
         "types": "./dist/cuid/cuid.node.d.ts",
         "browser": "./dist/cuid/cuid.browser.js",
@@ -97,6 +103,10 @@
       "./effect": {
         "types": "./dist/effect/index.d.ts",
         "default": "./dist/effect/index.js"
+      },
+      "./effect/browser": {
+        "types": "./dist/browser/effect.d.ts",
+        "default": "./dist/browser/effect.js"
       },
       "./node": {
         "types": "./dist/node/mod.d.ts",

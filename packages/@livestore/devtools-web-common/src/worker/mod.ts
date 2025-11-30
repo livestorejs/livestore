@@ -1,5 +1,6 @@
 import { LS_DEV } from '@livestore/utils'
-import { Context, Effect, Layer, Stream, WebChannel } from '@livestore/utils/effect'
+import { Context, Effect, Layer, Stream } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
