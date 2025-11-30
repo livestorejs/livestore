@@ -1,5 +1,5 @@
 import { ShutdownChannel } from '@livestore/common/leader-thread'
-import { WebChannel } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 
 export const makeShutdownChannel = (storeId: string) =>
   WebChannel.broadcastChannel({

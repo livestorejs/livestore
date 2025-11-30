@@ -1,4 +1,5 @@
-import { Schema, WebChannel } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 
 export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('DedicatedWorkerDisconnectBroadcast', {}) {}
 

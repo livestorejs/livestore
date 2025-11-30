@@ -1,4 +1,4 @@
-import type { ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
+import type { ParseResult, Scope } from '@livestore/utils/effect'
 import {
   Data,
   Duration,
@@ -11,6 +11,7 @@ import {
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+import type { WebChannel } from '@livestore/utils/effect/browser'
 
 export const RequestSessions = Schema.TaggedStruct('RequestSessions', {})
 export type RequestSessions = typeof RequestSessions.Type

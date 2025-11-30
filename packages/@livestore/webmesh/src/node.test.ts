@@ -1,5 +1,6 @@
 import { IS_CI, omitUndefineds } from '@livestore/utils'
-import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 

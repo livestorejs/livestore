@@ -48,7 +48,6 @@ export {
   WorkerError,
   WorkerRunner,
 } from '@effect/platform'
-export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 export {
   Rpc,
   // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
@@ -145,7 +144,6 @@ export * as BucketQueue from './BucketQueue.ts'
 export * as Effect from './Effect.ts'
 export * from './Error.ts'
 export * as Logger from './Logger.ts'
-export * as Opfs from './Opfs/mod.ts'
 export * as OtelTracer from './OtelTracer.ts'
 export * as RpcClient from './RpcClient.ts'
 export * as Schedule from './Schedule.ts'
@@ -156,7 +154,3 @@ export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'
 export * as SubscriptionRef from './SubscriptionRef.ts'
 export * as TaskTracing from './TaskTracing.ts'
-export * as WebChannel from './WebChannel/mod.ts'
-export * as WebError from './WebError.ts'
-export * as WebLock from './WebLock.ts'
-export * as WebSocket from './WebSocket.ts'

@@ -10,12 +10,10 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
-  BrowserWorkerRunner,
   Effect,
   FetchHttpClient,
   identity,
   Layer,
-  Opfs,
   OtelTracer,
   Scheduler,
   type Schema,
@@ -23,6 +21,7 @@ import {
   TaskTracing,
   WorkerRunner,
 } from '@livestore/utils/effect'
+import { BrowserWorkerRunner, Opfs } from '@livestore/utils/effect/browser'
 import type * as otel from '@opentelemetry/api'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'

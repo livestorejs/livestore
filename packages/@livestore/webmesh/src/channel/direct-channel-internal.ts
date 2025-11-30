@@ -1,17 +1,7 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import type { PubSub } from '@livestore/utils/effect'
-import {
-  Deferred,
-  Effect,
-  Exit,
-  OtelTracer,
-  Predicate,
-  Queue,
-  Schema,
-  Scope,
-  Stream,
-  WebChannel,
-} from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, OtelTracer, Predicate, Queue, Schema, Scope, Stream } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'

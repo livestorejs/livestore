@@ -1,5 +1,6 @@
 import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
-import { Effect, Hash, type Opfs, Runtime, type Scope } from '@livestore/utils/effect'
+import { Effect, Hash, Runtime, type Scope } from '@livestore/utils/effect'
+import type { Opfs } from '@livestore/utils/effect/browser'
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 

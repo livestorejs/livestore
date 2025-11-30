@@ -12,8 +12,8 @@ import {
   Scope,
   Socket,
   Stream,
-  WebChannel,
 } from '@livestore/utils/effect'
+import { WebChannel } from '@livestore/utils/effect/browser'
 
 import * as WebmeshSchema from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'

@@ -2,7 +2,8 @@
 /// <reference lib="webworker" />
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Opfs, Runtime, Schedule, type Scope, Stream, type WebError } from '@livestore/utils/effect'
+import { Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
+import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { FacadeVFS } from '../../FacadeVFS.ts'
 

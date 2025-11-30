@@ -14,24 +14,22 @@ import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
-  BrowserWorker,
   Cause,
   Deferred,
   Effect,
   Exit,
   Fiber,
   Layer,
-  Opfs,
   ParseResult,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  WebLock,
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
+import { BrowserWorker, Opfs, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import {
   readPersistedStateDbFromClientSession,
