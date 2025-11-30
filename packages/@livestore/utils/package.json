@@ -43,7 +43,7 @@
     "@effect/vitest": "^0.26.0",
     "@effect/workflow": "^0.11.5",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/resources": "catalog:",
     "@types/bun": "^1.2.21",
     "@types/jsdom": "^21.1.7",
     "@types/node": "catalog:",

@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
-    "@cloudflare/workers-types": "4.20250923.0",
+    "@cloudflare/workers-types": "4.20251118.0",
     "@livestore/devtools-vite": "0.4.0-dev.18",
     "@playwright/test": "^1.56.0",
     "typescript": "^5.9.2",

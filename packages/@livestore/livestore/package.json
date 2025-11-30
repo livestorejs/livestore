@@ -17,7 +17,7 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "catalog:",
     "jsdom": "^26.1.0",
     "typescript": "catalog:",
     "vite": "catalog:",

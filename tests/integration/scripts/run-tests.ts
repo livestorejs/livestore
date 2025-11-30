@@ -208,12 +208,7 @@ if (import.meta.main) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(
-      Layer.mergeAll(
-        PlatformNode.NodeContext.layer,
-        Logger.prettyWithThread('cli-run-tests'),
-      ),
-    ),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-run-tests'))),
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

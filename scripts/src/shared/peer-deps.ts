@@ -57,6 +57,13 @@ interface LockfilePackage {
   optionalDependencies?: Record<string, string>
 }
 
+const ignoredPeerViolations = new Set([
+  // rwsdk currently targets React 19 canary builds; we stay on stable 19.1.0 until upstream aligns
+  'rwsdk->react',
+  'rwsdk->react-dom',
+  'rwsdk->react-server-dom-webpack',
+])
+
 interface ParsedLockfile {
   lockfileVersion: string
   packages?: Record<string, LockfilePackage>
@@ -120,6 +127,9 @@ export const checkPeerDependencies = Effect.gen(function* () {
     if (!parsed || !packageData.peerDependencies) continue
 
     for (const [peerDep, requiredRange] of Object.entries(packageData.peerDependencies)) {
+      const ignoreKey = `${parsed.name}->${peerDep}`
+      if (ignoredPeerViolations.has(ignoreKey)) continue
+
       const isOptional = packageData.peerDependenciesMeta?.[peerDep]?.optional === true
       if (isOptional) continue
 
