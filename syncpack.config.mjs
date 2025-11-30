@@ -91,6 +91,14 @@ const config = {
       packages: ['**'],
       isIgnored: true,
     },
+    {
+      // NativeWind / Tailwind CSS v4 preview is still unstable on RN (memory leak tracked in https://github.com/nativewind/nativewind/issues/1669), so keep Expo Linearlite on v3.
+      label: 'expo-linearlite tailwindcss stays on v3',
+      dependencies: ['tailwindcss'],
+      dependencyTypes: ['dev'],
+      packages: ['livestore-example-expo-linearlite'],
+      pinVersion: '^3.4.14',
+    },
   ],
   semverGroups: [
     {
