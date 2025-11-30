@@ -180,7 +180,7 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
   }
 
   if (isUint8ArraySchema(coreAst) || isUint8ArraySchema(encodedAst)) {
-    return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf, nullable })
+    return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf as Schema.Schema<Uint8Array<ArrayBuffer>>, nullable })
   }
 
   const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)

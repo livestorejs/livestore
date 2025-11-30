@@ -12,10 +12,6 @@ type SnippetManifest = {
 
 type SnippetManifestCacheEntry = { raw: SnippetManifest; byEntry: Map<string, SnippetManifestEntry> }
 
-type SnippetManifestCache = {
-  manifest: SnippetManifestCacheEntry | null
-}
-
 type SnippetArtifactFile = {
   readonly content: string
 }
@@ -60,8 +56,7 @@ const resolvePaths = (docsRootOverride?: string): Paths => {
 
 const snippetManifestCache = new Map<string, SnippetManifestCacheEntry>()
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 const isSnippetManifestEntry = (value: unknown): value is SnippetManifestEntry => {
   if (!isRecord(value)) return false

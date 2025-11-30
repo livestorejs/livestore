@@ -8,8 +8,8 @@ import { buildDiagrams } from '@local/astro-tldraw'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
-import { exportMarkdownCommand } from './docs-export.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
+import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)

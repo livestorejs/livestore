@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, FileSystem, PlatformError, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, type PlatformError, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { transformMultiCodeDocument } from '@local/docs/multi-code-markdown'
 
@@ -25,11 +25,14 @@ export const exportMarkdownCommand = Cli.Command.make(
     const workspaceRoot =
       workspaceRootOption._tag === 'Some'
         ? workspaceRootOption.value
-        : process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
+        : (process.env.WORKSPACE_ROOT ??
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`))
     const docsRoot = path.join(workspaceRoot, 'docs')
     const contentRoot = path.join(docsRoot, 'src', 'content', 'docs')
     const outputDir =
-      out._tag === 'Some' ? path.resolve(out.value) : path.join(workspaceRoot, 'packages', '@livestore', 'livestore', 'docs')
+      out._tag === 'Some'
+        ? path.resolve(out.value)
+        : path.join(workspaceRoot, 'packages', '@livestore', 'livestore', 'docs')
 
     yield* assertSnippetManifest(docsRoot)
 
@@ -68,7 +71,7 @@ export const exportMarkdownCommand = Cli.Command.make(
         const fs = yield* FileSystem.FileSystem
         const llmsList = renderLlmsList({ docs: llmsDocs, site: null })
         const llmsBody =
-          '# LiveStore Documentation for LLMs\n\n> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.\n\n## Notes\n\n- Most LiveStore APIs are synchronous and don\'t need `await`\n\n## Docs\n\n' +
+          "# LiveStore Documentation for LLMs\n\n> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.\n\n## Notes\n\n- Most LiveStore APIs are synchronous and don't need `await`\n\n## Docs\n\n" +
           llmsList
         yield* fs.writeFileString(path.join(outputDir, 'llms.txt'), `${llmsBody.trimEnd()}\n`)
       }
@@ -99,7 +102,9 @@ type TLlmsDoc = {
   readonly slug: string
 }
 
-const collectMarkdownEntries = (dir: string): Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError, FileSystem.FileSystem> =>
+const collectMarkdownEntries = (
+  dir: string,
+): Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const entries = yield* fs.readDirectory(dir)
@@ -165,7 +170,9 @@ const toSlug = (absolutePath: string, contentRoot: string): string => {
   return withoutExt
 }
 
-const loadDocs = (contentRoot: string): Effect.Effect<ReadonlyArray<DocMeta>, PlatformError.PlatformError, FileSystem.FileSystem> =>
+const loadDocs = (
+  contentRoot: string,
+): Effect.Effect<ReadonlyArray<DocMeta>, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const entries = yield* collectMarkdownEntries(contentRoot)
@@ -175,7 +182,7 @@ const loadDocs = (contentRoot: string): Effect.Effect<ReadonlyArray<DocMeta>, Pl
       const raw = yield* fs.readFileString(filePath)
       const { title, description, body } = parseFrontmatter(raw)
       const slug = toSlug(filePath, contentRoot)
-      const derivedTitle = title ?? (slug === '' ? 'LiveStore' : slug.split('/').pop() ?? 'LiveStore')
+      const derivedTitle = title ?? (slug === '' ? 'LiveStore' : (slug.split('/').pop() ?? 'LiveStore'))
 
       docs.push({
         id: `docs/${path.relative(contentRoot, filePath).replace(/\\/g, '/')}`,
@@ -205,7 +212,13 @@ const resolveHref = (value: string, site: URL | string | null | undefined): stri
   return value.length === 0 ? '/' : `/${value}`
 }
 
-const renderLlmsList = ({ docs, site }: { readonly docs: ReadonlyArray<TLlmsDoc>; readonly site: URL | string | null }) =>
+const renderLlmsList = ({
+  docs,
+  site,
+}: {
+  readonly docs: ReadonlyArray<TLlmsDoc>
+  readonly site: URL | string | null
+}) =>
   docs
     .map((doc) => {
       const href = resolveHref(doc.slug, site)
