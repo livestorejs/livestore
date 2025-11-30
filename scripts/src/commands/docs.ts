@@ -8,6 +8,7 @@ import { buildDiagrams } from '@local/astro-tldraw'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+import { exportMarkdownCommand } from './docs-export.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 
 const workspaceRoot =
@@ -128,6 +129,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     docsBuildCommand,
     docsSnippetsCommand,
     docsDiagramsCommand,
+    exportMarkdownCommand,
     Cli.Command.make(
       'preview',
       {

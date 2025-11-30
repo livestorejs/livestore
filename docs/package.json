@@ -3,6 +3,9 @@
   "version": "0.1.1",
   "type": "module",
   "private": true,
+  "exports": {
+    "./multi-code-markdown": "./src/utils/multi-code-markdown.ts"
+  },
   "dependencies": {
     "@astrojs/check": "0.9.4",
     "@astrojs/netlify": "6.5.9",

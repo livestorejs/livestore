@@ -15,7 +15,7 @@ import type { CollectionEntry } from 'astro:content'
 import { getCollection, getEntry } from 'astro:content'
 import type { APIContext } from 'astro'
 import { replaceLlmsShortPlaceholders } from '../../../utils/llms.ts'
-import { transformMultiCodeDocument } from '../../../utils/multi-code-markdown.js'
+import { transformMultiCodeDocument } from '../../../utils/multi-code-markdown.ts'
 
 type TDoc = CollectionEntry<'docs'>
 
