@@ -73,7 +73,15 @@ const issue = State.SQLite.table({
   ],
 })
 
-const db = { todos, todosWithIntId, comments, issue, UiState, UiStateWithDefaultId }
+const selections = State.SQLite.table({
+  name: 'selections',
+  columns: {
+    id: State.SQLite.integer({ primaryKey: true }),
+    group: State.SQLite.text({}),
+  },
+})
+
+const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStateWithDefaultId }
 
 const dump = (qb: QueryBuilder<any, any, any>) => ({
   bindValues: qb.asSql().bindValues,
@@ -95,7 +103,7 @@ describe('query builder', () => {
       expect(dump(db.todos.select('id'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT id FROM 'todos'",
+          "query": "SELECT "id" FROM 'todos'",
           "schema": "ReadonlyArray<({ readonly id: string } <-> string)>",
         }
       `)
@@ -103,7 +111,7 @@ describe('query builder', () => {
       expect(dump(db.todos.select('id', 'text'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT id, text FROM 'todos'",
+          "query": "SELECT "id", "text" FROM 'todos'",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -115,7 +123,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' LIMIT ?",
           "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string } | undefined> <-> { readonly id: string; readonly text: string } | undefined)",
         }
       `)
@@ -125,7 +133,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' LIMIT ?",
           "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
         }
       `)
@@ -137,7 +145,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' LIMIT ?",
           "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> | readonly [undefined] <-> { readonly id: string; readonly text: string } | undefined)",
         }
       `)
@@ -149,7 +157,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -158,7 +166,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed != ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" != ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -167,51 +175,51 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
       expect(dump(db.todos.select('id', 'text').where({ completed: undefined }))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT id, text FROM 'todos'",
+          "query": "SELECT "id", "text" FROM 'todos'",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
       expect(
         dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              "2024-01-01T00:00:00.000Z",
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE deletedAt <= ?",
-            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            "2024-01-01T00:00:00.000Z",
+          ],
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "deletedAt" <= ?",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
       expect(
         dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              "active",
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE status IN (?)",
-            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            "active",
+          ],
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "status" IN (?)",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
       expect(
         dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              "active",
-              "completed",
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE status NOT IN (?, ?)",
-            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            "active",
+            "completed",
+          ],
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "status" NOT IN (?, ?)",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
 
       expect(
         dump(
@@ -222,15 +230,15 @@ describe('query builder', () => {
             .where({ deletedAt: undefined }),
         ),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              0,
-              "active",
-            ],
-            "query": "SELECT id, text FROM 'todos' WHERE completed = ? AND status IN (?)",
-            "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            0,
+            "active",
+          ],
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ? AND "status" IN (?)",
+          "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
+        }
+      `)
     })
 
     it('should handle OFFSET and LIMIT clauses', () => {
@@ -241,7 +249,7 @@ describe('query builder', () => {
             10,
             10,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ? OFFSET ? LIMIT ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -256,7 +264,7 @@ describe('query builder', () => {
             5,
             10,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ? OFFSET ? LIMIT ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -268,7 +276,7 @@ describe('query builder', () => {
             1,
             5,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ? OFFSET ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -280,7 +288,7 @@ describe('query builder', () => {
             1,
             10,
           ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? LIMIT ?",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "completed" = ? LIMIT ?",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -299,7 +307,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE completed = ?",
+          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE "completed" = ?",
           "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
         }
       `)
@@ -308,7 +316,7 @@ describe('query builder', () => {
           "bindValues": [
             1,
           ],
-          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE completed = ?",
+          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE "completed" = ?",
           "schema": "(ReadonlyArray<({ readonly count: number } <-> number)> <-> number)",
         }
       `)
@@ -318,14 +326,14 @@ describe('query builder', () => {
       expect(dump(db.todos.select('id', 'text').where('deletedAt', '=', null))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT id, text FROM 'todos' WHERE deletedAt IS NULL",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "deletedAt" IS NULL",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
       expect(dump(db.todos.select('id', 'text').where('deletedAt', '!=', null))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT id, text FROM 'todos' WHERE deletedAt IS NOT NULL",
+          "query": "SELECT "id", "text" FROM 'todos' WHERE "deletedAt" IS NOT NULL",
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
@@ -335,7 +343,7 @@ describe('query builder', () => {
       expect(dump(db.todos.orderBy('completed', 'desc'))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+          "query": "SELECT * FROM 'todos' ORDER BY "completed" desc",
           "schema": "ReadonlyArray<todos>",
         }
       `)
@@ -343,7 +351,7 @@ describe('query builder', () => {
       expect(dump(db.todos.orderBy([{ col: 'completed', direction: 'desc' }]))).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+          "query": "SELECT * FROM 'todos' ORDER BY "completed" desc",
           "schema": "ReadonlyArray<todos>",
         }
       `)
@@ -402,7 +410,7 @@ describe('query builder', () => {
             "Buy milk",
             "active",
           ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?)",
           "schema": "number",
         }
       `)
@@ -416,7 +424,7 @@ describe('query builder', () => {
             "Buy milk",
             "active",
           ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?)",
           "schema": "number",
         }
       `)
@@ -447,7 +455,7 @@ describe('query builder', () => {
             "a2",
             "John Doe",
           ],
-          "query": "INSERT INTO 'issue' (id, title, priority, created, modified, kanbanorder, creator) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "query": "INSERT INTO 'issue' ("id", "title", "priority", "created", "modified", "kanbanorder", "creator") VALUES (?, ?, ?, ?, ?, ?, ?)",
           "schema": "number",
         }
       `)
@@ -460,7 +468,7 @@ describe('query builder', () => {
             "completed",
             "123",
           ],
-          "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+          "query": "UPDATE 'todos' SET "status" = ? WHERE "id" = ?",
           "schema": "number",
         }
       `)
@@ -482,7 +490,7 @@ describe('query builder', () => {
             "some text",
             "123",
           ],
-          "query": "UPDATE 'todos' SET text = ? WHERE id = ?",
+          "query": "UPDATE 'todos' SET "text" = ? WHERE "id" = ?",
           "schema": "number",
         }
       `)
@@ -496,7 +504,7 @@ describe('query builder', () => {
             "John Doe",
             1,
           ],
-          "query": "UPDATE 'issue' SET priority = ?, creator = ? WHERE id = ?",
+          "query": "UPDATE 'issue' SET "priority" = ?, "creator" = ? WHERE "id" = ?",
           "schema": "number",
         }
       `)
@@ -508,7 +516,7 @@ describe('query builder', () => {
           "bindValues": [
             "completed",
           ],
-          "query": "DELETE FROM 'todos' WHERE status = ?",
+          "query": "DELETE FROM 'todos' WHERE "status" = ?",
           "schema": "number",
         }
       `)
@@ -524,7 +532,7 @@ describe('query builder', () => {
             "Buy milk",
             "active",
           ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING",
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?) ON CONFLICT ("id") DO NOTHING",
           "schema": "number",
         }
       `)
@@ -544,7 +552,7 @@ describe('query builder', () => {
             "Buy soy milk",
             "active",
           ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET text = ?, status = ?",
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?) ON CONFLICT ("id") DO UPDATE SET "text" = ?, "status" = ?",
           "schema": "number",
         }
       `)
@@ -558,7 +566,33 @@ describe('query builder', () => {
             "Buy milk",
             "active",
           ],
-          "query": "INSERT OR REPLACE INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+          "query": "INSERT OR REPLACE INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?)",
+          "schema": "number",
+        }
+      `)
+    })
+
+    it('should quote reserved column names', () => {
+      expect(
+        dump(db.selections.insert({ id: 1, group: 'alpha' }).onConflict('id', 'ignore')),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            1,
+            "alpha",
+          ],
+          "query": "INSERT INTO 'selections' (\"id\", \"group\") VALUES (?, ?) ON CONFLICT (\"id\") DO NOTHING",
+          "schema": "number",
+        }
+      `)
+
+      expect(dump(db.selections.update({ group: 'beta' }).where({ id: 1 }))).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "beta",
+            1,
+          ],
+          "query": "UPDATE 'selections' SET \"group\" = ? WHERE \"id\" = ?",
           "schema": "number",
         }
       `)
@@ -574,7 +608,7 @@ describe('query builder', () => {
             "Buy milk",
             "active",
           ],
-          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id, status) DO NOTHING",
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?) ON CONFLICT ("id", "status") DO NOTHING",
           "schema": "number",
         }
       `)
@@ -584,36 +618,36 @@ describe('query builder', () => {
       expect(
         dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              "123",
-              "Buy milk",
-              "active",
-            ],
-            "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) RETURNING id",
-            "schema": "ReadonlyArray<{ readonly id: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' ("id", "text", "status") VALUES (?, ?, ?) RETURNING "id"",
+          "schema": "ReadonlyArray<{ readonly id: string }>",
+        }
+      `)
 
       expect(
         dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')),
       ).toMatchInlineSnapshot(`
-          {
-            "bindValues": [
-              "completed",
-              "123",
-            ],
-            "query": "UPDATE 'todos' SET status = ? WHERE id = ? RETURNING id",
-            "schema": "ReadonlyArray<{ readonly id: string }>",
-          }
-        `)
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET "status" = ? WHERE "id" = ? RETURNING "id"",
+          "schema": "ReadonlyArray<{ readonly id: string }>",
+        }
+      `)
 
       expect(dump(db.todos.delete().where({ status: 'completed' }).returning('id'))).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",
           ],
-          "query": "DELETE FROM 'todos' WHERE status = ? RETURNING id",
+          "query": "DELETE FROM 'todos' WHERE "status" = ? RETURNING "id"",
           "schema": "ReadonlyArray<{ readonly id: string }>",
         }
       `)
@@ -625,7 +659,7 @@ describe('query builder', () => {
           "bindValues": [
             "completed",
           ],
-          "query": "DELETE FROM 'todos' WHERE status = ?",
+          "query": "DELETE FROM 'todos' WHERE "status" = ?",
           "schema": "number",
         }
       `)
@@ -636,7 +670,7 @@ describe('query builder', () => {
           "bindValues": [
             "completed",
           ],
-          "query": "DELETE FROM 'todos' WHERE status = ? AND deletedAt IS NULL",
+          "query": "DELETE FROM 'todos' WHERE "status" = ? AND "deletedAt" IS NULL",
           "schema": "number",
         }
       `)
@@ -649,7 +683,7 @@ describe('query builder', () => {
             "completed",
             "123",
           ],
-          "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+          "query": "UPDATE 'todos' SET "status" = ? WHERE "id" = ?",
           "schema": "number",
         }
       `)
@@ -663,7 +697,7 @@ describe('query builder', () => {
             "completed",
             "123",
           ],
-          "query": "UPDATE 'todos' SET status = ? WHERE id = ? AND deletedAt IS NULL",
+          "query": "UPDATE 'todos' SET "status" = ? WHERE "id" = ? AND "deletedAt" IS NULL",
           "schema": "number",
         }
       `)
@@ -776,7 +810,7 @@ describe('query builder', () => {
             "Lovelace",
             "ada@example.com",
           ],
-          "query": "INSERT INTO 'contacts' (id, contactFirstName, contactLastName, contactEmail) VALUES (?, ?, ?, ?)",
+          "query": "INSERT INTO 'contacts' ("id", "contactFirstName", "contactLastName", "contactEmail") VALUES (?, ?, ?, ?)",
           "usedTables": Set {
             "contacts",
           },
