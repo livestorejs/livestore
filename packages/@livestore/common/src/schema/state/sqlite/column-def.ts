@@ -179,6 +179,10 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     return SqliteDsl.real({ schema: coreSchema, nullable })
   }
 
+  if (isUint8ArraySchema(coreAst) || isUint8ArraySchema(encodedAst)) {
+    return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf, nullable })
+  }
+
   const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)
   if (literalColumn) return literalColumn
 
@@ -262,4 +266,17 @@ const getLiteralValueType = (
   return literalType === 'string' || literalType === 'number' || literalType === 'boolean' || literalType === 'bigint'
     ? literalType
     : null
+}
+
+const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
+  const identifier = SchemaAST.getIdentifierAnnotation(ast)
+  if (Option.isSome(identifier) && identifier.value.includes('Uint8Array')) {
+    return true
+  }
+
+  if (SchemaAST.isTupleType(ast)) {
+    return ast.elements.length === 0 && ast.rest.length === 1 && SchemaAST.isNumberKeyword(ast.rest[0]!.type)
+  }
+
+  return false
 }
