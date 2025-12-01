@@ -5,7 +5,8 @@
   "private": true,
   "exports": {
     "./release": "./src/commands/release.ts",
-    "./docs-export": "./src/commands/docs-export.ts"
+    "./docs-export": "./src/commands/docs-export.ts",
+    "./lint": "./src/commands/lint.ts"
   },
   "devDependencies": {
     "@livestore/common": "workspace:*",

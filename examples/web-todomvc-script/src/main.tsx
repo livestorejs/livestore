@@ -15,10 +15,29 @@ const adapter = makeInMemoryAdapter({
 
 const syncPayload = { authToken: 'insecure-token-change-me' }
 
+const getStoreId = () => {
+  if (typeof window === 'undefined') {
+    return 'unused'
+  }
+
+  const searchParams = new URLSearchParams(window.location.search)
+  const existing = searchParams.get('storeId')
+  if (existing !== null) {
+    return existing
+  }
+
+  const newStoreId = crypto.randomUUID()
+  searchParams.set('storeId', newStoreId)
+  window.location.search = searchParams.toString()
+  return newStoreId
+}
+
+const storeId = getStoreId()
+
 const store = await createStorePromise({
   adapter,
   schema,
-  storeId: 'store-1',
+  storeId,
   syncPayloadSchema: SyncPayload,
   syncPayload,
 })

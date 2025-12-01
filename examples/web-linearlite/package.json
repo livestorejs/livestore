@@ -69,7 +69,6 @@
     "lint": "biome lint .",
     "preview": "vite preview",
     "test": "playwright test",
-    "vite": "^7.2.4",
     "wrangler:deploy": "wrangler deploy -c dist/server/wrangler.json",
     "wrangler:dev": "wrangler dev --port 8787 --inspector-port 9230"
   }
