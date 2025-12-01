@@ -24,6 +24,7 @@ export {
   startDockerComposeServicesScoped,
 } from './DockerComposeService/DockerComposeService.ts'
 export * as FileLogger from './FileLogger.ts'
+export * from './workspace.ts'
 
 export const OtelLiveHttp = ({
   serviceName,

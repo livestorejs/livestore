@@ -3,8 +3,6 @@ import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
-  BrowserWorker,
-  BrowserWorkerRunner,
   Deferred,
   Effect,
   Exit,
@@ -22,6 +20,7 @@ import {
   WorkerError,
   WorkerRunner,
 } from '@livestore/utils/effect'
+import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
 
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'

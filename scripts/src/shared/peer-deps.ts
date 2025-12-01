@@ -7,6 +7,7 @@
 
 import path from 'node:path'
 import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
+import { LivestoreWorkspace } from '@livestore/utils-dev/node'
 import semver from 'semver'
 import * as yaml from 'yaml'
 
@@ -51,9 +52,17 @@ const parsePackageSpec = (spec: string): { name: string; version: string } | und
 interface LockfilePackage {
   resolution?: { integrity?: string }
   peerDependencies?: Record<string, string>
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>
   dependencies?: Record<string, string>
   optionalDependencies?: Record<string, string>
 }
+
+const ignoredPeerViolations = new Set([
+  // rwsdk currently targets React 19 canary builds; we stay on stable 19.1.0 until upstream aligns
+  'rwsdk->react',
+  'rwsdk->react-dom',
+  'rwsdk->react-server-dom-webpack',
+])
 
 interface ParsedLockfile {
   lockfileVersion: string
@@ -65,12 +74,8 @@ interface ParsedLockfile {
  * Checks all peer dependencies in the lockfile are satisfied
  */
 export const checkPeerDependencies = Effect.gen(function* () {
-  const workspaceRoot = process.env.WORKSPACE_ROOT
-  if (!workspaceRoot) {
-    return yield* new PeerDepCheckError({ message: 'WORKSPACE_ROOT is not set. Make sure to run "direnv allow"' })
-  }
-
   const fs = yield* FileSystem.FileSystem
+  const workspaceRoot = yield* LivestoreWorkspace
   const lockfilePath = path.join(workspaceRoot, 'pnpm-lock.yaml')
 
   // Read and parse the lockfile
@@ -122,6 +127,12 @@ export const checkPeerDependencies = Effect.gen(function* () {
     if (!parsed || !packageData.peerDependencies) continue
 
     for (const [peerDep, requiredRange] of Object.entries(packageData.peerDependencies)) {
+      const ignoreKey = `${parsed.name}->${peerDep}`
+      if (ignoredPeerViolations.has(ignoreKey)) continue
+
+      const isOptional = packageData.peerDependenciesMeta?.[peerDep]?.optional === true
+      if (isOptional) continue
+
       const resolvedSet = resolvedVersions.get(peerDep)
 
       if (!resolvedSet || resolvedSet.size === 0) {

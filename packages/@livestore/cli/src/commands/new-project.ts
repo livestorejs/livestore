@@ -1,5 +1,6 @@
 import * as os from 'node:os'
 import * as nodePath from 'node:path'
+import { sluggify } from '@livestore/utils'
 import {
   Command,
   Console,
@@ -12,6 +13,8 @@ import {
 } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
+import { detectPackageManager, pmCommands } from '../package-manager.ts'
+
 // Schema for GitHub API response
 const GitHubContentSchema = Schema.Struct({
   name: Schema.String,
@@ -21,6 +24,11 @@ const GitHubContentSchema = Schema.Struct({
 })
 
 const GitHubContentsResponseSchema = Schema.Array(GitHubContentSchema)
+
+/** Schema for parsing package.json scripts (dev or start) */
+const PackageJsonScriptsSchema = Schema.Struct({
+  scripts: Schema.Union(Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })),
+})
 
 // Error types
 export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>()('ExampleNotFoundError', {
@@ -40,11 +48,11 @@ export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsErro
 }) {}
 
 // Fetch available examples from GitHub
-const fetchExamples = (branch: string) =>
+const fetchExamples = (ref: string) =>
   Effect.gen(function* () {
-    const url = `https://api.github.com/repos/livestorejs/livestore/contents/examples?ref=${branch}`
+    const url = `https://api.github.com/repos/livestorejs/livestore/contents/examples?ref=${ref}`
 
-    yield* Effect.log(`Fetching examples from branch: ${branch}`)
+    yield* Effect.log(`Fetching examples from ref: ${ref}`)
 
     const request = HttpClientRequest.get(url)
     const response = yield* HttpClient.execute(request).pipe(
@@ -100,13 +108,13 @@ const selectExample = (examples: string[]) =>
   })
 
 // Download and extract example using tiged approach
-const downloadExample = (exampleName: string, branch: string, destinationPath: string) =>
+const downloadExample = (exampleName: string, ref: string, destinationPath: string) =>
   Effect.gen(function* () {
-    yield* Console.log(`📥 Downloading example "${exampleName}" from branch "${branch}"...`)
+    yield* Console.log(`📥 Downloading example "${exampleName}" from ref "${ref}"...`)
 
     const tempDir = yield* Effect.sync(() => os.tmpdir())
-    const tarballPath = nodePath.join(tempDir, `livestore-${branch}-${Date.now()}.tar.gz`)
-    const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${branch}`
+    const tarballPath = nodePath.join(tempDir, `livestore-${sluggify(ref)}-${Date.now()}.tar.gz`)
+    const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${ref}`
 
     // Download tarball directly
     const request = HttpClientRequest.get(tarballUrl)
@@ -199,9 +207,14 @@ export const createCommand = Cli.Command.make(
       Cli.Options.optional,
       Cli.Options.withDescription('Example name to create (bypasses interactive selection)'),
     ),
-    branch: Cli.Options.text('branch').pipe(
+    ref: Cli.Options.text('ref').pipe(
+      Cli.Options.withAlias('commit'),
+      Cli.Options.withAlias('branch'),
+      Cli.Options.withAlias('tag'),
       Cli.Options.withDefault('dev'),
-      Cli.Options.withDescription('Branch to fetch examples from'),
+      Cli.Options.withDescription(
+        'The name of the commit/branch/tag to fetch examples from. Pull requests refs must be fully-formed (e.g., `refs/pull/123/merge`).',
+      ),
     ),
     path: Cli.Args.text({ name: 'path' }).pipe(
       Cli.Args.optional,
@@ -210,17 +223,17 @@ export const createCommand = Cli.Command.make(
   },
   Effect.fn(function* ({
     example,
-    branch,
+    ref,
     path,
   }: {
     example: Option.Option<string>
-    branch: string
+    ref: string
     path: Option.Option<string>
   }) {
     yield* Effect.log('🚀 Creating new LiveStore project...')
 
     // Fetch available examples
-    const examples = yield* fetchExamples(branch)
+    const examples = yield* fetchExamples(ref)
 
     if (examples.length === 0) {
       yield* Console.log('❌ No examples found in the repository')
@@ -249,15 +262,45 @@ export const createCommand = Cli.Command.make(
     const destinationPath = Option.isSome(path) ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
 
     // Download and extract the example
-    yield* downloadExample(selectedExample, branch, destinationPath)
+    yield* downloadExample(selectedExample, ref, destinationPath)
 
-    // Success message
+    // Detect available run script (dev or start) from the created project's package.json.
+    // Some examples use "dev" (web projects), others use "start" (Expo projects),
+    // and some have no run script at all (e.g., node-effect-cli).
+    const fs = yield* FileSystem.FileSystem
+    const packageJsonPath = nodePath.join(destinationPath, 'package.json')
+    const packageJsonContent = yield* fs.readFileString(packageJsonPath)
+    const runScript = yield* Schema.decodeUnknown(Schema.parseJson(PackageJsonScriptsSchema))(packageJsonContent).pipe(
+      Effect.map((pkg) => ('dev' in pkg.scripts ? ('dev' as const) : ('start' as const))),
+      Effect.orElseSucceed(() => undefined),
+    )
+
+    // Detect which package manager was used to invoke the CLI (via npm_config_user_agent).
+    // This ensures the "next steps" instructions match how the user ran the create command.
+    const pmResult = detectPackageManager()
+
     yield* Console.log('\n🎉 Project created successfully!')
     yield* Console.log(`📁 Location: ${destinationPath}`)
     yield* Console.log('\n📋 Next steps:')
     yield* Console.log(`   cd ${nodePath.basename(destinationPath)}`)
-    yield* Console.log('   pnpm install    # Install dependencies')
-    yield* Console.log('   pnpm dev        # Start development server')
+
+    // Yarn is not recommended for LiveStore projects. When detected, show a warning
+    // and suggest using bun instead for the next steps.
+    if (pmResult._tag === 'unsupported') {
+      yield* Console.log('   bun install    # Install dependencies (yarn is not recommended)')
+      if (runScript !== undefined) {
+        yield* Console.log(`   bun ${runScript}        # Start development server`)
+      }
+      yield* Console.log('\n⚠️  Yarn is not recommended for LiveStore projects.')
+      yield* Console.log('   We recommend using bun, pnpm, or npm instead.')
+      yield* Console.log('   The commands above use bun by default.')
+    } else {
+      const pm = pmResult.pm
+      yield* Console.log(`   ${pmCommands.install[pm]}    # Install dependencies`)
+      if (runScript !== undefined) {
+        yield* Console.log(`   ${pmCommands.run[pm](runScript)}        # Start development server`)
+      }
+    }
     yield* Console.log('\n💡 Tip: Run `git init` if you want to initialize version control')
   }),
 )

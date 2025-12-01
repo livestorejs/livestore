@@ -1,6 +1,6 @@
 {
   "name": "@livestore/peer-deps",
-  "version": "0.4.0-dev.18",
+  "version": "0.4.0-dev.19",
   "type": "module",
   "sideEffects": false,
   "dependencies": {
@@ -19,7 +19,7 @@
     "@effect/sql": "0.46.0",
     "@effect/typeclass": "0.37.0",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/resources": "2.0.1",
+    "@opentelemetry/resources": "catalog:",
     "effect": "catalog:"
   },
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",

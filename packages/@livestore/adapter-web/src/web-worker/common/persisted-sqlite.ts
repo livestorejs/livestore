@@ -6,7 +6,8 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Chunk, Effect, Opfs, Option, Order, Schedule, Schema, Stream, type WebError } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {

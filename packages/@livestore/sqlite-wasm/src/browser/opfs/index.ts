@@ -1,4 +1,5 @@
-import { Effect, type Opfs, type Scope } from '@livestore/utils/effect'
+import { Effect, type Scope } from '@livestore/utils/effect'
+import type { Opfs } from '@livestore/utils/effect/browser'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 
 import { AccessHandlePoolVFS } from './AccessHandlePoolVFS.ts'

@@ -3,7 +3,7 @@ import os from 'node:os'
 import { join } from 'node:path'
 
 import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
-import { cmdText } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
@@ -63,19 +63,18 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 export const deployToNetlify = ({
   site,
   target,
-  cwd,
   message,
   debug,
 }: {
   site: string
   target: Target
-  cwd: string
   message?: string
   /** When true, passes --debug to Netlify CLI and increases logging. */
   debug?: boolean
 }) =>
   Effect.gen(function* () {
-    const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { cwd, stderr: 'pipe' })
+    const cwd = yield* CurrentWorkingDirectory
+    const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' })
 
     if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE)) {
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
@@ -90,7 +89,6 @@ export const deployToNetlify = ({
       if (explicit && explicit !== '') return explicit
       // Resolve site name → id for more reliable config resolution
       const raw = yield* cmdText(['pnpm', '--package=netlify-cli', 'dlx', 'netlify', 'sites:list', '--json'], {
-        cwd,
         stderr: 'pipe',
       })
 
@@ -135,7 +133,6 @@ export const deployToNetlify = ({
         target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
       ],
       {
-        cwd,
         // Pipe stderr into stdout so the returned string includes build errors
         stderr: 'pipe',
         env: {
