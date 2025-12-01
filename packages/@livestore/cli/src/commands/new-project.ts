@@ -40,11 +40,11 @@ export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsErro
 }) {}
 
 // Fetch available examples from GitHub
-const fetchExamples = (branch: string) =>
+const fetchExamples = (ref: string) =>
   Effect.gen(function* () {
-    const url = `https://api.github.com/repos/livestorejs/livestore/contents/examples?ref=${branch}`
+    const url = `https://api.github.com/repos/livestorejs/livestore/contents/examples?ref=${ref}`
 
-    yield* Effect.log(`Fetching examples from branch: ${branch}`)
+    yield* Effect.log(`Fetching examples from ref: ${ref}`)
 
     const request = HttpClientRequest.get(url)
     const response = yield* HttpClient.execute(request).pipe(
@@ -100,13 +100,13 @@ const selectExample = (examples: string[]) =>
   })
 
 // Download and extract example using tiged approach
-const downloadExample = (exampleName: string, branch: string, destinationPath: string) =>
+const downloadExample = (exampleName: string, ref: string, destinationPath: string) =>
   Effect.gen(function* () {
-    yield* Console.log(`📥 Downloading example "${exampleName}" from branch "${branch}"...`)
+    yield* Console.log(`📥 Downloading example "${exampleName}" from ref "${ref}"...`)
 
     const tempDir = yield* Effect.sync(() => os.tmpdir())
-    const tarballPath = nodePath.join(tempDir, `livestore-${branch}-${Date.now()}.tar.gz`)
-    const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${branch}`
+    const tarballPath = nodePath.join(tempDir, `livestore-${ref}-${Date.now()}.tar.gz`)
+    const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${ref}`
 
     // Download tarball directly
     const request = HttpClientRequest.get(tarballUrl)
@@ -199,9 +199,12 @@ export const createCommand = Cli.Command.make(
       Cli.Options.optional,
       Cli.Options.withDescription('Example name to create (bypasses interactive selection)'),
     ),
-    branch: Cli.Options.text('branch').pipe(
+    ref: Cli.Options.text('ref').pipe(
+      Cli.Options.withAlias('commit'),
+      Cli.Options.withAlias('branch'),
+      Cli.Options.withAlias('tag'),
       Cli.Options.withDefault('dev'),
-      Cli.Options.withDescription('Branch to fetch examples from'),
+      Cli.Options.withDescription('The name of the commit/branch/tag to fetch examples from'),
     ),
     path: Cli.Args.text({ name: 'path' }).pipe(
       Cli.Args.optional,
@@ -210,17 +213,17 @@ export const createCommand = Cli.Command.make(
   },
   Effect.fn(function* ({
     example,
-    branch,
+    ref,
     path,
   }: {
     example: Option.Option<string>
-    branch: string
+    ref: string
     path: Option.Option<string>
   }) {
     yield* Effect.log('🚀 Creating new LiveStore project...')
 
     // Fetch available examples
-    const examples = yield* fetchExamples(branch)
+    const examples = yield* fetchExamples(ref)
 
     if (examples.length === 0) {
       yield* Console.log('❌ No examples found in the repository')
@@ -249,7 +252,7 @@ export const createCommand = Cli.Command.make(
     const destinationPath = Option.isSome(path) ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
 
     // Download and extract the example
-    yield* downloadExample(selectedExample, branch, destinationPath)
+    yield* downloadExample(selectedExample, ref, destinationPath)
 
     // Success message
     yield* Console.log('\n🎉 Project created successfully!')
