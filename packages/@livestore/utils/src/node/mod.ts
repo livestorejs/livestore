@@ -2,7 +2,7 @@ import * as http from 'node:http'
 import * as PlatformNode from '@effect/platform-node'
 import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
-import { OtelTracer, UnknownError } from '../effect/index.ts'
+import { OtelTracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
 export * as Cli from '@effect/cli'

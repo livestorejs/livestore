@@ -15,8 +15,8 @@
       "default": "./src/cuid/cuid.node.ts"
     },
     "./nanoid": "./src/nanoid/index.ts",
-    "./effect": "./src/effect/index.ts",
-    "./effect/browser": "./src/browser/effect.ts",
+    "./effect": "./src/effect/mod.ts",
+    "./effect/browser": "./src/browser/mod.ts",
     "./node": "./src/node/mod.ts",
     "./bun": "./src/bun/mod.ts"
   },
@@ -101,12 +101,12 @@
         "default": "./dist/nanoid/index.js"
       },
       "./effect": {
-        "types": "./dist/effect/index.d.ts",
-        "default": "./dist/effect/index.js"
+        "types": "./dist/effect/mod.d.ts",
+        "default": "./dist/effect/mod.js"
       },
       "./effect/browser": {
-        "types": "./dist/browser/effect.d.ts",
-        "default": "./dist/browser/effect.js"
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
       },
       "./node": {
         "types": "./dist/node/mod.d.ts",

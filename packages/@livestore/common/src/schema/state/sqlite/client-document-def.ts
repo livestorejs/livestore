@@ -513,17 +513,27 @@ export namespace ClientDocumentTableDef {
     }
   }
 
-  export type GetOptions<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions> ? TOptions : never
+  export type GetOptions<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions
+    : never
 
   export type TraitAny = Trait<any, any, any, any>
 
-  export type DefaultIdType<TTableDef extends TraitAny> =
-    TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer TOptions>
-      ? TOptions['default']['id'] extends SessionIdSymbol | string
-        ? TOptions['default']['id']
-        : never
+  export type DefaultIdType<TTableDef extends TraitAny> = TTableDef extends ClientDocumentTableDef.Trait<
+    any,
+    any,
+    any,
+    infer TOptions
+  >
+    ? TOptions['default']['id'] extends SessionIdSymbol | string
+      ? TOptions['default']['id']
       : never
+    : never
 
   export type SetEventDefLike<
     TName extends string,

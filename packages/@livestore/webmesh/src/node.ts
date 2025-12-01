@@ -12,8 +12,8 @@ import {
   Schema,
   Scope,
   Stream,
+  WebChannel,
 } from '@livestore/utils/effect'
-import { WebChannel } from '@livestore/utils/effect/browser'
 
 import { makeDirectChannel } from './channel/direct-channel.ts'
 import { makeProxyChannel } from './channel/proxy-channel.ts'

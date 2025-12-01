@@ -1,8 +1,8 @@
 import type { DebugInfo, SyncState } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnknownError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
+import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
-import type { WebChannel } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { NOT_REFRESHED_YET } from '../reactive.ts'

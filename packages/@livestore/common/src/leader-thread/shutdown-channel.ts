@@ -1,5 +1,5 @@
+import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
-import type { WebChannel } from '@livestore/utils/effect/browser'
 
 import {
   IntentionalShutdownCause,
