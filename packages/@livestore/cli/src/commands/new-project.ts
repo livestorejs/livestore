@@ -204,7 +204,9 @@ export const createCommand = Cli.Command.make(
       Cli.Options.withAlias('branch'),
       Cli.Options.withAlias('tag'),
       Cli.Options.withDefault('dev'),
-      Cli.Options.withDescription('The name of the commit/branch/tag to fetch examples from'),
+      Cli.Options.withDescription(
+        'The name of the commit/branch/tag to fetch examples from. Pull requests refs must be fully-formed (e.g., `refs/pull/123/merge`).',
+      ),
     ),
     path: Cli.Args.text({ name: 'path' }).pipe(
       Cli.Args.optional,
