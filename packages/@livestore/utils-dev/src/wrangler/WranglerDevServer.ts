@@ -24,17 +24,35 @@ export interface WranglerDevServer {
 }
 
 /**
- * Configuration for starting WranglerDevServer
+ * Readiness and retry configuration for wrangler boot and HTTP health.
+ *
+ * Example: startupTimeout=20s, connectTimeout=5s, retrySchedule=recurs(1)
+ * - Give wrangler up to 20s to boot; if it succeeds, give the HTTP check up to 5s.
+ * - If wrangler fails/times out, retry boot once; each boot attempt gets its own 20s budget.
+ * connectTimeout should be shorter than startupTimeout because HTTP readiness should be fast after boot.
  */
+export interface WranglerReadinessOptions {
+  /** Max time to wait for wrangler to report ready before retrying. */
+  startupTimeout?: Duration.DurationInput
+  /** Max time for the HTTP connectivity check after wrangler reports ready. */
+  connectTimeout?: Duration.DurationInput
+  /** Retry policy for startup attempts (applies when startupTimeout elapses or wrangler throws). */
+  retrySchedule?: Schedule.Schedule<unknown, unknown, never>
+}
+
 export interface StartWranglerDevServerArgs {
+  /** Path to wrangler.toml (defaults to cwd/wrangler.toml). */
   wranglerConfigPath?: string
+  /** Working directory wrangler should use. */
   cwd: string
   /** The port to try first. The dev server may bind a different port if unavailable. */
   preferredPort?: number
   /** @default false */
   showLogs?: boolean
+  /** Optional inspector port for wrangler dev. */
   inspectorPort?: number
-  connectTimeout?: Duration.DurationInput
+  /** Readiness and retry configuration for bringing up wrangler and confirming connectivity. */
+  readiness?: WranglerReadinessOptions
 }
 
 /**
@@ -74,6 +92,8 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       )
       const resolvedMainPath = yield* Effect.try(() => path.resolve(args.cwd, parsedConfig.main))
 
+      const readiness = args.readiness ?? {}
+      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI ? 30 : 10)
       const devServer = yield* Effect.promise(() =>
         wrangler.unstable_dev(resolvedMainPath, {
           config: configPath,
@@ -85,6 +105,24 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
             disableExperimentalWarning: true,
           },
         }),
+      ).pipe(
+        Effect.timeout(startupTimeout),
+        Effect.mapError(
+          (cause) =>
+            new WranglerDevServerError({
+              cause,
+              message: `Failed to start wrangler dev server within ${Duration.format(startupTimeout)}`,
+              port: preferredPort,
+            }),
+        ),
+        Effect.tapError((error) =>
+          Effect.logError('Wrangler dev server failed to start', {
+            message: error.message,
+            preferredPort,
+            cwd: args.cwd,
+          }),
+        ),
+        Effect.retry(readiness.retrySchedule ?? Schedule.recurs(1)),
       )
 
       yield* Effect.addFinalizer(
@@ -111,10 +149,11 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const actualHost = devServer.address
       const url = `http://${actualHost}:${actualPort}`
 
-      // Use longer timeout in CI environments to account for slower startup times
-      const defaultTimeout = Duration.seconds(IS_CI ? 30 : 5)
+      // Use longer timeout in CI environments to account for slower HTTP readiness
+      const defaultConnectivityTimeout = Duration.seconds(IS_CI ? 30 : 5)
+      const connectivityTimeout = readiness.connectTimeout ?? defaultConnectivityTimeout
 
-      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: args.connectTimeout ?? defaultTimeout })
+      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: connectivityTimeout })
 
       if (showLogs) {
         yield* Effect.logDebug(
@@ -127,9 +166,10 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
         url,
       } satisfies WranglerDevServer
     }).pipe(
-      Effect.mapError(
-        (error) =>
-          new WranglerDevServerError({ cause: error, message: 'Failed to start wrangler dev server', port: -1 }),
+      Effect.mapError((error) =>
+        error instanceof WranglerDevServerError
+          ? error
+          : new WranglerDevServerError({ cause: error, message: 'Failed to start wrangler dev server', port: -1 }),
       ),
       Effect.withSpan('WranglerDevServerService', {
         attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },

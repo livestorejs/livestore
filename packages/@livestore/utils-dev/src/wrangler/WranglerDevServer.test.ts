@@ -59,7 +59,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
             WranglerDevServerTest({
               cwd: '/tmp',
               wranglerConfigPath: '/dev/null',
-              connectTimeout: '500 millis',
+              readiness: { connectTimeout: '500 millis' },
             }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
           ),
           Effect.flip,
