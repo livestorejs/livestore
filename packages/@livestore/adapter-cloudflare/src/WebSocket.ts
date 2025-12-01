@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Exit, identity, type Schedule, type Scope, WebSocket } from '@livestore/utils/effect'
+import { Effect, Exit, identity, type Schedule, type Scope } from '@livestore/utils/effect'
+import { WebSocket } from '@livestore/utils/effect/browser'
 
 // TODO refactor using Effect socket implementation
 // https://github.com/Effect-TS/effect/blob/main/packages%2Fexperimental%2Fsrc%2FDevTools%2FClient.ts#L113

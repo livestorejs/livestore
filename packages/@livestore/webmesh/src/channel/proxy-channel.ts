@@ -13,8 +13,8 @@ import {
   Scope,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
-import { WebChannel } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import {

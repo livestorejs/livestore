@@ -4,7 +4,7 @@ import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
 import type { Worker } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
-import { WebChannel } from '@livestore/utils/effect/browser'
+import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 
 export const logDevtoolsUrl = ({
@@ -84,7 +84,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
 
       const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
 
-      const contentscriptMainChannel = yield* WebChannel.windowChannel({
+      const contentscriptMainChannel = yield* WebChannelBrowser.windowChannel({
         listenWindow: window,
         sendWindow: window,
         schema: Webmesh.WebmeshSchema.Packet,

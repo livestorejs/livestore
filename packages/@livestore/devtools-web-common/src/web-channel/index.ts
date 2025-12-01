@@ -1,8 +1,8 @@
 import { Devtools, UnknownError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
-import { Deferred, Effect, Schema, Stream } from '@livestore/utils/effect'
-import { WebChannel } from '@livestore/utils/effect/browser'
+import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import type { MeshNode } from '@livestore/webmesh'
 import { WebmeshSchema } from '@livestore/webmesh'
 
@@ -18,7 +18,7 @@ export const makeSessionInfoBroadcastChannel: Effect.Effect<
   WebChannel.WebChannel<Devtools.SessionInfo.Message, Devtools.SessionInfo.Message>,
   UnknownError,
   Scope.Scope
-> = WebChannel.broadcastChannel({
+> = WebChannelBrowser.broadcastChannel({
   channelName: 'session-info',
   schema: Devtools.SessionInfo.Message,
 })
@@ -46,7 +46,7 @@ export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSess
 // Effect.suspend is needed since `window` is not available in the shared worker
 export const makeStaticClientSessionChannel = {
   contentscriptMain: Effect.suspend(() =>
-    WebChannel.windowChannel({
+    WebChannelBrowser.windowChannel({
       listenWindow: window,
 
       sendWindow: window,
@@ -55,7 +55,7 @@ export const makeStaticClientSessionChannel = {
     }),
   ),
   clientSession: Effect.suspend(() =>
-    WebChannel.windowChannel({
+    WebChannelBrowser.windowChannel({
       listenWindow: window,
 
       sendWindow: window,

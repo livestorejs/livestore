@@ -5,7 +5,7 @@
  */
 
 import { Effect, Stream } from 'effect'
-import { prettyBytes } from '../../mod.ts'
+import prettyBytes from 'pretty-bytes'
 import { Opfs } from './Opfs.ts'
 import { getDirectoryHandleByPath, getMetadata, remove } from './utils.ts'
 
