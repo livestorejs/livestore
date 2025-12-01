@@ -314,6 +314,12 @@ importers:
 
   docs/src/content/_assets/code:
     dependencies:
+      '@automerge/automerge':
+        specifier: 3.2.0
+        version: 3.2.0
+      '@automerge/react':
+        specifier: 2.5.0
+        version: 2.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20251118.0
@@ -2951,6 +2957,35 @@ packages:
   '@astrojs/yaml2ts@0.2.2':
     resolution: {integrity: sha512-GOfvSr5Nqy2z5XiwqTouBBpy5FyI6DEe+/g/Mk5am9SjILN1S5fOEvYK0GuWHg98yS/dobP4m8qyqw/URW35fQ==}
 
+  '@automerge/automerge-repo-network-broadcastchannel@2.5.0':
+    resolution: {integrity: sha512-57rUTYf0W6kL9DXwjRtyGLqeyz65tDIpiNQdc1nXHnN4VkNMvNo0xzb37nyFKWHEqPWA0DGCcBA8HRlbVHHyHw==}
+
+  '@automerge/automerge-repo-network-messagechannel@2.5.0':
+    resolution: {integrity: sha512-G7m161tId4djPMzDPlP7nIEsDY7ddbKfKvpJP7kkVqv3OA/Ml8fzyKaU7C1++s/g0FSNCTiN6hOhFCbSkb6/Dw==}
+
+  '@automerge/automerge-repo-network-websocket@2.5.0':
+    resolution: {integrity: sha512-zrwbkW8hk3fWkXdeaH+YDfGG63WaB9WLfWYyinZx2AQv4mr6D6UhIhviIjweMmRxMLen6NlIcdu3toHV33ZuKg==}
+
+  '@automerge/automerge-repo-react-hooks@2.5.0':
+    resolution: {integrity: sha512-SToH6koaQ/sRB8m5gnP6F+QXAKTIEHwQp7aq7Dy3EzLx3CNMlyaQ3fAVCW+vdf9zWfuoEUrm3KZCk7i3wzICUw==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+
+  '@automerge/automerge-repo-storage-indexeddb@2.5.0':
+    resolution: {integrity: sha512-7MJYJ5S6K7dHlbvs5/u/v9iexqOeprU/qQonup28r2IoVqwzjuN5ezaoVk6JRBMDI/ZxWfU4rNrqVrVlB49yXA==}
+
+  '@automerge/automerge-repo@2.5.0':
+    resolution: {integrity: sha512-bdxuMuKmxw0ZjwQXecrIX1VrHXf445bYCftNJJ5vqgGWVvINB5ZKFYAbtgPIyu1Y0TXQKvc6eqESaDeL+g8MmA==}
+
+  '@automerge/automerge@3.2.0':
+    resolution: {integrity: sha512-ANav4cdVYn7TrpeN28fAu9vpWxu8GWwpMJM2JjtfxFULTQnbFCK4y0Wmdk3zaiNgvYSGK0pkbYfCOrxVpXic8w==}
+
+  '@automerge/react@2.5.0':
+    resolution: {integrity: sha512-MzOnkmK/qTG+JdUgEqKHENyDEXf+lY3tit1ZuCbz4LfMD6Itw6Lgnb2Cksjyiq/ACzJemehp1PBF2DCAfYHLmA==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+
   '@babel/code-frame@7.10.4':
     resolution: {integrity: sha512-vG6SvB6oYEhvgisZNFRmRCUkLz11c7rp+tbNTynGqc6mS1d5ATd/sGyV6W0KZZnXRKMTzZDRgQT3Ou9jhpAfUg==}
 
@@ -3524,6 +3559,36 @@ packages:
 
   '@capsizecss/unpack@2.4.0':
     resolution: {integrity: sha512-GrSU71meACqcmIUxPYOJvGKF0yryjN/L1aCuE9DViCTJI7bfkjgYDPD1zbNDcINJwSSP6UaBZY9GAbYDO7re0Q==}
+
+  '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
+    resolution: {integrity: sha512-P7swiOAdF7aSi0H+tHtHtr6zrpF3aAq/W9FXx5HektRvLTM2O89xCyXF3pk7pLc7QpaY7AoaE8UowVf9QBdh3w==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@cbor-extract/cbor-extract-darwin-x64@2.2.0':
+    resolution: {integrity: sha512-1liF6fgowph0JxBbYnAS7ZlqNYLf000Qnj4KjqPNW4GViKrEql2MgZnAsExhY9LSy8dnvA4C0qHEBgPrll0z0w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@cbor-extract/cbor-extract-linux-arm64@2.2.0':
+    resolution: {integrity: sha512-rQvhNmDuhjTVXSPFLolmQ47/ydGOFXtbR7+wgkSY0bdOxCFept1hvg59uiLPT2fVDuJFuEy16EImo5tE2x3RsQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@cbor-extract/cbor-extract-linux-arm@2.2.0':
+    resolution: {integrity: sha512-QeBcBXk964zOytiedMPQNZr7sg0TNavZeuUCD6ON4vEOU/25+pLhNN6EDIKJ9VLTKaZ7K7EaAriyYQ1NQ05s/Q==}
+    cpu: [arm]
+    os: [linux]
+
+  '@cbor-extract/cbor-extract-linux-x64@2.2.0':
+    resolution: {integrity: sha512-cWLAWtT3kNLHSvP4RKDzSTX9o0wvQEEAj4SKvhWuOVZxiDAeQazr9A+PSiRILK1VYMLeDml89ohxCnUNQNQNCw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@cbor-extract/cbor-extract-win32-x64@2.2.0':
+    resolution: {integrity: sha512-l2M+Z8DO2vbvADOBNLbbh9y5ST1RY5sqkWOg/58GkUPBYou/cuNZ68SGQ644f1CvZ8kcOxyZtw06+dxWHIoN/w==}
+    cpu: [x64]
+    os: [win32]
 
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
@@ -5217,6 +5282,10 @@ packages:
     resolution: {integrity: sha512-33w50VcYLZ7RpUCFvl+n8JoLRGSVKerbH6cXtVjzA7un9JSkJWZQVS3nDmWYbq6OR0VnS1LGn7r+/ll6pSOvCg==}
     engines: {node: '>=18.14.0'}
     hasBin: true
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -8560,6 +8629,9 @@ packages:
   base-64@1.0.0:
     resolution: {integrity: sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg==}
 
+  base-x@4.0.1:
+    resolution: {integrity: sha512-uAZ8x6r6S3aUM9rbHGVOIsR15U/ZSc82b3ymnCPsT45Gk1DDvhDPdIgB5MrhirZWt+5K0EEPQH985kNqZgNPFw==}
+
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
@@ -8645,6 +8717,12 @@ packages:
     resolution: {integrity: sha512-tbydkR/CxfMwelN0vwdP/pLkDwyAASZ+VfWm4EOwlB6SWhx1sYnWLqo8N5j0rAzPfzfRaxt0mM/4wPU/Su84RQ==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
+
+  bs58@5.0.0:
+    resolution: {integrity: sha512-r+ihvQJvahgYT50JD05dyJNKlmmSlMoOGwn1lCcEzanPglg7TxYjioQUYehQ9mAR/+hOSd2jRc/Z2y5UxBymvQ==}
+
+  bs58check@3.0.1:
+    resolution: {integrity: sha512-hjuuJvoWEybo7Hn/0xOrczQKKEKD63WguEjlhLExYs2wUBcebDC1jDNK17eEAD2lYfw82d5ASC1d7K3SWszjaQ==}
 
   bser@2.1.1:
     resolution: {integrity: sha512-gQxTNE/GAfIIrmHLUE3oJyp5FO6HRBfhjnw4/wMmA63ZGDJnWBmgY/lyQBpnDUkGmAhbSe39tx2d/iTOAfglwQ==}
@@ -8756,6 +8834,13 @@ packages:
   cardinal@2.1.1:
     resolution: {integrity: sha512-JSr5eOgoEymtYHBjNWyjrMqet9Am2miJhlfKNdqLp6zoeAh0KN5dRAcxlecj5mAJrmQomgiOBj35xHLrFjqBpw==}
     hasBin: true
+
+  cbor-extract@2.2.0:
+    resolution: {integrity: sha512-Ig1zM66BjLfTXpNgKpvBePq271BPOvu8MR0Jl080yG7Jsl+wAZunfrwiwA+9ruzm/WEdIV5QF/bjDZTqyAIVHA==}
+    hasBin: true
+
+  cbor-x@1.6.0:
+    resolution: {integrity: sha512-0kareyRwHSkL6ws5VXHEf8uY1liitysCVJjlmhaLG+IXLqhSaOO+t63coaso7yjwEzWZzLy8fJo06gZDVQM9Qg==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -10236,6 +10321,9 @@ packages:
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
 
@@ -11180,6 +11268,11 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
+
+  isomorphic-ws@5.0.0:
+    resolution: {integrity: sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==}
+    peerDependencies:
+      ws: '*'
 
   isstream@0.1.2:
     resolution: {integrity: sha512-Yljz7ffyPbrLpLngrMtZ7NduUgVvi6wG9RJ9IUcyCd59YQ911PBJphODUcbOVbqYfxe1wuYf/LJ8PauMRwsM/g==}
@@ -12417,6 +12510,10 @@ packages:
     resolution: {integrity: sha512-dPEtOeMvF9VMcYV/1Wb8CPoVAXtp6MKMlcbAt4ddqmGqUJ6fQZFXkNZNkNlfevtNkGtaSoXf/vNNNSvgrdXwtA==}
     engines: {node: '>= 6.13.0'}
 
+  node-gyp-build-optional-packages@5.1.1:
+    resolution: {integrity: sha512-+P72GAjVAbTxjjwUmwjVrqrdZROD4nf8KgpBoDxqXXTiYZZt/ud60dE5yvCSr9lRO8e8yv6kgJIC0K0PfZFVQw==}
+    hasBin: true
+
   node-gyp-build-optional-packages@5.2.2:
     resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
     hasBin: true
@@ -13421,6 +13518,11 @@ packages:
     resolution: {integrity: sha512-jXkSl3CpvPYEF+p/eGDLB4sPoDX8pKkYvRl9+rR8HxLY0X04vW7hCm1/0zHoUSjPZ3bDa+wXWNTDVIw/R8aDVw==}
     peerDependencies:
       react: ^19.1.0
+
+  react-usestateref@1.0.9:
+    resolution: {integrity: sha512-t8KLsI7oje0HzfzGhxFXzuwbf1z9vhBM1ptHLUIHhYqZDKFuI5tzdhEVxSNzUkYxwF8XdpOErzHlKxvP7sTERw==}
+    peerDependencies:
+      react: '>16.0.0'
 
   react-virtualized-auto-sizer@1.0.26:
     resolution: {integrity: sha512-CblNyiNVw2o+hsa5/49NH2ogGxZ+t+3aweRvNSq7TVjDIlwk7ir4lencEg5HxHeSzwNarSkNkiu0qJSOXtxm5A==}
@@ -15536,6 +15638,9 @@ packages:
     engines: {node: '>= 0.10.0'}
     hasBin: true
 
+  xstate@5.24.0:
+    resolution: {integrity: sha512-h/213ThFfZbOefUWrLc9ZvYggEVBr0jrD2dNxErxNMLQfZRN19v+80TaXFho17hs8Q2E1mULtm/6nv12um0C4A==}
+
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
@@ -15975,6 +16080,80 @@ snapshots:
   '@astrojs/yaml2ts@0.2.2':
     dependencies:
       yaml: 2.8.1
+
+  '@automerge/automerge-repo-network-broadcastchannel@2.5.0':
+    dependencies:
+      '@automerge/automerge-repo': 2.5.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@automerge/automerge-repo-network-messagechannel@2.5.0':
+    dependencies:
+      '@automerge/automerge-repo': 2.5.0
+      debug: 4.4.3(supports-color@8.1.1)
+      eventemitter3: 5.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@automerge/automerge-repo-network-websocket@2.5.0':
+    dependencies:
+      '@automerge/automerge-repo': 2.5.0
+      cbor-x: 1.6.0
+      debug: 4.4.3(supports-color@8.1.1)
+      eventemitter3: 5.0.1
+      isomorphic-ws: 5.0.0(ws@8.18.3)
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@automerge/automerge-repo-react-hooks@2.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@automerge/automerge': 3.2.0
+      '@automerge/automerge-repo': 2.5.0
+      eventemitter3: 5.0.1
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+      react-usestateref: 1.0.9(react@19.1.0)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@automerge/automerge-repo-storage-indexeddb@2.5.0':
+    dependencies:
+      '@automerge/automerge-repo': 2.5.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@automerge/automerge-repo@2.5.0':
+    dependencies:
+      '@automerge/automerge': 3.2.0
+      bs58check: 3.0.1
+      cbor-x: 1.6.0
+      debug: 4.4.3(supports-color@8.1.1)
+      eventemitter3: 5.0.1
+      fast-sha256: 1.3.0
+      uuid: 9.0.1
+      xstate: 5.24.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@automerge/automerge@3.2.0': {}
+
+  '@automerge/react@2.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@automerge/automerge-repo': 2.5.0
+      '@automerge/automerge-repo-network-broadcastchannel': 2.5.0
+      '@automerge/automerge-repo-network-messagechannel': 2.5.0
+      '@automerge/automerge-repo-network-websocket': 2.5.0
+      '@automerge/automerge-repo-react-hooks': 2.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@automerge/automerge-repo-storage-indexeddb': 2.5.0
+      react: 19.1.0
+    transitivePeerDependencies:
+      - bufferutil
+      - react-dom
+      - supports-color
+      - utf-8-validate
 
   '@babel/code-frame@7.10.4':
     dependencies:
@@ -16645,6 +16824,24 @@ snapshots:
       fontkit: 2.0.4
     transitivePeerDependencies:
       - encoding
+
+  '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
+    optional: true
+
+  '@cbor-extract/cbor-extract-darwin-x64@2.2.0':
+    optional: true
+
+  '@cbor-extract/cbor-extract-linux-arm64@2.2.0':
+    optional: true
+
+  '@cbor-extract/cbor-extract-linux-arm@2.2.0':
+    optional: true
+
+  '@cbor-extract/cbor-extract-linux-x64@2.2.0':
+    optional: true
+
+  '@cbor-extract/cbor-extract-win32-x64@2.2.0':
+    optional: true
 
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:
@@ -18709,6 +18906,8 @@ snapshots:
       - react-native-b4a
       - rollup
       - supports-color
+
+  '@noble/hashes@1.8.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -23351,6 +23550,8 @@ snapshots:
 
   base-64@1.0.0: {}
 
+  base-x@4.0.1: {}
+
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.8.30: {}
@@ -23450,6 +23651,15 @@ snapshots:
       electron-to-chromium: 1.5.259
       node-releases: 2.0.27
       update-browserslist-db: 1.1.4(browserslist@4.28.0)
+
+  bs58@5.0.0:
+    dependencies:
+      base-x: 4.0.1
+
+  bs58check@3.0.1:
+    dependencies:
+      '@noble/hashes': 1.8.0
+      bs58: 5.0.0
 
   bser@2.1.1:
     dependencies:
@@ -23555,6 +23765,22 @@ snapshots:
     dependencies:
       ansicolors: 0.3.2
       redeyed: 2.1.1
+
+  cbor-extract@2.2.0:
+    dependencies:
+      node-gyp-build-optional-packages: 5.1.1
+    optionalDependencies:
+      '@cbor-extract/cbor-extract-darwin-arm64': 2.2.0
+      '@cbor-extract/cbor-extract-darwin-x64': 2.2.0
+      '@cbor-extract/cbor-extract-linux-arm': 2.2.0
+      '@cbor-extract/cbor-extract-linux-arm64': 2.2.0
+      '@cbor-extract/cbor-extract-linux-x64': 2.2.0
+      '@cbor-extract/cbor-extract-win32-x64': 2.2.0
+    optional: true
+
+  cbor-x@1.6.0:
+    optionalDependencies:
+      cbor-extract: 2.2.0
 
   ccount@2.0.1: {}
 
@@ -25289,6 +25515,8 @@ snapshots:
 
   fast-safe-stringify@2.1.1: {}
 
+  fast-sha256@1.3.0: {}
+
   fast-uri@3.1.0: {}
 
   fastq@1.19.1:
@@ -26372,6 +26600,10 @@ snapshots:
   isbot@5.1.32: {}
 
   isexe@2.0.0: {}
+
+  isomorphic-ws@5.0.0(ws@8.18.3):
+    dependencies:
+      ws: 8.18.3
 
   isstream@0.1.2: {}
 
@@ -28185,6 +28417,11 @@ snapshots:
 
   node-forge@1.3.1: {}
 
+  node-gyp-build-optional-packages@5.1.1:
+    dependencies:
+      detect-libc: 2.1.2
+    optional: true
+
   node-gyp-build-optional-packages@5.2.2:
     dependencies:
       detect-libc: 2.1.2
@@ -29466,6 +29703,10 @@ snapshots:
       react: 19.1.0
       react-is: 19.2.0
       scheduler: 0.26.0
+
+  react-usestateref@1.0.9(react@19.1.0):
+    dependencies:
+      react: 19.1.0
 
   react-virtualized-auto-sizer@1.0.26(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
@@ -31791,6 +32032,8 @@ snapshots:
     dependencies:
       commander: 2.20.3
       cssfilter: 0.0.10
+
+  xstate@5.24.0: {}
 
   xtend@4.0.2: {}
 
