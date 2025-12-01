@@ -237,8 +237,6 @@ jobs:
           fi
   perf-test:
     runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
