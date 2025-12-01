@@ -22,7 +22,15 @@ env:
 
 jobs:
   lint:
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -35,7 +43,15 @@ jobs:
       - run: mono lint
 
   test-unit:
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -48,7 +64,15 @@ jobs:
       - run: mono test unit
 
   test-integration-node-sync:
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -116,7 +140,15 @@ jobs:
             cf-do-rpc-d1,
             cf-do-rpc-do,
           ]
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -147,7 +179,15 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -246,7 +286,15 @@ jobs:
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     needs:
       [
         test-unit,
@@ -269,7 +317,15 @@ jobs:
       - run: mono release snapshot --git-sha=${{ github.sha }}
 
   build-and-deploy-examples-src:
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -289,7 +345,15 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   build-deploy-docs:
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -322,7 +386,15 @@ jobs:
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on: namespace-profile-linux-x86-64
+    runs-on:
+      - namespace-profile-linux-x86-64
+      # By default, any runner with matching labels can pick up any waiting job, even from different
+      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
+      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
+      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
+      # from this same run, ensuring older workflow runs finish before newer ones consume runner
+      # capacity.
+      - namespace-features:github.run-id=${{ github.run_id }}
     env:
       APP_PATH: examples/${{ matrix.app }}
       SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
