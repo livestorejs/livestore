@@ -350,7 +350,7 @@ jobs:
         #   `github.ref` provides the full ref (e.g., `refs/pull/123/merge`) that the API understands.
         #
         # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
-        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --branch ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}
+        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Increase pnpm fetch retries
         # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
         # We increase the fetch retries to mitigate this issue.
