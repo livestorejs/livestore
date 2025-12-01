@@ -1,5 +1,6 @@
 import * as os from 'node:os'
 import * as nodePath from 'node:path'
+import { sluggify } from '@livestore/utils'
 import {
   Command,
   Console,
@@ -112,7 +113,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     yield* Console.log(`📥 Downloading example "${exampleName}" from ref "${ref}"...`)
 
     const tempDir = yield* Effect.sync(() => os.tmpdir())
-    const tarballPath = nodePath.join(tempDir, `livestore-${ref}-${Date.now()}.tar.gz`)
+    const tarballPath = nodePath.join(tempDir, `livestore-${sluggify(ref)}-${Date.now()}.tar.gz`)
     const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${ref}`
 
     // Download tarball directly
