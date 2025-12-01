@@ -343,11 +343,14 @@ jobs:
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
       - name: Copy example app
-        # We use `github.ref_name` instead of `github.sha` because, when a workflow is triggered by a pull request,
-        # `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
+        # - We use `github.ref` instead of `github.sha` because, when a workflow is triggered by a pull request,
+        #   `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
+        # - We use `github.ref` instead of `github.ref_name` because GitHub's public API requires full refs.
+        #   `github.ref_name` produces shortened refs like `123/merge` for PRs, which the API doesn't recognize.
+        #   `github.ref` provides the full ref (e.g., `refs/pull/123/merge`) that the API understands.
+        #
         # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
-        # Use the LiveStore CLI (snapshot version) to scaffold the example
-        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --branch ${{ github.ref_name }} ${{ runner.temp }}/${{ env.APP_PATH }}
+        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --branch ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Increase pnpm fetch retries
         # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
         # We increase the fetch retries to mitigate this issue.
