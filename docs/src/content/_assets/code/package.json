@@ -14,7 +14,7 @@
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.18",
+    "@livestore/devtools-vite": "0.4.0-dev.19",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
