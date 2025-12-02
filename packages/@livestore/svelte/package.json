@@ -2,9 +2,7 @@
   "name": "@livestore/svelte",
   "version": "0.0.1",
   "type": "module",
-  "sideEffects": [
-    "**/*.css"
-  ],
+  "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts"
   },
@@ -17,13 +15,11 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@sveltejs/package": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/svelte": "^5.2.4",
     "jsdom": "^26.1.0",
     "svelte": "^5.43.14",
-    "svelte-check": "^4.0.0",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
@@ -46,12 +42,7 @@
     }
   },
   "scripts": {
-    "build": "npm run prepack",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
-    "dev": "svelte-package --watch --input src --tsconfig ./tsconfig.json",
-    "prepack": "svelte-package --input src --tsconfig ./tsconfig.json",
-    "test": "npm run test:unit -- --run",
-    "test:unit": "vitest"
+    "build": "tsc",
+    "test": "vitest --config ./tests/vitest.config.ts"
   }
 }
