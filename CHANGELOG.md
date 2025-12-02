@@ -280,6 +280,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - Fix query builder method order to preserve where clauses (#586)
 - Fix Symbol values in QueryCache key generation
+- Fix SQLite query builder clause order so LIMIT precedes OFFSET, preventing syntax errors (#882)
 
 ##### SQLite & Storage
 
