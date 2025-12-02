@@ -174,6 +174,15 @@ export interface CreateStoreOptions<
   }
 }
 
+export type CreateStoreOptionsPromise<
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
+}
+
 /** Create a new LiveStore Store */
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
@@ -183,10 +192,7 @@ export const createStorePromise = async <
   signal,
   otelOptions,
   ...options
-}: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
-  signal?: AbortSignal
-  otelOptions?: Partial<OtelOptions>
-}): Promise<Store<TSchema, TContext>> =>
+}: CreateStoreOptionsPromise<TSchema, TContext, TSyncPayloadSchema>): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
     const runtime = yield* Effect.runtime()

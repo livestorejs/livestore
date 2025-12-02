@@ -101,6 +101,14 @@ export const examples: Example[] = [
     status: 'available',
   },
   {
+    title: 'TodoMVC (Svelte)',
+    description: 'TodoMVC implementation using Svelte with LiveStore-powered reactivity via `@livestore/svelte`.',
+    adapters: ['web'],
+    technologies: ['Svelte', 'TypeScript', 'LiveStore'],
+    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-svelte`,
+    status: 'available',
+  },
+  {
     title: 'TodoMVC (Custom Elements)',
     description:
       'Web Components implementation using TypeScript and React, demonstrating custom element patterns with LiveStore.',

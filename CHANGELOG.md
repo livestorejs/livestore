@@ -310,6 +310,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Cloudflare examples now default to DO SQLite storage. D1 usage is documented via an explicit binding and a one‑line `storage` option in code.
 - **Cloudflare Workers deployments:** `mono examples deploy` now provisions Worker targets so DO-backed demos stay current across prod and dev environments (#690, #735).
 - Add Netlify dev deployments for examples to simplify testing (#684).
+- **Svelte integration docs:** Added the Svelte framework guide plus the Svelte TodoMVC example so `@livestore/svelte` is documented alongside React and Solid.
 - Use Twoslash for select getting started snippets in docs (#658).
 - **TanStack Start examples:** `web-linearlite`, `web-todomvc-sync-electric`, and `web-todomvc-sync-s2` now run on TanStack Start with Vite 7 compatibility fixes and Cloudflare runtime flags (#747).
 - **Docs for coding agents:** Documentation now serves agent-optimised Markdown so automations get concise answers without burning unnecessary tokens (#715).

@@ -1,14 +1,12 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "jsx": "react-jsx",
-    "resolveJsonModule": true,
-    // "jsx": "preserve",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "noEmit": true,
+    "composite": false,
+    "rootDir": "."
   },
-  "include": ["./src"],
+  "include": ["./tests/**/*.ts", "./tests/**/*.svelte", "./tests/**/*.d.ts"],
+  "exclude": ["./tests/vitest.config.ts"],
   "references": [
     { "path": "../common" },
     { "path": "../adapter-web" },

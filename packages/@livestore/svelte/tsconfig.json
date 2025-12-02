@@ -3,9 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "react-jsx",
-    "resolveJsonModule": true,
-    // "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
