@@ -96,7 +96,7 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * Twoslash in the browser.
  */
 
-import { type Duration, Effect, FileSystem, Schema, Stream } from '@livestore/utils/effect'
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
@@ -1530,7 +1530,7 @@ const createWatchStream = (
   scope: WatchScope,
   root: string,
   cacheRoot: string,
-): Stream.Stream<WatchEventSummary, unknown, never> =>
+): Stream.Stream<WatchEventSummary, PlatformError.PlatformError> =>
   fs.watch(root).pipe(
     Stream.map((event) => summarizeWatchEvent(scope, root, cacheRoot, event)),
     Stream.filter((summary): summary is WatchEventSummary => summary !== null),
@@ -1550,7 +1550,7 @@ const watchSnippetsInternal = (
         .pipe(Effect.catchAll(() => Effect.succeed(false)))
       const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-      const watchStreams: Array<Stream.Stream<WatchEventSummary, unknown, never>> = []
+      const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
       if (snippetRootExists) {
         watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
       }
