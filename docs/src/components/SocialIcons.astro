@@ -23,6 +23,7 @@ const links = Object.entries({
     ))
   }
 </div>
+<SocialIcons_ />
 <div class="version-selector">
   <div class="version-select-wrapper">
     <select id="version-select">
@@ -35,7 +36,6 @@ const links = Object.entries({
     </select>
   </div>
 </div>
-<SocialIcons_ />
 
 <style>
   .nav-link-container {
@@ -139,22 +139,22 @@ const links = Object.entries({
 <script>
   // Handle version switching while preserving the current path
   document.addEventListener("DOMContentLoaded", () => {
-    const versionSelect = document.getElementById("version-select")
-    if (!(versionSelect instanceof HTMLSelectElement)) return
+    const versionSelect = document.getElementById("version-select");
+    if (!(versionSelect instanceof HTMLSelectElement)) return;
 
     versionSelect.addEventListener("change", () => {
-        const targetUrl = versionSelect.value;
-        if (targetUrl === undefined || targetUrl === null) return;
+      const targetUrl = versionSelect.value;
+      if (targetUrl === undefined || targetUrl === null) return;
 
-        // Get current path and search params
-        const currentPath = window.location.pathname;
-        const currentSearch = window.location.search;
+      // Get current path and search params
+      const currentPath = window.location.pathname;
+      const currentSearch = window.location.search;
 
-        // Construct new URL with the same path
-        const newUrl = new URL(currentPath + currentSearch, targetUrl);
+      // Construct new URL with the same path
+      const newUrl = new URL(currentPath + currentSearch, targetUrl);
 
-        // Navigate to the new URL
-        window.location.href = newUrl.toString();
-      });
+      // Navigate to the new URL
+      window.location.href = newUrl.toString();
+    });
   });
 </script>

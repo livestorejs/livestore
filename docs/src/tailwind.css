@@ -6,17 +6,19 @@
 
 @theme {
   --font-sans:
-    Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    Geist, Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
 
-  --color-gray-100: #f5f6f5;
-  --color-gray-200: #eceeec;
-  --color-gray-300: #c0c3c0;
-  --color-gray-400: #888d87;
-  --color-gray-500: #555954;
-  --color-gray-700: #363935;
-  --color-gray-800: #242823;
-  --color-gray-900: #171917;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-400: #a3a3a3;
+  --color-gray-500: #737373;
+  --color-gray-600: #525252;
+  --color-gray-700: #404040;
+  --color-gray-800: #262626;
+  --color-gray-900: #171717;
+  --color-gray-950: #0a0a0a;
 
   --color-accent-50: oklch(0.98 0.016 73.684);
   --color-accent-100: oklch(0.954 0.038 75.164);
@@ -78,30 +80,315 @@
 
   /* Dark mode Starlight theme variables */
   --sl-color-white: white;
-
   --sl-color-gray-1: var(--color-gray-200);
   --sl-color-gray-2: var(--color-gray-300);
   --sl-color-gray-3: var(--color-gray-400);
   --sl-color-gray-4: var(--color-gray-600);
   --sl-color-gray-5: var(--color-gray-700);
   --sl-color-gray-6: var(--color-gray-800);
-
   --sl-color-black: var(--color-gray-900);
-
   --sl-color-accent-low: var(--color-accent-950);
-  --sl-color-accent: var(--color-accent-600);
-  --sl-color-accent-high: var(--color-accent-200);
+  --sl-color-accent: var(--color-accent-500);
+  --sl-color-accent-high: var(--color-accent-500);
 
   :focus-visible {
     outline: solid 1px var(--custom-outline-color);
   }
 
+  /* -------------------------- START custom styling to match landing page */
+  --sl-color-bg-nav: var(--color-gray-950);
+  --sl-color-bg-sidebar: var(--color-gray-950);
+  --sl-color-bg: var(--color-gray-950);
+  --sl-color-hairline-shade: var(--color-gray-800);
+
+  .header .nav-link {
+    color: var(--color-gray-300);
+  }
+
+  .header .nav-link:hover {
+    color: white;
+  }
+
+  .mixedbread-search-button {
+    border: var(--color-gray-700) solid 1px;
+    background-color: var(--color-gray-950);
+    color: var(--color-gray-500);
+  }
+
+  .header .mixedbread-search-button:focus-visible {
+    border: var(--color-gray-700) solid 1px;
+    outline: none;
+  }
+
+  .header .mixedbread-button-kbd kbd {
+    background-color: var(--color-gray-800);
+    color: white;
+  }
+
+  .header .mixedbread-search-button svg {
+    color: white;
+  }
+
+  .header #version-select {
+    border: 1px solid var(--color-gray-700);
+    color: var(--color-gray-300);
+  }
+
+  .header starlight-theme-select select {
+    color: var(--color-gray-300);
+  }
+
+  .header starlight-theme-select label {
+    border: 1px solid var(--color-gray-700);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+
+  .header starlight-theme-select select:hover,
+  .header #version-select:hover {
+    color: white;
+  }
+
+  .header .social-icons a:where(.astro-a22ph5h4):hover {
+    color: white;
+  }
+
+  .header starlight-theme-select label:hover,
+  .header #version-select:hover {
+    border-color: white;
+  }
+
+  .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc) {
+    color: var(--color-gray-400);
+  }
+
+  .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc):hover {
+    color: white;
+  }
+
+  .sidebar-content .starlight-sidebar-topics-current {
+    color: white;
+  }
+
+  .starlight-sidebar-topics-icon {
+    background-color: var(--color-gray-700);
+    color: var(--color-gray-300);
+  }
+
+  a:where(.astro-kuhiuaqc):is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+    .starlight-sidebar-topics-icon {
+    background-color: var(--color-gray-700);
+    color: white;
+  }
+
+  .sidebar-content a:where(.astro-oibn34lv) {
+    border-radius: 0;
+  }
+
+  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+    color: var(--color-gray-400);
+  }
+
+  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv):hover {
+    color: white;
+  }
+
+  .header {
+    font-size: 12px;
+    display: flex;
+    justify-content: start;
+    width: 100%;
+  }
+
+  .header .nav-link {
+    border-radius: 0.75em;
+    height: 28px;
+    display: flex;
+    align-items: center;
+  }
+
+  .header .nav-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header .right-group {
+    margin-left: auto;
+    gap: 0.25em;
+  }
+
+  .header .mixedbread-search-button {
+    height: 28px;
+    border-radius: 0.75em;
+    font-size: 12px;
+    min-width: 20em;
+    padding-right: 1em;
+  }
+
+  .header .mixedbread-search-button:hover {
+    box-shadow: none;
+  }
+
+  .header .mixedbread-search-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header .mixedbread-button-kbd kbd {
+    border: none;
+    font-size: 12px;
+    padding: 0;
+  }
+
+  .header .site-title img {
+    height: 32px;
+  }
+
+  .header .title-wrapper {
+    width: fit-content;
+  }
+
+  .header #version-select {
+    font-size: 12px;
+  }
+
+  .header #version-select {
+    height: 28px;
+    border-radius: 0.75em;
+    padding-left: 1em;
+    padding-right: 2em;
+  }
+
+  .header #version-select:focus {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header .version-select-wrapper:focus-within {
+    border: none;
+  }
+
+  .header .social-icons:where(.astro-zxdnvsqq)::after {
+    border-inline-end: none;
+    margin-right: -1.5em;
+  }
+
+  .header .social-icons a:where(.astro-a22ph5h4) {
+    border-radius: 0.75em;
+    height: 28px;
+    width: 28px;
+    font-size: 14px;
+    color: var(--color-gray-500);
+    opacity: 1;
+  }
+
+  .header .social-icons a:where(.astro-a22ph5h4):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header starlight-theme-select label {
+    height: 28px;
+    border-radius: 0.75em;
+    padding-left: 1.5em;
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+  }
+
+  .header starlight-theme-select .icon.label-icon {
+    left: 1em;
+  }
+
+  .header starlight-theme-select .icon.caret {
+    display: none;
+  }
+
+  .header starlight-theme-select select {
+    font-size: 12px;
+  }
+
+  .header starlight-theme-select select:focus-visible {
+    outline: none;
+  }
+
+  .header starlight-theme-select label:focus-within {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .sidebar-content {
+    padding: 1em 0;
+  }
+
+  .sidebar-content .starlight-sidebar-topics {
+    padding: 0 1em;
+    border-bottom: 1px solid var(--sl-color-hairline-shade);
+  }
+
+  .sidebar-content .starlight-sidebar-topics::after {
+    border-top: none;
+  }
+
+  .sidebar-content .starlight-sidebar-topics a:where(.astro-ektvsd3n) {
+    font-weight: 400;
+    font-size: 14px;
+    gap: 0.75em;
+  }
+
+  .starlight-sidebar-topics-icon {
+    border-radius: 0.5em;
+    border: none;
+    padding: 0.35em;
+  }
+
+  .sidebar-content .top-level {
+    padding: 0 1em;
+  }
+
+  .sidebar-content .large:where(.astro-oibn34lv) {
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  .sidebar-content ul.top-level ul {
+    border-left: 1px solid var(--sl-color-hairline-shade);
+    margin-left: 1em;
+  }
+
+  .sidebar-content ul.top-level > li > details > ul {
+    margin-left: 0.5em;
+  }
+
+  .sidebar-content ul.top-level ul li {
+    padding-left: 0;
+    border-left: none;
+    margin-left: -1px;
+  }
+
+  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+    font-weight: 300;
+    border-left: 1px solid transparent;
+    padding: 0 0 0 1em;
+    margin: 0.5em 0;
+  }
+
+  .sidebar-content a:where(.astro-oibn34lv)[aria-current="page"] {
+    color: var(--sl-color-text-accent);
+    font-weight: 400;
+    background: none;
+  }
+
+  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv)[aria-current="page"] {
+    border-left: 1px solid var(--sl-color-text-accent);
+    color: var(--sl-color-text-accent);
+  }
+
+  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv)[aria-current="page"]:hover {
+    color: var(--sl-color-text-accent);
+  }
+
+  /* -------------------------- END custom styling to match landing page */
+
   &[data-theme="light"] {
-    --custom-outline-color: var(--color-accent-600);
-
     /* Light mode Starlight theme variables */
+    --custom-outline-color: var(--color-accent-600);
     --sl-color-white: var(--color-gray-900);
-
     --sl-color-gray-1: var(--color-gray-800);
     --sl-color-gray-2: var(--color-gray-700);
     --sl-color-gray-3: var(--color-gray-500);
@@ -109,12 +396,116 @@
     --sl-color-gray-5: var(--color-gray-300);
     --sl-color-gray-6: var(--color-gray-200);
     --sl-color-gray-7: var(--color-gray-100);
-
     --sl-color-black: white;
+    --sl-color-accent-low: var(--color-accent-500);
+    --sl-color-accent: var(--color-accent-500);
+    --sl-color-accent-high: var(--color-accent-500);
 
-    --sl-color-accent-low: var(--color-accent-200);
-    --sl-color-accent: var(--color-accent-600);
-    --sl-color-accent-high: var(--color-accent-900);
+    /* -------------------------- START custom styling to match landing page */
+    --sl-color-bg-nav: white;
+    --sl-color-bg-sidebar: white;
+    --sl-color-bg: white;
+    --sl-color-hairline-shade: var(--color-gray-200);
+
+    .header .nav-link {
+      color: var(--color-gray-600);
+    }
+
+    .header .nav-link:hover {
+      color: black;
+    }
+
+    .mixedbread-search-button {
+      border: var(--color-gray-300) solid 1px;
+      background-color: white;
+      color: var(--color-gray-500);
+    }
+
+    .mixedbread-search-button:hover {
+      border-color: black;
+      color: black;
+    }
+
+    .header .mixedbread-search-button:focus-visible {
+      border: var(--color-gray-300) solid 1px;
+      outline: none;
+    }
+
+    .header .mixedbread-button-kbd kbd {
+      background-color: white;
+      color: black;
+    }
+
+    .header .mixedbread-search-button svg {
+      color: black;
+    }
+
+    .header #version-select {
+      border: 1px solid var(--color-gray-300);
+      color: var(--color-gray-600);
+    }
+
+    .header starlight-theme-select label {
+      border: 1px solid var(--color-gray-300);
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    }
+
+    .header starlight-theme-select select {
+      color: var(--color-gray-600);
+    }
+
+    .header starlight-theme-select select:hover,
+    .header #version-select:hover {
+      color: black;
+    }
+
+    .header .social-icons a:where(.astro-a22ph5h4):hover {
+      color: black;
+    }
+
+    .header starlight-theme-select label:hover,
+    .header #version-select:hover {
+      border-color: black;
+    }
+
+    .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc) {
+      color: var(--color-gray-600);
+    }
+
+    .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc):hover {
+      color: black;
+    }
+
+    .sidebar-content .starlight-sidebar-topics-current {
+      color: black;
+    }
+
+    .starlight-sidebar-topics-icon {
+      background-color: var(--color-gray-200);
+      color: var(--color-gray-500);
+    }
+
+    a:where(.astro-kuhiuaqc):is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+      .starlight-sidebar-topics-icon {
+      background-color: var(--color-gray-200);
+      color: black;
+    }
+
+    a:where(.astro-kuhiuaqc):is(.starlight-sidebar-topics-current) .starlight-sidebar-topics-icon {
+      background-color: var(--sl-color-text-accent);
+      border-color: var(--sl-color-text-accent);
+      color: var(--sl-color-text-invert);
+    }
+
+    .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+      color: var(--color-gray-600);
+    }
+
+    .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv):hover {
+      color: black;
+    }
+
+    /* -------------------------- END custom styling to match landing page */
   }
 }
 

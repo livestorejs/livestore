@@ -52,8 +52,16 @@ export default defineConfig({
   },
   env: {
     schema: {
-      MXBAI_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
-      MXBAI_VECTOR_STORE_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+      MXBAI_API_KEY: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
+      MXBAI_VECTOR_STORE_ID: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     },
   },
   integrations: [
@@ -72,10 +80,18 @@ export default defineConfig({
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
       social: [
-        { icon: 'github', label: 'GitHub', href: `https://github.com/livestorejs/livestore/tree/${branch}` },
+        {
+          icon: 'github',
+          label: 'GitHub',
+          href: `https://github.com/livestorejs/livestore/tree/${branch}`,
+        },
         { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
         { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
-        { icon: 'blueSky', label: 'Bluesky', href: 'https://bsky.app/profile/livestore.dev' },
+        {
+          icon: 'blueSky',
+          label: 'Bluesky',
+          href: 'https://bsky.app/profile/livestore.dev',
+        },
       ],
 
       components: {
@@ -144,17 +160,33 @@ export default defineConfig({
                   'reference/opentelemetry',
                   'reference/cli',
                   'reference/mcp',
-                  { label: 'State', autogenerate: { directory: 'reference/state' } },
+                  {
+                    label: 'State',
+                    autogenerate: { directory: 'reference/state' },
+                  },
                   {
                     label: 'Syncing',
                     items: [
                       'reference/syncing',
                       'reference/syncing/server-side-clients',
-                      { label: 'Sync Provider', autogenerate: { directory: 'reference/syncing/sync-provider' } },
+                      {
+                        label: 'Sync Provider',
+                        autogenerate: {
+                          directory: 'reference/syncing/sync-provider',
+                        },
+                      },
                     ],
                   },
-                  { label: 'Platform Adapters', autogenerate: { directory: 'reference/platform-adapters' } },
-                  { label: 'Framework Integrations', autogenerate: { directory: 'reference/framework-integrations' } },
+                  {
+                    label: 'Platform Adapters',
+                    autogenerate: { directory: 'reference/platform-adapters' },
+                  },
+                  {
+                    label: 'Framework Integrations',
+                    autogenerate: {
+                      directory: 'reference/framework-integrations',
+                    },
+                  },
                 ],
               },
               {
@@ -325,7 +357,7 @@ export default defineConfig({
             ]
           : []),
       ],
-      customCss: ['./src/tailwind.css'],
+      customCss: ['./src/fonts/geist-font.css', './src/tailwind.css'],
       logo: {
         src: './src/assets/livestore.png',
         alt: 'LiveStore Logo',
