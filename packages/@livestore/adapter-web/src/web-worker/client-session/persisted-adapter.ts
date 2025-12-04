@@ -43,9 +43,8 @@ import { loadSqlite3 } from './sqlite-loader.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
+    ...globalThis.__debugLiveStoreUtils,
     opfs: Opfs.debugUtils,
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
 }
 
