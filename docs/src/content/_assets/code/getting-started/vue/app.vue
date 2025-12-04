@@ -3,7 +3,6 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
 import { schema } from './livestore/schema.ts'
-import { LiveStoreProvider } from 'vue-livestore'
 
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
