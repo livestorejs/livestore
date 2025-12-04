@@ -108,7 +108,7 @@
     height: 28px;
     display: flex;
     align-items: center;
-    width: fit-content !important;
+    width: fit-content;
   }
 
   .header .nav-link-container .nav-link:hover {
