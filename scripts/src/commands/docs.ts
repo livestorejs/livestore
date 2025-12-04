@@ -1,14 +1,15 @@
 import fs from 'node:fs'
-
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { buildDiagrams } from '@local/astro-tldraw'
 import { createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
+import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
@@ -16,6 +17,12 @@ const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
+
+const runDocsDiagramsBuild = () => buildDiagrams({ projectRoot: docsPath, verbose: true })
+
+const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => Effect.promise(runDocsDiagramsBuild)).pipe(
+  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => Effect.promise(runDocsDiagramsBuild))]),
+)
 
 type NetlifyDeploySummary = {
   site_id: string
@@ -83,23 +90,25 @@ const docsBuildCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ apiDocs, clean, skipSnippets }) {
     if (clean) {
-      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { cwd: docsPath, shell: true })
+      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { shell: true }).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd('docs')),
+      )
     }
 
     // Always clean up .netlify folder as it can cause issues with the build
-    yield* cmd('rm -rf .netlify', { cwd: docsPath })
+    yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
-      cwd: docsPath,
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
       },
-    })
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
   }),
 )
 
@@ -111,15 +120,16 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
       },
       ({ open }) =>
-        Effect.gen(function* () {
-          yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-            cwd: docsPath,
+        Effect.asVoid(
+          cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
             logDir: `${docsPath}/logs`,
-          })
-        }),
+          }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs'))),
+        ),
     ),
     docsBuildCommand,
     docsSnippetsCommand,
+    docsDiagramsCommand,
+    exportMarkdownCommand,
     Cli.Command.make(
       'preview',
       {
@@ -168,12 +178,11 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         }
 
         yield* cmd(['bunx', ...netlifyArgs], {
-          cwd: docsPath,
           logDir: `${docsPath}/logs`,
           env: {
             NODE_ENV: 'production',
           },
-        })
+        }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),
     ),
     Cli.Command.make(
@@ -205,7 +214,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 'Could not determine branch name from GITHUB_HEAD_REF or GITHUB_REF_NAME in GitHub Actions. Falling back to git command.',
               )
             }
-            return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.map((name) => name.trim()))
+            return yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(
+              Effect.provide(LivestoreWorkspace.toCwd('docs')),
+              Effect.map((name) => name.trim()),
+            )
           })
 
           yield* Effect.log(`Branch name: "${branchName}"`)
@@ -228,10 +240,17 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             }
             return undefined
           })()
-          const shortSha = yield* cmdText('git rev-parse --short HEAD').pipe(Effect.map((s) => s.trim()))
+          const shortSha = yield* cmdText('git rev-parse --short HEAD').pipe(
+            Effect.provide(LivestoreWorkspace.toCwd('docs')),
+            Effect.map((s) => s.trim()),
+          )
           const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
           const fullSha =
-            process.env.GITHUB_SHA ?? (yield* cmdText('git rev-parse HEAD').pipe(Effect.map((s) => s.trim())))
+            process.env.GITHUB_SHA ??
+            (yield* cmdText('git rev-parse HEAD').pipe(
+              Effect.provide(LivestoreWorkspace.toCwd('docs')),
+              Effect.map((s) => s.trim()),
+            ))
           const runId = process.env.GITHUB_RUN_ID
           const commitUrl = `https://github.com/${repo}/commit/${fullSha}`
           const prUrl = prNumber ? `https://github.com/${repo}/pull/${prNumber}` : undefined
@@ -278,9 +297,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
             site,
             target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
-            cwd: docsPath,
             message: buildMessage(contextLabelFor(prod, alias)),
-          })
+          }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
           // Verify root returns Markdown on Accept negotiation
           const rootContentType = yield* HttpClient.execute(

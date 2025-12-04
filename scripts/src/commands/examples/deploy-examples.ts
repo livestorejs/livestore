@@ -1,8 +1,8 @@
 import process from 'node:process'
 
-import { Effect, FileSystem, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 import {
   buildCloudflareWorker,
@@ -123,9 +123,8 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
 
       yield* Effect.log(`Running tests for ${example}`)
       yield* cmd('pnpm test', {
-        cwd: `${examplesDir}/${example}`,
         env: { CI: '1' },
-      })
+      }).pipe(Effect.provide(LivestoreWorkspace.toCwd(`examples/${example}`)))
     }
   })
 
@@ -163,7 +162,7 @@ const getBranchInfo = Effect.gen(function* () {
   let branchName =
     branchFromEnv && branchFromEnv.trim().length > 0
       ? branchFromEnv.trim()
-      : (yield* cmdText('git rev-parse --abbrev-ref HEAD', { cwd: workspaceRoot })).trim()
+      : (yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.provide(LivestoreWorkspace.toCwd()))).trim()
 
   if (branchName === '' || branchName === 'HEAD') {
     const refFromEnv = process.env.GITHUB_REF
@@ -173,7 +172,9 @@ const getBranchInfo = Effect.gen(function* () {
     }
   }
 
-  const shortSha = (yield* cmdText('git rev-parse --short HEAD', { cwd: workspaceRoot })).trim()
+  const shortSha = (yield* cmdText('git rev-parse --short HEAD').pipe(
+    Effect.provide(LivestoreWorkspace.toCwd()),
+  )).trim()
 
   return { branchName, shortSha }
 })
@@ -337,11 +338,9 @@ if (import.meta.main) {
     version: '0.0.0',
   })
 
-  Effect.gen(function* () {
-    return yield* cli(process.argv)
-  }).pipe(
+  cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(PlatformNode.NodeContext.layer),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     PlatformNode.NodeRuntime.runMain,
   )
 }

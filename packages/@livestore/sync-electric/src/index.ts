@@ -1,10 +1,4 @@
-import {
-  InvalidPullError,
-  InvalidPushError,
-  type IsOfflineError,
-  SyncBackend,
-  UnexpectedError,
-} from '@livestore/common'
+import { InvalidPullError, InvalidPushError, type IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented } from '@livestore/utils'
 import {
@@ -24,7 +18,7 @@ import {
 import * as ApiSchema from './api-schema.ts'
 
 export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>()('InvalidOperationError', {
-  operation: Schema.Union(Schema.Literal('delete'), Schema.Literal('update')),
+  operation: Schema.Literal('delete', 'update'),
   message: Schema.String,
 }) {}
 
@@ -79,12 +73,7 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-  .pipe(
-    Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
-      decode: (_) => _,
-      encode: (_) => _,
-    }),
-  )
+  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
   .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
 const ResponseItemInsert = Schema.Struct({
@@ -181,7 +170,7 @@ export const makeSyncBackend =
             /** The batch of events */
             ReadonlyArray<{
               metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.Global.Encoded
             }>,
             /** The next handle to use for the next pull */
             Option.Option<SyncMetadata>,
@@ -256,7 +245,7 @@ export const makeSyncBackend =
 
           const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
             metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-            eventEncoded: item.value as LiveStoreEvent.AnyEncodedGlobal,
+            eventEncoded: item.value as LiveStoreEvent.Global.Encoded,
           }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
@@ -279,7 +268,7 @@ export const makeSyncBackend =
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
         Effect.withSpan('electric-provider:ping'),
@@ -296,7 +285,7 @@ export const makeSyncBackend =
       // otherwise we send a HEAD request to speed up the connection process
       const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
-        : ping.pipe(UnexpectedError.mapToUnexpectedError)
+        : ping.pipe(UnknownError.mapToUnknownError)
 
       return SyncBackend.of({
         connect,
@@ -343,11 +332,11 @@ export const makeSyncBackend =
               Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
               Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
               Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ cause: UnexpectedError.make({ cause }) })),
+              Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
             )
 
             if (!resp.success) {
-              return yield* InvalidPushError.make({ cause: new UnexpectedError({ cause: new Error('Push failed') }) })
+              return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
             }
           }).pipe(Effect.withSpan('electric-provider:push')),
         ping,

@@ -33,7 +33,7 @@ interface SyncStage {
 - No new error types; re-use the existing tagged errors already exposed by the sync stack:
   - `InvalidPushError` (including nested `LeaderAheadError`, `ServerAheadError`, `BackendIdMismatchError`).
   - `IsOfflineError` when the push loop gives up permanently or the platform signals an unrecoverable offline condition.
-  - `UnexpectedError` for defects.
+  - `UnknownError` for defects.
 - `leaderSync.confirmation` unwraps `LeaderAheadError` via the existing mapping to `InvalidPushError`.
 - `backendSync.confirmation` resolves only after a successful `syncBackend.push` and otherwise stays pending while the backend is offline; permanent failures reject via the errors above.
 

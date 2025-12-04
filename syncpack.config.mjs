@@ -60,7 +60,7 @@ const config = {
       dependencies: [...localPackages, '@local/**'],
       dependencyTypes: ['!local'],
       // Except for examples
-      packages: ['!livestore-example-**'],
+      packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
       pinVersion: 'workspace:*',
     },
     {
@@ -70,7 +70,7 @@ const config = {
       // so published packages work with compatible versions, not just exact matches
       dependencyTypes: ['!local', '!peer'],
       // Except for examples
-      packages: ['!livestore-example-**'],
+      packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
       pinVersion: 'catalog:',
     },
     {
@@ -83,6 +83,21 @@ const config = {
       dependencyTypes: ['peer'],
       packages: ['**'],
       isIgnored: true,
+    },
+    {
+      label: 'ignore pnpm overrides',
+      // pnpm overrides require exact versions to work correctly
+      dependencyTypes: ['pnpmOverrides'],
+      packages: ['**'],
+      isIgnored: true,
+    },
+    {
+      // NativeWind / Tailwind CSS v4 preview is still unstable on RN (memory leak tracked in https://github.com/nativewind/nativewind/issues/1669), so keep Expo Linearlite on v3.
+      label: 'expo-linearlite tailwindcss stays on v3',
+      dependencies: ['tailwindcss'],
+      dependencyTypes: ['dev'],
+      packages: ['livestore-example-expo-linearlite'],
+      pinVersion: '^3.4.14',
     },
   ],
   semverGroups: [

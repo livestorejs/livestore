@@ -35,22 +35,29 @@ export {
   signal,
 } from './live-queries/mod.ts'
 export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.ts'
-export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.ts'
-export { Store } from './store/store.ts'
-export type {
-  OtelOptions,
-  Queryable,
-  QueryDebugInfo,
-  RefreshReason,
-  SubscribeOptions,
-  Unsubscribe,
-} from './store/store-types.ts'
 export {
+  type CreateStoreOptions,
+  type CreateStoreOptionsPromise,
+  createStore,
+  createStorePromise,
+} from './store/create-store.ts'
+export { Store } from './store/store.ts'
+export {
+  isLiveQueryDef,
+  isLiveQueryInstance,
   isQueryable,
   type LiveStoreContext,
   type LiveStoreContextRunning,
   makeShutdownDeferred,
+  type OtelOptions,
+  type Queryable,
+  type QueryDebugInfo,
+  type RefreshReason,
   type ShutdownDeferred,
+  type StoreInternals,
+  StoreInternalsSymbol,
+  type SubscribeOptions,
+  type Unsubscribe,
 } from './store/store-types.ts'
 export { exposeDebugUtils } from './utils/dev.ts'
 export * from './utils/stack-info.ts'

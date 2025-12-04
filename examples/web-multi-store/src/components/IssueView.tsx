@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react/experimental'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { issueStoreOptions } from '@/stores/issue'
+import { issueStoreOptions } from '@/stores/issue/index.ts'
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
 
 export function IssueView({ issueId }: { issueId: string }) {

@@ -12,6 +12,8 @@
     { "path": "../packages/@livestore/utils-dev" },
     { "path": "../tests/sync-provider" },
     { "path": "../packages/@livestore/common" },
-    { "path": "../tests/integration" }
+    { "path": "../tests/integration" },
+    { "path": "../packages/@local/astro-twoslash-code" },
+    { "path": "../packages/@local/astro-tldraw" }
   ]
 }

@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import * as SyncState from './syncstate.ts'
 
-class TestEvent extends LiveStoreEvent.EncodedWithMeta {
+class TestEvent extends LiveStoreEvent.Client.EncodedWithMeta {
   public payload = 'uninitialized'
   public isClient = false
 
   static new = (
-    seqNum: EventSequenceNumber.EventSequenceNumberInput,
-    parentSeqNum: EventSequenceNumber.EventSequenceNumberInput,
+    seqNum: EventSequenceNumber.Client.CompositeInput,
+    parentSeqNum: EventSequenceNumber.Client.CompositeInput,
     payload: string,
     isClient: boolean,
   ) => {
     const event = new TestEvent({
-      seqNum: EventSequenceNumber.make(seqNum),
-      parentSeqNum: EventSequenceNumber.make(parentSeqNum),
+      seqNum: EventSequenceNumber.Client.Composite.make(seqNum),
+      parentSeqNum: EventSequenceNumber.Client.Composite.make(parentSeqNum),
       name: 'a',
       args: payload,
       clientId: 'static-local-id',
@@ -27,7 +27,7 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
     return event
   }
 
-  rebase_ = (parentSeqNum: EventSequenceNumber.EventSequenceNumber, rebaseGeneration: number) => {
+  rebase_ = (parentSeqNum: EventSequenceNumber.Client.Composite, rebaseGeneration: number) => {
     return this.rebase({ parentSeqNum, isClient: this.isClient, rebaseGeneration })
   }
 
@@ -36,17 +36,17 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
   // toString = () => this.toJSON()
 }
 
-const e0_1 = TestEvent.new({ global: 0, client: 1 }, EventSequenceNumber.ROOT, 'a', true)
-const e1_0 = TestEvent.new({ global: 1, client: 0 }, EventSequenceNumber.ROOT, 'a', false)
+const e0_1 = TestEvent.new({ global: 0, client: 1 }, EventSequenceNumber.Client.ROOT, 'a', true)
+const e1_0 = TestEvent.new({ global: 1, client: 0 }, EventSequenceNumber.Client.ROOT, 'a', false)
 const e1_1 = TestEvent.new({ global: 1, client: 1 }, e1_0.seqNum, 'a', true)
 const e1_2 = TestEvent.new({ global: 1, client: 2 }, e1_1.seqNum, 'a', true)
 const e1_3 = TestEvent.new({ global: 1, client: 3 }, e1_2.seqNum, 'a', true)
 const e2_0 = TestEvent.new({ global: 2, client: 0 }, e1_0.seqNum, 'a', false)
 const e2_1 = TestEvent.new({ global: 2, client: 1 }, e2_0.seqNum, 'a', true)
 
-const isEqualEvent = LiveStoreEvent.isEqualEncoded
+const isEqualEvent = LiveStoreEvent.Client.isEqualEncoded
 
-const isClientEvent = (event: LiveStoreEvent.EncodedWithMeta) => (event as TestEvent).isClient
+const isClientEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) => (event as TestEvent).isClient
 
 describe('syncstate', () => {
   describe('merge', () => {
@@ -64,7 +64,7 @@ describe('syncstate', () => {
       it('should rollback until start', () => {
         const syncState = new SyncState.SyncState({
           pending: [e2_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e2_0.seqNum,
         })
         const e1_0_e2_0 = e1_0.rebase_(e2_0.seqNum, 0)
@@ -88,7 +88,7 @@ describe('syncstate', () => {
       it('should rollback only to specified point', () => {
         const syncState = new SyncState.SyncState({
           pending: [e2_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e2_0.seqNum,
         })
         const e1_1_e2_0 = e1_1.rebase_(e1_0.seqNum, 0)
@@ -111,7 +111,7 @@ describe('syncstate', () => {
       it('should work for empty pending', () => {
         const syncState = new SyncState.SyncState({
           pending: [],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({
@@ -130,21 +130,21 @@ describe('syncstate', () => {
       it('should throw error if newEvents are not sorted in ascending order by event number (client)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if newEvents are not sorted in ascending order by event number (global)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0, e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if incoming event is < expected upstream head', () => {
@@ -154,7 +154,7 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should throw error if incoming event is = expected upstream head', () => {
@@ -164,13 +164,13 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
       it('should confirm pending event when receiving matching event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
@@ -186,7 +186,7 @@ describe('syncstate', () => {
       it('should confirm partial pending event when receiving matching event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0, e2_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
@@ -202,7 +202,7 @@ describe('syncstate', () => {
       it('should confirm pending event and add new event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0, e1_1] } })
@@ -237,7 +237,7 @@ describe('syncstate', () => {
       it('should confirm pending global event while keep pending client events', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0, e1_1],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_1.seqNum,
         })
         const result = merge({
@@ -256,7 +256,7 @@ describe('syncstate', () => {
       it('should ignore client events (incoming is subset of pending)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e0_1, e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({
@@ -275,7 +275,7 @@ describe('syncstate', () => {
       it('should ignore client events (incoming is subset of pending case 2)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e0_1, e1_0, e2_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({
@@ -294,7 +294,7 @@ describe('syncstate', () => {
       it('should ignore client events (incoming goes beyond pending)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e0_1, e1_0, e1_1],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_1.seqNum,
         })
         const result = merge({
@@ -318,7 +318,7 @@ describe('syncstate', () => {
           localHead: e2_0.seqNum,
         })
         const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
-        expect(result).toMatchObject({ _tag: 'unexpected-error' })
+        expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
     })
 
@@ -326,7 +326,7 @@ describe('syncstate', () => {
       it('should rebase single client event to end', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({ syncState, payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e1_1] }) })
@@ -345,7 +345,7 @@ describe('syncstate', () => {
         const e2_0_b = TestEvent.new({ global: 1, client: 0 }, e1_0.seqNum, '1_0_b', false)
         const syncState = new SyncState.SyncState({
           pending: [e2_0_b],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e2_0_b.seqNum,
         })
         const result = merge({ syncState, payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [e2_0] }) })
@@ -362,7 +362,7 @@ describe('syncstate', () => {
       it('should rebase single client event to end (more incoming events)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({
@@ -381,7 +381,7 @@ describe('syncstate', () => {
       it('should only rebase divergent events when first event matches', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0, e1_1],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
         const result = merge({
@@ -402,7 +402,7 @@ describe('syncstate', () => {
       it('should rebase all client events when incoming chain starts differently', () => {
         const syncState = new SyncState.SyncState({
           pending: [e1_0, e1_1],
-          upstreamHead: EventSequenceNumber.ROOT,
+          upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_1.seqNum,
         })
         const result = merge({
@@ -426,7 +426,7 @@ describe('syncstate', () => {
           it('should advance with new events', () => {
             const syncState = new SyncState.SyncState({
               pending: [e1_0],
-              upstreamHead: EventSequenceNumber.ROOT,
+              upstreamHead: EventSequenceNumber.Client.ROOT,
               localHead: e1_0.seqNum,
             })
             const result = merge({
@@ -436,7 +436,7 @@ describe('syncstate', () => {
 
             expectAdvance(result)
             expectEventArraysEqual(result.newSyncState.pending, [e1_0, e1_1, e1_2, e1_3])
-            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.Client.ROOT)
             expect(result.newSyncState.localHead).toMatchObject(e1_3.seqNum)
             expectEventArraysEqual(result.newEvents, [e1_1, e1_2, e1_3])
             expectEventArraysEqual(result.confirmedEvents, [])
@@ -447,8 +447,8 @@ describe('syncstate', () => {
           it('keeps pending empty when pushing only client-only events that are being ignored', () => {
             const syncState = new SyncState.SyncState({
               pending: [],
-              upstreamHead: EventSequenceNumber.ROOT,
-              localHead: EventSequenceNumber.ROOT,
+              upstreamHead: EventSequenceNumber.Client.ROOT,
+              localHead: EventSequenceNumber.Client.ROOT,
             })
 
             const result = merge({
@@ -459,16 +459,16 @@ describe('syncstate', () => {
 
             expectAdvance(result)
             expectEventArraysEqual(result.newSyncState.pending, [])
-            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
-            expect(result.newSyncState.localHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.Client.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(EventSequenceNumber.Client.ROOT)
             expectEventArraysEqual(result.newEvents, [e0_1])
           })
 
           it('appends only upstream-bound events to pending when ignoring client-only pushes', () => {
             const syncState = new SyncState.SyncState({
               pending: [],
-              upstreamHead: EventSequenceNumber.ROOT,
-              localHead: EventSequenceNumber.ROOT,
+              upstreamHead: EventSequenceNumber.Client.ROOT,
+              localHead: EventSequenceNumber.Client.ROOT,
             })
 
             const result = merge({
@@ -479,7 +479,7 @@ describe('syncstate', () => {
 
             expectAdvance(result)
             expectEventArraysEqual(result.newSyncState.pending, [e1_0])
-            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.ROOT)
+            expect(result.newSyncState.upstreamHead).toMatchObject(EventSequenceNumber.Client.ROOT)
             expect(result.newSyncState.localHead).toMatchObject(e1_0.seqNum)
             expectEventArraysEqual(result.newEvents, [e0_1, e1_0])
           })
@@ -489,7 +489,7 @@ describe('syncstate', () => {
           it('should reject when new events are greater than pending events', () => {
             const syncState = new SyncState.SyncState({
               pending: [e1_0, e1_1],
-              upstreamHead: EventSequenceNumber.ROOT,
+              upstreamHead: EventSequenceNumber.Client.ROOT,
               localHead: e1_1.seqNum,
             })
             const result = merge({
@@ -507,8 +507,8 @@ describe('syncstate', () => {
 })
 
 const expectEventArraysEqual = (
-  actual: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
-  expected: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
+  actual: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  expected: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {

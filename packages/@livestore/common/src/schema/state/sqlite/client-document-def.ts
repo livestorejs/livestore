@@ -4,8 +4,8 @@ import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../adapter-types.ts'
 import { sql } from '../../../util.ts'
-import type { EventDef, Materializer } from '../../EventDef.ts'
-import { defineEvent, defineMaterializer } from '../../EventDef.ts'
+import type { EventDef, Materializer } from '../../EventDef/mod.ts'
+import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
@@ -579,5 +579,5 @@ export namespace ClientDocumentTableDef {
       ) => QueryBuilder<TType, ClientDocumentTableDef.TableDefBase_<TName, TType>, QueryBuilder.ApiFeature>
 }
 
-export const ClientDocumentTableDefSymbol = Symbol('ClientDocumentTableDef')
+export const ClientDocumentTableDefSymbol = Symbol.for('livestore.ClientDocumentTableDef')
 export type ClientDocumentTableDefSymbol = typeof ClientDocumentTableDefSymbol

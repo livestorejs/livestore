@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.4.0-dev.15",
+  "version": "0.4.0-dev.19",
   "type": "module",
   "sideEffects": [
     "./src/global.ts",
@@ -8,41 +8,44 @@
   ],
   "exports": {
     ".": "./src/mod.ts",
+    "./browser": "./src/browser/mod.ts",
     "./cuid": {
       "browser": "./src/cuid/cuid.browser.ts",
       "react-native": "./src/cuid/cuid.browser.ts",
       "default": "./src/cuid/cuid.node.ts"
     },
     "./nanoid": "./src/nanoid/index.ts",
-    "./effect": "./src/effect/index.ts",
+    "./effect": "./src/effect/mod.ts",
+    "./effect/browser": "./src/browser/mod.ts",
     "./node": "./src/node/mod.ts",
     "./bun": "./src/bun/mod.ts"
   },
   "dependencies": {
-    "@effect/platform-node": "0.98.0",
+    "@effect/platform-node": "0.98.4",
     "@standard-schema/spec": "1.0.0",
     "nanoid": "5.1.5",
-    "pretty-bytes": "7.0.1"
+    "pretty-bytes": "7.0.1",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@effect/ai": "^0.29.0",
     "@effect/cli": "^0.71.0",
-    "@effect/cluster": "^0.50.0",
+    "@effect/cluster": "^0.50.6",
     "@effect/experimental": "^0.56.0",
     "@effect/opentelemetry": "catalog:",
-    "@effect/platform": "^0.92.0",
+    "@effect/platform": "^0.92.1",
     "@effect/platform-browser": "^0.72.0",
-    "@effect/platform-bun": "^0.81.0",
-    "@effect/platform-node": "^0.98.0",
+    "@effect/platform-bun": "^0.81.1",
+    "@effect/platform-node": "^0.98.4",
     "@effect/printer": "^0.46.0",
     "@effect/printer-ansi": "^0.46.0",
-    "@effect/rpc": "^0.71.0",
+    "@effect/rpc": "^0.71.1",
     "@effect/sql": "^0.46.0",
     "@effect/typeclass": "^0.37.0",
     "@effect/vitest": "^0.26.0",
-    "@effect/workflow": "^0.11.0",
+    "@effect/workflow": "^0.11.5",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/resources": "catalog:",
     "@types/bun": "^1.2.21",
     "@types/jsdom": "^21.1.7",
     "@types/node": "catalog:",
@@ -60,21 +63,21 @@
   "peerDependencies": {
     "@effect/ai": "^0.29.0",
     "@effect/cli": "^0.71.0",
-    "@effect/cluster": "^0.50.0",
+    "@effect/cluster": "^0.50.6",
     "@effect/experimental": "^0.56.0",
     "@effect/opentelemetry": "^0.58.0",
-    "@effect/platform": "^0.92.0",
+    "@effect/platform": "^0.92.1",
     "@effect/platform-browser": "^0.72.0",
-    "@effect/platform-bun": "^0.81.0",
-    "@effect/platform-node": "^0.98.0",
+    "@effect/platform-bun": "^0.81.1",
+    "@effect/platform-node": "^0.98.4",
     "@effect/printer": "^0.46.0",
     "@effect/printer-ansi": "^0.46.0",
-    "@effect/rpc": "^0.71.0",
+    "@effect/rpc": "^0.71.1",
     "@effect/sql": "^0.46.0",
     "@effect/typeclass": "^0.37.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.1",
-    "effect": "^3.18.0"
+    "effect": "^3.18.4"
   },
   "publishConfig": {
     "access": "public",
@@ -82,6 +85,10 @@
       ".": {
         "types": "./dist/mod.d.ts",
         "default": "./dist/mod.js"
+      },
+      "./browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
       },
       "./cuid": {
         "types": "./dist/cuid/cuid.node.d.ts",
@@ -94,8 +101,12 @@
         "default": "./dist/nanoid/index.js"
       },
       "./effect": {
-        "types": "./dist/effect/index.d.ts",
-        "default": "./dist/effect/index.js"
+        "types": "./dist/effect/mod.d.ts",
+        "default": "./dist/effect/mod.js"
+      },
+      "./effect/browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
       },
       "./node": {
         "types": "./dist/node/mod.d.ts",

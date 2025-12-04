@@ -1,7 +1,7 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type SqliteDb, UnexpectedError } from './adapter-types.ts'
+import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
@@ -32,7 +32,7 @@ export const rematerializeFromEventlog = ({
     const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
         const args = JSON.parse(row.argsJson)
-        const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
+        const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
           name: row.name,
           args,
           seqNum: {
@@ -52,7 +52,7 @@ export const rematerializeFromEventlog = ({
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:rematerializeFromEventlog:processEvent',
           event: eventEncoded,
-        }).pipe(UnexpectedError.mapToUnexpectedError)
+        }).pipe(UnknownError.mapToUnknownError)
 
         if (resolution._tag === 'unknown') {
           // Old snapshots can contain newer events. Skip until the runtime has
@@ -71,7 +71,7 @@ export const rematerializeFromEventlog = ({
         // Checking whether the schema has changed in an incompatible way
         yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
           Effect.mapError((cause) =>
-            UnexpectedError.make({
+            UnknownError.make({
               cause,
               note: `\
 There was an error during rematerializing from the eventlog while decoding
@@ -106,9 +106,9 @@ LIMIT ${CHUNK_SIZE}
       const lastId = Chunk.isChunk(item)
         ? Chunk.last(item).pipe(
             Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
-            Option.getOrElse(() => EventSequenceNumber.ROOT),
+            Option.getOrElse(() => EventSequenceNumber.Client.ROOT),
           )
-        : EventSequenceNumber.ROOT
+        : EventSequenceNumber.Client.ROOT
       const nextItem = Chunk.fromIterable(
         stmt.select<SystemTables.EventlogMetaRow>({
           $seqNumGlobal: lastId?.global,

@@ -20,7 +20,7 @@ export const PullRequest = Schema.Struct({
   cursor: Schema.Option(
     Schema.Struct({
       backendId: BackendId,
-      eventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber,
+      eventSequenceNumber: EventSequenceNumber.Global.Schema,
     }),
   ),
 }).annotations({ title: '@livestore/sync-cf:PullRequest' })
@@ -30,7 +30,7 @@ export type PullRequest = typeof PullRequest.Type
 export const PullResponse = Schema.Struct({
   batch: Schema.Array(
     Schema.Struct({
-      eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
+      eventEncoded: LiveStoreEvent.Global.Encoded,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
@@ -48,7 +48,7 @@ export const emptyPullResponse = (backendId: string) =>
 export type PullResponse = typeof PullResponse.Type
 
 export const PushRequest = Schema.Struct({
-  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.Global.Encoded),
   backendId: Schema.Option(BackendId),
 }).annotations({ title: '@livestore/sync-cf:PushRequest' })
 

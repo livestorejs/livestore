@@ -4,16 +4,23 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./release": "./src/commands/release.ts"
+    "./release": "./src/commands/release.ts",
+    "./docs-export": "./src/commands/docs-export.ts",
+    "./lint": "./src/commands/lint.ts"
   },
   "devDependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
+    "@local/astro-tldraw": "workspace:*",
     "@local/astro-twoslash-code": "workspace:*",
+    "@local/docs": "workspace:*",
     "@local/tests-integration": "workspace:*",
     "@local/tests-sync-provider": "workspace:*",
     "@types/bun": "^1.2.21",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/semver": "^7.7.0",
+    "semver": "^7.7.3",
+    "yaml": "^2.8.1"
   }
 }

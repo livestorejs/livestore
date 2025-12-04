@@ -9,7 +9,6 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <link rel="modulepreload" href="/src/client.tsx" />
     </head>
     <body>
-      {/* biome-ignore lint/correctness/useUniqueElementIds: Redwood hydrates client markup at a fixed root id */}
       <div id="root">{children}</div>
       <script type="module">import("/src/client.tsx")</script>
     </body>

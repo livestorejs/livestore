@@ -3,6 +3,8 @@ title: MCP Integration
 description: Model Context Protocol integration for AI assistants like Claude.
 ---
 
+import McpModuleContractSnippet from '../../_assets/code/reference/mcp/module-contract.ts?snippet'
+
 LiveStore includes MCP (Model Context Protocol) integration that allows AI assistants like Claude to access LiveStore documentation, examples, and development tools.
 
 :::caution[Experimental]
@@ -43,12 +45,9 @@ Provides development tools and utilities for working with LiveStore projects.
     - Only one instance can be active at a time; connecting again shuts down and replaces the previous instance.
     - Reconnecting creates a fresh, in-memory client database. The visible state is populated by your backend's initial sync. Until sync completes, queries may return empty or partial results.
   - Module contract (generic example):
-    ```ts
-    import { makeWsSync } from '@livestore/sync-cf/client' // or another provider
-    export { schema } from './src/livestore/schema.ts'
-    export const syncBackend = makeWsSync({ url: process.env.LIVESTORE_SYNC_URL ?? 'ws://localhost:8787' })
-    export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN ?? 'insecure-token-change-me' }
-    ```
+
+    <McpModuleContractSnippet />
+
   - Params example: `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
   - Returns example:
     `{ "storeId": "<store-id>", "clientId": "client-123", "sessionId": "session-abc", "schemaInfo": { "tableNames": ["..."], "eventNames": ["..."] } }`

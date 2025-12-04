@@ -1,6 +1,7 @@
 import type { SqliteDb } from '@livestore/common'
 import { prettyBytes } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
+import { Opfs } from '@livestore/utils/effect/browser'
 
 declare global {
   // declaring a global *value* is the least fussy when augmenting inline
@@ -33,6 +34,7 @@ export const downloadURL = (data: string, fileName: string) => {
 
 export const exposeDebugUtils = () => {
   globalThis.__debugLiveStoreUtils = {
+    opfs: Opfs.debugUtils,
     downloadBlob,
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
     runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),

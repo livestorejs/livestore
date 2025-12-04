@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
@@ -17,8 +17,8 @@ import {
   Stream,
   SubscriptionRef,
   UrlParams,
-  type WebSocket,
 } from '@livestore/utils/effect'
+import type { WebSocket } from '@livestore/utils/effect/browser'
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
@@ -73,7 +73,7 @@ export const makeWsSync =
         storeId,
         payload,
         transport: 'ws',
-      }).pipe(UnexpectedError.mapToUnexpectedError)
+      }).pipe(UnknownError.mapToUnknownError)
 
       const urlParams = UrlParams.fromInput(urlParamsData)
       const wsUrl = `${options.url}?${UrlParams.toString(urlParams)}`
@@ -119,7 +119,7 @@ export const makeWsSync =
       }).pipe(
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('ping'),
       )
 
@@ -156,7 +156,7 @@ export const makeWsSync =
           Effect.gen(function* () {
             if (batch.length === 0) return
 
-            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => ({
+            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => ({
               storeId,
               payload,
               batch,
@@ -169,7 +169,7 @@ export const makeWsSync =
                 maxBytes: MAX_WS_MESSAGE_BYTES,
                 encode: encodePayload,
               }),
-              Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
+              Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
             )
 
             for (const sub of chunksChunk) {
@@ -182,7 +182,7 @@ export const makeWsSync =
                 Effect.mapError((cause) =>
                   cause._tag === 'InvalidPushError'
                     ? cause
-                    : new InvalidPushError({ cause: new UnexpectedError({ cause }) }),
+                    : new InvalidPushError({ cause: new UnknownError({ cause }) }),
                 ),
               )
             }

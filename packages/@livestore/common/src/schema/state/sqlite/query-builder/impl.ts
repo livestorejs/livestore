@@ -35,7 +35,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         select: { columns },
       }) as any
     },
-    // biome-ignore lint/complexity/useArrowFunction: prefer function over arrow function for this case
     where: function () {
       if (ast._tag === 'InsertQuery') return invalidQueryBuilder('Cannot use where with insert')
       if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')

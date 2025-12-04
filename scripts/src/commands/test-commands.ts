@@ -1,10 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 import {
@@ -13,8 +12,6 @@ import {
   type ProviderKey as TSyncProviderChoice,
 } from '@local/tests-sync-provider/registry'
 
-const cwd =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 // GitHub actions log groups
@@ -28,8 +25,8 @@ const runTestGroup =
     }).pipe(Effect.withSpan(`test-group(${name})`))
 
 // Dynamically discover packages that have test files
-const discoverPackagesWithTests = (excludePackages: string[] = []): string[] => {
-  const packagesDir = path.join(cwd, 'packages')
+const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: string[] = []): string[] => {
+  const packagesDir = path.join(workspaceRoot, 'packages')
   const results: string[] = []
 
   try {
@@ -74,7 +71,7 @@ const discoverPackagesWithTests = (excludePackages: string[] = []): string[] => 
 
     // Also check tests/package-common if not excluded
     if (!excludePackages.includes('tests/package-common')) {
-      const packageCommonPath = path.join(cwd, 'tests/package-common')
+      const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
       if (fs.existsSync(packageCommonPath) && hasTestFiles(packageCommonPath)) {
         results.push('tests/package-common')
       }
@@ -126,28 +123,33 @@ export const testUnitCommand = Cli.Command.make(
   'unit',
   {},
   Effect.fn(function* () {
+    const workspaceRoot = yield* LivestoreWorkspace
     // Packages that need to run sequentially due to CI flakiness
     const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
 
     // Dynamically discover all packages with tests, excluding sequential ones
-    const allPackagesWithTests = discoverPackagesWithTests(sequentialPackages)
+    const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
 
     // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
     if (isGithubAction) {
       process.env.CI = '1'
 
-      const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${cwd}/${pkg}`)
-      const vitestPathsToRunInParallel = allPackagesWithTests.map((pkg) => `${cwd}/${pkg}`)
+      const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
+      const vitestPathsToRunInParallel = allPackagesWithTests.map((pkg) => `${workspaceRoot}/${pkg}`)
 
       // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
       // Ignoring them for now but we should fix them eventually
       for (const vitestPath of vitestPathsToRunSequentially) {
-        yield* runTestGroup(vitestPath)(cmd(`vitest run ${vitestPath}`, { cwd }).pipe(Effect.ignoreLogged))
+        yield* runTestGroup(vitestPath)(
+          cmd(`vitest run ${vitestPath}`).pipe(Effect.ignoreLogged, Effect.provide(LivestoreWorkspace.toCwd())),
+        )
       }
 
       // Run the rest of the tests in parallel
       if (vitestPathsToRunInParallel.length > 0) {
-        yield* runTestGroup('Parallel tests')(cmd(['vitest', 'run', ...vitestPathsToRunInParallel], { cwd }))
+        yield* runTestGroup('Parallel tests')(
+          cmd(['vitest', 'run', ...vitestPathsToRunInParallel]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        )
       }
     } else {
       // For local development, run sequential packages first, then parallel ones
@@ -157,7 +159,8 @@ export const testUnitCommand = Cli.Command.make(
         allPaths,
         (vitestPath) =>
           // TODO use this https://x.com/luxdav/status/1942532247833436656
-          cmdText(`vitest run ${vitestPath}`, { cwd, stderr: 'pipe' }).pipe(
+          cmdText(`vitest run ${vitestPath}`, { stderr: 'pipe' }).pipe(
+            Effect.provide(LivestoreWorkspace.toCwd()),
             Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
           ),
         { concurrency: 'unbounded' },
@@ -171,9 +174,8 @@ export const testPerfCommand = Cli.Command.make(
   {},
   Effect.fn(function* () {
     yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
-      cwd: `${cwd}/tests/perf`,
       shell: true,
-    })
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
   }),
 )
 
@@ -181,7 +183,7 @@ export const waSqliteTest = Cli.Command.make(
   'wa-sqlite',
   {},
   Effect.fn(function* () {
-    yield* cmd('vitest run', { cwd: `${cwd}/tests/wa-sqlite` })
+    yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
   }),
 )
 
@@ -209,9 +211,7 @@ export const syncProviderTest = Cli.Command.make(
       args.push('--testNamePattern', pattern)
     }
 
-    yield* cmd(args, {
-      cwd: `${cwd}/tests/sync-provider`,
-    })
+    yield* cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
   }),
 ).pipe(Cli.Command.withDescription('Run sync provider tests (optionally filtered by provider)'))
 
@@ -219,9 +219,9 @@ export const nodeSyncTest = Cli.Command.make(
   'node-sync',
   {},
   Effect.fn(function* () {
-    yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts'], {
-      cwd: `${cwd}/tests/integration`,
-    })
+    yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts']).pipe(
+      Effect.provide(LivestoreWorkspace.toCwd('tests/integration')),
+    )
   }),
 )
 

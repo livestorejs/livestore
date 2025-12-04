@@ -1,5 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
-import { UnexpectedError } from '../errors.ts'
+import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber } from '../schema/mod.ts'
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {
@@ -15,12 +15,12 @@ export class BackendIdMismatchError extends Schema.TaggedError<BackendIdMismatch
 }) {}
 
 export class ServerAheadError extends Schema.TaggedError<ServerAheadError>()('ServerAheadError', {
-  minimumExpectedNum: EventSequenceNumber.GlobalEventSequenceNumber,
-  providedNum: EventSequenceNumber.GlobalEventSequenceNumber,
+  minimumExpectedNum: EventSequenceNumber.Global.Schema,
+  providedNum: EventSequenceNumber.Global.Schema,
 }) {}
 
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
-  cause: Schema.Union(UnexpectedError, ServerAheadError, BackendIdMismatchError),
+  cause: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
 }) {}
 
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
@@ -28,8 +28,8 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
 }) {}
 
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
-  minimumExpectedNum: EventSequenceNumber.EventSequenceNumber,
-  providedNum: EventSequenceNumber.EventSequenceNumber,
+  minimumExpectedNum: EventSequenceNumber.Client.Composite,
+  providedNum: EventSequenceNumber.Client.Composite,
   /** Generation number the client session should use for subsequent pushes */
   // nextGeneration: Schema.Number,
 }) {}

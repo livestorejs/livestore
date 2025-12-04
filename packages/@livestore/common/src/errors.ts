@@ -1,31 +1,29 @@
 import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
 
-import * as LiveStoreEvent from './schema/LiveStoreEvent.ts'
+import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 
-export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
+export class UnknownError extends Schema.TaggedError<UnknownError>()('LiveStore.UnknownError', {
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
   payload: Schema.optional(Schema.Any),
 }) {
-  static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  static mapToUnknownError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
-      Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
-      Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+      Effect.mapError((cause) => (Schema.is(UnknownError)(cause) ? cause : new UnknownError({ cause }))),
+      Effect.catchAllDefect((cause) => new UnknownError({ cause })),
     )
 
-  static mapToUnexpectedErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
+  static mapToUnknownErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     layer.pipe(
       Layer.catchAllCause((cause) =>
-        Cause.isFailType(cause) && Schema.is(UnexpectedError)(cause.error)
+        Cause.isFailType(cause) && Schema.is(UnknownError)(cause.error)
           ? Layer.fail(cause.error)
-          : Layer.fail(new UnexpectedError({ cause: cause })),
+          : Layer.fail(new UnknownError({ cause: cause })),
       ),
     )
 
-  static mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
-    stream.pipe(
-      Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
-    )
+  static mapToUnknownErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
+    stream.pipe(Stream.mapError((cause) => (Schema.is(UnknownError)(cause) ? cause : new UnknownError({ cause }))))
 }
 
 export class MaterializerHashMismatchError extends Schema.TaggedError<MaterializerHashMismatchError>()(
@@ -66,7 +64,7 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
 }) {}
 
 export class UnknownEventError extends Schema.TaggedError<UnknownEventError>()('LiveStore.UnknownEventError', {
-  event: LiveStoreEvent.AnyEncoded.pipe(Schema.pick('name', 'args', 'seqNum', 'clientId', 'sessionId')),
+  event: LiveStoreEvent.Client.Encoded.pipe(Schema.pick('name', 'args', 'seqNum', 'clientId', 'sessionId')),
   reason: Schema.Literal('event-definition-missing', 'materializer-missing'),
   operation: Schema.String,
   note: Schema.optional(Schema.String),

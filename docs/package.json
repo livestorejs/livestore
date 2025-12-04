@@ -3,6 +3,9 @@
   "version": "0.1.1",
   "type": "module",
   "private": true,
+  "exports": {
+    "./multi-code-markdown": "./src/utils/multi-code-markdown.ts"
+  },
   "dependencies": {
     "@astrojs/check": "0.9.4",
     "@astrojs/netlify": "6.5.9",
@@ -19,6 +22,7 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@local/astro-tldraw": "workspace:*",
     "@local/astro-twoslash-code": "workspace:*",
     "@local/shared": "workspace:*",
     "@mixedbread/cli": "1.2.1",
@@ -26,6 +30,7 @@
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "astro": "5.13.4",
+    "astro-d2": "0.8.1",
     "astro-expressive-code": "0.41.3",
     "astro-og-canvas": "0.7.0",
     "canvaskit-wasm": "0.40.0",
@@ -44,6 +49,7 @@
     "starlight-sidebar-topics": "0.6.0",
     "starlight-typedoc": "0.21.3",
     "tailwindcss": "catalog:",
+    "terrastruct-d2-bin": "0.7.1",
     "typedoc": "0.28.11",
     "typedoc-plugin-markdown": "4.8.1",
     "typescript": "catalog:"

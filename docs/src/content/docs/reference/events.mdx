@@ -9,6 +9,8 @@ import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-sc
 import { EventsVisualizer } from '../../../components/EventsVisualizer'
 import { Image } from 'astro:assets'
 import eventNodesImg from '../../../assets/event-nodes.svg'
+import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
+import EventTypeNamespacesSnippet from '../../_assets/code/reference/events/event-type-namespaces.ts?snippet'
 
 ## Event definitions
 
@@ -144,18 +146,7 @@ This example shows how a client session rebases its pending events when new auth
 
 Older clients might receive events that were introduced in newer app versions. Configure the behaviour centrally via `unknownEventHandling` when constructing the schema:
 
-```ts
-const schema = makeSchema({
-  events,
-  state,
-  unknownEventHandling: {
-    strategy: 'callback',
-    onUnknownEvent: (event, error) => {
-      console.warn('LiveStore saw an unknown event', { event, reason: error.reason })
-    },
-  },
-})
-```
+<UnknownEventHandlingSnippet />
 
 Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new events until the client updates, `'fail'` to halt immediately, or `'callback'` to delegate to custom logging/telemetry while continuing to process the log.
 
@@ -168,6 +159,82 @@ Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new
     - for structs ...
       - you can add new fields if they have default values or are optional
       - you can remove fields
+
+## Event format
+
+Each event has the following structure:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Event name matching the event definition |
+| `args` | Event arguments as defined by the event schema |
+| `seqNum` | Sequence number identifying this event |
+| `parentSeqNum` | Parent event's sequence number (for causal ordering) |
+| `clientId` | Identifier of the client that created the event |
+| `sessionId` | Identifier of the session |
+
+### Encoded vs decoded events
+
+Events exist in two formats:
+
+**Decoded** - Native TypeScript types used in application code:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": Date },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+**Encoded** - Serialized format for storage and sync:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": "2024-01-15T10:30:00.000Z" },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+The `args` field is encoded according to the event's schema (e.g., `Date` objects become ISO strings, binary data becomes base64). LiveStore handles encoding/decoding automatically.
+
+### Client-side sequence numbers
+
+On the client, sequence numbers are expanded to track additional information for local events:
+
+```json
+{
+  "seqNum": { "global": 5, "client": 1, "rebaseGeneration": 0 },
+  "parentSeqNum": { "global": 5, "client": 0, "rebaseGeneration": 0 }
+}
+```
+
+- **global**: Globally unique integer assigned by the sync backend (`EventSequenceNumber.Global`)
+- **client**: Client-local counter (0 for synced events, increments for client-only events) (`EventSequenceNumber.Client`)
+- **rebaseGeneration**: Increments when the client rebases unconfirmed events
+
+Events can be represented as strings like `e5` (global event 5), `e5.1` (client-local event), or `e5r1` (after a rebase).
+
+For the full type definitions, see [`LiveStoreEvent`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/LiveStoreEvent) and [`EventSequenceNumber`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/EventSequenceNumber).
+
+### Event type namespaces
+
+LiveStore organizes event types into namespaces based on their usage context:
+
+| Namespace | Description | Sequence Number Format |
+|-----------|-------------|----------------------|
+| `LiveStoreEvent.Input` | Events without sequence numbers (for committing) | None |
+| `LiveStoreEvent.Global` | Sync backend format | Integer (`seqNum: number`) |
+| `LiveStoreEvent.Client` | Client-side format with full metadata | Struct (`seqNum: { global, client, rebaseGeneration }`) |
+
+<EventTypeNamespacesSnippet />
 
 ## Eventlog
 

@@ -1,3 +1,4 @@
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
 import React from 'react'
@@ -57,7 +58,7 @@ const usePendingSyncEvents = () => {
     () =>
       Effect.gen(function* () {
         const isActive = true
-        const leaderSyncState = store.clientSession.leaderThread.syncState
+        const leaderSyncState = store[StoreInternalsSymbol].clientSession.leaderThread.syncState
 
         const applyState = () => {
           if (!isActive) return
@@ -88,13 +89,13 @@ const usePendingSyncEvents = () => {
 
         applyState()
 
-        const sessionState = yield* store.syncProcessor.syncState
+        const sessionState = yield* store[StoreInternalsSymbol].syncProcessor.syncState
         const leaderState = yield* leaderSyncState
 
         setSessionPending(sessionState.pending.length > 0)
         setLeaderPending(leaderState.pending.filter((_) => _.seqNum.client === 0).length > 0)
 
-        yield* store.syncProcessor.syncState.changes.pipe(
+        yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
           Stream.tap((sessionState) => Effect.sync(() => setSessionPending(sessionState.pending.length > 0))),
           Stream.runDrain,
           Effect.interruptible,

@@ -7,11 +7,12 @@ import {
   type IntentionalShutdownCause,
   type InvalidPullError,
   type IsOfflineError,
+  LogConfig,
   type MaterializeError,
   type MigrationsReport,
   provideOtel,
   type SyncError,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
@@ -23,8 +24,6 @@ import {
   Fiber,
   identity,
   Layer,
-  Logger,
-  LogLevel,
   OtelTracer,
   Queue,
   Runtime,
@@ -42,6 +41,7 @@ import type {
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
@@ -60,7 +60,7 @@ export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/e
 
 export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
   DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
+  Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
 >() {}
 
 export type LiveStoreContextProps<
@@ -117,7 +117,7 @@ export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
-> {
+> extends LogConfig.WithLoggerOptions {
   schema: TSchema
   adapter: Adapter
   storeId: string
@@ -174,6 +174,15 @@ export interface CreateStoreOptions<
   }
 }
 
+export type CreateStoreOptionsPromise<
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
+}
+
 /** Create a new LiveStore Store */
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
@@ -183,10 +192,7 @@ export const createStorePromise = async <
   signal,
   otelOptions,
   ...options
-}: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
-  signal?: AbortSignal
-  otelOptions?: Partial<OtelOptions>
-}): Promise<Store<TSchema, TContext>> =>
+}: CreateStoreOptionsPromise<TSchema, TContext, TSyncPayloadSchema>): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
     const runtime = yield* Effect.runtime()
@@ -205,8 +211,7 @@ export const createStorePromise = async <
     provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
-    Effect.provide(Logger.prettyWithThread('window')),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    LogConfig.withLoggerConfig(options, { threadName: 'window' }),
     Effect.runPromise,
   )
 
@@ -231,7 +236,7 @@ export const createStore = <
   syncPayloadSchema,
 }: CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema>): Effect.Effect<
   Store<TSchema, TContext>,
-  UnexpectedError,
+  UnknownError,
   Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
@@ -272,7 +277,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnexpectedError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
+          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
         >,
       ) =>
         Effect.gen(function* () {
@@ -302,7 +307,7 @@ export const createStore = <
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnexpectedError.mapToUnexpectedError)
+          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -348,14 +353,14 @@ export const createStore = <
       })
 
       // Starts background fibers (syncing, event processing, etc) for store
-      yield* store.boot
+      yield* store[StoreInternalsSymbol].boot
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
         yield* Effect.tryAll(() =>
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
           Effect.withSpan('createStore:boot'),
         )
@@ -366,7 +371,7 @@ export const createStore = <
 
       if (batchUpdates !== undefined) {
         // Replacing the default batchUpdates function with the provided one after boot
-        store.reactivityGraph.context!.effectsWrapper = batchUpdates
+        store[StoreInternalsSymbol].reactivityGraph.context!.effectsWrapper = batchUpdates
       }
 
       yield* Deferred.succeed(storeDeferred, store as any as Store)
@@ -385,7 +390,7 @@ const validateStoreId = (storeId: string) =>
     const validChars = /^[a-zA-Z0-9_-]+$/
 
     if (!validChars.test(storeId)) {
-      return yield* UnexpectedError.make({
+      return yield* UnknownError.make({
         cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
         payload: { storeId },
       })

@@ -146,7 +146,7 @@ export const buildPushRequests = ({
 }: {
   config: S2Config
   storeId: string
-  batch: readonly LiveStoreEvent.AnyEncodedGlobal[]
+  batch: readonly LiveStoreEvent.Global.Encoded[]
 }): ReadonlyArray<S2PushRequest> => {
   const streamName = makeS2StreamName(storeId)
   const url = getBasinUrl(config, `/streams/${encodeURIComponent(streamName)}/records`)

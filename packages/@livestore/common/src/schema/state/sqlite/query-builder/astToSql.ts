@@ -7,6 +7,8 @@ import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
 // Helper functions for SQL generation
+const quoteIdentifier = (identifier: string): string => `"${identifier.replace(/"/g, '""')}"`
+
 const formatWhereClause = (
   whereConditions: ReadonlyArray<QueryBuilderAst.Where>,
   tableDef: State.SQLite.TableDefBase,
@@ -16,13 +18,15 @@ const formatWhereClause = (
 
   const whereClause = whereConditions
     .map(({ col, op, value }) => {
+      const quotedCol = quoteIdentifier(col)
+
       // Handle NULL values
       if (value === null) {
         if (op !== '=' && op !== '!=') {
           throw new Error(`Unsupported operator for NULL value: ${op}`)
         }
         const opStmt = op === '=' ? 'IS' : 'IS NOT'
-        return `${col} ${opStmt} NULL`
+        return `${quotedCol} ${opStmt} NULL`
       }
 
       // Get column definition and encode value
@@ -48,11 +52,11 @@ const formatWhereClause = (
         const encodedValues = value.map((v) => Schema.encodeSync(colDef.schema)(v)) as SqlValue[]
         bindValues.push(...encodedValues)
         const placeholders = encodedValues.map(() => '?').join(', ')
-        return `${col} ${op} (${placeholders})`
+        return `${quotedCol} ${op} (${placeholders})`
       } else {
         const encodedValue = Schema.encodeSync(colDef.schema)(value)
         bindValues.push(encodedValue as SqlValue)
-        return `${col} ${op} ?`
+        return `${quotedCol} ${op} ?`
       }
     })
     .join(' AND ')
@@ -62,7 +66,7 @@ const formatWhereClause = (
 
 const formatReturningClause = (returning?: string[]): string => {
   if (!returning || returning.length === 0) return ''
-  return ` RETURNING ${returning.join(', ')}`
+  return ` RETURNING ${returning.map(quoteIdentifier).join(', ')}`
 }
 
 export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: SqlValue[]; usedTables: Set<string> } => {
@@ -72,6 +76,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   // INSERT query
   if (ast._tag === 'InsertQuery') {
     const columns = Object.keys(ast.values)
+    const quotedColumns = columns.map(quoteIdentifier)
     const placeholders = columns.map(() => '?').join(', ')
     const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)
 
@@ -91,7 +96,8 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
         // For REPLACE, the conflict target is implied and no further clause is needed
       } else {
         // Build the ON CONFLICT clause for IGNORE or UPDATE
-        conflictClause = ` ON CONFLICT (${ast.onConflict.targets.join(', ')}) `
+        const conflictTargets = ast.onConflict.targets.map(quoteIdentifier).join(', ')
+        conflictClause = ` ON CONFLICT (${conflictTargets}) `
         if (ast.onConflict.action._tag === 'ignore') {
           conflictClause += 'DO NOTHING'
         } else {
@@ -105,8 +111,9 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
           const updates = updateCols
             .map((col) => {
               const value = updateValues[col]
+              const quotedCol = quoteIdentifier(col)
               // If the value is undefined, use excluded.col
-              return value === undefined ? `${col} = excluded.${col}` : `${col} = ?`
+              return value === undefined ? `${quotedCol} = excluded.${quotedCol}` : `${quotedCol} = ?`
             })
             .join(', ')
 
@@ -129,7 +136,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     }
 
     // Construct the main query part
-    let query = `${insertVerb} INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
+    let query = `${insertVerb} INTO '${ast.tableDef.sqliteDef.name}' (${quotedColumns.join(', ')}) VALUES (${placeholders})`
 
     // Append the conflict clause if it was generated (i.e., not for REPLACE)
     query += conflictClause
@@ -157,7 +164,9 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       bindValues.push(encodedValues[col] as SqlValue)
     })
 
-    let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns.map((col) => `${col} = ?`).join(', ')}`
+    let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns
+      .map((col) => `${quoteIdentifier(col)} = ?`)
+      .join(', ')}`
 
     const whereClause = formatWhereClause(ast.where, ast.tableDef, bindValues)
     if (whereClause) query += ` ${whereClause}`
@@ -201,31 +210,31 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     const encodedId = ast.id === SessionIdSymbol ? ast.id : Schema.encodeSync(idColDef.schema)(ast.id)
 
     return {
-      query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE id = ?`,
+      query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE ${quoteIdentifier('id')} = ?`,
       bindValues: [encodedId as SqlValue],
       usedTables,
     }
   }
 
   // SELECT query
-  const columnsStmt = ast.select.columns.length === 0 ? '*' : ast.select.columns.join(', ')
+  const columnsStmt = ast.select.columns.length === 0 ? '*' : ast.select.columns.map(quoteIdentifier).join(', ')
   const selectStmt = `SELECT ${columnsStmt}`
   const fromStmt = `FROM '${ast.tableDef.sqliteDef.name}'`
   const whereStmt = formatWhereClause(ast.where, ast.tableDef, bindValues)
 
   const orderByStmt =
     ast.orderBy.length > 0
-      ? `ORDER BY ${ast.orderBy.map(({ col, direction }) => `${col} ${direction}`).join(', ')}`
+      ? `ORDER BY ${ast.orderBy.map(({ col, direction }) => `${quoteIdentifier(col)} ${direction}`).join(', ')}`
       : ''
 
   const limitStmt = ast.limit._tag === 'Some' ? `LIMIT ?` : ''
   const offsetStmt = ast.offset._tag === 'Some' ? `OFFSET ?` : ''
 
-  // Push offset and limit values in the correct order matching the query string
-  if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
+  // Push limit and offset values in the correct order matching the query string
   if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
+  if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
 
-  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
+  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, limitStmt, offsetStmt]
     .map((clause) => clause.trim())
     .filter((clause) => clause.length > 0)
     .join(' ')

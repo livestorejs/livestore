@@ -1,12 +1,12 @@
 import { Effect } from '@livestore/utils/effect'
 
 import { UnknownEventError } from '../errors.ts'
-import type { EventDef, Materializer } from './EventDef.ts'
-import type * as LiveStoreEvent from './LiveStoreEvent.ts'
+import type { EventDef, Materializer } from './EventDef/mod.ts'
+import type * as LiveStoreEvent from './LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from './schema.ts'
 
 export type UnknownEventContext = {
-  readonly event: Pick<LiveStoreEvent.AnyEncoded, 'name' | 'args' | 'seqNum' | 'clientId' | 'sessionId'>
+  readonly event: Pick<LiveStoreEvent.Client.Encoded, 'name' | 'args' | 'seqNum' | 'clientId' | 'sessionId'>
   readonly reason: 'event-definition-missing' | 'materializer-missing'
   readonly operation: string
 }

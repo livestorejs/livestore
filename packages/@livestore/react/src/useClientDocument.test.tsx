@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -39,12 +40,12 @@ Vitest.describe('useClientDocument', () => {
       expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       rerender('u2')
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       expect(result.current.id).toBe('u2')
       expect(result.current.state.username).toBe('username_u2')
       expect(renderCount.val).toBe(2)
@@ -253,81 +254,81 @@ Vitest.describe('useClientDocument', () => {
   )
 
   Vitest.describe('otel', () => {
-    it.each([{ strictMode: true }, { strictMode: false }])(
-      'should update the data based on component key strictMode=%s',
-      async ({ strictMode }) => {
-        const exporter = new InMemorySpanExporter()
+    it.each([
+      { strictMode: true },
+      { strictMode: false },
+    ])('should update the data based on component key strictMode=%s', async ({ strictMode }) => {
+      const exporter = new InMemorySpanExporter()
 
-        const provider = new BasicTracerProvider({
-          spanProcessors: [new SimpleSpanProcessor(exporter)],
+      const provider = new BasicTracerProvider({
+        spanProcessors: [new SimpleSpanProcessor(exporter)],
+      })
+
+      const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+
+      const span = otelTracer.startSpan('test-root')
+      const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+      await Effect.gen(function* () {
+        const { wrapper, store, renderCount } = yield* makeTodoMvcReact({
+          otelContext,
+          otelTracer,
+          strictMode,
         })
 
-        const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+        const { result, rerender, unmount } = ReactTesting.renderHook(
+          (userId: string) => {
+            renderCount.inc()
 
-        const span = otelTracer.startSpan('test-root')
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+            const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+            return { state, setState, id }
+          },
+          { wrapper, initialProps: 'u1' },
+        )
 
-        await Effect.gen(function* () {
-          const { wrapper, store, renderCount } = yield* makeTodoMvcReact({
-            otelContext,
-            otelTracer,
-            strictMode,
-          })
+        expect(result.current.id).toBe('u1')
+        expect(result.current.state.username).toBe('')
+        expect(renderCount.val).toBe(1)
 
-          const { result, rerender, unmount } = ReactTesting.renderHook(
-            (userId: string) => {
-              renderCount.inc()
+        // For u2 we'll make sure that the row already exists,
+        // so the lazy `insert` will be skipped
+        ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2')))
 
-              const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
-              return { state, setState, id }
-            },
-            { wrapper, initialProps: 'u1' },
-          )
+        rerender('u2')
 
-          expect(result.current.id).toBe('u1')
-          expect(result.current.state.username).toBe('')
-          expect(renderCount.val).toBe(1)
+        expect(result.current.id).toBe('u2')
+        expect(result.current.state.username).toBe('username_u2')
+        expect(renderCount.val).toBe(2)
 
-          // For u2 we'll make sure that the row already exists,
-          // so the lazy `insert` will be skipped
-          ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2')))
+        unmount()
+        span.end()
+      }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
-          rerender('u2')
+      await provider.forceFlush()
 
-          expect(result.current.id).toBe('u2')
-          expect(result.current.state.username).toBe('username_u2')
-          expect(renderCount.val).toBe(2)
+      const mapAttributes = (attributes: otel.Attributes) => {
+        return ReadonlyRecord.map(attributes, (val, key) => {
+          if (key === 'code.stacktrace') {
+            return '<STACKTRACE>'
+          } else if (key === 'firstStackInfo') {
+            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
+            // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
+            stackInfo.frames.forEach((_) => {
+              if (_.name.includes('renderHook.wrapper')) {
+                _.name = 'renderHook.wrapper'
+              }
+              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+            })
+            return JSON.stringify(stackInfo)
+          }
+          return val
+        })
+      }
 
-          unmount()
-          span.end()
-        }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+      expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+      expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
 
-        await provider.forceFlush()
-
-        const mapAttributes = (attributes: otel.Attributes) => {
-          return ReadonlyRecord.map(attributes, (val, key) => {
-            if (key === 'code.stacktrace') {
-              return '<STACKTRACE>'
-            } else if (key === 'firstStackInfo') {
-              const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
-              // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
-              stackInfo.frames.forEach((_) => {
-                if (_.name.includes('renderHook.wrapper')) {
-                  _.name = 'renderHook.wrapper'
-                }
-                _.filePath = '__REPLACED_FOR_SNAPSHOT__'
-              })
-              return JSON.stringify(stackInfo)
-            }
-            return val
-          })
-        }
-
-        expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
-        expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
-
-        await provider.shutdown()
-      },
-    )
+      await provider.shutdown()
+    })
   })
 })

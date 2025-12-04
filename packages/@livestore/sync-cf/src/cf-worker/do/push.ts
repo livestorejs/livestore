@@ -3,7 +3,7 @@ import {
   InvalidPushError,
   ServerAheadError,
   SyncBackend,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
@@ -41,7 +41,7 @@ export const makePush =
 
       if (options?.onPush) {
         yield* Effect.tryAll(() => options.onPush!(pushRequest, { storeId, payload })).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
         )
       }
 
@@ -127,7 +127,7 @@ export const makePush =
           for (const { response, encoded } of responses) {
             // Only calling once for now.
             if (options?.onPullRes) {
-              yield* Effect.tryAll(() => options.onPullRes!(response)).pipe(UnexpectedError.mapToUnexpectedError)
+              yield* Effect.tryAll(() => options.onPullRes!(response)).pipe(UnknownError.mapToUnknownError)
             }
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
@@ -181,7 +181,7 @@ export const makePush =
       Effect.tap(
         Effect.fn(function* (message) {
           if (options?.onPushRes) {
-            yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnexpectedError.mapToUnexpectedError)
+            yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnknownError.mapToUnknownError)
           }
         }),
       ),

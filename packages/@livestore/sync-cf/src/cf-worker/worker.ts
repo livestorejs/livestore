@@ -1,5 +1,5 @@
 import { env as importedEnv } from 'cloudflare:workers'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type { CfTypes, SearchParams } from '../common/mod.ts'
@@ -151,7 +151,7 @@ export const makeWorker = <
  * }
  * ```
  *
- * @throws {UnexpectedError} If the payload is invalid
+ * @throws {UnknownError} If the payload is invalid
  */
 export const handleSyncRequest = <
   TEnv extends Env = Env,
@@ -192,7 +192,7 @@ export const handleSyncRequest = <
 
         const result = yield* Effect.promise(async () =>
           validatePayload(decodedEither.right as TSyncPayload, { storeId }),
-        ).pipe(UnexpectedError.mapToUnexpectedError, Effect.either)
+        ).pipe(UnknownError.mapToUnknownError, Effect.either)
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
@@ -200,7 +200,7 @@ export const handleSyncRequest = <
         }
       } else {
         const result = yield* Effect.promise(async () => validatePayload(payload as TSyncPayload, { storeId })).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.either,
         )
 

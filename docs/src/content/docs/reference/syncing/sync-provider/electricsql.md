@@ -4,6 +4,9 @@ sidebar:
   order: 11
 ---
 
+import ClientSetupSnippet from '../../../../_assets/code/reference/syncing/sync-provider/electricsql/client-setup.ts?snippet'
+import ApiProxySnippet from '../../../../_assets/code/reference/syncing/sync-provider/electricsql/api-proxy.ts?snippet'
+
 The `@livestore/sync-electric` package lets you sync LiveStore with ElectricSQL.
 
 - Package: `pnpm add @livestore/sync-electric`
@@ -48,14 +51,7 @@ The API proxy has dual responsibilities:
 
 Basic usage in your worker/server code:
 
-```ts
-import { makeSyncBackend } from '@livestore/sync-electric'
-
-const backend = makeSyncBackend({
-  endpoint: '/api/electric', // Your API proxy endpoint
-  ping: { enabled: true },
-})
-```
+<ClientSetupSnippet />
 
 ## API Proxy Implementation
 
@@ -63,50 +59,7 @@ ElectricSQL requires an API proxy on your server to handle authentication and da
 
 ### Minimal Implementation Example
 
-```ts
-import { Schema } from '@livestore/livestore'
-import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
-
-const electricHost = 'http://localhost:30000' // Your Electric server
-
-// GET /api/electric - Pull events (proxied through Electric)
-export async function GET(request: Request) {
-  const searchParams = new URL(request.url).searchParams
-  const { url, storeId, needsInit } = makeElectricUrl({
-    electricHost,
-    searchParams,
-    apiSecret: 'your-electric-secret',
-  })
-  
-  // Add your authentication logic here
-  // if (!isAuthenticated(request)) {
-  //   return new Response('Unauthorized', { status: 401 })
-  // }
-  
-  // Initialize database tables if needed
-  if (needsInit) {
-    const db = makeDb(storeId)
-    await db.migrate()
-    await db.disconnect()
-  }
-  
-  // Proxy pull request to Electric server for reading
-  return fetch(url)
-}
-
-// POST /api/electric - Push events (direct database write)
-export async function POST(request: Request) {
-  const payload = await request.json()
-  const parsed = Schema.decodeUnknownSync(ApiSchema.PushPayload)(payload)
-  
-  // Write events directly to Postgres table (bypasses Electric)
-  const db = makeDb(parsed.storeId)
-  await db.createEvents(parsed.batch)
-  await db.disconnect()
-  
-  return Response.json({ success: true })
-}
-```
+<ApiProxySnippet />
 
 ### Important Considerations
 

@@ -65,7 +65,7 @@
 }
 
 /* https://tailwindcss.com/docs/dark-mode#using-a-data-attribute */
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* Starlight theme below */
 :root {
@@ -132,3 +132,16 @@
     navigation: auto;
   }
 } */
+
+.d2-svg {
+  /* filter: invert(1) hue-rotate(180deg); */
+}
+
+svg[data-d2-version] {
+  max-width: 500px;
+}
+
+/* Full-width D2 diagrams - use by wrapping in <div class="d2-full-width">...</div> */
+.d2-full-width svg[data-d2-version] {
+  max-width: 100%;
+}

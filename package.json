@@ -4,7 +4,7 @@
   "private": true,
   "devDependencies": {
     "@biomejs/biome": "^2.2.7",
-    "@effect/language-service": "^0.41.1",
+    "@effect/language-service": "^0.58.3",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "^9.1.7",
@@ -33,7 +33,7 @@
       "workerd"
     ],
     "overrides": {
-      "syncpack>effect": "3.18.0"
+      "syncpack>effect": "3.18.4"
     }
   },
   "resolutions": {
@@ -44,13 +44,14 @@
     "@livestore/cli": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.15",
+    "@livestore/devtools-vite": "0.4.0-dev.19",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/solid": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/svelte": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/sync-s2": "workspace:*",

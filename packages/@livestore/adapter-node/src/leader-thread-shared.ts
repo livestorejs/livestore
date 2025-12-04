@@ -7,7 +7,7 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -30,7 +30,7 @@ export type TestingOverrides = {
       dbEventlog: SqliteDb
       dbState: SqliteDb
     },
-    UnexpectedError
+    UnknownError
   >
 }
 
@@ -59,8 +59,8 @@ export const makeLeaderThread = ({
   syncPayloadSchema,
   testing,
 }: MakeLeaderThreadArgs): Effect.Effect<
-  Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
-  UnexpectedError,
+  Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem>,
+  UnknownError,
   Scope.Scope
 > =>
   Effect.gen(function* () {
@@ -120,7 +120,7 @@ export const makeLeaderThread = ({
     })
   }).pipe(
     Effect.tapCauseLogPretty,
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.withSpan('@livestore/adapter-node:makeLeaderThread', {
       attributes: { storeId, clientId, storage, devtools, syncOptions },
     }),
@@ -140,7 +140,7 @@ const makeDevtoolsOptions = ({
   storeId: string
   clientId: string
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtools.enabled === false) {
       return {

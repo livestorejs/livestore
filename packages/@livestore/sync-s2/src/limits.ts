@@ -52,21 +52,21 @@ export const computeBatchMeteredBytes = (records: ReadonlyArray<AppendRecordBody
   records.reduce((acc, record) => acc + computeRecordMeteredBytes(record), 0)
 
 interface PreparedEvent {
-  readonly event: LiveStoreEvent.AnyEncodedGlobal
+  readonly event: LiveStoreEvent.Global.Encoded
   readonly record: AppendRecordBody
   readonly meteredBytes: number
   readonly index: number
 }
 
 export interface S2Chunk {
-  readonly events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>
+  readonly events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
   readonly records: ReadonlyArray<AppendRecordBody>
   readonly meteredBytes: number
 }
 
 // Pre-stringify events and pre-compute per-record metered bytes so we only pay
 // the JSON cost once when chunking large batches.
-const convertEventsToPrepared = (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>): PreparedEvent[] =>
+const convertEventsToPrepared = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>): PreparedEvent[] =>
   events.map((event, index) => {
     const body = JSON.stringify(event)
     const record: AppendRecordBody = { body }
@@ -101,7 +101,7 @@ const mapPreparedChunks = (chunks: Chunk.Chunk<Chunk.Chunk<PreparedEvent>>): Rea
     }
   })
 
-export const chunkEventsForS2 = (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>): ReadonlyArray<S2Chunk> => {
+export const chunkEventsForS2 = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>): ReadonlyArray<S2Chunk> => {
   if (events.length === 0) {
     return []
   }

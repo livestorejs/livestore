@@ -1,7 +1,7 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.ts'
-import type { EventDef, EventDefRecord, Materializer } from './EventDef.ts'
+import type { EventDef, EventDefRecord, Materializer } from './EventDef/mod.ts'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
 import { stateSystemTables } from './state/sqlite/system-tables/state-tables.ts'

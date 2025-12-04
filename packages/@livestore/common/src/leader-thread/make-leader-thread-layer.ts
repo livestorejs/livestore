@@ -18,7 +18,7 @@ import {
   type MaterializerHashMismatchError,
   type SqliteDb,
   type SqliteError,
-  UnexpectedError,
+  UnknownError,
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
@@ -82,7 +82,7 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
@@ -192,7 +192,7 @@ export const makeLeaderThreadLayer = ({
       dbState,
       dbEventlog,
       makeSqliteDb,
-      eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
+      eventSchema: LiveStoreEvent.Client.makeSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,
@@ -220,7 +220,7 @@ export const makeLeaderThreadLayer = ({
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:boot'),
     Effect.withSpanScoped('@livestore/common:leader-thread'),
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
@@ -257,10 +257,12 @@ const getInitialSyncState = ({
   dbEventlogMissing: boolean
 }) => {
   const initialBackendHead = dbEventlogMissing
-    ? EventSequenceNumber.ROOT.global
+    ? EventSequenceNumber.Client.ROOT.global
     : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+  const initialLocalHead = dbEventlogMissing
+    ? EventSequenceNumber.Client.ROOT
+    : Eventlog.getClientHeadFromDb(dbEventlog)
 
   if (initialBackendHead > initialLocalHead.global) {
     return shouldNeverHappen(
@@ -272,8 +274,8 @@ const getInitialSyncState = ({
     localHead: initialLocalHead,
     upstreamHead: {
       global: initialBackendHead,
-      client: EventSequenceNumber.clientDefault,
-      rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      client: EventSequenceNumber.Client.DEFAULT,
+      rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
     pending: dbEventlogMissing
       ? []
@@ -282,7 +284,7 @@ const getInitialSyncState = ({
           dbState,
           since: {
             global: initialBackendHead,
-            client: EventSequenceNumber.clientDefault,
+            client: EventSequenceNumber.Client.DEFAULT,
             rebaseGeneration: initialLocalHead.rebaseGeneration,
           },
         }),
@@ -350,7 +352,7 @@ const bootLeaderThread = ({
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnexpectedError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
+  UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {

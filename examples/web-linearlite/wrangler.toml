@@ -47,7 +47,3 @@ class_name = "SyncBackendDO"
 [[env.dev.migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
-
-[vars]
-# should be set via CF dashboard (as secret)
-# ADMIN_SECRET = "..."

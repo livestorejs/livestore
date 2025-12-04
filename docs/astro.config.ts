@@ -4,10 +4,12 @@ import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { liveStoreVersion } from '@livestore/common'
+import { createAstroTldrawIntegration } from '@local/astro-tldraw'
 import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
+import astroD2 from 'astro-d2'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightContextualMenu from 'starlight-contextual-menu'
@@ -55,7 +57,16 @@ export default defineConfig({
     },
   },
   integrations: [
+    // We're using a custom D2 theme (see `docs/src/content/base.d2`)
+    astroD2({
+      sketch: true,
+      pad: 40,
+      inline: true,
+      // skipGeneration: true,
+      output: 'generated-d2',
+    }),
     createAstroTwoslashCodeIntegration(),
+    createAstroTldrawIntegration(),
     react(),
     createCopyPageClipboardFallbackIntegration(),
     starlight({
@@ -102,6 +113,10 @@ export default defineConfig({
               {
                 label: 'Getting Started',
                 autogenerate: { directory: 'getting-started' },
+              },
+              {
+                label: 'Tutorial',
+                autogenerate: { directory: 'tutorial' },
               },
               {
                 label: 'Evaluating LiveStore',
@@ -355,7 +370,7 @@ export default defineConfig({
   markdown: {
     syntaxHighlight: {
       type: 'shiki',
-      excludeLangs: ['mermaid', 'math'],
+      excludeLangs: ['mermaid', 'math', 'd2'],
     },
     remarkPlugins: [
       remarkGithubIssueLinks,

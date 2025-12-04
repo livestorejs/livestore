@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { makeAdapter } from '@livestore/adapter-node'
-import { createStore } from '@livestore/livestore'
+import { createStore, StoreInternalsSymbol } from '@livestore/livestore'
 import { IS_CI, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -49,7 +49,7 @@ Vitest.describe('todomvc-node', () => {
 
       yield* Effect.sleep(100)
 
-      const syncState = yield* store.syncProcessor.syncState
+      const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState
       expect(syncState.pending.length).toBe(0)
 
       yield* sameStore.shutdown()
@@ -68,13 +68,13 @@ Vitest.describe('todomvc-node', () => {
       expect(() =>
         store.commit(events.todoCreated({ id: nanoid(), title: 'Test' })),
       ).toThrowErrorMatchingInlineSnapshot(
-        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"commit\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+        `[LiveStore.UnknownError: { "cause": "Store has been shut down (while performing \\"commit\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
       )
       expect(() => store.query(tables.todo)).toThrowErrorMatchingInlineSnapshot(
-        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"query\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+        `[LiveStore.UnknownError: { "cause": "Store has been shut down (while performing \\"query\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
       )
       expect(() => store.subscribe(tables.todo, () => {})).toThrowErrorMatchingInlineSnapshot(
-        `[LiveStore.UnexpectedError: { "cause": "Store has been shut down (while performing \\"subscribe\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
+        `[LiveStore.UnknownError: { "cause": "Store has been shut down (while performing \\"subscribe\\").", "note": "You cannot perform this operation after the store has been shut down.", "payload": undefined }]`,
       )
     }).pipe(withTestCtx(test)),
   )

@@ -10,11 +10,11 @@ import {
 
 const encoder = new TextEncoder()
 
-const makeEvent = (payloadLength: number, index = 0): LiveStoreEvent.AnyEncodedGlobal => ({
+const makeEvent = (payloadLength: number, index = 0): LiveStoreEvent.Global.Encoded => ({
   name: `event-${index}`,
   args: { payload: 'x'.repeat(payloadLength) },
-  seqNum: index as EventSequenceNumber.GlobalEventSequenceNumber,
-  parentSeqNum: index as EventSequenceNumber.GlobalEventSequenceNumber,
+  seqNum: index as EventSequenceNumber.Global.Type,
+  parentSeqNum: index as EventSequenceNumber.Global.Type,
   clientId: 'client',
   sessionId: 'session',
 })
