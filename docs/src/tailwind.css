@@ -101,7 +101,7 @@
   --sl-color-bg: var(--color-gray-950);
   --sl-color-hairline-shade: var(--color-gray-800);
 
-  .header .nav-link-container .nav-link {
+  .header .right-group .social-icons .nav-link-container a.nav-link {
     font-size: 12px;
     color: var(--color-gray-300);
     border-radius: 0.75em;
@@ -111,7 +111,7 @@
     width: fit-content;
   }
 
-  .header .nav-link-container .nav-link:hover {
+  .header .nav-link-container .nav-link:hover, .header .right-group .social-icons .nav-link-container a.nav-link:hover {
     color: white;
   }
 
@@ -503,11 +503,11 @@
     --sl-color-bg: white;
     --sl-color-hairline-shade: var(--color-gray-200);
 
-    .header .nav-link {
+    .header .nav-link, .header .right-group .social-icons .nav-link-container a.nav-link {
       color: var(--color-gray-600);
     }
 
-    .header .nav-link:hover {
+    .header .nav-link:hover, .header .right-group .social-icons .nav-link-container a.nav-link:hover {
       color: black;
     }
 
