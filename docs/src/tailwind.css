@@ -482,6 +482,29 @@
     font-size: 2rem;
   }
 
+  main .sl-link-card, main footer .pagination-links a {
+    border: 1px solid var(--color-gray-700);
+    border-radius: 0.75em;
+    background-color: transparent;
+  }
+
+  
+  main .sl-link-card:hover, main footer .pagination-links a:hover {
+    border: 1px solid white;
+    background-color: transparent;
+  }
+
+  main .sl-link-card a .title, main footer .pagination-links a .link-title {
+    font-weight: 400;
+    font-size: 16px;
+  }
+
+  main footer .pagination-links a {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--color-gray-400);
+  }
+
   main .sl-markdown-content {
     font-size: 14px;
     font-weight: 300;
