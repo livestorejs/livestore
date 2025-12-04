@@ -10,6 +10,8 @@ export const makeTracer = (serviceName: string) => {
     resource: resourceFromAttributes({ 'service.name': serviceName }),
   })
 
+  provider.register()
+
   return provider.getTracer('livestore')
 }
 

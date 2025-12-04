@@ -25,6 +25,9 @@ export const manualInstallDepsStr = [
   '@livestore/peer-deps' + versionNpmSuffix,
   '@livestore/devtools-vite' + versionNpmSuffix,
   'slashv/vue-livestore' + versionNpmSuffix,
+  'vue',
+  '@vitejs/plugin-vue',
+  'vite-plugin-vue-devtools',
 ].join(' ')
 
 ## Prerequisites
@@ -100,7 +103,7 @@ Here's an example:
 
 ### Queries
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `vue-livestore`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
