@@ -168,19 +168,20 @@
   .starlight-sidebar-topics a.starlight-sidebar-topics-current {
     color: white;
   }
-  
+
   .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
     background-color: var(--color-gray-700);
     color: var(--color-gray-300);
   }
-  
+
   .starlight-sidebar-topics a.starlight-sidebar-topics-current .starlight-sidebar-topics-icon {
     background-color: var(--sl-color-text-accent);
-      border-color: var(--sl-color-text-accent);
-      color: var(--sl-color-black);
+    border-color: var(--sl-color-text-accent);
+    color: var(--sl-color-black);
   }
 
-  .starlight-sidebar-topics a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+  .starlight-sidebar-topics
+    a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
     .starlight-sidebar-topics-icon {
     background-color: var(--color-gray-700);
     color: white;
@@ -474,7 +475,7 @@
       border-color: black;
     }
 
-    .starlight-sidebar-topics a{
+    .starlight-sidebar-topics a {
       color: var(--color-gray-600);
     }
 
@@ -491,7 +492,8 @@
       color: var(--color-gray-600);
     }
 
-    .starlight-sidebar-topics a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+    .starlight-sidebar-topics
+      a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
       .starlight-sidebar-topics-icon {
       background-color: var(--color-gray-200);
       color: black;
