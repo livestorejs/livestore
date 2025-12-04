@@ -63,13 +63,13 @@ export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN ??
 
 Connect parameters:
 {
-  "storePath": "<path-to-your-mcp-module>.ts",
+  "storePath": "livestore-cli.config.ts",
   "storeId": "<store-id>"
 }
 
 Optional identifiers to group client state on the server:
 {
-  "storePath": "<path-to-your-mcp-module>.ts",
+  "storePath": "livestore-cli.config.ts",
   "storeId": "<store-id>",
   "clientId": "<client-id>",
   "sessionId": "<session-id>"

@@ -48,7 +48,7 @@ Provides development tools and utilities for working with LiveStore projects.
 
     <McpModuleContractSnippet />
 
-  - Params example: `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+  - Params example: `{ "storePath": "livestore-cli.config.ts", "storeId": "<store-id>" }`
   - Returns example:
     `{ "storeId": "<store-id>", "clientId": "client-123", "sessionId": "session-abc", "schemaInfo": { "tableNames": ["..."], "eventNames": ["..."] } }`
 
@@ -91,8 +91,8 @@ Run a local Cloudflare sync backend:
    - `bunx @livestore/cli mcp server`
 
 3. From your MCP client (e.g., Claude Desktop), call tools:
-   - Use your own MCP module path and storeId. The repo also provides an example: `examples/cf-chat/mcp.ts`.
-   - Connect: `livestore_instance_connect` with `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+   - Use your own config file path and storeId. The repo also provides an example: `examples/cf-chat/livestore-cli.config.ts`.
+   - Connect: `livestore_instance_connect` with `{ "storePath": "livestore-cli.config.ts", "storeId": "<store-id>" }`
    - Commit: `livestore_instance_commit_events` with `[ { "name": "v1.EntityCreated", "args": { "id": "e1", "title": "Hello", "createdAt": "2024-01-01T00:00:00.000Z" } } ]`
    - Query: `livestore_instance_query` with `{ "sql": "SELECT * FROM my_table ORDER BY createdAt DESC LIMIT 5" }`
    - Status: `livestore_instance_status`

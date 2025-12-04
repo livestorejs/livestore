@@ -54,6 +54,64 @@ bunx @livestore/cli mcp tools    # Development tools server
 # Example: OPENAI_API_KEY=your_key bunx @livestore/cli mcp coach
 ```
 
+### `bunx @livestore/cli sync`
+Import and export events from the sync backend. Useful for backup, migration, and debugging.
+
+#### Export
+
+Export all events from the sync backend to a JSON file:
+
+```bash
+bunx @livestore/cli sync export \
+  --store livestore-cli.config.ts \
+  --store-id my-store \
+  events.json
+```
+
+**Options:**
+- `--store, -s` (required) - Path to a config module that exports `schema` and `syncBackend`
+- `--store-id, -i` (required) - Store identifier
+- `--client-id` - Client identifier for the sync connection (default: `cli-export`)
+
+#### Import
+
+Import events from a JSON file to the sync backend:
+
+```bash
+bunx @livestore/cli sync import \
+  --store livestore-cli.config.ts \
+  --store-id my-store \
+  events.json
+```
+
+**Options:**
+- `--store, -s` (required) - Path to a config module that exports `schema` and `syncBackend`
+- `--store-id, -i` (required) - Store identifier
+- `--client-id` - Client identifier for the sync connection (default: `cli-import`)
+- `--force, -f` - Force import even if store ID in the file doesn't match
+- `--dry-run` - Validate the import file without actually importing
+
+**Note:** The sync backend must be empty when importing. The import will fail if events already exist.
+
+### Config File
+
+Both MCP and sync commands require a config file (conventionally named `livestore-cli.config.ts`) that exports:
+
+```ts
+// Export your app's schema
+export { schema } from './src/livestore/schema.ts'
+
+// Provide a sync backend constructor
+export const syncBackend = makeWsSync({
+  url: process.env.LIVESTORE_SYNC_URL ?? 'ws://localhost:8787'
+})
+
+// Optionally, pass an auth payload (must be JSON-serializable)
+export const syncPayload = {
+  authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN
+}
+```
+
 ## Global Options
 
 - `--verbose` - Enable verbose logging
