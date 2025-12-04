@@ -7,8 +7,7 @@ sidebar:
 import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
 import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
 import { EventsVisualizer } from '../../../components/EventsVisualizer'
-import { Image } from 'astro:assets'
-import eventNodesImg from '../../../assets/event-nodes.svg'
+import EventNodesDiagram from '../../_assets/diagrams/event-nodes.tldr?tldraw'
 import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
 import EventTypeNamespacesSnippet from '../../_assets/code/reference/events/event-type-namespaces.ts?snippet'
 
@@ -42,10 +41,7 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 ## Nodes in the LiveStore system
 
-<div class="bg-gray-800 dark:bg-transparent rounded-lg p-4">
-  {/* Diagram: https://www.tldraw.com/f/aR50x7vdQmBUGx4k7WIEf?d=v-253.-969.2541.1856.BfMH9wpQWHX7Ss2oP9TbE */}
-  <Image src={eventNodesImg} alt="Event nodes diagram" />
-</div>
+<EventNodesDiagram class="my-8" />
 
 #### Client Session
 - `SyncState`: in-memory for pending events only
