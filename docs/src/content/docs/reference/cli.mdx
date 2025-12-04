@@ -68,6 +68,21 @@ bunx @livestore/cli sync export \
   events.json
 ```
 
+**Example output:**
+
+```
+Exporting events from LiveStore...
+   Store: livestore-cli.config.ts
+   Store ID: my-store
+   Output: events.json
+
+Connecting to sync backend...
+✓ Connected to sync backend: @livestore/cf-sync
+Pulling events from sync backend...
+Pulled 127 events
+Exported 127 events to /path/to/events.json
+```
+
 **Options:**
 - `--store, -s` (required) - Path to a config module that exports `schema` and `syncBackend`
 - `--store-id, -i` (required) - Store identifier
@@ -82,6 +97,25 @@ bunx @livestore/cli sync import \
   --store livestore-cli.config.ts \
   --store-id my-store \
   events.json
+```
+
+**Example output:**
+
+```
+Importing events to LiveStore...
+   Store: livestore-cli.config.ts
+   Store ID: my-store
+   Input: events.json
+
+Reading import file...
+Found 127 events in export file
+Connecting to sync backend...
+✓ Connected to sync backend: @livestore/cf-sync
+Checking for existing events...
+Pushing 127 events to sync backend...
+  Pushed 100/127 events
+  Pushed 127/127 events
+Successfully imported 127 events
 ```
 
 **Options:**
