@@ -482,19 +482,22 @@
     font-size: 2rem;
   }
 
-  main .sl-link-card, main footer .pagination-links a {
+  main .sl-link-card,
+  main footer .pagination-links a {
     border: 1px solid var(--color-gray-700);
     border-radius: 0.75em;
     background-color: transparent;
+    box-shadow: none;
   }
 
-  
-  main .sl-link-card:hover, main footer .pagination-links a:hover {
+  main .sl-link-card:hover,
+  main footer .pagination-links a:hover {
     border: 1px solid white;
     background-color: transparent;
   }
 
-  main .sl-link-card a .title, main footer .pagination-links a .link-title {
+  main .sl-link-card a .title,
+  main footer .pagination-links a .link-title {
     font-weight: 400;
     font-size: 16px;
   }
@@ -782,6 +785,21 @@
 
     main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
       border-bottom: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-link-card,
+    main footer .pagination-links a {
+      border: 1px solid var(--color-gray-300);
+    }
+
+    main .sl-link-card:hover,
+    main footer .pagination-links a:hover {
+      border: 1px solid black;
+      background-color: transparent;
+    }
+
+    main footer .pagination-links a {
+      color: var(--color-gray-600);
     }
 
     /* -------------------------- END custom styling to match landing page */
