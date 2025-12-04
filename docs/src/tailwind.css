@@ -138,10 +138,6 @@
     box-shadow: none;
   }
 
-  .header .mixedbread-search-button svg {
-    color: white;
-  }
-
   .header #version-select {
     border: 1px solid var(--color-gray-700);
     color: var(--color-gray-300);
@@ -330,12 +326,13 @@
     background: none;
   }
 
-  .contextual-menu-container {
-    flex-shrink: 0;
+  .contextual-menu-parent {
+    gap: 2em;
+    margin-bottom: 1em;
   }
 
-  .contextual-menu-container svg {
-    height: 14px;
+  .contextual-menu-container {
+    flex-shrink: 0;
   }
 
   .contextual-menu-container .contextual-main-action,
@@ -439,7 +436,7 @@
     margin: 0.5em 0;
   }
 
-  .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+  .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"] {
     border-left: 1px solid var(--sl-color-text-accent);
     color: var(--sl-color-text-accent);
   }
@@ -478,6 +475,97 @@
 
   .header .right-group .social-icons a:hover {
     color: white;
+  }
+
+  /* Main content styles - high specificity */
+  main h1 {
+    font-size: 2rem;
+  }
+
+  main .sl-markdown-content {
+    font-size: 14px;
+    font-weight: 300;
+    padding-top: 1em;
+  }
+
+  main .sl-markdown-content h2 {
+    font-size: 1.65rem;
+  }
+
+  main .sl-markdown-content h3 {
+    font-size: 1.2rem;
+  }
+
+  main .sl-markdown-content h4 {
+    font-size: 1rem;
+  }
+
+  main .sl-markdown-content aside.starlight-aside {
+    border-radius: 0.75em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  main .sl-markdown-content aside.starlight-aside.starlight-aside--note {
+    background-color: color-mix(in srgb, var(--color-blue-950) 50%, transparent);
+  }
+
+  main .sl-markdown-content aside.starlight-aside.starlight-aside--caution {
+    background-color: color-mix(in srgb, var(--color-yellow-950) 50%, transparent);
+  }
+
+  main .sl-markdown-content aside.starlight-aside .starlight-aside__title {
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  main .sl-markdown-content aside.starlight-aside .starlight-aside__icon {
+    height: 20px;
+  }
+
+  main .sl-markdown-content code:not(:where(.not-content *)) {
+    background-color: var(--color-gray-800);
+    border-radius: 0.25em;
+  }
+
+  main .sl-markdown-content .sl-anchor-link {
+    padding-left: 0.25em;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
+    border-bottom: 1px solid var(--color-gray-700);
+    padding-bottom: 1px;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a {
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid transparent;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a[aria-selected="true"] {
+    border-bottom: 1px solid var(--color-accent-500);
+    font-weight: 400;
+  }
+
+  main footer .meta a {
+    font-weight: 300;
+    gap: 0.3em;
+  }
+
+  main footer .meta a svg {
+    height: 14px;
+  }
+
+  .contextual-menu-container svg {
+    height: 14px;
+  }
+
+  .header .mixedbread-search-button svg {
+    color: white;
+  }
+
+  main .sl-markdown-content .sl-anchor-link svg {
+    width: 0.75em;
+    margin-top: 0.15em;
   }
 
   /* -------------------------- END custom styling to match landing page */
@@ -651,6 +739,26 @@
 
     starlight-toc a:hover {
       color: black;
+    }
+
+    main .sl-markdown-content aside.starlight-aside {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    main .sl-markdown-content aside.starlight-aside.starlight-aside--note {
+      background-color: var(--color-blue-50);
+    }
+
+    main .sl-markdown-content aside.starlight-aside.starlight-aside--caution {
+      background-color: var(--color-yellow-50);
+    }
+
+    main .sl-markdown-content code:not(:where(.not-content *)) {
+      background-color: var(--color-gray-200);
+    }
+
+    main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
+      border-bottom: 1px solid var(--color-gray-200);
     }
 
     /* -------------------------- END custom styling to match landing page */
