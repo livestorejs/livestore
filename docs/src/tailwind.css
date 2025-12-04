@@ -148,7 +148,7 @@
     color: white;
   }
 
-  .header .social-icons a:where(.astro-a22ph5h4):hover {
+  .header .social-icons a:hover {
     color: white;
   }
 
@@ -157,38 +157,44 @@
     border-color: white;
   }
 
-  .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc) {
+  .starlight-sidebar-topics a {
     color: var(--color-gray-400);
   }
 
-  .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc):hover {
+  .starlight-sidebar-topics a:hover {
     color: white;
   }
 
-  .sidebar-content .starlight-sidebar-topics-current {
+  .starlight-sidebar-topics a.starlight-sidebar-topics-current {
     color: white;
   }
-
-  .starlight-sidebar-topics-icon {
+  
+  .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
     background-color: var(--color-gray-700);
     color: var(--color-gray-300);
   }
+  
+  .starlight-sidebar-topics a.starlight-sidebar-topics-current .starlight-sidebar-topics-icon {
+    background-color: var(--sl-color-text-accent);
+      border-color: var(--sl-color-text-accent);
+      color: var(--sl-color-black);
+  }
 
-  a:where(.astro-kuhiuaqc):is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+  .starlight-sidebar-topics a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
     .starlight-sidebar-topics-icon {
     background-color: var(--color-gray-700);
     color: white;
   }
 
-  .sidebar-content a:where(.astro-oibn34lv) {
+  .sidebar-content a {
     border-radius: 0;
   }
 
-  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+  .sidebar-content ul:not(.top-level) a {
     color: var(--color-gray-400);
   }
 
-  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv):hover {
+  .sidebar-content ul:not(.top-level) a:hover {
     color: white;
   }
 
@@ -265,12 +271,12 @@
     border: none;
   }
 
-  .header .social-icons:where(.astro-zxdnvsqq)::after {
+  .header .social-icons::after {
     border-inline-end: none;
     margin-right: -1.5em;
   }
 
-  .header .social-icons a:where(.astro-a22ph5h4) {
+  .header .social-icons a {
     border-radius: 0.75em;
     height: 28px;
     width: 28px;
@@ -279,7 +285,7 @@
     opacity: 1;
   }
 
-  .header .social-icons a:where(.astro-a22ph5h4):focus-visible {
+  .header .social-icons a:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--color-accent-500);
   }
@@ -316,22 +322,22 @@
     padding: 1em 0;
   }
 
-  .sidebar-content .starlight-sidebar-topics {
+  .starlight-sidebar-topics {
     padding: 0 1em;
     border-bottom: 1px solid var(--sl-color-hairline-shade);
   }
 
-  .sidebar-content .starlight-sidebar-topics::after {
+  .starlight-sidebar-topics::after {
     border-top: none;
   }
 
-  .sidebar-content .starlight-sidebar-topics a:where(.astro-ektvsd3n) {
+  .starlight-sidebar-topics a {
     font-weight: 400;
     font-size: 14px;
     gap: 0.75em;
   }
 
-  .starlight-sidebar-topics-icon {
+  .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
     border-radius: 0.5em;
     border: none;
     padding: 0.35em;
@@ -341,7 +347,7 @@
     padding: 0 1em;
   }
 
-  .sidebar-content .large:where(.astro-oibn34lv) {
+  .sidebar-content .large {
     font-weight: 400;
     font-size: 14px;
   }
@@ -361,25 +367,25 @@
     margin-left: -1px;
   }
 
-  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+  .sidebar-content ul:not(.top-level) a {
     font-weight: 300;
     border-left: 1px solid transparent;
     padding: 0 0 0 1em;
     margin: 0.5em 0;
   }
 
-  .sidebar-content a:where(.astro-oibn34lv)[aria-current="page"] {
+  .sidebar-content a[aria-current="page"] {
     color: var(--sl-color-text-accent);
     font-weight: 400;
     background: none;
   }
 
-  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv)[aria-current="page"] {
+  .sidebar-content ul:not(.top-level) a[aria-current="page"] {
     border-left: 1px solid var(--sl-color-text-accent);
     color: var(--sl-color-text-accent);
   }
 
-  .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv)[aria-current="page"]:hover {
+  .sidebar-content ul:not(.top-level) a[aria-current="page"]:hover {
     color: var(--sl-color-text-accent);
   }
 
@@ -459,7 +465,7 @@
       color: black;
     }
 
-    .header .social-icons a:where(.astro-a22ph5h4):hover {
+    .header .social-icons a:hover {
       color: black;
     }
 
@@ -468,41 +474,47 @@
       border-color: black;
     }
 
-    .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc) {
+    .starlight-sidebar-topics a{
       color: var(--color-gray-600);
     }
 
-    .sidebar-content .starlight-sidebar-topics a:where(.astro-kuhiuaqc):hover {
+    .starlight-sidebar-topics a:hover {
       color: black;
     }
 
-    .sidebar-content .starlight-sidebar-topics-current {
+    .starlight-sidebar-topics a.starlight-sidebar-topics-current {
       color: black;
     }
 
-    .starlight-sidebar-topics-icon {
+    .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
       background-color: var(--color-gray-200);
-      color: var(--color-gray-500);
+      color: var(--color-gray-600);
     }
 
-    a:where(.astro-kuhiuaqc):is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+    .starlight-sidebar-topics a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
       .starlight-sidebar-topics-icon {
       background-color: var(--color-gray-200);
       color: black;
     }
 
-    a:where(.astro-kuhiuaqc):is(.starlight-sidebar-topics-current) .starlight-sidebar-topics-icon {
+    .starlight-sidebar-topics a:is(.starlight-sidebar-topics-current) .starlight-sidebar-topics-icon {
       background-color: var(--sl-color-text-accent);
       border-color: var(--sl-color-text-accent);
       color: var(--sl-color-text-invert);
     }
 
-    .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv) {
+    .sidebar-content ul:not(.top-level) a {
       color: var(--color-gray-600);
     }
 
-    .sidebar-content ul:not(.top-level) a:where(.astro-oibn34lv):hover {
+    .sidebar-content ul:not(.top-level) a:hover {
       color: black;
+    }
+
+    .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+      color: var(--sl-color-text-accent);
+      font-weight: 400;
+      background: none;
     }
 
     /* -------------------------- END custom styling to match landing page */
