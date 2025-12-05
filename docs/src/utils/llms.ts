@@ -88,7 +88,8 @@ const getDocsForDirectory = (
   entries: ReadonlyArray<TLlmsEntry>,
   docs: ReadonlyArray<TLlmsDoc>,
 ): ReadonlyArray<TLlmsEntry> => {
-  const prefix = directory.endsWith('/') ? directory : `${directory}/`
+  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const prefix = `${normalizedDirectory}/`
 
   // Create a map from slug to original doc for order info
   const docBySlug = new Map<string, TLlmsDoc>()
@@ -98,6 +99,9 @@ const getDocsForDirectory = (
 
   return entries
     .filter((entry) => {
+      // Include the directory index page (e.g. "getting-started")
+      if (entry.slug === normalizedDirectory) return true
+
       // Match docs in this directory but not nested subdirectories
       if (!entry.slug.startsWith(prefix)) return false
       const remaining = entry.slug.slice(prefix.length)
@@ -122,7 +126,7 @@ type TRenderContext = {
 
 const renderDocLink = (entry: TLlmsEntry): string => {
   const suffix = entry.description.length > 0 ? `: ${entry.description}` : ''
-  return `- [${entry.title}](${entry.href}/)${suffix}`
+  return `- [${entry.title}](${entry.href})${suffix}`
 }
 
 /**
@@ -202,7 +206,7 @@ const renderLlmsListFlat = ({ docs, site }: TToEntriesOptions): string =>
   toLlmsEntries({ docs, site })
     .map((entry) => {
       const suffix = entry.description.length > 0 ? `: ${entry.description}` : ''
-      return `- [${entry.title}](${entry.href}/)${suffix}\n`
+      return `- [${entry.title}](${entry.href})${suffix}\n`
     })
     .join('')
 

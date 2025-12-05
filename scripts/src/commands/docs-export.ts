@@ -169,6 +169,36 @@ const parseFrontmatter = (
   const descriptionMatch = frontmatterRaw.match(/^\s*description:\s*(.+)$/m)
   const orderMatch = frontmatterRaw.match(/^\s*order:\s*(\d+)/m)
 
+  const sidebarOrder = (() => {
+    const lines = frontmatterRaw.split(/\r?\n/)
+    let sidebarIndent: number | undefined
+
+    for (const line of lines) {
+      const indent = line.match(/^\s*/u)?.[0].length ?? 0
+      const trimmed = line.trim()
+
+      if (trimmed.startsWith('sidebar:')) {
+        sidebarIndent = indent
+        continue
+      }
+
+      if (sidebarIndent === undefined) continue
+
+      // Exit once indentation decreases back to or above the sidebar block
+      if (indent <= sidebarIndent) {
+        sidebarIndent = undefined
+        continue
+      }
+
+      if (trimmed.startsWith('order:')) {
+        const value = Number.parseInt(trimmed.slice('order:'.length).trim(), 10)
+        return Number.isNaN(value) ? undefined : value
+      }
+    }
+
+    return undefined
+  })()
+
   const clean = (value: string | undefined) => {
     if (!value) return undefined
     const trimmed = value.trim()
@@ -179,7 +209,12 @@ const parseFrontmatter = (
   return {
     title: clean(titleMatch?.[1]),
     description: clean(descriptionMatch?.[1]),
-    sidebarOrder: orderMatch?.[1] !== undefined ? Number.parseInt(orderMatch[1], 10) : undefined,
+    sidebarOrder:
+      sidebarOrder !== undefined
+        ? sidebarOrder
+        : orderMatch?.[1] !== undefined
+          ? Number.parseInt(orderMatch[1], 10)
+          : undefined,
     body,
   }
 }
@@ -266,7 +301,8 @@ const getDocsForDirectory = (
   entries: ReadonlyArray<TLlmsEntry>,
   docs: ReadonlyArray<TLlmsDoc>,
 ): ReadonlyArray<TLlmsEntry> => {
-  const prefix = directory.endsWith('/') ? directory : `${directory}/`
+  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const prefix = `${normalizedDirectory}/`
 
   // Create a map from slug to original doc for order info
   const docBySlug = new Map<string, TLlmsDoc>()
@@ -276,6 +312,7 @@ const getDocsForDirectory = (
 
   return entries
     .filter((entry) => {
+      if (entry.slug === normalizedDirectory) return true
       // Match docs in this directory but not nested subdirectories
       if (!entry.slug.startsWith(prefix)) return false
       const remaining = entry.slug.slice(prefix.length)
@@ -300,7 +337,7 @@ type TRenderContext = {
 
 const renderDocLink = (entry: TLlmsEntry): string => {
   const suffix = entry.description.length > 0 ? `: ${entry.description}` : ''
-  return `- [${entry.title}](${entry.href}/)${suffix}`
+  return `- [${entry.title}](${entry.href})${suffix}`
 }
 
 /**
@@ -393,7 +430,7 @@ const renderLlmsListFlat = ({
     .map((doc) => {
       const href = resolveHref(doc.slug, site)
       const suffix = doc.description && doc.description.length > 0 ? `: ${doc.description}` : ''
-      return `- [${doc.title}](${href}/)${suffix}\n`
+      return `- [${doc.title}](${href})${suffix}\n`
     })
     .join('')
 
