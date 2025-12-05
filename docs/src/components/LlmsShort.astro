@@ -1,18 +1,55 @@
 ---
-import { loadLlmsDocs, toLlmsEntries } from '../utils/llms.ts'
+import { docsSidebar, type TSidebarItem } from '../data/sidebar.ts'
+import { loadLlmsDocs, type TLlmsEntry, toLlmsEntries } from '../utils/llms.ts'
 
 /**
  * Embeddable LLMS summary section for MDX pages; render-free for `curl` thanks
  * to the markdown route wiring.
+ *
+ * Uses the shared sidebar config to render a hierarchical structure matching
+ * the website navigation.
  */
 
 type TProps = {
   readonly showHeading?: boolean
 }
 
+type TLlmsDoc = Awaited<ReturnType<typeof loadLlmsDocs>>[number]
+
 const { showHeading = true } = Astro.props as TProps
 const docs = await loadLlmsDocs()
 const entries = toLlmsEntries({ docs, site: Astro.site ?? null })
+
+const docsMap = new Map<string, TLlmsEntry>()
+for (const entry of entries) {
+  docsMap.set(entry.slug, entry)
+}
+
+const docBySlug = new Map<string, TLlmsDoc>()
+for (const doc of docs) {
+  const slug = doc.id.replace(/\.(md|mdx)$/u, '').replace(/\/index$/u, '')
+  docBySlug.set(slug, doc)
+}
+
+const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
+  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const prefix = `${normalizedDirectory}/`
+
+  return entries
+    .filter((entry) => {
+      if (entry.slug === normalizedDirectory) return true
+      if (!entry.slug.startsWith(prefix)) return false
+      const remaining = entry.slug.slice(prefix.length)
+      return !remaining.includes('/')
+    })
+    .sort((a, b) => {
+      const docA = docBySlug.get(a.slug)
+      const docB = docBySlug.get(b.slug)
+      const orderA = docA?.data.sidebar?.order ?? 999
+      const orderB = docB?.data.sidebar?.order ?? 999
+      return orderA - orderB
+    })
+}
 ---
 <section>
   {showHeading ? <h2>LiveStore Documentation for LLMs</h2> : null}
@@ -25,13 +62,108 @@ const entries = toLlmsEntries({ docs, site: Astro.site ?? null })
   <ul>
     <li>Most LiveStore APIs are synchronous and don't need <code>await</code></li>
   </ul>
-  <h3>Docs</h3>
-  <ul>
-    {entries.map((entry) => (
-      <li>
-        <a href={entry.href}>{entry.title}</a>
-        {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
-      </li>
-    ))}
-  </ul>
+  {docsSidebar.map((item) => {
+    if (item._tag === 'link') {
+      const entry = docsMap.get(item.slug)
+      return entry ? (
+        <ul>
+          <li>
+            <a href={entry.href}>{entry.title}</a>
+            {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+          </li>
+        </ul>
+      ) : null
+    }
+    if (item._tag === 'autoGroup') {
+      const dirDocs = getDocsForDirectory(item.directory)
+      return (
+        <>
+          <h3>{item.label}</h3>
+          <ul>
+            {dirDocs.map((entry) => (
+              <li>
+                <a href={entry.href}>{entry.title}</a>
+                {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+    if (item._tag === 'group') {
+      return (
+        <>
+          <h3>{item.label}</h3>
+          {item.items.map((subItem) => {
+            if (subItem._tag === 'link') {
+              const entry = docsMap.get(subItem.slug)
+              return entry ? (
+                <ul>
+                  <li>
+                    <a href={entry.href}>{entry.title}</a>
+                    {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+                  </li>
+                </ul>
+              ) : null
+            }
+            if (subItem._tag === 'autoGroup') {
+              const dirDocs = getDocsForDirectory(subItem.directory)
+              return (
+                <>
+                  <h4>{subItem.label}</h4>
+                  <ul>
+                    {dirDocs.map((entry) => (
+                      <li>
+                        <a href={entry.href}>{entry.title}</a>
+                        {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )
+            }
+            if (subItem._tag === 'group') {
+              return (
+                <>
+                  <h4>{subItem.label}</h4>
+                  <ul>
+                    {subItem.items.map((nestedItem) => {
+                      if (nestedItem._tag === 'link') {
+                        const entry = docsMap.get(nestedItem.slug)
+                        return entry ? (
+                          <li>
+                            <a href={entry.href}>{entry.title}</a>
+                            {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+                          </li>
+                        ) : null
+                      }
+                      if (nestedItem._tag === 'autoGroup') {
+                        const dirDocs = getDocsForDirectory(nestedItem.directory)
+                        return (
+                          <>
+                            <h5>{nestedItem.label}</h5>
+                            <ul>
+                              {dirDocs.map((entry) => (
+                                <li>
+                                  <a href={entry.href}>{entry.title}</a>
+                                  {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )
+                      }
+                      return null
+                    })}
+                  </ul>
+                </>
+              )
+            }
+            return null
+          })}
+        </>
+      )
+    }
+    return null
+  })}
 </section>

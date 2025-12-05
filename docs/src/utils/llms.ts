@@ -12,7 +12,7 @@ import { docsSidebar, type TSidebarItem } from '../data/sidebar.ts'
 
 type TLlmsDoc = CollectionEntry<'docs'>
 
-type TLlmsEntry = {
+export type TLlmsEntry = {
   readonly title: string
   readonly description: string
   readonly href: string
