@@ -235,7 +235,13 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
     const meta = rendered?.meta ?? activeMeta
     const diagnostics = rendered?.diagnostics ?? []
     const styles = rendered?.styles ?? []
-    const html = typeof rendered?.html === 'string' && rendered.html.length > 0 ? rendered.html : null
+    const html =
+      typeof rendered?.html === 'string' && rendered.html.length > 0
+        ? rendered.html.replaceAll(
+            `<div class="expressive-code">`,
+            `<div class="expressive-code" data-theme="github-dark">`,
+          )
+        : null
 
     return {
       filename: file.filename,

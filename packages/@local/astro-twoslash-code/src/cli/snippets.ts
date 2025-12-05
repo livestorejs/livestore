@@ -204,31 +204,55 @@ const assembleSnippet = (
     const owner = file.virtualPath
     if (owner === focusVirtualPath) {
       const insertStartSentinel = () => {
-        focusLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null, marker: 'start' })
+        focusLines.push({
+          content: `// __LS_FILE_START__:${owner}`,
+          owner: null,
+          marker: 'start',
+        })
       }
-      focusLines.push({ content: `// @filename: ${owner}`, owner: null, marker: null })
+      focusLines.push({
+        content: `// @filename: ${owner}`,
+        owner: null,
+        marker: null,
+      })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
         if (line.trimStart().startsWith('// ---cut')) {
           insertStartSentinel()
         }
       })
-      focusLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null, marker: 'end' })
+      focusLines.push({
+        content: `// __LS_FILE_END__:${owner}`,
+        owner: null,
+        marker: 'end',
+      })
       appendBlankLine(focusLines)
       continue
     }
 
     const insertSupportStartSentinel = () => {
-      supportLines.push({ content: `// __LS_FILE_START__:${owner}`, owner: null, marker: 'start' })
+      supportLines.push({
+        content: `// __LS_FILE_START__:${owner}`,
+        owner: null,
+        marker: 'start',
+      })
     }
-    supportLines.push({ content: `// @filename: ${owner}`, owner: null, marker: null })
+    supportLines.push({
+      content: `// @filename: ${owner}`,
+      owner: null,
+      marker: null,
+    })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
       if (line.trimStart().startsWith('// ---cut')) {
         insertSupportStartSentinel()
       }
     })
-    supportLines.push({ content: `// __LS_FILE_END__:${owner}`, owner: null, marker: 'end' })
+    supportLines.push({
+      content: `// __LS_FILE_END__:${owner}`,
+      owner: null,
+      marker: 'end',
+    })
     appendBlankLine(supportLines)
   }
 
@@ -357,7 +381,11 @@ const normalizeRelativeSpecifiers = (
 
     const canonicalVirtual = canonicalMap.get(resolved) ?? canonicalizeVirtualPath(resolved)
     const canonicalSpecifier = `${canonicalVirtual}${suffix}`
-    rewrites.push({ raw: specifier, normalized: normalizedSpecifier, canonical: canonicalSpecifier })
+    rewrites.push({
+      raw: specifier,
+      normalized: normalizedSpecifier,
+      canonical: canonicalSpecifier,
+    })
   }
 
   return { content: rewritten, rewrites }
@@ -960,7 +988,13 @@ const collectSourceFiles = (
 
     return files
   }).pipe(
-    Effect.mapError((cause) => new SnippetBuildError({ message: `Failed to scan directory: ${directory}`, cause })),
+    Effect.mapError(
+      (cause) =>
+        new SnippetBuildError({
+          message: `Failed to scan directory: ${directory}`,
+          cause,
+        }),
+    ),
   )
 
 type TSnippetEntry = {
@@ -980,9 +1014,15 @@ const collectSnippetEntries = (
     const entries = new Map<string, { entryPath: string; importers: Set<string> }>()
 
     for (const filePath of files) {
-      const source = yield* fs
-        .readFileString(filePath)
-        .pipe(Effect.mapError((cause) => new SnippetBuildError({ message: `Unable to read ${filePath}`, cause })))
+      const source = yield* fs.readFileString(filePath).pipe(
+        Effect.mapError(
+          (cause) =>
+            new SnippetBuildError({
+              message: `Unable to read ${filePath}`,
+              cause,
+            }),
+        ),
+      )
 
       const dir = path.dirname(filePath)
       let match: RegExpExecArray | null = SNIPPET_IMPORT_REGEX.exec(source)
@@ -999,9 +1039,15 @@ const collectSnippetEntries = (
         }
 
         const resolved = path.resolve(dir, rawPath)
-        const exists = yield* fs
-          .exists(resolved)
-          .pipe(Effect.mapError((cause) => new SnippetBuildError({ message: `Failed to resolve ${resolved}`, cause })))
+        const exists = yield* fs.exists(resolved).pipe(
+          Effect.mapError(
+            (cause) =>
+              new SnippetBuildError({
+                message: `Failed to resolve ${resolved}`,
+                cause,
+              }),
+          ),
+        )
         if (!exists) {
           match = SNIPPET_IMPORT_REGEX.exec(source)
           continue
@@ -1011,7 +1057,10 @@ const collectSnippetEntries = (
         if (record) {
           record.importers.add(filePath)
         } else {
-          entries.set(resolved, { entryPath: resolved, importers: new Set([filePath]) })
+          entries.set(resolved, {
+            entryPath: resolved,
+            importers: new Set([filePath]),
+          })
         }
 
         match = SNIPPET_IMPORT_REGEX.exec(source)
@@ -1050,7 +1099,10 @@ const loadEcRenderer = (
       if (process.env.TWOSLASH_DEBUG === '1') {
         console.error('astro-twoslash-code: failed to load Expressive Code renderer', cause)
       }
-      return new SnippetBuildError({ message: 'Unable to load Expressive Code renderer', cause })
+      return new SnippetBuildError({
+        message: 'Unable to load Expressive Code renderer',
+        cause,
+      })
     },
   })
 
@@ -1183,7 +1235,11 @@ const renderSnippet = (
             cause,
             entry: bundle.entryFilePath,
           }),
-  }).pipe(Effect.withSpan(`renderSnippet:${focusFilename}`, { attributes: { filename: focusFilename } }))
+  }).pipe(
+    Effect.withSpan(`renderSnippet:${focusFilename}`, {
+      attributes: { filename: focusFilename },
+    }),
+  )
 
 const loadPreviousManifest = (
   fs: FileSystem.FileSystem,
@@ -1372,7 +1428,10 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
 
     const buildSnippet = (entry: TSnippetEntry) =>
       Effect.gen(function* () {
-        const bundle = buildSnippetBundle({ entryFilePath: entry.entryPath, baseDir: paths.snippetAssetsRoot })
+        const bundle = buildSnippetBundle({
+          entryFilePath: entry.entryPath,
+          baseDir: paths.snippetAssetsRoot,
+        })
 
         if (!isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot)) {
           return yield* new SnippetBuildError({
@@ -1410,7 +1469,10 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
 
         const bundleHash = hashString(
           JSON.stringify({
-            files: filesWithHash.map((file) => ({ filename: file.filename, hash: file.hash })),
+            files: filesWithHash.map((file) => ({
+              filename: file.filename,
+              hash: file.hash,
+            })),
             meta: 'twoslash',
           }),
         )
@@ -1477,21 +1539,25 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
             entry: entry.entryPath,
           })
         }
-        yield* fs
-          .makeDirectory(path.dirname(artifactPath), { recursive: true })
-          .pipe(
-            Effect.mapError(
-              (cause) => new SnippetBuildError({ message: `Failed to create cache path for ${artifactPath}`, cause }),
-            ),
-          )
+        yield* fs.makeDirectory(path.dirname(artifactPath), { recursive: true }).pipe(
+          Effect.mapError(
+            (cause) =>
+              new SnippetBuildError({
+                message: `Failed to create cache path for ${artifactPath}`,
+                cause,
+              }),
+          ),
+        )
 
-        yield* fs
-          .writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`)
-          .pipe(
-            Effect.mapError(
-              (cause) => new SnippetBuildError({ message: `Unable to write artifact ${artifactPath}`, cause }),
-            ),
-          )
+        yield* fs.writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`).pipe(
+          Effect.mapError(
+            (cause) =>
+              new SnippetBuildError({
+                message: `Unable to write artifact ${artifactPath}`,
+                cause,
+              }),
+          ),
+        )
 
         artifactEntries.push({
           entryFile: artifact.entryFile,
@@ -1501,7 +1567,11 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         })
 
         renderedCount += 1
-      }).pipe(Effect.withSpan(`buildSnippet:${entry.entryPath}`, { attributes: { entryPath: entry.entryPath } }))
+      }).pipe(
+        Effect.withSpan(`buildSnippet:${entry.entryPath}`, {
+          attributes: { entryPath: entry.entryPath },
+        }),
+      )
 
     yield* Effect.forEach(snippetEntries, buildSnippet)
 
@@ -1517,7 +1587,15 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
 
     yield* fs
       .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-      .pipe(Effect.mapError((cause) => new SnippetBuildError({ message: 'Unable to write snippets manifest', cause })))
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new SnippetBuildError({
+              message: 'Unable to write snippets manifest',
+              cause,
+            }),
+        ),
+      )
 
     const cacheHits = snippetEntries.length - renderedCount
     yield* Effect.log(`Rendered ${renderedCount} snippet bundles (${cacheHits} cache hits)`)
@@ -1605,7 +1683,9 @@ const watchSnippetsInternal = (
       const debounced = Stream.debounce(options.debounce)(merged)
 
       const streamEffect = debounced.pipe(
-        Stream.mapEffect((event) => runRebuild('watch', event), { concurrency: 1 }),
+        Stream.mapEffect((event) => runRebuild('watch', event), {
+          concurrency: 1,
+        }),
         Stream.runDrain,
       )
 

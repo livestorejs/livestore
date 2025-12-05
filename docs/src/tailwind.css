@@ -69,6 +69,10 @@
 /* https://tailwindcss.com/docs/dark-mode#using-a-data-attribute */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
+}
+
 /* Starlight theme below */
 :root {
   --custom-outline-color: var(--color-accent-200);
@@ -686,6 +690,88 @@
     font-size: 14px;
   }
 
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__frame {
+    border: none;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar {
+    border-radius: 1em 1em 0 0;
+    border: 1px solid var(--color-gray-800);
+    background-color: var(--color-gray-900);
+    background-image: none;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar button.ls-multi-code__tab {
+    background: transparent;
+    color: var(--color-gray-300);
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar button.ls-multi-code__tab::after {
+    border: none;
+  }
+
+  main
+    .sl-markdown-content
+    .ls-multi-code
+    .ls-multi-code__toolbar
+    button.ls-multi-code__tab.ls-multi-code__tab--active {
+    color: white;
+    border-bottom: 1px solid var(--color-accent-500);
+    font-weight: 400;
+  }
+
+  .twoslash-popup-container {
+    background-color: var(--color-gray-950);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.75em;
+    padding: 0.25em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-code .expressive-code pre {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.5em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs {
+    background: transparent;
+    color: var(--color-gray-300);
+    font-size: 14px;
+    font-weight: 300;
+    max-width: none;
+    border: none;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs code {
+    background-color: var(--color-gray-800);
+    border-radius: 0.25em;
+    border: none;
+    box-shadow: none;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs a {
+    color: var(--color-accent-500);
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.5em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code pre,
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels,
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels .ls-multi-code__panel,
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels .ls-multi-code__panel code {
+    background: transparent;
+  }
+
   main footer .meta a {
     font-weight: 300;
     gap: 0.3em;
@@ -931,10 +1017,6 @@
 
     /* -------------------------- END custom styling to match landing page */
   }
-}
-
-.twoslash-popup-container {
-  z-index: var(--ls-twoslash-tooltip-z, 1000);
 }
 
 /* Hide Twoslash popup container on initial load (still works on hover) */
