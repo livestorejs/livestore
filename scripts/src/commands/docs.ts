@@ -113,8 +113,10 @@ const docsBuildCommand = Cli.Command.make(
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
-        // Snippets/diagrams already built above (or skipped), tell Astro not to auto-build
+        // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
+        // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
         LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
+        LS_TLDRAW_SKIP_AUTO_BUILD: '1',
         LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
       },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
