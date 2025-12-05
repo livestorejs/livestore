@@ -199,17 +199,6 @@ const renderLlmsListHierarchical = ({ docs, site }: TToEntriesOptions): string =
   return renderSidebarItems(docsSidebar, ctx)
 }
 
-/**
- * Render the flat list snippet (legacy format, still used for LlmsShort embeds).
- */
-const renderLlmsListFlat = ({ docs, site }: TToEntriesOptions): string =>
-  toLlmsEntries({ docs, site })
-    .map((entry) => {
-      const suffix = entry.description.length > 0 ? `: ${entry.description}` : ''
-      return `- [${entry.title}](${entry.href})${suffix}\n`
-    })
-    .join('')
-
 export const renderLlmsText = ({ docs, site }: TRenderOptions): string => {
   const docsSection = renderLlmsListHierarchical({ docs, site })
   return `# LiveStore Documentation for LLMs
@@ -235,7 +224,7 @@ export const replaceLlmsShortPlaceholders = ({ markdown, docs, site }: TReplaceO
    * Populate the inline list so consumers fetching `/index.md` (LLMs, curl) see
    * the same links as the rendered MDX page.
    */
-  const docsSection = renderLlmsListFlat({ docs, site }).trimEnd()
+  const docsSection = renderLlmsListHierarchical({ docs, site }).trimEnd()
   return markdown.replace(LLMS_SHORT_PATTERN, `${docsSection}\n`)
 }
 

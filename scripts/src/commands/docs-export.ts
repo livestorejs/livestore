@@ -419,21 +419,6 @@ const renderLlmsListHierarchical = ({
 /**
  * Render the flat list snippet (legacy format, still used for LlmsShort embeds).
  */
-const renderLlmsListFlat = ({
-  docs,
-  site,
-}: {
-  readonly docs: ReadonlyArray<TLlmsDoc>
-  readonly site: URL | string | null
-}) =>
-  docs
-    .map((doc) => {
-      const href = resolveHref(doc.slug, site)
-      const suffix = doc.description && doc.description.length > 0 ? `: ${doc.description}` : ''
-      return `- [${doc.title}](${href})${suffix}\n`
-    })
-    .join('')
-
 const replaceLlmsShortPlaceholders = ({
   markdown,
   docs,
@@ -446,7 +431,7 @@ const replaceLlmsShortPlaceholders = ({
   if (!markdown.includes('<LlmsShort')) {
     return markdown
   }
-  const docsSection = renderLlmsListFlat({ docs, site }).trimEnd()
+  const docsSection = renderLlmsListHierarchical({ docs, site }).trimEnd()
   return markdown.replace(LLMS_SHORT_PATTERN, `${docsSection}\n`)
 }
 

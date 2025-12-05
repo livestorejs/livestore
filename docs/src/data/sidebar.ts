@@ -96,6 +96,7 @@ export const docsSidebar: ReadonlyArray<TSidebarItem> = [
   ]),
   autoGroup('Patterns', 'patterns'),
   autoGroup('Miscellaneous', 'misc'),
+  link('changelog', 'Changelog'),
   autoGroup('Contributing', 'contributing'),
 ]
 
@@ -106,7 +107,7 @@ export const docsSidebar: ReadonlyArray<TSidebarItem> = [
 const toStarlightItem = (item: TSidebarItem): unknown => {
   switch (item._tag) {
     case 'link':
-      return item.label ? { label: item.label, slug: item.slug } : item.slug
+      return item.label ? { label: item.label, link: item.slug } : item.slug
     case 'autoGroup':
       return {
         label: item.label,
