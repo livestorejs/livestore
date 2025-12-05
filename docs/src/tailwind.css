@@ -616,6 +616,7 @@
 
   main .sl-markdown-content .expressive-code figure.frame .copy button::after {
     margin: 0.5em 0.5em 0 0.5em;
+    background-color: white;
   }
 
   main .sl-markdown-content .expressive-code figure.frame .copy button div {
