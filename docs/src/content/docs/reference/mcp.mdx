@@ -48,7 +48,7 @@ Provides development tools and utilities for working with LiveStore projects.
 
     <McpModuleContractSnippet />
 
-  - Params example: `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+  - Params example: `{ "configPath": "livestore-cli.config.ts", "storeId": "<store-id>" }`
   - Returns example:
     `{ "storeId": "<store-id>", "clientId": "client-123", "sessionId": "session-abc", "schemaInfo": { "tableNames": ["..."], "eventNames": ["..."] } }`
 
@@ -78,6 +78,28 @@ Provides development tools and utilities for working with LiveStore projects.
   - Disconnects the current LiveStore instance and releases resources.
   - Returns: `{ "_tag": "disconnected" }`
 
+### Sync Export/Import Tools
+
+These tools connect directly to the sync backend (without creating a full LiveStore instance) to export or import events. Useful for backup, migration, and debugging.
+
+- `livestore_sync_export`
+  - Exports all events from a sync backend to JSON data.
+  - Notes:
+    - Connects directly to the sync backend and pulls all events.
+    - Returns the export data as a JSON object that can be saved or passed to import.
+  - Params example: `{ "configPath": "livestore-cli.config.ts", "storeId": "my-store" }`
+  - Returns example: `{ "storeId": "my-store", "eventCount": 127, "exportedAt": "2024-01-15T10:30:00.000Z", "data": { "version": 1, "storeId": "my-store", "events": [...] } }`
+
+- `livestore_sync_import`
+  - Imports events from export data to a sync backend.
+  - Notes:
+    - The sync backend must be empty before importing.
+    - Use `force: true` to import even if the store ID in the data doesn't match.
+    - Use `dryRun: true` to validate the import without actually importing.
+  - Params example: `{ "configPath": "livestore-cli.config.ts", "storeId": "my-store", "data": { "version": 1, "storeId": "my-store", "events": [...] } }`
+  - Params with options: `{ "configPath": "...", "storeId": "...", "data": {...}, "force": true, "dryRun": true }`
+  - Returns example: `{ "storeId": "my-store", "eventCount": 127, "dryRun": false }`
+
 ## Local Cloudflare Sync (dev)
 
 Run a local Cloudflare sync backend:
@@ -91,8 +113,8 @@ Run a local Cloudflare sync backend:
    - `bunx @livestore/cli mcp server`
 
 3. From your MCP client (e.g., Claude Desktop), call tools:
-   - Use your own MCP module path and storeId. The repo also provides an example: `examples/cf-chat/mcp.ts`.
-   - Connect: `livestore_instance_connect` with `{ "storePath": "<path-to-your-mcp-module>.ts", "storeId": "<store-id>" }`
+   - Use your own config file path and storeId. The repo also provides an example: `examples/cf-chat/livestore-cli.config.ts`.
+   - Connect: `livestore_instance_connect` with `{ "configPath": "livestore-cli.config.ts", "storeId": "<store-id>" }`
    - Commit: `livestore_instance_commit_events` with `[ { "name": "v1.EntityCreated", "args": { "id": "e1", "title": "Hello", "createdAt": "2024-01-01T00:00:00.000Z" } } ]`
    - Query: `livestore_instance_query` with `{ "sql": "SELECT * FROM my_table ORDER BY createdAt DESC LIMIT 5" }`
    - Status: `livestore_instance_status`
