@@ -1,11 +1,16 @@
-import { Effect } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
 import { socialSchemaContent } from '../mcp-content/schemas/social.ts'
 import { todoSchemaContent } from '../mcp-content/schemas/todo.ts'
 import * as Runtime from '../mcp-runtime/runtime.ts'
+import * as SyncOps from '../sync-operations.ts'
 import { coachToolHandler } from './mcp-coach.ts'
 import { livestoreToolkit } from './mcp-tools-defs.ts'
+
+/** Layer providing FileSystem and HttpClient for sync operations */
+const SyncOpsLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
 
 // Tool handlers using Tim Smart's pattern
 export const toolHandlers: any = livestoreToolkit.of({
@@ -155,5 +160,33 @@ export const schema = Schema.create({
   // Disconnect
   livestore_instance_disconnect: Effect.fnUntraced(function* () {
     return yield* Runtime.disconnect
+  }),
+
+  // Sync export - pull all events from sync backend
+  livestore_sync_export: Effect.fnUntraced(function* ({ storePath, storeId, clientId }) {
+    const result = yield* SyncOps.pullEventsFromSyncBackend({
+      storePath,
+      storeId,
+      clientId: clientId ?? 'mcp-export',
+    }).pipe(Effect.scoped, Effect.provide(SyncOpsLayer), Effect.orDie)
+
+    return {
+      storeId: result.storeId,
+      eventCount: result.eventCount,
+      exportedAt: result.exportedAt,
+      data: result.data,
+    }
+  }),
+
+  // Sync import - push events to sync backend
+  livestore_sync_import: Effect.fnUntraced(function* ({ storePath, storeId, clientId, data, force, dryRun }) {
+    return yield* SyncOps.pushEventsToSyncBackend({
+      storePath,
+      storeId,
+      clientId: clientId ?? 'mcp-import',
+      data,
+      force: force ?? false,
+      dryRun: dryRun ?? false,
+    }).pipe(Effect.scoped, Effect.provide(SyncOpsLayer), Effect.orDie)
   }),
 })

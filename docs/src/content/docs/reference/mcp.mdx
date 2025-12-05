@@ -78,6 +78,28 @@ Provides development tools and utilities for working with LiveStore projects.
   - Disconnects the current LiveStore instance and releases resources.
   - Returns: `{ "_tag": "disconnected" }`
 
+### Sync Export/Import Tools
+
+These tools connect directly to the sync backend (without creating a full LiveStore instance) to export or import events. Useful for backup, migration, and debugging.
+
+- `livestore_sync_export`
+  - Exports all events from a sync backend to JSON data.
+  - Notes:
+    - Connects directly to the sync backend and pulls all events.
+    - Returns the export data as a JSON object that can be saved or passed to import.
+  - Params example: `{ "storePath": "livestore-cli.config.ts", "storeId": "my-store" }`
+  - Returns example: `{ "storeId": "my-store", "eventCount": 127, "exportedAt": "2024-01-15T10:30:00.000Z", "data": { "version": 1, "storeId": "my-store", "events": [...] } }`
+
+- `livestore_sync_import`
+  - Imports events from export data to a sync backend.
+  - Notes:
+    - The sync backend must be empty before importing.
+    - Use `force: true` to import even if the store ID in the data doesn't match.
+    - Use `dryRun: true` to validate the import without actually importing.
+  - Params example: `{ "storePath": "livestore-cli.config.ts", "storeId": "my-store", "data": { "version": 1, "storeId": "my-store", "events": [...] } }`
+  - Params with options: `{ "storePath": "...", "storeId": "...", "data": {...}, "force": true, "dryRun": true }`
+  - Returns example: `{ "storeId": "my-store", "eventCount": 127, "dryRun": false }`
+
 ## Local Cloudflare Sync (dev)
 
 Run a local Cloudflare sync backend:

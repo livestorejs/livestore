@@ -226,4 +226,92 @@ Example success:
     parameters: {},
     success: Schema.TaggedStruct('disconnected', {}),
   }),
+
+  Tool.make('livestore_sync_export', {
+    description: `Export all events from a sync backend to JSON data.
+
+This tool connects directly to the sync backend (without creating a full LiveStore instance) and pulls all events. Useful for backup, migration, and debugging.
+
+Module contract (same as livestore_instance_connect):
+\`\`\`ts
+export { schema } from './src/livestore/schema.ts'
+export const syncBackend = makeWsSync({ url: process.env.LIVESTORE_SYNC_URL ?? 'ws://localhost:8787' })
+export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN }
+\`\`\`
+
+Example parameters:
+{
+  "storePath": "livestore-cli.config.ts",
+  "storeId": "my-store"
+}
+
+Returns on success:
+{
+  "storeId": "my-store",
+  "eventCount": 127,
+  "exportedAt": "2024-01-15T10:30:00.000Z",
+  "data": { "version": 1, "storeId": "my-store", ... }
+}`,
+    parameters: {
+      storePath: Schema.String.annotations({
+        description: 'Path to a module that exports schema and syncBackend',
+      }),
+      storeId: Schema.String.annotations({ description: 'Store identifier' }),
+      clientId: Schema.optional(Schema.String.annotations({ description: 'Client identifier (default: mcp-export)' })),
+    },
+    success: Schema.Struct({
+      storeId: Schema.String,
+      eventCount: Schema.Number,
+      exportedAt: Schema.String,
+      data: Schema.JsonValue.annotations({ description: 'The export file data (can be saved or passed to import)' }),
+    }),
+  }).annotate(Tool.Readonly, true),
+
+  Tool.make('livestore_sync_import', {
+    description: `Import events from export data to a sync backend.
+
+This tool connects directly to the sync backend and pushes events. The sync backend must be empty.
+
+Example parameters:
+{
+  "storePath": "livestore-cli.config.ts",
+  "storeId": "my-store",
+  "data": { "version": 1, "storeId": "my-store", "events": [...] }
+}
+
+With options:
+{
+  "storePath": "livestore-cli.config.ts",
+  "storeId": "my-store",
+  "data": { ... },
+  "force": true,  // Import even if store ID doesn't match
+  "dryRun": true  // Validate without importing
+}
+
+Returns on success:
+{
+  "storeId": "my-store",
+  "eventCount": 127,
+  "dryRun": false
+}`,
+    parameters: {
+      storePath: Schema.String.annotations({
+        description: 'Path to a module that exports schema and syncBackend',
+      }),
+      storeId: Schema.String.annotations({ description: 'Store identifier' }),
+      clientId: Schema.optional(Schema.String.annotations({ description: 'Client identifier (default: mcp-import)' })),
+      data: Schema.JsonValue.annotations({
+        description: 'The export data to import (from livestore_sync_export or a file)',
+      }),
+      force: Schema.optional(
+        Schema.Boolean.annotations({ description: 'Force import even if store ID does not match' }),
+      ),
+      dryRun: Schema.optional(Schema.Boolean.annotations({ description: 'Validate without actually importing' })),
+    },
+    success: Schema.Struct({
+      storeId: Schema.String,
+      eventCount: Schema.Number,
+      dryRun: Schema.Boolean,
+    }),
+  }).annotate(Tool.Destructive, true),
 )
