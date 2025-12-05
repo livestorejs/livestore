@@ -4,6 +4,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FileSystem, type PlatformError, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { transformMultiCodeDocument } from '@local/docs/multi-code-markdown'
+import { docsSidebar, type TSidebarItem } from '@local/docs/sidebar'
 
 export const exportMarkdownCommand = Cli.Command.make(
   'export-markdown',
@@ -44,6 +45,7 @@ export const exportMarkdownCommand = Cli.Command.make(
         title: doc.title,
         description: doc.description,
         slug: doc.slug,
+        sidebarOrder: doc.sidebarOrder,
       }))
 
     const exportEffect = Effect.gen(function* () {
@@ -69,10 +71,16 @@ export const exportMarkdownCommand = Cli.Command.make(
 
       if (includeLlms) {
         const fs = yield* FileSystem.FileSystem
-        const llmsList = renderLlmsList({ docs: llmsDocs, site: null })
-        const llmsBody =
-          "# LiveStore Documentation for LLMs\n\n> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.\n\n## Notes\n\n- Most LiveStore APIs are synchronous and don't need `await`\n\n## Docs\n\n" +
-          llmsList
+        const llmsList = renderLlmsListHierarchical({ docs: llmsDocs, site: null })
+        const llmsBody = `# LiveStore Documentation for LLMs
+
+> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.
+
+## Notes
+
+- Most LiveStore APIs are synchronous and don't need \`await\`
+
+${llmsList}`
         yield* fs.writeFileString(path.join(outputDir, 'llms.txt'), `${llmsBody.trimEnd()}\n`)
       }
 
@@ -94,11 +102,20 @@ type DocMeta = {
   readonly title: string
   readonly description: string | undefined
   readonly body: string
+  readonly sidebarOrder: number | undefined
 }
 
 type TLlmsDoc = {
   readonly title: string
   readonly description: string | undefined
+  readonly slug: string
+  readonly sidebarOrder: number | undefined
+}
+
+type TLlmsEntry = {
+  readonly title: string
+  readonly description: string
+  readonly href: string
   readonly slug: string
 }
 
@@ -131,20 +148,26 @@ const collectMarkdownEntries = (
 
 const parseFrontmatter = (
   source: string,
-): { readonly title: string | undefined; readonly description: string | undefined; readonly body: string } => {
+): {
+  readonly title: string | undefined
+  readonly description: string | undefined
+  readonly sidebarOrder: number | undefined
+  readonly body: string
+} => {
   if (!source.startsWith('---')) {
-    return { title: undefined, description: undefined, body: source }
+    return { title: undefined, description: undefined, sidebarOrder: undefined, body: source }
   }
 
   const endIndex = source.indexOf('\n---', 3)
   if (endIndex === -1) {
-    return { title: undefined, description: undefined, body: source }
+    return { title: undefined, description: undefined, sidebarOrder: undefined, body: source }
   }
 
   const frontmatterRaw = source.slice(3, endIndex).trim()
   const body = source.slice(endIndex + 4)
   const titleMatch = frontmatterRaw.match(/^\s*title:\s*(.+)$/m)
   const descriptionMatch = frontmatterRaw.match(/^\s*description:\s*(.+)$/m)
+  const orderMatch = frontmatterRaw.match(/^\s*order:\s*(\d+)/m)
 
   const clean = (value: string | undefined) => {
     if (!value) return undefined
@@ -156,6 +179,7 @@ const parseFrontmatter = (
   return {
     title: clean(titleMatch?.[1]),
     description: clean(descriptionMatch?.[1]),
+    sidebarOrder: orderMatch?.[1] !== undefined ? Number.parseInt(orderMatch[1], 10) : undefined,
     body,
   }
 }
@@ -180,7 +204,7 @@ const loadDocs = (
 
     for (const filePath of entries) {
       const raw = yield* fs.readFileString(filePath)
-      const { title, description, body } = parseFrontmatter(raw)
+      const { title, description, sidebarOrder, body } = parseFrontmatter(raw)
       const slug = toSlug(filePath, contentRoot)
       const derivedTitle = title ?? (slug === '' ? 'LiveStore' : (slug.split('/').pop() ?? 'LiveStore'))
 
@@ -189,6 +213,7 @@ const loadDocs = (
         slug,
         title: derivedTitle,
         description,
+        sidebarOrder,
         body,
       })
     }
@@ -212,7 +237,152 @@ const resolveHref = (value: string, site: URL | string | null | undefined): stri
   return value.length === 0 ? '/' : `/${value}`
 }
 
-const renderLlmsList = ({
+const toLlmsEntries = ({
+  docs,
+  site,
+}: {
+  readonly docs: ReadonlyArray<TLlmsDoc>
+  readonly site: URL | string | null
+}): ReadonlyArray<TLlmsEntry> =>
+  docs.map((doc) => ({
+    title: doc.title,
+    description: doc.description ?? '',
+    href: resolveHref(doc.slug, site),
+    slug: doc.slug,
+  }))
+
+/** Creates a map from slug to doc entry for fast lookup */
+const createDocsMap = (entries: ReadonlyArray<TLlmsEntry>): Map<string, TLlmsEntry> => {
+  const map = new Map<string, TLlmsEntry>()
+  for (const entry of entries) {
+    map.set(entry.slug, entry)
+  }
+  return map
+}
+
+/** Get docs that match a directory prefix, sorted by frontmatter order */
+const getDocsForDirectory = (
+  directory: string,
+  entries: ReadonlyArray<TLlmsEntry>,
+  docs: ReadonlyArray<TLlmsDoc>,
+): ReadonlyArray<TLlmsEntry> => {
+  const prefix = directory.endsWith('/') ? directory : `${directory}/`
+
+  // Create a map from slug to original doc for order info
+  const docBySlug = new Map<string, TLlmsDoc>()
+  for (const doc of docs) {
+    docBySlug.set(doc.slug, doc)
+  }
+
+  return entries
+    .filter((entry) => {
+      // Match docs in this directory but not nested subdirectories
+      if (!entry.slug.startsWith(prefix)) return false
+      const remaining = entry.slug.slice(prefix.length)
+      // Don't include nested items (they'll be handled by their own autogenerate)
+      return !remaining.includes('/')
+    })
+    .sort((a, b) => {
+      const docA = docBySlug.get(a.slug)
+      const docB = docBySlug.get(b.slug)
+      const orderA = docA?.sidebarOrder ?? 999
+      const orderB = docB?.sidebarOrder ?? 999
+      return orderA - orderB
+    })
+}
+
+type TRenderContext = {
+  readonly docsMap: Map<string, TLlmsEntry>
+  readonly allEntries: ReadonlyArray<TLlmsEntry>
+  readonly docs: ReadonlyArray<TLlmsDoc>
+  readonly depth: number
+}
+
+const renderDocLink = (entry: TLlmsEntry): string => {
+  const suffix = entry.description.length > 0 ? `: ${entry.description}` : ''
+  return `- [${entry.title}](${entry.href}/)${suffix}`
+}
+
+/**
+ * Recursively renders sidebar items into hierarchical markdown.
+ * Groups become headings, links become list items.
+ */
+const renderSidebarItems = (items: ReadonlyArray<TSidebarItem>, ctx: TRenderContext): string => {
+  const lines: string[] = []
+
+  for (const item of items) {
+    switch (item._tag) {
+      case 'link': {
+        const entry = ctx.docsMap.get(item.slug)
+        if (entry) {
+          lines.push(renderDocLink(entry))
+        }
+        break
+      }
+
+      case 'autoGroup': {
+        // Auto-generated group with heading and docs from directory
+        const headingLevel = Math.min(ctx.depth + 2, 6)
+        const heading = '#'.repeat(headingLevel)
+        lines.push('')
+        lines.push(`${heading} ${item.label}`)
+        lines.push('')
+
+        const dirDocs = getDocsForDirectory(item.directory, ctx.allEntries, ctx.docs)
+        for (const entry of dirDocs) {
+          lines.push(renderDocLink(entry))
+        }
+        break
+      }
+
+      case 'group': {
+        // Group with explicit items
+        const headingLevel = Math.min(ctx.depth + 2, 6)
+        const heading = '#'.repeat(headingLevel)
+        lines.push('')
+        lines.push(`${heading} ${item.label}`)
+        lines.push('')
+
+        // Render nested items with increased depth
+        const nested = renderSidebarItems(item.items, { ...ctx, depth: ctx.depth + 1 })
+        if (nested.trim().length > 0) {
+          lines.push(nested)
+        }
+        break
+      }
+    }
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Render the hierarchical docs list following the sidebar structure.
+ */
+const renderLlmsListHierarchical = ({
+  docs,
+  site,
+}: {
+  readonly docs: ReadonlyArray<TLlmsDoc>
+  readonly site: URL | string | null
+}): string => {
+  const entries = toLlmsEntries({ docs, site })
+  const docsMap = createDocsMap(entries)
+
+  const ctx: TRenderContext = {
+    docsMap,
+    allEntries: entries,
+    docs,
+    depth: 0,
+  }
+
+  return renderSidebarItems(docsSidebar, ctx)
+}
+
+/**
+ * Render the flat list snippet (legacy format, still used for LlmsShort embeds).
+ */
+const renderLlmsListFlat = ({
   docs,
   site,
 }: {
@@ -239,7 +409,7 @@ const replaceLlmsShortPlaceholders = ({
   if (!markdown.includes('<LlmsShort')) {
     return markdown
   }
-  const docsSection = renderLlmsList({ docs, site }).trimEnd()
+  const docsSection = renderLlmsListFlat({ docs, site }).trimEnd()
   return markdown.replace(LLMS_SHORT_PATTERN, `${docsSection}\n`)
 }
 
