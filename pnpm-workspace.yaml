@@ -34,7 +34,7 @@ catalog:
   solid-js: 1.9.10
 
   # Testing
-  "@playwright/test": 1.56.0
+  "@playwright/test": 1.57.0
 
   # Effect/OpenTelemetry
   effect: 3.18.4
