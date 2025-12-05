@@ -2,24 +2,23 @@
  * Shared sync operations for CLI and MCP.
  * Contains the core logic for exporting and importing events from sync backends.
  */
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import type { SyncBackend } from '@livestore/common'
 import { UnknownError } from '@livestore/common'
-import { isLiveStoreSchema, LiveStoreEvent } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import {
   Cause,
+  Chunk,
   Effect,
-  FileSystem,
+  type FileSystem,
   type HttpClient,
   KeyValueStore,
-  Layer,
   Option,
   Schema,
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
+
+import { loadModuleConfig } from './module-loader.ts'
 
 /** Connection timeout for sync backend ping (5 seconds) */
 const CONNECTION_TIMEOUT_MS = 5000
@@ -63,12 +62,15 @@ export class ImportError extends Schema.TaggedError<ImportError>()('ImportError'
  * This is a simplified version of the MCP runtime that only creates the sync backend.
  */
 export const makeSyncBackend = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
 }: {
-  storePath: string
+  /** Absolute or cwd-relative path to a module exporting `schema` and `syncBackend`. */
+  configPath: string
+  /** Identifier to scope the backend connection. */
   storeId: string
+  /** Client identifier used when establishing the sync connection. */
   clientId: string
 }): Effect.Effect<
   SyncBackend.SyncBackend,
@@ -76,90 +78,14 @@ export const makeSyncBackend = ({
   FileSystem.FileSystem | HttpClient.HttpClient | Scope.Scope
 > =>
   Effect.gen(function* () {
-    const abs = path.isAbsolute(storePath) ? storePath : path.resolve(process.cwd(), storePath)
-
-    const fs = yield* FileSystem.FileSystem
-    const exists = yield* fs.exists(abs).pipe(UnknownError.mapToUnknownError)
-    if (!exists) {
-      return yield* Effect.fail(
-        UnknownError.make({
-          cause: `Store module not found at ${abs}`,
-          note: 'Make sure the path points to a valid LiveStore module',
-        }),
-      )
-    }
-
-    const mod = yield* Effect.tryPromise({
-      try: () => import(pathToFileURL(abs).href),
-      catch: (cause) =>
-        UnknownError.make({
-          cause,
-          note: `Failed to import module at ${abs}`,
-        }),
-    })
-
-    const schema = (mod as any)?.schema
-    if (!isLiveStoreSchema(schema)) {
-      return yield* Effect.fail(
-        UnknownError.make({
-          cause: `Module at ${abs} must export a valid LiveStore 'schema'`,
-          note: `Ex: export { schema } from './src/livestore/schema.ts'`,
-        }),
-      )
-    }
-
-    const syncBackendConstructor = (mod as any)?.syncBackend
-    if (typeof syncBackendConstructor !== 'function') {
-      return yield* Effect.fail(
-        UnknownError.make({
-          cause: `Module at ${abs} must export a 'syncBackend' constructor`,
-          note: `Ex: export const syncBackend = makeWsSync({ url })`,
-        }),
-      )
-    }
-
-    const syncPayloadSchemaExport = (mod as any)?.syncPayloadSchema
-    const syncPayloadSchema =
-      syncPayloadSchemaExport === undefined
-        ? Schema.JsonValue
-        : Schema.isSchema(syncPayloadSchemaExport)
-          ? (syncPayloadSchemaExport as Schema.Schema<any>)
-          : shouldNeverHappen(
-              `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
-            )
-
-    const syncPayloadExport = (mod as any)?.syncPayload
-    const syncPayload = yield* (
-      syncPayloadExport === undefined
-        ? Effect.succeed<unknown>(undefined)
-        : Schema.decodeUnknown(syncPayloadSchema)(syncPayloadExport)
-    ).pipe(UnknownError.mapToUnknownError)
-
-    /** Simple in-memory key-value store for sync backend state */
-    const kvStore: { backendId: string | undefined } = { backendId: undefined }
+    const { syncBackendConstructor, syncPayload } = yield* loadModuleConfig({ configPath })
 
     const syncBackend = yield* (syncBackendConstructor as SyncBackend.SyncBackendConstructor)({
       storeId,
       clientId,
-      payload: syncPayload,
-    }).pipe(
-      Effect.provide(
-        Layer.succeed(
-          KeyValueStore.KeyValueStore,
-          KeyValueStore.makeStringOnly({
-            get: (_key) => Effect.succeed(Option.fromNullable(kvStore.backendId)),
-            set: (_key, value) =>
-              Effect.sync(() => {
-                kvStore.backendId = value
-              }),
-            clear: Effect.dieMessage('Not implemented'),
-            remove: () => Effect.dieMessage('Not implemented'),
-            size: Effect.dieMessage('Not implemented'),
-          }),
-        ),
-      ),
-      UnknownError.mapToUnknownError,
-    )
+      /** syncPayload is validated against syncPayloadSchema by loadModuleConfig */
+      payload: syncPayload as Schema.JsonValue | undefined,
+    }).pipe(Effect.provide(KeyValueStore.layerMemory), UnknownError.mapToUnknownError)
 
     /** Connect to the sync backend */
     yield* syncBackend.connect.pipe(
@@ -209,11 +135,11 @@ export interface ExportResult {
  * Returns the export data structure without writing to file.
  */
 export const pullEventsFromSyncBackend = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
 }: {
-  storePath: string
+  configPath: string
   storeId: string
   clientId: string
 }): Effect.Effect<
@@ -222,20 +148,11 @@ export const pullEventsFromSyncBackend = ({
   FileSystem.FileSystem | HttpClient.HttpClient | Scope.Scope
 > =>
   Effect.gen(function* () {
-    const syncBackend = yield* makeSyncBackend({ storePath, storeId, clientId })
+    const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
 
-    const events: LiveStoreEvent.Global.Encoded[] = []
-
-    yield* syncBackend.pull(Option.none(), { live: false }).pipe(
-      Stream.tap((item) =>
-        Effect.sync(() => {
-          for (const { eventEncoded } of item.batch) {
-            events.push(eventEncoded)
-          }
-        }),
-      ),
+    const batchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
       Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
-      Stream.runDrain,
+      Stream.runCollect,
       Effect.mapError(
         (cause) =>
           new ExportError({
@@ -244,6 +161,10 @@ export const pullEventsFromSyncBackend = ({
           }),
       ),
     )
+
+    const events = Chunk.toReadonlyArray(batchesChunk)
+      .flatMap((item) => item.batch)
+      .map((item) => item.eventEncoded)
 
     const exportedAt = new Date().toISOString()
     const exportData: ExportFile = {
@@ -311,14 +232,14 @@ export const validateExportData = ({
  * Validates that the backend is empty before importing.
  */
 export const pushEventsToSyncBackend = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
   data,
   force,
   dryRun,
 }: {
-  storePath: string
+  configPath: string
   storeId: string
   clientId: string
   /** The export data to import (already parsed) */
@@ -342,12 +263,10 @@ export const pushEventsToSyncBackend = ({
     )
 
     if (exportData.storeId !== storeId && !force) {
-      return yield* Effect.fail(
-        new ImportError({
-          cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
-          note: `The export file was created for a different store. Use force option to import anyway.`,
-        }),
-      )
+      return yield* new ImportError({
+        cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
+        note: `The export file was created for a different store. Use force option to import anyway.`,
+      })
     }
 
     if (dryRun) {
@@ -358,18 +277,12 @@ export const pushEventsToSyncBackend = ({
       }
     }
 
-    const syncBackend = yield* makeSyncBackend({ storePath, storeId, clientId })
+    const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
 
     /** Check if events already exist by pulling from the backend first */
-    let existingEventCount = 0
-    yield* syncBackend.pull(Option.none(), { live: false }).pipe(
-      Stream.tap((item) =>
-        Effect.sync(() => {
-          existingEventCount += item.batch.length
-        }),
-      ),
+    const existingBatchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
       Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
-      Stream.runDrain,
+      Stream.runCollect,
       Effect.mapError(
         (cause) =>
           new ImportError({
@@ -379,13 +292,13 @@ export const pushEventsToSyncBackend = ({
       ),
     )
 
+    const existingEventCount = Chunk.reduce(existingBatchesChunk, 0, (acc, item) => acc + item.batch.length)
+
     if (existingEventCount > 0) {
-      return yield* Effect.fail(
-        new ImportError({
-          cause: new Error(`Sync backend already contains ${existingEventCount} events`),
-          note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
-        }),
-      )
+      return yield* new ImportError({
+        cause: new Error(`Sync backend already contains ${existingEventCount} events`),
+        note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
+      })
     }
 
     /** Push events in batches of 100 (sync backend constraint) */

@@ -63,7 +63,7 @@ Export all events from the sync backend to a JSON file:
 
 ```bash
 bunx @livestore/cli sync export \
-  --store livestore-cli.config.ts \
+  --config livestore-cli.config.ts \
   --store-id my-store \
   events.json
 ```
@@ -84,7 +84,7 @@ Exported 127 events to /path/to/events.json
 ```
 
 **Options:**
-- `--store, -s` (required) - Path to a config module that exports `schema` and `syncBackend`
+- `--config, -c` (required) - Path to a config module that exports `schema` and `syncBackend`
 - `--store-id, -i` (required) - Store identifier
 - `--client-id` - Client identifier for the sync connection (default: `cli-export`)
 
@@ -94,7 +94,7 @@ Import events from a JSON file to the sync backend:
 
 ```bash
 bunx @livestore/cli sync import \
-  --store livestore-cli.config.ts \
+  --config livestore-cli.config.ts \
   --store-id my-store \
   events.json
 ```
@@ -119,7 +119,7 @@ Successfully imported 127 events
 ```
 
 **Options:**
-- `--store, -s` (required) - Path to a config module that exports `schema` and `syncBackend`
+- `--config, -c` (required) - Path to a config module that exports `schema` and `syncBackend`
 - `--store-id, -i` (required) - Store identifier
 - `--client-id` - Client identifier for the sync connection (default: `cli-import`)
 - `--force, -f` - Force import even if store ID in the file doesn't match

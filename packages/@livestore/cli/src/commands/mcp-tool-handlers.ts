@@ -1,4 +1,4 @@
-import { Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, type Toolkit } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
@@ -12,8 +12,9 @@ import { livestoreToolkit } from './mcp-tools-defs.ts'
 /** Layer providing FileSystem and HttpClient for sync operations */
 const SyncOpsLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
 
-// Tool handlers using Tim Smart's pattern
-export const toolHandlers: any = livestoreToolkit.of({
+type LivestoreToolHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof livestoreToolkit>>
+
+export const toolHandlers: LivestoreToolHandlers = livestoreToolkit.of({
   livestore_coach: coachToolHandler,
 
   livestore_generate_schema: Effect.fnUntraced(function* ({ schemaType, customDescription }) {
@@ -126,8 +127,13 @@ export const schema = Schema.create({
   }),
 
   // Connect the single in-process LiveStore instance from user module
-  livestore_instance_connect: Effect.fnUntraced(function* ({ storePath, storeId, clientId, sessionId }) {
-    const store = yield* Runtime.init({ storePath, storeId, clientId, sessionId }).pipe(Effect.orDie)
+  livestore_instance_connect: Effect.fnUntraced(function* ({ configPath, storeId, clientId, sessionId }) {
+    const store = yield* Runtime.init({
+      configPath,
+      storeId,
+      ...(clientId !== undefined ? { clientId } : {}),
+      ...(sessionId !== undefined ? { sessionId } : {}),
+    }).pipe(Effect.orDie)
     const eventNames = Array.from(store.schema.eventsDefsMap.keys())
     const tableNames = Array.from(store.schema.state.sqlite.tables.keys())
 
@@ -163,9 +169,9 @@ export const schema = Schema.create({
   }),
 
   // Sync export - pull all events from sync backend
-  livestore_sync_export: Effect.fnUntraced(function* ({ storePath, storeId, clientId }) {
+  livestore_sync_export: Effect.fnUntraced(function* ({ configPath, storeId, clientId }) {
     const result = yield* SyncOps.pullEventsFromSyncBackend({
-      storePath,
+      configPath,
       storeId,
       clientId: clientId ?? 'mcp-export',
     }).pipe(Effect.scoped, Effect.provide(SyncOpsLayer), Effect.orDie)
@@ -179,9 +185,9 @@ export const schema = Schema.create({
   }),
 
   // Sync import - push events to sync backend
-  livestore_sync_import: Effect.fnUntraced(function* ({ storePath, storeId, clientId, data, force, dryRun }) {
+  livestore_sync_import: Effect.fnUntraced(function* ({ configPath, storeId, clientId, data, force, dryRun }) {
     return yield* SyncOps.pushEventsToSyncBackend({
-      storePath,
+      configPath,
       storeId,
       clientId: clientId ?? 'mcp-import',
       data,

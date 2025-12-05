@@ -1,77 +1,40 @@
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
-import { isLiveStoreSchema, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
+import type { UnknownError } from '@livestore/common'
+import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
-import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
+
+import { loadModuleConfig } from '../module-loader.ts'
 
 /** Currently connected store */
 let store: Store<any> | undefined
+
+/** Layer providing FileSystem and HttpClient for module loading */
+const ModuleLoaderLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
 
 /**
  * Dynamically imports a module that exports a `makeStore({ storeId }): Promise<Store>` function,
  * calls it with the provided storeId, and caches the Store instance for subsequent tool calls.
  */
 export const init = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
   sessionId,
 }: {
-  storePath: string
+  configPath: string
   storeId: string
   clientId?: string
   sessionId?: string
-}) =>
-  Effect.promise(async () => {
+}): Effect.Effect<Store<any>, UnknownError> =>
+  Effect.gen(function* () {
     if (!storeId || typeof storeId !== 'string') {
-      throw new Error('Invalid storeId: expected a non-empty string')
-    }
-    // Resolve to absolute path and import as file URL
-    const abs = path.isAbsolute(storePath) ? storePath : path.resolve(process.cwd(), storePath)
-    const mod = await import(pathToFileURL(abs).href)
-
-    // Validate required exports
-    const schema = (mod as any)?.schema
-    if (!isLiveStoreSchema(schema)) {
-      throw new Error(
-        `Module at ${abs} must export a valid LiveStore 'schema'. Ex: export { schema } from './src/livestore/schema.ts'`,
-      )
+      return yield* Effect.die(new Error('Invalid storeId: expected a non-empty string'))
     }
 
-    const syncBackend = (mod as any)?.syncBackend
-    if (typeof syncBackend !== 'function') {
-      throw new Error(
-        `Module at ${abs} must export a 'syncBackend' constructor (e.g., makeWsSync({ url })). Ex: export const syncBackend = makeWsSync({ url })`,
-      )
-    }
-
-    // Optional: syncPayload for authenticated backends
-    const syncPayloadSchemaExport = (mod as any)?.syncPayloadSchema
-    const syncPayloadSchema =
-      syncPayloadSchemaExport === undefined
-        ? Schema.JsonValue
-        : Schema.isSchema(syncPayloadSchemaExport)
-          ? (syncPayloadSchemaExport as Schema.Schema<any>)
-          : shouldNeverHappen(
-              `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
-            )
-
-    const syncPayloadExport = (mod as any)?.syncPayload
-    const syncPayload =
-      syncPayloadExport === undefined
-        ? undefined
-        : (() => {
-            try {
-              return Schema.decodeSync(syncPayloadSchema)(syncPayloadExport)
-            } catch (error) {
-              throw new Error(
-                `Failed to decode 'syncPayload' from ${abs} using the provided schema: ${(error as Error).message}`,
-              )
-            }
-          })()
+    const { schema, syncBackendConstructor, syncPayloadSchema, syncPayload } = yield* loadModuleConfig({ configPath })
 
     // Build Node adapter internally
     const adapter = makeNodeAdapter({
@@ -79,32 +42,36 @@ export const init = ({
       ...(clientId ? { clientId } : {}),
       ...(sessionId ? { sessionId } : {}),
       sync: {
-        backend: syncBackend as any,
+        backend: syncBackendConstructor,
         initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
         onSyncError: 'shutdown',
       },
     })
 
     // Create the store
-    const s = await createStorePromise({
-      schema,
-      storeId,
-      adapter,
-      disableDevtools: true,
-      syncPayload,
-      syncPayloadSchema,
-    })
+    const s = yield* Effect.promise(() =>
+      createStorePromise({
+        schema,
+        storeId,
+        adapter,
+        disableDevtools: true,
+        syncPayload,
+        syncPayloadSchema,
+      }),
+    )
 
     // Replace existing store if any
     if (store) {
-      try {
-        await store.shutdownPromise()
-      } catch {}
+      yield* Effect.promise(async () => {
+        try {
+          await store!.shutdownPromise()
+        } catch {}
+      })
     }
 
     store = s
     return store
-  })
+  }).pipe(Effect.provide(ModuleLoaderLayer), Effect.withSpan('mcp-runtime:init'))
 
 export const getStore = Effect.sync(() => Option.fromNullable(store))
 

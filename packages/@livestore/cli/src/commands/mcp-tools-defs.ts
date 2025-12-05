@@ -43,7 +43,7 @@ export const livestoreToolkit = Toolkit.make(
 Notes:
 - Only one instance can be active at a time; calling connect again shuts down and replaces the previous instance.
 - Reconnecting creates a fresh, in-memory client database. The state visible to queries is populated by your backend's initial sync behavior; depending on configuration, you may briefly observe empty or partial data until sync completes.
-- \`storePath\` is resolved relative to the current working directory.
+- \`configPath\` is resolved relative to the current working directory.
 - \`syncBackend\` must be a function (factory) that returns a backend; \`syncPayload\` must be JSON-serializable.
 
 Module contract (generic example):
@@ -63,13 +63,13 @@ export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN ??
 
 Connect parameters:
 {
-  "storePath": "livestore-cli.config.ts",
+  "configPath": "livestore-cli.config.ts",
   "storeId": "<store-id>"
 }
 
 Optional identifiers to group client state on the server:
 {
-  "storePath": "livestore-cli.config.ts",
+  "configPath": "livestore-cli.config.ts",
   "storeId": "<store-id>",
   "clientId": "<client-id>",
   "sessionId": "<session-id>"
@@ -86,7 +86,7 @@ Returns on success:
   }
 }`,
     parameters: {
-      storePath: Schema.String.annotations({
+      configPath: Schema.String.annotations({
         description: 'Path to a module that exports named variables: schema and syncBackend',
       }),
       storeId: Schema.String.annotations({ description: 'Required store id for the LiveStore instance.' }),
@@ -241,7 +241,7 @@ export const syncPayload = { authToken: process.env.LIVESTORE_SYNC_AUTH_TOKEN }
 
 Example parameters:
 {
-  "storePath": "livestore-cli.config.ts",
+  "configPath": "livestore-cli.config.ts",
   "storeId": "my-store"
 }
 
@@ -253,7 +253,7 @@ Returns on success:
   "data": { "version": 1, "storeId": "my-store", ... }
 }`,
     parameters: {
-      storePath: Schema.String.annotations({
+      configPath: Schema.String.annotations({
         description: 'Path to a module that exports schema and syncBackend',
       }),
       storeId: Schema.String.annotations({ description: 'Store identifier' }),
@@ -274,14 +274,14 @@ This tool connects directly to the sync backend and pushes events. The sync back
 
 Example parameters:
 {
-  "storePath": "livestore-cli.config.ts",
+  "configPath": "livestore-cli.config.ts",
   "storeId": "my-store",
   "data": { "version": 1, "storeId": "my-store", "events": [...] }
 }
 
 With options:
 {
-  "storePath": "livestore-cli.config.ts",
+  "configPath": "livestore-cli.config.ts",
   "storeId": "my-store",
   "data": { ... },
   "force": true,  // Import even if store ID doesn't match
@@ -295,7 +295,7 @@ Returns on success:
   "dryRun": false
 }`,
     parameters: {
-      storePath: Schema.String.annotations({
+      configPath: Schema.String.annotations({
         description: 'Path to a module that exports schema and syncBackend',
       }),
       storeId: Schema.String.annotations({ description: 'Store identifier' }),

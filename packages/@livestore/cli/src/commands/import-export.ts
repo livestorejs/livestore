@@ -8,12 +8,12 @@ import * as SyncOps from '../sync-operations.ts'
  * Export events from the sync backend to a JSON file.
  */
 const exportEvents = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
   outputPath,
 }: {
-  storePath: string
+  configPath: string
   storeId: string
   clientId: string
   outputPath: string
@@ -25,7 +25,7 @@ const exportEvents = ({
   Effect.gen(function* () {
     yield* Console.log(`Connecting to sync backend...`)
 
-    const result = yield* SyncOps.pullEventsFromSyncBackend({ storePath, storeId, clientId })
+    const result = yield* SyncOps.pullEventsFromSyncBackend({ configPath, storeId, clientId })
 
     yield* Console.log(`✓ Connected to sync backend`)
     yield* Console.log(`Pulled ${result.eventCount} events`)
@@ -50,14 +50,14 @@ const exportEvents = ({
  * Import events from a JSON file to the sync backend.
  */
 const importEvents = ({
-  storePath,
+  configPath,
   storeId,
   clientId,
   inputPath,
   force,
   dryRun,
 }: {
-  storePath: string
+  configPath: string
   storeId: string
   clientId: string
   inputPath: string
@@ -135,7 +135,7 @@ const importEvents = ({
     yield* Console.log(`Connecting to sync backend...`)
 
     const result = yield* SyncOps.pushEventsToSyncBackend({
-      storePath,
+      configPath,
       storeId,
       clientId,
       data: parsedContent,
@@ -150,9 +150,9 @@ const importEvents = ({
 export const exportCommand = Cli.Command.make(
   'export',
   {
-    store: Cli.Options.text('store').pipe(
-      Cli.Options.withAlias('s'),
-      Cli.Options.withDescription('Path to the store module that exports schema and syncBackend'),
+    config: Cli.Options.text('config').pipe(
+      Cli.Options.withAlias('c'),
+      Cli.Options.withDescription('Path to the config module that exports schema and syncBackend'),
     ),
     storeId: Cli.Options.text('store-id').pipe(
       Cli.Options.withAlias('i'),
@@ -165,24 +165,24 @@ export const exportCommand = Cli.Command.make(
     output: Cli.Args.text({ name: 'file' }).pipe(Cli.Args.withDescription('Output JSON file path')),
   },
   Effect.fn(function* ({
-    store,
+    config,
     storeId,
     clientId,
     output,
   }: {
-    store: string
+    config: string
     storeId: string
     clientId: string
     output: string
   }) {
     yield* Console.log(`Exporting events from LiveStore...`)
-    yield* Console.log(`   Store: ${store}`)
+    yield* Console.log(`   Config: ${config}`)
     yield* Console.log(`   Store ID: ${storeId}`)
     yield* Console.log(`   Output: ${output}`)
     yield* Console.log('')
 
     yield* exportEvents({
-      storePath: store,
+      configPath: config,
       storeId,
       clientId,
       outputPath: output,
@@ -197,9 +197,9 @@ export const exportCommand = Cli.Command.make(
 export const importCommand = Cli.Command.make(
   'import',
   {
-    store: Cli.Options.text('store').pipe(
-      Cli.Options.withAlias('s'),
-      Cli.Options.withDescription('Path to the store module that exports schema and syncBackend'),
+    config: Cli.Options.text('config').pipe(
+      Cli.Options.withAlias('c'),
+      Cli.Options.withDescription('Path to the config module that exports schema and syncBackend'),
     ),
     storeId: Cli.Options.text('store-id').pipe(
       Cli.Options.withAlias('i'),
@@ -221,14 +221,14 @@ export const importCommand = Cli.Command.make(
     input: Cli.Args.text({ name: 'file' }).pipe(Cli.Args.withDescription('Input JSON file to import')),
   },
   Effect.fn(function* ({
-    store,
+    config,
     storeId,
     clientId,
     force,
     dryRun,
     input,
   }: {
-    store: string
+    config: string
     storeId: string
     clientId: string
     force: boolean
@@ -236,7 +236,7 @@ export const importCommand = Cli.Command.make(
     input: string
   }) {
     yield* Console.log(`Importing events to LiveStore...`)
-    yield* Console.log(`   Store: ${store}`)
+    yield* Console.log(`   Config: ${config}`)
     yield* Console.log(`   Store ID: ${storeId}`)
     yield* Console.log(`   Input: ${input}`)
     if (force) yield* Console.log(`   Force: enabled`)
@@ -244,7 +244,7 @@ export const importCommand = Cli.Command.make(
     yield* Console.log('')
 
     yield* importEvents({
-      storePath: store,
+      configPath: config,
       storeId,
       clientId,
       inputPath: input,
