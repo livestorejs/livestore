@@ -132,8 +132,9 @@ const docsBuildCommand = Cli.Command.make(
 
     if (!skipDeps) {
       yield* Effect.log('Building snippets and diagrams...')
-      yield* runDocsDiagramsBuild
-      yield* buildSnippets({ projectRoot: docsPath })
+      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+        concurrency: 'unbounded',
+      })
       yield* Effect.log('Snippets and diagrams built successfully')
       yield* cleanupChromiumChildren()
     }
@@ -170,8 +171,9 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(function* ({ open, skipDeps }) {
         if (!skipDeps) {
           yield* Effect.log('Building snippets and diagrams...')
-          yield* runDocsDiagramsBuild
-          yield* buildSnippets({ projectRoot: docsPath })
+          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+            concurrency: 'unbounded',
+          })
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
