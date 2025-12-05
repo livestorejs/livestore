@@ -70,6 +70,40 @@ const IS_NEW_ARCH =
   // TurboModule proxy – indicates new arch TurboModules
   Boolean((globalThis as any).__turboModuleProxy)
 
+/**
+ * Creates a persisted LiveStore adapter for Expo/React Native applications.
+ *
+ * This adapter stores data in SQLite databases on the device filesystem, providing
+ * persistence across app restarts. It supports optional sync backends for multi-device
+ * synchronization.
+ *
+ * **Requirements:**
+ * - React Native New Architecture (Fabric) must be enabled
+ * - Expo SDK 51+ recommended
+ *
+ * @example
+ * ```ts
+ * import { makePersistedAdapter } from '@livestore/adapter-expo'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makePersistedAdapter({
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ *   storage: {
+ *     subDirectory: 'my-app',
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Minimal setup without sync
+ * const adapter = makePersistedAdapter()
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/expo for detailed setup guide
+ */
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>

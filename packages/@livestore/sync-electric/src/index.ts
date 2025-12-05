@@ -150,6 +150,47 @@ export const SyncMetadata = Schema.Struct({
 
 export type SyncMetadata = typeof SyncMetadata.Type
 
+/**
+ * Creates a sync backend that uses ElectricSQL for real-time event synchronization.
+ *
+ * ElectricSQL enables real-time sync by streaming PostgreSQL changes to clients.
+ * This backend handles push (inserting events) and pull (streaming events via Electric's
+ * shape-based sync protocol).
+ *
+ * The endpoint should typically be part of your API layer to handle authentication,
+ * rate limiting, and proxying requests to the Electric server.
+ *
+ * @example
+ * ```ts
+ * import { makeSyncBackend } from '@livestore/sync-electric'
+ *
+ * const adapter = makePersistedAdapter({
+ *   sync: {
+ *     backend: makeSyncBackend({
+ *       endpoint: '/api/electric',
+ *     }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With separate endpoints for push/pull/ping
+ * const backend = makeSyncBackend({
+ *   endpoint: {
+ *     push: '/api/push-event',
+ *     pull: '/api/pull-events',
+ *     ping: '/api/ping',
+ *   },
+ *   ping: {
+ *     enabled: true,
+ *     requestInterval: 15_000, // 15 seconds
+ *   },
+ * })
+ * ```
+ *
+ * @see https://livestore.dev/docs/sync/electric for setup guide
+ */
 export const makeSyncBackend =
   ({ endpoint, ...options }: SyncBackendOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
