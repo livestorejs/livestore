@@ -34,7 +34,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.flatMap((content) =>
           Effect.try({
             try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
-            catch: (cause) => cause as unknown,
+            catch: (cause) => new Error(`Failed to parse ${packageJsonPath}`, { cause }),
           }),
         ),
         Effect.either,
