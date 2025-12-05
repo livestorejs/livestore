@@ -64,11 +64,13 @@ in
     # Needed until newest corepack version ships in nixpkgs
     export COREPACK_INTEGRITY_KEYS=0
 
-    # Prefer Playwright-provided Chromium for Puppeteer/tldraw-cli; fall back only if user overrides.
+    # Prefer Playwright-provided Chrome for Puppeteer/tldraw-cli; fall back only if user overrides.
+    # Playwright 1.57+ uses "Google Chrome for Testing" instead of "Chromium"
     if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
       for candidate in \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
-        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac-arm64/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-win/chrome.exe
       do
         if [ -x "$candidate" ]; then
