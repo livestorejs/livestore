@@ -2,6 +2,7 @@ export {
   type CachedDiagram,
   type DiagramCacheEntry,
   type DiagramManifest,
+  FileSystemError,
   getCacheEntry,
   isCacheValid,
   loadManifest,
@@ -9,14 +10,21 @@ export {
   saveManifest,
   type TldrawCachePaths,
 } from './cache.ts'
-export { type BuildDiagramsOptions, buildDiagrams } from './cli.ts'
+export { type BuildDiagramsError, type BuildDiagramsOptions, buildDiagrams, DiagramDiscoveryError } from './cli.ts'
 export { type AstroTldrawOptions, createAstroTldrawIntegration } from './integration.ts'
 export {
   getSvgDimensions,
   type RenderedSvg,
+  RenderInvocationError,
   type RenderResult,
+  RenderTimeoutError,
   readTldrawFile,
   renderTldrawToSvg,
   type TldrawTheme,
 } from './renderer.ts'
-export { createTldrawPlugin, type TldrawDiagramPayload, type TldrawPluginOptions } from './vite-plugin.ts'
+export {
+  CachedDiagramMissingError,
+  createTldrawPlugin,
+  type TldrawDiagramPayload,
+  type TldrawPluginOptions,
+} from './vite-plugin.ts'

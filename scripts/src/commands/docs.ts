@@ -18,10 +18,10 @@ const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
-const runDocsDiagramsBuild = () => buildDiagrams({ projectRoot: docsPath, verbose: true })
+const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: true })
 
-const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => Effect.promise(runDocsDiagramsBuild)).pipe(
-  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => Effect.promise(runDocsDiagramsBuild))]),
+const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => runDocsDiagramsBuild).pipe(
+  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => runDocsDiagramsBuild)]),
 )
 
 type NetlifyDeploySummary = {
@@ -100,7 +100,7 @@ const docsBuildCommand = Cli.Command.make(
 
     if (!skipDeps) {
       yield* Effect.log('Building snippets and diagrams...')
-      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), Effect.promise(runDocsDiagramsBuild)], {
+      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
         concurrency: 'unbounded',
       })
       yield* Effect.log('Snippets and diagrams built successfully')
@@ -137,7 +137,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(function* ({ open, skipDeps }) {
         if (!skipDeps) {
           yield* Effect.log('Building snippets and diagrams...')
-          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), Effect.promise(runDocsDiagramsBuild)], {
+          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
             concurrency: 'unbounded',
           })
           yield* Effect.log('Snippets and diagrams built successfully')
