@@ -1,42 +1,173 @@
 ---
 title: Expo Adapter
+description: LiveStore adapter for React Native apps built with Expo
 sidebar:
   order: 2
 ---
 
+import AdapterSnippet from '../../../_assets/code/reference/platform-adapters/expo-adapter/adapter.ts?snippet'
+import UsageSnippet from '../../../_assets/code/reference/platform-adapters/expo-adapter/usage.tsx?snippet'
+import SyncBackendSnippet from '../../../_assets/code/reference/platform-adapters/expo-adapter/sync-backend.ts?snippet'
 import ResetPersistenceSnippet from '../../../_assets/code/reference/platform-adapters/expo-adapter/reset-persistence.ts?snippet'
 
-## Notes on Android
+The Expo adapter enables LiveStore in React Native applications built with [Expo](https://expo.dev). It uses native SQLite via `expo-sqlite` for high-performance local persistence on iOS and Android devices.
 
-- By default, Android requires `https` (including WebSocket connections) when communicating with a sync backend.
+## Key Features
 
-To allow for `http` / `ws`, you can run `expo install expo-build-properties` and add the following to your `app.json` (see [here](https://docs.expo.dev/versions/latest/sdk/build-properties/#pluginconfigtypeandroid) for more information):
+- **Native SQLite storage** — Uses `expo-sqlite` for fast, reliable persistence directly on the device
+- **Offline-first** — Full functionality without network connectivity; syncs when connected
+- **Real-time sync** — Optional sync backend integration for multi-device data synchronization
+- **Integrated devtools** — Debug and inspect your store via the [LiveStore Devtools](/reference/devtools)
+- **Automatic client identification** — Uses platform-specific device IDs for client tracking
+
+## Requirements
+
+- [Expo New Architecture](https://docs.expo.dev/guides/new-architecture/) (Fabric) must be enabled
+- `expo-sqlite` ^16.0.0
+- `expo-application` ^7.0.0
+
+:::note
+Expo Web is not currently supported. See [#130](https://github.com/livestorejs/livestore/issues/130) for progress.
+:::
+
+## Installation
+
+```bash
+npm install @livestore/adapter-expo @livestore/livestore @livestore/react expo-sqlite
+```
+
+For a complete setup including sync and devtools, see the [Expo getting started guide](/getting-started/expo).
+
+## Basic Usage
+
+Create an adapter and wrap your app with the `LiveStoreProvider`:
+
+<UsageSnippet />
+
+The adapter requires minimal configuration. For more details on the provider props, see the [React integration guide](/reference/framework-integrations/react-integration).
+
+## Configuration Options
+
+<AdapterSnippet />
+
+### Available Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `storage.subDirectory` | `string` | Subdirectory within the default SQLite location for organizing databases |
+| `sync` | `SyncOptions` | Sync backend configuration (see [Syncing](/reference/syncing)) |
+| `clientId` | `string` | Custom client identifier (defaults to device ID) |
+| `sessionId` | `string` | Session identifier (defaults to `'static'`) |
+| `resetPersistence` | `boolean` | Clear local databases on startup (development only) |
+
+## Adding a Sync Backend
+
+Connect to a sync backend for multi-device synchronization:
+
+<SyncBackendSnippet />
+
+See the [Syncing documentation](/reference/syncing) for available sync providers and configuration options.
+
+## Platform Notes
+
+### Android
+
+Android requires HTTPS for network connections by default. During development with a local sync backend using `http://` or `ws://`, add `expo-build-properties` to allow cleartext traffic:
+
+```bash
+npx expo install expo-build-properties
+```
+
+Then configure `app.json`:
 
 ```json
 {
   "expo": {
     "plugins": [
-      "expo-build-properties",
-      {
-        "android": {
-          "usesCleartextTraffic": true
-        },
-        "ios": {}
-      }
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ]
   }
 }
 ```
 
+See [Expo build properties documentation](https://docs.expo.dev/versions/latest/sdk/build-properties/#pluginconfigtypeandroid) for more details.
 
-## Resetting local persistence
+### iOS
 
-When iterating locally you can ask the Expo adapter to drop the on-device state and eventlog databases before booting:
+No special configuration required. The adapter automatically retrieves the iOS vendor ID for client identification.
+
+## Devtools
+
+LiveStore provides integrated devtools for debugging your store. In development, press `shift + m` in the Expo CLI terminal, then select "LiveStore Devtools" to open the browser-based inspector.
+
+See the [Devtools reference](/reference/devtools) for full documentation.
+
+## Storage & Persistence
+
+### Database Location
+
+Databases are stored in the device's SQLite directory. The exact path depends on your setup:
+
+**Expo Go:**
+```bash
+open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore*" -print -quit)/SQLite
+```
+
+**Development builds:**
+```bash
+open $(xcrun simctl get_app_container booted [APP_BUNDLE_ID] data)/Documents/SQLite
+```
+
+Replace `[APP_BUNDLE_ID]` with your app's bundle identifier (e.g., `dev.livestore.myapp`).
+
+### Resetting Local Persistence
+
+During development, you can clear local databases on startup:
 
 <ResetPersistenceSnippet />
 
 :::caution
-Resetting persistence deletes all local LiveStore data for the configured store. This only clears data on the device and does not touch any connected sync backend. Make sure this flag is disabled in production builds.
+This deletes all local LiveStore data for the configured store. It only clears on-device data and does not affect any connected sync backend. Ensure this flag is disabled in production builds.
 :::
 
+## Architecture
 
+The Expo adapter runs LiveStore directly in the main JavaScript thread, using native SQLite bindings provided by `expo-sqlite`. This differs from the [web adapter](/reference/platform-adapters/web-adapter), which uses web workers and WASM-based SQLite.
+
+```
+┌─────────────────────────────────────────┐
+│           React Native App              │
+│  ┌───────────────────────────────────┐  │
+│  │         LiveStore Client          │  │
+│  │  ┌─────────────┐ ┌─────────────┐  │  │
+│  │  │ State DB    │ │ Eventlog DB │  │  │
+│  │  │(expo-sqlite)│ │(expo-sqlite)│  │  │
+│  │  └─────────────┘ └─────────────┘  │  │
+│  └───────────────────────────────────┘  │
+│                    │                    │
+│                    ▼                    │
+│           ┌───────────────┐             │
+│           │ Sync Backend  │             │
+│           │  (optional)   │             │
+│           └───────────────┘             │
+└─────────────────────────────────────────┘
+```
+
+## Future Improvements
+
+We're exploring moving database operations to a background thread to further improve UI responsiveness during intensive writes. Follow [livestore/livestore](https://github.com/livestorejs/livestore) for updates.
+
+## See Also
+
+- [Expo Getting Started Guide](/getting-started/expo) — Complete setup tutorial
+- [Expo Adapter Examples](/examples/expo-adapter) — Example applications
+- [React Integration](/reference/framework-integrations/react-integration) — Provider and hooks documentation
+- [Syncing](/reference/syncing) — Multi-device synchronization
+- [Devtools](/reference/devtools) — Debugging and inspection tools
