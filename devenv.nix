@@ -68,6 +68,7 @@ in
     # Playwright 1.57+ uses "Google Chrome for Testing" instead of "Chromium"
     if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
       for candidate in \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux64/chrome \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac-arm64/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
@@ -78,6 +79,11 @@ in
           break
         fi
       done
+
+      if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
+        echo "[devenv] WARNING: Could not find Chrome binary in PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >&2
+        echo "[devenv] Checked patterns: chromium-*/chrome-{linux64,linux,mac-arm64,mac,win}/*" >&2
+      fi
     fi
     export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
 
