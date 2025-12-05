@@ -186,7 +186,7 @@ export const schema = Schema.create({
 
   // Sync import - push events to sync backend
   livestore_sync_import: Effect.fnUntraced(function* ({ configPath, storeId, clientId, data, force, dryRun }) {
-    return yield* SyncOps.pushEventsToSyncBackend({
+    const result = yield* SyncOps.pushEventsToSyncBackend({
       configPath,
       storeId,
       clientId: clientId ?? 'mcp-import',
@@ -194,5 +194,11 @@ export const schema = Schema.create({
       force: force ?? false,
       dryRun: dryRun ?? false,
     }).pipe(Effect.scoped, Effect.provide(SyncOpsLayer), Effect.orDie)
+
+    return {
+      storeId: result.storeId,
+      eventCount: result.eventCount,
+      dryRun: result.dryRun,
+    }
   }),
 })

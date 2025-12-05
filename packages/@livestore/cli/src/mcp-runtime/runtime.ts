@@ -1,5 +1,5 @@
 import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
-import type { UnknownError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
@@ -31,7 +31,7 @@ export const init = ({
 }): Effect.Effect<Store<any>, UnknownError> =>
   Effect.gen(function* () {
     if (!storeId || typeof storeId !== 'string') {
-      return yield* Effect.die(new Error('Invalid storeId: expected a non-empty string'))
+      return yield* UnknownError.make({ cause: new Error('Invalid storeId: expected a non-empty string') })
     }
 
     const { schema, syncBackendConstructor, syncPayloadSchema, syncPayload } = yield* loadModuleConfig({ configPath })

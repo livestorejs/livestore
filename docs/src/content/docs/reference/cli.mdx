@@ -72,7 +72,7 @@ bunx @livestore/cli sync export \
 
 ```
 Exporting events from LiveStore...
-   Store: livestore-cli.config.ts
+   Config: livestore-cli.config.ts
    Store ID: my-store
    Output: events.json
 
@@ -87,6 +87,7 @@ Exported 127 events to /path/to/events.json
 - `--config, -c` (required) - Path to a config module that exports `schema` and `syncBackend`
 - `--store-id, -i` (required) - Store identifier
 - `--client-id` - Client identifier for the sync connection (default: `cli-export`)
+- Large exports load data in memory; for very large stores run this on a machine with sufficient RAM.
 
 #### Import
 
@@ -103,16 +104,16 @@ bunx @livestore/cli sync import \
 
 ```
 Importing events to LiveStore...
-   Store: livestore-cli.config.ts
+   Config: livestore-cli.config.ts
    Store ID: my-store
    Input: events.json
 
 Reading import file...
 Found 127 events in export file
+Checking for existing events...
 Connecting to sync backend...
 ✓ Connected to sync backend: @livestore/cf-sync
-Checking for existing events...
-Pushing 127 events to sync backend...
+Pushing events to sync backend...
   Pushed 100/127 events
   Pushed 127/127 events
 Successfully imported 127 events
@@ -124,6 +125,7 @@ Successfully imported 127 events
 - `--client-id` - Client identifier for the sync connection (default: `cli-import`)
 - `--force, -f` - Force import even if store ID in the file doesn't match
 - `--dry-run` - Validate the import file without actually importing
+- Large imports are memory-intensive because the JSON is loaded fully before validation/push.
 
 **Note:** The sync backend must be empty when importing. The import will fail if events already exist.
 

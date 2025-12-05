@@ -126,6 +126,7 @@ export interface ExportResult {
   storeId: string
   eventCount: number
   exportedAt: string
+  backendName: string
   /** The export data as JSON string (for MCP) or written to file (for CLI) */
   data: ExportFile
 }
@@ -149,6 +150,8 @@ export const pullEventsFromSyncBackend = ({
 > =>
   Effect.gen(function* () {
     const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
+
+    const backendName = syncBackend.metadata.name
 
     const batchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
       Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
@@ -179,6 +182,7 @@ export const pullEventsFromSyncBackend = ({
       storeId,
       eventCount: events.length,
       exportedAt,
+      backendName,
       data: exportData,
     }
   }).pipe(Effect.withSpan('sync:pullEvents'))
@@ -188,6 +192,7 @@ export interface ImportResult {
   eventCount: number
   /** Whether this was a dry run */
   dryRun: boolean
+  backendName?: string
 }
 
 export interface ImportValidationResult {
@@ -238,6 +243,7 @@ export const pushEventsToSyncBackend = ({
   data,
   force,
   dryRun,
+  onProgress,
 }: {
   configPath: string
   storeId: string
@@ -246,6 +252,7 @@ export const pushEventsToSyncBackend = ({
   data: unknown
   force: boolean
   dryRun: boolean
+  onProgress?: (pushed: number, total: number) => Effect.Effect<void, never>
 }): Effect.Effect<
   ImportResult,
   ImportError | UnknownError | ConnectionError,
@@ -278,6 +285,7 @@ export const pushEventsToSyncBackend = ({
     }
 
     const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
+    const backendName = syncBackend.metadata.name
 
     /** Check if events already exist by pulling from the backend first */
     const existingBatchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
@@ -303,6 +311,8 @@ export const pushEventsToSyncBackend = ({
 
     /** Push events in batches of 100 (sync backend constraint) */
     const batchSize = 100
+    const total = exportData.events.length
+    let pushed = 0
 
     for (let i = 0; i < exportData.events.length; i += batchSize) {
       const batch = exportData.events.slice(i, i + batchSize)
@@ -316,11 +326,17 @@ export const pushEventsToSyncBackend = ({
             }),
         ),
       )
+
+      pushed += batch.length
+      if (onProgress) {
+        yield* onProgress(pushed, total)
+      }
     }
 
     return {
       storeId,
       eventCount: exportData.events.length,
       dryRun: false,
+      backendName,
     }
   }).pipe(Effect.withSpan('sync:pushEvents'))

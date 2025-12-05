@@ -4,6 +4,8 @@ import { Console, Effect, FileSystem, type HttpClient, type Scope } from '@lives
 import { Cli } from '@livestore/utils/node'
 import * as SyncOps from '../sync-operations.ts'
 
+const LARGE_EVENT_WARNING_THRESHOLD = 100_000
+
 /**
  * Export events from the sync backend to a JSON file.
  */
@@ -27,8 +29,13 @@ const exportEvents = ({
 
     const result = yield* SyncOps.pullEventsFromSyncBackend({ configPath, storeId, clientId })
 
-    yield* Console.log(`✓ Connected to sync backend`)
+    yield* Console.log(`✓ Connected to sync backend: ${result.backendName}`)
     yield* Console.log(`Pulled ${result.eventCount} events`)
+    if (result.eventCount > LARGE_EVENT_WARNING_THRESHOLD) {
+      yield* Console.log(
+        `Warning: exporting ${result.eventCount} events may consume significant memory. Consider exporting on a machine with enough RAM.`,
+      )
+    }
 
     const fs = yield* FileSystem.FileSystem
     const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
@@ -125,6 +132,11 @@ const importEvents = ({
     }
 
     yield* Console.log(`Found ${validation.eventCount} events in export file`)
+    if (validation.eventCount > LARGE_EVENT_WARNING_THRESHOLD) {
+      yield* Console.log(
+        `Warning: importing ${validation.eventCount} events may consume significant memory. Ensure the machine has enough RAM.`,
+      )
+    }
 
     if (dryRun) {
       yield* Console.log(`Dry run - validating import file...`)
@@ -132,7 +144,10 @@ const importEvents = ({
       return
     }
 
+    yield* Console.log(`Checking for existing events...`)
+
     yield* Console.log(`Connecting to sync backend...`)
+    yield* Console.log(`Pushing events to sync backend...`)
 
     const result = yield* SyncOps.pushEventsToSyncBackend({
       configPath,
@@ -141,9 +156,10 @@ const importEvents = ({
       data: parsedContent,
       force,
       dryRun: false,
+      onProgress: (pushed, total) => Console.log(`  Pushed ${pushed}/${total} events`),
     })
 
-    yield* Console.log(`✓ Connected to sync backend`)
+    yield* Console.log(`✓ Connected to sync backend: ${result.backendName ?? 'unknown'}`)
     yield* Console.log(`Successfully imported ${result.eventCount} events`)
   }).pipe(Effect.withSpan('cli:import'))
 
