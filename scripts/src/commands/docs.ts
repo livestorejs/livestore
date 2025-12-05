@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { buildDiagrams } from '@local/astro-tldraw'
@@ -18,7 +18,17 @@ const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
-const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: true })
+const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: true }).pipe(
+  Effect.tapError((error) =>
+    error._tag === 'Tldraw.RenderTimeoutError'
+      ? Effect.logWarning('Docs diagram render timed out — retrying with exponential backoff up to 10s...')
+      : Effect.void,
+  ),
+  Effect.retry({
+    schedule: Schedule.exponentialBackoff10Sec,
+    while: (error) => error._tag === 'Tldraw.RenderTimeoutError',
+  }),
+)
 
 const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => runDocsDiagramsBuild).pipe(
   Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => runDocsDiagramsBuild)]),
@@ -122,9 +132,8 @@ const docsBuildCommand = Cli.Command.make(
 
     if (!skipDeps) {
       yield* Effect.log('Building snippets and diagrams...')
-      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
-        concurrency: 'unbounded',
-      })
+      yield* runDocsDiagramsBuild
+      yield* buildSnippets({ projectRoot: docsPath })
       yield* Effect.log('Snippets and diagrams built successfully')
       yield* cleanupChromiumChildren()
     }
@@ -161,9 +170,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(function* ({ open, skipDeps }) {
         if (!skipDeps) {
           yield* Effect.log('Building snippets and diagrams...')
-          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
-            concurrency: 'unbounded',
-          })
+          yield* runDocsDiagramsBuild
+          yield* buildSnippets({ projectRoot: docsPath })
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
