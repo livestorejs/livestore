@@ -6,6 +6,40 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
+const RENDER_TIMEOUT_MS = 30_000
+const MAX_RETRIES = 3
+
+/** Execute a promise with a timeout */
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs)),
+  ])
+
+/** Execute a function with retry logic */
+const withRetry = async <T>(
+  fn: () => Promise<T>,
+  {
+    maxRetries,
+    delayMs,
+    onRetry,
+  }: { maxRetries: number; delayMs: number; onRetry?: (attempt: number, error: Error) => void },
+): Promise<T> => {
+  let lastError: Error | undefined
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      if (attempt < maxRetries) {
+        onRetry?.(attempt, lastError)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+    }
+  }
+  throw lastError
+}
+
 export type TldrawTheme = 'light' | 'dark'
 
 export interface RenderedSvg {
@@ -32,22 +66,37 @@ export const readTldrawFile = async (filePath: string): Promise<{ content: strin
 // this module is imported. See scripts/src/commands/docs.ts where we derive it
 // from PLAYWRIGHT_BROWSERS_PATH for CI/dev.
 
-/** Render a single SVG with the specified theme */
+/** Render a single SVG with the specified theme (with timeout and retry) */
 const renderSvgWithTheme = async (tldrPath: string, theme: TldrawTheme, tempDir: string): Promise<RenderedSvg> => {
   const isDark = theme === 'dark'
+  const diagramName = path.basename(tldrPath)
 
   /* Create a theme-specific subdirectory to avoid filename conflicts */
   const themeDir = path.join(tempDir, theme)
   await fs.mkdir(themeDir, { recursive: true })
 
-  /* Export to theme-specific directory */
-  const outputPaths = await tldrawToImage(tldrPath, {
-    format: 'svg',
-    output: themeDir,
-    dark: isDark,
-    transparent: true,
-    stripStyle: false,
-  })
+  /* Export to theme-specific directory with timeout and retry */
+  const outputPaths = await withRetry<string[]>(
+    () =>
+      withTimeout(
+        tldrawToImage(tldrPath, {
+          format: 'svg',
+          output: themeDir,
+          dark: isDark,
+          transparent: true,
+          stripStyle: false,
+        }),
+        RENDER_TIMEOUT_MS,
+        `Tldraw render timed out after ${RENDER_TIMEOUT_MS}ms for ${diagramName} (${theme})`,
+      ),
+    {
+      maxRetries: MAX_RETRIES,
+      delayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`  ⚠ Retry ${attempt}/${MAX_RETRIES - 1} for ${diagramName} (${theme}): ${error.message}`)
+      },
+    },
+  )
 
   if (outputPaths.length === 0) {
     return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
