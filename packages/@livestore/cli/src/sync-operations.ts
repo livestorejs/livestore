@@ -16,6 +16,7 @@ import {
   Schema,
   type Scope,
   Stream,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 
 import { loadModuleConfig } from './module-loader.ts'
@@ -122,6 +123,12 @@ export const makeSyncBackend = ({
     return syncBackend
   })
 
+const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void, never> => {
+  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void, never> }).disconnect
+  const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
+  return releaseEffect.pipe(Effect.orElse(() => Effect.void))
+}
+
 export interface ExportResult {
   storeId: string
   eventCount: number
@@ -148,44 +155,47 @@ export const pullEventsFromSyncBackend = ({
   ExportError | UnknownError | ConnectionError,
   FileSystem.FileSystem | HttpClient.HttpClient | Scope.Scope
 > =>
-  Effect.gen(function* () {
-    const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
+  Effect.acquireUseRelease(
+    makeSyncBackend({ configPath, storeId, clientId }),
+    (syncBackend) =>
+      Effect.gen(function* () {
+        const backendName = syncBackend.metadata.name
 
-    const backendName = syncBackend.metadata.name
+        const batchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
+          Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
+          Stream.runCollect,
+          Effect.mapError(
+            (cause) =>
+              new ExportError({
+                cause,
+                note: `Failed to pull events from sync backend: ${cause}`,
+              }),
+          ),
+        )
 
-    const batchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
-      Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
-      Stream.runCollect,
-      Effect.mapError(
-        (cause) =>
-          new ExportError({
-            cause,
-            note: `Failed to pull events from sync backend: ${cause}`,
-          }),
-      ),
-    )
+        const events = Chunk.toReadonlyArray(batchesChunk)
+          .flatMap((item) => item.batch)
+          .map((item) => item.eventEncoded)
 
-    const events = Chunk.toReadonlyArray(batchesChunk)
-      .flatMap((item) => item.batch)
-      .map((item) => item.eventEncoded)
+        const exportedAt = new Date().toISOString()
+        const exportData: ExportFile = {
+          version: 1,
+          storeId,
+          exportedAt,
+          eventCount: events.length,
+          events,
+        }
 
-    const exportedAt = new Date().toISOString()
-    const exportData: ExportFile = {
-      version: 1,
-      storeId,
-      exportedAt,
-      eventCount: events.length,
-      events,
-    }
-
-    return {
-      storeId,
-      eventCount: events.length,
-      exportedAt,
-      backendName,
-      data: exportData,
-    }
-  }).pipe(Effect.withSpan('sync:pullEvents'))
+        return {
+          storeId,
+          eventCount: events.length,
+          exportedAt,
+          backendName,
+          data: exportData,
+        }
+      }),
+    releaseSyncBackend,
+  ).pipe(Effect.withSpan('sync:pullEvents'))
 
 export interface ImportResult {
   storeId: string
@@ -258,85 +268,93 @@ export const pushEventsToSyncBackend = ({
   ImportError | UnknownError | ConnectionError,
   FileSystem.FileSystem | HttpClient.HttpClient | Scope.Scope
 > =>
-  Effect.gen(function* () {
-    const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
-      Effect.mapError(
-        (cause) =>
-          new ImportError({
-            cause: new Error(`Invalid export file format: ${cause}`),
-            note: `Invalid export file format: ${cause}`,
-          }),
-      ),
-    )
+  Effect.acquireUseRelease(
+    makeSyncBackend({ configPath, storeId, clientId }),
+    (syncBackend) =>
+      Effect.gen(function* () {
+        const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
+          Effect.mapError(
+            (cause) =>
+              new ImportError({
+                cause: new Error(`Invalid export file format: ${cause}`),
+                note: `Invalid export file format: ${cause}`,
+              }),
+          ),
+        )
 
-    if (exportData.storeId !== storeId && !force) {
-      return yield* new ImportError({
-        cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
-        note: `The export file was created for a different store. Use force option to import anyway.`,
-      })
-    }
+        if (exportData.storeId !== storeId && !force) {
+          return yield* new ImportError({
+            cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
+            note: `The export file was created for a different store. Use force option to import anyway.`,
+          })
+        }
 
-    if (dryRun) {
-      return {
-        storeId,
-        eventCount: exportData.events.length,
-        dryRun: true,
-      }
-    }
+        if (dryRun) {
+          return {
+            storeId,
+            eventCount: exportData.events.length,
+            dryRun: true,
+          }
+        }
 
-    const syncBackend = yield* makeSyncBackend({ configPath, storeId, clientId })
-    const backendName = syncBackend.metadata.name
+        const backendName = syncBackend.metadata.name
 
-    /** Check if events already exist by pulling from the backend first */
-    const existingBatchesChunk = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
-      Stream.takeUntil((item) => item.pageInfo._tag === 'NoMore'),
-      Stream.runCollect,
-      Effect.mapError(
-        (cause) =>
-          new ImportError({
-            cause,
-            note: `Failed to check existing events: ${cause}`,
-          }),
-      ),
-    )
+        /** Check if events already exist by pulling from the backend first (short-circuit on first non-empty batch) */
+        const existingBatchOption = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
+          Stream.filter((item) => item.batch.length > 0),
+          Stream.runHead,
+          Effect.mapError(
+            (cause) =>
+              new ImportError({
+                cause,
+                note: `Failed to check existing events: ${cause}`,
+              }),
+          ),
+        )
 
-    const existingEventCount = Chunk.reduce(existingBatchesChunk, 0, (acc, item) => acc + item.batch.length)
+        if (Option.isSome(existingBatchOption)) {
+          const existingBatch = existingBatchOption.value
+          const estimatedCount =
+            existingBatch.pageInfo._tag === 'MoreKnown'
+              ? existingBatch.batch.length + existingBatch.pageInfo.remaining
+              : existingBatch.batch.length
 
-    if (existingEventCount > 0) {
-      return yield* new ImportError({
-        cause: new Error(`Sync backend already contains ${existingEventCount} events`),
-        note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
-      })
-    }
+          return yield* new ImportError({
+            cause: new Error(`Sync backend already contains at least ${estimatedCount} events`),
+            note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
+          })
+        }
 
-    /** Push events in batches of 100 (sync backend constraint) */
-    const batchSize = 100
-    const total = exportData.events.length
-    let pushed = 0
+        /** Push events in batches of 100 (sync backend constraint) */
+        const batchSize = 100
+        const total = exportData.events.length
+        let pushed = 0
 
-    for (let i = 0; i < exportData.events.length; i += batchSize) {
-      const batch = exportData.events.slice(i, i + batchSize)
+        for (let i = 0; i < exportData.events.length; i += batchSize) {
+          const batch = exportData.events.slice(i, i + batchSize)
 
-      yield* syncBackend.push(batch).pipe(
-        Effect.mapError(
-          (cause) =>
-            new ImportError({
-              cause,
-              note: `Failed to push events at position ${i}: ${cause}`,
-            }),
-        ),
-      )
+          yield* syncBackend.push(batch).pipe(
+            Effect.mapError(
+              (cause) =>
+                new ImportError({
+                  cause,
+                  note: `Failed to push events at position ${i}: ${cause}`,
+                }),
+            ),
+          )
 
-      pushed += batch.length
-      if (onProgress) {
-        yield* onProgress(pushed, total)
-      }
-    }
+          pushed += batch.length
+          if (onProgress) {
+            yield* onProgress(pushed, total)
+          }
+        }
 
-    return {
-      storeId,
-      eventCount: exportData.events.length,
-      dryRun: false,
-      backendName,
-    }
-  }).pipe(Effect.withSpan('sync:pushEvents'))
+        return {
+          storeId,
+          eventCount: exportData.events.length,
+          dryRun: false,
+          backendName,
+        }
+      }),
+    releaseSyncBackend,
+  ).pipe(Effect.withSpan('sync:pushEvents'))

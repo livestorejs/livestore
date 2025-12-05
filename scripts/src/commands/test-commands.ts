@@ -14,6 +14,25 @@ import {
 
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
+/**
+ * Walks up from a file path to find the nearest directory containing a package.json.
+ * Needed because running filtered Vitest suites from the workspace root can miss package-local peer deps
+ * (e.g. @effect/ai) that are resolved when cwd is the package root.
+ */
+const findNearestPackageRoot = (filePath: string): string | undefined => {
+  let current = path.dirname(filePath)
+  const { root } = path.parse(current)
+
+  while (current !== root) {
+    if (fs.existsSync(path.join(current, 'package.json'))) {
+      return current
+    }
+    current = path.dirname(current)
+  }
+
+  return undefined
+}
+
 // GitHub actions log groups
 const runTestGroup =
   (name: string) =>
@@ -121,9 +140,25 @@ const hasTestFiles = (dirPath: string): boolean => {
 // - Other standard Vitest CLI flags for more precise test control
 export const testUnitCommand = Cli.Command.make(
   'unit',
-  {},
-  Effect.fn(function* () {
+  {
+    filter: Cli.Options.text('filter').pipe(
+      Cli.Options.optional,
+      Cli.Options.withDescription('Run only test suites whose path includes this substring'),
+    ),
+  },
+  Effect.fn(function* ({ filter }) {
     const workspaceRoot = yield* LivestoreWorkspace
+
+    if (Option.isSome(filter)) {
+      const target = path.isAbsolute(filter.value) ? filter.value : path.join(workspaceRoot, filter.value)
+      const packageRoot = findNearestPackageRoot(target)
+      const relativeCwd = packageRoot ? path.relative(workspaceRoot, packageRoot) : undefined
+      yield* cmd(['vitest', 'run', target]).pipe(
+        Effect.provide(relativeCwd ? LivestoreWorkspace.toCwd(relativeCwd) : LivestoreWorkspace.toCwd()),
+      )
+      return
+    }
+
     // Packages that need to run sequentially due to CI flakiness
     const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
 
@@ -263,7 +298,7 @@ export const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
-    yield* testUnitCommand.handler({})
+    yield* testUnitCommand.handler({ filter: Option.none() })
     yield* testIntegrationAllCommand.handler({
       concurrency: isGithubAction ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
