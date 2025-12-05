@@ -83,7 +83,7 @@ The integration injects the Vite plugin so snippet imports resolve to cached art
 
 Share the same `snippetRuntime` object with your CLI script to keep the integration and build pipeline in sync. Leaving `runtime` undefined restores the defaults from the table above.
 
-By default the integration runs the snippet build once when the Astro dev server boots and again before `astro build`. Disable this with `autoBuild: false`, tweak inputs via `buildOptions`, or set `LS_TWOSLASH_SKIP_AUTO_BUILD=1` when you invoke Astro manually.
+By default the integration runs the snippet build once when the Astro dev server boots and again before `astro build`. Disable this with `autoBuild: false`, tweak inputs via `buildOptions`, or set `LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH=1` to skip auto-build and watch (e.g. when snippets are managed externally by a CLI wrapper).
 
 ```ts
 createAstroTwoslashCodeIntegration({

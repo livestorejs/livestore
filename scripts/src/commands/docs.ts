@@ -5,7 +5,7 @@ import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { buildDiagrams } from '@local/astro-tldraw'
-import { createSnippetsCommand } from '@local/astro-twoslash-code'
+import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
@@ -83,12 +83,12 @@ const docsBuildCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Remove docs build artifacts before compilation'),
     ),
-    skipSnippets: Cli.Options.boolean('skip-snippets').pipe(
+    skipDeps: Cli.Options.boolean('skip-deps').pipe(
       Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip the Twoslash snippet prebuild step'),
+      Cli.Options.withDescription('Skip building snippets and diagrams'),
     ),
   },
-  Effect.fn(function* ({ apiDocs, clean, skipSnippets }) {
+  Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
     if (clean) {
       yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { shell: true }).pipe(
         Effect.provide(LivestoreWorkspace.toCwd('docs')),
@@ -98,6 +98,14 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
+    if (!skipDeps) {
+      yield* Effect.log('Building snippets and diagrams...')
+      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), Effect.promise(runDocsDiagramsBuild)], {
+        concurrency: 'unbounded',
+      })
+      yield* Effect.log('Snippets and diagrams built successfully')
+    }
+
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
@@ -105,7 +113,8 @@ const docsBuildCommand = Cli.Command.make(
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
-        LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        // Snippets/diagrams already built above (or skipped), tell Astro not to auto-build
+        LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
         LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
       },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
@@ -118,13 +127,28 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       'dev',
       {
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
-      },
-      ({ open }) =>
-        Effect.asVoid(
-          cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-            logDir: `${docsPath}/logs`,
-          }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs'))),
+        skipDeps: Cli.Options.boolean('skip-deps').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Skip building snippets and diagrams'),
         ),
+      },
+      Effect.fn(function* ({ open, skipDeps }) {
+        if (!skipDeps) {
+          yield* Effect.log('Building snippets and diagrams...')
+          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), Effect.promise(runDocsDiagramsBuild)], {
+            concurrency: 'unbounded',
+          })
+          yield* Effect.log('Snippets and diagrams built successfully')
+        }
+
+        yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+          logDir: `${docsPath}/logs`,
+          env: {
+            // Snippets/diagrams already built above (or skipped), tell Astro not to auto-build
+            LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
+          },
+        }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+      }),
     ),
     docsBuildCommand,
     docsSnippetsCommand,
@@ -144,7 +168,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       },
       Effect.fn(function* ({ port: portOption, build }) {
         if (build) {
-          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipSnippets: false })
+          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
         }
 
         const requestedPort = portOption._tag === 'Some' ? Number.parseInt(portOption.value, 10) : undefined
@@ -291,7 +315,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
           if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
