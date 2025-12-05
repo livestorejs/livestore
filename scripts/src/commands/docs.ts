@@ -75,13 +75,33 @@ const formatDocsDeploymentSummaryMarkdown = ({
   })
 }
 
+/**
+ * Tldraw diagram rendering (via @kitschpatrol/tldraw-cli/Puppeteer) can leave a Chromium
+ * child alive after work completes, keeping `mono docs build` hanging in CI
+ * (e.g. https://github.com/livestorejs/livestore/actions/runs/19968500091/job/57266669492).
+ * This helper force-kills Chromium children of the current mono process in the docs CWD.
+ */
+const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function* () {
+  const parentPid = String(process.pid)
+  const script =
+    'pids=$(ps -eo pid=,ppid=,comm= | awk -v ppid="' +
+    parentPid +
+    "\" '/chromium|chrome_crashpad_handler/ { if ($2==ppid) print $1 }'); " +
+    'if [ -z "$pids" ]; then exit 0; fi; echo "Cleaning up stale Chromium processes: $pids"; kill $pids 2>/dev/null || true'
+
+  yield* cmd(script, { shell: true, stdout: 'inherit', stderr: 'inherit' }).pipe(
+    Effect.provide(LivestoreWorkspace.toCwd('docs')),
+    Effect.ignoreLogged,
+  )
+})
+
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
     apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
     clean: Cli.Options.boolean('clean').pipe(
       Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Remove docs build artifacts before compilation'),
+      Cli.Options.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
     ),
     skipDeps: Cli.Options.boolean('skip-deps').pipe(
       Cli.Options.withDefault(false),
@@ -90,9 +110,11 @@ const docsBuildCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
     if (clean) {
-      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { shell: true }).pipe(
-        Effect.provide(LivestoreWorkspace.toCwd('docs')),
-      )
+      // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
+      yield* cmd(
+        'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
+        { shell: true },
+      ).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
     }
 
     // Always clean up .netlify folder as it can cause issues with the build
@@ -104,6 +126,7 @@ const docsBuildCommand = Cli.Command.make(
         concurrency: 'unbounded',
       })
       yield* Effect.log('Snippets and diagrams built successfully')
+      yield* cleanupChromiumChildren()
     }
 
     // Local/CI prebuild uses Astro directly. The deploy step performs the
@@ -120,6 +143,7 @@ const docsBuildCommand = Cli.Command.make(
         LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
       },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+    yield* cleanupChromiumChildren()
   }),
 )
 
