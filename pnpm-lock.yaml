@@ -343,6 +343,9 @@ importers:
       '@effect-atom/atom-react':
         specifier: 0.3.0
         version: 0.3.0(@effect/experimental@0.56.0(@effect/platform@0.92.1(effect@3.18.4))(effect@3.18.4))(@effect/platform@0.92.1(effect@3.18.4))(@effect/rpc@0.71.2(@effect/platform@0.92.1(effect@3.18.4))(effect@3.18.4))(effect@3.18.4)(react@19.1.0)(scheduler@0.27.0)
+      '@livestore/adapter-cloudflare':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-expo':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/adapter-expo
@@ -364,12 +367,24 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/react
+      '@livestore/solid':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/solid
+      '@livestore/svelte':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/svelte
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/sync-cf
       '@livestore/sync-electric':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/sync-electric
+      '@livestore/sync-s2':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/sync-s2
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../../../../packages/@livestore/utils
       '@opentelemetry/context-zone':
         specifier: 'catalog:'
         version: 2.0.1(@opentelemetry/api@1.9.0)
@@ -424,6 +439,9 @@ importers:
       solid-js:
         specifier: 'catalog:'
         version: 1.9.10
+      svelte:
+        specifier: 5.43.14
+        version: 5.43.14
       vite:
         specifier: 'catalog:'
         version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
