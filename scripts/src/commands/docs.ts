@@ -143,10 +143,6 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
         yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
-          env: {
-            // Snippets/diagrams already built above (or skipped), tell Astro not to auto-build
-            LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
-          },
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),
     ),
