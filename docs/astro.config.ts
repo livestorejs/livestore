@@ -18,6 +18,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
+import { docsSidebar, toStarlightSidebar } from './src/data/sidebar.ts'
 import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
@@ -110,69 +111,12 @@ export default defineConfig({
             link: '/',
             icon: 'open-book',
             items: [
-              'index',
-              {
-                label: 'Getting Started',
-                autogenerate: { directory: 'getting-started' },
-              },
-              {
-                label: 'Tutorial',
-                autogenerate: { directory: 'tutorial' },
-              },
-              {
-                label: 'Evaluating LiveStore',
-                autogenerate: { directory: 'evaluation' },
-              },
-              {
-                label: 'Data Modeling',
-                autogenerate: { directory: 'data-modeling' },
-              },
-              // TODO bring back when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
-              // Until when we're manually maintaining the sidebar for reference
-              // {
-              //   label: 'Reference',
-              //   autogenerate: { directory: 'reference' },
-              // },
-              {
-                label: 'Reference',
-                items: [
-                  'reference/concepts',
-                  'reference/store',
-                  'reference/reactivity-system',
-                  'reference/events',
-                  'reference/devtools',
-                  'reference/debugging',
-                  'reference/opentelemetry',
-                  'reference/cli',
-                  'reference/mcp',
-                  { label: 'State', autogenerate: { directory: 'reference/state' } },
-                  {
-                    label: 'Syncing',
-                    items: [
-                      'reference/syncing',
-                      'reference/syncing/server-side-clients',
-                      { label: 'Sync Provider', autogenerate: { directory: 'reference/syncing/sync-provider' } },
-                    ],
-                  },
-                  { label: 'Platform Adapters', autogenerate: { directory: 'reference/platform-adapters' } },
-                  { label: 'Framework Integrations', autogenerate: { directory: 'reference/framework-integrations' } },
-                ],
-              },
-              {
-                label: 'Patterns',
-                autogenerate: { directory: 'patterns' },
-              },
-              {
-                label: 'Miscellaneous',
-                autogenerate: { directory: 'misc' },
-              },
+              // Sidebar structure is defined in ./src/data/sidebar.ts
+              // to be shared with llms.txt generators
+              ...toStarlightSidebar(docsSidebar),
               {
                 label: 'Changelog',
                 link: '/changelog',
-              },
-              {
-                label: 'Contributing',
-                autogenerate: { directory: 'contributing' },
               },
             ],
           },
