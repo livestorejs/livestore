@@ -1,8 +1,35 @@
 import { Console, Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { hasParentGitRepo } from '../shared/misc.ts'
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
+
+/**
+ * Checks that no `.md` files contain ESM import statements.
+ * Files with imports must use `.mdx` extension for Astro to process them correctly.
+ *
+ * Ideally Astro would warn about this natively - see upstream issue:
+ * https://github.com/withastro/astro/issues/14966
+ */
+const checkMdFilesNoImports = Effect.gen(function* () {
+  // Use grep to find .md files with import statements
+  // grep returns exit code 1 when no matches found, which is what we want (success = no files)
+  const result = yield* cmdText('grep -rl "^import " docs/src/content/docs --include="*.md" 2>/dev/null || true', {
+    runInShell: true,
+  }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+  const filesWithImports = result
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0)
+
+  if (filesWithImports.length > 0) {
+    yield* Console.error(
+      `Error: Found .md files with import statements. These must be renamed to .mdx:\n${filesWithImports.map((p) => `  - ${p}`).join('\n')}`,
+    )
+    return yield* Effect.fail(new Error('Found .md files with imports'))
+  }
+}).pipe(Effect.withSpan('checkMdFilesNoImports'))
 
 export const lintCommand = Cli.Command.make(
   'lint',
@@ -33,5 +60,8 @@ export const lintCommand = Cli.Command.make(
     if (!peerDepsOk) {
       yield* Console.warn('Peer dependency check found violations (see above)')
     }
+
+    // Check that .md files don't contain imports (should be .mdx)
+    yield* checkMdFilesNoImports
   }),
 )
