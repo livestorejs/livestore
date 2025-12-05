@@ -112,10 +112,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1759883412,
+        "lastModified": 1764677445,
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
-        "rev": "25c9ebd50c8ea3d23a0deee969c01562bebacca1",
+        "rev": "276c607189273ab3b4a3e163fed738bef7f18a7c",
         "type": "github"
       },
       "original": {

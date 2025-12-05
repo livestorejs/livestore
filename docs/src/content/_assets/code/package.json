@@ -19,7 +19,14 @@
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@opentelemetry/context-zone": "catalog:",
+    "@opentelemetry/core": "catalog:",
+    "@opentelemetry/exporter-trace-otlp-http": "catalog:",
+    "@opentelemetry/resources": "catalog:",
+    "@opentelemetry/sdk-trace-base": "catalog:",
+    "@opentelemetry/sdk-trace-web": "catalog:",
     "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "6.0.0",
     "effect": "catalog:",
     "expo": "54.0.12",
     "expo-status-bar": "3.0.8",
@@ -31,6 +38,8 @@
     "react-native": "0.81.4",
     "solid-js": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-vue-devtools": "7.7.6",
+    "vue": "3.5.24",
     "vue-livestore": "0.2.3"
   }
 }

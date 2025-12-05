@@ -28,7 +28,7 @@
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/sdk-trace-web": "catalog:",
     "@playwright/test": "catalog:",
-    "@tanstack/react-router": "^1.132.47",
+    "@tanstack/react-router": "^1.139.14",
     "@tanstack/router-plugin": "^1.132.56",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

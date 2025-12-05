@@ -33,8 +33,10 @@
       "workerd"
     ],
     "overrides": {
-      "syncpack>effect": "3.18.4"
-    }
+      "syncpack>effect": "3.18.4",
+      "puppeteer": "23.11.1"
+    },
+    "overrides#puppeteer": "Pin to 23.11.1 (uses Chrome 131) to match Playwright 1.57.0's bundled Chromium. tldraw-cli depends on Puppeteer which needs a Chrome binary provided by devenv via PUPPETEER_EXECUTABLE_PATH."
   },
   "resolutions": {
     "@livestore/adapter-cloudflare": "workspace:*",
