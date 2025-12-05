@@ -613,9 +613,9 @@
   main .sl-markdown-content .expressive-code figure.frame .copy button::before {
     opacity: 0;
   }
-  
+
   main .sl-markdown-content .expressive-code figure.frame .copy button::after {
-    margin: 0.5em 0.5em 0 0.5em!important;
+    margin: 0.5em 0.5em 0 0.5em;
   }
 
   main .sl-markdown-content .expressive-code figure.frame .copy button div {
@@ -635,7 +635,7 @@
     border-radius: 0.5em;
   }
 
-  main .sl-markdown-content .expressive-code figure.frame figcaption.header, 
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header,
   main .sl-markdown-content .expressive-code .frame.has-title:not(.is-terminal) figcaption.header {
     background-image: none;
     background-color: var(--color-gray-900);
