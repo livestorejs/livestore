@@ -6,8 +6,8 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
-/** Timeout per render attempt - 60s to handle CI cold-start delays */
-const RENDER_TIMEOUT_MS = 60_000
+/** Timeout per render attempt - 120s to handle CI cold-start delays */
+const RENDER_TIMEOUT_MS = 120_000
 const MAX_RETRIES = 3
 /** Delay between retries - 2s to allow system resources to stabilize */
 const RETRY_DELAY_MS = 2_000
