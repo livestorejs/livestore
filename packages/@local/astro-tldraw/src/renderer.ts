@@ -6,8 +6,11 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
-const RENDER_TIMEOUT_MS = 30_000
+/** Timeout per render attempt - 60s to handle CI cold-start delays */
+const RENDER_TIMEOUT_MS = 60_000
 const MAX_RETRIES = 3
+/** Delay between retries - 2s to allow system resources to stabilize */
+const RETRY_DELAY_MS = 2_000
 
 /** Execute a promise with a timeout */
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> =>
@@ -91,7 +94,7 @@ const renderSvgWithTheme = async (tldrPath: string, theme: TldrawTheme, tempDir:
       ),
     {
       maxRetries: MAX_RETRIES,
-      delayMs: 1000,
+      delayMs: RETRY_DELAY_MS,
       onRetry: (attempt, error) => {
         console.warn(`  ⚠ Retry ${attempt}/${MAX_RETRIES - 1} for ${diagramName} (${theme}): ${error.message}`)
       },
@@ -129,7 +132,7 @@ export const renderTldrawToSvg = async (tldrPath: string, tempDir: string): Prom
   /* Read source file for hashing */
   const { hash: sourceHash } = await readTldrawFile(tldrPath)
 
-  /* Render both themes */
+  /* Render both themes in parallel */
   const [lightResult, darkResult] = await Promise.all([
     renderSvgWithTheme(tldrPath, 'light', tempDir),
     renderSvgWithTheme(tldrPath, 'dark', tempDir),
