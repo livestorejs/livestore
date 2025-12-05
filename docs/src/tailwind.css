@@ -501,7 +501,8 @@
   }
 
   main .sl-link-card a .title,
-  main footer .pagination-links a .link-title {
+  main footer .pagination-links a .link-title,
+  main .sl-markdown-content .card-grid article.card .title {
     font-weight: 400;
     font-size: 16px;
   }
@@ -772,6 +773,19 @@
     background: transparent;
   }
 
+  main .sl-markdown-content .card-grid article.card {
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.75em;
+    background-color: transparent;
+    box-shadow: none;
+    padding: 1.75em 2em;
+  }
+
+  main .sl-markdown-content .card-grid article.card .body {
+    font-size: 14px;
+    font-weight: 300;
+  }
+
   main footer .meta a {
     font-weight: 300;
     gap: 0.3em;
@@ -1000,9 +1014,13 @@
       background-color: var(--color-gray-200);
     }
 
+    main .sl-markdown-content .card-grid article.card {
+      border: 1px solid var(--color-gray-200);
+    }
+
     main .sl-link-card,
     main footer .pagination-links a {
-      border: 1px solid var(--color-gray-300);
+      border: 1px solid var(--color-gray-200);
     }
 
     main .sl-link-card:hover,
