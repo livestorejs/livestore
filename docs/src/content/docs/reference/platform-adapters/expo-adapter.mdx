@@ -14,11 +14,12 @@ The Expo adapter enables LiveStore in React Native applications built with [Expo
 
 ## Key Features
 
+- **Signals-based reactivity** — High-performance state management with fine-grained updates
+- **iOS and Android support** — Works seamlessly on both platforms with native performance
 - **Native SQLite storage** — Uses `expo-sqlite` for fast, reliable persistence directly on the device
 - **Offline-first** — Full functionality without network connectivity; syncs when connected
 - **Real-time sync** — Optional sync backend integration for multi-device data synchronization
 - **Integrated devtools** — Debug and inspect your store via the [LiveStore Devtools](/reference/devtools)
-- **Automatic client identification** — Uses platform-specific device IDs for client tracking
 
 ## Requirements
 
@@ -151,13 +152,13 @@ The Expo adapter runs LiveStore directly in the main JavaScript thread, using na
 │  │  │(expo-sqlite)│ │(expo-sqlite)│  │  │
 │  │  └─────────────┘ └─────────────┘  │  │
 │  └───────────────────────────────────┘  │
-│                    │                    │
-│                    ▼                    │
-│           ┌───────────────┐             │
-│           │ Sync Backend  │             │
-│           │  (optional)   │             │
-│           └───────────────┘             │
 └─────────────────────────────────────────┘
+                     │
+                     ▼ WebSocket
+            ┌───────────────┐
+            │ Sync Backend  │
+            │  (optional)   │
+            └───────────────┘
 ```
 
 ## Future Improvements
