@@ -14,6 +14,25 @@ import {
 
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
+/**
+ * Walks up from a file path to find the nearest directory containing a package.json.
+ * Needed because running filtered Vitest suites from the workspace root can miss package-local peer deps
+ * (e.g. @effect/ai) that are resolved when cwd is the package root.
+ */
+const findNearestPackageRoot = (filePath: string): string | undefined => {
+  let current = path.dirname(filePath)
+  const { root } = path.parse(current)
+
+  while (current !== root) {
+    if (fs.existsSync(path.join(current, 'package.json'))) {
+      return current
+    }
+    current = path.dirname(current)
+  }
+
+  return undefined
+}
+
 // GitHub actions log groups
 const runTestGroup =
   (name: string) =>
@@ -132,7 +151,11 @@ export const testUnitCommand = Cli.Command.make(
 
     if (Option.isSome(filter)) {
       const target = path.isAbsolute(filter.value) ? filter.value : path.join(workspaceRoot, filter.value)
-      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      const packageRoot = findNearestPackageRoot(target)
+      const relativeCwd = packageRoot ? path.relative(workspaceRoot, packageRoot) : undefined
+      yield* cmd(['vitest', 'run', target]).pipe(
+        Effect.provide(relativeCwd ? LivestoreWorkspace.toCwd(relativeCwd) : LivestoreWorkspace.toCwd()),
+      )
       return
     }
 
