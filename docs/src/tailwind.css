@@ -558,7 +558,7 @@
   }
 
   main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
-    border-bottom: 1px solid var(--color-gray-700);
+    border-bottom: 1px solid var(--color-gray-800);
     padding-bottom: 1px;
   }
 
@@ -570,6 +570,119 @@
   main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a[aria-selected="true"] {
     border-bottom: 1px solid var(--color-accent-500);
     font-weight: 400;
+  }
+
+  main .sl-markdown-content .sl-steps li::before {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    font-weight: 400;
+    box-shadow: none;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 2px;
+  }
+
+  main .sl-markdown-content .sl-steps li::after {
+    background-color: var(--color-gray-800);
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button {
+    background-color: var(--color-gray-950);
+    color: var(--color-gray-300);
+    border-radius: 0.75em;
+    border: 1px solid var(--color-gray-700);
+    height: 28px;
+    width: 28px;
+    box-shadow: none;
+    outline: none;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button:hover {
+    background-color: var(--color-gray-950);
+    border-color: white;
+    color: white;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button::before {
+    opacity: 0;
+  }
+  
+  main .sl-markdown-content .expressive-code figure.frame .copy button::after {
+    margin: 0.5em 0.5em 0 0.5em!important;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button div {
+    border: none;
+    background: transparent;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame:hover .copy button:not(:hover) {
+    opacity: 1;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy .feedback {
+    --tooltip-bg: var(--color-accent-500);
+    color: black;
+    padding: 0 0.5em;
+    font-size: 12px;
+    border-radius: 0.5em;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header, 
+  main .sl-markdown-content .expressive-code .frame.has-title:not(.is-terminal) figcaption.header {
+    background-image: none;
+    background-color: var(--color-gray-900);
+    border-radius: 1em 1em 0 0;
+    border: 1px solid var(--color-gray-800);
+    border-bottom: 1px solid var(--color-gray-800);
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header::after {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header::before {
+    left: 1em;
+    background-color: var(--color-gray-800);
+    opacity: 1;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame.has-title figcaption.header::before {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame.has-title figcaption.header .title {
+    background-color: var(--color-gray-900);
+    border-radius: 1em 1em 0 0;
+    font-weight: 400;
+    color: white;
+    border: none;
+    border-bottom: 1px solid var(--color-accent-500);
+    margin-bottom: -1px;
+    font-size: 14px;
+    padding: 0.3em 1em 0.4em 1em;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header .title::after {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure pre {
+    background-color: var(--color-gray-900);
+    border-radius: 0 0 1em 1em;
+    border: 1px solid var(--color-gray-800);
+    border-top: none;
+  }
+
+  main .sl-markdown-content .expressive-code {
+    font-size: 14px;
   }
 
   main footer .meta a {
@@ -785,6 +898,19 @@
 
     main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
       border-bottom: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-markdown-content .expressive-code figure.frame figcaption.header::before {
+      background-color: var(--color-gray-700);
+    }
+
+    main .sl-markdown-content .sl-steps li::before {
+      background-color: var(--color-gray-100);
+      border: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-markdown-content .sl-steps li::after {
+      background-color: var(--color-gray-200);
     }
 
     main .sl-link-card,
