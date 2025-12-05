@@ -18,6 +18,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
+import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
@@ -378,6 +379,9 @@ export default defineConfig({
       // MDX: \{#custom-id\}
       remarkCustomHeaderId,
     ],
-    rehypePlugins: [[rehypeMermaid, { strategy: 'img-svg', dark: true }]],
+    rehypePlugins: [
+      [rehypeMermaid, { strategy: 'img-svg', dark: true }],
+      [rehypeExternalLinks, { internalDomains: ['livestore.dev', 'localhost'] }],
+    ],
   },
 })

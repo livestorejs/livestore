@@ -52,7 +52,8 @@
     "terrastruct-d2-bin": "0.7.1",
     "typedoc": "0.28.11",
     "typedoc-plugin-markdown": "4.8.1",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
