@@ -9,11 +9,11 @@ Please follow LiveStore's [guiding principles](/contributing/contributing#guidin
 
 This project broadly tries to follow the [Prisma docs style guide](https://www.prisma.io/docs/about/style-guide/writing-style).
 
-## Title casing for navigation items, pages and sections
+## Use regular sentence casing for titles of navigation item, pages and sections
 
-All titles for navigation items, pages and sections are using regular sentence casing. This means that only the first word and proper nouns are capitalized.
+All titles for navigation items, pages and sections are using regular sentence casing. This means that only the first word and proper nouns (e.g. "Cloudflare Workers" or "Cloudflare Durable Objects") are capitalized.
 
-### Example
+### Example 1
 
 Good:
 
@@ -27,9 +27,63 @@ Bad:
 ## This is the Title of this Section
 ```
 
+### Example 2
+
+Good:
+
+```md
+## This pages is about Cloudflare Workers
+```
+
+Bad:
+
+```md
+##  This pages is about cloudflare workers
+```
+
+
 ## Create proper frontmatter for every page
 
-TBD
+Frontmatter is YAML metadata at the start of MD/MDX files (between `---` markers) that controls page rendering, navigation, and SEO.
+
+### Required fields
+
+- **`title`**: Page title used for the browser tab, search results, and page heading. Always required.
+- **`description`**: Brief summary (150-160 characters) used for search snippets and social previews. Highly recommended for SEO.
+
+### Optional fields
+
+- **`sidebar`**: Controls sidebar navigation
+  - `label`: Custom sidebar label (defaults to `title`)
+  - `order`: Numeric sort order (lower numbers appear first)
+
+### SEO impact
+
+The `title` and `description` fields directly impact SEO:
+- `title` becomes the `<title>` tag and search result headline
+- `description` becomes the `<meta name="description">` tag and search snippet
+- Both are used for Open Graph and Twitter Card previews
+- OG images are auto-generated at `/og/{slug}.png` using these fields
+
+### Examples
+
+Minimal (title only):
+```yaml
+---
+title: Getting started with LiveStore + React
+---
+```
+
+With description and sidebar:
+```yaml
+---
+title: Getting started with LiveStore + React
+description: How to use LiveStore with React on the web.
+sidebar:
+  label: React web
+  order: 1
+---
+```
 
 ## Snippets
 

@@ -48,7 +48,7 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 
 /**
  * Creates a Durable Object class for handling WebSocket-based sync.
- * A sync durable object is uniquely scoped to a specific `storeId`.
+ * A sync Durable Object is uniquely scoped to a specific `storeId`.
  * 
  * The sync DO supports 3 transport modes:
  * - HTTP JSON-RPC

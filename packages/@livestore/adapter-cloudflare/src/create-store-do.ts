@@ -44,7 +44,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
   resetPersistence?: boolean
 } & LogConfig.WithLoggerOptions
 
-// TODO Also support in Cloudflare workers outside of a durable object context.
+// TODO Also support in Cloudflare workers outside of a Durable Object context.
 export const createStoreDo = <
   TSchema extends LiveStoreSchema,
   TEnv,

@@ -30,7 +30,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json
   /**
    * Validates the payload during WebSocket connection establishment.
    * Note: This runs only at connection time, not for individual push events.
-   * For push event validation, use the `onPush` callback in the durable object.
+   * For push event validation, use the `onPush` callback in the Durable Object.
    */
   /**
    * Optionally pass a schema to decode the client-provided payload into a typed object

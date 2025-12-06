@@ -23,7 +23,7 @@ export const eventlogTable = State.SQLite.table({
 })
 
 /**
- * Context metadata table - one row per durable object.
+ * Context metadata table - one row per Durable Object.
  *
  * ⚠️  IMPORTANT: Any changes to this schema require bumping PERSISTENCE_FORMAT_VERSION in shared.ts
  */
