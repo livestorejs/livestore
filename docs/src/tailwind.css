@@ -1060,3 +1060,21 @@ svg[data-d2-version] {
 .d2-full-width svg[data-d2-version] {
   max-width: 100%;
 }
+
+/*
+ * External link icon styling
+ * Added by the rehypeExternalLinks plugin to indicate links leaving the docs.
+ * Icon uses currentColor to inherit the link's text color automatically.
+ */
+.external-link-icon {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-left: 0.2em;
+  /* Align with text baseline, slight adjustment for visual balance */
+  vertical-align: baseline;
+  position: relative;
+  top: -0.1em;
+  /* Prevent icon from being orphaned on line wrap */
+  flex-shrink: 0;
+}

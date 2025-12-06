@@ -88,7 +88,43 @@ export interface NodeAdapterOptions {
   }
 }
 
-/** Runs everything in the same thread. Use `makeWorkerAdapter` for multi-threaded implementation. */
+/**
+ * Creates a single-threaded LiveStore adapter for Node.js applications.
+ *
+ * This adapter runs the leader thread (persistence and sync) in the same thread as
+ * your application. Suitable for CLI tools, scripts, and applications where simplicity
+ * is preferred over maximum performance.
+ *
+ * For production servers or performance-critical applications, consider `makeWorkerAdapter`
+ * which runs persistence/sync in a separate worker thread.
+ *
+ * @example
+ * ```ts
+ * import { makeAdapter } from '@livestore/adapter-node'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makeAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With DevTools support
+ * const adapter = makeAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   devtools: {
+ *     schemaPath: new URL('./schema.ts', import.meta.url),
+ *     port: 4242,
+ *   },
+ * })
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/node for setup guide
+ */
 export const makeAdapter = ({
   sync,
   ...options
@@ -97,7 +133,36 @@ export const makeAdapter = ({
 }): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'single-threaded', sync } })
 
 /**
- * Runs persistence and syncing in a worker thread.
+ * Creates a multi-threaded LiveStore adapter for Node.js applications.
+ *
+ * This adapter runs the leader thread (persistence, sync, and heavy SQLite operations)
+ * in a separate worker thread, keeping your main thread responsive. Recommended for
+ * production servers and performance-critical applications.
+ *
+ * You must create a worker file that calls `makeLeaderWorker()` and pass its URL
+ * to this function.
+ *
+ * @example
+ * ```ts
+ * // In your main file:
+ * import { makeWorkerAdapter } from '@livestore/adapter-node'
+ *
+ * const adapter = makeWorkerAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   workerUrl: new URL('./livestore.worker.ts', import.meta.url),
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // In livestore.worker.ts:
+ * import { makeLeaderWorker } from '@livestore/adapter-node/worker'
+ * import { schema } from './schema'
+ *
+ * makeLeaderWorker({ schema })
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/node for setup guide
  */
 export const makeWorkerAdapter = ({
   workerUrl,

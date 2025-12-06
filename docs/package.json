@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./multi-code-markdown": "./src/utils/multi-code-markdown.ts"
+    "./multi-code-markdown": "./src/utils/multi-code-markdown.ts",
+    "./sidebar": "./src/data/sidebar.ts"
   },
   "dependencies": {
     "@astrojs/check": "0.9.4",
@@ -52,7 +53,8 @@
     "terrastruct-d2-bin": "0.7.1",
     "typedoc": "0.28.11",
     "typedoc-plugin-markdown": "4.8.1",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

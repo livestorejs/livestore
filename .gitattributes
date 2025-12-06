@@ -1,0 +1,3 @@
+# Mark SQLite benchmark files as vendored to exclude from GitHub language stats
+# These are test fixtures with generated data, not actual source code
+packages/@livestore/wa-sqlite/demo/benchmarks/*.sql linguist-vendored

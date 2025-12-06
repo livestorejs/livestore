@@ -121,9 +121,21 @@ const hasTestFiles = (dirPath: string): boolean => {
 // - Other standard Vitest CLI flags for more precise test control
 export const testUnitCommand = Cli.Command.make(
   'unit',
-  {},
-  Effect.fn(function* () {
+  {
+    filter: Cli.Options.text('filter').pipe(
+      Cli.Options.optional,
+      Cli.Options.withDescription('Run only test suites whose path includes this substring'),
+    ),
+  },
+  Effect.fn(function* ({ filter }) {
     const workspaceRoot = yield* LivestoreWorkspace
+
+    if (Option.isSome(filter)) {
+      const target = path.isAbsolute(filter.value) ? filter.value : path.join(workspaceRoot, filter.value)
+      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      return
+    }
+
     // Packages that need to run sequentially due to CI flakiness
     const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
 
@@ -263,7 +275,7 @@ export const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
-    yield* testUnitCommand.handler({})
+    yield* testUnitCommand.handler({ filter: Option.none() })
     yield* testIntegrationAllCommand.handler({
       concurrency: isGithubAction ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,

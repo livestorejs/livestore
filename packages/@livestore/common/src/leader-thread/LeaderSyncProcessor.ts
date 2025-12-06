@@ -90,10 +90,43 @@ export const makeLeaderSyncProcessor = ({
   onError: 'shutdown' | 'ignore'
   params: {
     /**
+     * Maximum number of local events to process per batch cycle.
+     *
+     * This controls how many events from client sessions are applied to the local state
+     * in a single iteration before yielding to allow potential backend pulls.
+     *
+     * **Trade-offs:**
+     * - **Lower values (1-5):** More responsive to remote updates since pull processing can
+     *   interleave more frequently. Better for high-conflict scenarios where rebases are common.
+     *   Slightly higher per-event overhead due to more frequent transaction commits.
+     *
+     * - **Higher values (10-50+):** Better throughput for bulk local writes as more events are
+     *   batched into a single transaction. However, may delay remote update processing and
+     *   increase rebase complexity if many local events queue up during a slow pull.
+     *
+     * - **Very high values (100+):** Risk of starvation for pull processing if local pushes
+     *   arrive continuously. May cause larger rollbacks during rebases. Not recommended
+     *   unless you have a write-heavy workload with minimal remote synchronization.
+     *
      * @default 10
      */
     localPushBatchSize?: number
     /**
+     * Maximum number of events to push to the sync backend per batch.
+     *
+     * This controls how many events are sent in a single push request to the remote server.
+     *
+     * **Trade-offs:**
+     * - **Lower values (1-10):** Lower latency for each push operation. Faster feedback on
+     *   push success/failure. Slightly higher network overhead due to more requests.
+     *
+     * - **Higher values (50-100):** Better network efficiency by amortizing request overhead.
+     *   Preferred for high-throughput scenarios. May increase latency to first confirmation.
+     *
+     * - **Very high values (200+):** Risk of hitting server request size limits or timeouts.
+     *   A single failed request loses the entire batch (will be retried). May cause memory
+     *   pressure if events accumulate faster than they can be pushed.
+     *
      * @default 50
      */
     backendPushBatchSize?: number
@@ -111,8 +144,8 @@ export const makeLeaderSyncProcessor = ({
 }): Effect.Effect<LeaderSyncProcessor, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
-    const localPushBatchSize = params.localPushBatchSize ?? 1
-    const backendPushBatchSize = params.backendPushBatchSize ?? 2
+    const localPushBatchSize = params.localPushBatchSize ?? 10
+    const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
