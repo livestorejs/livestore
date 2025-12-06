@@ -83,7 +83,7 @@ When using LiveStore with TanStack Start, it's crucial to place `LiveStoreProvid
 **Do NOT place `LiveStoreProvider` inside `shellComponent`**. The `shellComponent` can be re-rendered on navigation, causing LiveStore to remount and show the loading screen on every page transition.
 :::
 
-#### Correct Pattern
+#### Correct pattern
 
 Use the `component` prop on `createRootRoute` for `LiveStoreProvider`:
 
@@ -124,7 +124,7 @@ function RootComponent() {
 }
 ```
 
-#### Why This Matters
+#### Why this matters
 
 TanStack Start's `shellComponent` is designed for SSR HTML streaming and may be re-evaluated on server requests during navigation. When `LiveStoreProvider` is placed there:
 

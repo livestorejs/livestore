@@ -1,5 +1,5 @@
 ---
-title: SQLite State Schema (Effect Schema)
+title: SQLite state schema (Effect schema)
 sidebar:
   order: 3
 ---
@@ -24,17 +24,17 @@ LiveStore supports defining SQLite tables using Effect Schema with annotations f
 >
 > For the traditional column-based approach, see [SQLite State Schema](/reference/state/sqlite-schema).
 
-## Basic Usage
+## Basic usage
 
 Define tables using Effect Schema with database constraint annotations:
 
 <BasicSnippet />
 
-## Schema Annotations
+## Schema annotations
 
 You can annotate schema fields with database constraints:
 
-### Primary Keys
+### Primary keys
 
 <PrimaryKeySnippet />
 
@@ -46,43 +46,43 @@ You can annotate schema fields with database constraints:
 
 <AutoIncrementSnippet />
 
-### Default Values
+### Default values
 
 <DefaultValuesSnippet />
 
-### Unique Constraints
+### Unique constraints
 
 <UniqueConstraintsSnippet />
 
 Unique annotations automatically create unique indexes.
 
-### Custom Column Types
+### Custom column types
 
 Override the automatically inferred SQLite column type:
 
 <CustomColumnTypesSnippet />
 
-### Combining Annotations
+### Combining annotations
 
 Annotations can be chained together:
 
 <CombiningAnnotationsSnippet />
 
-## Table Naming
+## Table naming
 
 You can specify table names in several ways:
 
-### Using Schema Annotations
+### Using schema annotations
 
 <TableNameAnnotationsSnippet />
 
-### Explicit Name
+### Explicit name
 
 <TableNameExplicitSnippet />
 
 **Note**: Title annotation takes precedence over identifier annotation.
 
-## Type Mapping
+## Type mapping
 
 Effect Schema types are automatically mapped to SQLite column types:
 
@@ -98,9 +98,9 @@ Effect Schema types are automatically mapped to SQLite column types:
 | `Schema.optional(T)` | Nullable column | `T \| undefined` |
 | `Schema.NullOr(T)` | Nullable column | `T \| null` |
 
-## Advanced Examples
+## Advanced examples
 
-### Complex Schema with Multiple Constraints
+### Complex schema with multiple constraints
 
 <AdvancedProductSnippet />
 
@@ -108,7 +108,7 @@ Effect Schema types are automatically mapped to SQLite column types:
 
 <SchemaClassSnippet />
 
-### Custom Indexes
+### Custom indexes
 
 <CustomIndexesSnippet />
 
@@ -122,7 +122,7 @@ Effect Schema types are automatically mapped to SQLite column types:
 - Leverage schema annotations like `title` or `identifier` to avoid repeating table names
 - Group related schemas in the same module for better organization
 
-### Type Safety
+### Type safety
 
 - Let TypeScript infer table types rather than explicitly typing them
 - Use Effect Schema's refinements and transformations for data validation

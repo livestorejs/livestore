@@ -1,5 +1,5 @@
 ---
-title: 'Cloudflare Workers'
+title: 'Cloudflare workers'
 sidebar:
   order: 10
 ---
@@ -46,29 +46,29 @@ The `@livestore/sync-cf` package provides a comprehensive LiveStore sync provide
 pnpm add @livestore/sync-cf
 ```
 
-## Transport Modes
+## Transport modes
 
 The sync provider supports three transport protocols, each optimized for different use cases:
 
-### WebSocket Transport (Recommended)
+### WebSocket transport (Recommended)
 
 Real-time bidirectional communication with automatic reconnection and live pull support.
 
 <SNIPPETS.wsBasic />
 
-### HTTP Transport
+### HTTP transport
 
 HTTP-based sync with polling for live updates. Requires the `enable_request_signal` compatibility flag.
 
 <SNIPPETS.httpBasic />
 
-### Durable Object RPC Transport
+### Durable Object RPC transport
 
 Direct RPC communication between Durable Objects (internal use by `@livestore/adapter-cloudflare`).
 
 <SNIPPETS.doRpcClient />
 
-## Client API Reference
+## Client API reference
 
 ### `makeWsSync(options)`
 
@@ -130,7 +130,7 @@ Handles RPC callback for live pull updates in Durable Objects.
 
 <SNIPPETS.clientDo />
 
-## Server API Reference
+## Server API reference
 
 ### `makeDurableObject(options)`
 
@@ -189,7 +189,7 @@ Returns the decoded search params or `undefined` if the request is not a LiveSto
 
 ## Configuration
 
-### Wrangler Configuration
+### Wrangler configuration
 
 Configure your `wrangler.toml` for sync backend deployment (default: DO SQLite storage):
 
@@ -225,13 +225,13 @@ database_id = "your-database-id"
 ADMIN_SECRET = "your-admin-secret"
 ```
 
-### Environment Variables
+### Environment variables
 
 Required environment bindings:
 
 <SNIPPETS.env />
 
-## Transport Protocol Details
+## Transport protocol details
 
 LiveStore identifies sync requests purely by search parameters; the request path does not matter. Use `matchSyncRequest(request)` to detect sync traffic.
 
@@ -252,7 +252,7 @@ Notes:
 - For `transport=ws`, if the request is not a WebSocket upgrade, the backend returns `426 Upgrade Required`.
 - `transport='do-rpc'` is internal for Durable Object RPC and not exposed via URL parameters.
 
-## Data Storage
+## Data storage
 
 By default, events are stored in the Durable Object’s SQLite with tables following the pattern:
 ```
@@ -261,7 +261,7 @@ eventlog_{PERSISTENCE_FORMAT_VERSION}_{storeId}
 
 You can opt into D1 with the same table shape. The persistence format version is automatically managed and incremented when the storage schema changes.
 
-### Storage Engines
+### Storage engines
 - DO SQLite (default)
   - Pros: easiest deploy (no D1), data co-located with the DO, lowest latency
   - Cons: not directly inspectable outside the DO; operational tooling must go through the DO
@@ -284,7 +284,7 @@ npx wrangler d1 create livestore-sync
 npx wrangler d1 migrations apply livestore-sync
 ```
 
-## Local Development
+## Local development
 
 Run locally with Wrangler:
 
@@ -298,11 +298,11 @@ npx wrangler dev
 
 ## Examples
 
-### Basic WebSocket Client
+### Basic WebSocket client
 
 <SNIPPETS.basicWsClient />
 
-### Custom Worker with Authentication
+### Custom worker with authentication
 
 <SNIPPETS.workerAuth />
 

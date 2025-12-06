@@ -1,5 +1,5 @@
 ---
-title: SQLite State Schema
+title: SQLite state schema
 sidebar:
   order: 2
 ---
@@ -23,7 +23,7 @@ LiveStore provides a schema definition language for defining your database table
   </TabItem>
 </Tabs>
 
-## Defining Tables
+## Defining tables
 
 Define SQLite tables using explicit column definitions:
 
@@ -31,7 +31,7 @@ Define SQLite tables using explicit column definitions:
 
 Use the optional `indexes` array to declare secondary indexes or enforce uniqueness (set `isUnique: true`).
 
-## Column Types
+## Column types
 
 You can use these column types when defining tables:
 
@@ -85,7 +85,7 @@ Sometimes you want a simple key-value store for arbitrary values without partial
 
 <ClientDocumentKvSnippet />
 
-## Column Types
+## Column types
 
 You can use these column types:
 
@@ -111,9 +111,9 @@ You can also provide a custom schema for a column which is used to automatically
 
 <JsonStructSnippet />
 
-## Best Practices
+## Best practices
 
-### Column Configuration
+### Column configuration
 
 - Use appropriate SQLite column types for your data (text, integer, real, blob)
 - Set `primaryKey: true` for primary key columns
@@ -121,14 +121,14 @@ You can also provide a custom schema for a column which is used to automatically
 - Provide meaningful `default` values where appropriate
 - Add unique constraints via table `indexes` using `isUnique: true`
 
-### Schema Design
+### Schema design
 
 - Choose column types that match your data requirements
 - Use custom schemas with `State.SQLite.json()` for complex data structures
 - Group related table definitions in the same module
 - Use descriptive table and column names
 
-### General Practices
+### General practices
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
 	- This means you'll rarely use `React.useState` when using LiveStore

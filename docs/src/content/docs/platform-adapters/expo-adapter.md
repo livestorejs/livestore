@@ -1,5 +1,5 @@
 ---
-title: Expo Adapter
+title: Expo adapter
 sidebar:
   order: 2
 ---

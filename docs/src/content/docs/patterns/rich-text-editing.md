@@ -1,5 +1,5 @@
 ---
-title: Rich Text Editing
+title: Rich text editing
 sidebar:
   order: 21
 ---

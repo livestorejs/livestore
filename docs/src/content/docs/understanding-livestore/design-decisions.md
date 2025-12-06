@@ -1,5 +1,5 @@
 ---
-title: Design Decisions
+title: Design decisions
 description: Design decisions and trade-offs made in the development of LiveStore
 sidebar:
   order: 10

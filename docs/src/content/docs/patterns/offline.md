@@ -1,5 +1,5 @@
 ---
-title: Offline Support
+title: Offline support
 ---
 
 - LiveStore supports offline data management out of the box. In order to make your app work fully offline, you might need to also consider the following:

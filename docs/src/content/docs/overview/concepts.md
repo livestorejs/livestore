@@ -75,7 +75,7 @@ LiveStore is designed to be pluggable in various ways:
 - Sync providers
 - Framework integrations
 
-## Important Notes on Identity
+## Important notes on identity
 
 - LiveStore does not have built-in concepts of "users" or "devices"
 - User identity must be modeled within your application domain through events and application logic

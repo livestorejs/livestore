@@ -1,5 +1,5 @@
 ---
-title: Electron Adapter
+title: Electron adapter
 sidebar:
   order: 20
 ---

@@ -1,10 +1,10 @@
 ---
-title: Tauri Adapter
+title: Tauri adapter
 sidebar:
   order: 20
 ---
 
-## Native Tauri Adapter
+## Native Tauri adapter
 
 While LiveStore doesn't yet support a native Tauri adapter (see [this issue](https://github.com/livestorejs/livestore/issues/125) for more details), you can already use the [web adapter](./web-adapter.md) with Tauri.
 

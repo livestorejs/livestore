@@ -1,5 +1,5 @@
 ---
-title: Design Partners
+title: Design partners
 sidebar:
   order: 30
 ---

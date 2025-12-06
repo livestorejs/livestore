@@ -48,7 +48,7 @@ The sync backend acts as the global authority and determines the total order of 
   - LiveStore uses a 6-char nanoid
 	- In the unlikely event of a collision which is detected by the sync backend the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
 
-### Client Sessions
+### Client sessions
 
 - Each client has at least one client session
 - Client sessions within the same client share local data
@@ -57,7 +57,7 @@ The sync backend acts as the global authority and determines the total order of 
 - For adapters which support multiple client sessions (e.g. web), LiveStore also supports local syncing across client sessions (e.g. across browser tabs or worker threads)
 - Client session events are not synced to the sync backend
 
-## Auth (Authentication & Authorization)
+## Auth (authentication & authorization)
 
 - TODO
   - Provide basic example

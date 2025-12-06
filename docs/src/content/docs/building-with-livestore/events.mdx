@@ -23,7 +23,7 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 
 <EventSchemaSnippet />
 
-### Best Practices
+### Best practices
 
 - It's strongly recommended to use past-tense event names (e.g. `todoCreated`/`createdTodo` instead of `todoCreate`/`createTodo`) to indicate something already occurred.
 - When generating IDs for events (e.g. for the todo in the example above), it's recommended to use a globally unique ID generator (e.g. UUID, nanoid, etc.) to avoid conflicts. For convenience, `@livestore/livestore` re-exports the `nanoid` function.
@@ -61,7 +61,7 @@ Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new
       - you can add new fields if they have default values or are optional
       - you can remove fields
 
-## Commiting events
+## Committing events
 
 <CommitEventSnippet />
 

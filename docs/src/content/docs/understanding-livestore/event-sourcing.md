@@ -1,5 +1,5 @@
 ---
-title: Event Sourcing
+title: Event sourcing
 description: Why and how LiveStore uses event sourcing for data flow, syncing and migrations.
 sidebar:
   order: 8

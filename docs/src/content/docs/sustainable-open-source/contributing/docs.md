@@ -27,6 +27,10 @@ Bad:
 ## This is the Title of this Section
 ```
 
+## Create proper frontmatter for every page
+
+TBD
+
 ## Snippets
 
 For snippet guidelines, see: `/contributor-docs/docs/snippets.md`

@@ -34,7 +34,7 @@ Materializers can return:
 
 The `context` object passed to each materializer provides `query` for database reads, `db` for direct database access if needed, and `event` for the full event details.
 
-## Error Handling
+## Error handling
 
 If a materializer function throws an error, or if an `Effect` returned by a materializer fails, the entire transaction for that event will be rolled back. This means any database changes attempted by that materializer for the failing event will not be persisted. The error will be logged, and the system will typically halt or flag the event as problematic, depending on the specific LiveStore setup.
 

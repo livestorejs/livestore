@@ -44,7 +44,7 @@ The API proxy has dual responsibilities:
 - **Authentication**: Implements your custom auth logic
 - **Database Management**: Initializes tables and manages connections
 
-## Client Setup
+## Client setup
 
 Basic usage in your worker/server code:
 
@@ -57,11 +57,11 @@ const backend = makeSyncBackend({
 })
 ```
 
-## API Proxy Implementation
+## API proxy implementation
 
 ElectricSQL requires an API proxy on your server to handle authentication and database operations. Your proxy needs two endpoints:
 
-### Minimal Implementation Example
+### Minimal implementation example
 
 ```ts
 import { Schema } from '@livestore/livestore'
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
 }
 ```
 
-### Important Considerations
+### Important considerations
 
 - **Database Setup**: Ensure your Postgres database is configured for Electric
 - **Authentication**: Implement proper auth checks in your proxy
