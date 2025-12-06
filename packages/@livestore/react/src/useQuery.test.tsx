@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/a11y: test */
 import * as LiveStore from '@livestore/livestore'
-import { queryDb, signal } from '@livestore/livestore'
+import { queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -38,14 +38,14 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current.length).toBe(0)
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
         expect(result.current.length).toBe(1)
         expect(result.current[0]!.text).toBe('buy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       }),
     )
 
@@ -80,19 +80,25 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current).toBe('buy milk')
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('1: after first render')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '1: after first render',
+        )
 
         ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('2: after first commit')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '2: after first commit',
+        )
 
         rerender('t2')
 
         expect(result.current).toBe('buy eggs')
         expect(renderCount.val).toBe(3)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('3: after forced rerender')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '3: after forced rerender',
+        )
       }),
     )
 
@@ -120,19 +126,19 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current).toBe('buy milk')
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.setSignal(filter$, 't2'))
 
         expect(result.current).toBe('buy eggs')
         expect(renderCount.val).toBe(3)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       }),
     )
 

@@ -16,7 +16,7 @@ sidebar:
 
 ## Major Design Decisions
 
-- Based on [event-sourcing](/evaluation/event-sourcing) (implying a read/write model separation)
+- Based on [event-sourcing](/understanding-livestore/event-sourcing) (implying a read/write model separation)
 - Using SQLite for state management over JavaScript implementations
   - There are many benefits to using SQLite for state management, including performance, reliability, and ease of use.
 - Run in-memory SQLite in main-thread to enable synchronous queries
@@ -25,6 +25,7 @@ sidebar:
 - The current implementation of LiveStore assumes that the data is small enough to fit in memory. However, SQLite is very efficient so this should work for many use cases and apps.
 - LiveStore implements a Signals-based reactivity system based on the ideas of Adapton for incremental computation
 - The goal is to keep LiveStore syncing provider agnostic so you can use the right syncing provider for your use case.
+- LiveStore intentionally stays focused on core data management and syncing, leaving concerns like authentication, file uploads, and business logic to application code. This minimalist approach keeps the library maintainable by limiting surface area, flexible as a composable Unix-like building block, and unopinionated enough to adapt to diverse usage scenarios.
 
 ## Implementation decisions
 

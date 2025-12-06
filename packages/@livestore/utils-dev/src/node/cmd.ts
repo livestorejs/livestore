@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 
-import { isNotUndefined, shouldNeverHappen } from '@livestore/utils'
+import { isNotUndefined } from '@livestore/utils'
 import {
   Cause,
   Command,
@@ -19,6 +19,7 @@ import {
 } from '@livestore/utils/effect'
 import { applyLoggingToCommand } from './cmd-log.ts'
 import * as FileLogger from './FileLogger.ts'
+import { CurrentWorkingDirectory } from './workspace.ts'
 
 // Branded zero value so we can compare exit codes without touching internals.
 const SUCCESS_EXIT_CODE: CommandExecutor.ExitCode = 0 as CommandExecutor.ExitCode
@@ -27,7 +28,6 @@ export const cmd: (
   commandInput: string | (string | undefined)[],
   options?:
     | {
-        cwd?: string
         stderr?: 'inherit' | 'pipe'
         stdout?: 'inherit' | 'pipe'
         shell?: boolean
@@ -43,84 +43,86 @@ export const cmd: (
         logRetention?: number
       }
     | undefined,
-) => Effect.Effect<CommandExecutor.ExitCode, PlatformError.PlatformError | CmdError, CommandExecutor.CommandExecutor> =
-  Effect.fn('cmd')(function* (commandInput, options) {
-    const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+) => Effect.Effect<
+  CommandExecutor.ExitCode,
+  PlatformError.PlatformError | CmdError,
+  CommandExecutor.CommandExecutor | CurrentWorkingDirectory
+> = Effect.fn('cmd')(function* (commandInput, options) {
+  const cwd = yield* CurrentWorkingDirectory
 
-    const asArray = Array.isArray(commandInput)
-    const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
-    const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
+  const asArray = Array.isArray(commandInput)
+  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+  const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
 
-    const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
-      .join('')
+  const debugEnvStr = Object.entries(options?.env ?? {})
+    .map(([key, value]) => `${key}='${value}' `)
+    .join('')
 
-    const loggingOpts = {
-      ...(options?.logDir ? { logDir: options.logDir } : {}),
-      ...(options?.logFileName ? { logFileName: options.logFileName } : {}),
-      ...(options?.logRetention ? { logRetention: options.logRetention } : {}),
-    } as const
-    const { input: finalInput, subshell: needsShell, logPath } = yield* applyLoggingToCommand(commandInput, loggingOpts)
+  const loggingOpts = {
+    ...(options?.logDir ? { logDir: options.logDir } : {}),
+    ...(options?.logFileName ? { logFileName: options.logFileName } : {}),
+    ...(options?.logRetention ? { logRetention: options.logRetention } : {}),
+  } as const
+  const { input: finalInput, subshell: needsShell, logPath } = yield* applyLoggingToCommand(commandInput, loggingOpts)
 
-    const stdoutMode = options?.stdout ?? 'inherit'
-    const stderrMode = options?.stderr ?? 'inherit'
-    const useShell = (options?.shell ? true : false) || needsShell
+  const stdoutMode = options?.stdout ?? 'inherit'
+  const stderrMode = options?.stderr ?? 'inherit'
+  const useShell = (options?.shell ? true : false) || needsShell
 
-    const commandDebugStr =
-      debugEnvStr + (Array.isArray(finalInput) ? (finalInput as string[]).join(' ') : (finalInput as string))
-    const subshellStr = useShell ? ' (in subshell)' : ''
+  const commandDebugStr =
+    debugEnvStr + (Array.isArray(finalInput) ? (finalInput as string[]).join(' ') : (finalInput as string))
+  const subshellStr = useShell ? ' (in subshell)' : ''
 
-    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
-    yield* Effect.annotateCurrentSpan({
-      'span.label': commandDebugStr,
-      cwd,
-      command,
-      args,
-      logDir: options?.logDir,
-    })
-
-    const baseArgs = {
-      commandInput: finalInput,
-      cwd,
-      env: options?.env ?? {},
-      stdoutMode,
-      stderrMode,
-      useShell,
-    } as const
-
-    const exitCode = yield* isNotUndefined(logPath)
-      ? Effect.gen(function* () {
-          yield* Effect.sync(() => console.log(`Logging output to ${logPath}`))
-          return yield* runWithLogging({ ...baseArgs, logPath, threadName: commandDebugStr })
-        })
-      : runWithoutLogging(baseArgs)
-
-    if (exitCode !== SUCCESS_EXIT_CODE) {
-      return yield* Effect.fail(
-        CmdError.make({
-          command: command!,
-          args,
-          cwd,
-          env: options?.env ?? {},
-          stderr: stderrMode,
-        }),
-      )
-    }
-
-    return exitCode
+  yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
+  yield* Effect.annotateCurrentSpan({
+    'span.label': commandDebugStr,
+    cwd,
+    command,
+    args,
+    logDir: options?.logDir,
   })
+
+  const baseArgs = {
+    commandInput: finalInput,
+    cwd,
+    env: options?.env ?? {},
+    stdoutMode,
+    stderrMode,
+    useShell,
+  } as const
+
+  const exitCode = yield* isNotUndefined(logPath)
+    ? Effect.gen(function* () {
+        yield* Effect.sync(() => console.log(`Logging output to ${logPath}`))
+        return yield* runWithLogging({ ...baseArgs, logPath, threadName: commandDebugStr })
+      })
+    : runWithoutLogging(baseArgs)
+
+  if (exitCode !== SUCCESS_EXIT_CODE) {
+    return yield* Effect.fail(
+      CmdError.make({
+        command: command!,
+        args,
+        cwd,
+        env: options?.env ?? {},
+        stderr: stderrMode,
+      }),
+    )
+  }
+
+  return exitCode
+})
 
 export const cmdText: (
   commandInput: string | (string | undefined)[],
   options?: {
-    cwd?: string
     stderr?: 'inherit' | 'pipe'
     runInShell?: boolean
     env?: Record<string, string | undefined>
   },
-) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor> = Effect.fn('cmdText')(
-  function* (commandInput, options) {
-    const cwd = options?.cwd ?? process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
+  Effect.fn('cmdText')(function* (commandInput, options) {
+    const cwd = yield* CurrentWorkingDirectory
     const [command, ...args] = Array.isArray(commandInput)
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
@@ -142,8 +144,7 @@ export const cmdText: (
       Command.env(options?.env ?? {}),
       Command.string,
     )
-  },
-)
+  })
 
 export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
   command: Schema.String,

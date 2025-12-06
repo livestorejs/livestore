@@ -9,8 +9,8 @@ When working on a LiveStore app you might end up in situations where you need to
 
 Here are a few things that LiveStore offers to help you debug your app:
 
-- [OpenTelemetry](/reference/opentelemetry) integration for tracing / metrics
-- [Devtools](/reference/devtools) for inspecting the state of the store
+- [OpenTelemetry](/building-with-livestore/opentelemetry) integration for tracing / metrics
+- [Devtools](/building-with-livestore/devtools) for inspecting the state of the store
 - Store helper methods
 
 ## Debugging helpers on the store

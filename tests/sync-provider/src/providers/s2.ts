@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import * as S2Sync from '@livestore/sync-s2'
 import { makeSyncBackend } from '@livestore/sync-s2'
@@ -108,7 +108,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
       },
     }
   }),
-).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
+).pipe(UnknownError.mapToUnknownErrorLayer)
 
 const startApiProxy = Effect.gen(function* () {
   const endpointPort = yield* getFreePort
@@ -235,7 +235,7 @@ const makeRouter = ({
           )
           createdStreams.add(streamName)
         }
-        const lines = parsed.batch.map((ev: LiveStoreEvent.AnyEncodedGlobal) => JSON.stringify(ev))
+        const lines = parsed.batch.map((ev: LiveStoreEvent.Global.Encoded) => JSON.stringify(ev))
         if ((failNextAppend.get(streamName) ?? 0) > 0) {
           failNextAppend.set(streamName, (failNextAppend.get(streamName) ?? 1) - 1)
           return yield* HttpServerResponse.json({ error: 'test induced append failure' }, { status: 500 })

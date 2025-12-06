@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference path="./vue-livestore.d.ts" />
 import { useClientDocument } from 'vue-livestore'
 
 import { tables } from './schema.ts'

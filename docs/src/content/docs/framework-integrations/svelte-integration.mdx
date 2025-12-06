@@ -1,0 +1,23 @@
+---
+title: Svelte integration
+sidebar:
+  label: Svelte
+description: How to integrate LiveStore with Svelte.
+---
+
+import SvelteCreateStoreSnippet from '../../_assets/code/reference/framework-integrations/svelte/create-store.svelte?snippet'
+import { getBranchName } from '../../../data/data.ts';
+
+LiveStore's Svelte bindings expose a single helper, `createStore`, which binds `store.query` into Svelte's reactivity. When you call `store.query` inside markup or `$effect`, query results automatically re-run when LiveStore emits updates, and requests are cancelled on teardown via Svelte's abort signal.
+
+## Example
+
+<SvelteCreateStoreSnippet />
+
+## Usage notes
+
+- `createStore` is async; instantiate it where you have access to the adapter (e.g. route load, `onMount`, or a top-level module when running in the browser).
+- `store.query` opts into Svelte reactivity when called inside `$effect` or markup. Outside reactive contexts, you can still use `store.subscribe` directly.
+- Works with the Web adapter out of the box. For SSR routes, construct the store on the client since `@livestore/adapter-web` is browser-only.
+
+See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples/web-todomvc-svelte`}>Svelte TodoMVC example</a> for a complete app.

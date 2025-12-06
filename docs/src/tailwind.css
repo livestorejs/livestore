@@ -6,17 +6,19 @@
 
 @theme {
   --font-sans:
-    Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    Geist, Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
 
-  --color-gray-100: #f5f6f5;
-  --color-gray-200: #eceeec;
-  --color-gray-300: #c0c3c0;
-  --color-gray-400: #888d87;
-  --color-gray-500: #555954;
-  --color-gray-700: #363935;
-  --color-gray-800: #242823;
-  --color-gray-900: #171917;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-400: #a3a3a3;
+  --color-gray-500: #737373;
+  --color-gray-600: #525252;
+  --color-gray-700: #404040;
+  --color-gray-800: #262626;
+  --color-gray-900: #171717;
+  --color-gray-950: #0a0a0a;
 
   --color-accent-50: oklch(0.98 0.016 73.684);
   --color-accent-100: oklch(0.954 0.038 75.164);
@@ -65,7 +67,11 @@
 }
 
 /* https://tailwindcss.com/docs/dark-mode#using-a-data-attribute */
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+.twoslash-popup-container {
+  z-index: var(--ls-twoslash-tooltip-z, 1000);
+}
 
 /* Starlight theme below */
 :root {
@@ -78,30 +84,736 @@
 
   /* Dark mode Starlight theme variables */
   --sl-color-white: white;
-
   --sl-color-gray-1: var(--color-gray-200);
   --sl-color-gray-2: var(--color-gray-300);
   --sl-color-gray-3: var(--color-gray-400);
   --sl-color-gray-4: var(--color-gray-600);
   --sl-color-gray-5: var(--color-gray-700);
   --sl-color-gray-6: var(--color-gray-800);
-
   --sl-color-black: var(--color-gray-900);
-
   --sl-color-accent-low: var(--color-accent-950);
-  --sl-color-accent: var(--color-accent-600);
-  --sl-color-accent-high: var(--color-accent-200);
+  --sl-color-accent: var(--color-accent-500);
+  --sl-color-accent-high: var(--color-accent-500);
 
   :focus-visible {
     outline: solid 1px var(--custom-outline-color);
   }
 
+  /* -------------------------- START custom styling to match landing page */
+  --sl-color-bg-nav: var(--color-gray-950);
+  --sl-color-bg-sidebar: var(--color-gray-950);
+  --sl-color-bg: var(--color-gray-950);
+  --sl-color-hairline-shade: var(--color-gray-800);
+
+  .header .right-group .social-icons .nav-link-container a.nav-link {
+    font-size: 12px;
+    color: var(--color-gray-300);
+    border-radius: 0.75em;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    width: fit-content;
+  }
+
+  .header .nav-link-container .nav-link:hover,
+  .header .right-group .social-icons .nav-link-container a.nav-link:hover {
+    color: white;
+  }
+
+  .header .nav-link-container .nav-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .mixedbread-search-button {
+    border: var(--color-gray-700) solid 1px;
+    background-color: var(--color-gray-950);
+    color: var(--color-gray-500);
+  }
+
+  .header .mixedbread-search-button:focus-visible {
+    border: var(--color-gray-700) solid 1px;
+    outline: none;
+  }
+
+  .header .mixedbread-button-kbd kbd {
+    background-color: var(--color-gray-800);
+    color: white;
+    box-shadow: none;
+  }
+
+  .header #version-select {
+    border: 1px solid var(--color-gray-700);
+    color: var(--color-gray-300);
+  }
+
+  .header starlight-theme-select select {
+    color: var(--color-gray-300);
+  }
+
+  .header starlight-theme-select label {
+    border: 1px solid var(--color-gray-700);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+
+  .header starlight-theme-select select:hover,
+  .header #version-select:hover {
+    color: white;
+  }
+
+  .header starlight-theme-select label:hover,
+  .header #version-select:hover {
+    border-color: white;
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics a.starlight-sidebar-topics-current {
+    color: white;
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
+    background-color: var(--color-gray-700);
+    color: var(--color-gray-300);
+    border-radius: 0.5em;
+    border: none;
+    padding: 0.35em;
+  }
+
+  .sidebar
+    .sidebar-content
+    .starlight-sidebar-topics
+    a.starlight-sidebar-topics-current
+    .starlight-sidebar-topics-icon {
+    background-color: var(--sl-color-text-accent);
+    border-color: var(--sl-color-text-accent);
+    color: var(--sl-color-black);
+  }
+
+  .sidebar
+    .sidebar-content
+    .starlight-sidebar-topics
+    a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+    .starlight-sidebar-topics-icon {
+    background-color: var(--color-gray-700);
+    color: white;
+  }
+
+  .header {
+    font-size: 12px;
+    display: flex;
+    justify-content: start;
+    width: 100%;
+  }
+
+  .header .right-group {
+    margin-left: auto;
+    gap: 0.25em;
+  }
+
+  .header .mixedbread-search-button {
+    height: 28px;
+    border-radius: 0.75em;
+    font-size: 12px;
+    min-width: 20em;
+    padding-right: 1em;
+  }
+
+  .header .mixedbread-search-button:hover {
+    box-shadow: none;
+  }
+
+  .header .mixedbread-search-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header .mixedbread-button-kbd kbd {
+    border: none;
+    font-size: 12px;
+    padding: 0;
+  }
+
+  .header .site-title img {
+    height: 32px;
+  }
+
+  .header .title-wrapper {
+    width: fit-content;
+  }
+
+  .header #version-select {
+    font-size: 12px;
+  }
+
+  .header #version-select {
+    height: 28px;
+    border-radius: 0.75em;
+    padding-left: 1em;
+    padding-right: 2em;
+  }
+
+  .header #version-select:focus {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header .version-select-wrapper:focus-within {
+    border: none;
+  }
+
+  .header .right-group .social-icons::after {
+    border-inline-end: none;
+    margin-right: -1.5em;
+  }
+
+  .header .right-group .social-icons a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .header starlight-theme-select label {
+    height: 28px;
+    border-radius: 0.75em;
+    padding-left: 1.25em;
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+  }
+
+  .header starlight-theme-select .icon.label-icon {
+    left: 0.75em;
+  }
+
+  .header starlight-theme-select .icon.caret {
+    display: none;
+  }
+
+  .header starlight-theme-select select {
+    font-size: 12px;
+  }
+
+  .header starlight-theme-select select:focus-visible {
+    outline: none;
+  }
+
+  .header starlight-theme-select label:focus-within {
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+
+  .sidebar .sidebar-content {
+    padding: 1em 0;
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics {
+    padding: 0 1em;
+    border-bottom: 1px solid var(--sl-color-hairline-shade);
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics::after {
+    border-top: none;
+  }
+
+  .sidebar .sidebar-content .top-level {
+    padding: 0 1em;
+  }
+
+  .sidebar .sidebar-content .large {
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  .sidebar-content ul.top-level ul li {
+    padding-left: 0;
+    border-left: none;
+    margin-left: -1px;
+  }
+
+  .sidebar-content a[aria-current="page"] {
+    color: var(--sl-color-text-accent);
+    font-weight: 400;
+    background: none;
+  }
+
+  .contextual-menu-parent {
+    gap: 2em;
+    margin-bottom: 1em;
+  }
+
+  .contextual-menu-container {
+    flex-shrink: 0;
+  }
+
+  .contextual-menu-container .contextual-main-action,
+  .contextual-menu-container .contextual-menu-trigger {
+    border: 1px solid var(--color-gray-700);
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--color-gray-300);
+  }
+
+  .contextual-menu-container .contextual-main-action {
+    border-radius: 0.75em 0 0 0.75em;
+    padding: 0 1em;
+  }
+
+  .contextual-menu-container .contextual-menu-trigger {
+    margin-left: -1px;
+    border-radius: 0 0.75em 0.75em 0;
+    padding: 0;
+    width: 28px;
+  }
+
+  .contextual-menu-container .contextual-main-action:hover,
+  .contextual-menu-container .contextual-menu-trigger:hover {
+    background: transparent;
+    color: white;
+    border-color: white;
+    z-index: 10;
+  }
+
+  .contextual-menu-container .contextual-dropdown-menu {
+    padding: 0.25em;
+    border-radius: 0.75em;
+  }
+
+  .contextual-menu-container .contextual-dropdown-menu button {
+    height: 28px;
+    padding: 0 0.75em;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 12px;
+    border-radius: 0.5em;
+  }
+
+  .contextual-menu-container .contextual-dropdown-menu button:hover {
+    background-color: var(--color-gray-800);
+    color: white;
+  }
+
+  .right-sidebar-panel {
+    padding: 1.5em 2em;
+  }
+
+  .right-sidebar-container starlight-toc h2 {
+    font-size: 14px;
+    font-weight: 400;
+    color: white;
+  }
+
+  .right-sidebar-container starlight-toc nav > ul {
+    margin-left: -0.5em;
+  }
+
+  .right-sidebar-container starlight-toc a {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--color-gray-400);
+  }
+
+  .right-sidebar-container starlight-toc a:hover {
+    color: white;
+  }
+
+  .right-sidebar-container starlight-toc a[aria-current="true"],
+  .right-sidebar-container starlight-toc a[aria-current="true"]:hover {
+    color: var(--sl-color-text-accent);
+  }
+
+  /* Higher specificity selectors - must come after lower specificity ones */
+  .sidebar-content ul.top-level ul {
+    border-left: 1px solid var(--sl-color-hairline-shade);
+    margin-left: 1em;
+  }
+
+  .sidebar-content ul.top-level > li > details > ul {
+    margin-left: 0.5em;
+  }
+
+  .sidebar .sidebar-content a {
+    border-radius: 0;
+  }
+
+  .sidebar-content ul:not(.top-level) a {
+    font-weight: 300;
+    border-left: 1px solid transparent;
+    padding: 0 0 0 1em;
+    margin: 0.5em 0;
+  }
+
+  .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+    border-left: 1px solid var(--sl-color-text-accent);
+    color: var(--sl-color-text-accent);
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics a {
+    font-weight: 400;
+    font-size: 14px;
+    gap: 0.75em;
+    color: var(--color-gray-400);
+  }
+
+  .header .right-group .social-icons a {
+    border-radius: 0.75em;
+    height: 28px;
+    width: 28px;
+    font-size: 14px;
+    color: var(--color-gray-500);
+    opacity: 1;
+  }
+
+  .sidebar .sidebar-content ul:not(.top-level) a {
+    color: var(--color-gray-400);
+  }
+
+  .sidebar .sidebar-content ul:not(.top-level) a:hover {
+    color: white;
+  }
+
+  .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"]:hover {
+    color: var(--sl-color-text-accent);
+  }
+
+  .sidebar .sidebar-content .starlight-sidebar-topics a:hover {
+    color: white;
+  }
+
+  .header .right-group .social-icons a:hover {
+    color: white;
+  }
+
+  /* Main content styles - high specificity */
+  main h1 {
+    font-size: 2rem;
+  }
+
+  main .sl-link-card,
+  main footer .pagination-links a {
+    border: 1px solid var(--color-gray-700);
+    border-radius: 0.75em;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  main .sl-link-card:hover,
+  main footer .pagination-links a:hover {
+    border: 1px solid white;
+    background-color: transparent;
+  }
+
+  main .sl-link-card a .title,
+  main footer .pagination-links a .link-title,
+  main .sl-markdown-content .card-grid article.card .title {
+    font-weight: 400;
+    font-size: 16px;
+  }
+
+  main footer .pagination-links a {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--color-gray-400);
+  }
+
+  main .sl-markdown-content {
+    font-size: 14px;
+    font-weight: 300;
+    padding-top: 1em;
+  }
+
+  main .sl-markdown-content h2 {
+    font-size: 1.65rem;
+  }
+
+  main .sl-markdown-content h3 {
+    font-size: 1.2rem;
+  }
+
+  main .sl-markdown-content h4 {
+    font-size: 1rem;
+  }
+
+  main .sl-markdown-content aside.starlight-aside {
+    border-radius: 0.75em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  main .sl-markdown-content aside.starlight-aside.starlight-aside--note {
+    background-color: color-mix(in srgb, var(--color-blue-950) 50%, transparent);
+  }
+
+  main .sl-markdown-content aside.starlight-aside.starlight-aside--caution {
+    background-color: color-mix(in srgb, var(--color-yellow-950) 50%, transparent);
+  }
+
+  main .sl-markdown-content aside.starlight-aside .starlight-aside__title {
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  main .sl-markdown-content aside.starlight-aside .starlight-aside__icon {
+    height: 20px;
+  }
+
+  main .sl-markdown-content code:not(:where(.not-content *)) {
+    background-color: var(--color-gray-800);
+    border-radius: 0.25em;
+  }
+
+  main .sl-markdown-content .sl-anchor-link {
+    padding-left: 0.25em;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
+    border-bottom: 1px solid var(--color-gray-800);
+    padding-bottom: 1px;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a {
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid transparent;
+  }
+
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a[aria-selected="true"] {
+    border-bottom: 1px solid var(--color-accent-500);
+    font-weight: 400;
+  }
+
+  main .sl-markdown-content .sl-steps li::before {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    font-weight: 400;
+    box-shadow: none;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 2px;
+  }
+
+  main .sl-markdown-content .sl-steps li::after {
+    background-color: var(--color-gray-800);
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button {
+    background-color: var(--color-gray-950);
+    color: var(--color-gray-300);
+    border-radius: 0.75em;
+    border: 1px solid var(--color-gray-700);
+    height: 28px;
+    width: 28px;
+    box-shadow: none;
+    outline: none;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button:hover {
+    background-color: var(--color-gray-950);
+    border-color: white;
+    color: white;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button::before {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button::after {
+    margin: 0.5em 0.5em 0 0.5em;
+    background-color: white;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy button div {
+    border: none;
+    background: transparent;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame:hover .copy button:not(:hover) {
+    opacity: 1;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame .copy .feedback {
+    --tooltip-bg: var(--color-accent-500);
+    color: black;
+    padding: 0 0.5em;
+    font-size: 12px;
+    border-radius: 0.5em;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header,
+  main .sl-markdown-content .expressive-code .frame.has-title:not(.is-terminal) figcaption.header {
+    background-image: none;
+    background-color: var(--color-gray-900);
+    border-radius: 1em 1em 0 0;
+    border: 1px solid var(--color-gray-800);
+    border-bottom: 1px solid var(--color-gray-800);
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header::after {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header::before {
+    left: 1em;
+    background-color: var(--color-gray-800);
+    opacity: 1;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame.has-title figcaption.header::before {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame.has-title figcaption.header .title {
+    background-color: var(--color-gray-900);
+    border-radius: 1em 1em 0 0;
+    font-weight: 400;
+    color: white;
+    border: none;
+    border-bottom: 1px solid var(--color-accent-500);
+    margin-bottom: -1px;
+    font-size: 14px;
+    padding: 0.3em 1em 0.4em 1em;
+  }
+
+  main .sl-markdown-content .expressive-code figure.frame figcaption.header .title::after {
+    opacity: 0;
+  }
+
+  main .sl-markdown-content .expressive-code figure pre {
+    background-color: var(--color-gray-900);
+    border-radius: 0 0 1em 1em;
+    border: 1px solid var(--color-gray-800);
+    border-top: none;
+  }
+
+  main .sl-markdown-content .expressive-code {
+    font-size: 14px;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__frame {
+    border: none;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar {
+    border-radius: 1em 1em 0 0;
+    border: 1px solid var(--color-gray-800);
+    background-color: var(--color-gray-900);
+    background-image: none;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar button.ls-multi-code__tab {
+    background: transparent;
+    color: var(--color-gray-300);
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__toolbar button.ls-multi-code__tab::after {
+    border: none;
+  }
+
+  main
+    .sl-markdown-content
+    .ls-multi-code
+    .ls-multi-code__toolbar
+    button.ls-multi-code__tab.ls-multi-code__tab--active {
+    color: white;
+    border-bottom: 1px solid var(--color-accent-500);
+    font-weight: 400;
+  }
+
+  .twoslash-popup-container {
+    background-color: var(--color-gray-950);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.75em;
+    padding: 0.25em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-code .expressive-code pre {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.5em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs {
+    background: transparent;
+    color: var(--color-gray-300);
+    font-size: 14px;
+    font-weight: 300;
+    max-width: none;
+    border: none;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs code {
+    background-color: var(--color-gray-800);
+    border-radius: 0.25em;
+    border: none;
+    box-shadow: none;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs a {
+    color: var(--color-accent-500);
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code {
+    background-color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.5em;
+  }
+
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code pre,
+  .twoslash-popup-container .twoslash-popup-docs .expressive-code pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels,
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels .ls-multi-code__panel,
+  main .sl-markdown-content .ls-multi-code .ls-multi-code__panels .ls-multi-code__panel code {
+    background: transparent;
+  }
+
+  main .sl-markdown-content .card-grid article.card {
+    border: 1px solid var(--color-gray-800);
+    border-radius: 0.75em;
+    background-color: transparent;
+    box-shadow: none;
+    padding: 1.75em 2em;
+  }
+
+  main .sl-markdown-content .card-grid article.card .body {
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  main footer .meta a {
+    font-weight: 300;
+    gap: 0.3em;
+  }
+
+  main footer .meta a svg {
+    height: 14px;
+  }
+
+  .contextual-menu-container svg {
+    height: 14px;
+  }
+
+  .header .mixedbread-search-button svg {
+    color: white;
+  }
+
+  main .sl-markdown-content .sl-anchor-link svg {
+    width: 0.75em;
+    margin-top: 0.15em;
+  }
+
+  /* -------------------------- END custom styling to match landing page */
+
   &[data-theme="light"] {
-    --custom-outline-color: var(--color-accent-600);
-
     /* Light mode Starlight theme variables */
+    --custom-outline-color: var(--color-accent-600);
     --sl-color-white: var(--color-gray-900);
-
     --sl-color-gray-1: var(--color-gray-800);
     --sl-color-gray-2: var(--color-gray-700);
     --sl-color-gray-3: var(--color-gray-500);
@@ -109,17 +821,220 @@
     --sl-color-gray-5: var(--color-gray-300);
     --sl-color-gray-6: var(--color-gray-200);
     --sl-color-gray-7: var(--color-gray-100);
-
     --sl-color-black: white;
+    --sl-color-accent-low: var(--color-accent-500);
+    --sl-color-accent: var(--color-accent-500);
+    --sl-color-accent-high: var(--color-accent-500);
 
-    --sl-color-accent-low: var(--color-accent-200);
-    --sl-color-accent: var(--color-accent-600);
-    --sl-color-accent-high: var(--color-accent-900);
+    /* -------------------------- START custom styling to match landing page */
+    --sl-color-bg-nav: white;
+    --sl-color-bg-sidebar: white;
+    --sl-color-bg: white;
+    --sl-color-hairline-shade: var(--color-gray-200);
+
+    .header .nav-link,
+    .header .right-group .social-icons .nav-link-container a.nav-link {
+      color: var(--color-gray-600);
+    }
+
+    .header .nav-link:hover,
+    .header .right-group .social-icons .nav-link-container a.nav-link:hover {
+      color: black;
+    }
+
+    .mixedbread-search-button {
+      border: var(--color-gray-300) solid 1px;
+      background-color: white;
+      color: var(--color-gray-500);
+    }
+
+    .mixedbread-search-button:hover {
+      border-color: black;
+      color: black;
+    }
+
+    .header .mixedbread-search-button:focus-visible {
+      border: var(--color-gray-300) solid 1px;
+      outline: none;
+    }
+
+    .header .mixedbread-button-kbd kbd {
+      background-color: white;
+      color: black;
+    }
+
+    .header .mixedbread-search-button svg {
+      color: black;
+    }
+
+    .header #version-select {
+      border: 1px solid var(--color-gray-300);
+      color: var(--color-gray-600);
+    }
+
+    .header starlight-theme-select label {
+      border: 1px solid var(--color-gray-300);
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    }
+
+    .header starlight-theme-select select {
+      color: var(--color-gray-600);
+    }
+
+    .header starlight-theme-select select:hover,
+    .header #version-select:hover {
+      color: black;
+    }
+
+    .header .right-group .social-icons a:hover {
+      color: black;
+    }
+
+    .header starlight-theme-select label:hover,
+    .header #version-select:hover {
+      border-color: black;
+    }
+
+    .sidebar .sidebar-content ul:not(.top-level) a {
+      color: var(--color-gray-600);
+    }
+
+    .sidebar .sidebar-content ul:not(.top-level) a:hover {
+      color: black;
+    }
+
+    .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+      color: var(--sl-color-text-accent);
+      font-weight: 400;
+      background: none;
+    }
+
+    .sidebar .sidebar-content .starlight-sidebar-topics a.starlight-sidebar-topics-current {
+      color: black;
+    }
+
+    .sidebar .sidebar-content .starlight-sidebar-topics a .starlight-sidebar-topics-icon {
+      background-color: var(--color-gray-200);
+      color: var(--color-gray-600);
+    }
+
+    .sidebar
+      .sidebar-content
+      .starlight-sidebar-topics
+      a:is(:hover, :focus-visible):not(.starlight-sidebar-topics-current)
+      .starlight-sidebar-topics-icon {
+      background-color: var(--color-gray-200);
+      color: black;
+    }
+
+    .sidebar
+      .sidebar-content
+      .starlight-sidebar-topics
+      a:is(.starlight-sidebar-topics-current)
+      .starlight-sidebar-topics-icon {
+      background-color: var(--sl-color-text-accent);
+      border-color: var(--sl-color-text-accent);
+      color: var(--sl-color-text-invert);
+    }
+
+    .contextual-menu-container .contextual-main-action,
+    .contextual-menu-container .contextual-menu-trigger {
+      border: 1px solid var(--color-gray-300);
+      color: var(--color-gray-600);
+    }
+
+    .contextual-menu-container .contextual-main-action:hover,
+    .contextual-menu-container .contextual-menu-trigger:hover {
+      background: transparent;
+      color: black;
+      border-color: black;
+    }
+
+    .contextual-menu-container .contextual-dropdown-menu button:hover {
+      background-color: var(--color-gray-100);
+      color: black;
+    }
+
+    starlight-toc h2 {
+      color: black;
+    }
+
+    starlight-toc a[aria-current="true"],
+    starlight-toc a[aria-current="true"]:hover {
+      color: var(--sl-color-text-accent);
+    }
+
+    /* Higher specificity selectors - must come after lower specificity ones */
+    .sidebar .sidebar-content .starlight-sidebar-topics a {
+      color: var(--color-gray-600);
+    }
+
+    starlight-toc a {
+      color: var(--color-gray-600);
+    }
+
+    .sidebar .sidebar-content .starlight-sidebar-topics a:hover {
+      color: black;
+    }
+
+    starlight-toc a:hover {
+      color: black;
+    }
+
+    main .sl-markdown-content aside.starlight-aside {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    main .sl-markdown-content aside.starlight-aside.starlight-aside--note {
+      background-color: var(--color-blue-50);
+    }
+
+    main .sl-markdown-content aside.starlight-aside.starlight-aside--caution {
+      background-color: var(--color-yellow-50);
+    }
+
+    main .sl-markdown-content code:not(:where(.not-content *)) {
+      background-color: var(--color-gray-200);
+    }
+
+    main .sl-markdown-content starlight-tabs .tablist-wrapper ul {
+      border-bottom: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-markdown-content .expressive-code figure.frame figcaption.header::before {
+      background-color: var(--color-gray-700);
+    }
+
+    main .sl-markdown-content .sl-steps li::before {
+      background-color: var(--color-gray-100);
+      border: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-markdown-content .sl-steps li::after {
+      background-color: var(--color-gray-200);
+    }
+
+    main .sl-markdown-content .card-grid article.card {
+      border: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-link-card,
+    main footer .pagination-links a {
+      border: 1px solid var(--color-gray-200);
+    }
+
+    main .sl-link-card:hover,
+    main footer .pagination-links a:hover {
+      border: 1px solid black;
+      background-color: transparent;
+    }
+
+    main footer .pagination-links a {
+      color: var(--color-gray-600);
+    }
+
+    /* -------------------------- END custom styling to match landing page */
   }
-}
-
-.twoslash-popup-container {
-  z-index: var(--ls-twoslash-tooltip-z, 1000);
 }
 
 /* Hide Twoslash popup container on initial load (still works on hover) */
@@ -132,3 +1047,34 @@
     navigation: auto;
   }
 } */
+
+.d2-svg {
+  /* filter: invert(1) hue-rotate(180deg); */
+}
+
+svg[data-d2-version] {
+  max-width: 500px;
+}
+
+/* Full-width D2 diagrams - use by wrapping in <div class="d2-full-width">...</div> */
+.d2-full-width svg[data-d2-version] {
+  max-width: 100%;
+}
+
+/*
+ * External link icon styling
+ * Added by the rehypeExternalLinks plugin to indicate links leaving the docs.
+ * Icon uses currentColor to inherit the link's text color automatically.
+ */
+.external-link-icon {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-left: 0.2em;
+  /* Align with text baseline, slight adjustment for visual balance */
+  vertical-align: baseline;
+  position: relative;
+  top: -0.1em;
+  /* Prevent icon from being orphaned on line wrap */
+  flex-shrink: 0;
+}

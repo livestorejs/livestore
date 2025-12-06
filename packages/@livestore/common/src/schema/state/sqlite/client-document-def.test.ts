@@ -2,7 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
 import { tables } from '../../../__tests__/fixture.ts'
-import type * as LiveStoreEvent from '../../LiveStoreEvent.ts'
+import type * as LiveStoreEvent from '../../LiveStoreEvent/mod.ts'
 import { ClientDocumentTableDefSymbol, clientDocument, mergeDefaultValues } from './client-document-def.ts'
 
 describe('client document table', () => {
@@ -250,7 +250,7 @@ describe('client document table', () => {
   })
 })
 
-const patchId = (muationEvent: LiveStoreEvent.PartialAnyDecoded) => {
+const patchId = (muationEvent: LiveStoreEvent.Input.Decoded) => {
   // TODO use new id paradigm
   const id = `00000000-0000-0000-0000-000000000000`
   return { ...muationEvent, id }

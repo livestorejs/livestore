@@ -13,6 +13,16 @@ if (process.env.WORKSPACE_ROOT === undefined) {
 $.cwd(process.env.WORKSPACE_ROOT)
 
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT!
+
+/** Skip setup during git rebase to avoid slowing down the rebase process */
+const gitDir = (await $`git rev-parse --git-dir 2>/dev/null`.nothrow().text()).trim()
+const isRebaseInProgress =
+  (gitDir && existsSync(`${gitDir}/rebase-merge`)) || (gitDir && existsSync(`${gitDir}/rebase-apply`))
+
+if (isRebaseInProgress) {
+  console.log('Skipping auto-setup during git rebase')
+  process.exit(0)
+}
 const lastGitHashFile = `${WORKSPACE_ROOT}/node_modules/.last_git_hash`
 const lastGitHash = existsSync(lastGitHashFile) ? await $`cat ${lastGitHashFile} 2>/dev/null`.text() : 'no-git'
 

@@ -15,10 +15,10 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, UnexpectedError } from '../adapter-types.ts'
+import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
@@ -52,7 +52,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
-    eventEncoded: LiveStoreEvent.EncodedWithMeta,
+    eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
     options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
@@ -78,7 +78,7 @@ export const makeClientSessionSyncProcessor = ({
    */
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
-  const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
+  const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
   const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
     key: TKey,
@@ -97,11 +97,11 @@ export const makeClientSessionSyncProcessor = ({
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
-  const isClientEvent = (eventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+  const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
+  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>().pipe(Effect.runSync)
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
@@ -112,13 +112,13 @@ export const makeClientSessionSyncProcessor = ({
       if (eventDef === undefined) {
         return shouldNeverHappen(`No event definition found for \`${name}\`.`)
       }
-      const nextNumPair = EventSequenceNumber.nextPair({
+      const nextNumPair = EventSequenceNumber.Client.nextPair({
         seqNum: baseEventSequenceNumber,
         isClient: eventDef.options.clientOnly,
         rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
       })
       baseEventSequenceNumber = nextNumPair.seqNum
-      return new LiveStoreEvent.EncodedWithMeta(
+      return new LiveStoreEvent.Client.EncodedWithMeta(
         Schema.encodeUnknownSync(eventSchema)({
           name,
           args,
@@ -133,7 +133,7 @@ export const makeClientSessionSyncProcessor = ({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
-      isEqualEvent: LiveStoreEvent.isEqualEncoded,
+      isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
     })
 
     yield* Effect.annotateCurrentSpan({
@@ -146,8 +146,8 @@ export const makeClientSessionSyncProcessor = ({
       ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
     })
 
-    if (mergeResult._tag === 'unexpected-error') {
-      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.message)
+    if (mergeResult._tag === 'unknown-error') {
+      return shouldNeverHappen('Unknown error in client-session-sync-processor', mergeResult.message)
     }
 
     if (mergeResult._tag !== 'advance') {
@@ -233,11 +233,11 @@ export const makeClientSessionSyncProcessor = ({
             syncState: syncStateRef.current,
             payload,
             isClientEvent,
-            isEqualEvent: LiveStoreEvent.isEqualEncoded,
+            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           })
 
-          if (mergeResult._tag === 'unexpected-error') {
-            return yield* new UnexpectedError({ cause: mergeResult.message })
+          if (mergeResult._tag === 'unknown-error') {
+            return yield* new UnknownError({ cause: mergeResult.message })
           } else if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
@@ -373,9 +373,9 @@ export const makeClientSessionSyncProcessor = ({
 
 export interface ClientSessionSyncProcessor {
   push: (
-    batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
+    batch: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
-  boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  boot: Effect.Effect<void, UnknownError, Scope.Scope>
   /**
    * Only used for debugging / observability.
    */

@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "rootDir": "."
+  },
+  "include": ["./tests/**/*.ts", "./tests/**/*.svelte", "./tests/**/*.d.ts"],
+  "exclude": ["./tests/vitest.config.ts"],
+  "references": [
+    { "path": "../common" },
+    { "path": "../adapter-web" },
+    { "path": "../livestore" },
+    { "path": "../utils" },
+    { "path": "../utils-dev" }
+  ]
+}

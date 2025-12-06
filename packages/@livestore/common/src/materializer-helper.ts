@@ -3,8 +3,8 @@ import { Hash, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
 import { SessionIdSymbol } from './adapter-types.ts'
-import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.ts'
-import type * as LiveStoreEvent from './schema/LiveStoreEvent.ts'
+import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef/mod.ts'
+import type * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
@@ -24,8 +24,8 @@ export const getExecStatementsFromMaterializer = ({
   dbState: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
-    | { decoded: LiveStoreEvent.AnyDecoded; encoded: undefined }
-    | { decoded: undefined; encoded: LiveStoreEvent.AnyEncoded }
+    | { decoded: LiveStoreEvent.Client.Decoded; encoded: undefined }
+    | { decoded: undefined; encoded: LiveStoreEvent.Client.Encoded }
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -85,7 +85,7 @@ export const getExecStatementsFromMaterializer = ({
 
 export const makeMaterializerHash =
   ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
-  (event: LiveStoreEvent.AnyEncoded): Option.Option<number> => {
+  (event: LiveStoreEvent.Client.Encoded): Option.Option<number> => {
     if (isDevEnv()) {
       // Hashing is only needed during dev-mode diagnostics. Skip work entirely for
       // unknown events (no definition/materializer) so we do not introduce noisy

@@ -108,11 +108,11 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
 
-      const event = new LiveStoreEvent.EncodedWithMeta({
+      const event = new LiveStoreEvent.Client.EncodedWithMeta({
         name: 'known-event',
         args: { value: 'example' },
-        seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-        parentSeqNum: EventSequenceNumber.ROOT,
+        seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+        parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'client-2',
         sessionId: 'session-2',
       })
@@ -125,11 +125,11 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 })
 
 const makeUnknownEncodedEvent = () =>
-  new LiveStoreEvent.EncodedWithMeta({
+  new LiveStoreEvent.Client.EncodedWithMeta({
     name: 'v1.UnknownEvent',
     args: { payload: 'test' },
-    seqNum: EventSequenceNumber.make({ global: 1, client: 0 }),
-    parentSeqNum: EventSequenceNumber.ROOT,
+    seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+    parentSeqNum: EventSequenceNumber.Client.ROOT,
     clientId: 'client-1',
     sessionId: 'session-1',
   })

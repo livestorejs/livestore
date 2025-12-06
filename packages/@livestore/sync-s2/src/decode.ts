@@ -6,7 +6,7 @@ import { S2SeqNum } from './types.ts'
 const ReadBatchSchema = Schema.Struct({
   records: Schema.Array(
     Schema.Struct({
-      body: Schema.optional(Schema.parseJson(LiveStoreEvent.AnyEncodedGlobal)),
+      body: Schema.optional(Schema.parseJson(LiveStoreEvent.Global.Encoded)),
       seq_num: S2SeqNum,
     }),
   ),
@@ -15,12 +15,12 @@ const ReadBatchSchema = Schema.Struct({
 export const decodeReadBatch = (
   readBatch: typeof HttpClientGenerated.ReadBatch.Type,
 ): ReadonlyArray<{
-  eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+  eventEncoded: LiveStoreEvent.Global.Encoded
   metadata: Option.Option<{ s2SeqNum: S2SeqNum }>
 }> => {
   const decoded = Schema.decodeSync(ReadBatchSchema)(readBatch)
   return decoded.records
-    .filter((r): r is { body: LiveStoreEvent.AnyEncodedGlobal; seq_num: S2SeqNum } => r.body !== undefined)
+    .filter((r): r is { body: LiveStoreEvent.Global.Encoded; seq_num: S2SeqNum } => r.body !== undefined)
     .map((r) => ({
       eventEncoded: r.body,
       metadata: Option.some({ s2SeqNum: r.seq_num }),

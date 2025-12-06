@@ -101,7 +101,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -158,7 +158,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       "id": "node-9",
       "invocations": 1,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],
@@ -268,7 +268,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -325,7 +325,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       "id": "node-9",
       "invocations": 2,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],
@@ -435,7 +435,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t2"],"queriedTables":{}}",
       },
       "recomputations": 2,
       "sub": [
@@ -492,7 +492,7 @@ exports[`useQuery (strictMode={ strictMode: false }) > filtered dependency query
       "id": "node-9",
       "invocations": 3,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],
@@ -1242,7 +1242,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -1299,7 +1299,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       "id": "node-9",
       "invocations": 1,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],
@@ -1409,7 +1409,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t1"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t1"],"queriedTables":{}}",
       },
       "recomputations": 1,
       "sub": [
@@ -1466,7 +1466,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       "id": "node-9",
       "invocations": 2,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],
@@ -1576,7 +1576,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       },
       "previousResult": {
         "_tag": "Some",
-        "value": "{"query":"SELECT * FROM 'todos' WHERE id = ?","bindValues":["t2"],"queriedTables":{}}",
+        "value": "{"query":"SELECT * FROM 'todos' WHERE \\"id\\" = ?","bindValues":["t2"],"queriedTables":{}}",
       },
       "recomputations": 2,
       "sub": [
@@ -1633,7 +1633,7 @@ exports[`useQuery (strictMode={ strictMode: true }) > filtered dependency query 
       "id": "node-9",
       "invocations": 3,
       "isDestroyed": false,
-      "label": "subscribe:SELECT * FROM 'todos' WHERE id = ?",
+      "label": "subscribe:SELECT * FROM 'todos' WHERE "id" = ?",
       "sub": [
         "node-7",
       ],

@@ -9,6 +9,17 @@ import React from 'react'
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
 
+/**
+ * Return type of `useClientDocument` hook.
+ *
+ * A tuple providing React-style state access to a client-document table row:
+ * - `[0]` row: The current value (decoded according to the table schema)
+ * - `[1]` setRow: Setter function to update the document
+ * - `[2]` id: The document's ID (resolved from `SessionIdSymbol` if applicable)
+ * - `[3]` query$: The underlying `LiveQuery` for advanced use cases
+ *
+ * @typeParam TTableDef - The client-document table definition type
+ */
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: TTableDef['Value'],
   setRow: StateSetters<TTableDef>,
@@ -111,7 +122,7 @@ export const useClientDocument: {
 
   // console.debug('useClientDocument', tableName, id)
 
-  const idStr: string = id === SessionIdSymbol ? store.clientSession.sessionId : id
+  const idStr: string = id === SessionIdSymbol ? store.sessionId : id
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef: QueryDef = React.useMemo(
@@ -140,10 +151,34 @@ export const useClientDocument: {
   return [queryRef.valueRef.current, setState, idStr, queryRef.queryRcRef.value]
 }
 
+/**
+ * A function that dispatches an action. Mirrors React's `Dispatch` type.
+ * @typeParam A - The action type
+ */
 export type Dispatch<A> = (action: A) => void
+
+/**
+ * A state update that can be either a partial value or a function returning a partial value.
+ * Used when the client-document table has `partialSet: true`.
+ * @typeParam S - The state type
+ */
 export type SetStateActionPartial<S> = Partial<S> | ((previousValue: S) => Partial<S>)
+
+/**
+ * A state update that can be either a full value or a function returning a full value.
+ * Mirrors React's `SetStateAction` type.
+ * @typeParam S - The state type
+ */
 export type SetStateAction<S> = S | ((previousValue: S) => S)
 
+/**
+ * The setter function type for `useClientDocument`, determined by the table's `partialSet` option.
+ *
+ * - If `partialSet: false` (default), requires full state replacement
+ * - If `partialSet: true`, accepts partial updates merged with existing state
+ *
+ * @typeParam TTableDef - The client-document table definition type
+ */
 export type StateSetters<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = Dispatch<
   TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
     ? SetStateAction<TTableDef['Value']>

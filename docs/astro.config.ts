@@ -9,6 +9,7 @@ import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/i
 import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig, envField } from 'astro/config'
+import astroD2 from 'astro-d2'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightContextualMenu from 'starlight-contextual-menu'
@@ -17,6 +18,7 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
+import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
@@ -51,11 +53,27 @@ export default defineConfig({
   },
   env: {
     schema: {
-      MXBAI_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
-      MXBAI_VECTOR_STORE_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+      MXBAI_API_KEY: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
+      MXBAI_VECTOR_STORE_ID: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     },
   },
   integrations: [
+    // We're using a custom D2 theme (see `docs/src/content/base.d2`)
+    astroD2({
+      sketch: true,
+      pad: 40,
+      inline: true,
+      // skipGeneration: true,
+      output: 'generated-d2',
+    }),
     createAstroTwoslashCodeIntegration(),
     createAstroTldrawIntegration(),
     react(),
@@ -63,12 +81,22 @@ export default defineConfig({
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
       social: [
-        { icon: 'github', label: 'GitHub', href: `https://github.com/livestorejs/livestore/tree/${branch}` },
+        {
+          icon: 'github',
+          label: 'GitHub',
+          href: `https://github.com/livestorejs/livestore/tree/${branch}`,
+        },
         { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
         { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
-        { icon: 'blueSky', label: 'Bluesky', href: 'https://bsky.app/profile/livestore.dev' },
+        {
+          icon: 'blueSky',
+          label: 'Bluesky',
+          href: 'https://bsky.app/profile/livestore.dev',
+        },
       ],
-
+      expressiveCode: {
+        themes: ['github-dark', 'github-dark'],
+      },
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
       },
@@ -126,6 +154,8 @@ export default defineConfig({
                   'building-with-livestore/reactivity-system',
                   'building-with-livestore/syncing',
                   'building-with-livestore/debugging',
+                  'building-with-livestore/devtools',
+                  'building-with-livestore/opentelemetry',
                   'building-with-livestore/production-checklist',
                   // Then nested directories with explicit labels
                   { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
@@ -145,13 +175,6 @@ export default defineConfig({
                 label: 'Sync providers',
                 autogenerate: { directory: 'sync-providers' },
               },
-
-              // TODO bring back when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
-              // Until when we're manually maintaining the sidebar for reference
-              // {
-              //   label: 'Reference',
-              //   autogenerate: { directory: 'reference' },
-              // },
               {
                 label: 'Patterns',
                 autogenerate: { directory: 'patterns' },
@@ -178,10 +201,9 @@ export default defineConfig({
                 label: 'Changelog',
                 link: '/changelog',
               },
-              // {
-              //   label: 'Contributing',
-              //   autogenerate: { directory: 'contributing' },
-              // },
+              // Sidebar structure is defined in ./src/data/sidebar.ts
+              // to be shared with llms.txt generators
+              // ...toStarlightSidebar(docsSidebar),
             ],
           },
           {
@@ -334,9 +356,10 @@ export default defineConfig({
             ]
           : []),
       ],
-      customCss: ['./src/tailwind.css'],
+      customCss: ['./src/fonts/geist-font.css', './src/tailwind.css'],
       logo: {
-        src: './src/assets/livestore.png',
+        light: './src/assets/logo-beta-light.png',
+        dark: './src/assets/logo-beta-dark.png',
         alt: 'LiveStore Logo',
         replacesTitle: true,
       },
@@ -379,7 +402,7 @@ export default defineConfig({
   markdown: {
     syntaxHighlight: {
       type: 'shiki',
-      excludeLangs: ['mermaid', 'math'],
+      excludeLangs: ['mermaid', 'math', 'd2'],
     },
     remarkPlugins: [
       remarkGithubIssueLinks,
@@ -387,6 +410,9 @@ export default defineConfig({
       // MDX: \{#custom-id\}
       remarkCustomHeaderId,
     ],
-    rehypePlugins: [[rehypeMermaid, { strategy: 'img-svg', dark: true }]],
+    rehypePlugins: [
+      [rehypeMermaid, { strategy: 'img-svg', dark: true }],
+      [rehypeExternalLinks, { internalDomains: ['livestore.dev', 'localhost'] }],
+    ],
   },
 })

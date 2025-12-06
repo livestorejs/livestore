@@ -3,7 +3,6 @@ import { prettyBytes } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
 declare global {
-  // declaring a global *value* is the least fussy when augmenting inline
   var __debugLiveStoreUtils: any
 }
 

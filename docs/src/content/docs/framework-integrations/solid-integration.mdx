@@ -7,6 +7,7 @@ description: How to integrate LiveStore with Solid.
 
 import SolidStoreSnippet from '../../_assets/code/reference/solid-integration/livestore/store.ts?snippet'
 import SolidMainSectionSnippet from '../../_assets/code/reference/solid-integration/MainSection.tsx?snippet'
+import SolidStoreLoggingSnippet from '../../_assets/code/reference/solid-integration/store-logging.ts?snippet'
 
 ## Example
 
@@ -18,18 +19,6 @@ See [examples](/examples) for a complete example.
 
 ### Logging
 
-You can control logging for Solid’s runtime helpers via optional options passed to `getStore`:
+You can control logging for Solid's runtime helpers via optional options passed to `getStore`:
 
-```ts
-import { Logger, LogLevel } from '@livestore/utils/effect'
-import { getStore } from '@livestore/solid'
-
-const store = await getStore({
-  schema,
-  adapter,
-  storeId: 'default',
-  // Optional: swap logger and minimum log level
-  logger: Logger.prettyWithThread('window'),
-  logLevel: LogLevel.Info, // use LogLevel.None to disable logs
-})
-```
+<SolidStoreLoggingSnippet />

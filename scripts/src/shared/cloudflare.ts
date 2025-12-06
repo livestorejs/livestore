@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import process from 'node:process'
 
 import { Config, Effect, Schema } from '@livestore/utils/effect'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
 
@@ -192,12 +192,11 @@ export const buildCloudflareWorker = ({
    * off the build output.
    */
   return cmd(['pnpm', 'build'], {
-    cwd: example.repoRelativePath,
     env: {
       ...process.env,
       CLOUDFLARE_ENV: envName,
     },
-  })
+  }).pipe(Effect.provide(LivestoreWorkspace.toCwd(example.repoRelativePath)))
 }
 
 export const deployCloudflareWorker = ({
@@ -224,13 +223,13 @@ export const deployCloudflareWorker = ({
       workerName,
     ],
     {
-      cwd: example.repoRelativePath,
       env: {
         ...process.env,
         CLOUDFLARE_ENV: envName,
       },
     },
   ).pipe(
+    Effect.provide(LivestoreWorkspace.toCwd(example.repoRelativePath)),
     Effect.mapError(
       (cause) =>
         new CloudflareError({
@@ -283,6 +282,7 @@ const normalizeDnsValue = (value: string) => value.replace(/\.$/, '')
 export const ensureVercelCnameRecord = ({ domain, name, target }: CloudflareDomain & { target: string }) =>
   Effect.gen(function* () {
     const dnsList = yield* cmdText(['bunx', 'vercel', 'dns', 'ls', domain]).pipe(
+      Effect.provide(LivestoreWorkspace.toCwd()),
       Effect.mapError(
         (cause) =>
           new CloudflareError({
@@ -304,6 +304,7 @@ export const ensureVercelCnameRecord = ({ domain, name, target }: CloudflareDoma
       yield* cmd(`printf 'y\\n' | bunx vercel dns rm ${staleRecord.id}`, {
         shell: true,
       }).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.mapError(
           (cause) =>
             new CloudflareError({
@@ -322,6 +323,7 @@ export const ensureVercelCnameRecord = ({ domain, name, target }: CloudflareDoma
 
     if (existingTargetRecords.length === 0) {
       yield* cmd(['bunx', 'vercel', 'dns', 'add', domain, name, 'CNAME', target], {}).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.mapError(
           (cause) =>
             new CloudflareError({

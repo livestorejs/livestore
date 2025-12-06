@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { copyTodomvcSrc } from './copy-examples.ts'
 import {
   command as deployExamplesCommand,
@@ -12,9 +12,9 @@ import {
   runExampleTests,
 } from './deploy-examples.ts'
 
-const cwd =
+const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
-const examplesDir = `${cwd}/examples`
+const examplesDir = `${workspaceRoot}/examples`
 
 const exampleChoices = (() => {
   /**
@@ -71,7 +71,7 @@ const examplesRunCommand = Cli.Command.make(
     const availableExamples = yield* readExampleSlugs()
     const selected = yield* ensureExampleExists(example, availableExamples)
     // Use the per-example working directory so dotenv / env loading behaves as if users ran pnpm dev manually.
-    yield* cmd(`pnpm dev`, { cwd: `${cwd}/examples/${selected}` })
+    yield* cmd(`pnpm dev`).pipe(Effect.provide(LivestoreWorkspace.toCwd(`examples/${selected}`)))
   }),
 )
 

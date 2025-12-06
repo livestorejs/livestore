@@ -4,7 +4,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "jsx": "react-jsx",
-    "skipLibCheck": true,
     "resolveJsonModule": true,
     // "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"

@@ -44,7 +44,47 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
   resetPersistence?: boolean
 } & LogConfig.WithLoggerOptions
 
-// TODO Also support in Cloudflare workers outside of a Durable Object context.
+/**
+ * Creates a LiveStore instance inside a Cloudflare Durable Object.
+ *
+ * This function bootstraps a full LiveStore client within a Durable Object, enabling
+ * persistent state management with automatic sync to a sync backend. Use this when you
+ * need server-side LiveStore instances that can communicate with other clients.
+ *
+ * Returns an Effect that resolves to a Store instance. For a Promise-based API,
+ * use `createStoreDoPromise` instead.
+ *
+ * @example
+ * ```ts
+ * import { createStoreDo } from '@livestore/adapter-cloudflare'
+ * import { schema } from './schema'
+ *
+ * export class MyDurableObject extends DurableObject {
+ *   store: Store | undefined
+ *
+ *   async fetch(request: Request) {
+ *     if (!this.store) {
+ *       this.store = await createStoreDo({
+ *         schema,
+ *         storeId: 'my-store',
+ *         clientId: this.ctx.id.toString(),
+ *         sessionId: 'do-session',
+ *         durableObject: {
+ *           ctx: this.ctx,
+ *           env: this.env,
+ *           bindingName: 'MY_DO',
+ *         },
+ *         syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
+ *       }).pipe(Effect.runPromise)
+ *     }
+ *     // Use this.store...
+ *   }
+ * }
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/cloudflare for setup guide
+ */
+// TODO Also support in Cloudflare workers outside of a durable object context.
 export const createStoreDo = <
   TSchema extends LiveStoreSchema,
   TEnv,
@@ -83,6 +123,31 @@ export const createStoreDo = <
     return yield* createStore({ schema, adapter, storeId }).pipe(Scope.extend(scope), provideOtel({}))
   })
 
+/**
+ * Promise-based wrapper around `createStoreDo` for simpler async/await usage.
+ *
+ * Equivalent to calling `createStoreDo(options).pipe(Effect.runPromise)` with
+ * logging configured automatically.
+ *
+ * @example
+ * ```ts
+ * import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
+ *
+ * export class MyDurableObject extends DurableObject {
+ *   async fetch(request: Request) {
+ *     const store = await createStoreDoPromise({
+ *       schema,
+ *       storeId: 'my-store',
+ *       clientId: this.ctx.id.toString(),
+ *       sessionId: 'do-session',
+ *       durableObject: { ctx: this.ctx, env: this.env, bindingName: 'MY_DO' },
+ *       syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
+ *     })
+ *     // Use store...
+ *   }
+ * }
+ * ```
+ */
 export const createStoreDoPromise = <
   TSchema extends LiveStoreSchema,
   TEnv,

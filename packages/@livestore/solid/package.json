@@ -1,6 +1,6 @@
 {
   "name": "@livestore/solid",
-  "version": "0.4.0-dev.16",
+  "version": "0.4.0-dev.20",
   "type": "module",
   "exports": {
     ".": "./src/mod.ts"
@@ -12,9 +12,9 @@
     "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "catalog:",
     "jsdom": "^26.1.0",
-    "solid-js": "^1.9.9",
+    "solid-js": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
@@ -26,7 +26,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "solid-js": "^1.9.9"
+    "solid-js": "^1.9.10"
   },
   "publishConfig": {
     "access": "public",

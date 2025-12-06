@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import type { Devtools } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { isReadonlyArray } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
@@ -26,11 +26,11 @@ export type ViteDevtoolsOptions = {
 }
 
 // NOTE this is currently also used in @livestore/devtools-expo
-export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
+export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnknownError> =>
   Effect.gen(function* () {
     const cwd = process.cwd()
 
-    const hmrPort = yield* getFreePort.pipe(UnexpectedError.mapToUnexpectedError)
+    const hmrPort = yield* getFreePort.pipe(UnknownError.mapToUnknownError)
 
     const defaultViteConfig = Vite.defineConfig({
       server: {
@@ -58,9 +58,7 @@ export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<
 
     const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
 
-    const viteServer = yield* Effect.promise(() => Vite.createServer(viteConfig)).pipe(
-      UnexpectedError.mapToUnexpectedError,
-    )
+    const viteServer = yield* Effect.promise(() => Vite.createServer(viteConfig)).pipe(UnknownError.mapToUnknownError)
 
     return viteServer
   }).pipe(Effect.withSpan('@livestore/adapter-node:devtools:makeViteServer'))

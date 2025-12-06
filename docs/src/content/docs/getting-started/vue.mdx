@@ -11,11 +11,10 @@ import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import SchemaSnippet from '../../_assets/code/getting-started/vue/livestore/schema.ts?snippet'
 import WorkerSnippet from '../../_assets/code/getting-started/vue/livestore/livestore.worker.ts?snippet'
-
-export const SNIPPETS = {
-  schema: SchemaSnippet,
-  worker: WorkerSnippet,
-}
+import ViteConfigSnippet from '../../_assets/code/getting-started/vue/vite-config.ts?snippet'
+import AppSnippet from '../../_assets/code/getting-started/vue/app.vue?snippet'
+import CommitEventsSnippet from '../../_assets/code/getting-started/vue/commit-events.vue?snippet'
+import QueriesSnippet from '../../_assets/code/getting-started/vue/queries.vue?snippet'
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
 export const manualInstallDepsStr = [
@@ -26,6 +25,9 @@ export const manualInstallDepsStr = [
   '@livestore/peer-deps' + versionNpmSuffix,
   '@livestore/devtools-vite' + versionNpmSuffix,
   'slashv/vue-livestore' + versionNpmSuffix,
+  'vue',
+  '@vitejs/plugin-vue',
+  'vite-plugin-vue-devtools',
 ].join(' ')
 
 ## Prerequisites
@@ -65,22 +67,7 @@ For a quick start, we recommend referencing the [playground](https://github.com/
 
    Add the following code to your `vite.config.js` file:
 
-    ```ts
-    import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
-
-    import { defineConfig } from 'vite'
-    import vue from '@vitejs/plugin-vue'
-    import vueDevTools from 'vite-plugin-vue-devtools'
-
-    export default defineConfig({
-      plugins: [
-        vue(),
-        vueDevTools(),
-        livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-      ],
-      worker: { format: 'es' },
-    })
-    ```
+   <ViteConfigSnippet />
 
 </Steps>
 
@@ -90,13 +77,13 @@ Create a file named `schema.ts` inside the `src/livestore` folder. This file def
 
 Here's an example schema:
 
-<SNIPPETS.schema />
+<SchemaSnippet />
 
 ### Create the LiveStore worker
 
 Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
-<SNIPPETS.worker />
+<WorkerSnippet />
 
 ### Add the LiveStore provider
 
@@ -104,37 +91,7 @@ To make the LiveStore available throughout your app, wrap your app's root compon
 
 Here's an example:
 
-```vue
-<script setup lang="ts">
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
-import { schema } from './livestore/schema'
-import { LiveStoreProvider } from 'vue-livestore'
-import ToDos from './components/to-dos.vue'
-
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-})
-
-const storeOptions = {
-  schema,
-  adapter,
-  storeId: 'test_store',
-}
-</script>
-
-<template>
-  <LiveStoreProvider :options="storeOptions">
-    <template #loading>
-      <div>Loading LiveStore...</div>
-    </template>
-    <ToDos />
-  </LiveStoreProvider>
-</template>
-```
+<AppSnippet />
 
 ### Commit events
 
@@ -142,58 +99,14 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import { events } from '../livestore/schema'
-const { store } = useStore()
-
-const newTodoText = ref('')
-
-// Events
-const createTodo = () => {
-  store.commit(events.todoCreated({ id: crypto.randomUUID(), text: newTodoText.value }))
-  newTodoText.value = ''
-}
-</script>
-
-<template>
-  <div>
-    <input v-model="newTodoText" />
-    <button @click="createTodo">Create</button>
-  </div>
-</template>
-```
+<CommitEventsSnippet />
 
 ### Queries
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `vue-livestore`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
 Here's an example:
 
-```vue
-<script setup lang="ts">
-import { queryDb } from '@livestore/livestore'
-import { useQuery } from 'vue-livestore'
-import { events, tables } from '../livestore/schema'
-
-const visibleTodos$ = queryDb(
-  () => tables.todos.where({ deletedAt: null }),
-  { label: 'visibleTodos' },
-)
-
-const todos = useQuery(visibleTodos$)
-</script>
-
-<template>
-  <div>
-    <ul>
-      <li v-for="todo in todos" :key="todo.id">
-        {{ todo.text }}
-      </li>
-    </ul>
-  </div>
-</template>
-```
+<QueriesSnippet />

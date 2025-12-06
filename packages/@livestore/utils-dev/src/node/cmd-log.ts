@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { isNotUndefined } from '@livestore/utils'
-import { Effect, identity } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 
 export type TCmdLoggingOptions = {
   readonly logDir?: string
@@ -34,21 +34,18 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
       const safeIso = new Date().toISOString().replaceAll(':', '-')
       const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
       const archivedLog = path.join(archiveDir, archivedBase)
-      yield* Effect.try({ try: () => fs.renameSync(currentLogPath, archivedLog), catch: identity }).pipe(
+      yield* Effect.try(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
         Effect.catchAll(() =>
-          Effect.try({
-            try: () => {
-              fs.copyFileSync(currentLogPath, archivedLog)
-              fs.truncateSync(currentLogPath, 0)
-            },
-            catch: identity,
+          Effect.try(() => {
+            fs.copyFileSync(currentLogPath, archivedLog)
+            fs.truncateSync(currentLogPath, 0)
           }),
         ),
         Effect.ignore,
       )
 
       // Prune archives to retain only the newest N
-      yield* Effect.try({ try: () => fs.readdirSync(archiveDir), catch: identity }).pipe(
+      yield* Effect.try(() => fs.readdirSync(archiveDir)).pipe(
         Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
         Effect.map((names) =>
           names
@@ -57,9 +54,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
         ),
         Effect.flatMap((entries) =>
           Effect.forEach(entries.slice(logRetention), (e) =>
-            Effect.try({ try: () => fs.unlinkSync(path.join(archiveDir, e.name)), catch: identity }).pipe(
-              Effect.ignore,
-            ),
+            Effect.try(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
           ),
         ),
         Effect.ignore,

@@ -1,6 +1,6 @@
-import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.ts'
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
-import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.ts'
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
+import type * as LiveStoreEvent from '../../schema/LiveStoreEvent/mod.ts'
 import {
   applyFactGroups,
   type FactValidationResult,
@@ -19,13 +19,13 @@ export type RebaseInput = {
   newRemoteEvents: RebaseEventWithConflict[]
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
-    rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+    rebasedLocalEvents: LiveStoreEvent.Input.Decoded[]
     eventDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 
 export type RebaseOutput = {
-  rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+  rebasedLocalEvents: LiveStoreEvent.Input.Decoded[]
 }
 
 export type RebaseFn = (input: RebaseInput) => RebaseOutput
@@ -53,7 +53,7 @@ export const rebaseEvents = ({
   currentFactsSnapshot: EventDefFactsSnapshot
   clientId: string
   sessionId: string
-}): ReadonlyArray<LiveStoreEvent.AnyDecoded> => {
+}): ReadonlyArray<LiveStoreEvent.Client.Decoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
     newRemoteEvents.map((event) => event.factsGroup),
@@ -94,18 +94,18 @@ export const rebaseEvents = ({
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        seqNum: EventSequenceNumber.make({
+        seqNum: EventSequenceNumber.Client.Composite.make({
           global: headGlobalId + index + 1,
-          client: EventSequenceNumber.clientDefault,
+          client: EventSequenceNumber.Client.DEFAULT,
         }),
-        parentSeqNum: EventSequenceNumber.make({
+        parentSeqNum: EventSequenceNumber.Client.Composite.make({
           global: headGlobalId + index,
-          client: EventSequenceNumber.clientDefault,
+          client: EventSequenceNumber.Client.DEFAULT,
         }),
         name: event.name,
         args: event.args,
         clientId,
         sessionId,
-      }) satisfies LiveStoreEvent.AnyDecoded,
+      }) satisfies LiveStoreEvent.Client.Decoded,
   )
 }

@@ -35,7 +35,7 @@ export const makeSqliteDb = <
     metadata,
     debug: {
       // Setting initially to root but will be set to correct value shortly after
-      head: EventSequenceNumber.ROOT,
+      head: EventSequenceNumber.Client.ROOT,
     },
     prepare: (queryStr) => {
       try {
@@ -149,9 +149,6 @@ export const makeSqliteDb = <
       sqliteDb.close()
 
       metadata.deleteDb()
-      // if (metadata._tag === 'opfs') {
-      //   metadata.vfs.resetAccessHandle(metadata.fileName)
-      // }
     },
     close: () => {
       if (isClosed) {

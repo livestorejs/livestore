@@ -71,12 +71,12 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       yield* Effect.sleep(300)
 
       yield* syncBackend.push([
-        LiveStoreEvent.AnyEncodedGlobal.make({
+        LiveStoreEvent.Global.Encoded.make({
           ...events.todoCreated({ id: 'rc1', text: 'Reconnect OK', completed: false }),
           clientId: 'test-client',
           sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
+          seqNum: EventSequenceNumber.Global.make(1),
+          parentSeqNum: EventSequenceNumber.Client.ROOT.global,
         }),
       ])
 
@@ -96,12 +96,12 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       yield* providerSpecific.failNextAppend(storeId, 1)
 
       yield* syncBackend.push([
-        LiveStoreEvent.AnyEncodedGlobal.make({
+        LiveStoreEvent.Global.Encoded.make({
           ...events.todoCreated({ id: 'ap1', text: 'append retry ok', completed: false }),
           clientId: 'test-client',
           sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
+          seqNum: EventSequenceNumber.Global.make(1),
+          parentSeqNum: EventSequenceNumber.Client.ROOT.global,
         }),
       ])
 
@@ -122,12 +122,12 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
 
       // Push an event to be read
       yield* syncBackend.push([
-        LiveStoreEvent.AnyEncodedGlobal.make({
+        LiveStoreEvent.Global.Encoded.make({
           ...events.todoCreated({ id: 'rd1', text: 'read retry ok', completed: true }),
           clientId: 'test-client',
           sessionId: 'test-session',
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-          parentSeqNum: EventSequenceNumber.ROOT.global,
+          seqNum: EventSequenceNumber.Global.make(1),
+          parentSeqNum: EventSequenceNumber.Client.ROOT.global,
         }),
       ])
 
@@ -151,19 +151,19 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       const storeId = `s2-specific-${test.task.name}-${testId}`
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
 
-      const ev1 = LiveStoreEvent.AnyEncodedGlobal.make({
+      const ev1 = LiveStoreEvent.Global.Encoded.make({
         ...events.todoCreated({ id: 'raw1', text: 'raw ok 1', completed: false }),
         clientId: 'test-client',
         sessionId: 'test-session',
-        seqNum: EventSequenceNumber.globalEventSequenceNumber(1),
-        parentSeqNum: EventSequenceNumber.ROOT.global,
+        seqNum: EventSequenceNumber.Global.make(1),
+        parentSeqNum: EventSequenceNumber.Client.ROOT.global,
       })
-      const ev2 = LiveStoreEvent.AnyEncodedGlobal.make({
+      const ev2 = LiveStoreEvent.Global.Encoded.make({
         ...events.todoCreated({ id: 'raw2', text: 'raw ok 2', completed: true }),
         clientId: 'test-client',
         sessionId: 'test-session',
-        seqNum: EventSequenceNumber.globalEventSequenceNumber(2),
-        parentSeqNum: EventSequenceNumber.globalEventSequenceNumber(1),
+        seqNum: EventSequenceNumber.Global.make(2),
+        parentSeqNum: EventSequenceNumber.Global.make(1),
       })
 
       yield* providerSpecific.appendRaw(storeId, [JSON.stringify(ev1), JSON.stringify(ev2)])

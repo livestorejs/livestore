@@ -1,0 +1,18 @@
+import type { Store } from '@livestore/livestore'
+import { Effect, Stream } from 'effect'
+
+declare const store: Store
+
+// ---cut---
+
+const status = await store.networkStatus.pipe(Effect.runPromise)
+if (status.isConnected === false) {
+  console.warn('Sync backend offline since', new Date(status.timestampMs))
+}
+
+await store.networkStatus.changes.pipe(
+  Stream.tap((next) => Effect.sync(() => console.log('network status updated', next))),
+  Stream.runDrain,
+  Effect.scoped,
+  Effect.runPromise,
+)

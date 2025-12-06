@@ -37,7 +37,8 @@ Use the `mono` CLI for common workflows:
 - Avoid `as any`, force-casting etc as much as possible.
 - When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
 - When refactoring code you don't need to consider backwards compatibility unless specifically asked for.
-- Add helper functions at the end of the file.
+- Keep exported members at the top of the file and move unexported helpers to the bottom.
+- Never add `paths` to `tsconfig.json`. Prefer using `package.json#exports` instead.
 
 ## Task-based Approach
 

@@ -28,7 +28,7 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 // Dependencies that should never be automatically updated
 const DEPENDENCY_DENY_LIST = [
@@ -97,6 +97,7 @@ const discoverUpdates = (target: string) =>
 
       const ncuCommand = `bunx npm-check-updates --deep --jsonUpgraded --packageManager pnpm${target !== 'latest' ? ` --target ${target}` : ''}`
       const ncuOutput = yield* cmdText(ncuCommand).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.catchAll((error) => Effect.fail(new Error(`Failed to run npm-check-updates: ${error}`))),
       )
 
@@ -121,6 +122,7 @@ const fetchExpoConstraints = () =>
 
       // Get current Expo SDK version
       const expoVersion = yield* cmdText('pnpm view expo version').pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((version) => version.trim().replace(/(\d+\.\d+)\.\d+/, '$1.0')),
         Effect.catchAll((error) => Effect.fail(new Error(`Failed to get Expo version: ${error}`))),
       )
@@ -275,7 +277,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
       // After all files updated, run pnpm install once to update lockfile
       if (!dryRun && Object.keys(filteredUpdates).length > 0) {
         yield* Console.log('Running pnpm install to update lockfile...')
-        yield* cmd('pnpm install --fix-lockfile')
+        yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       }
 
       return results
@@ -341,20 +343,26 @@ export const updateDepsCommand = Cli.Command.make(
     if (!dryRun && validate) {
       yield* Console.log('\n🔍 Running validation...')
 
-      yield* cmd('syncpack lint').pipe(Effect.catchAll((error) => Console.warn(`Syncpack validation failed: ${error}`)))
+      yield* cmd('syncpack lint').pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
+        Effect.catchAll((error) => Console.warn(`Syncpack validation failed: ${error}`)),
+      )
 
       yield* cmd('syncpack fix-mismatches').pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.catchAll((error) => Console.warn(`Syncpack fix failed: ${error}`)),
       )
 
       // Check Expo examples
       const expoExamples = yield* cmdText('find examples -name "expo" -type d -o -name "*expo*" -type d').pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((output) => output.trim().split('\n').filter(Boolean)),
         Effect.catchAll(() => Effect.succeed([])),
       )
 
       for (const exampleDir of expoExamples) {
-        yield* cmd('expo install --check', { cwd: exampleDir }).pipe(
+        yield* cmd('expo install --check').pipe(
+          Effect.provide(LivestoreWorkspace.toCwd(exampleDir)),
           Effect.catchAll((error) => Console.warn(`Expo check failed for ${exampleDir}: ${error}`)),
         )
       }
@@ -370,7 +378,7 @@ if (import.meta.main) {
     version: '1.0.0',
   })
 
-  const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer)
+  const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, LivestoreWorkspace.live)
 
   cli(process.argv).pipe(
     Effect.annotateLogs({ thread: 'update-deps' }),

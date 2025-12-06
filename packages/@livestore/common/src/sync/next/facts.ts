@@ -5,13 +5,13 @@ import type {
   EventDefFactsGroup,
   EventDefFactsSnapshot,
   FactsCallback,
-} from '../../schema/EventDef.ts'
-import type * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+} from '../../schema/EventDef/mod.ts'
+import type * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.ts'
 
 export const factsSnapshotForEvents = (
   events: HistoryDagNode[],
-  endEventSequenceNumber: EventSequenceNumber.EventSequenceNumber,
+  endEventSequenceNumber: EventSequenceNumber.Client.Composite,
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
@@ -28,7 +28,7 @@ export const factsSnapshotForEvents = (
 
 export const factsSnapshotForDag = (
   dag: HistoryDag,
-  endEventSequenceNumber: EventSequenceNumber.EventSequenceNumber | undefined,
+  endEventSequenceNumber: EventSequenceNumber.Client.Composite | undefined,
 ): EventDefFactsSnapshot => {
   const facts = new Map<string, any>()
 
@@ -225,8 +225,8 @@ export const getFactsGroupForEventArgs = ({
 }
 
 export const compareEventSequenceNumbers = (
-  a: EventSequenceNumber.EventSequenceNumber,
-  b: EventSequenceNumber.EventSequenceNumber,
+  a: EventSequenceNumber.Client.Composite,
+  b: EventSequenceNumber.Client.Composite,
 ) => {
   if (a.global !== b.global) {
     return a.global - b.global

@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import * as EventSequenceNumber from '../../../EventSequenceNumber.ts'
+import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
 import { table } from '../table-def.ts'
 
@@ -22,11 +22,11 @@ export const eventlogMetaTable = table({
   name: EVENTLOG_META_TABLE,
   columns: {
     // TODO Adjust modeling so a global event never needs a client id component
-    seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
-    seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Global.Schema }),
+    seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({ primaryKey: true }),
-    parentSeqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
-    parentSeqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.ClientEventSequenceNumber }),
+    parentSeqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+    parentSeqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
     parentSeqNumRebaseGeneration: SqliteDsl.integer({}),
     /** Event definition name */
     name: SqliteDsl.text({}),

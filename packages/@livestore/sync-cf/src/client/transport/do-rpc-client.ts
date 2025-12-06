@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, SyncBackend, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { omit, shouldNeverHappen } from '@livestore/utils'
@@ -114,7 +114,7 @@ export const makeDoRpcSync =
                 backendId,
               }),
             }),
-            Effect.mapError((cause) => new InvalidPushError({ cause: new UnexpectedError({ cause }) })),
+            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
           )
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
@@ -123,9 +123,7 @@ export const makeDoRpcSync =
           }
         }).pipe(
           Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError'
-              ? cause
-              : InvalidPushError.make({ cause: new UnexpectedError({ cause }) }),
+            cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
           ),
           Effect.withSpan('rpc-sync-client:push'),
         )
@@ -133,7 +131,7 @@ export const makeDoRpcSync =
       const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
         storeId,
         payload,
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('rpc-sync-client:ping'))
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))
 
       return SyncBackend.of({
         connect,

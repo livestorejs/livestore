@@ -33,9 +33,9 @@
 
 import { Schema } from '@livestore/utils/effect'
 
-import type { EventDef } from '../schema/EventDef.ts'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.ts'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import type { EventDef } from '../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
 export interface ClientIdentity {
   clientId: string
@@ -80,7 +80,7 @@ export const makeFactory =
     client,
     startSeq = 1,
     initialParent = 'root',
-  }: EventFactoriesConfig): EventFactories<TDefs, LiveStoreEvent.AnyEncodedGlobal> => {
+  }: EventFactoriesConfig): EventFactories<TDefs, LiveStoreEvent.Global.Encoded> => {
     let nextSeq = startSeq
     let parentRef: SequenceValue = initialParent
 
@@ -95,7 +95,7 @@ export const makeFactory =
 
     const current = () => ({ seq: nextSeq, parent: parentRef })
 
-    const factories: Partial<EventFactories<TDefs, LiveStoreEvent.AnyEncodedGlobal>> = {}
+    const factories: Partial<EventFactories<TDefs, LiveStoreEvent.Global.Encoded>> = {}
 
     for (const [name, eventDef] of Object.entries(eventDefs) as [keyof TDefs, TDefs[keyof TDefs]][]) {
       const next = (args: EventFactoriesArgs<TDefs>[typeof name]) => {
@@ -103,14 +103,12 @@ export const makeFactory =
         const encodedArgs = Schema.encodeSync(eventDef.schema)(decoded.args)
         const encoded = eventDef.encoded(encodedArgs)
 
-        const event = LiveStoreEvent.AnyEncodedGlobal.make({
+        const event = LiveStoreEvent.Global.Encoded.make({
           name: encoded.name,
           args: encoded.args,
-          seqNum: EventSequenceNumber.globalEventSequenceNumber(nextSeq),
+          seqNum: EventSequenceNumber.Global.make(nextSeq),
           parentSeqNum:
-            parentRef === 'root'
-              ? EventSequenceNumber.ROOT.global
-              : EventSequenceNumber.globalEventSequenceNumber(parentRef),
+            parentRef === 'root' ? EventSequenceNumber.Client.ROOT.global : EventSequenceNumber.Global.make(parentRef),
           clientId: client.clientId,
           sessionId: client.sessionId,
         })
@@ -126,8 +124,8 @@ export const makeFactory =
         advanceTo,
         setParent,
         current,
-      } as EventFactories<TDefs, LiveStoreEvent.AnyEncodedGlobal>[typeof name]
+      } as EventFactories<TDefs, LiveStoreEvent.Global.Encoded>[typeof name]
     }
 
-    return factories as EventFactories<TDefs, LiveStoreEvent.AnyEncodedGlobal>
+    return factories as EventFactories<TDefs, LiveStoreEvent.Global.Encoded>
   }

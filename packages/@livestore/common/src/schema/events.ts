@@ -1,1 +1,1 @@
-export { clientOnly, defineEvent, synced } from './EventDef.ts'
+export { clientOnly, defineEvent, synced } from './EventDef/mod.ts'

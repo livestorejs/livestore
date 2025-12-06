@@ -11,7 +11,7 @@ export const PullArgs = Schema.Struct({
 
 export const PushPayload = Schema.Struct({
   storeId: Schema.String,
-  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.Global.Encoded),
 })
 
 export type PullArgs = typeof PullArgs.Type

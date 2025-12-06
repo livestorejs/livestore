@@ -24,10 +24,7 @@ const processReadableStream = (
 
     yield* Effect.gen(function* () {
       while (true) {
-        const { done, value } = yield* Effect.tryPromise({
-          try: () => reader.read(),
-          catch: (cause) => cause,
-        }).pipe(Effect.orDie)
+        const { done, value } = yield* Effect.tryPromise(() => reader.read()).pipe(Effect.orDie)
 
         if (done) {
           break
@@ -107,10 +104,7 @@ const makeProtocolDurableObject = ({
         const serializedPayload = parser.encode([message]) as Uint8Array
 
         return Effect.gen(function* () {
-          const serializedResponse = yield* Effect.tryPromise({
-            try: () => callRpc(serializedPayload),
-            catch: (cause) => cause,
-          }).pipe(Effect.orDie) // Convert errors to defects to match never error type
+          const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
 
           // Handle ReadableStream for streaming responses
           if (serializedResponse instanceof ReadableStream) {

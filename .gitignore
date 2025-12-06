@@ -47,3 +47,6 @@ scripts/.completions
 
 .devenv
 .devenv*
+
+# Generated markdown bundle embedded into @livestore/livestore
+packages/@livestore/livestore/docs

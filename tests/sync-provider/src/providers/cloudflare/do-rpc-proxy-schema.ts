@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, IsOfflineError, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { SyncMessage } from '@livestore/sync-cf/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
@@ -15,7 +15,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
   Rpc.make('Connect', {
     payload: Schema.Struct(commonFields),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, UnexpectedError),
+    error: Schema.Union(IsOfflineError, UnknownError),
   }),
 
   // Mirror the pull method
@@ -35,7 +35,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
   Rpc.make('Push', {
     payload: Schema.Struct({
       ...commonFields,
-      batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+      batch: Schema.Array(LiveStoreEvent.Global.Encoded),
     }),
     success: Schema.Void,
     error: Schema.Union(IsOfflineError, InvalidPushError),
@@ -47,7 +47,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       ...commonFields,
     }),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, UnexpectedError),
+    error: Schema.Union(IsOfflineError, UnknownError),
   }),
 
   // Mirror the isConnected subscription

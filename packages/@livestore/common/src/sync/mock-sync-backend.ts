@@ -1,21 +1,21 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { UnexpectedError } from '../errors.ts'
+import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import { InvalidPushError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
 export interface MockSyncBackend {
-  pushedEvents: Stream.Stream<LiveStoreEvent.AnyEncodedGlobal>
+  pushedEvents: Stream.Stream<LiveStoreEvent.Global.Encoded>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
-  makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnexpectedError, Scope.Scope>
-  advance: (...batch: LiveStoreEvent.AnyEncodedGlobal[]) => Effect.Effect<void>
+  makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
+  advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
   /** Fail the next N push calls with an InvalidPushError (or custom error) */
   failNextPushes: (
     count: number,
-    error?: (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => Effect.Effect<never, InvalidPushError>,
+    error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
   ) => Effect.Effect<void>
 }
 
@@ -29,13 +29,13 @@ export interface MockSyncBackendOptions {
 
 export const makeMockSyncBackend = (
   options?: MockSyncBackendOptions,
-): Effect.Effect<MockSyncBackend, UnexpectedError, Scope.Scope> =>
+): Effect.Effect<MockSyncBackend, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    const syncEventSequenceNumberRef = { current: EventSequenceNumber.ROOT.global }
-    const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.AnyEncodedGlobal>()
-    const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.AnyEncodedGlobal>()
+    const syncEventSequenceNumberRef = { current: EventSequenceNumber.Client.ROOT.global }
+    const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
+    const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
     const syncIsConnectedRef = yield* SubscriptionRef.make(options?.startConnected ?? false)
-    const allEventsRef: { current: LiveStoreEvent.AnyEncodedGlobal[] } = { current: [] }
+    const allEventsRef: { current: LiveStoreEvent.Global.Encoded[] } = { current: [] }
 
     const span = yield* Effect.currentSpan.pipe(Effect.orDie)
 
@@ -44,7 +44,7 @@ export const makeMockSyncBackend = (
     // TODO improve the API and implementation of simulating errors
     const failCounterRef = yield* SubscriptionRef.make(0)
     const failEffectRef = yield* SubscriptionRef.make<
-      ((batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => Effect.Effect<never, InvalidPushError>) | undefined
+      ((batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>) | undefined
     >(undefined)
 
     const makeSyncBackend = Effect.gen(function* () {
@@ -73,14 +73,14 @@ export const makeMockSyncBackend = (
                 Effect.sync(() => {
                   const lastSeen = cursor.pipe(
                     Option.match({
-                      onNone: () => EventSequenceNumber.ROOT.global,
+                      onNone: () => EventSequenceNumber.Client.ROOT.global,
                       onSome: (_) => _.eventSequenceNumber,
                     }),
                   )
                   // All events with seqNum greater than lastSeen
                   const slice = allEventsRef.current.filter((e) => e.seqNum > lastSeen)
                   // Split into configured chunk size
-                  const chunks: { events: LiveStoreEvent.AnyEncodedGlobal[]; remaining: number }[] = []
+                  const chunks: { events: LiveStoreEvent.Global.Encoded[]; remaining: number }[] = []
                   for (let i = 0; i < slice.length; i += nonLiveChunkSize) {
                     const end = Math.min(i + nonLiveChunkSize, slice.length)
                     const remaining = Math.max(slice.length - end, 0)
@@ -115,7 +115,7 @@ export const makeMockSyncBackend = (
                 return yield* maybeFail(batch)
               }
               return yield* new InvalidPushError({
-                cause: new UnexpectedError({ cause: new Error('MockSyncBackend: simulated push failure') }),
+                cause: new UnknownError({ cause: new Error('MockSyncBackend: simulated push failure') }),
               })
             }
 
@@ -146,7 +146,7 @@ export const makeMockSyncBackend = (
       })
     })
 
-    const advance = (...batch: LiveStoreEvent.AnyEncodedGlobal[]) =>
+    const advance = (...batch: LiveStoreEvent.Global.Encoded[]) =>
       Effect.gen(function* () {
         syncEventSequenceNumberRef.current = batch.at(-1)!.seqNum
         allEventsRef.current = allEventsRef.current.concat(batch)
@@ -164,7 +164,7 @@ export const makeMockSyncBackend = (
 
     const failNextPushes = (
       count: number,
-      error?: (batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => Effect.Effect<never, InvalidPushError>,
+      error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
     ) =>
       Effect.gen(function* () {
         yield* SubscriptionRef.set(failCounterRef, count)

@@ -23,22 +23,22 @@ sidebar:
     - Multiple sessions can exist within a single client (e.g., multiple browser tabs)
     - Store
     - Reactivity graph
-- [Devtools](/reference/devtools)
-- [Events](/reference/events)
+- [Devtools](/building-with-livestore/devtools)
+- [Events](/building-with-livestore/events)
   - Event definition
   - Eventlog
   - Synced vs client-only events
 - Framework integration
   - A framework integration is a package that provides a way to integrate LiveStore with a framework (e.g. React, Solid, Svelte, etc.)
-- [Reactivity system](/reference/reactivity-system)
+- [Reactivity system](/building-with-livestore/reactivity-system)
   - Db queries `queryDb()`
   - Computed queries `computed()`
   - Signals `signal()`
 - Schema
   - LiveStore uses schema definitions for the following cases:
-    - [Event definitions](/reference/events)
-    - [SQLite state schema](/reference/state/sqlite-schema)
-    - [Query result schemas](/reference/state/sql-queries)
+    - [Event definitions](/building-with-livestore/events)
+    - [SQLite state schema](/building-with-livestore/state/sqlite-schema)
+    - [Query result schemas](/building-with-livestore/state/sql-queries)
   - LiveStore uses the [Effect Schema module](/patterns/effect) to define fine-granular schemas
 - State
   - Derived from the eventlog via materializers
@@ -49,7 +49,7 @@ sidebar:
       - Used by the reactivity graph
     - Persisted SQLite database (usually running on the leader thread)
     - Fully derived from the eventlog
-- [Store](/reference/store)
+- [Store](/building-with-livestore/store)
   - A store exposes most of LiveStore's functionality to the application layer and is the main entry point for using LiveStore.
   - To create a store you need to provide a schema and a platform adapter which creates a client session.
   - A store is often created, managed and accessed through a framework integration (like React).

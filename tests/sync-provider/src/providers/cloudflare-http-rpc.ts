@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { makeHttpSync } from '@livestore/sync-cf/client'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
@@ -36,7 +36,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
         wranglerConfigPath: config?.wranglerConfigPath,
       }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
     ),
-    UnexpectedError.mapToUnexpectedErrorLayer,
+    UnknownError.mapToUnknownErrorLayer,
   )
 
 export const d1 = {

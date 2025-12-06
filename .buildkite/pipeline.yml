@@ -1,0 +1,200 @@
+agents:
+  os: "nixos"
+  nix: "true"
+env:
+  GRAFANA_ENDPOINT: "https://livestore.grafana.net"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+  VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  GITHUB_REF_NAME: "${BUILDKITE_BRANCH}"
+
+steps:
+  - label: "lint"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    commands:
+      - direnv allow .
+      - direnv exec . mono lint
+
+  - label: "test:unit"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    commands:
+      - direnv allow .
+      - direnv exec . mono test unit
+
+  - label: "test:integration (node-sync)"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    commands:
+      - direnv allow .
+      - |
+        set -euo pipefail
+
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+
+        if direnv exec . mono test integration node-sync; then
+          :
+        else
+          buildkite-agent annotate --style "warning" "Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624)"
+        fi
+      - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
+
+  - label: "test:integration (sync-provider:{{matrix.provider}})"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    matrix:
+      setup:
+        provider:
+          - mock
+          - electric
+          - s2
+          - cf-http-d1
+          - cf-http-do
+          - cf-ws-d1
+          - cf-ws-do
+          - cf-do-rpc-d1
+          - cf-do-rpc-do
+    commands:
+      - direnv allow .
+      - |
+        set -euo pipefail
+
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+
+        if [ "{{matrix.provider}}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
+          echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
+          exit 0
+        fi
+
+        direnv exec . mono test integration sync-provider --provider "{{matrix.provider}}"
+
+  - label: "test:integration (playwright:{{matrix.suite}})"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    matrix:
+      setup:
+        suite:
+          - misc
+          - todomvc
+          - devtools
+    commands:
+      - direnv allow .
+      - |
+        set -euo pipefail
+
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+
+        if [ "{{matrix.suite}}" = "devtools" ]; then
+          direnv exec . mono test integration devtools || buildkite-agent annotate --style "warning" "Devtools Playwright suite failed but marked flaky"
+        else
+          direnv exec . mono test integration "{{matrix.suite}}"
+        fi
+      - buildkite-agent artifact upload "tests/integration/playwright-report/**/*" || true
+      - |
+        if [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
+          direnv exec . bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "{{matrix.suite}}-$(git rev-parse --short HEAD)"
+        else
+          echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+        fi
+
+  - label: "test:perf"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    commands:
+      - direnv allow .
+      - |
+        set -euo pipefail
+
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+        export COMMIT_SHA="${BUILDKITE_COMMIT}"
+
+        direnv exec . mono test perf
+
+  - label: "test:wa-sqlite"
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    commands:
+      - direnv allow .
+      - |
+        set -euo pipefail
+
+        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
+        export OTEL_EXPORTER_OTLP_HEADERS
+        export COMMIT_SHA="${BUILDKITE_COMMIT}"
+
+        (cd packages/@livestore/wa-sqlite && direnv exec . nix run .#build)
+        direnv exec . mono test integration wa-sqlite
+
+  - wait
+
+  - label: "release:snapshot"
+    if: build.pull_request.id == null
+    commands:
+      - direnv allow .
+      - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
+      - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
+
+  - label: "examples:build+test"
+    commands:
+      - direnv allow .
+      - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
+      - direnv exec . mono examples test
+      - |
+        if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ "${BUILDKITE_PULL_REQUEST:-false}" = "false" ]; then
+          direnv exec . mono examples deploy
+        else
+          echo "Skipping Cloudflare deploy (PR build or missing CLOUDFLARE credentials)"
+        fi
+
+  - label: "docs:build+deploy"
+    commands:
+      - direnv allow .
+      - direnv exec . mono docs build --api-docs
+      - |
+        if [ "${BUILDKITE_PULL_REQUEST:-false}" = "false" ] && [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
+          direnv exec . mono docs deploy
+        elif [ "${BUILDKITE_PULL_REQUEST:-false}" != "false" ] && [ -n "${NETLIFY_AUTH_TOKEN:-}" ]; then
+          direnv exec . mono docs deploy
+        else
+          echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
+        fi
+
+  - label: "examples:create ({{matrix.app}})"
+    if: build.pull_request.id == null
+    matrix:
+      setup:
+        app:
+          - web-todomvc
+          - web-linearlite
+          - expo-linearlite
+    env:
+      SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
+    commands:
+      - direnv allow .
+      - |
+        direnv exec . bash -lc '
+          set -euo pipefail
+
+          APP_NAME="{{matrix.app}}"
+          APP_PATH="examples/${APP_NAME}"
+
+          WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
+          export WORKSPACE_DEPS
+
+          pnpm dlx @livestore/cli@"${SNAPSHOT_VERSION}" create --example "${APP_NAME}" --branch "${BUILDKITE_BRANCH}" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
+
+          pnpm config set fetchRetries 3
+
+          cd "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
+          if [ -n "${WORKSPACE_DEPS}" ]; then
+            pnpm add $(for dep in $WORKSPACE_DEPS; do echo "$dep@${SNAPSHOT_VERSION}"; done)
+          fi
+
+          if [ "${APP_NAME}" != "expo-linearlite" ]; then
+            pnpm build
+          fi
+        '

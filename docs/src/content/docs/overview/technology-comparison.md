@@ -24,13 +24,13 @@ LiveStore shares a lot of similarities with Redux in that sense that both are ba
   - A major difference here is that LiveStore's state materialized as a SQLite database allows for a lot more flexibility via dynamic queries and aggregations vs Redux's static views.
 - Redux reducers are similar to LiveStore's materializers: Both are used to transform events/actions into a final state.
 - Both Redux and LiveStore are client-centric.
-- Both Redux and LiveStore provide powerful [devtools](/reference/devtools).
+- Both Redux and LiveStore provide powerful [devtools](/building-with-livestore/devtools).
 
 While LiveStore can be used for the same use cases as Redux, LiveStore goes far beyond Redux in the following ways:
 
 - LiveStore leverages SQLite for a more powerful state model allowing for flexible queries and aggregations with much simpler materialization logic.
 - LiveStore supports client-persistence out of the box.
-- LiveStore comes with a built-in [sync engine](/reference/syncing) syncing events between clients.
+- LiveStore comes with a built-in [sync engine](/building-with-livestore/syncing) syncing events between clients.
 
 As a downside compared to Redux, LiveStore has a slightly larger bundle size.
 

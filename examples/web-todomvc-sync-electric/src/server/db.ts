@@ -30,7 +30,7 @@ export const makeDb = (storeId: string) => {
   // -- schema_hash INTEGER NOT NULL,
   // -- created_at TEXT NOT NULL
 
-  const createEvents = async (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => {
+  const createEvents = async (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => {
     await sql`INSERT INTO ${sql(tableName)} ${sql(events)}`
   }
 

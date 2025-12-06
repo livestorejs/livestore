@@ -36,20 +36,20 @@ export type CachedStoreOptions<
     otelOptions?: Partial<OtelOptions>
     /**
      * The time in milliseconds that this store should remain
-     * in memory after becoming inactive. When this store becomes
-     * inactive, it will be garbage collected after this duration.
+     * in memory after becoming unused. When this store becomes
+     * unused (no subscribers), it will be disposed after this duration.
      *
-     * Stores transition to the inactive state as soon as they have no
+     * Stores transition to the unused state as soon as they have no
      * subscriptions registered, so when all components which use that
      * store have unmounted.
      *
      * @remarks
-     * - When different `gcTime` config are used for the same store, the longest one will be used.
-     * - If set to `Infinity`, will disable garbage collection
+     * - When different `unusedCacheTime` values are used for the same store, the longest one will be used.
+     * - If set to `Infinity`, will disable automatic disposal
      * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
      *
      * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
      * disposing stores before server render completes.
      */
-    gcTime?: number
+    unusedCacheTime?: number
   }

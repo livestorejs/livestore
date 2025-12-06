@@ -18,21 +18,30 @@ in
       pkgs.nodejs_24
       pkgs.caddy
       pkgs.jq
+      pkgs.unzip
       pkgs.bun
       pkgs.deno
     ]
-    # Parcel watcher (used by the docs snippet watcher) needs libstdc++ on Linux hosts
-    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib ]
+    # Parcel watcher (pulled in by Biome) dlopens a native addon linked against libstdc++.
+    # Provide the runtime plus nix-ld shim on Linux so commands like `mono lint` don't require manual LD_LIBRARY_PATH.
+    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
     ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
   # Environment variables
   env =
     {
       PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
+      PUPPETEER_SKIP_DOWNLOAD = "1";
     }
-    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
-      LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-    };
+    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
+      let
+        ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+      in
+      {
+        LD_LIBRARY_PATH = ldPath;
+        NIX_LD_LIBRARY_PATH = ldPath;
+      }
+    );
 
   # Shell initialization (dynamic values and PATH wiring)
   enterShell = ''
@@ -54,6 +63,29 @@ in
 
     # Needed until newest corepack version ships in nixpkgs
     export COREPACK_INTEGRITY_KEYS=0
+
+    # Prefer Playwright-provided Chrome for Puppeteer/tldraw-cli; fall back only if user overrides.
+    # Playwright 1.57+ uses "Google Chrome for Testing" instead of "Chromium"
+    if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
+      for candidate in \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux64/chrome \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac-arm64/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-mac/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-win/chrome.exe
+      do
+        if [ -x "$candidate" ]; then
+          export PUPPETEER_EXECUTABLE_PATH="$candidate"
+          break
+        fi
+      done
+
+      if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
+        echo "[devenv] WARNING: Could not find Chrome binary in PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >&2
+        echo "[devenv] Checked patterns: chromium-*/chrome-{linux64,linux,mac-arm64,mac,win}/*" >&2
+      fi
+    fi
+    export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
 
     # Add LiveStore CLIs and node bin to PATH
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"

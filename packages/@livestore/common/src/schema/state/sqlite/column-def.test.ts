@@ -144,11 +144,10 @@ describe('getColumnDefForSchema', () => {
 
     it('should map tagged unions to json column', () => {
       const ResultSchema = Schema.Union(
-        Schema.Struct({
-          _tag: Schema.Literal('success'),
+        Schema.TaggedStruct('success', {
           value: Schema.String,
         }),
-        Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.String }),
+        Schema.TaggedStruct('error', { error: Schema.String }),
       )
 
       const columnDef = State.SQLite.getColumnDefForSchema(ResultSchema)
@@ -273,17 +272,34 @@ describe('getColumnDefForSchema', () => {
         INACTIVE: 'inactive',
       })
 
-      const StatusUnion = Schema.Union(Schema.Literal('pending'), Schema.Literal('active'), Schema.Literal('inactive'))
+      const StatusUnion = Schema.Literal('pending', 'active', 'inactive')
 
       expect(State.SQLite.getColumnDefForSchema(StatusEnum).columnType).toBe('text')
       expect(State.SQLite.getColumnDefForSchema(StatusUnion).columnType).toBe('text')
+    })
+
+    it('should handle unions of numeric literals as integer column', () => {
+      const IntervalSchema = Schema.Literal(1, 5, 15, 30)
+
+      const columnDef = State.SQLite.getColumnDefForSchema(IntervalSchema)
+
+      expect(columnDef.columnType).toBe('integer')
+    })
+
+    it('should handle unions of non-integer numeric literals as real column', () => {
+      const PercentSchema = Schema.Literal(0.1, 0.2, 0.25)
+
+      const columnDef = State.SQLite.getColumnDefForSchema(PercentSchema)
+
+      expect(columnDef.columnType).toBe('real')
     })
   })
 
   describe('binary data', () => {
     it('should handle Uint8Array as blob column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
-      expect(columnDef.columnType).toBe('text') // Stored as JSON
+      expect(columnDef.columnType).toBe('blob')
+      expect(columnDef.schema.toString()).toBe('Uint8ArrayFromSelf')
     })
   })
 
@@ -552,7 +568,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should work with column type annotation', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Number.pipe(withColumnType('integer')).pipe(withPrimaryKey),
+          id: Schema.Number.pipe(withColumnType('integer'), withPrimaryKey),
           name: Schema.String,
         })
 
@@ -584,7 +600,7 @@ describe('getColumnDefForSchema', () => {
     describe('withAutoIncrement', () => {
       it('should add autoIncrement annotation to schema', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           name: Schema.String,
         })
         const userTable = State.SQLite.table({
@@ -704,7 +720,7 @@ describe('getColumnDefForSchema', () => {
 
     describe('combined annotations', () => {
       it('should work with multiple annotations', () => {
-        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob')).pipe(withPrimaryKey)
+        const schema = Schema.Uint8ArrayFromBase64.pipe(withColumnType('blob'), withPrimaryKey)
 
         const UserSchema = Schema.Struct({
           id: schema,
@@ -722,7 +738,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should combine all annotations', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Int.pipe(withPrimaryKey).pipe(withAutoIncrement),
+          id: Schema.Int.pipe(withPrimaryKey, withAutoIncrement),
           email: Schema.String.pipe(withUnique),
           status: Schema.String.pipe(withDefault('active')),
           metadata: Schema.Unknown.pipe(withColumnType('text')),

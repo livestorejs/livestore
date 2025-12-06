@@ -11,8 +11,8 @@ export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime to use proper storeId
   name: `eventlog_${PERSISTENCE_FORMAT_VERSION}_$storeId`,
   columns: {
-    seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.GlobalEventSequenceNumber }),
-    parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.Global.Schema }),
+    parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.Global.Schema }),
     name: State.SQLite.text({}),
     args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any), nullable: true }),
     /** ISO date format. Currently only used for debugging purposes. */
@@ -31,7 +31,7 @@ export const contextTable = State.SQLite.table({
   name: `context_${PERSISTENCE_FORMAT_VERSION}`,
   columns: {
     storeId: State.SQLite.text({ primaryKey: true }),
-    currentHead: State.SQLite.integer({ schema: EventSequenceNumber.GlobalEventSequenceNumber }),
+    currentHead: State.SQLite.integer({ schema: EventSequenceNumber.Global.Schema }),
     backendId: State.SQLite.text({}),
   },
 })
