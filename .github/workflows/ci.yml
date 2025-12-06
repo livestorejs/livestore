@@ -360,6 +360,13 @@ jobs:
       - name: Set up environment
         uses: ./.github/actions/setup-env
 
+      - name: Start breakpoint (docs debug)
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          mode: background
+          duration: 45m
+          authorized-users: schickling
+
       # Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
       # - pull_request (any base): deploy alias on dev docs site (no purge)
       #     example domain: https://<alias>--livestore-docs-dev.netlify.app
