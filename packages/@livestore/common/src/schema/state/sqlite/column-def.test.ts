@@ -144,11 +144,10 @@ describe('getColumnDefForSchema', () => {
 
     it('should map tagged unions to json column', () => {
       const ResultSchema = Schema.Union(
-        Schema.Struct({
-          _tag: Schema.Literal('success'),
+        Schema.TaggedStruct('success', {
           value: Schema.String,
         }),
-        Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.String }),
+        Schema.TaggedStruct('error', { error: Schema.String }),
       )
 
       const columnDef = State.SQLite.getColumnDefForSchema(ResultSchema)
