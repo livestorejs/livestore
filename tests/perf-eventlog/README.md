@@ -12,7 +12,7 @@ The original Cloudflare-based harness remains in `tests/perf-streaming` if you n
 
 ## Snapshot loading
 
-Export state + eventlog SQLite snapshots from LiveStore Devtools and load them directly into the harness to avoid waiting for millions of events to materialize:
+Export state + eventlog SQLite snapshots from LiveStore Devtools and load them directly into the harness to avoid waiting for thousands of events to materialize:
 
 1. Click **Load snapshots** in the control panel and select the matching state and eventlog `.db` files. The harness restarts automatically once both imports finish.
 2. For automation (Playwright or manual scripts), call `window.__livestorePerfHarness.loadSnapshots({ state, eventlog })` with `Uint8Array`/`ArrayBuffer` payloads. This bypasses the UI entirely and issues the paired `LoadDatabaseFile` requests atomically.

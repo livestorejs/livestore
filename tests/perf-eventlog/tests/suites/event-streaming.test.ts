@@ -50,7 +50,7 @@ const streamEvents = async (page: Page, eventCount: number) => {
 }
 
 test.describe('Streaming latency', () => {
-  test('stream 500 events', async ({ page, cpuProfiler }, _testInfo) => {
+  test('stream 500 events', async ({ page }, _testInfo) => {
     await test.step('prepare', async () => {
       await page.goto('/')
       await page.getByTestId('reset-harness').click()
@@ -61,23 +61,19 @@ test.describe('Streaming latency', () => {
     })
 
     await test.step('warmup', async () => {
-      await cpuProfiler.start('cold')
       const startTime = Date.now()
       await page.getByTestId('toggle-events').click()
       await expect(page.getByTestId('events-streamed')).toHaveText('500', { timeout: 60000 })
       const duration = Date.now() - startTime
-      await cpuProfiler.stop('streaming')
       console.log(`[COLD]: Streamed 500 events in ${duration}ms`)
     })
 
     await test.step('run', async () => {
       await page.reload()
-      await cpuProfiler.start('warm')
       const startTime = Date.now()
       await page.getByTestId('toggle-events').click()
       await expect(page.getByTestId('events-streamed')).toHaveText('500', { timeout: 60000 })
       const duration = Date.now() - startTime
-      await cpuProfiler.stop('streaming')
       console.log(`[WARM]: Streamed 500 events in ${duration}ms`)
     })
   })
@@ -92,7 +88,11 @@ test.describe('Streaming latency', () => {
     })
   })
 
-  test('stream snapshot batch size sweep (10,000 events)', async ({ page }) => {
+  /**
+   * This test is mainly useful as an optimization tool in order
+   * to determine the optimal batchSize setting.
+   */
+  test.skip('stream snapshot batch size sweep (10,000 events)', async ({ page }) => {
     const eventCount = 10_000
     await prepareSnapshots(page, eventCount)
 
