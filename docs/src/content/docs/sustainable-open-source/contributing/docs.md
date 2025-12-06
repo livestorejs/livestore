@@ -9,6 +9,24 @@ Please follow LiveStore's [guiding principles](/contributing/contributing#guidin
 
 This project broadly tries to follow the [Prisma docs style guide](https://www.prisma.io/docs/about/style-guide/writing-style).
 
+## Title casing for navigation items, pages and sections
+
+All titles for navigation items, pages and sections are using regular sentence casing. This means that only the first word and proper nouns are capitalized.
+
+### Example
+
+Good:
+
+```md
+## This is the title of this section
+```
+
+Bad:
+
+```md
+## This is the Title of this Section
+```
+
 ## Snippets
 
 For snippet guidelines, see: `/contributor-docs/docs/snippets.md`

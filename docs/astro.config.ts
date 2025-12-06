@@ -166,7 +166,7 @@ export default defineConfig({
                   'sustainable-open-source/sponsoring',
                   {
                     label: 'Contributing',
-                    autogenerate: { directory: 'contributing' },
+                    autogenerate: { directory: 'sustainable-open-source/contributing' },
                   },
                 ],
               },
