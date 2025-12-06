@@ -123,6 +123,9 @@ overrides:
   puppeteer: 23.11.1
 
 patchedDependencies:
+  '@kitschpatrol/tldraw-cli@5.0.0':
+    hash: d845ec73574705fb3b39e3e871473bdb1dda60e7dce850bab22f3cc7a9fa75ca
+    path: patches/@kitschpatrol__tldraw-cli@5.0.0.patch
   starlight-contextual-menu@0.1.3:
     hash: 102253fd3bdb5ceed9522afe86d06341e63052dd22c734bdd9a2af790abc0545
     path: patches/starlight-contextual-menu@0.1.3.patch
@@ -2592,7 +2595,7 @@ importers:
     dependencies:
       '@kitschpatrol/tldraw-cli':
         specifier: 5.0.0
-        version: 5.0.0(typescript@5.9.2)
+        version: 5.0.0(patch_hash=d845ec73574705fb3b39e3e871473bdb1dda60e7dce850bab22f3cc7a9fa75ca)(typescript@5.9.2)
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../@livestore/utils
@@ -20195,7 +20198,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kitschpatrol/tldraw-cli@5.0.0(typescript@5.9.2)':
+  '@kitschpatrol/tldraw-cli@5.0.0(patch_hash=d845ec73574705fb3b39e3e871473bdb1dda60e7dce850bab22f3cc7a9fa75ca)(typescript@5.9.2)':
     dependencies:
       '@fontsource/inter': 5.2.8
       '@hono/node-server': 1.19.6(hono@4.10.7)
