@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Chunk, Effect, Option, Queue, Ref, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
@@ -37,11 +37,28 @@ export const streamEventsWithSyncState = ({
 
   return Stream.unwrapScoped(
     Effect.gen(function* () {
-      // Single-element Queue allws suspending the event stream until head advances
+      /**
+       * Single-element Queue allows suspending the event stream until head
+       * advances because Queue.take is a suspending effect. SubscriptionRef in
+       * comparrison lacks a primitive for suspending a stream until a new value
+       * is set and would require polling.
+       *
+       * The use of a sliding Queue here is useful since it ensures only the
+       * lastest head from syncState is the one present on the queue without the
+       * need for manual substitution.
+       */
       const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
 
-      // When upstream advances we put the latest head in the headQueue. Keeping
-      // track of previous prevents other syncState changes to trigger emtpty queries
+      /**
+       * We run a separate fiber which listens to changes in syncState and
+       * offer the latest head to the headQueue. Keeping track of the previous
+       * value is done to prevent syncState changes unrelated to the
+       * upstreamHead triggering empty queries.
+       *
+       * When we implement support for leader and session level streams
+       * this will need to be adapted to support the relevant value from
+       * syncState that we are interested in tracking.
+       */
       let prevGlobalHead = -1
       yield* syncState.changes.pipe(
         Stream.map((state) => state.upstreamHead),
@@ -58,20 +75,58 @@ export const streamEventsWithSyncState = ({
 
       return Stream.paginateChunkEffect({ cursor: initialCursor, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
         Effect.gen(function* () {
+          /**
+           * This early check guards agains:
+           * since === until : Prevent empty query
+           * since > until : Incorrectly inverted interval
+           */
           if (options.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
             return [Chunk.empty(), Option.none()]
           }
 
-          // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
+          /**
+           * There are two scenarios where we take the next head from the headQueue:
+           *
+           * 1. We need to wait for the head to advance
+           * The Stream suspends until a new head is available on the headQueue
+           *
+           * 2. Head has advanced during itteration
+           * While itterating towards the lastest head taken from the headQueue
+           * in increments of batchSize it's possible the head could have
+           * advanced. This leads to a suboptimal amount of queries. Therefor we
+           * check if the headQueue is full which tells us that there's a new
+           * head available to take. Example:
+           *
+           * batchSize: 2
+           *
+           * --> head at: e3
+           * First query: e0 -> e2 (two events)
+           * --> head advances to: e4
+           * Second query: e2 -> e3 (one event but we could have taken 2)
+           * --> Take the new head of e4
+           * Third query: e3 -> e4 (unnecessary third query)
+           *
+           *
+           * To define the target, which will be used as the temporary until
+           * marker for the eventlog query, we select the lowest of three possible values:
+           *
+           * hardStop: A user supplied until marker
+           * current cursor + batchSize: A batchSize step towards the latest head from headQueue
+           * head: The latest head from headQueue
+           */
           const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
           const headHasAdvanced = yield* Queue.isFull(headQueue)
-          const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
-          const hardStop = options.until?.global || Number.POSITIVE_INFINITY
+          const nextHead = (waitForHead ?? headHasAdvanced) ? yield* Queue.take(headQueue) : head
+          const hardStop = options.until?.global ?? Number.POSITIVE_INFINITY
           const target = EventSequenceNumber.make({
             global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
             client: EventSequenceNumber.clientDefault,
           })
 
+          /**
+           * Eventlog.getEventsFromEventlog returns a Chunk from each
+           * query which is what we emit at each itteration.
+           */
           const chunk = yield* Eventlog.getEventsFromEventlog({
             dbEventlog,
             options: {
@@ -81,6 +136,14 @@ export const streamEventsWithSyncState = ({
             },
           })
 
+          /**
+           * We construct the state for the following itteration of the stream
+           * loop by setting the current target as the since cursor and pass
+           * along the latest head.
+           *
+           * If we have the reached the user supplied until marker we signal the
+           * finalization of the stream by passing Option.none() instead.
+           */
           const reachedUntil =
             options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
 

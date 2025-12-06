@@ -153,6 +153,10 @@ export const isGreaterThanOrEqual = (a: EventSequenceNumber, b: EventSequenceNum
   return a.global > b.global || (a.global === b.global && a.client >= b.client)
 }
 
+export const min = (a: EventSequenceNumber, b: EventSequenceNumber) => {
+  return a.global < b.global || (a.global === b.global && a.client < b.client) ? a : b
+}
+
 export const max = (a: EventSequenceNumber, b: EventSequenceNumber) => {
   return a.global > b.global || (a.global === b.global && a.client > b.client) ? a : b
 }

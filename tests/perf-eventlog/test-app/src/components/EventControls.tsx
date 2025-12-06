@@ -104,6 +104,48 @@ type SnapshotPayload = {
   eventlog: ArrayBuffer | Uint8Array<ArrayBuffer>
 }
 
+type StoreInstance = ReturnType<typeof useStore>['store']
+
+const readSyncHeadSnapshot = (store: StoreInstance) => {
+  try {
+    const syncState = store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    return {
+      local: syncState.localHead.global,
+      upstream: syncState.upstreamHead.global,
+    }
+  } catch {
+    return { local: 0, upstream: 0 }
+  }
+}
+
+const normalizeSnapshot = (input: SnapshotPayload['state']) =>
+  input instanceof Uint8Array ? input : new Uint8Array(input)
+
+const loadSnapshots = async (store: StoreInstance, { state, eventlog }: SnapshotPayload) => {
+  const clientSession = store[StoreInternalsSymbol].clientSession
+  const clientId = clientSession.clientId
+  const batchId = `perf-${makeRunId()}`
+
+  const send = (data: Uint8Array<ArrayBuffer>) =>
+    clientSession.leaderThread
+      .sendDevtoolsMessage(
+        Devtools.Leader.LoadDatabaseFile.Request.make({
+          clientId,
+          requestId: nanoid(),
+          data,
+          batchId,
+          liveStoreVersion,
+        }),
+      )
+      .pipe(Effect.runPromise)
+
+  const normalizedState = normalizeSnapshot(state)
+  const normalizedEventlog = normalizeSnapshot(eventlog)
+
+  await send(normalizedState)
+  await send(normalizedEventlog)
+}
+
 const makeGeneratorState = (): GeneratorState => ({
   timerId: null,
   remaining: 0,
@@ -133,48 +175,38 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const [eventlogSnapshot, setEventlogSnapshot] = React.useState<File | null>(null)
   const [snapshotStatus, setSnapshotStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [snapshotError, setSnapshotError] = React.useState<string | null>(null)
-  const initialSyncHead = React.useMemo(() => {
-    try {
-      const syncState = store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
-      return {
-        local: syncState.localHead.global,
-        upstream: syncState.upstreamHead.global,
-      }
-    } catch {
-      return { local: 0, upstream: 0 }
-    }
-  }, [store])
-  const [syncHead, setSyncHead] = React.useState(initialSyncHead)
+  const [syncHead, setSyncHead] = React.useState(() => readSyncHeadSnapshot(store))
 
   const generatorRef = React.useRef<GeneratorState>(makeGeneratorState())
   const sessionIdRef = React.useRef<string>(makeRunId())
   const idCounterRef = React.useRef<number>(1)
 
-  const createTodoEvent = React.useCallback(() => {
+  const createTodoEvent = () => {
     const index = idCounterRef.current++
     const id = crypto.randomUUID()
     const text = generateTodoText(index)
     return events.todoCreated({ id, text })
-  }, [])
+  }
 
-  const commitEvents = React.useCallback(
-    (items: ReadonlyArray<ReturnType<typeof events.todoCreated>>) => {
-      if (items.length === 0) return
-      store.commit(...items)
-    },
-    [store],
-  )
+  const commitEvents = (items: ReadonlyArray<ReturnType<typeof events.todoCreated>>) => {
+    if (items.length === 0) return
+    store.commit(...items)
+  }
 
-  const stopGenerator = React.useCallback(() => {
+  const createSingleEvent = () => {
+    commitEvents([createTodoEvent()])
+  }
+
+  const stopGenerator = () => {
     const ref = generatorRef.current
     if (ref.timerId !== null) {
       window.clearInterval(ref.timerId)
     }
     generatorRef.current = makeGeneratorState()
     setIsGenerating(false)
-  }, [])
+  }
 
-  const runGeneratorTick = React.useCallback(() => {
+  const runGeneratorTick = () => {
     const ref = generatorRef.current
     if (ref.remaining <= 0) {
       stopGenerator()
@@ -191,9 +223,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     if (ref.remaining <= 0) {
       stopGenerator()
     }
-  }, [commitEvents, createTodoEvent, stopGenerator])
+  }
 
-  const startGenerator = React.useCallback(() => {
+  const startGenerator = () => {
     if (generatorRef.current.timerId !== null) {
       return
     }
@@ -213,18 +245,15 @@ export const EventControls: React.FC<EventControlsProps> = ({
 
     setIsGenerating(true)
     setLastError(null)
-  }, [requestedTotalEvents, requestedEventsPerSecond, runGeneratorTick])
+  }
 
-  const seedEvents = React.useCallback(
-    (count: number) => {
-      if (count <= 0) return
-      const eventsToCommit = Array.from({ length: count }, () => createTodoEvent())
-      commitEvents(eventsToCommit)
-    },
-    [commitEvents, createTodoEvent],
-  )
+  const seedEvents = (count: number) => {
+    if (count <= 0) return
+    const eventsToCommit = Array.from({ length: count }, () => createTodoEvent())
+    commitEvents(eventsToCommit)
+  }
 
-  const handleResetHarness = React.useCallback(() => {
+  const handleResetHarness = () => {
     stopGenerator()
     setRequestedTotalEvents(DEFAULT_TOTAL_EVENTS)
     setRequestedEventsPerSecond(DEFAULT_EVENTS_PER_SECOND)
@@ -234,42 +263,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     onEventBatchSizeChange(DEFAULT_EVENT_BATCH_SIZE)
     onEventUntilChange(undefined)
     onResetHarness()
-  }, [onEventBatchSizeChange, onEventUntilChange, onResetHarness, stopGenerator])
+  }
 
-  const normalizeSnapshot = React.useCallback((input: SnapshotPayload['state']) => {
-    if (input instanceof Uint8Array) return input
-    return new Uint8Array(input)
-  }, [])
-
-  const loadSnapshots = React.useCallback(
-    async ({ state, eventlog }: SnapshotPayload) => {
-      const clientSession = store[StoreInternalsSymbol].clientSession
-      const clientId = clientSession.clientId
-      const batchId = `perf-${makeRunId()}`
-
-      const send = (data: Uint8Array<ArrayBuffer>) =>
-        clientSession.leaderThread
-          .sendDevtoolsMessage(
-            Devtools.Leader.LoadDatabaseFile.Request.make({
-              clientId,
-              requestId: nanoid(),
-              data,
-              batchId,
-              liveStoreVersion,
-            }),
-          )
-          .pipe(Effect.runPromise)
-
-      const normalizedState = normalizeSnapshot(state)
-      const normalizedEventlog = normalizeSnapshot(eventlog)
-
-      await send(normalizedState)
-      await send(normalizedEventlog)
-    },
-    [normalizeSnapshot, store[StoreInternalsSymbol].clientSession],
-  )
-
-  const handleLoadSnapshotFiles = React.useCallback(async () => {
+  const handleLoadSnapshotFiles = async () => {
     if (stateSnapshot === null || eventlogSnapshot === null) {
       setSnapshotStatus('error')
       setSnapshotError('Select both state and eventlog files before loading.')
@@ -285,7 +281,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
         eventlogSnapshot.arrayBuffer(),
       ])
 
-      await loadSnapshots({
+      await loadSnapshots(store, {
         state: stateBuffer,
         eventlog: eventlogBuffer,
       })
@@ -296,11 +292,11 @@ export const EventControls: React.FC<EventControlsProps> = ({
       setSnapshotStatus('error')
       setSnapshotError(error instanceof Error ? error.message : 'Unknown error while loading snapshots.')
     }
-  }, [eventlogSnapshot, loadSnapshots, stateSnapshot])
+  }
 
   React.useEffect(() => {
     const harness = {
-      loadSnapshots: (payload: SnapshotPayload) => loadSnapshots(payload),
+      loadSnapshots: (payload: SnapshotPayload) => loadSnapshots(store, payload),
     }
 
     ;(window as any).__livestorePerfHarness = harness
@@ -310,13 +306,16 @@ export const EventControls: React.FC<EventControlsProps> = ({
         delete (window as any).__livestorePerfHarness
       }
     }
-  }, [loadSnapshots])
+  }, [store])
 
   React.useEffect(() => {
     return () => {
-      stopGenerator()
+      const ref = generatorRef.current
+      if (ref.timerId !== null) {
+        window.clearInterval(ref.timerId)
+      }
     }
-  }, [stopGenerator])
+  }, [])
 
   React.useEffect(() => {
     const cancel = store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
@@ -383,6 +382,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
         </button>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <button type="button" data-testid="create-single-event" onClick={() => createSingleEvent()}>
+          Create event
+        </button>
         <button type="button" data-testid="seed-500" onClick={() => seedEvents(500)}>
           Seed 500
         </button>

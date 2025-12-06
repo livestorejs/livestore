@@ -142,12 +142,15 @@ export const getEventsFromEventlog = ({
         .limit(batchSize)
     }
 
-    const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery())).pipe(
-      Effect.withSpan('@livestore/common:eventlog:getEventsFromEventLog:select', { attributes: { batchSize } }),
-    )
+    const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery()))
 
     if (eventlogEvents.length === 0) {
       return Chunk.empty<LiveStoreEvent.AnyEncoded>()
+    }
+
+    const spanAttributes = {
+      'livestore.eventLog.since': since.global,
+      'livestore.eventLog.until': options.until?.global,
     }
 
     return yield* Effect.sync(() => {
@@ -171,11 +174,7 @@ export const getEventsFromEventlog = ({
       })
 
       return Chunk.fromIterable(encodedEvents)
-    }).pipe(
-      Effect.withSpan('@livestore/common:eventlog:getEventsFromEventLog:encode', {
-        attributes: { events: eventlogEvents.length },
-      }),
-    )
+    }).pipe(Effect.withSpan('@livestore/common:eventlog:getEventsFromEventlog', { attributes: spanAttributes }))
   })
 
 export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.EventSequenceNumber => {
