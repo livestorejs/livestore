@@ -140,12 +140,9 @@ const docsBuildCommand = Cli.Command.make(
 
     if (!skipDeps) {
       yield* Effect.log('Building snippets and diagrams...')
-      yield* Effect.all(
-        [buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild],
-        {
-          concurrency: 'unbounded',
-        },
-      )
+      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+        concurrency: 'unbounded',
+      })
       yield* Effect.log('Snippets and diagrams built successfully')
       yield* cleanupChromiumChildren()
     }
