@@ -75,6 +75,67 @@ LiveStore works with Vite out of the box.
 
 LiveStore works with Tanstack Start out of the box.
 
+#### Notes
+
+When using LiveStore with TanStack Start, it's crucial to place `LiveStoreProvider` in the correct location to avoid remounting on navigation.
+
+:::caution Important
+**Do NOT place `LiveStoreProvider` inside `shellComponent`**. The `shellComponent` can be re-rendered on navigation, causing LiveStore to remount and show the loading screen on every page transition.
+:::
+
+#### Correct Pattern
+
+Use the `component` prop on `createRootRoute` for `LiveStoreProvider`:
+
+import { Outlet, HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { LiveStoreProvider } from '@livestore/react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+export const Route = createRootRoute({
+  shellComponent: RootShell,    // HTML structure only - NO state or providers
+  component: RootComponent,      // App shell - LiveStoreProvider goes HERE
+})
+
+// HTML document shell - keep this stateless
+function RootShell({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head><HeadContent /></head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+// App shell - persists across SPA navigation
+function RootComponent() {
+  return (
+    <LiveStoreProvider 
+      schema={schema} 
+      adapter={adapter} 
+      batchUpdates={batchUpdates}
+    >
+      <Outlet />
+    </LiveStoreProvider>
+  )
+}
+
+#### Why This Matters
+
+TanStack Start's `shellComponent` is designed for SSR HTML streaming and may be re-evaluated on server requests during navigation. When `LiveStoreProvider` is placed there:
+
+- The WebSocket connection is re-established on each navigation
+- The "Loading LiveStore" screen appears
+- All LiveStore state is re-initialized
+
+The `component` prop creates a React component that stays mounted during client-side SPA navigation, preserving LiveStore's connection and state.
+
+#### Debugging
+
+If you see the loading screen on every navigation, check your server logs. Multiple "Launching WebSocket" messages indicate `LiveStoreProvider` is remounting incorrectly.
+
 ### Expo / React Native
 
 LiveStore has a first-class integration with Expo / React Native via `@livestore/adapter-expo`.
