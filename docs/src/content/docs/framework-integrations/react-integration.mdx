@@ -5,11 +5,11 @@ sidebar:
 description: How to integrate LiveStore with React.
 ---
 
-import ReactContextSnippet from '../../../_assets/code/reference/framework-integrations/react/context-provider.tsx?snippet'
-import ReactProviderSnippet from '../../../_assets/code/reference/framework-integrations/react/provider.tsx?snippet'
-import ReactUseClientDocumentSnippet from '../../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
-import ReactUseQuerySnippet from '../../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
-import ReactUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
+import ReactContextSnippet from '../../_assets/code/reference/framework-integrations/react/context-provider.tsx?snippet'
+import ReactProviderSnippet from '../../_assets/code/reference/framework-integrations/react/provider.tsx?snippet'
+import ReactUseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
+import ReactUseQuerySnippet from '../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
+import ReactUseStoreSnippet from '../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
 
 While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
 
@@ -79,7 +79,7 @@ LiveStore works with Tanstack Start out of the box.
 
 When using LiveStore with TanStack Start, it's crucial to place `LiveStoreProvider` in the correct location to avoid remounting on navigation.
 
-:::caution Important
+:::warn
 **Do NOT place `LiveStoreProvider` inside `shellComponent`**. The `shellComponent` can be re-rendered on navigation, causing LiveStore to remount and show the loading screen on every page transition.
 :::
 
@@ -87,6 +87,7 @@ When using LiveStore with TanStack Start, it's crucial to place `LiveStoreProvid
 
 Use the `component` prop on `createRootRoute` for `LiveStoreProvider`:
 
+```tsx
 import { Outlet, HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { LiveStoreProvider } from '@livestore/react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
@@ -121,6 +122,7 @@ function RootComponent() {
     </LiveStoreProvider>
   )
 }
+```
 
 #### Why This Matters
 

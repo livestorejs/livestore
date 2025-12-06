@@ -2,7 +2,7 @@
 title: Concepts
 description: Concepts in LiveStore
 sidebar:
-  order: 1
+  order: 15
 ---
 
 ![](https://share.cleanshot.com/sv62BGww+)

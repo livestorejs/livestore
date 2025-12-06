@@ -2,7 +2,7 @@
 title: Technology comparison
 description: How LiveStore compares to other related technologies
 sidebar:
-  order: 4
+  order: 25
 ---
 
 ## TLDR of what sets LiveStore apart

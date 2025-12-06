@@ -102,7 +102,7 @@ export default defineConfig({
             items: [
               'index',
               {
-                label: 'Getting Started',
+                label: 'Getting started',
                 autogenerate: { directory: 'getting-started' },
               },
               {
@@ -110,13 +110,42 @@ export default defineConfig({
                 autogenerate: { directory: 'tutorial' },
               },
               {
-                label: 'Evaluating LiveStore',
-                autogenerate: { directory: 'evaluation' },
+                label: 'Overview',
+                autogenerate: { directory: 'overview' },
               },
               {
-                label: 'Data Modeling',
-                autogenerate: { directory: 'data-modeling' },
+                label: 'Building with LiveStore',
+                items: [
+                  // Top-level files first (manually ordered)
+                  'building-with-livestore/rules-for-ai-agents',
+                  'building-with-livestore/events',
+                  'building-with-livestore/data-modeling',
+                  'building-with-livestore/crud',
+                  'building-with-livestore/store',
+                  'building-with-livestore/complex-ui-state',
+                  'building-with-livestore/reactivity-system',
+                  'building-with-livestore/syncing',
+                  'building-with-livestore/debugging',
+                  'building-with-livestore/production-checklist',
+                  // Then nested directories with explicit labels
+                  { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
+                  { label: 'Tools', autogenerate: { directory: 'building-with-livestore/tools' } },
+                  { label: 'Examples', autogenerate: { directory: 'building-with-livestore/examples' } },
+                ],
               },
+              {
+                label: 'Framework integrations',
+                autogenerate: { directory: 'framework-integrations' },
+              },
+              {
+                label: 'Platform adapters',
+                autogenerate: { directory: 'platform-adapters' },
+              },
+              {
+                label: 'Sync providers',
+                autogenerate: { directory: 'sync-providers' },
+              },
+
               // TODO bring back when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
               // Until when we're manually maintaining the sidebar for reference
               // {
@@ -124,33 +153,22 @@ export default defineConfig({
               //   autogenerate: { directory: 'reference' },
               // },
               {
-                label: 'Reference',
-                items: [
-                  'reference/concepts',
-                  'reference/store',
-                  'reference/reactivity-system',
-                  'reference/events',
-                  'reference/devtools',
-                  'reference/debugging',
-                  'reference/opentelemetry',
-                  'reference/cli',
-                  'reference/mcp',
-                  { label: 'State', autogenerate: { directory: 'reference/state' } },
-                  {
-                    label: 'Syncing',
-                    items: [
-                      'reference/syncing',
-                      'reference/syncing/server-side-clients',
-                      { label: 'Sync Provider', autogenerate: { directory: 'reference/syncing/sync-provider' } },
-                    ],
-                  },
-                  { label: 'Platform Adapters', autogenerate: { directory: 'reference/platform-adapters' } },
-                  { label: 'Framework Integrations', autogenerate: { directory: 'reference/framework-integrations' } },
-                ],
-              },
-              {
                 label: 'Patterns',
                 autogenerate: { directory: 'patterns' },
+              },
+              {
+                label: 'Understanding LiveStore',
+                autogenerate: { directory: 'understanding-livestore' },
+              },
+              {
+                label: 'Sustainable open source',
+                items: [
+                  'sustainable-open-source/sponsoring',
+                  {
+                    label: 'Contributing',
+                    autogenerate: { directory: 'contributing' },
+                  },
+                ],
               },
               {
                 label: 'Miscellaneous',
@@ -160,10 +178,10 @@ export default defineConfig({
                 label: 'Changelog',
                 link: '/changelog',
               },
-              {
-                label: 'Contributing',
-                autogenerate: { directory: 'contributing' },
-              },
+              // {
+              //   label: 'Contributing',
+              //   autogenerate: { directory: 'contributing' },
+              // },
             ],
           },
           {

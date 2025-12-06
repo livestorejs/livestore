@@ -2,7 +2,7 @@
 title: Debugging a LiveStore app
 sidebar:
   label: Debugging
-  order: 22
+  order: 52
 ---
 
 When working on a LiveStore app you might end up in situations where you need to debug things. LiveStore is built with debuggability in mind and tries to make your life as a developer as easy as possible.

@@ -2,7 +2,7 @@
 title: When to use LiveStore (and when not)
 sidebar:
   label: When to use LiveStore
-  order: 3
+  order: 20
 description: Considerations when deciding to use LiveStore.
 ---
 
