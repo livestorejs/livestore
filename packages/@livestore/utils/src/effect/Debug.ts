@@ -131,7 +131,7 @@ function filterGraphWithAncestors<N, E>(
 
   // Use postorder DFS to evaluate children before parents
   for (const rootId of rootNodes) {
-    for (const nodeId of Graph.indices(Graph.dfsPostOrder(graph, { startNodes: [rootId], direction: 'outgoing' }))) {
+    for (const nodeId of Graph.indices(Graph.dfsPostOrder(graph, { start: [rootId], direction: 'outgoing' }))) {
       const node = Graph.getNode(graph, nodeId)
       if (Option.isNone(node)) continue
 
@@ -246,7 +246,7 @@ function collectTraceEvents(graph: SpanNodeGraph, rootNodes: number[]): ChromeTr
 
   // Use DFS to traverse all nodes
   for (const rootId of rootNodes) {
-    for (const nodeId of Graph.indices(Graph.dfs(graph, { startNodes: [rootId], direction: 'outgoing' }))) {
+    for (const nodeId of Graph.indices(Graph.dfs(graph, { start: [rootId], direction: 'outgoing' }))) {
       const node = Graph.getNode(graph, nodeId)
       if (Option.isNone(node)) continue
 
